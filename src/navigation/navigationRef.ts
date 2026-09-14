@@ -322,6 +322,23 @@ export function navigateForPush(
       });
       return true;
 
+    case 'seasonSummary': {
+      // A season closed — open this player's own card. Routed through the
+      // Profile tab because that is where a personal, cross-club summary
+      // belongs; ProfileRoot sits beneath it as the back target.
+      const seasonId =
+        typeof data.seasonId === 'string' ? data.seasonId : undefined;
+      if (groupId) {
+        nav.navigate('ProfileTab', {
+          screen: 'SeasonSummary',
+          initial: false,
+          params: { groupId, seasonId },
+        });
+        return true;
+      }
+      return false;
+    }
+
     case 'eveningSummary':
       // The night is over — open the player's shareable "סיכום הערב"
       // card for that game. Registered in GameStack (+ Communities/Profile),

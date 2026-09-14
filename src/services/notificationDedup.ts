@@ -58,7 +58,8 @@ export type NotificationKind =
   | 'friendRequest'
   | 'friendRequestAccepted'
   | 'teamsGenerated'
-  | 'eveningSummary';
+  | 'eveningSummary'
+  | 'seasonSummary';
 
 /** Logical kind of entity the notification is about. `user` is
  *  used for a few cross-user events (rare). */
@@ -143,6 +144,9 @@ const COOLDOWN_MS: Record<NotificationKind, number> = {
   // Evening summary — server fans out one doc per player when the night
   // finishes. One per (player, game); long window guards a status re-write.
   eveningSummary: 24 * 60 * 60 * 1000,
+  // A season closes once. A week's window is generous, and the point is only
+  // that a redelivered close cannot ping the whole club twice.
+  seasonSummary: 7 * 24 * 60 * 60 * 1000,
 };
 
 /** Pure helper. Returns the cooldown window for a given type
@@ -362,6 +366,15 @@ export function inferEntityFromPayload(
         entityType: 'game',
         entityId: gameId || recipientId,
         reason: 'teams-generated',
+      };
+    case 'seasonSummary':
+      // Keyed by CLUB, with the season id carried in the reason by the caller:
+      // one summary per player per season, and a club that closes a second
+      // season still reaches everyone.
+      return {
+        entityType: 'group',
+        entityId: groupId || recipientId,
+        reason: 'season-summary',
       };
     case 'eveningSummary':
       // Per-player end-of-evening summary push. Server-fanned; keyed by game

@@ -33,6 +33,7 @@ export type NotificationKind =
   | 'friendRequest'
   | 'friendRequestAccepted'
   | 'eveningSummary'
+  | 'seasonSummary'
   | 'gameOnHoliday';
 
 export type NotificationEntity = 'game' | 'group' | 'user';
@@ -89,6 +90,9 @@ const COOLDOWN_MS: Record<NotificationKind, number> = {
   // status re-write (e.g. an admin reopening then re-finishing) can't
   // double-ping the same recipient for the same night.
   eveningSummary: 24 * 60 * 60 * 1000,
+  // A season closes once. A week's window is generous, and the point is only
+  // that a redelivered close cannot ping the whole club twice.
+  seasonSummary: 7 * 24 * 60 * 60 * 1000,
   // One holiday heads-up per (organizer, game). Long window — the scan also
   // stamps `game.holidayNotifiedAt` so this is a belt-and-suspenders guard.
   gameOnHoliday: 7 * 24 * 60 * 60 * 1000,
@@ -288,6 +292,15 @@ export function inferEntityFromPayload(
         entityType: 'user',
         entityId: fromUserId || recipientId,
         reason: 'friend-accepted',
+      };
+    case 'seasonSummary':
+      // Keyed by CLUB, with the season id carried in the reason by the caller:
+      // one summary per player per season, and a club that closes a second
+      // season still reaches everyone.
+      return {
+        entityType: 'group',
+        entityId: groupId || recipientId,
+        reason: 'season-summary',
       };
     case 'eveningSummary':
       // Per-player end-of-evening summary push. Keyed by game so each player

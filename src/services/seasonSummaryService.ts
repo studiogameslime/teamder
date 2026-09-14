@@ -1,0 +1,269 @@
+// seasonSummaryService — one player's season, fetched.
+//
+// A season IS the club's live stat rows: closing one archives them into
+// `seasonSummary/{groupId}__{seasonId}` and zeroes the originals. So there are
+// exactly two sources, and which one to read depends only on whether the
+// season asked for is the one currently running:
+//
+//   running → communityPlayerStats + communityPairStats, as they stand
+//   closed  → the frozen archive, which carries both in full
+//
+// Either way the shape handed to `buildPersonalSeason` is identical, so the
+// screen never learns which it got.
+
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { logError } from '@/services/errorLog';
+import { userService } from '@/services/userService';
+import {
+  buildPersonalSeason,
+  type PersonalSeason,
+  type SeasonPairRow,
+  type SeasonPlayerRow,
+} from '@/utils/seasonPersonal';
+import type { GroupSeasons, UserId } from '@/types';
+
+export interface SeasonSummaryModel {
+  groupId: string;
+  groupName: string;
+  seasonNo: number;
+  seasonId: string;
+  startsAt: number;
+  /** Null while the season is still running. */
+  endsAt: number | null;
+  closed: boolean;
+  /** Rounds the CLUB finished this season — the context every rank sits in. */
+  completedRounds: number;
+  me: PersonalSeason;
+  /** Display names for the handful of people the summary actually names. */
+  names: Record<string, string>;
+}
+
+const num = (v: unknown): number =>
+  typeof v === 'number' && Number.isFinite(v) ? v : 0;
+const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+
+/** Rows off `communityPlayerStats`, or off an archive's `players` map. */
+function playerRow(x: Record<string, unknown>, uid: string): SeasonPlayerRow {
+  return {
+    userId: uid,
+    displayName: str(x.displayName) || undefined,
+    goals: num(x.goals),
+    assists: num(x.assists),
+    rounds: num(x.rounds),
+    wins: num(x.wins),
+    losses: num(x.losses),
+    ties: num(x.ties),
+    games: num(x.games),
+    cleanSheets: num(x.cleanSheets),
+    ownGoals: num(x.ownGoals),
+    penTaken: num(x.penTaken),
+    penScored: num(x.penScored),
+    penSaved: num(x.penSaved),
+    penFaced: num(x.penFaced),
+    // Absent means the counter predates coverage tracking — fall back to
+    // rounds rather than to zero, which would read as "never measured".
+    csRounds: typeof x.csRounds === 'number' ? x.csRounds : undefined,
+    asRounds: typeof x.asRounds === 'number' ? x.asRounds : undefined,
+  };
+}
+
+function pairRow(x: Record<string, unknown>): SeasonPairRow | null {
+  const a = str(x.a);
+  const b = str(x.b);
+  if (!a || !b) return null;
+  return {
+    a,
+    b,
+    sameTeam: num(x.sameTeam),
+    against: num(x.against),
+    winsTogether: num(x.winsTogether),
+    lossesTogether: num(x.lossesTogether),
+    cleanSheetsTogether: num(x.cleanSheetsTogether),
+    winsA: num(x.winsA),
+    winsB: num(x.winsB),
+    assistsAToB: num(x.assistsAToB),
+    assistsBToA: num(x.assistsBToA),
+  };
+}
+
+/** Every uid the finished summary actually names — nothing more is fetched. */
+function namedUids(me: PersonalSeason): string[] {
+  const out = new Set<string>();
+  for (const peer of [
+    me.partner,
+    me.nemesis,
+    me.victim,
+    me.tormentor,
+    me.assistedMost,
+    me.assistedBy,
+  ]) {
+    if (peer) out.add(peer.userId);
+  }
+  return [...out];
+}
+
+/**
+ * Names for the peers.
+ *
+ * A CLOSED season answers from its own archive, which froze the names at
+ * closing time precisely so a summary still reads after somebody deletes their
+ * account. Only a running season has to go to /users.
+ */
+async function resolveNames(
+  uids: string[],
+  frozen: Map<string, string>,
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  const missing: string[] = [];
+  for (const uid of uids) {
+    const f = frozen.get(uid);
+    if (f) out[uid] = f;
+    else missing.push(uid);
+  }
+  await Promise.all(
+    missing.map(async (uid) => {
+      try {
+        const u = await userService.getUserById(uid);
+        if (u?.name) out[uid] = u.name;
+      } catch {
+        // A name we cannot resolve renders as a dash; it must not take the
+        // whole summary down with it.
+      }
+    }),
+  );
+  return out;
+}
+
+export interface LoadSeasonArgs {
+  groupId: string;
+  userId: UserId;
+  /** Omit for the season currently running. */
+  seasonId?: string;
+}
+
+export const seasonSummaryService = {
+  /**
+   * Build the model, or null when the club does not run seasons (or the
+   * requested season was never archived).
+   */
+  async load({
+    groupId,
+    userId,
+    seasonId,
+  }: LoadSeasonArgs): Promise<SeasonSummaryModel | null> {
+    if (!groupId || !userId) return null;
+    if (USE_MOCK_DATA) return mockSeasonSummary(groupId, userId);
+    try {
+      const { db } = getFirebase();
+      const groupSnap = await getDoc(doc(db, 'groups', groupId));
+      if (!groupSnap.exists()) return null;
+      const g = groupSnap.data() as { name?: string; seasons?: GroupSeasons };
+      const seasons = g.seasons;
+      if (!seasons?.enabled) return null;
+      const groupName = str(g.name);
+
+      const wantClosed = !!seasonId && seasonId !== seasons.currentId;
+      if (wantClosed) {
+        const snap = await getDoc(
+          doc(db, 'seasonSummary', `${groupId}__${seasonId}`),
+        );
+        if (!snap.exists()) return null;
+        const d = snap.data() as Record<string, unknown>;
+        const playersMap = (d.players ?? {}) as Record<string, Record<string, unknown>>;
+        const pairsMap = (d.pairs ?? {}) as Record<string, Record<string, unknown>>;
+        const players = Object.entries(playersMap).map(([uid, x]) => playerRow(x, uid));
+        const pairs: SeasonPairRow[] = [];
+        for (const x of Object.values(pairsMap)) {
+          // A season closed before the archive carried full pair counters
+          // stores a bare number here. It cannot answer the people questions,
+          // and a bare number is not a row — skip rather than invent zeroes.
+          if (typeof x !== 'object' || x === null) continue;
+          const row = pairRow(x);
+          if (row) pairs.push(row);
+        }
+        const me = buildPersonalSeason({ me: userId, players, pairs });
+        const frozen = new Map<string, string>();
+        for (const [uid, x] of Object.entries(playersMap)) {
+          const n = str(x.displayName);
+          if (n) frozen.set(uid, n);
+        }
+        return {
+          groupId,
+          groupName,
+          seasonId: str(d.seasonId) || seasonId!,
+          seasonNo: num(d.no),
+          startsAt: num(d.startsAt),
+          endsAt: num(d.endsAt) || null,
+          closed: true,
+          completedRounds: num(d.completedRounds),
+          me,
+          names: await resolveNames(namedUids(me), frozen),
+        };
+      }
+
+      const [statRows, pairRows] = await Promise.all([
+        getDocs(query(collection(db, 'communityPlayerStats'), where('groupId', '==', groupId))),
+        getDocs(query(collection(db, 'communityPairStats'), where('groupId', '==', groupId))),
+      ]);
+      const players: SeasonPlayerRow[] = [];
+      statRows.forEach((d) => {
+        const x = d.data() as Record<string, unknown>;
+        const uid = str(x.userId);
+        if (uid) players.push(playerRow(x, uid));
+      });
+      const pairs: SeasonPairRow[] = [];
+      pairRows.forEach((d) => {
+        const row = pairRow(d.data() as Record<string, unknown>);
+        if (row) pairs.push(row);
+      });
+      const me = buildPersonalSeason({ me: userId, players, pairs });
+      // The club's finished rounds this season. `communityStats.rounds` is
+      // zeroed by the same rollover, so it is already season-scoped.
+      const clubSnap = await getDoc(doc(db, 'communityStats', groupId));
+      return {
+        groupId,
+        groupName,
+        seasonId: seasons.currentId,
+        seasonNo: num(seasons.currentNo),
+        startsAt: num(seasons.startedAt),
+        endsAt: null,
+        closed: false,
+        completedRounds: num(clubSnap.data()?.rounds),
+        me,
+        names: await resolveNames(namedUids(me), new Map()),
+      };
+    } catch (err) {
+      logError('seasonSummaryLoad', err, { groupId, userId, seasonId: seasonId ?? '' });
+      return null;
+    }
+  },
+};
+
+/** A believable season so the card can be worked on without a live club. */
+function mockSeasonSummary(groupId: string, userId: UserId): SeasonSummaryModel {
+  const players: SeasonPlayerRow[] = [
+    { userId, goals: 14, assists: 9, rounds: 41, wins: 24, losses: 13, ties: 4, cleanSheets: 11, csRounds: 41, ownGoals: 1, penTaken: 4, penScored: 3 },
+    { userId: 'u_dani', goals: 19, assists: 4, rounds: 44, wins: 26, losses: 14, ties: 4, cleanSheets: 9, csRounds: 44 },
+    { userId: 'u_roi', goals: 6, assists: 12, rounds: 38, wins: 18, losses: 16, ties: 4, cleanSheets: 12, csRounds: 38 },
+    { userId: 'u_omer', goals: 11, assists: 7, rounds: 30, wins: 15, losses: 12, ties: 3, cleanSheets: 7, csRounds: 30 },
+  ];
+  const pairs: SeasonPairRow[] = [
+    { a: userId, b: 'u_roi', sameTeam: 23, against: 18, winsTogether: 15, lossesTogether: 6, cleanSheetsTogether: 8, winsA: 11, winsB: 6, assistsAToB: 4, assistsBToA: 6 },
+    { a: userId, b: 'u_dani', sameTeam: 9, against: 32, winsTogether: 5, lossesTogether: 3, cleanSheetsTogether: 2, winsA: 13, winsB: 18, assistsAToB: 1, assistsBToA: 2 },
+    { a: userId, b: 'u_omer', sameTeam: 14, against: 15, winsTogether: 9, lossesTogether: 4, cleanSheetsTogether: 5, winsA: 10, winsB: 4, assistsAToB: 5, assistsBToA: 1 },
+  ];
+  const me = buildPersonalSeason({ me: userId, players, pairs });
+  return {
+    groupId,
+    groupName: 'שכחת שושי',
+    seasonId: 's1',
+    seasonNo: 1,
+    startsAt: Date.now() - 1000 * 60 * 60 * 24 * 150,
+    endsAt: null,
+    closed: false,
+    completedRounds: 48,
+    me,
+    names: { u_dani: 'דני', u_roi: 'רועי', u_omer: 'עומר' },
+  };
+}

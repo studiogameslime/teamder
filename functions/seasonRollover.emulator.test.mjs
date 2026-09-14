@@ -120,7 +120,15 @@ describe('the archive is taken before the wipe', () => {
     assert.equal(s.players.u2.penSaved, 6);
     assert.equal(s.totals.goals, 40);
     assert.equal(s.totals.rounds, 78);
-    assert.equal(s.pairs.u1__u2, 7);
+    // The pair is archived in full, not as one number: the deadly-duo title
+    // needs `sameTeam`, and the personal season summary is built almost
+    // entirely out of these counters. A season that kept only `assists` took
+    // its own story with it.
+    assert.deepEqual(s.pairs.u1__u2, {
+      a: 'u1', b: 'u2', assists: 7, sameTeam: 20,
+      winsTogether: 12, lossesTogether: 8, cleanSheetsTogether: 5,
+      against: 18, winsA: 10, winsB: 8, assistsAToB: 3, assistsBToA: 4,
+    });
     assert.equal(s.completedRounds, 16);
   });
 

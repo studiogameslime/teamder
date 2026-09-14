@@ -59,6 +59,23 @@ const CLUB_SEASON_FIELDS = [
   'scorelessRounds',
 ] as const;
 
+/** One pair's frozen season counters. Mirrors `communityPairStats`, with a/b
+ *  normalised to sorted order so the directional fields can be read. */
+export interface SeasonPairArchive {
+  a: string;
+  b: string;
+  sameTeam: number;
+  against: number;
+  winsTogether: number;
+  lossesTogether: number;
+  cleanSheetsTogether: number;
+  winsA: number;
+  winsB: number;
+  assistsAToB: number;
+  assistsBToA: number;
+  assists: number;
+}
+
 export interface RolloverArgs {
   db: admin.firestore.Firestore;
   groupId: string;
@@ -153,12 +170,46 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   totals.cleanSheets = Object.values(players).reduce(
     (a, p) => a + num(p.cleanSheets), 0);
 
-  const pairs: Record<string, number> = {};
+  // The pair counters are archived IN FULL, not as one number.
+  //
+  // This used to store `assists` alone. That was not enough for anything that
+  // reads the archive afterwards: the deadly-duo title needs how many rounds
+  // the two actually played side by side, and the personal season summary is
+  // built almost entirely out of these counters — who I played beside most,
+  // who I faced most, who I beat most. Zeroed live rows cannot answer any of
+  // that, so a season that closed would have taken its own story with it.
+  //
+  // Size: pairs grow as n(n-1)/2. A 30-player club is 435 entries and roughly
+  // 60KB; sixty players is 1,770 and about 240KB, still well inside the 1MB
+  // document limit. Written once per season.
+  const pairs: Record<string, SeasonPairArchive> = {};
   for (const d of pairSnap.docs) {
-    const x = d.data() as { a?: string; b?: string; assists?: number };
-    if (!x.a || !x.b) continue;
-    const key = [x.a, x.b].sort().join('__');
-    pairs[key] = num(x.assists);
+    const x = d.data() as Record<string, unknown>;
+    const a = typeof x.a === 'string' ? x.a : '';
+    const b = typeof x.b === 'string' ? x.b : '';
+    if (!a || !b) continue;
+    // Sorted key, and the archived a/b sorted WITH it — the direction of
+    // `winsA` and `assistsAToB` is meaningless unless the reader knows which
+    // player is which, and the live document's own a/b need not be sorted.
+    const [lo, hi] = [a, b].sort();
+    const flip = lo !== a;
+    pairs[`${lo}__${hi}`] = {
+      a: lo,
+      b: hi,
+      sameTeam: num(x.sameTeam),
+      against: num(x.against),
+      winsTogether: num(x.winsTogether),
+      lossesTogether: num(x.lossesTogether),
+      cleanSheetsTogether: num(x.cleanSheetsTogether),
+      winsA: num(flip ? x.winsB : x.winsA),
+      winsB: num(flip ? x.winsA : x.winsB),
+      assistsAToB: num(flip ? x.assistsBToA : x.assistsAToB),
+      assistsBToA: num(flip ? x.assistsAToB : x.assistsBToA),
+      // The legacy, undirected metric. Kept because it counts a WIDER window
+      // than the fields above (see the note on rollUpClubPairs) and the club
+      // chemistry card still quotes it.
+      assists: num(x.assists),
+    };
   }
 
   // ── 1. Archive, exactly once ────────────────────────────────────────────

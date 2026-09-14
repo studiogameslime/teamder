@@ -55,6 +55,7 @@ import {
   defaultAchievementState,
   defaultDisciplineState,
   defaultNotificationPrefs,
+  GroupSeasons,
 } from '@/types';
 import { TEAM_SIZE_MAX, TEAM_SIZE_MIN } from '@/types';
 import { getFirebase } from './config';
@@ -540,6 +541,16 @@ const groupConverter: FirestoreDataConverter<Group> = {
       redCardValidityDays:
         typeof d.redCardValidityDays === 'number' ? d.redCardValidityDays : null,
       cardsEnabled: typeof d.cardsEnabled === 'boolean' ? d.cardsEnabled : undefined,
+      // Seasons are SERVER-owned: written only by the season callables and the
+      // rollover. Read here and deliberately NOT mirrored in toFirestore —
+      // the client must be unable to write them back, because a stale copy
+      // round-tripped by an unrelated club edit could roll `currentNo`
+      // backwards and let a season close twice.
+      //
+      // This reader rebuilds the object field by field, so a field absent from
+      // it simply does not exist on the client no matter what the document
+      // holds. That is what made the whole feature invisible in 1.1.6.
+      seasons: readGroupSeasons(d.seasons),
       adminRatings:
         d.adminRatings && typeof d.adminRatings === 'object'
           ? (Object.fromEntries(
@@ -617,6 +628,36 @@ function readGameFormat(
 
 function readFieldType(v: unknown): import('@/types').FieldType | undefined {
   return v === 'asphalt' || v === 'synthetic' || v === 'grass' ? v : undefined;
+}
+
+/**
+ * The club's season block, validated.
+ *
+ * Only `enabled` and the ids are load-bearing for the client; a malformed
+ * cadence renders as "no target line" rather than taking the card down.
+ */
+function readGroupSeasons(v: unknown): GroupSeasons | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const d = v as Record<string, unknown>;
+  const currentId = typeof d.currentId === 'string' ? d.currentId : '';
+  if (!currentId) return undefined;
+  const c = (d.cadence && typeof d.cadence === 'object'
+    ? (d.cadence as Record<string, unknown>)
+    : {}) as Record<string, unknown>;
+  return {
+    enabled: d.enabled === true,
+    currentNo: typeof d.currentNo === 'number' ? d.currentNo : 1,
+    currentId,
+    startedAt: typeof d.startedAt === 'number' ? d.startedAt : 0,
+    cadence: {
+      type: c.type === 'rounds' ? 'rounds' : 'date',
+      ...(typeof c.endsAt === 'number' ? { endsAt: c.endsAt } : {}),
+      ...(typeof c.targetRounds === 'number'
+        ? { targetRounds: c.targetRounds }
+        : {}),
+    },
+    count: typeof d.count === 'number' ? d.count : 0,
+  };
 }
 
 function readWeekdays(v: unknown): WeekdayIndex[] | undefined {

@@ -220,6 +220,7 @@ const DORMANT_SUPPRESSIBLE = {
     gamePlayersJoined: true,
     playerCancelled: true,
     eveningSummary: true,
+    seasonSummary: true,
     fillerOpportunity: true,
     growthMilestone: true,
     gameShortageWarning: true,
@@ -885,6 +886,19 @@ function buildMessage(type, payload) {
                 body: teammates
                     ? `אתה בקבוצה עם ${teammates}`
                     : 'הכוחות חולקו — לחץ לצפייה בקבוצות',
+            };
+        }
+        case 'seasonSummary': {
+            // A season just closed. Everyone who played in it gets their own card —
+            // the numbers are per player, so the body cannot be generic without
+            // being a lie about somebody.
+            const no = typeof payload.seasonNo === 'number' ? payload.seasonNo : 0;
+            const club = typeof payload.groupName === 'string' ? payload.groupName : '';
+            return {
+                title: no ? `עונה ${no} נגמרה 🏁` : 'העונה נגמרה 🏁',
+                body: club
+                    ? `סיכום העונה שלך ב${club} מוכן — שערים, בישולים, ומי שיחק איתך הכי הרבה`
+                    : 'סיכום העונה שלך מוכן — שערים, בישולים, ומי שיחק איתך הכי הרבה',
             };
         }
         case 'eveningSummary':
@@ -11716,6 +11730,52 @@ exports.onFeedbackCreated = (0, firestore_1.onDocumentCreated)('feedback/{feedba
 // Three admin actions and one sweep. Every one of them funnels into the same
 // `closeSeason`, because a second closing path is a second set of bugs and the
 // one that runs unattended is the one nobody would be watching.
+/**
+ * Tell everyone who played that the season is over.
+ *
+ * One push per player, deep-linking to THEIR card — the summary is per person,
+ * so a shared body would be a lie about somebody. Recipients are read from the
+ * archive rather than from the club's membership: the season belongs to whoever
+ * played it, including someone who has since left, and excluding a member who
+ * never turned up (whose "summary" would be a screen of zeros).
+ *
+ * Best-effort by design. A failed push must not roll back a season that has
+ * already been archived and zeroed — the card is reachable without it.
+ */
+async function announceSeasonClosed(args) {
+    const { groupId, groupName, seasonId, seasonNo } = args;
+    try {
+        const snap = await db
+            .collection('seasonSummary')
+            .doc(`${groupId}__${seasonId}`)
+            .get();
+        if (!snap.exists)
+            return;
+        const players = (snap.data()?.players ?? {});
+        const ops = [];
+        for (const [uid, row] of Object.entries(players)) {
+            const rounds = typeof row?.rounds === 'number' ? row.rounds : 0;
+            if (rounds <= 0)
+                continue;
+            ops.push(createNotificationOnce({
+                type: 'seasonSummary',
+                recipientId: uid,
+                entityType: 'group',
+                entityId: groupId,
+                reason: `season-${seasonId}`,
+                payload: { groupId, seasonId, seasonNo, groupName },
+            }));
+        }
+        const results = await Promise.allSettled(ops);
+        const failed = results.filter((r) => r.status === 'rejected').length;
+        if (failed > 0) {
+            console.warn(`[season] ${failed}/${results.length} seasonSummary push(es) failed for ${groupId} ${seasonId}`);
+        }
+    }
+    catch (err) {
+        console.error('[season] summary fan-out failed', groupId, seasonId, err);
+    }
+}
 /** Is the club quiet enough to close a season right now? */
 async function clubIsQuiet(groupId) {
     // Anything not finished/cancelled is still in play. Closing across a live
@@ -11857,6 +11917,12 @@ exports.enableClubSeasons = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_C
                 count: firstNo,
             },
         }, { merge: true });
+        await announceSeasonClosed({
+            groupId,
+            groupName: group.name ?? '',
+            seasonId: `s${firstNo}`,
+            seasonNo: firstNo,
+        });
         return { ok: true, closedSeasonNo: firstNo, currentNo: firstNo + 1 };
     }
     // Carry season 1 on. If the cadence counts rounds, the target has to be
@@ -11991,5 +12057,13 @@ exports.endSeasonNow = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK 
             count: (seasons.count ?? 0) + 1,
         },
     }, { merge: true });
+    if (result.archived) {
+        await announceSeasonClosed({
+            groupId,
+            groupName: group.name ?? '',
+            seasonId: seasons.currentId,
+            seasonNo: seasons.currentNo ?? 1,
+        });
+    }
     return { ok: true, ...result, closedNo: seasons.currentNo ?? 1 };
 });
