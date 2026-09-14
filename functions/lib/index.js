@@ -4159,19 +4159,33 @@ async function sealRoundSummary(args) {
     // finish.
     const career = [];
     const personalBests = {};
+    // Everything already sealed into a closed season, added back.
+    //
+    // `psSnap` is communityPlayerStats, which a season rollover ZEROES — so once
+    // a club runs seasons these rows stop being a career and become a season.
+    // Milestones ("your 50th goal for the club") are career facts, and reading
+    // them off a reset table re-congratulates a 300-goal veteran on his 50th,
+    // every season, permanently. The summary is written once, so the wrong story
+    // cannot be corrected afterwards.
+    //
+    // The archives are the missing history and they are already sealed. A club
+    // with no closed season pays nothing; one with three pays three document
+    // reads, once per evening.
+    const archived = await archivedCareerOf(args.groupId);
     for (const d of args.psSnap.docs) {
         const x = d.data();
         const uid = typeof x.userId === 'string' ? x.userId : '';
         if (!uid)
             continue;
+        const past = archived.get(uid);
         career.push({
             userId: uid,
-            goals: num(x.goals),
-            assists: num(x.assists),
-            rounds: num(x.rounds),
-            wins: num(x.wins),
-            cleanSheets: num(x.cleanSheets),
-            games: num(x.games),
+            goals: num(x.goals) + (past?.goals ?? 0),
+            assists: num(x.assists) + (past?.assists ?? 0),
+            rounds: num(x.rounds) + (past?.rounds ?? 0),
+            wins: num(x.wins) + (past?.wins ?? 0),
+            cleanSheets: num(x.cleanSheets) + (past?.cleanSheets ?? 0),
+            games: num(x.games) + (past?.games ?? 0),
         });
         const be = x.bestEvening;
         if (be && typeof be === 'object') {
@@ -11742,6 +11756,49 @@ exports.onFeedbackCreated = (0, firestore_1.onDocumentCreated)('feedback/{feedba
         doneAt: 0,
     });
 });
+/**
+ * What every player did in this club's CLOSED seasons.
+ *
+ * Empty for the overwhelming majority of clubs — the ones that do not run
+ * seasons have no archives, and the query returns nothing. A club with closed
+ * seasons pays one read per closed season, once per evening, and gets back the
+ * history its live table no longer holds.
+ *
+ * Fails soft: if the archives cannot be read the summary is still written, just
+ * from the season's own numbers. A missing milestone is a smaller wrong than no
+ * summary at all.
+ */
+const archNum = (v) => typeof v === 'number' && Number.isFinite(v) ? v : 0;
+async function archivedCareerOf(groupId) {
+    const out = new Map();
+    if (!groupId)
+        return out;
+    try {
+        const snap = await db
+            .collection('seasonSummary')
+            .where('groupId', '==', groupId)
+            .get();
+        for (const doc of snap.docs) {
+            const players = (doc.data()?.players ?? {});
+            for (const [uid, row] of Object.entries(players)) {
+                const cur = out.get(uid) ?? {
+                    goals: 0, assists: 0, rounds: 0, wins: 0, cleanSheets: 0, games: 0,
+                };
+                cur.goals += archNum(row.goals);
+                cur.assists += archNum(row.assists);
+                cur.rounds += archNum(row.rounds);
+                cur.wins += archNum(row.wins);
+                cur.cleanSheets += archNum(row.cleanSheets);
+                cur.games += archNum(row.games);
+                out.set(uid, cur);
+            }
+        }
+    }
+    catch (err) {
+        console.error('[season] archived career read failed', groupId, err);
+    }
+    return out;
+}
 // ─── Seasons ─────────────────────────────────────────────────────────────
 //
 // Three admin actions and one sweep. Every one of them funnels into the same
