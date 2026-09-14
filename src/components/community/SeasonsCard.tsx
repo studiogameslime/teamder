@@ -104,7 +104,7 @@ export function SeasonsCard({
       months?: number;
       targetRounds?: number;
     }) {
-      appAlert(he.seasonsCloseFirstTitle, '', [
+      appAlert(he.seasonsCloseFirstTitle, he.seasonsCloseFirstBody, [
         {
           text: he.seasonsCloseFirstKeep,
           onPress: () =>

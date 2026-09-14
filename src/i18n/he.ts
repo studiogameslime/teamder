@@ -2036,8 +2036,13 @@ export const he = {
   seasonsMonthsLabel: (n: number) => `${n} חודשים`,
   seasonsRoundsLabel: (n: number) => `${n} מחזורים`,
   seasonsCloseFirstTitle: 'ומה עם כל מה ששיחקתם עד היום?',
-  seasonsCloseFirstKeep: 'שייך לעונה הנוכחית',
-  seasonsCloseFirstSeal: 'סגור כעונה שהסתיימה, והתחל עונה חדשה מאפס',
+  seasonsCloseFirstBody:
+    'אפשר לצרף את כל ההיסטוריה של המועדון לעונה הנוכחית, או לסגור אותה כעונה שהסתיימה — לחלק עליה תארים — ולהתחיל את העונה החדשה מאפס.',
+  // Short enough to fit one line on a narrow phone — the long version was
+  // truncated mid-sentence on the device, and the explanation belongs in the
+  // dialog body anyway.
+  seasonsCloseFirstKeep: 'לצרף לעונה הנוכחית',
+  seasonsCloseFirstSeal: 'לסגור ולהתחיל מאפס',
   seasonsEnabledToast: 'עונות הופעלו במועדון',
   seasonsEndedToast: (no: number) => `עונה ${no} הסתיימה. כל מי ששיחק קיבל את הסיכום שלו`,
   seasonBlockedOpenGame:
