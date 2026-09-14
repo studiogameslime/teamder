@@ -438,11 +438,43 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   }
   await flushTitles();
 
-  // ── 2. Only now, zero ───────────────────────────────────────────────────
-  // Absolute writes, so a retry converges instead of drifting. Chunked well
-  // under the 500-operation ceiling.
-  const zeroPlayer: Record<string, number> = {};
-  for (const f of PLAYER_SEASON_FIELDS) zeroPlayer[f] = 0;
+  // ── 2. Only now, wind the rows back ─────────────────────────────────────
+  //
+  // SUBTRACT what was archived; do not write zeroes.
+  //
+  // The rows were read at the top of this function and the wipe happens here.
+  // A mini-game committed in between — `clubIsQuiet` makes it unlikely, not
+  // impossible — is not in the archive, and an absolute zero would erase it
+  // from the live table too. It would exist nowhere, with nothing to detect it.
+  // Subtracting leaves exactly that evening behind as the new season's opening
+  // balance, which is where it belongs.
+  //
+  // Subtraction is not idempotent, so each row carries a stamp naming the
+  // season it was wound back for, and the whole thing runs in a transaction
+  // per row: a retry — including the resume path above — sees the stamp and
+  // skips. Once per player per season, so the cost is a few dozen transactions
+  // a year for a club.
+  const clampAtZero = (v: unknown, minus: number): number =>
+    Math.max(0, (typeof v === 'number' && Number.isFinite(v) ? v : 0) - minus);
+
+  for (const d of psSnap.docs) {
+    const archivedRow = players[(d.data() as { userId?: string }).userId ?? ''];
+    if (!archivedRow) continue;
+    await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(d.ref);
+      if (!fresh.exists) return;
+      const data = fresh.data() as Record<string, unknown>;
+      if (data.seasonWoundBack === seasonId) return; // already done
+      const patch: Record<string, unknown> = {
+        seasonWoundBack: seasonId,
+        updatedAt: now,
+      };
+      for (const f of PLAYER_SEASON_FIELDS) {
+        patch[f] = clampAtZero(data[f], num(archivedRow[f]));
+      }
+      tx.set(d.ref, patch, { merge: true });
+    });
+  }
 
   let batch = db.batch();
   let ops = 0;
@@ -452,11 +484,6 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     batch = db.batch();
     ops = 0;
   };
-
-  for (const d of psSnap.docs) {
-    batch.set(d.ref, { ...zeroPlayer, updatedAt: now }, { merge: true });
-    if (++ops >= 400) await flush();
-  }
   for (const d of pairSnap.docs) {
     batch.set(
       d.ref,

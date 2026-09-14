@@ -93,6 +93,17 @@ floor = 0) {
  * drifts below the rounds that were actually credited.
  */
 function computeSeasonAwards(players, pairs, completedRounds) {
+    // A season with no finished evenings awards nothing.
+    //
+    // Not a formality. `eligibilityThreshold(0)` is 0, so every gate opens: a
+    // club whose evenings were never sealed — one that played only unfinished
+    // games, or one closed the week it was created — would crown nine champions
+    // on a single goal, permanently, and the archive would carry it forever.
+    // "Not awarded" is already a result everywhere else here; it is the right
+    // result here too.
+    if (completedRounds <= 0) {
+        return exports.SEASON_TITLE_KEYS.reduce((acc, k) => ({ ...acc, [k]: null }), {});
+    }
     const eligible = players.filter((p) => isEligible(p, completedRounds));
     const minAttempts = minPenaltyAttempts(completedRounds);
     // Both halves of a pair must clear the gate on their own, or a regular and

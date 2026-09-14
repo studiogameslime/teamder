@@ -2017,6 +2017,8 @@ export const he = {
   // because the numbers look like the career ones and the whole point is
   // that they are not.
   // Seasons — the admin side.
+  seasonsNotPartOfSave:
+    'ההגדרות כאן נשמרות בכפתור שמעל, לא ב"שמור" שבתחתית המסך.',
   seasonsToggleLabel: 'עונות',
   seasonsToggleHint: 'לחלק את המועדון לעונות עם התחלה, סוף ותארים',
   seasonsCadenceQuestion: 'איך העונה נגמרת',
@@ -2043,6 +2045,20 @@ export const he = {
   seasonsTargetDate: (when: string) => `העונה מסתיימת ב־${when}`,
   seasonsTargetRounds: (target: number) =>
     `העונה תסתיים אחרי ${target} מחזורים`,
+  // With progress, which is the whole difference between a label and a
+  // competition. Read on evening 1 and on evening 23 it says something else.
+  seasonsProgressRounds: (played: number, target: number) =>
+    played >= target
+      ? `${played} מתוך ${target} מחזורים — העונה תיסגר בקרוב`
+      : `${played} מתוך ${target} מחזורים · נשארו ${target - played}`,
+  seasonsProgressDays: (days: number) =>
+    days <= 0
+      ? 'העונה הגיעה לסופה ותיסגר בקרוב'
+      : days === 1
+        ? 'נשאר יום אחד לעונה'
+        : days <= 31
+          ? `נשארו ${days} ימים לעונה`
+          : `נשארו ${Math.round(days / 30)} חודשים לעונה`,
   seasonsSealConfirmTitle: 'לסגור את כל ההיסטוריה כעונה 1?',
   seasonsSealConfirmBody:
     'כל מה שהמועדון שיחק עד היום ייסגר כעונה שהסתיימה: יחולקו עליה תשעה תארים, והטבלה תתחיל מאפס.\n\nהעונה תישמר בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאי אפשר להחזיר את זה אחורה.',

@@ -967,6 +967,9 @@ export interface GroupSeasons {
    * is "due" the moment it opens. 0 for a season that continues the history.
    */
   roundsAtStart?: number;
+  /** Evenings this season has played, mirrored here because the counter it
+   *  comes from is server-only. Lets the app show progress, not just a target. */
+  playedRounds?: number;
   cadence: {
     type: SeasonCadenceType;
     /** `date`: the LENGTH the admin chose, in months. Stored beside the date

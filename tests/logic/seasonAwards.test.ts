@@ -300,3 +300,26 @@ describe('the deadly duo is a partnership, not an accident', () => {
     expect(a.deadlyDuo?.winners).toEqual(['p__q']);
   });
 });
+
+describe('a season with no finished evenings', () => {
+  // eligibilityThreshold(0) is 0, so every gate opens. A club whose evenings
+  // were never sealed would otherwise crown nine champions on a single goal,
+  // and the archive would carry it forever.
+  it('awards nothing at all', () => {
+    const a = computeSeasonAwards(
+      [player('lucky', { games: 0, rounds: 1, goals: 1, assists: 1, wins: 1 })],
+      [pair('lucky', 'other', { score: 9, together: 1 })],
+      0,
+    );
+    for (const k of SEASON_TITLE_KEYS) expect(a[k]).toBeNull();
+  });
+
+  it('but one finished evening is enough to decide one', () => {
+    const a = computeSeasonAwards(
+      [player('real', { games: 1, rounds: 6, goals: 3 })],
+      [],
+      1,
+    );
+    expect(a.topScorer?.winners).toEqual(['real']);
+  });
+});

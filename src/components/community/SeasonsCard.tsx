@@ -65,12 +65,19 @@ export function SeasonsCard({
   }
 
   const cadence = seasons.cadence;
+  // Where the season has GOT to, not just where it ends. A constant sentence
+  // reads the same on the first evening and the last, which is a label; a
+  // season is supposed to build.
   const line =
     cadence?.type === 'rounds' && typeof cadence.targetRounds === 'number'
-      ? he.seasonsTargetRounds(cadence.targetRounds)
+      ? he.seasonsProgressRounds(seasons.playedRounds ?? 0, cadence.targetRounds)
       : typeof cadence?.endsAt === 'number'
         ? he.seasonsTargetDate(formatDate(cadence.endsAt))
         : '';
+  const daysLeft =
+    cadence?.type !== 'rounds' && typeof cadence?.endsAt === 'number'
+      ? Math.ceil((cadence.endsAt - Date.now()) / (24 * 60 * 60 * 1000))
+      : null;
 
   return (
     <View style={styles.card}>
@@ -78,6 +85,9 @@ export function SeasonsCard({
         {he.seasonsCardTitle} · {he.seasonNumberLabel(seasons.currentNo ?? 1)}
       </Text>
       {line ? <Text style={styles.note}>{line}</Text> : null}
+      {daysLeft !== null ? (
+        <Text style={styles.note}>{he.seasonsProgressDays(daysLeft)}</Text>
+      ) : null}
       <Button
         title={he.seasonsMySummaryCta}
         variant="outline"

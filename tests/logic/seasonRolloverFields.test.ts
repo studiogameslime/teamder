@@ -35,6 +35,9 @@ const MUST_SURVIVE = [
   'kingAssistsSum',
   'kingAssistsCount',
   'chemistrySince',
+  // The per-row stamp that makes the wind-back idempotent. Resetting it would
+  // let a retry subtract the archived season a second time.
+  'seasonWoundBack',
   // Identity, not competition.
   'groupId',
   'userId',

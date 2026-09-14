@@ -290,6 +290,46 @@ describe('the wipe is exactly the competition', () => {
   });
 });
 
+describe('a mini-game committed DURING the close is not erased', () => {
+  // The rows are read at the top of closeSeason and wound back at the end. A
+  // commit in between is not in the archive, and an absolute zero would erase
+  // it from the live table too — it would exist nowhere, with nothing to
+  // detect it. Subtracting what was archived leaves it behind as the new
+  // season's opening balance.
+  before(async () => {
+    await wipe();
+    await seed();
+    // The archive is built from these numbers…
+    const closing = closeSeason(args());
+    // …and this lands while the close is in flight.
+    await db.collection('communityPlayerStats').doc(`${GID}__u1`).set(
+      { goals: admin.firestore.FieldValue.increment(2) }, { merge: true });
+    await closing;
+  });
+
+  test('the evening survives as the new season\'s opening balance', async () => {
+    const p = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
+    // 31 archived, 33 by the time the wipe ran, so 2 belong to the new season.
+    assert.equal(p.goals, 2);
+  });
+
+  test('and the archive still holds only what it sealed', async () => {
+    const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
+    assert.equal(s.players.u1.goals, 31);
+  });
+
+  test('a second wind-back cannot double-subtract', async () => {
+    // Subtraction is not idempotent, so each row is stamped with the season it
+    // was wound back for and a retry skips it.
+    await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).update({
+      zeroedAt: admin.firestore.FieldValue.delete(),
+    });
+    await closeSeason(args());
+    const p = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
+    assert.equal(p.goals, 2, 'still 2, not -29');
+  });
+});
+
 describe('a close that died halfway is resumed, not abandoned', () => {
   // The archive landing and the table resetting are two writes. If the process
   // died between them the old code took the ALREADY_EXISTS branch on every
@@ -303,8 +343,17 @@ describe('a close that died halfway is resumed, not abandoned', () => {
     await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).update({
       zeroedAt: admin.firestore.FieldValue.delete(),
     });
+    // A faithful rewind clears the per-row stamp too: the real failure mode is
+    // a process that died BEFORE the wind-back, so no row was ever stamped.
     await db.collection('communityPlayerStats').doc(`${GID}__u1`).set(
-      { goals: 31, rounds: 34, games: 12 }, { merge: true });
+      {
+        goals: 31,
+        rounds: 34,
+        games: 12,
+        seasonWoundBack: admin.firestore.FieldValue.delete(),
+      },
+      { merge: true },
+    );
     await db.collection('users').doc('u1').collection('seasonTitles')
       .doc(`${GID}__${SEASON}__topScorer`).delete();
   });

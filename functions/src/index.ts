@@ -4883,6 +4883,18 @@ async function sealRoundSummary(args: {
   // invisible to it, and saying "record" on the strength of them would be a
   // guess dressed as a fact.
   const eveningsSealed = num(rec.eveningsSealed);
+  // Where the running season started counting, or null when the club does not
+  // run seasons (in which case there is no progress to mirror).
+  let seasonRoundsAtStart: number | null = null;
+  try {
+    const gDoc = await db.collection('groups').doc(groupId).get();
+    const sea = gDoc.data()?.seasons as
+      | { enabled?: boolean; roundsAtStart?: number }
+      | undefined;
+    if (sea?.enabled) seasonRoundsAtStart = num(sea.roundsAtStart);
+  } catch (err) {
+    console.warn('[season] progress mirror skipped', groupId, err);
+  }
   const summary = buildRoundSummary({
     gameId,
     groupId,
@@ -4924,6 +4936,21 @@ async function sealRoundSummary(args: {
     },
     { merge: true },
   );
+  // A client-readable mirror of the season's own evening count.
+  //
+  // The counter the season target is actually measured against lives on
+  // clubRecords, which the rules keep server-only — so the app could show a
+  // rounds target but never how close the club was to it, and "העונה תסתיים
+  // אחרי 24 מחזורים" read identically on evening 1 and evening 23. One field
+  // on a document the app already reads, written on the same batch that seals
+  // the evening, and zeroed by every path that opens a season.
+  if (seasonRoundsAtStart !== null) {
+    batch.set(
+      db.collection('groups').doc(groupId),
+      { seasons: { playedRounds: eveningsSealed + 1 - seasonRoundsAtStart } },
+      { merge: true },
+    );
+  }
   // Each player's own high-water mark, for next time.
   for (const p of players) {
     if (p.isGuest) continue;
@@ -14612,6 +14639,7 @@ async function runSeasonRollovers(): Promise<void> {
             currentId: `s${nextNo}`,
             startedAt: now,
             roundsAtStart: await sealedEveningsOf(doc.id),
+            playedRounds: 0,
             // The whole reason this sweep is safe to run hourly: without a
             // re-based end date it would close this club again next hour, and
             // the hour after that, forever.
@@ -14753,6 +14781,12 @@ export const enableClubSeasons = onCall(
             closedSoFar > 0
               ? (existing?.roundsAtStart ?? (await sealedEveningsOf(groupId)))
               : 0,
+          // A club that CONTINUES its history starts the progress line at
+          // everything it has already played, not at zero.
+          playedRounds:
+            closedSoFar > 0
+              ? 0
+              : await sealedEveningsOf(groupId),
           cadence,
           targetHistory: [],
           count: closedSoFar,
@@ -14942,6 +14976,7 @@ export const endSeasonNow = onCall(
           currentId: `s${nextNo}`,
           startedAt: now,
           roundsAtStart: await sealedEveningsOf(groupId),
+          playedRounds: 0,
           // Same length, measured from now — an inherited end date is already
           // in the past and would close this season the moment it opened.
           cadence: rebaseCadence(seasons.cadence, seasons.startedAt ?? 0, now),

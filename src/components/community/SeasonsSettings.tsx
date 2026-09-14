@@ -260,7 +260,13 @@ export function SeasonsSettings({
               {he.seasonNumberLabel(seasons?.currentNo ?? 1)}
               {currentTargetLine ? ` · ${currentTargetLine}` : ''}
             </Text>
-          ) : null}
+          ) : (
+            // The one paragraph that says plainly what a season does to a club
+            // — the table resets, titles are handed out, the season is
+            // archived — was written and rendered nowhere. An admin met the
+            // feature as a nine-word toggle hint and a list of durations.
+            <Text style={styles.fieldHint}>{he.seasonsOffBody}</Text>
+          )}
 
           <Text style={styles.fieldLabel}>{he.seasonsCadenceQuestion}</Text>
           <View style={styles.chipRow}>
@@ -336,6 +342,12 @@ export function SeasonsSettings({
             disabled={busy || (live && !targetChanged)}
             onPress={live ? saveTarget : enable}
           />
+
+          {/* This block is not saved by the screen's שמור, and it sits among
+              six toggles that are. Said out loud, because an admin who flips
+              the switch, presses Save and walks away would otherwise believe
+              they had turned seasons on. */}
+          <Text style={styles.fieldHint}>{he.seasonsNotPartOfSave}</Text>
 
           {live ? (
             <Button
