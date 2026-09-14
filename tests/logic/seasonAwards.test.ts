@@ -16,7 +16,11 @@ import {
 
 const player = (uid: string, over: Partial<SeasonPlayerLine> = {}): SeasonPlayerLine => ({
   uid,
-  rounds: 10,
+  // Evenings attended. This is the eligibility numerator and the loyalty
+  // title; `rounds` (mini-games) is neither, and mixing the two made the gate
+  // roughly six times too loose.
+  games: 10,
+  rounds: 60,
   goals: 0,
   assists: 0,
   wins: 0,
@@ -51,8 +55,32 @@ describe('the eligibility gate', () => {
   });
 
   it('applies the same to a player who joined late — no personal threshold', () => {
-    expect(isEligible(player('late', { rounds: 6 }), 13)).toBe(false);
-    expect(isEligible(player('late', { rounds: 7 }), 13)).toBe(true);
+    expect(isEligible(player('late', { games: 6 }), 13)).toBe(false);
+    expect(isEligible(player('late', { games: 7 }), 13)).toBe(true);
+  });
+
+  it('counts EVENINGS, not mini-games — the unit that once broke the gate', () => {
+    // A club plays roughly six mini-games an evening. Someone who turned up
+    // twice all season has ~12 mini-games, which cleared a gate meant to
+    // demand half a season of attendance. Both sides are evenings now.
+    const visitor = player('visitor', { games: 2, rounds: 12 });
+    expect(isEligible(visitor, 13)).toBe(false);
+    const regular = player('regular', { games: 9, rounds: 9 });
+    expect(isEligible(regular, 13)).toBe(true);
+  });
+
+  it('the loyalty title is turning up, not playing long rotations', () => {
+    const a = computeSeasonAwards(
+      [
+        // Fewer evenings, but far more mini-games inside them.
+        player('marathon', { games: 7, rounds: 70 }),
+        player('everyWeek', { games: 12, rounds: 40 }),
+      ],
+      [],
+      13,
+    );
+    expect(a.mostLoyal?.winners).toEqual(['everyWeek']);
+    expect(a.mostLoyal?.value).toBe(12);
   });
 });
 
@@ -72,7 +100,7 @@ describe('the penalty attempt gate', () => {
 
   it('a perfect record off one kick wins nothing', () => {
     const a = computeSeasonAwards(
-      [player('sniper', { rounds: 10, penTaken: 1, penScored: 1 })],
+      [player('sniper', { games: 10, penTaken: 1, penScored: 1 })],
       [], 20,
     );
     expect(a.penaltyKing).toBeNull();
@@ -81,8 +109,8 @@ describe('the penalty attempt gate', () => {
   it('but a real sample does win, on rate not volume', () => {
     const a = computeSeasonAwards(
       [
-        player('accurate', { rounds: 10, penTaken: 4, penScored: 4 }),
-        player('busy', { rounds: 10, penTaken: 20, penScored: 15 }),
+        player('accurate', { games: 10, penTaken: 4, penScored: 4 }),
+        player('busy', { games: 10, penTaken: 20, penScored: 15 }),
       ],
       [], 20,
     );
@@ -94,7 +122,7 @@ describe('the penalty attempt gate', () => {
 describe('a title nobody deserves is not awarded', () => {
   it('nobody eligible → every title null', () => {
     const a = computeSeasonAwards(
-      [player('ghost', { rounds: 2, goals: 9 })],
+      [player('ghost', { games: 2, goals: 9 })],
       [], 20,
     );
     for (const key of SEASON_TITLE_KEYS) expect(a[key]).toBeNull();
@@ -116,7 +144,7 @@ describe('a title nobody deserves is not awarded', () => {
   });
 
   it('mostLoyal still needs someone to have played', () => {
-    const a = computeSeasonAwards([player('nobody', { rounds: 0 })], [], 0);
+    const a = computeSeasonAwards([player('nobody', { games: 0 })], [], 0);
     expect(a.mostLoyal).toBeNull();
   });
 });
@@ -125,8 +153,8 @@ describe('two lucky evenings do not buy a crown', () => {
   it('the fringe scorer loses to the eligible one', () => {
     const a = computeSeasonAwards(
       [
-        player('fringe', { rounds: 2, goals: 9 }),   // below the gate
-        player('regular', { rounds: 12, goals: 4 }),
+        player('fringe', { games: 2, goals: 9 }),   // below the gate
+        player('regular', { games: 12, goals: 4 }),
       ],
       [], 20,
     );
@@ -174,7 +202,7 @@ describe('a player who left the club still wins', () => {
   it('membership is not a condition — the title was earned on the pitch', () => {
     // Nothing in the input says whether they are still a member, by design.
     const a = computeSeasonAwards(
-      [player('departed', { rounds: 12, goals: 20 }), player('stayed', { rounds: 12, goals: 5 })],
+      [player('departed', { games: 12, goals: 20 }), player('stayed', { games: 12, goals: 5 })],
       [], 20,
     );
     expect(a.topScorer?.winners).toEqual(['departed']);
@@ -184,7 +212,7 @@ describe('a player who left the club still wins', () => {
 describe('the deadly duo needs two eligible players', () => {
   it('a regular plus a drop-in does not take it', () => {
     const a = computeSeasonAwards(
-      [player('regular', { rounds: 12 }), player('dropin', { rounds: 2 })],
+      [player('regular', { games: 12 }), player('dropin', { games: 2 })],
       [pair('regular', 'dropin', { score: 9, together: 2 })],
       20,
     );
@@ -193,7 +221,7 @@ describe('the deadly duo needs two eligible players', () => {
 
   it('two regulars do', () => {
     const a = computeSeasonAwards(
-      [player('one', { rounds: 12 }), player('two', { rounds: 12 })],
+      [player('one', { games: 12 }), player('two', { games: 12 })],
       [pair('one', 'two', { score: 6, together: 10 })],
       20,
     );
@@ -205,8 +233,8 @@ describe('one player can hold several titles', () => {
   it('top scorer and top assister at once', () => {
     const a = computeSeasonAwards(
       [
-        player('star', { rounds: 12, goals: 20, assists: 15, mvpAvg: 9 }),
-        player('other', { rounds: 12, goals: 3, assists: 2, mvpAvg: 7 }),
+        player('star', { games: 12, goals: 20, assists: 15, mvpAvg: 9 }),
+        player('other', { games: 12, goals: 3, assists: 2, mvpAvg: 7 }),
       ],
       [], 20,
     );

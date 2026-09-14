@@ -40,9 +40,14 @@ exports.SEASON_TITLE_KEYS = [
 function eligibilityThreshold(completedRounds) {
     return Math.ceil(Math.max(0, completedRounds) / 2);
 }
-/** Did this player turn up enough to be considered? */
+/**
+ * Did this player turn up enough to be considered?
+ *
+ * Evenings against evenings. Both sides of this comparison must be the same
+ * unit or the gate means nothing — see the note on `games`.
+ */
 function isEligible(line, completedRounds) {
-    return line.rounds >= eligibilityThreshold(completedRounds);
+    return line.games >= eligibilityThreshold(completedRounds);
 }
 /**
  * Penalties need a second gate, because a rate off one kick is not a record.
@@ -94,7 +99,9 @@ function computeSeasonAwards(players, pairs, completedRounds) {
         // it rewarding someone who only shows up on the easy nights.
         mvp: leaders(eligible, (p) => p.mvpAvg, (p) => p.uid),
         topWinner: leaders(eligible, (p) => p.wins, (p) => p.uid),
-        mostLoyal: leaders(eligible, (p) => p.rounds, (p) => p.uid),
+        // Loyalty is turning up, so it counts EVENINGS. On mini-games it would
+        // reward whoever happened to play in the longest rotations instead.
+        mostLoyal: leaders(eligible, (p) => p.games, (p) => p.uid),
         cleanSheetKing: leaders(eligible, (p) => p.cleanSheets, (p) => p.uid),
         penaltyKing: leaders(eligible.filter((p) => p.penTaken >= minAttempts), (p) => rate(p.penScored, p.penTaken), (p) => p.uid),
         penaltyKeeper: leaders(eligible.filter((p) => p.penFaced >= minAttempts), (p) => rate(p.penSaved, p.penFaced), (p) => p.uid),

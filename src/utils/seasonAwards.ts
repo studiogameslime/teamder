@@ -25,7 +25,19 @@
 /** One player's season line. Only the fields a title can be decided on. */
 export interface SeasonPlayerLine {
   uid: string;
-  /** Finished rounds this player took part in — the eligibility numerator. */
+  /**
+   * EVENINGS this player turned up to — the eligibility numerator, and the
+   * loyalty title.
+   *
+   * It has to be evenings, because the season's own length is measured in
+   * evenings: `completedRounds` is the sealed-evening count. The gate used to
+   * compare `rounds` (MINI-GAMES) against half of that, which is not a
+   * comparison at all — a club plays roughly six mini-games an evening, so a
+   * one-night visitor cleared a gate meant to demand half a season. That
+   * mistake would have been sealed into every archive, permanently.
+   */
+  games: number;
+  /** Mini-games played. Not an attendance measure — see `games`. */
   rounds: number;
   goals: number;
   assists: number;
@@ -91,12 +103,17 @@ export function eligibilityThreshold(completedRounds: number): number {
   return Math.ceil(Math.max(0, completedRounds) / 2);
 }
 
-/** Did this player turn up enough to be considered? */
+/**
+ * Did this player turn up enough to be considered?
+ *
+ * Evenings against evenings. Both sides of this comparison must be the same
+ * unit or the gate means nothing — see the note on `games`.
+ */
 export function isEligible(
-  line: Pick<SeasonPlayerLine, 'rounds'>,
+  line: Pick<SeasonPlayerLine, 'games'>,
   completedRounds: number,
 ): boolean {
-  return line.rounds >= eligibilityThreshold(completedRounds);
+  return line.games >= eligibilityThreshold(completedRounds);
 }
 
 /**
@@ -163,7 +180,9 @@ export function computeSeasonAwards(
     // it rewarding someone who only shows up on the easy nights.
     mvp: leaders(eligible, (p) => p.mvpAvg, (p) => p.uid),
     topWinner: leaders(eligible, (p) => p.wins, (p) => p.uid),
-    mostLoyal: leaders(eligible, (p) => p.rounds, (p) => p.uid),
+    // Loyalty is turning up, so it counts EVENINGS. On mini-games it would
+    // reward whoever happened to play in the longest rotations instead.
+    mostLoyal: leaders(eligible, (p) => p.games, (p) => p.uid),
     cleanSheetKing: leaders(eligible, (p) => p.cleanSheets, (p) => p.uid),
     penaltyKing: leaders(
       eligible.filter((p) => p.penTaken >= minAttempts),

@@ -186,6 +186,9 @@ async function closeSeason(args) {
     // counter rather than a query, because deleting a game decrements nothing.
     const awardLines = Object.entries(players).map(([uid, row]) => ({
         uid,
+        // Evenings attended, which is what the eligibility gate and the loyalty
+        // title are measured in — the season's own length is a count of evenings.
+        games: num(row.games),
         rounds: num(row.rounds),
         goals: num(row.goals),
         assists: num(row.assists),
