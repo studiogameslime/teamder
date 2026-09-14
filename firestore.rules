@@ -2076,8 +2076,23 @@ service cloud.firestore {
     // which is how a shared link to a past season resolves. Both use the
     // non-throwing membership check so neither can error out the other.
     match /seasonSummary/{doc} {
-      allow read: if isGroupMemberSafe(resource.data.get('groupId', ''));
-      allow get: if isGroupMemberSafe(resource.data.get('groupId', ''));
+      // Two audiences, not one.
+      //
+      // Club members read their club's seasons — the same bound as the live
+      // table this replaces.
+      //
+      // And anyone who PLAYED in the season reads it for good, whether or not
+      // they are still in the club. They are pushed a summary of it the day it
+      // closes, and half the point of a sealed season is that leaving does not
+      // erase what you did: denying them would deep-link a real notification
+      // straight into a permission error. Membership is a key in the archive's
+      // own `players` map, so it costs no extra read.
+      allow read: if isGroupMemberSafe(resource.data.get('groupId', '')) ||
+        (request.auth != null &&
+         request.auth.uid in resource.data.get('players', {}));
+      allow get: if isGroupMemberSafe(resource.data.get('groupId', '')) ||
+        (request.auth != null &&
+         request.auth.uid in resource.data.get('players', {}));
       allow write: if false;
     }
     // ── /gamePlayerStats/{gameId__uid} — per-GAME rows ──────────────────

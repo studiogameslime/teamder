@@ -224,6 +224,80 @@ export interface LoadSeasonArgs {
   seasonId?: string;
 }
 
+/** The club's season block, or undefined when we may not read the club. */
+async function readSeasons(
+  db: ReturnType<typeof getFirebase>['db'],
+  groupId: string,
+): Promise<GroupSeasons | undefined> {
+  try {
+    const snap = await getDoc(doc(db, 'groups', groupId));
+    const g = snap.exists() ? (snap.data() as { seasons?: GroupSeasons }) : undefined;
+    return g?.seasons;
+  } catch {
+    // A player who left the club cannot read it. That is not an error here —
+    // it only means they get this one season rather than a picker.
+    return undefined;
+  }
+}
+
+/**
+ * Build the model from a sealed archive alone.
+ *
+ * Everything comes out of the document: the club's frozen name, the final
+ * table, the pair counters and the decided titles. Nothing is re-read and
+ * nothing is recomputed, which is what makes it work for someone who can no
+ * longer read the club at all.
+ */
+function fromArchive(
+  d: Record<string, unknown>,
+  ctx: {
+    groupId: string;
+    userId: UserId;
+    seasonId: string;
+    seasons?: GroupSeasons;
+  },
+): SeasonSummaryModel {
+  const playersMap = (d.players ?? {}) as Record<string, Record<string, unknown>>;
+  const pairsMap = (d.pairs ?? {}) as Record<string, Record<string, unknown>>;
+  const players = Object.entries(playersMap).map(([uid, x]) => playerRow(x, uid));
+  const pairs: SeasonPairRow[] = [];
+  for (const x of Object.values(pairsMap)) {
+    // A season closed before the archive carried full pair counters stores a
+    // bare number here. It cannot answer the people questions, and a bare
+    // number is not a row — skip rather than invent zeroes.
+    if (typeof x !== 'object' || x === null) continue;
+    const row = pairRow(x);
+    if (row) pairs.push(row);
+  }
+  const me = buildPersonalSeason({ me: ctx.userId, players, pairs });
+  const frozen = new Map<string, string>();
+  for (const [uid, x] of Object.entries(playersMap)) {
+    const n = str(x.displayName);
+    if (n) frozen.set(uid, n);
+  }
+  const totals = (d.totals ?? {}) as Record<string, unknown>;
+  return {
+    groupId: ctx.groupId,
+    groupName: str(d.groupName),
+    seasonId: str(d.seasonId) || ctx.seasonId,
+    seasonNo: num(d.no),
+    startsAt: num(d.startsAt),
+    endsAt: num(d.endsAt) || null,
+    closed: true,
+    completedRounds: num(totals.rounds),
+    me,
+    myTitles: titlesFor(d.awards as Record<string, unknown> | undefined, ctx.userId),
+    // Names are already frozen in the archive; no /users read, which a player
+    // outside the club may not be able to make anyway.
+    names: Object.fromEntries(
+      namedUids(me).map((uid) => [uid, frozen.get(uid) ?? '']),
+    ),
+    available: ctx.seasons
+      ? seasonChoices(ctx.seasons)
+      : [{ no: num(d.no), id: str(d.seasonId) || ctx.seasonId, closed: true }],
+  };
+}
+
 export const seasonSummaryService = {
   /**
    * Build the model, or null when the club does not run seasons (or the
@@ -238,6 +312,29 @@ export const seasonSummaryService = {
     if (USE_MOCK_DATA) return mockSeasonSummary(groupId, userId, seasonId);
     try {
       const { db } = getFirebase();
+      // The ARCHIVE is tried first when a specific season was asked for.
+      //
+      // A player who has since left the club can still be pushed the summary
+      // of a season they played, and they cannot read /groups any more. Going
+      // to the club document first would deny them their own season — so a
+      // closed season is served from its own sealed record, which carries the
+      // club's name and everything else it needs.
+      if (seasonId) {
+        const archived = await getDoc(
+          doc(db, 'seasonSummary', `${groupId}__${seasonId}`),
+        );
+        if (archived.exists()) {
+          return fromArchive(archived.data() as Record<string, unknown>, {
+            groupId,
+            userId,
+            seasonId,
+            // Only a member can be offered the picker; for anyone else this
+            // one season is the whole of what they may read.
+            seasons: await readSeasons(db, groupId),
+          });
+        }
+      }
+
       const groupSnap = await getDoc(doc(db, 'groups', groupId));
       if (!groupSnap.exists()) return null;
       const g = groupSnap.data() as { name?: string; seasons?: GroupSeasons };

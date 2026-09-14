@@ -273,6 +273,10 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   try {
     await summaryRef.create({
       groupId,
+      // Frozen, like the player names. A closed season has to be readable by
+      // someone who has since LEFT the club — they played in it — and they
+      // cannot read /groups to find out what it was called.
+      groupName: args.groupName ?? '',
       seasonId,
       no: args.seasonNo,
       startsAt: args.startsAt,

@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RULES = fs.readFileSync(path.join(HERE, '..', '..', 'firestore.rules'), 'utf8');
-const GID = 'club1', MEMBER = 'member', OUTSIDER = 'outsider';
+const GID = 'club1', MEMBER = 'member', OUTSIDER = 'outsider', LEFT = 'departed';
 
 let env;
 before(async () => {
@@ -32,7 +32,9 @@ before(async () => {
       pendingPlayerIds: [], createdAt: 1,
     });
     await setDoc(doc(db, 'seasonSummary', `${GID}__s1`), {
-      groupId: GID, seasonId: 's1', no: 1, players: {}, totals: {},
+      groupId: GID, groupName: 'club', seasonId: 's1', no: 1, totals: {},
+      // `departed` played the season and has since left the club.
+      players: { [MEMBER]: { rounds: 10 }, [LEFT]: { rounds: 8 } },
     });
     await setDoc(doc(db, 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`), {
       groupId: GID, groupName: 'club', seasonId: 's1', seasonNo: 1,
@@ -44,6 +46,7 @@ after(async () => { await env.cleanup(); });
 
 const asMember = () => env.authenticatedContext(MEMBER).firestore();
 const asOutsider = () => env.authenticatedContext(OUTSIDER).firestore();
+const asDeparted = () => env.authenticatedContext(LEFT).firestore();
 
 describe('a club member reads their own seasons', () => {
   test('one season by id', async () => {
@@ -58,6 +61,29 @@ describe('a club member reads their own seasons', () => {
                     where('groupId', '==', GID));
     const snap = await getDocs(q);
     assert.equal(snap.size, 1);
+  });
+});
+
+describe('and so does somebody who PLAYED it and has since left', () => {
+  // They are pushed a summary of this very season the day it closes. Denying
+  // them would deep-link a real notification into a permission error — and
+  // half the point of sealing a season is that leaving does not erase what you
+  // did in it.
+  test('by id', async () => {
+    const s = await getDoc(doc(asDeparted(), 'seasonSummary', `${GID}__s1`));
+    assert.equal(s.exists(), true);
+    assert.equal(s.data().groupName, 'club');
+  });
+
+  test('but not a season they never played', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'seasonSummary', `${GID}__s0`), {
+        groupId: GID, seasonId: 's0', no: 0, players: { someoneElse: { rounds: 4 } },
+        totals: {},
+      });
+    });
+    await assert.rejects(() =>
+      getDoc(doc(asDeparted(), 'seasonSummary', `${GID}__s0`)));
   });
 });
 
