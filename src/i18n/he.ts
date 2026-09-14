@@ -4,6 +4,9 @@
 export const he = {
   // Common
   back: 'חזור',
+  /** Android hardware back on the home screen — one press arms, a second
+   *  within two seconds leaves. */
+  backAgainToExit: 'לחץ שוב כדי לצאת',
   cancel: 'בטל',
   close: 'סגור',
   // InfoTip — reusable inline explanations (ⓘ)

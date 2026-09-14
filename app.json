@@ -85,6 +85,7 @@
     },
     "plugins": [
       "./plugins/withNotificationColorMerge.js",
+      "./plugins/withLegacyBackHandling.js",
       "expo-localization",
       "expo-apple-authentication",
       "@react-native-firebase/app",

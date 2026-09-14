@@ -210,6 +210,9 @@ import {
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { CampaignGate } from '@/components/CampaignGate';
 import { navigationRef, navigateInvite } from '@/navigation/navigationRef';
+import { useAndroidBack } from '@/navigation/useAndroidBack';
+import { he } from '@/i18n/he';
+import { useScreenAwake } from '@/hooks/useScreenAwake';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import {
@@ -336,6 +339,16 @@ export default function App() {
   // one-shot `consumedRef` covers cold-start storage stash; this
   // pair covers warm-app URLs that race the navigator mount.
   const [navReady, setNavReady] = useState(false);
+
+  // Android hardware back. Without this every press fell through to the
+  // platform default, which leaves the app the moment a tab's stack has
+  // nothing to pop — reproduced as "standing on מחזורים, back closed the app".
+  useAndroidBack(navigationRef as unknown as Parameters<typeof useAndroidBack>[0], he.backAgainToExit);
+
+  // Keep the display on while the app is in the foreground: the phone spends
+  // the evening propped on a bag showing the timer and the teams, and a screen
+  // that sleeps every thirty seconds defeats the point.
+  useScreenAwake();
   // In-memory pending deep link. Set by the warm URL handler when
   // it can't navigate immediately (auth not ready, navigator still
   // mounting). Last-write-wins semantics: the most recent URL
