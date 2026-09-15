@@ -2051,14 +2051,18 @@ export const he = {
     played >= target
       ? `${played} מתוך ${target} מחזורים — העונה תיסגר בקרוב`
       : `${played} מתוך ${target} מחזורים · נשארו ${target - played}`,
-  seasonsProgressDays: (days: number) =>
-    days <= 0
-      ? 'העונה הגיעה לסופה ותיסגר בקרוב'
-      : days === 1
-        ? 'נשאר יום אחד לעונה'
-        : days <= 31
-          ? `נשארו ${days} ימים לעונה`
-          : `נשארו ${Math.round(days / 30)} חודשים לעונה`,
+  // Hebrew counts 1 and 2 differently, and rounding days to months produced
+  // "נשארו 1 חודשים" on the club card. Days up to two months, then months with
+  // their own forms.
+  seasonsProgressDays: (days: number) => {
+    if (days <= 0) return 'העונה הגיעה לסופה ותיסגר בקרוב';
+    if (days === 1) return 'נשאר יום אחד לעונה';
+    if (days === 2) return 'נשארו יומיים לעונה';
+    if (days <= 60) return `נשארו ${days} ימים לעונה`;
+    const months = Math.round(days / 30);
+    if (months === 2) return 'נשארו חודשיים לעונה';
+    return `נשארו ${months} חודשים לעונה`;
+  },
   seasonsSealConfirmTitle: 'לסגור את כל ההיסטוריה כעונה 1?',
   seasonsSealConfirmBody:
     'כל מה שהמועדון שיחק עד היום ייסגר כעונה שהסתיימה: יחולקו עליה תשעה תארים, והטבלה תתחיל מאפס.\n\nהעונה תישמר בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאי אפשר להחזיר את זה אחורה.',

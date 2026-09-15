@@ -4,6 +4,7 @@ import {
   dayDiff,
   joinLocation,
 } from '@/utils/format';
+import { he } from '@/i18n/he';
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
@@ -76,5 +77,32 @@ describe('joinLocation', () => {
   });
   it('trims whitespace', () => {
     expect(joinLocation('  מגרש  ', '  חיפה ')).toBe('מגרש, חיפה');
+  });
+});
+
+describe('the season countdown counts in Hebrew', () => {
+  // "נשארו 1 חודשים" reached the club card: days were rounded to months with a
+  // single plural form. Hebrew has three shapes here and 1 and 2 are both
+  // special.
+  it('one and two have their own words', () => {
+    expect(he.seasonsProgressDays(1)).toBe('נשאר יום אחד לעונה');
+    expect(he.seasonsProgressDays(2)).toBe('נשארו יומיים לעונה');
+  });
+
+  it('stays in days while days still read naturally', () => {
+    expect(he.seasonsProgressDays(32)).toBe('נשארו 32 ימים לעונה');
+    expect(he.seasonsProgressDays(60)).toBe('נשארו 60 ימים לעונה');
+  });
+
+  it('and never says "1 חודשים"', () => {
+    for (let d = 1; d <= 400; d += 1) {
+      expect(he.seasonsProgressDays(d)).not.toMatch(/\b1 חודשים/);
+      expect(he.seasonsProgressDays(d)).not.toMatch(/\b2 חודשים/);
+    }
+  });
+
+  it('a season already past its date says so', () => {
+    expect(he.seasonsProgressDays(0)).toContain('בקרוב');
+    expect(he.seasonsProgressDays(-5)).toContain('בקרוב');
   });
 });

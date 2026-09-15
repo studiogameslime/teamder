@@ -67,7 +67,16 @@ function SeasonCard({ season }: { season: FinishedSeason }) {
               <Text style={styles.medal}>🏆</Text>
               <View style={styles.winnerText}>
                 <Text style={styles.winnerTitle}>{he.seasonTitleNames[w.key]}</Text>
-                <Text style={styles.winnerName}>{w.names.join(' · ')}</Text>
+                <Text style={styles.winnerName}>
+                  {w.names.join(' · ')}
+                  {/* The number it was won on. A title without it is a label;
+                      with it, it is the argument people actually have. Same
+                      line as the summary's champions card, so the two agree. */}
+                  <Text style={styles.winnerValue}>
+                    {'  '}
+                    {he.seasonTitleValue(w.key, w.value)}
+                  </Text>
+                </Text>
               </View>
             </View>
           ))}
@@ -174,6 +183,12 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,
+  },
+  winnerValue: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '400',
+    fontVariant: ['tabular-nums'],
   },
   empty: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
 });
