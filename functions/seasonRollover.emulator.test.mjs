@@ -95,6 +95,18 @@ async function seed() {
     bestEvening: { goals: 2, assists: 4, involvement: 6, cleanSheets: 1, wins: 3 },
     lastEveningScore: 7.9,
   });
+  // A veteran from before the coverage denominators existed: real counters,
+  // and neither csRounds nor asRounds anywhere on the row.
+  await db.collection('communityPlayerStats').doc(`${GID}__u3`).set({
+    groupId: GID, userId: 'u3', goals: 4, assists: 2, rounds: 9,
+    games: 3, wins: 5, losses: 4, ties: 0, cleanSheets: 1,
+  });
+  // A veteran from before the coverage denominators existed: real counters, no
+  // csRounds/asRounds at all.
+  await db.collection('communityPlayerStats').doc(`${GID}__u3`).set({
+    groupId: GID, userId: 'u3', goals: 4, assists: 2, rounds: 9,
+    games: 3, wins: 5, losses: 4, ties: 0, cleanSheets: 1,
+  });
   await db.collection('communityStats').doc(GID).set({
     groupId: GID,
     rounds: 78, goals: 40, guestGoals: 5, ownGoals: 1,
@@ -131,7 +143,7 @@ describe('the archive is taken before the wipe', () => {
   test('it copies the live table faithfully', async () => {
     const res = await closeSeason(args());
     assert.equal(res.archived, true);
-    assert.equal(res.players, 2);
+    assert.equal(res.players, 3);
 
     const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
     assert.equal(s.players.u1.goals, 31);
@@ -153,6 +165,26 @@ describe('the archive is taken before the wipe', () => {
     assert.equal(s.completedRounds, 16);
   });
 
+  test('a coverage denominator that was never measured stays absent', async () => {
+    // csRounds/asRounds say how many rounds a metric COULD be measured over,
+    // and they arrived after the metrics they divide. Writing 0 for a season
+    // that predates them reads as "measured across zero rounds", which is
+    // indistinguishable from a real zero and defeats the reader's fallback —
+    // the same mistake that made every veteran's clean-sheet percentage read
+    // ten points low.
+    const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
+    // u1 was measured and keeps its denominators.
+    assert.equal(s.players.u1.csRounds, 34);
+    assert.equal(s.players.u1.asRounds, 40);
+    // u3 predates them entirely — neither reaches the archive, so the reader
+    // can still tell "never measured" from "measured, and zero".
+    assert.equal('csRounds' in s.players.u3, false);
+    assert.equal('asRounds' in s.players.u3, false);
+    // Its real counters are archived as normal.
+    assert.equal(s.players.u3.goals, 4);
+    assert.equal(s.players.u3.cleanSheets, 1);
+  });
+
   test('a compact card is written beside the archive', async () => {
     // The hall of fame shows a date, three numbers and nine names. Pulling the
     // whole archive — every player row, every pair's ten counters, for every
@@ -160,7 +192,7 @@ describe('the archive is taken before the wipe', () => {
     const c = (await db.collection('seasonCards').doc(`${GID}__${SEASON}`).get()).data();
     assert.ok(c, 'the card exists');
     assert.equal(c.no, 1);
-    assert.equal(c.players, 2, 'only people who actually played');
+    assert.equal(c.players, 3, 'only people who actually played');
     assert.equal(c.totals.goals, 40);
     // Winners already resolved to the names frozen at closing time, so the
     // screen needs no second read and no /users lookup.
@@ -255,8 +287,8 @@ describe('the archive is taken before the wipe', () => {
     // Neither has a club counter — the screen sums them from member rows. Once
     // the rows are zeroed they would be underivable.
     const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
-    assert.equal(s.totals.assists, 34);
-    assert.equal(s.totals.cleanSheets, 29);
+    assert.equal(s.totals.assists, 36);
+    assert.equal(s.totals.cleanSheets, 30);
   });
 });
 

@@ -840,7 +840,11 @@ export function CommunityDetailsScreen() {
               here AND a button lower down both opened CommunityStats; per owner
               request the chip was dropped and the button lives here at the top. */}
           {/* Where the season stands. Managing it lives in club settings. */}
-          <SeasonsCard groupId={group.id} seasons={group.seasons} />
+          <SeasonsCard
+            groupId={group.id}
+            seasons={group.seasons}
+            isMember={isMember || isAdmin}
+          />
 
           <Button
             title={he.communityViewStatsTable}

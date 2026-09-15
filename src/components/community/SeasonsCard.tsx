@@ -29,9 +29,15 @@ function formatDate(ms: number): string {
 export function SeasonsCard({
   groupId,
   seasons,
+  // Somebody waiting for their join request can open the club screen, and
+  // every collection behind these two buttons is bound to membership. Offering
+  // them a door that answers "permission denied" is worse than not offering
+  // one.
+  isMember,
 }: {
   groupId: string;
   seasons?: GroupSeasons;
+  isMember: boolean;
 }) {
   const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
   const openMySummary = useCallback(() => {
@@ -42,6 +48,8 @@ export function SeasonsCard({
   }, [nav, groupId]);
 
   const closedSeasons = seasons?.count ?? 0;
+
+  if (!isMember) return null;
 
   // Seasons off, but the club HAS closed some: the archives are untouched and
   // the titles in them are permanent, so the door to them stays. Switching the

@@ -202,8 +202,20 @@ async function closeSeason(args) {
         if (num(x.rounds) === 0 && num(x.games) === 0)
             continue;
         const row = {};
-        for (const f of PLAYER_SEASON_FIELDS)
+        for (const f of PLAYER_SEASON_FIELDS) {
+            // ABSENT is not zero for the two coverage denominators.
+            //
+            // They say how many rounds a metric could be measured over, and they
+            // arrived later than the metrics they divide. Writing 0 for a season
+            // that predates them tells the reader "measured across zero rounds",
+            // which is indistinguishable from a real zero and defeats the fallback
+            // the reader has for exactly this case — the same mistake that made the
+            // club's clean-sheet percentage read ten points low for every veteran.
+            if ((f === 'csRounds' || f === 'asRounds') && typeof x[f] !== 'number') {
+                continue;
+            }
             row[f] = num(x[f]);
+        }
         row.displayName = nameByUid.get(uid) ?? '';
         players[uid] = row;
     }
