@@ -28,6 +28,7 @@
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import admin from 'firebase-admin';
+import fs from 'node:fs';
 
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 
@@ -41,6 +42,17 @@ let reopenSeason;
 before(async () => {
   admin.initializeApp({ projectId: 'seasons-rollover' });
   db = admin.firestore();
+  // The suite runs the COMPILED output, so a stale build silently tests code
+  // that is not the code under review — the tests go green on yesterday's
+  // logic. Cheap guard: the build has to be newer than the source.
+  const src = fs.statSync(new URL('./src/seasonRollover.ts', import.meta.url));
+  const lib = fs.existsSync(new URL('./lib/seasonRollover.js', import.meta.url))
+    ? fs.statSync(new URL('./lib/seasonRollover.js', import.meta.url))
+    : null;
+  assert.ok(
+    lib && lib.mtimeMs >= src.mtimeMs,
+    'lib/seasonRollover.js is older than its source — run `npx tsc -p tsconfig.json` first',
+  );
   ({ closeSeason, reopenSeason } = await import('./lib/seasonRollover.js'));
 });
 

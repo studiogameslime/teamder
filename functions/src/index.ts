@@ -14915,7 +14915,19 @@ export const enableClubSeasons = onCall(
             currentNo: firstNo + 1,
             currentId: `s${firstNo + 1}`,
             startedAt: now,
-            cadence,
+            // Everything played so far belongs to the season just sealed, so
+            // the new one counts from here. Without this offset season 2 is
+            // measured against the club's ALL-TIME evenings: a two-year-old
+            // club that seals its history and picks a 24-round target is due
+            // the moment it opens, and the sweep archives an empty season
+            // within the hour — nine null awards, count bumped past anything
+            // ever played.
+            roundsAtStart: played,
+            playedRounds: 0,
+            reopenedAt: 0,
+            // Measured from NOW: the cadence the admin just chose describes a
+            // length, not a date in the sealed season's past.
+            cadence: rebaseCadence(cadence, now, now),
             targetHistory: [],
             count: firstNo,
           },

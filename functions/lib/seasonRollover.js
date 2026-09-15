@@ -572,6 +572,18 @@ async function closeSeason(args) {
     // would carry it into the next one.
     for (const d of pairSnap.docs) {
         const x = d.data();
+        // Already wound back for this season — skip.
+        //
+        // The player rows carry this stamp and the pair rows did not, so the two
+        // halves of one operation behaved differently on a resume: the player kept
+        // the two goals he scored between the crash and the retry, and the pair
+        // lost that whole evening's chemistry, because subtracting the archived
+        // row a second time clamps at zero. The stamp is read off the snapshot
+        // taken at the top of this function, which on a retry already reflects the
+        // first pass — no transaction needed, since the quiet check and the
+        // create() latch serialise the close.
+        if (x.seasonWoundBack === seasonId)
+            continue;
         const key = [String(x.a ?? ''), String(x.b ?? '')].sort().join('__');
         const archivedPair = pairs[key];
         batch.set(d.ref, {
@@ -579,6 +591,7 @@ async function closeSeason(args) {
                 f,
                 archivedPair ? Math.max(0, num(x[f]) - num(archivedPair[f])) : 0,
             ])),
+            seasonWoundBack: seasonId,
             // Cleared so a later reopen can stamp its own restore.
             seasonReopened: admin.firestore.FieldValue.delete(),
             updatedAt: now,
@@ -613,6 +626,11 @@ async function closeSeason(args) {
 exports.__seasonFields = {
     player: PLAYER_SEASON_FIELDS,
     club: CLUB_SEASON_FIELDS,
+    // Pinned for the same reason as the other two, and with more at stake: a
+    // counter missing from this list is cleared by the close and never restored
+    // by the reopen, and the archive that held it is deleted at the end of the
+    // reopen. There is no way back from a gap here.
+    pair: PAIR_SEASON_FIELDS,
 };
 /**
  * Undo a season that was closed by mistake.
@@ -699,6 +717,9 @@ async function reopenSeason(args) {
                 a,
                 b,
                 seasonReopened: seasonId,
+                // Cleared, or the next close would think this pair had already been
+                // wound back and skip it.
+                seasonWoundBack: admin.firestore.FieldValue.delete(),
                 updatedAt: Date.now(),
                 ...Object.fromEntries(PAIR_SEASON_FIELDS.map((f) => [f, num2(cur[f]) + num2(row[f])])),
             }, { merge: true });

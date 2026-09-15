@@ -25,6 +25,7 @@ import { __seasonFields } from '../../functions/src/seasonRollover';
 
 const PLAYER = [...__seasonFields.player];
 const CLUB = [...__seasonFields.club];
+const PAIR = [...__seasonFields.pair];
 
 /** Personal or cross-season state that happens to live on the same documents. */
 const MUST_SURVIVE = [
@@ -61,10 +62,31 @@ describe('the reset list is exactly the competition', () => {
     ]);
   });
 
+  it('zeroes the pair counters a season owns', () => {
+    // More at stake than the other two lists: a counter missing here is
+    // cleared by the close and never restored by the reopen, and the archive
+    // that held it is deleted at the end of that reopen. There is no way back.
+    expect(PAIR.sort()).toEqual([
+      'against', 'assists', 'assistsAToB', 'assistsBToA', 'cleanSheetsTogether',
+      'lossesTogether', 'sameTeam', 'winsA', 'winsB', 'winsTogether',
+    ]);
+  });
+
+  it('and the pair list covers every counter the rollup writes', () => {
+    // rollUpClubPairs is the only writer. Anything it increments and this list
+    // omits survives a close and is carried into the next season.
+    const written = [
+      'sameTeam', 'winsTogether', 'lossesTogether', 'cleanSheetsTogether',
+      'against', 'winsA', 'winsB', 'assistsAToB', 'assistsBToA',
+    ];
+    for (const f of written) expect(PAIR).toContain(f);
+  });
+
   it('never touches personal or cross-season state', () => {
     for (const field of MUST_SURVIVE) {
       expect(PLAYER).not.toContain(field);
       expect(CLUB).not.toContain(field);
+      expect(PAIR).not.toContain(field);
     }
   });
 
