@@ -354,8 +354,13 @@ function fromArchive(
     ),
     // Names are already frozen in the archive; no /users read, which a player
     // outside the club may not be able to make anyway.
+    // Only real names go in. An empty string is not nullish, so `names[uid] ??
+    // '—'` at the render site accepted it and drew a blank where a name should
+    // be; leaving the key out lets the dash do its job.
     names: Object.fromEntries(
-      namedUids(me).map((uid) => [uid, frozen.get(uid) ?? '']),
+      namedUids(me)
+        .map((uid) => [uid, frozen.get(uid) ?? ''] as const)
+        .filter(([, n]) => !!n),
     ),
     available: ctx.seasons
       ? seasonChoices(ctx.seasons)
@@ -372,7 +377,7 @@ export const seasonSummaryService = {
     groupId,
     userId,
     seasonId,
-  }: LoadSeasonArgs): Promise<SeasonSummaryModel | null> {
+  }: LoadSeasonArgs): Promise<SeasonSummaryModel | null | 'error'> {
     if (!groupId || !userId) return null;
     if (USE_MOCK_DATA) return mockSeasonSummary(groupId, userId, seasonId);
     try {
@@ -499,7 +504,10 @@ export const seasonSummaryService = {
       };
     } catch (err) {
       logError('seasonSummaryLoad', err, { groupId, userId, seasonId: seasonId ?? '' });
-      return null;
+      // NOT null. Null means "this club does not run seasons", and saying that
+      // to somebody who just tapped a push about a season they played — because
+      // their connection dropped for a second — is the worse of the two wrongs.
+      return 'error';
     }
   },
 };

@@ -90,21 +90,27 @@ export function SeasonHistoryScreen() {
   const params = useRoute<Params>().params;
   const groupId = params?.groupId ?? '';
   const [seasons, setSeasons] = useState<FinishedSeason[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    setSeasons(await seasonHistoryService.list(groupId));
+    const r = await seasonHistoryService.list(groupId);
+    setFailed(r === 'error');
+    setSeasons(r === 'error' ? [] : r);
+    if (r !== 'error') {
+      logEvent(AnalyticsEvent.SeasonHistoryViewed, { groupId, seasons: r.length });
+    }
   }, [groupId]);
 
   useEffect(() => {
     let alive = true;
-    seasonHistoryService.list(groupId).then((s) => {
+    void seasonHistoryService.list(groupId).then((r) => {
       if (!alive) return;
-      setSeasons(s);
-      logEvent(AnalyticsEvent.SeasonHistoryViewed, {
-        groupId,
-        seasons: s.length,
-      });
+      setFailed(r === 'error');
+      setSeasons(r === 'error' ? [] : r);
+      if (r !== 'error') {
+        logEvent(AnalyticsEvent.SeasonHistoryViewed, { groupId, seasons: r.length });
+      }
     });
     return () => {
       alive = false;
@@ -142,7 +148,9 @@ export function SeasonHistoryScreen() {
         }
       >
         {seasons.length === 0 ? (
-          <Text style={styles.empty}>{he.seasonHistoryEmpty}</Text>
+          <Text style={styles.empty}>
+            {failed ? he.seasonHistoryLoadFailed : he.seasonHistoryEmpty}
+          </Text>
         ) : (
           seasons.map((s) => <SeasonCard key={s.seasonId} season={s} />)
         )}

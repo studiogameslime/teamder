@@ -2038,7 +2038,7 @@ export const he = {
   seasonsCardTitle: 'עונות',
   seasonsOffTitle: 'במועדון הזה אין עונות',
   seasonsOffBody:
-    'עונה היא תחרות עם התחלה וסוף. כשהיא נגמרת הטבלה של המועדון מתאפסת, מחולקים תארים, והעונה נשמרת בארכיון. הסטטיסטיקה המצטברת, ההישגים והרצפים לא מושפעים.',
+    'עונה היא תחרות עם התחלה וסוף. כשהיא נגמרת הטבלה של המועדון מתאפסת, מחולקים תארים, והעונה נשמרת בארכיון. הסטטיסטיקה האישית המצטברת בפרופיל, ההישגים והרצפים לא מושפעים — תארי המועדון נספרים מהעונה הנוכחית.',
   seasonsEnableCta: 'הפעל עונות',
   seasonsEndCta: 'סיים עונה עכשיו',
   seasonsMySummaryCta: 'סיכום העונה שלי',
@@ -2065,11 +2065,11 @@ export const he = {
   },
   seasonsSealConfirmTitle: 'לסגור את כל ההיסטוריה כעונה 1?',
   seasonsSealConfirmBody:
-    'כל מה שהמועדון שיחק עד היום ייסגר כעונה שהסתיימה: יחולקו עליה תשעה תארים, והטבלה תתחיל מאפס.\n\nהעונה תישמר בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאי אפשר להחזיר את זה אחורה.',
+    'כל מה שהמועדון שיחק עד היום ייסגר כעונה שהסתיימה: יחולקו עליה תארים, והטבלה תתחיל מאפס.\n\nהעונה תישמר בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאם טעית אפשר לבטל את הסגירה מאותו מסך, כל עוד לא נסגרה עונה נוספת אחריה.',
   seasonsSealConfirmCta: 'סגור והתחל מאפס',
   seasonsEndConfirmTitle: 'לסיים את העונה?',
   seasonsEndConfirmBody:
-    'העונה תיסגר עכשיו: הטבלה של המועדון מתאפסת והתארים מחולקים.\n\nהעונה נשמרת בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאי אפשר להחזיר את זה אחורה.',
+    'העונה תיסגר עכשיו: הטבלה של המועדון מתאפסת והתארים מחולקים.\n\nהעונה נשמרת בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאם טעית אפשר לבטל את הסגירה מאותו מסך, כל עוד לא נסגרה עונה נוספת אחריה.',
   seasonsEnableTitle: 'מתי העונה נגמרת?',
   seasonsCadenceDate: 'אחרי פרק זמן',
   seasonsCadenceRounds: 'אחרי מספר מחזורים',
@@ -2121,6 +2121,8 @@ export const he = {
     `הטבלה מציגה את עונה ${no} — העונה שרצה עכשיו. עונות שהסתיימו נשמרות בנפרד.`,
   seasonHistoryTitle: 'עונות קודמות',
   seasonHistoryCta: 'עונות קודמות ותארים',
+  seasonHistoryLoadFailed:
+    'לא הצלחנו לטעון את העונות. משכו למטה כדי לנסות שוב.',
   seasonHistoryEmpty:
     'עוד לא הסתיימה עונה במועדון. כשהראשונה תיסגר היא תופיע כאן עם התארים שחולקו בה.',
   seasonHistoryLine: (rounds: number, miniGames: number, players: number) =>
@@ -2176,6 +2178,11 @@ export const he = {
   seasonChipCurrent: (no: number) => `עונה ${no} · עכשיו`,
   seasonSummaryUnavailable:
     'אין כאן סיכום עונה. המועדון הזה לא מנהל עונות.',
+  // A load that FAILED is not a club without seasons. Blaming the club for a
+  // network blip is the worse of the two wrongs, because it is shown to
+  // somebody who just tapped a push about a season they played.
+  seasonSummaryLoadFailed:
+    'לא הצלחנו לטעון את סיכום העונה. משכו למטה כדי לנסות שוב.',
   seasonSummaryNoRounds: 'עוד לא שיחקת בעונה הזאת, אז אין מה לסכם עדיין.',
   // The same fact about a season that is already over. "עדיין" and "יתמלא
   // מעצמו" are promises a sealed season cannot keep.

@@ -10,7 +10,7 @@
 // the pair counters the round rollup has been filling all along. Both are
 // zeroed when a season closes, which is exactly what makes them season-scoped.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -139,12 +139,20 @@ export function SeasonSummaryScreen() {
   const [seasonId, setSeasonId] = useState<string | undefined>(params?.seasonId);
 
   const [model, setModel] = useState<SeasonSummaryModel | null>(null);
+  const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Only the newest load may write. Tapping through three season chips quickly
+  // starts three loads, and without this the slowest one wins — which on the
+  // picker means the screen settles on a season you already moved off.
+  const loadSeq = useRef(0);
+
   const load = useCallback(async () => {
+    const seq = (loadSeq.current += 1);
     if (!currentUser?.id || !groupId) {
       setModel(null);
+      setFailed(false);
       setLoading(false);
       return;
     }
@@ -153,9 +161,11 @@ export function SeasonSummaryScreen() {
       userId: currentUser.id,
       seasonId,
     });
-    setModel(m);
+    if (seq !== loadSeq.current) return; // a newer load is already in flight
+    setFailed(m === 'error');
+    setModel(m === 'error' ? null : m);
     setLoading(false);
-    if (m) {
+    if (m && m !== 'error') {
       logEvent(AnalyticsEvent.SeasonSummaryViewed, {
         groupId,
         seasonNo: m.seasonNo,
@@ -166,14 +176,8 @@ export function SeasonSummaryScreen() {
   }, [currentUser?.id, groupId, seasonId]);
 
   useEffect(() => {
-    let alive = true;
     setLoading(true);
-    load().finally(() => {
-      if (!alive) return;
-    });
-    return () => {
-      alive = false;
-    };
+    void load();
   }, [load]);
 
   const onRefresh = useCallback(async () => {
@@ -197,9 +201,23 @@ export function SeasonSummaryScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScreenHeader title={he.seasonSummaryTitle} />
-        <View style={styles.center}>
-          <Text style={styles.empty}>{he.seasonSummaryUnavailable}</Text>
-        </View>
+        {/* Pull-to-refresh even here: a failed load is the one empty state a
+            person has a reason to retry, and without a scroll view there is
+            nothing to pull. */}
+        <ScrollView
+          contentContainerStyle={styles.centerScroll}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          <Text style={styles.empty}>
+            {failed ? he.seasonSummaryLoadFailed : he.seasonSummaryUnavailable}
+          </Text>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -416,6 +434,7 @@ export function SeasonSummaryScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  centerScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xl },
   hero: { gap: spacing.xs },
   // First child renders rightmost under forceRTL, so the running season — the

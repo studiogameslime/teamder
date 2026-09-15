@@ -88,7 +88,7 @@ function fromCard(d: Record<string, unknown>): FinishedSeason | null {
 
 export const seasonHistoryService = {
   /** Finished seasons for one club, newest first. */
-  async list(groupId: string): Promise<FinishedSeason[]> {
+  async list(groupId: string): Promise<FinishedSeason[] | 'error'> {
     if (!groupId) return [];
     if (USE_MOCK_DATA) return mockHistory();
     try {
@@ -115,7 +115,10 @@ export const seasonHistoryService = {
       return out.sort((a, b) => b.no - a.no);
     } catch (err) {
       logError('seasonHistoryList', err, { groupId });
-      return [];
+      // NOT []. An empty list means "this club has finished no seasons", and a
+      // club with five archives told that on a dropped connection reads as
+      // having lost them.
+      return 'error';
     }
   },
 };

@@ -33,12 +33,17 @@ const isReal = (id: string): boolean => !!id && !id.startsWith('guest:');
  * Ceiling on archived pairs, so one document cannot grow past Firestore's 1MB
  * limit and make the club permanently unable to close a season.
  *
- * Pairs grow as n(n-1)/2 over REAL members: 60 players is 1,770 entries at
- * roughly 140 bytes each, about 250KB. 4,000 is a 90-player club and still
- * inside half the limit — far beyond any real club, and a hard stop rather
- * than a silent failure if one ever gets there.
+ * The earlier figure of 4,000 was arithmetic done too fast. An entry is a
+ * 45-character key plus two uids plus ten numbers, and Firestore charges for
+ * every field name: call it 250-300 bytes, so 4,000 is about 1.1MB on its own
+ * — over the limit before the players map is added. 1,200 is roughly 350KB and
+ * leaves room for everything else.
+ *
+ * It is not a tight bound in practice, because only pairs that actually played
+ * this season are archived at all: a 50-player club has 1,225 possible pairs
+ * and nothing like that many turn out together in one season.
  */
-const MAX_ARCHIVED_PAIRS = 4000;
+const MAX_ARCHIVED_PAIRS = 1200;
 
 /** Club-scoped counters a season owns. Everything not named here survives. */
 const PLAYER_SEASON_FIELDS = [
@@ -249,6 +254,7 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   // document limit. Written once per season.
   const pairs: Record<string, SeasonPairArchive> = {};
   let droppedGuestPairs = 0;
+  let droppedEmptyPairs = 0;
   let droppedOverflowPairs = 0;
   for (const d of pairSnap.docs) {
     const x = d.data() as Record<string, unknown>;
@@ -271,6 +277,20 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     // eligibility gate, which a player with no account can never be.
     if (!isReal(a) || !isReal(b)) {
       droppedGuestPairs += 1;
+      continue;
+    }
+    // A pair that did nothing this season is not part of this season.
+    //
+    // Nothing deletes a pair document — the close winds it back to zero — so
+    // after one season every pair the club has EVER fielded is sitting there
+    // at zero, and archiving them all made the document grow with the club's
+    // whole history instead of with the season. Same shape as the empty player
+    // rows above.
+    const playedTogether =
+      num(x.sameTeam) + num(x.against) + num(x.assists) +
+      num(x.assistsAToB) + num(x.assistsBToA);
+    if (playedTogether === 0) {
+      droppedEmptyPairs += 1;
       continue;
     }
     if (Object.keys(pairs).length >= MAX_ARCHIVED_PAIRS) {
@@ -301,12 +321,13 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     };
   }
 
-  if (droppedGuestPairs > 0 || droppedOverflowPairs > 0) {
+  if (droppedGuestPairs > 0 || droppedEmptyPairs > 0 || droppedOverflowPairs > 0) {
     // Never silent. A dropped pair is a fact about the archive, and the
     // overflow case in particular should never happen for a real club.
     console.log(
       `[season] archive pairs: kept ${Object.keys(pairs).length}, ` +
-        `dropped ${droppedGuestPairs} guest, ${droppedOverflowPairs} over cap`,
+        `dropped ${droppedGuestPairs} guest, ${droppedEmptyPairs} empty, ` +
+        `${droppedOverflowPairs} over cap`,
       groupId,
       seasonId,
     );

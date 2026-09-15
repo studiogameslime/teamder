@@ -636,7 +636,7 @@ function readFieldType(v: unknown): import('@/types').FieldType | undefined {
  * Only `enabled` and the ids are load-bearing for the client; a malformed
  * cadence renders as "no target line" rather than taking the card down.
  */
-function readGroupSeasons(v: unknown): GroupSeasons | undefined {
+export function readGroupSeasons(v: unknown): GroupSeasons | undefined {
   if (!v || typeof v !== 'object') return undefined;
   const d = v as Record<string, unknown>;
   const currentId = typeof d.currentId === 'string' ? d.currentId : '';
