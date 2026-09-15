@@ -1,10 +1,14 @@
 // seasonHistoryService — a club's finished seasons, and who won what.
 //
-// Everything here comes out of the sealed archive and nothing is recomputed:
-// a past season is a record, and a record that changes because the code did is
-// not a record. That includes the NAMES — each archive froze its players'
-// display names at closing time, precisely so a season still reads after
-// somebody deletes their account or leaves the club.
+// Nothing here is recomputed: a past season is a record, and a record that
+// changes because the code did is not a record. That includes the NAMES — the
+// close froze its players' display names, precisely so a season still reads
+// after somebody deletes their account or leaves the club.
+//
+// It reads `seasonCards`, not the archives. The archive holds every player's
+// row and every pair's ten counters and is the record; the card is what this
+// screen needs — a date, three numbers, nine names — written by the same close
+// from the same numbers. One source, two sizes.
 
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
@@ -43,43 +47,27 @@ const num = (v: unknown): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : 0;
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
-/**
- * Resolve a winner id to a name using the season's OWN frozen roster.
- *
- * The duo title is held under a joined `a__b` key; both halves are looked up.
- * An id with no row in this archive renders as a dash rather than as an empty
- * string, so a missing name looks deliberate instead of broken.
- */
-function nameOf(
-  winnerId: string,
-  players: Record<string, Record<string, unknown>>,
-): string {
-  return winnerId
-    .split('__')
-    .map((uid) => str(players[uid]?.displayName) || '—')
-    .join(' + ');
-}
-
-function toSeason(d: Record<string, unknown>): FinishedSeason | null {
+/** A card is already the shape this screen wants; only validation is left. */
+function fromCard(d: Record<string, unknown>): FinishedSeason | null {
   const seasonId = str(d.seasonId);
   if (!seasonId) return null;
-  const players = (d.players ?? {}) as Record<string, Record<string, unknown>>;
-  const awards = (d.awards ?? {}) as Record<string, unknown>;
   const totals = (d.totals ?? {}) as Record<string, unknown>;
-
+  const raw = Array.isArray(d.winners) ? d.winners : [];
+  const known = new Set<string>(SEASON_TITLE_KEYS);
   const winners: SeasonWinner[] = [];
-  for (const key of SEASON_TITLE_KEYS) {
-    const a = awards[key] as { winners?: unknown; value?: unknown } | null | undefined;
-    if (!a || !Array.isArray(a.winners) || a.winners.length === 0) continue;
-    winners.push({
-      key,
-      names: a.winners
-        .filter((w): w is string => typeof w === 'string')
-        .map((w) => nameOf(w, players)),
-      value: num(a.value),
-    });
+  for (const w of raw) {
+    if (typeof w !== 'object' || w === null) continue;
+    const x = w as Record<string, unknown>;
+    const key = str(x.key);
+    // A title this build does not know about is skipped rather than rendered
+    // as a blank row.
+    if (!known.has(key)) continue;
+    const names = Array.isArray(x.names)
+      ? x.names.filter((n): n is string => typeof n === 'string')
+      : [];
+    if (names.length === 0) continue;
+    winners.push({ key: key as SeasonTitleKey, names, value: num(x.value) });
   }
-
   return {
     seasonId,
     no: num(d.no),
@@ -91,9 +79,7 @@ function toSeason(d: Record<string, unknown>): FinishedSeason | null {
       goals: num(totals.goals),
       assists: num(totals.assists),
     },
-    // Only people who actually played. A member who never turned up has a row
-    // of zeros and did not take part in the season.
-    players: Object.values(players).filter((p) => num(p.rounds) > 0).length,
+    players: num(d.players),
     endedEarly: d.endedEarly === true,
     partialData: d.partialData === true,
     winners,
@@ -107,15 +93,23 @@ export const seasonHistoryService = {
     if (USE_MOCK_DATA) return mockHistory();
     try {
       const { db } = getFirebase();
+      // Read the CARDS, not the archives.
+      //
+      // The archive holds every player's row and every pair's ten counters. A
+      // five-season, sixty-player club is well over a megabyte, and this screen
+      // shows a date, three numbers and nine names. `seasonCards` is written by
+      // the same close, from the same numbers, with the winners already
+      // resolved — so it is the same truth at a hundredth of the size.
+      //
       // Filtered on the FIELD, never on the document id: a list query does not
       // bind the path wildcard, and reading groupId off the path denies the
       // whole query with a null-value error.
       const snap = await getDocs(
-        query(collection(db, 'seasonSummary'), where('groupId', '==', groupId)),
+        query(collection(db, 'seasonCards'), where('groupId', '==', groupId)),
       );
       const out: FinishedSeason[] = [];
       snap.forEach((doc) => {
-        const s = toSeason(doc.data() as Record<string, unknown>);
+        const s = fromCard(doc.data() as Record<string, unknown>);
         if (s) out.push(s);
       });
       return out.sort((a, b) => b.no - a.no);

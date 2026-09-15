@@ -441,6 +441,17 @@ function rankEventsOf(input) {
     const total = Math.max(...rows.map((s) => n(s.rankTotal)));
     if (total < exports.MIN_TABLE_SIZE)
         return [];
+    // There has to have been a table BEFORE tonight for anyone to have moved in
+    // it. `rankDelta` is derived by subtracting tonight from the cumulative
+    // rows, so on the first evening of a new season every "before" value is
+    // zero, the previous ordering is alphabetical by uid, and the summary
+    // invents a dozen dramatic climbs out of a table that did not exist.
+    //
+    // `seasonEvenings` counts the evenings THIS season has had, tonight
+    // included, and it is the only thing that knows a boundary happened: the
+    // club's all-time counter does not reset.
+    if (n(input.seasonEvenings) === 1)
+        return [];
     const out = [];
     // New at the top — a climb INTO first place, not merely holding it.
     const firsts = rows.filter((s) => s.rank === 1 && n(s.rankDelta) > 0);

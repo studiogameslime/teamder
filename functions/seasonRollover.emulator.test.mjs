@@ -141,6 +141,27 @@ describe('the archive is taken before the wipe', () => {
     assert.equal(s.completedRounds, 16);
   });
 
+  test('a compact card is written beside the archive', async () => {
+    // The hall of fame shows a date, three numbers and nine names. Pulling the
+    // whole archive — every player row, every pair's ten counters, for every
+    // season — to render that is well over a megabyte for a five-season club.
+    const c = (await db.collection('seasonCards').doc(`${GID}__${SEASON}`).get()).data();
+    assert.ok(c, 'the card exists');
+    assert.equal(c.no, 1);
+    assert.equal(c.players, 2, 'only people who actually played');
+    assert.equal(c.totals.goals, 40);
+    // Winners already resolved to the names frozen at closing time, so the
+    // screen needs no second read and no /users lookup.
+    const scorer = c.winners.find((w) => w.key === 'topScorer');
+    assert.deepEqual(scorer.names, ['מתן']);
+    assert.equal(scorer.value, 31);
+    const duo = c.winners.find((w) => w.key === 'deadlyDuo');
+    assert.deepEqual(duo.names, ['מתן + דני'], 'the pair reads as two people');
+    // And it carries none of the bulk.
+    assert.equal(c.pairs, undefined);
+    assert.ok(!Array.isArray(c.players), 'a count, not the roster');
+  });
+
   test('guest pairs are kept OUT of the archive', async () => {
     // One document per season, and a club accumulates a new guest pair for
     // every stranger who ever turned out. Past 1MB the season could not be
@@ -458,6 +479,10 @@ describe('a season closed by mistake can be reopened', () => {
   test('and the archive is gone, so it cannot be reopened twice', async () => {
     const s = await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get();
     assert.equal(s.exists, false);
+    // The card goes with it — one without the other is a season that shows in
+    // the hall of fame and cannot be opened.
+    const c = await db.collection('seasonCards').doc(`${GID}__${SEASON}`).get();
+    assert.equal(c.exists, false);
     const again = await reopenSeason({ db, groupId: GID, seasonId: SEASON });
     assert.equal(again.reopened, false);
   });

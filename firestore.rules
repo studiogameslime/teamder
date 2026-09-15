@@ -2086,6 +2086,20 @@ service cloud.firestore {
       allow get: if isGroupMemberSafe(groupId);
       allow write: if false;
     }
+    // ── /seasonCards/{groupId__seasonId} — the list row for a season ─────
+    // The same facts as the archive beside it, at a hundredth of the size:
+    // written by the same close, from the same numbers, so the hall of fame
+    // does not pull every player row and every pair counter to print nine
+    // names. Club members only — a card names people.
+    //
+    // Two read statements for the same reason as everything else here: a list
+    // does not bind the path wildcard, so it is answered from the FIELD.
+    match /seasonCards/{doc} {
+      allow read: if isGroupMemberSafe(resource.data.get('groupId', ''));
+      allow get: if isGroupMemberSafe(resource.data.get('groupId', ''));
+      allow write: if false;
+    }
+
     // ── /seasonSummary/{groupId__seasonId} — a closed season, sealed ────
     // Written once by the rollover and never again, so the client has no
     // business writing here at all.

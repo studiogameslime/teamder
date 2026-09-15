@@ -392,6 +392,58 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     resumedAwards = (existing.get('awards') ?? null) as typeof awards | null;
   }
 
+  // ── 1a. A compact card for the list ─────────────────────────────────────
+  //
+  // The archive is the record and it is BIG: every player's row, every pair's
+  // ten counters, for every season. The hall of fame shows a date, three
+  // numbers and nine names — and was pulling the whole thing, for every season
+  // the club has ever played, to print them. A five-season, sixty-player club
+  // is well over a megabyte down a phone connection to render one screen.
+  //
+  // So the close also writes what that screen actually needs, with the winners
+  // already resolved to the names frozen in the archive. Same source, same
+  // moment, no second version of the truth: the card is derived from the
+  // archive it is written beside, and reopenSeason deletes both.
+  const cardWinners: Array<{ key: string; names: string[]; value: number }> = [];
+  for (const [key, award] of Object.entries(awards)) {
+    if (!award || !award.winners.length) continue;
+    cardWinners.push({
+      key,
+      names: award.winners.map((w) =>
+        w
+          .split('__')
+          .map((uid) => String(players[uid]?.displayName ?? '') || '—')
+          .join(' + '),
+      ),
+      value: award.value,
+    });
+  }
+  await db
+    .collection('seasonCards')
+    .doc(`${groupId}__${seasonId}`)
+    .set(
+      {
+        groupId,
+        seasonId,
+        no: args.seasonNo,
+        startsAt: args.startsAt,
+        endsAt: now,
+        completedRounds: args.completedRounds,
+        totals: {
+          rounds: totals.rounds ?? 0,
+          goals: totals.goals ?? 0,
+          assists: totals.assists ?? 0,
+        },
+        // Only people who actually played. A member who never turned up has a
+        // row of zeros and did not take part in the season.
+        players: Object.values(players).filter((p) => num(p.rounds) > 0).length,
+        ...(args.endedEarly ? { endedEarly: true } : {}),
+        ...(args.partialData ? { partialData: true } : {}),
+        winners: cardWinners,
+      },
+      { merge: true },
+    );
+
   // ── 1b. The titles onto their winners' profiles ─────────────────────────
   //
   // Written only AFTER the archive has landed, and outside its create() latch
@@ -641,7 +693,11 @@ export async function reopenSeason(args: {
   }
   if (ops > 0) await batch.commit();
 
-  // 4. Last, because while it exists this is repeatable.
+  // 4. The list card goes with its archive — one without the other is a
+  //    season that shows in the hall of fame and cannot be opened.
+  await db.collection('seasonCards').doc(`${groupId}__${seasonId}`).delete();
+
+  // 5. Last, because while it exists this is repeatable.
   await summaryRef.delete();
   return { reopened: true, players: restored, titles };
 }
