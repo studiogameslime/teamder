@@ -220,7 +220,10 @@ export function CommunityDetailsScreen() {
   const lastFinishedId = useMemo(
     () =>
       [...history]
-        .filter((h) => h.status === 'finished')
+        // "מהמחזור האחרון" must mean the last evening that actually happened.
+        // One the system closed with nothing on it would otherwise claim to be
+        // the last night, and name whoever was down to bring the ball to it.
+        .filter((h) => (h.playState ?? 'happened') === 'happened')
         .sort((a, b) => b.date - a.date)[0]?.id ?? null,
     [history],
   );

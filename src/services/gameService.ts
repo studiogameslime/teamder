@@ -66,7 +66,11 @@ import { isStaleAfterStart, LATE_REG_GRACE_MS } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
 import { isAttendedGame } from '@/utils/playedGames';
-import { eveningPlayState, type PlayableEvening } from '@/utils/eveningPlayed';
+import {
+  eveningPlayState,
+  didEveningHappen,
+  type PlayableEvening,
+} from '@/utils/eveningPlayed';
 import { tallyDelta, tallyWithout } from '@/utils/goalTally';
 import {
   buildEditNotice,
@@ -1928,7 +1932,11 @@ export const gameService = {
       return null; // a home card is never worth surfacing an error for
     }
     const played = mine
-      .filter((g) => g.status === 'finished')
+      // The evening itself, not the status. This card offers a round summary,
+      // and an unverified evening has none — the server never sealed one,
+      // because it never became an evening that happened. Asking the status
+      // here would point the card at a summary that does not exist.
+      .filter((g) => didEveningHappen(g as PlayableEvening))
       .filter((g) => {
         const ended = g.endedAt ?? g.startsAt;
         return ended <= now && now - ended <= WINDOW_MS;
