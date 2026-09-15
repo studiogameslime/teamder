@@ -1,0 +1,2091 @@
+rules_version = '2';
+
+// Production-hardened rules.
+//
+// Posture: deny by default. Every write path is constrained to the
+// fields it must touch, the auth identity that's allowed to touch
+// them, and the types/sizes those fields can hold. Reads are
+// constrained per-collection to the people who legitimately need
+// the data; sensitive fields (fcmTokens, full discipline log) are
+// not readable across users.
+//
+// Cross-cutting policies:
+//   • Self-only writes for /users (no client-driven cross-user bumps).
+//     Achievement / discipline mutations on someone else's doc must
+//     go through a Cloud Function (Admin SDK bypasses these rules).
+//   • Notification creation is whitelisted by `type`: only types a
+//     client is legitimately the source of are accepted; fan-out and
+//     system pushes (gameReminder, gameRsvpNudge, joinRequest, etc.)
+//     are server-only.
+//   • Free-text and array-size limits enforced at the rule layer so
+//     a malicious client can't DoS the UI / Firestore quotas.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ─────────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    // App Check enforcement: when Firebase App Check is enabled in the
+    // Console (Settings → App Check → enforcement) AND the client SDK
+    // is properly initialised with Play Integrity / App Attest /
+    // reCAPTCHA, every authenticated request carries an App Check
+    // token and `request.app` is non-null. Modified APKs / non-app
+    // clients that bypass App Check have `request.app == null`.
+    //
+    // We enforce this on the highest-risk WRITE paths only (notification
+    // creation, join-request creation) — adding it to reads would fail
+    // closed for users whose Play Integrity / App Attest is briefly
+    // misconfigured, which is too disruptive. Once Console enforcement
+    // is enabled and stable in production, expand this helper to more
+    // write paths.
+    function hasAppCheck() {
+      return request.app != null;
+    }
+    function affectedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+    // Firestore `.get(key, default)` returns the default ONLY when the key is
+    // ABSENT — a key PRESENT with value `null` returns null, which then blows
+    // up `.diff()` (and `in`/`hasAll`) and denies the whole write. Older
+    // game-create paths persisted `cancellations`/`joinedAt` as literal null,
+    // so self-cancel was silently permission-denied for every player in those
+    // games. Normalise a present-null map to {} here. (Same class as the
+    // guestsOpenAt:null incident.)
+    function safeMap(data, key) {
+      return data.get(key, {}) == null ? {} : data.get(key, {});
+    }
+    function groupDoc(gid) {
+      return get(/databases/$(database)/documents/groups/$(gid)).data;
+    }
+    function gameDoc(gid) {
+      return get(/databases/$(database)/documents/games/$(gid)).data;
+    }
+    // Game chat: a registered player, the organiser, or a community admin.
+    function isGamePlayer(gid) {
+      return isSignedIn() && (
+        request.auth.uid in gameDoc(gid).players ||
+        request.auth.uid == gameDoc(gid).createdBy ||
+        isGroupAdmin(gameDoc(gid).groupId)
+      );
+    }
+    // Mirrors the audience of /games' own `allow read` (public game, club
+    // member, participant, creator). Used by per-game subcollections whose
+    // documents carry a `gameId` but no `groupId`, so they can be bound to the
+    // same audience as the game itself instead of to every signed-in account.
+    // Ordered cheapest-first, with the group lookup LAST: a game with no
+    // groupId makes isGroupMember error, and CEL's `||` short-circuits, so the
+    // free checks must get their chance first.
+    function canReadGame(gid) {
+      return isSignedIn() && gid is string && gid.size() > 0 && (
+        gameDoc(gid).get('visibility', '') == 'public' ||
+        request.auth.uid == gameDoc(gid).get('createdBy', '') ||
+        request.auth.uid in gameDoc(gid).get('participantIds', []) ||
+        request.auth.uid in gameDoc(gid).get('players', []) ||
+        isGroupMember(gameDoc(gid).get('groupId', ''))
+      );
+    }
+    function isGroupAdmin(gid) {
+      return isSignedIn() && request.auth.uid in groupDoc(gid).adminIds;
+    }
+    // Non-throwing variant of isGroupMember. Plain isGroupMember() ERRORS on a
+    // blank/absent gid or a deleted group (get() returns null, then `.playerIds`
+    // raises) — and a raised error denies the whole request, even a branch that
+    // would otherwise have allowed it. Used where the group id may legitimately
+    // be missing from a document.
+    function isGroupMemberSafe(gid) {
+      return isSignedIn() && gid is string && gid.size() > 0 &&
+        exists(/databases/$(database)/documents/groups/$(gid)) &&
+        (request.auth.uid in groupDoc(gid).playerIds ||
+         request.auth.uid in groupDoc(gid).adminIds);
+    }
+    function isGroupMember(gid) {
+      return isSignedIn() && (
+        request.auth.uid in groupDoc(gid).playerIds ||
+        request.auth.uid in groupDoc(gid).adminIds
+      );
+    }
+    // Length / size guards. Catch DoS-shaped writes (huge names that
+    // break the UI, mega-arrays that bloat doc reads) at the perimeter.
+    function isShortString(s, max) {
+      return s is string && s.size() <= max;
+    }
+    // Field MAY be missing OR null OR a short-enough string. The
+    // user converter on the client writes `email: u.email ?? null`
+    // (and similar) for optional fields, so legacy docs have null
+    // values that have to pass this check on every subsequent
+    // update — otherwise an unrelated field write (e.g. avatarId)
+    // gets blocked by an unchanged stale null we never touched.
+    function isOptionalShortString(data, key, max) {
+      return !(key in data) || data[key] == null ||
+        isShortString(data[key], max);
+    }
+
+    // The brand name is reserved for the official `teamder` sender, which is
+    // not an account and has no /users doc. Nobody can SEND as it (chat writes
+    // require senderId == request.auth.uid), but anyone could name themselves
+    // "Teamder" and upload our logo — this is what stops that.
+    //
+    // Deliberately a SUBSTRING match: "Teamder Support" and "teamder.app"
+    // impersonate just as well as the bare word, and no real person needs any
+    // of these in a display name. Spaces, dots, hyphens and underscores are
+    // stripped first so "T e a m d e r" and "team-der" fall to the same test.
+    //
+    // ⚠️ MIRRORED in src/utils/officialAccount.ts (RESERVED_NAME_RE). The
+    // client copy exists to show a helpful message; THIS is the enforcement.
+    // An EMAIL-shaped name is exempt. Our own signup seeds `name` from the
+    // address when there's nothing better, which is how all 27 App Store review
+    // accounts ended up named "appstore.review@teamder.app" — without this
+    // exemption the rule would deny every /users write for them, including the
+    // FCM-token refresh, and an Apple reviewer would hit a broken app. An
+    // address on screen reads as an address, not as our brand, so it is not the
+    // impersonation vector this guards.
+    function nameNotReserved(data) {
+      return !('name' in data) || data.name == null ||
+        data.name.matches('.*@.*') ||
+        !(data.name.lower().replace('[\\s._-]', '')
+          .matches('.*(teamder|טימדר|טיאמדר|תימדר).*'));
+    }
+
+    // Update variant: only police a name that is actually CHANGING. The point
+    // is to stop someone TAKING the brand name, not to permanently brick an
+    // account that already carries it — a blanket check on update would deny
+    // every unrelated write (availability, tokens, profile) for such an
+    // account forever, since `request.resource.data` on an update is the whole
+    // merged document, not the patch.
+    function nameNotNewlyReserved() {
+      return !('name' in request.resource.data) ||
+        request.resource.data.name == resource.data.get('name', null) ||
+        nameNotReserved(request.resource.data);
+    }
+
+    // Whitelist of notification `type` values a client is legitimately
+    // the source of. System / fan-out pushes are dispatched via Cloud
+    // Function with Admin SDK, which bypasses these rules.
+    function clientNotifTypeAllowed(t) {
+      return t in [
+        // 'inviteToGame' is intentionally NOT in this list. The
+        // invite path moved to the `sendGameInvite` callable Cloud
+        // Function — the client used to write the notif doc directly,
+        // which let it spoof `inviterName` to phish recipients. The
+        // callable derives sender + game from canonical state.
+        'gameCanceledOrUpdated',// admin / organizer notifies registrants
+        'newGameInCommunity',   // admin notifies subscribers on create
+        'approved',             // admin approves join (group or game)
+        'rejected',             // admin rejects join (group or game)
+        'groupDeleted',         // admin deletes community
+        'spotOpened',           // legacy auto-promote (kept for rollout)
+        'spotOffered',          // waitlist promotion offer
+        'playerCancelled'       // user cancels — notifies game admin
+      ];
+    }
+
+    // True once a REAL inviter has been recorded. The client's user
+    // converter writes `invitedBy: null` on every fresh signup doc, so a
+    // mere `'invitedBy' in data` is NOT enough — a null placeholder must
+    // still count as "no inviter yet", otherwise the first-set-only guards
+    // below would reject the one legitimate attribution write and silently
+    // break all referral tracking.
+    function inviterLocked(data) {
+      return 'invitedBy' in data && data.invitedBy != null;
+    }
+
+    // ── /users/{uid} ────────────────────────────────────────────────────
+    // Reads: signed-in users can read profile basics. Sensitive fields
+    // (fcmTokens, notificationPrefs, newGameSubscriptions) ARE in the
+    // doc but should not be casually exposed — clients should select
+    // only the fields they need. Field-level read rules aren't a
+    // first-class Firestore primitive, so we mitigate by:
+    //   • making writes to those fields self-only (you can't doctor
+    //     someone else's tokens / prefs);
+    //   • having the CF (Admin SDK) be the only consumer of fcmTokens
+    //     for outbound delivery.
+    // A future hardening pass should move fcmTokens to a /private/
+    // subcollection that's read-restricted to self.
+    //
+    // Writes: SELF ONLY. Cross-user bumps (admin-issued discipline
+    // cards, achievement counters when an admin approves another
+    // user's join) must go through a Cloud Function — the previous
+    // permissive `affectedKeys().hasOnly(['discipline','achievements','updatedAt'])`
+    // open clause let any signed-in user inflate / sabotage anyone
+    // else's profile.
+    match /users/{uid} {
+      allow read: if isSignedIn();
+
+      allow create: if isSelf(uid) &&
+        // Brand-new doc: no inviter known yet, OR invitedBy is set to
+        // someone OTHER than self (the URL/install-referrer flow on
+        // first signup).
+        (
+          !('invitedBy' in request.resource.data) ||
+          request.resource.data.invitedBy != uid
+        ) &&
+        // Field validation on the initial write so a malicious client
+        // can't seed the doc with garbage that we then have to clean up.
+        isOptionalShortString(request.resource.data, 'name', 60) &&
+        nameNotReserved(request.resource.data) &&
+        isOptionalShortString(request.resource.data, 'email', 200) &&
+        isOptionalShortString(request.resource.data, 'photoUrl', 2048) &&
+        isOptionalShortString(request.resource.data, 'avatarId', 80);
+
+      allow update: if isSelf(uid) &&
+        nameNotNewlyReserved() &&
+        // Attribution is first-set-only: once a real inviter is locked in
+        // (a non-null invitedBy), every subsequent write must keep it
+        // identical. A null placeholder does NOT lock — it's "no inviter
+        // yet", so the first real attribution can still land.
+        (
+          !inviterLocked(resource.data) ||
+          (
+            'invitedBy' in request.resource.data &&
+            request.resource.data.invitedBy == resource.data.invitedBy
+          )
+        ) &&
+        // First-time attribution write: foreign uid + accompanying
+        // type+target fields. Self-attribution is rejected. The null
+        // placeholder (writing/keeping invitedBy == null) is always fine
+        // and skips this validation.
+        //
+        // The `!('invitedBy' in …)` guard is load-bearing: legacy user
+        // docs created before the converter seeded an `invitedBy: null`
+        // placeholder have NO invitedBy key at all. Reading the missing
+        // field (`request.resource.data.invitedBy == null`) errors out
+        // and denies the write — which silently broke EVERY /users
+        // update (availability, profile edits, FCM-token refresh) for
+        // those accounts. An absent field means "no attribution set",
+        // so it's safe to skip the rest of this guard.
+        (
+          inviterLocked(resource.data) ||
+          !('invitedBy' in request.resource.data) ||
+          request.resource.data.invitedBy == null ||
+          (
+            request.resource.data.invitedBy != uid &&
+            'invitedByType' in request.resource.data &&
+            'invitedByTargetId' in request.resource.data
+          )
+        ) &&
+        // Field-content guards. We cap free-text fields and the
+        // fcmTokens array so a stuffed write can't blow up doc reads
+        // for everyone querying the user. The numeric `stats` block
+        // is now derived server-side; client writes to it are
+        // blocked entirely.
+        isOptionalShortString(request.resource.data, 'name', 60) &&
+        isOptionalShortString(request.resource.data, 'email', 200) &&
+        isOptionalShortString(request.resource.data, 'photoUrl', 2048) &&
+        isOptionalShortString(request.resource.data, 'avatarId', 80) &&
+        (
+          !('fcmTokens' in request.resource.data) ||
+          (
+            request.resource.data.fcmTokens is list &&
+            request.resource.data.fcmTokens.size() <= 20
+          )
+        ) &&
+        (
+          !('newGameSubscriptions' in request.resource.data) ||
+          (
+            request.resource.data.newGameSubscriptions is list &&
+            request.resource.data.newGameSubscriptions.size() <= 200
+          )
+        ) &&
+        // `stats` is server-derived. A client that sets it would be
+        // inflating their public attendance/cancellation %. Block.
+        !affectedKeys().hasAny(['stats']);
+
+      allow delete: if false;
+
+      // ── /users/{uid}/private/{doc} ────────────────────────────────────
+      // Self-only subcollection for sensitive per-user data that should
+      // never be visible to other authenticated users. Currently:
+      //   • /users/{uid}/private/push  →  fcmTokens, notificationPrefs
+      //
+      // The parent /users/{uid} doc is readable by any signed-in user
+      // (so the app can render names/avatars), which historically
+      // exposed `fcmTokens` to anyone with auth. Moving those fields
+      // here closes that hole. Cloud Functions read this path via
+      // Admin SDK (rules bypass).
+      match /private/{doc} {
+        allow read, write: if isSelf(uid);
+      }
+    }
+
+    // ── /groups/{gid} — private community state ─────────────────────────
+    match /groups/{gid} {
+      allow read: if isSignedIn() && (
+        request.auth.uid in resource.data.playerIds ||
+        request.auth.uid in resource.data.adminIds ||
+        request.auth.uid in resource.data.pendingPlayerIds
+      );
+
+      allow create: if isSignedIn() &&
+        request.resource.data.adminIds == [request.auth.uid] &&
+        request.resource.data.playerIds.hasOnly([request.auth.uid]) &&
+        request.resource.data.pendingPlayerIds.size() == 0 &&
+        // Sanity caps on initial fields.
+        isShortString(request.resource.data.name, 80) &&
+        isOptionalShortString(request.resource.data, 'description', 500) &&
+        isOptionalShortString(request.resource.data, 'city', 80) &&
+        isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300);
+
+      allow update: if (
+        // Admin branch — can mutate freely BUT a few fields are
+        // immutable across the whole admin team:
+        //   • creatorId (ownership transfer would let an admin
+        //     dispossess the founder)
+        //   • adminIds (only the creator may rotate it; see clause)
+        //   • playerIds size growth beyond maxMembers
+        // Other fields the admin owns end-to-end.
+        isGroupAdmin(gid) &&
+        // creatorId is now MANDATORY on every existing group doc.
+        // Legacy groups that pre-date this field are backfilled by
+        // the `backfillGroupCreatorIdsOnce` Cloud Function (sets
+        // creatorId to the first adminId). The previous rule
+        // skipped the immutability check when creatorId was missing
+        // — a subtle privilege-escalation: a co-admin on a legacy
+        // group could pass the "missing creatorId" branch and then
+        // rotate adminIds freely, dispossessing the original creator.
+        // The hardened rule below treats absent creatorId as
+        // unauthorised; the migration must run before any future
+        // admin updates land.
+        'creatorId' in resource.data &&
+        (
+          'creatorId' in request.resource.data &&
+          request.resource.data.creatorId == resource.data.creatorId
+        ) &&
+        (
+          !affectedKeys().hasAny(['adminIds']) ||
+          request.auth.uid == resource.data.creatorId
+        ) &&
+        (
+          !affectedKeys().hasAny(['adminIds']) ||
+          resource.data.creatorId in request.resource.data.adminIds
+        ) &&
+        // Free-text caps when the admin edits.
+        isOptionalShortString(request.resource.data, 'name', 80) &&
+        isOptionalShortString(request.resource.data, 'description', 500) &&
+        isOptionalShortString(request.resource.data, 'city', 80) &&
+        isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300) &&
+        // Array caps so an admin (or a compromised admin account)
+        // can't blow the doc up to MB-size.
+        request.resource.data.playerIds is list &&
+        request.resource.data.playerIds.size() <= 500 &&
+        request.resource.data.adminIds is list &&
+        request.resource.data.adminIds.size() <= 20 &&
+        (
+          !('pendingPlayerIds' in request.resource.data) ||
+          (
+            request.resource.data.pendingPlayerIds is list &&
+            request.resource.data.pendingPlayerIds.size() <= 200
+          )
+        ) &&
+        // Equipment-holder arrays (end-evening handoff) — admin-written, capped.
+        (
+          !('ballHolderIds' in request.resource.data) ||
+          (
+            request.resource.data.ballHolderIds is list &&
+            request.resource.data.ballHolderIds.size() <= 50
+          )
+        ) &&
+        (
+          !('jerseysHolderIds' in request.resource.data) ||
+          (
+            request.resource.data.jerseysHolderIds is list &&
+            request.resource.data.jerseysHolderIds.size() <= 50
+          )
+        )
+      ) || (
+        // Self-add to pendingPlayerIds (community join request — closed group).
+        isSignedIn() &&
+        !(request.auth.uid in resource.data.playerIds) &&
+        !(request.auth.uid in resource.data.adminIds) &&
+        affectedKeys().hasOnly(['pendingPlayerIds', 'updatedAt']) &&
+        // A club that predates the field has no `pendingPlayerIds` at all, and
+        // reading it unguarded ERRORS — which denies the whole clause, so that
+        // club could never receive a join request and the asker just saw
+        // "Missing or insufficient permissions". Default it to empty.
+        request.resource.data.pendingPlayerIds.hasAll(
+          resource.data.get('pendingPlayerIds', [])
+        ) &&
+        // At most ONE entry may appear, and with the hasAll above that entry
+        // can only be the caller: nobody else may be dropped or swapped in.
+        // Without this pairing a "+1 in size" write could remove an existing
+        // entry and inject a stranger (net +1 still passes) — a hijack.
+        //
+        // `<=` and not `==` on purpose. arrayUnion is a no-op when the caller
+        // is ALREADY pending, so an `== old + 1` size check turned the second
+        // tap on "בקש להצטרף" — or any retry after a network blip — into a
+        // hard permission error, on a request that had in fact gone through.
+        // Equal size here means new == old (hasAll + no growth), i.e. the
+        // write is idempotent, which is exactly what a retry should be.
+        request.resource.data.pendingPlayerIds.size() <=
+          resource.data.get('pendingPlayerIds', []).size() + 1 &&
+        request.auth.uid in request.resource.data.pendingPlayerIds &&
+        // Capacity gate.
+        (
+          !('maxMembers' in resource.data) ||
+          resource.data.maxMembers <= 0 ||
+          resource.data.playerIds.size() < resource.data.maxMembers
+        )
+      ) || (
+        // Self-cancel a pending join request: withdraw yourself from
+        // pendingPlayerIds. Mirror of the self-add clause above so a
+        // user can take back a request they sent to a closed community
+        // (the groupJoinRequests audit doc is immutable; the admin's
+        // approval queue reads pendingPlayerIds, so this removes them
+        // from it).
+        isSignedIn() &&
+        request.auth.uid in resource.data.pendingPlayerIds &&
+        !(request.auth.uid in request.resource.data.pendingPlayerIds) &&
+        affectedKeys().hasOnly(['pendingPlayerIds', 'updatedAt']) &&
+        request.resource.data.pendingPlayerIds.size() ==
+          resource.data.pendingPlayerIds.size() - 1 &&
+        // Anti-hijack (robust form): every NON-caller entry from the old list
+        // must survive in the new one. With size==old−1 this pins the write to
+        // "remove exactly the caller" — blocking both stranger-injection AND the
+        // duplicate-padding eviction ([a,v,b]→[b,b]) that the set-membership
+        // old.hasAll(new) form missed (audit #6 residual).
+        request.resource.data.pendingPlayerIds.hasAll(
+          resource.data.pendingPlayerIds.removeAll([request.auth.uid])
+        )
+      ) || (
+        // Self-add to playerIds (auto-join — open group).
+        isSignedIn() &&
+        resource.data.isOpen == true &&
+        !(request.auth.uid in resource.data.playerIds) &&
+        !(request.auth.uid in resource.data.adminIds) &&
+        affectedKeys().hasOnly(['playerIds', 'updatedAt']) &&
+        request.resource.data.playerIds.size() ==
+          resource.data.playerIds.size() + 1 &&
+        request.auth.uid in request.resource.data.playerIds &&
+        // Nobody else may be dropped or swapped in — see pending branch. This
+        // closes the one-write "kick a member + inject a stranger" hijack.
+        request.resource.data.playerIds.hasAll(resource.data.playerIds) &&
+        (
+          !('maxMembers' in resource.data) ||
+          resource.data.maxMembers <= 0 ||
+          resource.data.playerIds.size() < resource.data.maxMembers
+        )
+      ) || (
+        // Self-leave (player only): remove yourself from playerIds.
+        isSignedIn() &&
+        request.auth.uid in resource.data.playerIds &&
+        !(request.auth.uid in request.resource.data.playerIds) &&
+        affectedKeys().hasOnly(['playerIds', 'updatedAt']) &&
+        request.resource.data.playerIds.size() ==
+          resource.data.playerIds.size() - 1 &&
+        // Anti-hijack (robust form): every NON-caller player from the old list
+        // must survive in the new one. With size==old−1 this pins the write to
+        // "remove exactly the caller" — blocking both stranger-injection AND the
+        // duplicate-padding eviction ([a,v,b]→[b,b]) that the set-membership
+        // old.hasAll(new) form missed (audit #1 residual).
+        request.resource.data.playerIds.hasAll(
+          resource.data.playerIds.removeAll([request.auth.uid])
+        )
+      ) || (
+        // Self-leave (admin who is also a player): a co-admin who
+        // wants to walk away. Removes self from BOTH adminIds and
+        // playerIds in one write. The creator is blocked from this
+        // path — leaving the creator-less would orphan ownership;
+        // the LAST_ADMIN guard in groupService blocks the same on
+        // the client. Note: this does NOT permit removing OTHER
+        // users from adminIds (only the creator can do that via
+        // the admin branch above).
+        isSignedIn() &&
+        request.auth.uid in resource.data.adminIds &&
+        !(request.auth.uid in request.resource.data.adminIds) &&
+        (
+          !('creatorId' in resource.data) ||
+          request.auth.uid != resource.data.creatorId
+        ) &&
+        // At least one admin must remain. Rules re-evaluate against the
+        // serialized committed doc, so if two of the last admins leave
+        // concurrently the second now sees size()==1 and is DENIED — the
+        // group can never be left with zero admins (orphaned).
+        resource.data.adminIds.size() > 1 &&
+        affectedKeys().hasOnly(['adminIds', 'playerIds', 'updatedAt']) &&
+        // adminIds shrank by exactly 1, and the missing entry is the
+        // caller — i.e. nobody else got booted in the same write.
+        request.resource.data.adminIds.size() ==
+          resource.data.adminIds.size() - 1 &&
+        request.resource.data.adminIds.hasAll(
+          resource.data.adminIds.removeAll([request.auth.uid])
+        ) &&
+        // playerIds may shrink by 0 or 1 (and only the caller).
+        request.resource.data.playerIds.size() >=
+          resource.data.playerIds.size() - 1 &&
+        request.resource.data.playerIds.size() <=
+          resource.data.playerIds.size() &&
+        request.resource.data.playerIds.hasAll(
+          resource.data.playerIds.removeAll([request.auth.uid])
+        )
+      ) || (
+        // Creator self-leave WITH ownership handoff. The founder is blocked
+        // from the plain co-admin leave above; without a handoff path they
+        // could never leave, and leaving without one would orphan ownership
+        // (delete + admin-rotation are gated on creatorId). Here the creator
+        // walks away ONLY by transferring creatorId to a remaining admin in
+        // the SAME write.
+        isSignedIn() &&
+        'creatorId' in resource.data &&
+        request.auth.uid == resource.data.creatorId &&
+        request.auth.uid in resource.data.adminIds &&
+        !(request.auth.uid in request.resource.data.adminIds) &&
+        affectedKeys().hasOnly(
+          ['adminIds', 'playerIds', 'creatorId', 'updatedAt']
+        ) &&
+        // New owner is a remaining admin, not the departing creator.
+        request.resource.data.creatorId != request.auth.uid &&
+        request.resource.data.creatorId in request.resource.data.adminIds &&
+        // adminIds shrank by exactly the caller — nobody else booted.
+        request.resource.data.adminIds.size() ==
+          resource.data.adminIds.size() - 1 &&
+        request.resource.data.adminIds.hasAll(
+          resource.data.adminIds.removeAll([request.auth.uid])
+        ) &&
+        request.resource.data.playerIds.size() >=
+          resource.data.playerIds.size() - 1 &&
+        request.resource.data.playerIds.size() <=
+          resource.data.playerIds.size() &&
+        request.resource.data.playerIds.hasAll(
+          resource.data.playerIds.removeAll([request.auth.uid])
+        ) &&
+        // ...and NO new uid enters playerIds — the size band [old−1,old] alone
+        // let the departing creator swap a stranger in for themselves (remove
+        // self + add X = size unchanged). new⊆old blocks planting a non-member.
+        resource.data.playerIds.hasAll(request.resource.data.playerIds)
+      );
+
+      // Delete the whole community: CREATOR ONLY. Promoted admins can
+      // manage the group (approve members, run games) but must not be
+      // able to destroy it. Falls back to the first admin for legacy
+      // docs that predate the mandatory creatorId.
+      allow delete: if isSignedIn() && (
+        (
+          'creatorId' in resource.data &&
+          request.auth.uid == resource.data.creatorId
+        ) ||
+        (
+          !('creatorId' in resource.data) &&
+          request.auth.uid == resource.data.adminIds[0]
+        )
+      );
+    }
+
+    // ── /groupsPublic/{gid} — public discovery projection ───────────────
+    // CRITICAL: a previous hardening pass required `exists(/groups/{gid})`
+    // on create. That fails inside the createGroup batch — the canonical
+    // /groups/{gid} doc is being created in the same batch and hasn't
+    // committed when the rule runs, so exists() returns false and the
+    // entire create gets rejected with "Missing or insufficient
+    // permissions".
+    //
+    // Fix: validate the public doc by its OWN shape, and rely on the
+    // companion /groups/{gid} create rule (which DOES require the caller
+    // to be admin + player) as the authoritative identity check.
+    // Firestore batches are atomic — if the canonical write fails, this
+    // public-mirror write is rolled back too. So a malicious client
+    // can't end-run the canonical rule by writing only the public doc:
+    // they'd produce an orphan with memberCount 0/1, which the discovery
+    // feed surfaces as an empty card and `getPublic` returns harmlessly.
+    match /groupsPublic/{gid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        // memberCount must reflect a freshly-created group: 0 or 1
+        // (just the creator). Anything higher would be a fabricated
+        // "popular community" entry in discovery.
+        request.resource.data.memberCount is int &&
+        request.resource.data.memberCount >= 0 &&
+        request.resource.data.memberCount <= 1 &&
+        // Sanity caps mirror the canonical /groups create rule so the
+        // public projection can't carry oversized free-text the
+        // canonical rule rejects.
+        isShortString(request.resource.data.name, 80) &&
+        isOptionalShortString(request.resource.data, 'description', 500) &&
+        isOptionalShortString(request.resource.data, 'city', 80) &&
+        isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300);
+      allow update: if isSignedIn() && isGroupAdmin(gid) &&
+        // Bound the count: must be a non-negative int that doesn't
+        // exceed the canonical playerIds size. The CF resync trigger
+        // (functions/src/onGroupPendingChanged) keeps these in lock-
+        // step; this guard catches an admin / compromised admin
+        // trying to advertise a fake "100 members" community.
+        (
+          !('memberCount' in request.resource.data) ||
+          (
+            request.resource.data.memberCount is int &&
+            request.resource.data.memberCount >= 0 &&
+            request.resource.data.memberCount <=
+              groupDoc(gid).playerIds.size()
+          )
+        ) &&
+        // Free-text caps mirror the canonical group rule.
+        isOptionalShortString(request.resource.data, 'name', 80) &&
+        isOptionalShortString(request.resource.data, 'description', 500) &&
+        isOptionalShortString(request.resource.data, 'city', 80) &&
+        isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300) &&
+        // Activity counters are SERVER-owned (the daily clubActivity sweep).
+        // Without this a club admin could write gamesLast30: 99 and wear a
+        // "פעיל מאוד" badge on a club that hasn't played since spring —
+        // the badge is a recommendation signal, so faking it is worth money
+        // to them and worthless to everyone else. -1 is a safe sentinel:
+        // the server only ever writes non-negative ints, so an absent field
+        // can't collide with a real value.
+        request.resource.data.get('gamesLast30', -1) ==
+          resource.data.get('gamesLast30', -1) &&
+        request.resource.data.get('gamesLast60', -1) ==
+          resource.data.get('gamesLast60', -1);
+      allow delete: if isSignedIn() && (
+        isGroupAdmin(gid) ||
+        !exists(/databases/$(database)/documents/groups/$(gid))
+      );
+    }
+
+    // ── /groupJoinRequests/{rid} — admin-side audit trail ──────────────
+    match /groupJoinRequests/{rid} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.userId ||
+        isGroupAdmin(resource.data.groupId)
+      );
+      // App Check on this rule was disabled because the JS SDK side
+      // of App Check (CustomProvider bridge in src/firebase/appCheck.ts)
+      // wasn't reliably issuing tokens to Firestore — legitimate
+      // dev / emulator clients hit "Missing or insufficient
+      // permissions" even after registering debug tokens. Re-enable
+      // (`hasAppCheck() &&`) once the debug-token flow is confirmed
+      // end-to-end on the dev devices and Console enforcement is on.
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.groupId is string &&
+        // Sanity cap on optional message — prevents spam-as-essay.
+        isOptionalShortString(request.resource.data, 'message', 500);
+      allow update: if isGroupAdmin(resource.data.groupId) &&
+        request.resource.data.status in ['approved', 'rejected'];
+      allow delete: if false;
+    }
+
+    // ── /friendRequests/{rid} — mutual friendship requests ─────────────
+    // Doc id is `${fromUserId}__${toUserId}`. Only the two parties can
+    // read it. The SENDER creates a pending request and may delete
+    // (withdraw) it; the RECIPIENT may decline it. ACCEPTING is NOT
+    // permitted from a client — it mutates both users' `friends` arrays
+    // and is done by the `acceptFriendRequest` callable via the Admin
+    // SDK (which bypasses these rules). That keeps a client from
+    // fabricating a friendship by flipping its own request to accepted.
+    match /friendRequests/{rid} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.fromUserId ||
+        request.auth.uid == resource.data.toUserId
+      );
+      allow create: if isSignedIn() &&
+        request.resource.data.fromUserId == request.auth.uid &&
+        request.resource.data.toUserId is string &&
+        request.resource.data.toUserId != request.auth.uid &&
+        request.resource.data.status == 'pending';
+      // Recipient declines: status → 'declined', parties unchanged.
+      // OR the original SENDER re-sends — resetting a withdrawn/declined
+      // request back to 'pending'. The app uses setDoc(), which is an
+      // UPDATE when a stale doc already exists; without this branch a
+      // legitimate re-send fails with permission-denied. Parties are
+      // pinned so neither side can rewrite the other party.
+      allow update: if isSignedIn() &&
+        request.resource.data.fromUserId == resource.data.fromUserId &&
+        request.resource.data.toUserId == resource.data.toUserId &&
+        (
+          (request.auth.uid == resource.data.toUserId &&
+            request.resource.data.status == 'declined') ||
+          // Sender may (re)set to pending — BUT a declined request is
+          // terminal: once the recipient declined, the sender can't flip
+          // it back to pending and spam again. They'd have to be re-invited
+          // by the other side (a fresh request in the opposite direction).
+          (request.auth.uid == resource.data.fromUserId &&
+            request.resource.data.status == 'pending' &&
+            resource.data.status != 'declined')
+        );
+      // Either party may remove the doc (sender withdraws / recipient
+      // clears a declined one).
+      allow delete: if isSignedIn() && (
+        request.auth.uid == resource.data.fromUserId ||
+        request.auth.uid == resource.data.toUserId
+      );
+    }
+
+    // ── /games/{id} ─────────────────────────────────────────────────────
+    // Weekly fixture SETTINGS, independent of any single match. Members read
+    // (the club surfaces show the fixture); only club admins write, same
+    // authority that creates the matches themselves. The server (Admin SDK)
+    // bypasses rules to advance `lastOccurrenceAt` each week.
+    match /gameSeries/{id} {
+      allow read: if isSignedIn() && isGroupMember(resource.data.groupId);
+      allow create: if isGroupAdmin(request.resource.data.groupId);
+      // groupId is the authority anchor — pinning it prevents moving a series
+      // into a club you don't administer.
+      allow update: if isGroupAdmin(resource.data.groupId)
+        && request.resource.data.groupId == resource.data.groupId;
+      allow delete: if isGroupAdmin(resource.data.groupId);
+    }
+
+    match /games/{id} {
+      allow read: if isSignedIn() && (
+        resource.data.visibility == 'public' ||
+        isGroupMember(resource.data.groupId) ||
+        request.auth.uid in resource.data.participantIds ||
+        // Creator can always read their own game — closes the
+        // `where('createdBy', '==', uid)` query path used by
+        // getMyGames so an admin who created a game without
+        // registering still sees it in "המשחקים שלי".
+        request.auth.uid == resource.data.createdBy ||
+        // An INVITED player can read (and then join) a community-only
+        // game even if they're not a member — `sendGameInvite` adds them
+        // to `invitedUserIds`. Without this an invitee tapping the push
+        // hit the "members only" wall (user report).
+        request.auth.uid in resource.data.get('invitedUserIds', []) ||
+        // A FILLER CANDIDATE can read a community game that opted into
+        // outside fillers (`acceptsFillers`) — the organiser explicitly
+        // chose to advertise it to nearby non-members, who get a
+        // `fillerOpportunity` push. Without this, tapping the push body
+        // dead-ended on the "members only" wall (user report). They still
+        // can't JOIN directly — they express interest and the admin
+        // approves (the fillerInterests rule gates that). Private games
+        // stay hidden.
+        (
+          resource.data.get('acceptsFillers', false) == true &&
+          resource.data.visibility != 'private'
+        )
+      );
+
+      allow create: if isSignedIn() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        isGroupMember(request.resource.data.groupId) &&
+        (request.resource.data.status == 'open' ||
+         request.resource.data.status == 'scheduled') &&
+        // Sanity caps on initial-write text fields.
+        isShortString(request.resource.data.title, 120) &&
+        isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300) &&
+        isOptionalShortString(request.resource.data, 'notes', 1000) &&
+        // ruleTags: optional list of short rule chips set by the
+        // organiser. Cap the array at 12 entries; per-string cap is
+        // enforced in the service layer (each ≤30 chars).
+        (
+          !('ruleTags' in request.resource.data) ||
+          (
+            request.resource.data.ruleTags is list &&
+            request.resource.data.ruleTags.size() <= 12
+          )
+        ) &&
+        // maxPlayers must be a positive int. The ceiling is the largest shape
+        // the create form can produce — 11 per team × 7 teams — plus room for
+        // an organiser who raises it by hand. It was 50, which the picker could
+        // not exceed back when it offered at most 7×5=35; once it opened up to
+        // 3-11 per side a big game would have been rejected here as
+        // permission-denied, with nothing in the app able to explain why.
+        request.resource.data.maxPlayers is int &&
+        request.resource.data.maxPlayers > 0 &&
+        request.resource.data.maxPlayers <= 100;
+
+      allow update: if isSignedIn() && (
+        // ── Publish a stored split, even after the final whistle ──────
+        // FIRST on purpose. `allow update` is one long OR chain, and Firestore
+        // stops evaluating a rule after 1000 expressions — on a real game
+        // document (82 fields) the branches below burn the whole budget and the
+        // request is denied before this one is ever reached. That is what
+        // actually failed in production, not the 'finished' guard further down:
+        // the emulator reproduces it against the real document with
+        // "maximum of 1000 expressions to evaluate has been reached". Cheap and
+        // narrow, so leading with it costs the other branches ~10 expressions
+        // and short-circuits this one immediately.
+        //
+        // A split left as a draft is invisible to the players FOREVER, and the
+        // organizer branch below stops dead at 'finished' — so an admin who
+        // forgot to publish before kickoff could never show the teams. Reported
+        // from production: an admin tapped "פרסם כוחות" four minutes after
+        // ending the evening, got permission-denied, and that night's teams
+        // stayed hidden for good.
+        //
+        // The narrowest branch in this file: it may only flip the flag to TRUE,
+        // and a map diff pins every other key of the split — so it cannot
+        // rewrite who played with whom after the fact, which the stats and the
+        // next split's variety model both read back.
+        (
+          (
+            request.auth.uid == resource.data.createdBy ||
+            isGroupAdmin(resource.data.groupId)
+          ) &&
+          affectedKeys().hasOnly(['draftTeams', 'updatedAt']) &&
+          'draftTeams' in resource.data &&
+          resource.data.draftTeams != null &&
+          request.resource.data.draftTeams.published == true &&
+          request.resource.data.draftTeams
+            .diff(resource.data.draftTeams)
+            .affectedKeys().hasOnly(['published'])
+        ) ||
+        // ── Self join/cancel branch ───────────────────────────────
+        // Strict per-array delta so a self-joining client can't sneak
+        // unrelated UIDs into waitlist/pending while satisfying the
+        // participantIds invariant.
+        (
+          // Self join/cancel is allowed while 'open'. On a 'locked' game only
+          // WITHDRAWAL is allowed — a registered/pending player may still pull
+          // out until the match is actually live (matches canCancelRegistration)
+          // — but NOT a new self-join. The status itself must not change.
+          (resource.data.status == 'open' || resource.data.status == 'locked') &&
+          request.resource.data.status == resource.data.status &&
+          (
+            resource.data.status == 'open' ||
+            (
+              // locked → the user must not be present in ANY participant array
+              // afterwards (i.e. this is a pure withdrawal, never a join).
+              !(request.auth.uid in request.resource.data.players) &&
+              !(request.auth.uid in request.resource.data.waitlist) &&
+              !(request.auth.uid in request.resource.data.pending)
+            )
+          ) &&
+          // A user the organizer rejected can't re-join via a direct write
+          // (the client blocks it too). `rejectedPlayerIds` isn't in this
+          // branch's affectedKeys whitelist, so they also can't clear it.
+          !(request.auth.uid in resource.data.get('rejectedPlayerIds', [])) &&
+          // No `startsAt` gate here: a registered player — or a PENDING,
+          // not-yet-approved requester — may withdraw any time UNTIL the match
+          // is actually live. The liveMatch.phase guard below is the real
+          // lock. Gating on the nominal start time wrongly denied withdrawals
+          // from games that started late or sit in 'organizing' past their
+          // start (caused cancelGame permission-denied — fixed 2026-06-21).
+          (
+            !('liveMatch' in resource.data) ||
+            resource.data.liveMatch == null ||
+            !('phase' in resource.data.liveMatch) ||
+            (
+              resource.data.liveMatch.phase != 'live' &&
+              resource.data.liveMatch.phase != 'roundRunning'
+            )
+          ) &&
+          affectedKeys().hasOnly([
+            'players', 'waitlist', 'pending', 'participantIds',
+            'cancellations', 'pendingPromotion', 'updatedAt',
+            // map uid→ms of when each player joined (powers accurate
+            // "joined X ago" in the admin panel; client-written, best-effort).
+            'joinedAt'
+          ]) &&
+          // pendingPromotion is SERVER-managed. A client may only CLEAR its own
+          // offer (null) or leave it unchanged — never SET it. Otherwise a
+          // client could forge pendingPromotion.uid=self and then self-add to
+          // players, bypassing the reconciler, red-card block and capacity.
+          (
+            request.resource.data.get('pendingPromotion', null) == null ||
+            request.resource.data.get('pendingPromotion', null) ==
+              resource.data.get('pendingPromotion', null)
+          ) &&
+          // cancellations / joinedAt are uid-keyed maps; a self-write may only
+          // touch the CALLER'S OWN key (was ungated → a griefer could inject
+          // cancellations[victim] to suppress the victim's reminder, or forge
+          // another player's joinedAt).
+          safeMap(request.resource.data, 'cancellations')
+            .diff(safeMap(resource.data, 'cancellations'))
+            .affectedKeys().hasOnly([request.auth.uid]) &&
+          safeMap(request.resource.data, 'joinedAt')
+            .diff(safeMap(resource.data, 'joinedAt'))
+            .affectedKeys().hasOnly([request.auth.uid]) &&
+          // ── Per-array delta: each may change by at most ±1, and
+          //    if it grew, the auth user is the new entry; if it
+          //    shrank, the auth user is the missing entry.
+          //    Combined with the size-band guards below, this blocks
+          //    "stuff random UIDs into waitlist while joining
+          //    players" attacks.
+          (
+            request.resource.data.players.size() ==
+              resource.data.players.size() + 1
+              ? request.auth.uid in request.resource.data.players &&
+                !(request.auth.uid in resource.data.players) &&
+                // Anti-hijack: every prior player preserved → the one added is
+                // the caller, nobody else injected (audit #2).
+                request.resource.data.players.hasAll(resource.data.players)
+              : true
+          ) &&
+          (
+            request.resource.data.players.size() ==
+              resource.data.players.size() - 1
+              ? !(request.auth.uid in request.resource.data.players) &&
+                request.auth.uid in resource.data.players &&
+                // Anti-hijack (cheap form): every NEW player already existed in
+                // the old roster. With size==old−1 and the caller removed, the
+                // one dropped entry IS the caller and no stranger was swapped in
+                // (audit #2). `old.hasAll(new)` costs one hasAll — avoids the
+                // per-element removeAll that pushed this heavy rule past the
+                // 1000-expression evaluation limit for large rosters.
+                resource.data.players.hasAll(request.resource.data.players)
+              : true
+          ) &&
+          request.resource.data.players.size() >=
+            resource.data.players.size() - 1 &&
+          request.resource.data.players.size() <=
+            resource.data.players.size() + 1 &&
+          (
+            request.resource.data.waitlist.size() ==
+              resource.data.waitlist.size() + 1
+              ? request.auth.uid in request.resource.data.waitlist &&
+                !(request.auth.uid in resource.data.waitlist) &&
+                request.resource.data.waitlist.hasAll(resource.data.waitlist)
+              : true
+          ) &&
+          (
+            request.resource.data.waitlist.size() ==
+              resource.data.waitlist.size() - 1
+              ? !(request.auth.uid in request.resource.data.waitlist) &&
+                request.auth.uid in resource.data.waitlist &&
+                resource.data.waitlist.hasAll(request.resource.data.waitlist)
+              : true
+          ) &&
+          request.resource.data.waitlist.size() >=
+            resource.data.waitlist.size() - 1 &&
+          request.resource.data.waitlist.size() <=
+            resource.data.waitlist.size() + 1 &&
+          (
+            request.resource.data.pending.size() ==
+              resource.data.pending.size() + 1
+              ? request.auth.uid in request.resource.data.pending &&
+                !(request.auth.uid in resource.data.pending) &&
+                request.resource.data.pending.hasAll(resource.data.pending)
+              : true
+          ) &&
+          (
+            request.resource.data.pending.size() ==
+              resource.data.pending.size() - 1
+              ? !(request.auth.uid in request.resource.data.pending) &&
+                request.auth.uid in resource.data.pending &&
+                resource.data.pending.hasAll(request.resource.data.pending)
+              : true
+          ) &&
+          request.resource.data.pending.size() >=
+            resource.data.pending.size() - 1 &&
+          request.resource.data.pending.size() <=
+            resource.data.pending.size() + 1 &&
+          // ── Denormalised-union invariant.
+          (
+            request.resource.data.participantIds.size() ==
+              request.resource.data.players.size() +
+              request.resource.data.waitlist.size() +
+              request.resource.data.pending.size() &&
+            request.resource.data.participantIds.hasAll(
+              request.resource.data.players
+            ) &&
+            request.resource.data.participantIds.hasAll(
+              request.resource.data.waitlist
+            ) &&
+            request.resource.data.participantIds.hasAll(
+              request.resource.data.pending
+            )
+          ) &&
+          // ── ONLY-THE-CALLER-CHANGES ────────────────────────────────
+          //    On top of the ±1 identity guards above (which pin any single-
+          //    slot add/remove to the caller), these close the remaining holes
+          //    so this client branch can ONLY: self-cancel, or accept an
+          //    outstanding spot offer (gameService.confirmSpotOffer,
+          //    waitlist→players). Every other JOIN goes through
+          //    games/{id}/joinRequests + the reconciler — the ONLY place the
+          //    active-red-card block is enforceable. Guards are ordered so the
+          //    O(n) hasAll only runs on a SIZE-NEUTRAL write (always an attack);
+          //    legit cancel/offer change a size and short-circuit, keeping the
+          //    rule cheap on big rosters. `.get(...,[])` tolerates legacy games.
+          //
+          // (a) No duplicate uid may be injected into a roster array (the dup-
+          //     survivor trick [X,Y]→[Y,Y] frees a participantIds slot).
+          request.resource.data.players.size() ==
+            request.resource.data.players.toSet().size() &&
+          request.resource.data.waitlist.size() ==
+            request.resource.data.waitlist.toSet().size() &&
+          request.resource.data.pending.size() ==
+            request.resource.data.pending.toSet().size() &&
+          // (b) A size-NEUTRAL write may not change membership — blocks the
+          //     eviction-swap [X,Y]→[A,Y]. (Legit writes change a size.)
+          (
+            request.resource.data.players.size() !=
+              resource.data.get('players', []).size() ||
+            resource.data.get('players', []).hasAll(request.resource.data.players)
+          ) &&
+          (
+            request.resource.data.waitlist.size() !=
+              resource.data.get('waitlist', []).size() ||
+            resource.data.get('waitlist', []).hasAll(request.resource.data.waitlist)
+          ) &&
+          (
+            request.resource.data.pending.size() !=
+              resource.data.get('pending', []).size() ||
+            resource.data.get('pending', []).hasAll(request.resource.data.pending)
+          ) &&
+          // (c) The caller may NOT self-add to waitlist/pending — joining those
+          //     buckets also goes through the reconciler.
+          (
+            !(request.auth.uid in request.resource.data.waitlist) ||
+            (request.auth.uid in resource.data.get('waitlist', []))
+          ) &&
+          (
+            !(request.auth.uid in request.resource.data.pending) ||
+            (request.auth.uid in resource.data.get('pending', []))
+          ) &&
+          // (d) A self-ADD to players is allowed ONLY as a spot-offer accept
+          //     (caller is the current pendingPromotion offeree). A red-carded
+          //     user can never reach the waitlist, so can never be offered.
+          (
+            !(request.auth.uid in request.resource.data.players) ||
+            (request.auth.uid in resource.data.get('players', [])) ||
+            (
+              resource.data.get('pendingPromotion', {}) is map &&
+              resource.data.get('pendingPromotion', {}).get('uid', '') ==
+                request.auth.uid
+            )
+          )
+        ) ||
+        // ── Self-toggle "אני מביא כדור" branch ────────────────────
+        // Any registered participant can add or remove their OWN
+        // uid in `ballBringerIds`. No-op for someone else's uid.
+        // Single field touched (plus updatedAt) — anything else
+        // pushes the write into the admin branch below.
+        (
+          affectedKeys().hasOnly(['ballBringerIds', 'updatedAt']) &&
+          request.auth.uid in resource.data.participantIds &&
+          request.resource.data.ballBringerIds is list &&
+          request.resource.data.ballBringerIds.size() <= 100 &&
+          // A same-size write must be a NO-OP (equal arrays): the ±1 ternaries
+          // below don't fire when the size is unchanged, so without this a
+          // participant could SWAP — drop someone else's flag and add their
+          // own — forging the "brings ball" marker for other people.
+          (
+            request.resource.data.ballBringerIds.size() !=
+              resource.data.get('ballBringerIds', []).size() ||
+            request.resource.data.ballBringerIds ==
+              resource.data.get('ballBringerIds', [])
+          ) &&
+          // Delta = ±1, and the moved uid is the caller's own.
+          (
+            request.resource.data.ballBringerIds.size() ==
+              resource.data.get('ballBringerIds', []).size() + 1
+              ? request.auth.uid in request.resource.data.ballBringerIds &&
+                !(request.auth.uid in resource.data.get('ballBringerIds', []))
+              : true
+          ) &&
+          (
+            request.resource.data.ballBringerIds.size() ==
+              resource.data.get('ballBringerIds', []).size() - 1
+              ? !(request.auth.uid in request.resource.data.ballBringerIds) &&
+                request.auth.uid in resource.data.get('ballBringerIds', [])
+              : true
+          ) &&
+          request.resource.data.ballBringerIds.size() >=
+            resource.data.get('ballBringerIds', []).size() - 1 &&
+          request.resource.data.ballBringerIds.size() <=
+            resource.data.get('ballBringerIds', []).size() + 1
+        ) ||
+        // ── Self like/dislike on the team split branch ────────────
+        // Any registered participant can write a 👍/👎 reaction to the
+        // teams — but ONLY under their OWN uid key. Single map field
+        // (plus updatedAt); the diff must touch only the caller's key.
+        (
+          affectedKeys().hasOnly(['draftTeamFeedback', 'updatedAt']) &&
+          // Use .get(...,[]) with a `players` fallback: on games missing a
+          // `participantIds` field (older docs) the bare `uid in participantIds`
+          // threw → EVERY reaction denied (user report: setDraftTeamFeedback
+          // "insufficient permissions").
+          (
+            request.auth.uid in resource.data.get('participantIds', []) ||
+            request.auth.uid in resource.data.get('players', [])
+          ) &&
+          request.resource.data.get('draftTeamFeedback', {})
+            .diff(resource.data.get('draftTeamFeedback', {}))
+            .affectedKeys().hasOnly([request.auth.uid])
+        ) ||
+        // ── Self ADD-GUEST branch ─────────────────────────────────
+        // A registered player may APPEND one guest to `guests` while the
+        // game is open — UNLESS the game restricts guest-adding until a set
+        // time (`guestsOpenAt`). When guestsOpenAt is 0/null/absent there is no
+        // restriction (any player can always add). Only `guests` (+updatedAt)
+        // may change, and the array must grow by exactly one while KEEPING
+        // every existing guest (`hasAll`) — so a player can add but can't
+        // remove or edit someone else's guest. Edits/removals stay in the
+        // admin branch below.
+        // ⚠️ guestsOpenAt is often stored as an explicit `null` (recurring
+        // clones / create paths). `.get(key, 0)` only defaults on an ABSENT
+        // key, NOT a present-null one, so `time >= null` used to type-error →
+        // deny, blocking every participant guest-add on those games while the
+        // client gate (`guestsOpenAt ?? 0`) allowed it. Treat null as "open".
+        (
+          resource.data.status == 'open' &&
+          // A registered player OR a waitlisted player may add a guest (user
+          // request — waitlisters can add too). Mirrors the client canAddGuest.
+          // `is list` guards against a present-null `waitlist` (the .get(k,d)
+          // null trap — a null value would make `in` type-error and deny).
+          (
+            request.auth.uid in resource.data.players ||
+            (
+              resource.data.get('waitlist', []) is list &&
+              request.auth.uid in resource.data.get('waitlist', [])
+            )
+          ) &&
+          affectedKeys().hasOnly(['guests', 'updatedAt']) &&
+          request.resource.data.guests is list &&
+          request.resource.data.guests.size() ==
+            resource.data.get('guests', []).size() + 1 &&
+          request.resource.data.guests.size() <= 100 &&
+          request.resource.data.guests.hasAll(resource.data.get('guests', [])) &&
+          (
+            resource.data.get('guestsOpenAt', 0) == null ||
+            request.time.toMillis() >= resource.data.get('guestsOpenAt', 0)
+          )
+        ) ||
+        // ── Organizer / admin branch ──────────────────────────────
+        // Can mutate ANYTHING except terminal lifecycle states AND
+        // a small set of immutable fields:
+        //   • createdBy — owner is forever; admin can't transfer it
+        //   • groupId — game can't be moved between communities
+        // Everything else is owner-managed.
+        (
+          (
+            request.auth.uid == resource.data.createdBy ||
+            isGroupAdmin(resource.data.groupId)
+          ) &&
+          resource.data.status != 'finished' &&
+          resource.data.status != 'cancelled' &&
+          (
+            !('createdBy' in resource.data) ||
+            (
+              'createdBy' in request.resource.data &&
+              request.resource.data.createdBy == resource.data.createdBy
+            )
+          ) &&
+          (
+            !('groupId' in resource.data) ||
+            (
+              'groupId' in request.resource.data &&
+              request.resource.data.groupId == resource.data.groupId
+            )
+          ) &&
+          // Free-text caps mirror the create rule.
+          isOptionalShortString(request.resource.data, 'title', 120) &&
+          isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+          isOptionalShortString(request.resource.data, 'fieldAddress', 300) &&
+          isOptionalShortString(request.resource.data, 'notes', 1000) &&
+          // Admin-pinned announcement on the game-details screen.
+          // Capped at 280 chars to stay glanceable — anything longer
+          // belongs in `notes` or a future per-game chat.
+          isOptionalShortString(request.resource.data, 'pinnedMessage', 280) &&
+          // ruleTags array cap mirrors the create rule.
+          (
+            !('ruleTags' in request.resource.data) ||
+            (
+              request.resource.data.ruleTags is list &&
+              request.resource.data.ruleTags.size() <= 12
+            )
+          ) &&
+          // Bounded array sizes.
+          (
+            !('players' in request.resource.data) ||
+            (
+              request.resource.data.players is list &&
+              request.resource.data.players.size() <= 100
+            )
+          ) &&
+          (
+            !('waitlist' in request.resource.data) ||
+            (
+              request.resource.data.waitlist is list &&
+              request.resource.data.waitlist.size() <= 100
+            )
+          ) &&
+          (
+            !('pending' in request.resource.data) ||
+            (
+              request.resource.data.pending is list &&
+              request.resource.data.pending.size() <= 100
+            )
+          ) &&
+          (
+            !('rejectedPlayerIds' in request.resource.data) ||
+            (
+              request.resource.data.rejectedPlayerIds is list &&
+              request.resource.data.rejectedPlayerIds.size() <= 200
+            )
+          )
+        )
+      );
+
+      allow delete: if isSignedIn() &&
+        (request.auth.uid == resource.data.createdBy ||
+         isGroupAdmin(resource.data.groupId));
+
+      // ── /games/{gid}/fillerInterests/{uid} ────────────────────────
+      // A user expressing interest in filling a shortage. Created
+      // when the candidate taps "מעוניין" on a filler push. The CF
+      // (Admin SDK) uses these docs as the queue an admin reviews
+      // before approving someone into players[].
+      //
+      // Rules:
+      //   • Self-create: any signed-in user with App Check can
+      //     register their own interest in any game whose
+      //     `acceptsFillers` is true and visibility !== 'private'.
+      //     The doc id MUST equal the writer's uid.
+      //   • Read: the author OR an admin of the game's community.
+      //   • Update: the author can change `status` from
+      //     'pending' → 'cancelled' (withdraw); the admin
+      //     transitions ('pending'→'approved'/'rejected') run via
+      //     Admin SDK in the approval CF, not the client.
+      //   • Delete: forbidden — keep an audit trail.
+      match /fillerInterests/{uid} {
+        allow read: if isSignedIn() && (
+          request.auth.uid == uid ||
+          isGroupAdmin(get(
+            /databases/$(database)/documents/games/$(id)
+          ).data.groupId)
+        );
+        // App Check disabled — see comment on /groupJoinRequests above.
+        allow create: if isSelf(uid) &&
+          // Game must opt in to fillers for client-side interest
+          // creation to be valid. Admin can still write directly via
+          // Admin SDK if they want to override.
+          get(/databases/$(database)/documents/games/$(id)).data
+            .acceptsFillers == true &&
+          // Sanity caps
+          request.resource.data.userId == uid &&
+          request.resource.data.status == 'pending';
+        allow update: if isSelf(uid) &&
+          // Author can only withdraw — admin transitions go through
+          // the CF (Admin SDK bypasses rules anyway).
+          affectedKeys().hasOnly(['status', 'updatedAt']) &&
+          request.resource.data.status == 'cancelled';
+        allow delete: if false;
+      }
+
+      // ── /games/{id}/messages/{msgId} — game chat ────────────────────
+      // Read + write: registered players only (or the organiser / a
+      // community admin). No membership ⇒ no access at all.
+      match /messages/{msgId} {
+        allow read: if isGamePlayer(id);
+        allow create: if isGamePlayer(id) &&
+          request.resource.data.senderId == request.auth.uid &&
+          isShortString(request.resource.data.text, 1000) &&
+          request.resource.data.text.size() > 0;
+        allow update: if false; // no edits in v1
+        // Author deletes own; the game organiser (or a community admin)
+        // moderates everything.
+        allow delete: if isSignedIn() && (
+          resource.data.senderId == request.auth.uid ||
+          request.auth.uid == gameDoc(id).createdBy ||
+          isGroupAdmin(gameDoc(id).groupId)
+        );
+      }
+
+      // ── /games/{id}/reads/{uid} — chat read receipts ────────────────
+      // Any player can SEE who read; each player writes only their own.
+      match /reads/{uid} {
+        allow read: if isGamePlayer(id);
+        allow write: if isSelf(uid) && isGamePlayer(id);
+      }
+      // ── /games/{id}/typing/{uid} — ephemeral "is typing" flags ──────
+      match /typing/{uid} {
+        allow read: if isGamePlayer(id);
+        allow write: if isSelf(uid) && isGamePlayer(id);
+      }
+
+      // ── /games/{id}/retroGoals/{retroGoalId} — post-match goal fixes ──
+      // Written ONLY by the addRetroGoal / removeRetroGoal callables (Admin
+      // SDK, which bypasses rules). Read by the game creator / a community
+      // admin so the "השלם גולים" sheet can list + undo them. No client writes.
+      match /retroGoals/{retroGoalId} {
+        allow read: if isSignedIn() && (
+          request.auth.uid == gameDoc(id).createdBy ||
+          isGroupAdmin(gameDoc(id).groupId)
+        );
+        allow write: if false;
+      }
+
+      // ── /games/{id}/roundHistory/{roundId} — per-mini-game roster+result ──
+      // Written ONLY by commitRoundStats (Admin SDK, bypasses rules). Read by
+      // any game participant so the "סיכום הערב" card can derive contribution%,
+      // streaks and the best mini-game — and by any MEMBER of the club, who can
+      // already read the evening's own /roundSummaries doc and was being denied
+      // only the per-mini-game detail behind it. No client writes.
+      match /roundHistory/{roundId} {
+        allow read: if isGamePlayer(id) || isGroupMember(gameDoc(id).groupId);
+        allow write: if false;
+      }
+
+      // ── /games/{id}/committedRounds/{roundId} — one doc per committed round ──
+      // The idempotency latch, written by commitRoundStats. Its COUNT is the
+      // evening's TOTAL mini-games (even for old games predating roundHistory),
+      // so the summary can show "played X of Y". Read-only, participants and
+      // club members alike (mirrors roundHistory above).
+      match /committedRounds/{roundId} {
+        allow read: if isGamePlayer(id) || isGroupMember(gameDoc(id).groupId);
+        allow write: if false;
+      }
+
+      // ── /games/{id}/physical/{uid} — per-player wearable metrics + heatmap ──
+      // Written ONLY by the client's own device via a callable / the sync
+      // pipeline (Admin SDK). Read by any game participant (the summary card +
+      // future "who ran the most" views). No direct client writes here.
+      match /physical/{uid} {
+        allow read: if isGamePlayer(id);
+        allow write: if false;
+      }
+
+      // ── /games/{id}/joinRequests/{uid} — FAIR registration ──────────
+      // Each user writes ONE request doc (their OWN), stamped with a
+      // server-synced tap time. Writing separate docs means zero contention,
+      // so a burst of simultaneous taps all land instantly. The reconciler CF
+      // (Admin SDK, bypasses these rules) then seats everyone by tap time.
+      match /joinRequests/{uid} {
+        allow read: if isSelf(uid);
+        allow create: if isSelf(uid) &&
+          request.resource.data.uid == uid &&
+          request.resource.data.state == 'queued' &&
+          request.resource.data.tappedAt is number &&
+          // requestedAt MUST be the server clock (serverTimestamp) so the
+          // reconciler's anti-backdate clamp can trust it.
+          request.resource.data.requestedAt == request.time &&
+          request.resource.data.keys().hasOnly(
+            ['uid', 'tappedAt', 'requestedAt', 'state']
+          );
+        // The reconciler owns state transitions; the author may only withdraw
+        // (delete) their own still-queued request.
+        allow update: if false;
+        allow delete: if isSelf(uid);
+      }
+    }
+
+    // ── /rounds/{id} ────────────────────────────────────────────────────
+    match /rounds/{id} {
+      function gameOrgId(gid) {
+        return get(/databases/$(database)/documents/games/$(gid)).data.createdBy;
+      }
+      function gameGroupId(gid) {
+        return get(/databases/$(database)/documents/games/$(gid)).data.groupId;
+      }
+
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (
+        request.auth.uid == gameOrgId(request.resource.data.gameId) ||
+        isGroupAdmin(gameGroupId(request.resource.data.gameId))
+      );
+      allow update: if isSignedIn() && (
+        request.auth.uid == gameOrgId(resource.data.gameId) ||
+        isGroupAdmin(gameGroupId(resource.data.gameId))
+      ) &&
+        // gameId is immutable on round docs.
+        (
+          !('gameId' in resource.data) ||
+          (
+            'gameId' in request.resource.data &&
+            request.resource.data.gameId == resource.data.gameId
+          )
+        );
+      allow delete: if false;
+    }
+
+    // ── /playerStats/{uid} ──────────────────────────────────────────────
+    match /playerStats/{uid} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── /groups/{gid}/ratings — LEGACY community-scoped ratings ────────
+    // Superseded by the global /ratings collection below, but kept FULLY
+    // WRITABLE during the rollout: app versions already in the stores
+    // (≤1.0.11) still write votes here, and locking it would make their
+    // rating action fail with permission-denied. The `onVoteWrittenLegacy`
+    // CF keeps these per-group summaries in sync for those clients. Once
+    // the global-ratings build is widely adopted this block + the legacy
+    // CF can be removed.
+    // ── /groups/{gid}/messages/{msgId} — community chat ──────────────────
+    // Read + write: community members only. Author deletes own; a
+    // community admin moderates everything.
+    match /groups/{gid}/messages/{msgId} {
+      allow read: if isGroupMember(gid);
+      allow create: if isGroupMember(gid) &&
+        request.resource.data.senderId == request.auth.uid &&
+        isShortString(request.resource.data.text, 1000) &&
+        request.resource.data.text.size() > 0;
+      allow update: if false; // no edits in v1
+      allow delete: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        isGroupAdmin(gid)
+      );
+    }
+
+    // ── /groups/{gid}/reads/{uid} — community chat read receipts ─────────
+    match /groups/{gid}/reads/{uid} {
+      allow read: if isGroupMember(gid);
+      allow write: if isSelf(uid) && isGroupMember(gid);
+    }
+
+    // ── /groups/{gid}/typing/{uid} — ephemeral "is typing" flags ─────────
+    match /groups/{gid}/typing/{uid} {
+      allow read: if isGroupMember(gid);
+      allow write: if isSelf(uid) && isGroupMember(gid);
+    }
+
+    // ── /dmConversations/{convId} — 1-on-1 direct messages ───────────────
+    // convId = sorted([uidA, uidB]).join('__'); exactly two participants.
+    // Access is limited to those two. Starting a NEW conversation is gated by
+    // the OTHER user's `dmFriendsOnly` (default false = anyone may DM).
+    match /dmConversations/{convId} {
+      function dmParticipants() {
+        return get(/databases/$(database)/documents/dmConversations/$(convId))
+          .data.get('participants', []);
+      }
+      function isDmParticipant() {
+        // convId == sorted([uidA, uidB]).join('__'), so the two uids are
+        // encoded in the id itself. Check that FIRST — it works even before the
+        // conversation doc exists (a brand-new DM with no messages yet), which
+        // otherwise made get().data fail and denied access ("אין גישה לצ׳אט").
+        return isSignedIn() && (
+          request.auth.uid in convId.split('__')
+          || request.auth.uid in dmParticipants()
+        );
+      }
+      function otherOnCreate() {
+        return request.resource.data.participants[0] == request.auth.uid
+          ? request.resource.data.participants[1]
+          : request.resource.data.participants[0];
+      }
+      // The OTHER participant, derived from convId (works even when the
+      // conversation doc was never created — the bypass path).
+      function dmOther() {
+        return convId.split('__')[0] == request.auth.uid
+          ? convId.split('__')[1]
+          : convId.split('__')[0];
+      }
+      function otherAllowsMe(otherUid) {
+        // Guard the get() with exists(): a recipient whose /users doc is missing
+        // (never created / mid-provisioning) previously made `.data` null →
+        // hard-DENY of a legitimate DM. A user with no doc can't have opted into
+        // dmFriendsOnly, so treat "no doc" as "allows me".
+        return !exists(/databases/$(database)/documents/users/$(otherUid))
+          || get(/databases/$(database)/documents/users/$(otherUid))
+                 .data.get('dmFriendsOnly', false) != true
+          || (request.auth.uid in get(/databases/$(database)/documents/users/$(otherUid))
+                 .data.get('friends', []));
+      }
+      allow read: if isDmParticipant();
+      allow create: if isSignedIn()
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() == 2
+        && request.auth.uid in request.resource.data.participants
+        && otherAllowsMe(otherOnCreate());
+      allow update: if isDmParticipant()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['participants', 'createdAt', 'updatedAt']);
+      allow delete: if false;
+
+      match /messages/{msgId} {
+        allow read: if isDmParticipant();
+        allow create: if isDmParticipant()
+          && request.resource.data.senderId == request.auth.uid
+          && isShortString(request.resource.data.text, 1000)
+          && request.resource.data.text.size() > 0
+          // Enforce friends-only HERE too, not just on the conversation-doc
+          // create. A sender can skip ensureDmConversation() and write straight
+          // to messages/ (convId is deterministic), bypassing the gate — so the
+          // recipient's dmFriendsOnly / friends list must be checked per message.
+          && otherAllowsMe(dmOther());
+        allow update: if false;
+        allow delete: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      }
+      match /reads/{uid} {
+        allow read: if isDmParticipant();
+        allow write: if isSelf(uid) && isDmParticipant();
+      }
+      match /typing/{uid} {
+        allow read: if isDmParticipant();
+        allow write: if isSelf(uid) && isDmParticipant();
+      }
+    }
+
+    match /groups/{gid}/ratings/{ratedUid} {
+      // Members of THAT club only. Frozen legacy data (write:false) but still
+      // club data; `isSignedIn()` let any account read any club's per-player
+      // rating summaries. No live screen reads this collection — the refs in
+      // src/firebase/firestore.ts have no callers, and the current internal
+      // rating lives on groups/{gid}.adminRatings, which is already
+      // member-gated. The GLOBAL /ratings/{uid} below stays cross-club by
+      // design.
+      allow read: if isGroupMember(gid);
+      allow write: if false;
+
+      match /votes/{raterUid} {
+        allow read: if isSignedIn() && request.auth.uid == raterUid;
+        allow create, update: if isSignedIn()
+          && request.auth.uid == raterUid
+          && raterUid != ratedUid
+          && isGroupMember(gid)
+          && (
+            ratedUid in groupDoc(gid).playerIds ||
+            ratedUid in groupDoc(gid).adminIds
+          )
+          && request.resource.data.raterUserId == raterUid
+          && request.resource.data.ratedUserId == ratedUid
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5;
+        allow delete: if isSignedIn() && request.auth.uid == raterUid;
+      }
+    }
+
+    // ── /ratings — GLOBAL (cross-community) player ratings ─────────────
+    // One reputation per player across the whole app. The summary doc is
+    // written ONLY by the onVoteWritten Cloud Function (Admin SDK bypass)
+    // so a client can't fabricate an average. Any signed-in user may cast
+    // ONE vote per player (rater != rated, 1–5); votes are private to the
+    // rater. Abuse is bounded by the 60-votes/hour rate limiter client-side.
+    match /ratings/{ratedUid} {
+      allow read: if isSignedIn();
+      allow write: if false;
+
+      match /votes/{raterUid} {
+        allow read: if isSignedIn() && request.auth.uid == raterUid;
+        allow create, update: if isSignedIn()
+          && request.auth.uid == raterUid
+          && raterUid != ratedUid
+          && request.resource.data.raterUserId == raterUid
+          && request.resource.data.ratedUserId == ratedUid
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5;
+        allow delete: if isSignedIn() && request.auth.uid == raterUid;
+      }
+    }
+
+    // ── /notifications/{id} ─────────────────────────────────────────────
+    // CRITICAL: previously a client could create ANY type with ANY
+    // recipient, enabling spoofed "your join was approved" / "spot
+    // opened" / "game cancelled" pushes to arbitrary users.
+    //
+    // Now:
+    //   • `type` must be in the client-allowed whitelist (system
+    //     pushes — gameReminder, gameRsvpNudge, joinRequest, etc. —
+    //     are server-dispatched via Admin SDK and bypass these rules);
+    //   • basic shape is enforced (recipientId is a string, payload
+    //     is a map, delivered must start as false);
+    //   • text fields inside payload are size-capped.
+    //
+    // Per-type sender-identity validation (e.g. "playerCancelled
+    // recipient must be the game's createdBy AND payload.cancellingUserId
+    // must == auth.uid") happens in the onNotificationCreated CF
+    // before delivery — doing it here is too read-heavy for rules.
+    match /notifications/{id} {
+      // App Check disabled — see comment on /groupJoinRequests above.
+      allow create: if isSignedIn() &&
+        request.resource.data.recipientId is string &&
+        request.resource.data.recipientId.size() > 0 &&
+        request.resource.data.recipientId.size() <= 128 &&
+        request.resource.data.type is string &&
+        clientNotifTypeAllowed(request.resource.data.type) &&
+        // Trustworthy sender identity. When present it MUST equal the caller's
+        // uid; the fan-out Cloud Function then verifies this uid is actually a
+        // community admin / organiser before mass-pushing (blocks forged
+        // "official" notifications). TOLERANT of absence for now: clients
+        // already in the stores don't send this field yet, and denying them
+        // would silently drop their legitimate approval/cancel pushes. Once
+        // the createdByUid-stamping client is adopted, flip this to a hard
+        // `== request.auth.uid` requirement (see releaseLog follow-up).
+        (
+          !('createdByUid' in request.resource.data) ||
+          request.resource.data.createdByUid == request.auth.uid
+        ) &&
+        // `srv` is the server-origin trust marker — clients must never set it
+        // (it would let them bypass the fan-out sender check).
+        !('srv' in request.resource.data) &&
+        request.resource.data.delivered == false &&
+        // Top-level field cap. The legitimate notif shape is
+        // {type, recipientId, entityType, entityId, reason,
+        //  dedupeKey, payload, createdAt, createdAtMs, cooldownMs,
+        //  delivered, read, schemaVersion}; ≤17 lets the
+        //  dedupe-aware writer in with one slot to spare for forward
+        //  compatibility.
+        request.resource.data.keys().size() <= 17 &&
+        // Dedupe metadata: optional on legacy writes (until all clients
+        // upgrade), but if present must be string + bounded.
+        isOptionalShortString(request.resource.data, 'dedupeKey', 600) &&
+        isOptionalShortString(request.resource.data, 'entityType', 16) &&
+        isOptionalShortString(request.resource.data, 'entityId', 128) &&
+        isOptionalShortString(request.resource.data, 'reason', 80) &&
+        // schemaVersion (if set) must be a positive integer; we allow
+        // any value so this rule doesn't need to be redeployed every
+        // time the schema bumps.
+        (
+          !('schemaVersion' in request.resource.data) ||
+          (
+            request.resource.data.schemaVersion is int &&
+            request.resource.data.schemaVersion >= 1 &&
+            request.resource.data.schemaVersion <= 100
+          )
+        ) &&
+        // `read` must start as false — the recipient flips it via the
+        // update rule below; the dispatcher cannot pre-mark it.
+        (
+          !('read' in request.resource.data) ||
+          request.resource.data.read == false
+        ) &&
+        // Payload caps — must be a map, not a stringified blob, and
+        // each free-text field inside the payload is bounded.
+        (
+          !('payload' in request.resource.data) ||
+          (
+            request.resource.data.payload is map &&
+            request.resource.data.payload.keys().size() <= 15 &&
+            isOptionalShortString(
+              request.resource.data.payload, 'gameTitle', 200) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'groupName', 200) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'inviterName', 80) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'gameId', 128) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'groupId', 128) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'requesterId', 128) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'cancellingUserId', 128) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'message', 500) &&
+            // editorUid: stamp from gameCanceledOrUpdated dispatchers
+            // so the CF can self-exclude the editor from the fan-out.
+            isOptionalShortString(
+              request.resource.data.payload, 'editorUid', 128) &&
+            // action: 'updated' / 'cancelled' / 'deleted' for
+            // gameCanceledOrUpdated dispatches.
+            isOptionalShortString(
+              request.resource.data.payload, 'action', 32) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'reason', 64)
+          )
+        );
+      // Reads:
+      //   • A non-existent doc must be readable by any signed-in user
+      //     so the dispatcher's deterministic-ID dedupe check
+      //     (`getDoc(ref)` before `setDoc`) gets back NOT_FOUND
+      //     instead of PERMISSION_DENIED. Without this, every dispatch
+      //     hits the catch branch and silently no-ops, breaking
+      //     newGameInCommunity / gameCanceledOrUpdated fan-outs.
+      //   • An existing doc is only readable by its recipient (the
+      //     fan-out marker holder for fan-out types — i.e. groupId
+      //     or gameId — for direct-recipient types, the user's uid).
+      allow read: if isSignedIn() && (
+        resource == null ||
+        request.auth.uid == resource.data.recipientId
+      );
+      // Recipient can mark `read: true` (and `readAt`). No other field
+      // may be modified — preserves the integrity of dedupe metadata
+      // and prevents a recipient from flipping `delivered`/payload to
+      // mask a re-delivery on the next dispatch.
+      allow update: if isSignedIn() &&
+        request.auth.uid == resource.data.recipientId &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['read', 'readAt']) &&
+        request.resource.data.read == true;
+      allow delete: if false;
+    }
+
+    // ── /gameUpdateLatches/{gameId} — server-side dedup latches ────────
+    match /gameUpdateLatches/{gameId} {
+      allow read, write: if false;
+    }
+
+    // ── /rateLimits/{uid}_{op} — per-user spam guards ───────────────────
+    // Counter docs maintained by the rate-limit helper (see
+    // `services/rateLimitService` on the client and the matching CF
+    // pre-checks). Keeping the rule open for self-write is safe
+    // because the helper writes monotonically increasing counters
+    // anchored to the current minute/hour bucket — overwriting your
+    // own counter early just resets your own quota.
+    //
+    // ⚠️ Note: this is the LEGACY client-controlled rate-limit
+    // collection. createGroup now uses /serverRateLimits below
+    // (server-only) so a malicious client can't reset its own
+    // quota. New rate-limited operations should use the server-side
+    // path, not this collection.
+    match /rateLimits/{rid} {
+      allow read: if isSignedIn() &&
+        rid.matches(request.auth.uid + '_.*');
+      allow create, update: if isSignedIn() &&
+        rid.matches(request.auth.uid + '_.*') &&
+        request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // ── /cityGeocode/{normName} — server-only city geocoding cache ─────
+    // Populated by the cross-community filler matcher CF when it
+    // needs lat/lng for a game's city. Cached so the CF doesn't hit
+    // Nominatim 1/game/run. Clients have NO access — they hit
+    // Nominatim directly via geocodeService when persisting their
+    // home city, no shared cache.
+    match /cityGeocode/{name} {
+      allow read, write: if false;
+    }
+
+    // ── /eveningStandings/{gameId__uid} — my place after an evening ────
+    // Written ONLY by onGameRosterChanged (Admin SDK) at end-of-evening: the
+    // player's score, its delta, and their rank in the club table before/after.
+    //
+    // ⚠️ This rule was MISSING, so the default deny applied and the client's
+    // read threw — swallowed by a `.catch(() => null)` in eveningSummaryService,
+    // which left `rank` null. The result: the "מקום N מתוך M בטבלת המועדון"
+    // strip never rendered for anyone since it shipped, and the card silently
+    // fell back to a locally recomputed score. Read is limited to the owner of
+    // the doc; a player's standing is nobody else's business.
+    match /eveningStandings/{standingId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // ── /communityPairStats/{gid__a__b} — pairs, inside ONE club ───────
+    // Server-written (commitRoundStats for assists, the end-of-evening rollup
+    // for everything else). Readable by members of that club: the whole point
+    // of the collection is that it does NOT cross clubs the way the global
+    // `pairStats` does, and the membership check is what keeps that true.
+    match /communityPairStats/{pairId} {
+      allow read: if isGroupMember(resource.data.groupId);
+      allow write: if false;
+    }
+
+    // ── /communityPairRollups/{gid__gameId} — "this evening is counted" ──
+    // A marker, not data. Server-only in both directions: a client able to
+    // delete one could make an evening count twice.
+    match /communityPairRollups/{rollupId} {
+      allow read, write: if false;
+    }
+
+    // ── /roundSummaries/{gameId} — the club's story of one evening ─────
+    // Written ONLY by onGameRosterChanged (Admin SDK), exactly once, when the
+    // night's stats are final. Read by members of that club: unlike the
+    // per-player standing above, this belongs to everyone who was there — it is
+    // the evening itself, not anybody's private position in it.
+    //
+    // No client write, at all. The whole value of the document is that it was
+    // sealed against a history that no longer exists to be re-checked; a client
+    // able to rewrite it could invent a record nobody set.
+    match /roundSummaries/{gameId} {
+      allow read: if isGroupMember(resource.data.groupId);
+      allow write: if false;
+    }
+
+    // ── /clubRecords/{groupId} — the bar every evening is measured against ──
+    // Server-only in both directions. It is bookkeeping for the summary above,
+    // not a surface: the club sees its records through the summaries that
+    // announced them, and a readable copy would only invite a second, drifting
+    // source of truth for "the best evening ever".
+    match /clubRecords/{groupId} {
+      allow read, write: if false;
+    }
+
+    // ── /tasks/{taskId} — the Pulse work list. NO client access ────────
+    // Written two ways, both privileged: the `onFeedbackCreated` trigger
+    // (Admin SDK) when a tester files a report, and the Pulse dashboard
+    // (service account). Neither goes through these rules — so denying the
+    // app outright costs nothing and keeps the owner's backlog, which quotes
+    // reporters by name and carries their screenshots, off every client.
+    match /tasks/{taskId} {
+      allow read, write: if false;
+    }
+
+    // ── /serverRateLimits/{rid} — Admin-SDK-only rate counters ─────────
+    // Server-side rate-limit storage. The CF (Admin SDK) reads and
+    // writes these to enforce quotas the client cannot reset. All
+    // client access is denied — both reads and writes — so a
+    // compromised client can't:
+    //   • read its own counter to know exactly how many slots are left
+    //     (information leak that could enable burst-near-quota abuse), or
+    //   • reset its counter to zero to bypass the quota.
+    // Used by the createGroupCallable CF (see #3 in the security audit).
+    match /serverRateLimits/{rid} {
+      allow read, write: if false;
+    }
+
+    // ── /appConfig/{platform} — public version-gate config ─────────────
+    match /appConfig/{platform} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── /communityShowcase/{groupId} — public web-page snapshot ────────
+    // Powers the publicly shareable community page at
+    // /c/{groupId} on Firebase Hosting. Read-open-to-the-world (no
+    // auth required) so WhatsApp / Twitter / Facebook share previews
+    // and signed-out browsers can render the page. Writes are
+    // server-only — the `updateCommunityShowcase` Cloud Function
+    // (Admin SDK) maintains the doc when /games or /groups change.
+    //
+    // The doc is a denormalised projection of stats already visible
+    // in-app: total finished games, top attenders, recent games,
+    // member roster. No private fields (fcmTokens, notificationPrefs,
+    // join requests, etc.) are mirrored — this is the same
+    // information any community member already sees, just rendered
+    // for sharing instead of in-app.
+    match /communityShowcase/{groupId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── /communityPlayerEvents/{id} — per-community player timeline ─────
+    // Admin-only log of yellow/red cards + ball/jerseys handoffs, scoped to a
+    // single club. Powers the player timeline, the equipment "last took" hints,
+    // and the active-red-card registration block. Only THAT community's admins
+    // may read/write/revoke — regular members can't see it. (The join-gate red
+    // card check runs server-side via the Admin SDK, which bypasses rules.)
+    match /communityPlayerEvents/{id} {
+      // Admins see the whole club timeline; a member may read their OWN events
+      // (needed for the client red-card pre-empt on the join screen).
+      allow read: if isGroupAdmin(resource.data.groupId) ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isGroupAdmin(request.resource.data.groupId) &&
+        request.resource.data.type in ['yellow', 'red', 'ball', 'jerseys'] &&
+        request.resource.data.groupId is string &&
+        request.resource.data.userId is string &&
+        request.resource.data.at is number &&
+        // Can't meaningfully forward-date an event (which would skew a card's
+        // expiry). `at` is a device-clock stamp, so allow a generous 1h skew
+        // so a fast client clock never drops a legit card/equipment write.
+        request.resource.data.at <= request.time.toMillis() + 3600000 &&
+        // Cards must be attributed to the issuing admin; a fresh card can't
+        // arrive already-revoked. Ball/jerseys carry no issuedBy.
+        (
+          request.resource.data.type in ['ball', 'jerseys'] ||
+          (
+            request.resource.data.issuedBy == request.auth.uid &&
+            !('revoked' in request.resource.data && request.resource.data.revoked == true)
+          )
+        );
+      // Revoke only: a cancelled card stays on the timeline, marked "בוטל".
+      // Values are pinned so an admin can't un-revoke or spoof the actor.
+      allow update: if isGroupAdmin(resource.data.groupId) &&
+        affectedKeys().hasOnly(['revoked', 'revokedBy', 'revokedAt']) &&
+        request.resource.data.revoked == true &&
+        request.resource.data.revokedBy == request.auth.uid &&
+        request.resource.data.revokedAt is number;
+      // Append-only + revoke-only: history is never hard-deleted.
+      allow delete: if false;
+    }
+
+    // ── /errors/{fingerprint} — client error/crash reports ─────────────
+    // The app's centralized error logger (services/errorLog.ts) upserts an
+    // aggregated doc per unique failure signature when a user operation
+    // fails (create game/group, sign-in, join, uncaught crash, …). Doc id
+    // is a deterministic fingerprint, so repeated failures coalesce into a
+    // running `count` rather than flooding the collection.
+    //
+    // Writes: any signed-in user may create/increment a report, with size
+    // caps so a malicious client can't bloat docs. Reads/deletes are
+    // client-denied — only the admin dashboard (service account, which
+    // bypasses these rules via IAM) and the Console read them.
+    // Admin/founder config (e.g. Pulse dashboard FCM push tokens). Written by
+    // the Pulse dashboard via the service account (bypasses rules); the app's
+    // regular clients have no business here, so deny them entirely.
+    match /adminConfig/{doc} {
+      allow read, write: if false;
+    }
+
+    match /errors/{fp} {
+      allow read, delete: if false;
+      // No isSignedIn() gate ON PURPOSE: the most important errors to capture
+      // are PRE-AUTH failures (sign-in errors) — a signed-out user must be
+      // able to write them. Abuse is bounded: the collection is read/delete
+      // denied to clients, and every field is type+size capped below. Harden
+      // later with App Check (request.app != null) once enforcement is on.
+      allow create, update: if
+        request.resource.data.operation is string &&
+        request.resource.data.operation.size() <= 80 &&
+        isOptionalShortString(request.resource.data, 'lastMessage', 2000) &&
+        isOptionalShortString(request.resource.data, 'lastStack', 4000) &&
+        isOptionalShortString(request.resource.data, 'lastUserId', 128) &&
+        isOptionalShortString(request.resource.data, 'lastScreen', 80) &&
+        isOptionalShortString(request.resource.data, 'platform', 16) &&
+        isOptionalShortString(request.resource.data, 'appVersion', 32);
+    }
+
+    // ── /feedback/{id} — user-authored bug reports / feature suggestions ──
+    // Distinct from /errors (which is automatic, aggregated crash signatures).
+    // The app's FeedbackScreen → feedbackService.submitFeedback() creates one
+    // doc per submission. Clients may only CREATE (with type/message guards +
+    // an owner check); reads, updates (status), and deletes are client-denied
+    // and handled by the admin panel's service account (bypasses these rules).
+    match /feedback/{id} {
+      allow read, delete: if false;           // panel reads via admin SA
+      allow update: if false;                 // status managed by admin SA
+      allow create: if isSignedIn() &&
+        (request.resource.data.type == 'bug' ||
+          request.resource.data.type == 'suggestion') &&
+        isShortString(request.resource.data.message, 2000) &&
+        request.resource.data.message.size() > 0 &&
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    // ── /inviteLinks/{code} — short share links (/i/<code>) ──
+    // A signed-in user creates a short link that attributes to THEMSELVES; it
+    // maps {type, targetId, invitedBy} for the serveInviteCode CF to resolve.
+    // Clients never read/update/delete (the CF reads via the admin SA); a client
+    // can only mint a new code crediting itself, never spoof another inviter.
+    match /inviteLinks/{code} {
+      allow read, update, delete: if false;
+      allow create: if isSignedIn() &&
+        request.resource.data.invitedBy == request.auth.uid &&
+        (request.resource.data.type == 'session' ||
+          request.resource.data.type == 'team' ||
+          request.resource.data.type == 'app') &&
+        isShortString(request.resource.data.targetId, 200);
+    }
+
+    // ── /campaigns/{id} — admin marketing campaigns (push + in-app popup) ──
+    // Authored ONLY by the admin panel's service account (bypasses rules).
+    // The app reads popup campaigns to decide what to show; push campaigns
+    // are sent server-side. Read is open to signed-in users (popup content
+    // is non-sensitive marketing copy); all client writes are denied.
+    match /campaigns/{id} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Per-user campaign impression ledger — frequency capping for popups.
+    // Self-only: a user records which popups they've already seen.
+    match /users/{uid}/campaignSeen/{cid} {
+      allow read, write: if isSelf(uid);
+    }
+
+    // ── Chat: per-user unread index ──────────────────────────────────────
+    // /users/{uid}/chatUnread/{chatKey} — maintained by the message-trigger
+    // Cloud Function (Admin SDK, bypasses rules) for OTHER users; the owner
+    // only resets their own counter to 0 on opening a chat.
+    match /users/{uid}/chatUnread/{chatKey} {
+      allow read, write: if isSelf(uid);
+    }
+    // Per-user, per-chat settings (mute). Self-only; the CF reads it via
+    // the Admin SDK before sending a push.
+    match /users/{uid}/chatSettings/{chatKey} {
+      allow read, write: if isSelf(uid);
+    }
+    // Per-user block list. Self-only — used client-side to hide a blocked
+    // user's messages and (store-safety) to stop seeing their content.
+    match /users/{uid}/blocked/{blockedUid} {
+      allow read, write: if isSelf(uid);
+    }
+
+    // ── /chatReports/{id} — store-safety: report an abusive message ───────
+    // Create-only by the reporter; reads/edits handled by the admin SA
+    // (surfaced in Pulse). Mirrors the /feedback pattern.
+    match /chatReports/{id} {
+      // The 1.0.50 client routes reports through the `reportChatMessage` callable
+      // (Admin SDK), which stores the REAL author/text — so `allow write: if
+      // false` is the target end-state that closes the report-forgery hole
+      // (audit #7). BUT the currently-INSTALLED client (≤1.0.49) still writes
+      // this doc DIRECTLY, so flipping to false now would break abuse-reporting
+      // for every user until they update. DEFERRED: flip to `if false` in a
+      // FOLLOW-UP rules deploy once 1.0.50 is widely adopted. Until then keep the
+      // validated create so legitimate reporting keeps working.
+      allow read, update, delete: if false;
+      allow create: if isSignedIn() &&
+        request.resource.data.reporterId == request.auth.uid &&
+        isShortString(request.resource.data.messageText, 2000) &&
+        request.resource.data.scope is string &&
+        request.resource.data.parentId is string;
+    }
+
+    // Pairwise "played together" tallies (same team / wins / losses),
+    // written ONLY server-side by onGameRotationChanged. Any signed-in user
+    // may read (the public player card shows "you & X").
+    match /pairStats/{pair} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── Club-scoped stat rollups — MEMBERS OF THAT CLUB ONLY ────────────
+    //
+    // ⚠️ These four used to be `allow read: if isSignedIn()`, which made every
+    // club's table, totals and pair chemistry readable by ANY signed-in
+    // account — a full cross-club data leak (audit P0-1). Worse for
+    // /communityPairStats: a SECOND, membership-gated `match` block for the
+    // same collection already existed further up this file. Firestore ORs
+    // overlapping match blocks — the more specific rule does NOT win — so the
+    // permissive copy here silently defeated it. That duplicate block is gone;
+    // /communityPairStats is now governed ONLY by the one at
+    // "── /communityPairStats/{gid__a__b} ──" above.
+    //
+    // Every read path in the app is already scoped to one club, so nothing
+    // legitimate loses access:
+    //   • communityPlayerStats → where('groupId','==',gid)  (club table,
+    //     championship, player compare, penalty cards)
+    //   • communityStats       → doc(groupId) / where('groupId','==',gid)
+    //   • communityPairStats   → where('groupId','==',gid)  (deadly duo)
+    // A LIST is evaluated per candidate document, so those group-filtered
+    // queries succeed for a member and fail for everyone else — which is the
+    // point.
+    match /communityPlayerStats/{doc} {
+      allow read: if isGroupMember(resource.data.groupId);
+      allow write: if false;
+    }
+    // Keyed BY the group id AND carrying it as a field. Both are needed:
+    //   • a LIST does not bind the path wildcard (it is null there — the rules
+    //     test proves it), so the query the chemistry screen issues,
+    //     where('groupId','==',gid), has to be answered from the FIELD;
+    //   • one production doc, written only by the chemistry-window path, has
+    //     never carried the field, so a plain `resource.data.groupId` would
+    //     make it permanently unreadable — the wildcard covers it on get().
+    // A doc with no field can never come back from the field-filtered query, so
+    // the null default is unreachable on the list path.
+    match /communityStats/{groupId} {
+      // TWO statements, deliberately. A `list` does NOT bind the path wildcard
+      // — touching `groupId` there raises "Null value error" and denies the
+      // whole query (the rules test proves it), so the list path must be
+      // answered from the FIELD. `allow get` is only ever evaluated for a
+      // single-document read, where the wildcard IS bound, and covers the one
+      // production doc that has never carried the field (a hidden personal
+      // group's, written only by the chemistry-window path). Both use the
+      // non-throwing membership check so neither statement can error out the
+      // other.
+      allow read: if isGroupMemberSafe(resource.data.get('groupId', ''));
+      allow get: if isGroupMemberSafe(groupId);
+      allow write: if false;
+    }
+    // ── /seasonSummary/{groupId__seasonId} — a closed season, sealed ────
+    // Written once by the rollover and never again, so the client has no
+    // business writing here at all.
+    //
+    // TWO read statements, for the same reason communityStats above needs
+    // them: a `list` does not bind the path wildcard, so touching `groupId`
+    // there raises a Null value error and denies the whole query. The list
+    // path is answered from the FIELD; `allow get` covers a direct read by id,
+    // which is how a shared link to a past season resolves. Both use the
+    // non-throwing membership check so neither can error out the other.
+    match /seasonSummary/{doc} {
+      allow read: if isGroupMemberSafe(resource.data.get('groupId', ''));
+      allow get: if isGroupMemberSafe(resource.data.get('groupId', ''));
+      allow write: if false;
+    }
+    // ── /gamePlayerStats/{gameId__uid} — per-GAME rows ──────────────────
+    // Not club-scoped (the documents carry `gameId`, never `groupId`), so the
+    // right bound is the GAME's own audience: if you may read the game, you may
+    // read its per-player rows. That is strictly narrower than the old
+    // `isSignedIn()` and mirrors /games' read rule, so the finished-game
+    // scorers table and the evening-summary card keep working for exactly the
+    // people who can already open the game.
+    match /gamePlayerStats/{doc} {
+      allow read: if canReadGame(resource.data.gameId);
+      allow write: if false;
+    }
+    // Audit trail of DELETED games — "who deleted a game" record. Written by
+    // the client at delete time (the exact deleter; `deletedBy` must equal the
+    // caller, so nobody can frame someone else) and by server triggers/cron
+    // (Admin SDK — bypasses these rules, records a best-guess actor). Immutable.
+    // Readable by admins of the game's community.
+    match /gameDeletions/{gameId} {
+      allow read: if isSignedIn() && isGroupAdmin(resource.data.groupId);
+      allow create: if isSignedIn() && request.resource.data.deletedBy == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

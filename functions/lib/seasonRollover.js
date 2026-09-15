@@ -63,7 +63,7 @@ exports.reopenSeason = reopenSeason;
 const admin = __importStar(require("firebase-admin"));
 const seasonAwards_1 = require("./seasonAwards");
 /** A per-game identity with no account. See the archive note below. */
-const isReal = (id) => !!id && !id.startsWith('guest:');
+const isReal = (id) => !!id && !id.startsWith("guest:");
 /**
  * Ceiling on archived pairs, so one document cannot grow past Firestore's 1MB
  * limit and make the club permanently unable to close a season.
@@ -76,42 +76,61 @@ const isReal = (id) => !!id && !id.startsWith('guest:');
 const MAX_ARCHIVED_PAIRS = 4000;
 /** Club-scoped counters a season owns. Everything not named here survives. */
 const PLAYER_SEASON_FIELDS = [
-    'goals',
-    'assists',
-    'rounds',
-    'wins',
-    'losses',
-    'ties',
-    'games',
-    'cleanSheets',
-    'ownGoals',
-    'penTaken',
-    'penScored',
-    'penMissed',
-    'penFaced',
-    'penSaved',
-    'penConceded',
+    "goals",
+    "assists",
+    "rounds",
+    "wins",
+    "losses",
+    "ties",
+    "games",
+    "cleanSheets",
+    "ownGoals",
+    "penTaken",
+    "penScored",
+    "penMissed",
+    "penFaced",
+    "penSaved",
+    "penConceded",
     // Coverage denominators reset with their numerators, or the new season's
     // rates would divide this season's handful of clean sheets by a career.
-    'csRounds',
-    'asRounds',
+    "csRounds",
+    "asRounds",
     // The season's evening-score mean, as sum and count. The MVP title is the
     // highest AVERAGE this season, so both halves must reset together: keeping
     // the sum across a rollover would carry last season's evenings into this
     // season's average, and keeping only one of the two produces a mean that is
     // not a mean at all.
-    'eveningScoreSum',
-    'eveningScoreCount',
+    "eveningScoreSum",
+    "eveningScoreCount",
+];
+/**
+ * The pair counters a season owns.
+ *
+ * Named in one place because the close and the reopen have to agree exactly:
+ * anything the wipe clears and the restore misses is chemistry destroyed with
+ * no way back, since the archive is deleted at the end of the reopen.
+ */
+const PAIR_SEASON_FIELDS = [
+    "assists",
+    "sameTeam",
+    "winsTogether",
+    "lossesTogether",
+    "cleanSheetsTogether",
+    "against",
+    "winsA",
+    "winsB",
+    "assistsAToB",
+    "assistsBToA",
 ];
 /** The same, for the club total document. */
 const CLUB_SEASON_FIELDS = [
-    'rounds',
-    'goals',
-    'guestGoals',
-    'ownGoals',
-    'tiedRounds',
-    'shootoutRounds',
-    'scorelessRounds',
+    "rounds",
+    "goals",
+    "guestGoals",
+    "ownGoals",
+    "tiedRounds",
+    "shootoutRounds",
+    "scorelessRounds",
 ];
 /**
  * Close one season.
@@ -123,15 +142,15 @@ const CLUB_SEASON_FIELDS = [
 async function closeSeason(args) {
     const { db, groupId, seasonId, now } = args;
     const [psSnap, csSnap, pairSnap] = await Promise.all([
-        db.collection('communityPlayerStats').where('groupId', '==', groupId).get(),
-        db.collection('communityStats').doc(groupId).get(),
-        db.collection('communityPairStats').where('groupId', '==', groupId).get(),
+        db.collection("communityPlayerStats").where("groupId", "==", groupId).get(),
+        db.collection("communityStats").doc(groupId).get(),
+        db.collection("communityPairStats").where("groupId", "==", groupId).get(),
     ]);
-    const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+    const num = (v) => typeof v === "number" && Number.isFinite(v) ? v : 0;
     const uids = [];
     for (const d of psSnap.docs) {
         const uid = d.data().userId;
-        if (typeof uid === 'string' && uid)
+        if (typeof uid === "string" && uid)
             uids.push(uid);
     }
     // Names are FETCHED here, not read off the stat row.
@@ -147,13 +166,13 @@ async function closeSeason(args) {
     // One read per player, once per season. getAll batches them.
     const nameByUid = new Map();
     if (uids.length) {
-        const refs = uids.map((u) => db.collection('users').doc(u));
+        const refs = uids.map((u) => db.collection("users").doc(u));
         for (let i = 0; i < refs.length; i += 300) {
             const docs = await db.getAll(...refs.slice(i, i + 300));
             for (const d of docs) {
                 const n = d.data();
                 const name = n?.name ?? n?.displayName;
-                if (typeof name === 'string' && name)
+                if (typeof name === "string" && name)
                     nameByUid.set(d.id, name);
             }
         }
@@ -161,13 +180,13 @@ async function closeSeason(args) {
     const players = {};
     for (const d of psSnap.docs) {
         const x = d.data();
-        const uid = typeof x.userId === 'string' ? x.userId : '';
+        const uid = typeof x.userId === "string" ? x.userId : "";
         if (!uid)
             continue;
         const row = {};
         for (const f of PLAYER_SEASON_FIELDS)
             row[f] = num(x[f]);
-        row.displayName = nameByUid.get(uid) ?? '';
+        row.displayName = nameByUid.get(uid) ?? "";
         players[uid] = row;
     }
     const cs = (csSnap.exists ? csSnap.data() : {});
@@ -196,8 +215,8 @@ async function closeSeason(args) {
     let droppedOverflowPairs = 0;
     for (const d of pairSnap.docs) {
         const x = d.data();
-        const a = typeof x.a === 'string' ? x.a : '';
-        const b = typeof x.b === 'string' ? x.b : '';
+        const a = typeof x.a === "string" ? x.a : "";
+        const b = typeof x.b === "string" ? x.b : "";
         if (!a || !b)
             continue;
         // Guests do not go into the archive, and this is the difference between a
@@ -300,7 +319,7 @@ async function closeSeason(args) {
     let resumedAwards = null;
     // ── 1. Archive, exactly once ────────────────────────────────────────────
     const summaryRef = db
-        .collection('seasonSummary')
+        .collection("seasonSummary")
         .doc(`${groupId}__${seasonId}`);
     try {
         await summaryRef.create({
@@ -308,7 +327,7 @@ async function closeSeason(args) {
             // Frozen, like the player names. A closed season has to be readable by
             // someone who has since LEFT the club — they played in it — and they
             // cannot read /groups to find out what it was called.
-            groupName: args.groupName ?? '',
+            groupName: args.groupName ?? "",
             seasonId,
             no: args.seasonNo,
             startsAt: args.startsAt,
@@ -329,7 +348,7 @@ async function closeSeason(args) {
     }
     catch (err) {
         const code = err.code;
-        if (code !== 6 && code !== 'already-exists')
+        if (code !== 6 && code !== "already-exists")
             throw err;
         // The archive already exists. That means one of two very different things,
         // and treating them the same was a permanent data bug.
@@ -349,15 +368,15 @@ async function closeSeason(args) {
         // the wipe, so its absence means "resume", and everything after this point
         // is an absolute write that converges on a retry.
         const existing = await summaryRef.get();
-        if (existing.get('zeroedAt')) {
-            console.log('[season] already closed — skip', groupId, seasonId);
+        if (existing.get("zeroedAt")) {
+            console.log("[season] already closed — skip", groupId, seasonId);
             return { archived: false, players: 0, pairs: 0 };
         }
-        console.warn('[season] archive exists but the wipe never finished — resuming', groupId, seasonId);
+        console.warn("[season] archive exists but the wipe never finished — resuming", groupId, seasonId);
         // Decided titles come from the ARCHIVE on this path, never recomputed: the
         // live rows may be half-zeroed by the pass that died, and a title decided
         // from those would be a different title from the one already sealed.
-        resumedAwards = (existing.get('awards') ?? null);
+        resumedAwards = (existing.get("awards") ?? null);
     }
     // ── 1a. A compact card for the list ─────────────────────────────────────
     //
@@ -371,41 +390,50 @@ async function closeSeason(args) {
     // already resolved to the names frozen in the archive. Same source, same
     // moment, no second version of the truth: the card is derived from the
     // archive it is written beside, and reopenSeason deletes both.
+    //
+    // On the RESUME path it is skipped entirely. `players`, `totals` and `awards`
+    // above were built from live rows that the pass which died may have already
+    // half-wiped, so rewriting the card from them would replace a correct sealed
+    // record with a wrong one — the archive is protected by create(), the card
+    // was not.
     const cardWinners = [];
-    for (const [key, award] of Object.entries(awards)) {
+    for (const [key, award] of Object.entries(resumedAwards ?? awards)) {
         if (!award || !award.winners.length)
             continue;
         cardWinners.push({
             key,
             names: award.winners.map((w) => w
-                .split('__')
-                .map((uid) => String(players[uid]?.displayName ?? '') || '—')
-                .join(' + ')),
+                .split("__")
+                .map((uid) => String(players[uid]?.displayName ?? "") || "—")
+                .join(" + ")),
             value: award.value,
         });
     }
-    await db
-        .collection('seasonCards')
-        .doc(`${groupId}__${seasonId}`)
-        .set({
-        groupId,
-        seasonId,
-        no: args.seasonNo,
-        startsAt: args.startsAt,
-        endsAt: now,
-        completedRounds: args.completedRounds,
-        totals: {
-            rounds: totals.rounds ?? 0,
-            goals: totals.goals ?? 0,
-            assists: totals.assists ?? 0,
-        },
-        // Only people who actually played. A member who never turned up has a
-        // row of zeros and did not take part in the season.
-        players: Object.values(players).filter((p) => num(p.rounds) > 0).length,
-        ...(args.endedEarly ? { endedEarly: true } : {}),
-        ...(args.partialData ? { partialData: true } : {}),
-        winners: cardWinners,
-    }, { merge: true });
+    if (!resumedAwards) {
+        await db
+            .collection("seasonCards")
+            .doc(`${groupId}__${seasonId}`)
+            .set({
+            groupId,
+            seasonId,
+            no: args.seasonNo,
+            startsAt: args.startsAt,
+            endsAt: now,
+            completedRounds: args.completedRounds,
+            totals: {
+                rounds: totals.rounds ?? 0,
+                goals: totals.goals ?? 0,
+                assists: totals.assists ?? 0,
+            },
+            // Only people who actually played. A member who never turned up has a
+            // row of zeros and did not take part in the season.
+            players: Object.values(players).filter((p) => num(p.rounds) > 0)
+                .length,
+            ...(args.endedEarly ? { endedEarly: true } : {}),
+            ...(args.partialData ? { partialData: true } : {}),
+            winners: cardWinners,
+        }, { merge: true });
+    }
     // ── 1b. The titles onto their winners' profiles ─────────────────────────
     //
     // Written only AFTER the archive has landed, and outside its create() latch
@@ -417,7 +445,7 @@ async function closeSeason(args) {
     // rather than duplicates, and it FREEZES the club's name: the title belongs
     // to the player for good, including after they leave the club or the club is
     // renamed, and a live lookup would then render it as a dash.
-    const groupName = args.groupName ?? '';
+    const groupName = args.groupName ?? "";
     let titleBatch = db.batch();
     let titleOps = 0;
     const flushTitles = async () => {
@@ -433,13 +461,13 @@ async function closeSeason(args) {
         for (const winner of award.winners) {
             // The duo title is held by a PAIR, under a joined key. It belongs on
             // both profiles, not on a player who does not exist.
-            for (const uid of winner.split('__')) {
-                if (!uid || uid.startsWith('guest:'))
+            for (const uid of winner.split("__")) {
+                if (!uid || uid.startsWith("guest:"))
                     continue;
                 titleBatch.set(db
-                    .collection('users')
+                    .collection("users")
                     .doc(uid)
-                    .collection('seasonTitles')
+                    .collection("seasonTitles")
                     .doc(`${groupId}__${seasonId}__${titleKey}`), {
                     groupId,
                     groupName,
@@ -471,9 +499,9 @@ async function closeSeason(args) {
     // per row: a retry — including the resume path above — sees the stamp and
     // skips. Once per player per season, so the cost is a few dozen transactions
     // a year for a club.
-    const clampAtZero = (v, minus) => Math.max(0, (typeof v === 'number' && Number.isFinite(v) ? v : 0) - minus);
+    const clampAtZero = (v, minus) => Math.max(0, (typeof v === "number" && Number.isFinite(v) ? v : 0) - minus);
     for (const d of psSnap.docs) {
-        const archivedRow = players[d.data().userId ?? ''];
+        const archivedRow = players[d.data().userId ?? ""];
         if (!archivedRow)
             continue;
         await db.runTransaction(async (tx) => {
@@ -502,18 +530,24 @@ async function closeSeason(args) {
         batch = db.batch();
         ops = 0;
     };
+    // Pair rows are wound back the same way the player rows are, and for the same
+    // reason: an evening committed between the read and the wipe would otherwise
+    // be erased from both the archive and the live table.
+    //
+    // A pair with no archived row — a guest pair, or one past the cap — is set to
+    // zero rather than skipped: it belongs to no season, and leaving it standing
+    // would carry it into the next one.
     for (const d of pairSnap.docs) {
+        const x = d.data();
+        const key = [String(x.a ?? ""), String(x.b ?? "")].sort().join("__");
+        const archivedPair = pairs[key];
         batch.set(d.ref, {
-            assists: 0,
-            sameTeam: 0,
-            winsTogether: 0,
-            lossesTogether: 0,
-            cleanSheetsTogether: 0,
-            against: 0,
-            winsA: 0,
-            winsB: 0,
-            assistsAToB: 0,
-            assistsBToA: 0,
+            ...Object.fromEntries(PAIR_SEASON_FIELDS.map((f) => [
+                f,
+                archivedPair ? Math.max(0, num(x[f]) - num(archivedPair[f])) : 0,
+            ])),
+            // Cleared so a later reopen can stamp its own restore.
+            seasonReopened: admin.firestore.FieldValue.delete(),
             updatedAt: now,
         }, { merge: true });
         if (++ops >= 400)
@@ -523,7 +557,10 @@ async function closeSeason(args) {
     const zeroClub = {};
     for (const f of CLUB_SEASON_FIELDS)
         zeroClub[f] = 0;
-    await db.collection('communityStats').doc(groupId).set({
+    await db
+        .collection("communityStats")
+        .doc(groupId)
+        .set({
         ...zeroClub,
         // Re-stamped, or the new season's chemistry card would date itself from
         // the old one. It is only advanced when absent or earlier, so leaving it
@@ -570,7 +607,7 @@ exports.__seasonFields = {
 async function reopenSeason(args) {
     const { db, groupId, seasonId } = args;
     const summaryRef = db
-        .collection('seasonSummary')
+        .collection("seasonSummary")
         .doc(`${groupId}__${seasonId}`);
     const snap = await summaryRef.get();
     if (!snap.exists)
@@ -579,11 +616,11 @@ async function reopenSeason(args) {
     const players = (data.players ?? {});
     const totals = (data.totals ?? {});
     const awards = (data.awards ?? {});
-    const num2 = (v) => typeof v === 'number' && Number.isFinite(v) ? v : 0;
+    const num2 = (v) => typeof v === "number" && Number.isFinite(v) ? v : 0;
     // 1. Give every player their season back.
     let restored = 0;
     for (const [uid, row] of Object.entries(players)) {
-        const ref = db.collection('communityPlayerStats').doc(`${groupId}__${uid}`);
+        const ref = db.collection("communityPlayerStats").doc(`${groupId}__${uid}`);
         await db.runTransaction(async (tx) => {
             const fresh = await tx.get(ref);
             const cur = (fresh.exists ? fresh.data() : {});
@@ -600,10 +637,50 @@ async function reopenSeason(args) {
         });
         restored += 1;
     }
+    // 1b. And every pair its chemistry.
+    //
+    // The close zeroes communityPairStats — who played beside whom, who beat
+    // whom, who set up whom — and reopening restored the player rows and the club
+    // totals and left those at zero. A club that undid a mistaken close lost its
+    // entire chemistry history, permanently, with no archive to recover from
+    // because the archive is deleted at the end of this very function.
+    //
+    // Same shape as the player rows: ADD back what was sealed, in a transaction,
+    // behind a stamp so a retry cannot double it.
+    const archivedPairs = (data.pairs ?? {});
+    for (const [key, row] of Object.entries(archivedPairs)) {
+        if (typeof row !== "object" || row === null)
+            continue;
+        const a = typeof row.a === "string" ? row.a : "";
+        const b = typeof row.b === "string" ? row.b : "";
+        if (!a || !b)
+            continue;
+        const ref = db.collection("communityPairStats").doc(`${groupId}__${key}`);
+        await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(ref);
+            const cur = (fresh.exists ? fresh.data() : {});
+            if (cur.seasonReopened === seasonId)
+                return;
+            tx.set(ref, {
+                groupId,
+                a,
+                b,
+                seasonReopened: seasonId,
+                updatedAt: Date.now(),
+                ...Object.fromEntries(PAIR_SEASON_FIELDS.map((f) => [f, num2(cur[f]) + num2(row[f])])),
+            }, { merge: true });
+        });
+    }
     // 2. And the club its totals.
-    await db.collection('communityStats').doc(groupId).set(Object.fromEntries([
-        ...CLUB_SEASON_FIELDS.map((f) => [f, admin.firestore.FieldValue.increment(num2(totals[f]))]),
-        ['updatedAt', Date.now()],
+    await db
+        .collection("communityStats")
+        .doc(groupId)
+        .set(Object.fromEntries([
+        ...CLUB_SEASON_FIELDS.map((f) => [
+            f,
+            admin.firestore.FieldValue.increment(num2(totals[f])),
+        ]),
+        ["updatedAt", Date.now()],
     ]), { merge: true });
     // 3. Take the titles back off the winners' profiles. A title for a season
     //    that no longer exists is worse than no title.
@@ -614,15 +691,15 @@ async function reopenSeason(args) {
         if (!award || !Array.isArray(award.winners))
             continue;
         for (const winner of award.winners) {
-            if (typeof winner !== 'string')
+            if (typeof winner !== "string")
                 continue;
-            for (const uid of winner.split('__')) {
+            for (const uid of winner.split("__")) {
                 if (!uid || !isReal(uid))
                     continue;
                 batch.delete(db
-                    .collection('users')
+                    .collection("users")
                     .doc(uid)
-                    .collection('seasonTitles')
+                    .collection("seasonTitles")
                     .doc(`${groupId}__${seasonId}__${titleKey}`));
                 titles += 1;
                 if (++ops >= 400) {
@@ -637,7 +714,7 @@ async function reopenSeason(args) {
         await batch.commit();
     // 4. The list card goes with its archive — one without the other is a
     //    season that shows in the hall of fame and cannot be opened.
-    await db.collection('seasonCards').doc(`${groupId}__${seasonId}`).delete();
+    await db.collection("seasonCards").doc(`${groupId}__${seasonId}`).delete();
     // 5. Last, because while it exists this is repeatable.
     await summaryRef.delete();
     return { reopened: true, players: restored, titles };

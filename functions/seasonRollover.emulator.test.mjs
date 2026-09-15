@@ -301,7 +301,7 @@ describe('the wipe is exactly the competition', () => {
     assert.equal(c.chemistrySince, 1_790_000_000_000);
   });
 
-  test('pairs are zeroed', async () => {
+  test('pairs are wound back', async () => {
     const p = (await db.collection('communityPairStats').doc(`${GID}__u1__u2`).get()).data();
     assert.equal(p.assists, 0);
     assert.equal(p.sameTeam, 0);
@@ -309,6 +309,14 @@ describe('the wipe is exactly the competition', () => {
     // Identity survives here too.
     assert.equal(p.a, 'u1');
     assert.equal(p.b, 'u2');
+  });
+
+  test('and a guest pair, which belongs to no season, is zeroed outright', async () => {
+    // It was never archived — nothing to subtract — and leaving it standing
+    // would carry a dead stranger's counters into the next season.
+    const g = (await db.collection('communityPairStats').doc(`${GID}__guest:abc__u1`).get()).data();
+    assert.equal(g.sameTeam, 0);
+    assert.equal(g.against, 0);
   });
 });
 
@@ -469,6 +477,18 @@ describe('a season closed by mistake can be reopened', () => {
     assert.equal(after.cleanSheets, 18);
     // And the row can be wound back again when the season is properly closed.
     assert.equal(after.seasonWoundBack, undefined);
+  });
+
+  test('and every pair gets its chemistry back', async () => {
+    // The close zeroes communityPairStats — who played beside whom, who beat
+    // whom, who set up whom. Restoring the player rows and leaving these at
+    // zero destroyed a club's whole chemistry history with no way back: the
+    // archive that held it is deleted at the end of this very operation.
+    const p = (await db.collection('communityPairStats').doc(`${GID}__u1__u2`).get()).data();
+    assert.equal(p.sameTeam, 20);
+    assert.equal(p.against, 18);
+    assert.equal(p.winsA, 10);
+    assert.equal(p.assistsAToB, 3);
   });
 
   test('the titles come off the winners', async () => {

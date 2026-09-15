@@ -694,6 +694,31 @@ describe('a crown needs something to have happened first', () => {
     expect(crowns({ goals: 7, goalsToCrown: 2 })).toContain('crownGoalsChase');
   });
 
+  it('a weak GOAL crown does not silence the rest of the club band', () => {
+    // The first version of this gate wrapped the whole club block, so a club
+    // whose top scorer happened to be on two goals lost its assist crowns, its
+    // rivalry line and its standing line — for every club in the app.
+    const ids = crowns({
+      goals: 1,
+      isTopScorer: true,
+      assists: 9,
+      isTopAssister: true,
+    });
+    expect(ids).not.toContain('crownGoalsHeld');
+    expect(ids).toContain('crownAssistsHeld');
+  });
+
+  it('and a weak ASSIST crown is gated on its own terms', () => {
+    const ids = crowns({
+      goals: 12,
+      isTopScorer: true,
+      assists: 1,
+      isTopAssister: true,
+    });
+    expect(ids).toContain('crownGoalsHeld');
+    expect(ids).not.toContain('crownAssistsHeld');
+  });
+
   it('while one goal offers neither', () => {
     expect(crowns({ goals: 1, isTopScorer: true })).not.toContain('crownGoalsHeld');
     expect(crowns({ goals: 0, goalsToCrown: 1 })).not.toContain('crownGoalsChase');

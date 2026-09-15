@@ -306,14 +306,30 @@ function statsCandidates(ctx: AssistantContext): Candidate[] {
   // crown in week one any more than it is in week one of a new club.
   // Gated on the CROWN, not on the viewer: the chase line is just as silly when
   // the leader has one goal, and it is shown to everybody at once.
-  const CROWN_MIN_GOALS = 3;
-  const crownGoals = ins
-    ? ins.isTopScorer
-      ? (ins.goals ?? 0)
-      : (ins.goals ?? 0) + (ins.goalsToCrown ?? 0)
-    : 0;
-  if (club && ins && crownGoals >= CROWN_MIN_GOALS) {
-    if (ins.isTopScorer) {
+  //
+  // And gated per crown, NOT around the whole block. The first version of this
+  // wrapped everything below — the assist crowns, the rivalry line, the
+  // standing line — so a club whose top scorer happened to be on two goals lost
+  // every club insight it had. That is a regression for every club in the app,
+  // not just one running seasons.
+  const CROWN_MIN = 3;
+  /** What the leader actually has: mine when I hold it, mine + the gap when I
+   *  am chasing. */
+  const leaderTotal = (mine: number | null | undefined, gap: number | null | undefined) =>
+    (mine ?? 0) + (gap ?? 0);
+  const goalCrownWorthIt =
+    !!ins &&
+    (ins.isTopScorer ? (ins.goals ?? 0) : leaderTotal(ins.goals, ins.goalsToCrown)) >=
+      CROWN_MIN;
+  const assistCrownWorthIt =
+    !!ins &&
+    (ins.isTopAssister
+      ? (ins.assists ?? 0)
+      : leaderTotal(ins.assists, ins.assistsToCrown)) >= CROWN_MIN;
+  if (club && ins) {
+    if (!goalCrownWorthIt) {
+      // no goal crown worth naming yet
+    } else if (ins.isTopScorer) {
       out.push({
         id: 'crownGoalsHeld',
         scenario: 'crown',
@@ -326,7 +342,9 @@ function statsCandidates(ctx: AssistantContext): Candidate[] {
         text: he.assistantCrownGoalsChase(ins.goalsToCrown, club),
       });
     }
-    if (ins.isTopAssister) {
+    if (!assistCrownWorthIt) {
+      // no assist crown worth naming yet
+    } else if (ins.isTopAssister) {
       out.push({
         id: 'crownAssistsHeld',
         scenario: 'crown',

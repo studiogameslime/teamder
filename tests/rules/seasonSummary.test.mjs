@@ -9,7 +9,7 @@
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, setDoc, updateDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, deleteField, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +35,12 @@ before(async () => {
       groupId: GID, groupName: 'club', seasonId: 's1', no: 1, totals: {},
       // `departed` played the season and has since left the club.
       players: { [MEMBER]: { rounds: 10 }, [LEFT]: { rounds: 8 } },
+    });
+    // The compact list row the hall of fame actually reads.
+    await setDoc(doc(db, 'seasonCards', `${GID}__s1`), {
+      groupId: GID, seasonId: 's1', no: 1, startsAt: 1, endsAt: 2,
+      completedRounds: 10, totals: { rounds: 40, goals: 100, assists: 50 },
+      players: 12, winners: [{ key: 'topScorer', names: ['דני'], value: 31 }],
     });
     await setDoc(doc(db, 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`), {
       groupId: GID, groupName: 'club', seasonId: 's1', seasonNo: 1,
@@ -216,5 +222,145 @@ describe('nobody edits groups.seasons from a client', () => {
   test('but an admin can still edit the rest of the club', async () => {
     await assert.doesNotReject(() =>
       updateDoc(doc(asAdmin(), 'groups', GID), { description: 'עדיין אפשר לערוך' }));
+  });
+});
+
+
+// ── /seasonCards — the row the hall of fame reads ────────────────────────
+//
+// A card names people, so it is club-scoped like the archive it is written
+// beside. Unlike the archive there is NO participant clause: a card is a club
+// screen, never a deep link, and widening it would widen the list too.
+describe('the season CARD is club-scoped', () => {
+  test('a member reads one by id', async () => {
+    const s = await getDoc(doc(asMember(), 'seasonCards', `${GID}__s1`));
+    assert.equal(s.exists(), true);
+    assert.equal(s.data().players, 12);
+  });
+
+  test('and lists them — the screen\'s real query, answered from the FIELD', async () => {
+    const snap = await getDocs(query(
+      collection(asMember(), 'seasonCards'), where('groupId', '==', GID)));
+    assert.equal(snap.size, 1);
+  });
+
+  test('an outsider gets nothing, by id or by query', async () => {
+    await assert.rejects(() => getDoc(doc(asOutsider(), 'seasonCards', `${GID}__s1`)));
+    await assert.rejects(() => getDocs(query(
+      collection(asOutsider(), 'seasonCards'), where('groupId', '==', GID))));
+  });
+
+  test('and neither does somebody who only PLAYED the season', async () => {
+    // Deliberate: the card is the club\'s hall of fame, not a personal record.
+    // The departed player\'s own summary is the ARCHIVE, which they can read.
+    await assert.rejects(() => getDocs(query(
+      collection(asDeparted(), 'seasonCards'), where('groupId', '==', GID))));
+  });
+
+  test('nobody writes a card, not even the club admin', async () => {
+    const asAdmin = env.authenticatedContext('admin').firestore();
+    await assert.rejects(() =>
+      setDoc(doc(asAdmin, 'seasonCards', `${GID}__s2`), { groupId: GID }));
+  });
+});
+
+// ── Deleting is a write ──────────────────────────────────────────────────
+//
+// `allow write: if false` covers delete as well as create and update, and a
+// sealed season that an admin could delete is not sealed. Asserted rather than
+// assumed: only reopenLastSeason (Admin SDK) may remove one.
+describe('a sealed season cannot be deleted from a client', () => {
+  test('not the archive', async () => {
+    await assert.rejects(() => deleteDoc(
+      doc(env.authenticatedContext('admin').firestore(),
+          'seasonSummary', `${GID}__s1`)));
+  });
+
+  test('not the card', async () => {
+    await assert.rejects(() => deleteDoc(
+      doc(env.authenticatedContext('admin').firestore(),
+          'seasonCards', `${GID}__s1`)));
+  });
+
+  test('and a player cannot delete a title they lost interest in', async () => {
+    await assert.rejects(() => deleteDoc(
+      doc(asMember(), 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`)));
+  });
+});
+
+// ── Signed OUT ───────────────────────────────────────────────────────────
+describe('none of it is public to the internet', () => {
+  const anon = () => env.unauthenticatedContext().firestore();
+
+  test('no archive', async () => {
+    await assert.rejects(() => getDoc(doc(anon(), 'seasonSummary', `${GID}__s1`)));
+  });
+
+  test('no card', async () => {
+    await assert.rejects(() => getDoc(doc(anon(), 'seasonCards', `${GID}__s1`)));
+  });
+
+  test('no title — public means every signed-in USER, not everybody', async () => {
+    await assert.rejects(() => getDoc(
+      doc(anon(), 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`)));
+  });
+});
+
+// ── The other doors into groups.seasons ──────────────────────────────────
+//
+// The immutability clause lives in the ADMIN branch of the group update rule.
+// Every other branch is a self-service one gated by affectedKeys().hasOnly(),
+// so none of them can carry `seasons` — proven here rather than read off the
+// rule, because a later hasOnly() gaining a key would silently open the field.
+describe('no side door into groups.seasons', () => {
+  test('not deleting the field', async () => {
+    await assert.rejects(() => updateDoc(
+      doc(env.authenticatedContext('admin').firestore(), 'groups', GID),
+      { seasons: deleteField() }));
+  });
+
+  test('not one nested number', async () => {
+    // `seasons.currentNo` alone would be enough to close the same season twice.
+    await assert.rejects(() => updateDoc(
+      doc(env.authenticatedContext('admin').firestore(), 'groups', GID),
+      { 'seasons.currentNo': 1 }));
+  });
+
+  test('not riding along on a self-leave', async () => {
+    await assert.rejects(() => updateDoc(doc(asMember(), 'groups', GID), {
+      playerIds: ['admin'], updatedAt: 2, seasons: { enabled: false },
+    }));
+  });
+
+  test('not riding along on a join request', async () => {
+    await assert.rejects(() => updateDoc(doc(asOutsider(), 'groups', GID), {
+      pendingPlayerIds: [OUTSIDER], updatedAt: 2, seasons: { enabled: false },
+    }));
+  });
+});
+
+// ── The one door that is still open: CREATE ──────────────────────────────
+//
+// `allow update` makes `seasons` server-owned. `allow create` does not mention
+// it, so anybody can be born holding one: create a club with
+// seasons.enabled = true and the hourly rollover adopts it without
+// enableClubSeasons ever having run, and with a `count` nobody validated —
+// which seasonChoices() turns into a loop of that length on every member's
+// phone.
+//
+// FAILS until the create rule carries `!('seasons' in request.resource.data)`.
+describe('and a club cannot be BORN with a seasons block', () => {
+  test('planting one at create is refused', async () => {
+    await assert.rejects(() => setDoc(
+      doc(env.authenticatedContext('planter').firestore(), 'groups', 'planted'),
+      {
+        name: 'מועדון', adminIds: ['planter'], playerIds: ['planter'],
+        pendingPlayerIds: [], createdAt: 1,
+        seasons: {
+          enabled: true, currentNo: 99, currentId: 's99',
+          count: 1000000000, startedAt: 0,
+          cadence: { type: 'date', months: 6, endsAt: 1 },
+        },
+      }));
   });
 });
