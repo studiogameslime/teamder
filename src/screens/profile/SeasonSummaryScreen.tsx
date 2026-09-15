@@ -502,8 +502,12 @@ const styles = StyleSheet.create({
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   stat: {
     minWidth: 96,
-    flexGrow: 1,
-    flexBasis: '30%',
+    // NOT flexGrow. A grid of thirteen tiles in rows of three leaves one on
+    // the last row, and letting it grow stretched a single number across the
+    // whole width — the screen ended on a slab. A fixed basis leaves the last
+    // row short, which is what a grid is supposed to look like.
+    flexGrow: 0,
+    flexBasis: '31%',
     // Sits ON a card, so it needs the muted surface — the page background
     // would be invisible against white in light mode.
     backgroundColor: colors.surfaceMuted,
