@@ -51,7 +51,13 @@ const per = (v: number | null): string => (v === null ? '—' : v.toFixed(2));
 function formatRange(startsAt: number, endsAt: number | null): string {
   const f = (ms: number) =>
     new Date(ms).toLocaleDateString('he-IL', { month: 'short', year: 'numeric' });
-  if (!startsAt) return '';
+  // Season 1 of a club that sealed its history has no start date — it began
+  // whenever the club did, which nothing recorded. That is a real fact about
+  // that season, and saying it beats rendering an empty line where every other
+  // season shows a range.
+  if (!startsAt) {
+    return endsAt ? he.seasonRangeUntil(f(endsAt)) : he.seasonRangeUnknown;
+  }
   return endsAt ? `${f(startsAt)} – ${f(endsAt)}` : `${f(startsAt)} – ${he.seasonNow}`;
 }
 
@@ -116,8 +122,16 @@ function TitleRow({ title }: { title: SeasonTitleWon }) {
 function ChampionRow({ title }: { title: SeasonTitleAwarded }) {
   return (
     <View style={styles.championRow}>
-      <Text style={styles.championTitle}>{he.seasonTitleNames[title.key]}</Text>
-      <Text style={[styles.championName, title.mine && styles.championMine]}>
+      <Text style={styles.championTitle} numberOfLines={1}>
+        {he.seasonTitleNames[title.key]}
+      </Text>
+      {/* The name is the variable-length part — a duo title is two names
+          joined — so it is the one that shrinks and wraps, not the label
+          beside it and not the number after it. */}
+      <Text
+        style={[styles.championName, title.mine && styles.championMine]}
+        numberOfLines={2}
+      >
         {title.names.join(' · ')}
       </Text>
       {/* The number it was won on. Fetched all along and thrown away — and it
@@ -442,7 +456,10 @@ const styles = StyleSheet.create({
   chipRow: { gap: spacing.sm, paddingVertical: spacing.xs },
   chip: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    // 44pt of touch target, not 26. The season picker is the one control on
+    // this screen and it was smaller than a thumb.
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: 999,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -527,15 +544,24 @@ const styles = StyleSheet.create({
   championTitle: {
     ...typography.caption,
     color: colors.textMuted,
+    // Enough for the longest of the nine names, and no more: the label is
+    // fixed-length, the winner is not.
+    flexShrink: 0,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  championName: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '700',
     flex: 1,
     textAlign: RTL_LABEL_ALIGN,
   },
-  championName: { ...typography.caption, color: colors.text, fontWeight: '700' },
   championMine: { color: colors.primary },
   championValue: {
     ...typography.caption,
     color: colors.textMuted,
     fontVariant: ['tabular-nums'],
+    flexShrink: 0,
   },
   titleShared: {
     ...typography.caption,

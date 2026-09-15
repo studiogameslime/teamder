@@ -76,6 +76,12 @@ export const mockGroup: Group = {
   updatedAt: Date.now() - 1000 * 60 * 60 * 24,
 };
 
+// The OTHER mock club deliberately runs no seasons.
+//
+// Turning them on for the primary club made every mock QA pass exercise the
+// seasons path and none exercise the path every real club is on today. Two
+// clubs, two states, one run.
+//
 // A second mock group so the search screen has more than one result in dev.
 export const mockOtherGroup: Group = {
   id: 'g2',

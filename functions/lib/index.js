@@ -4253,14 +4253,23 @@ async function sealRoundSummary(args) {
         players,
         rounds,
         career,
-        club: {
-            goals: num(cs.goals),
-            assists: clubAssists,
-            rounds: num(cs.rounds),
-            cleanSheets: clubCleanSheets,
-            shootoutRounds: num(cs.shootoutRounds),
-            evenings: eveningsSealed + 1,
-        },
+        club: (() => {
+            // Club totals are LIFETIME here, same as the player rows above: a
+            // milestone is a milestone, and the sealed seasons hold what the live
+            // document no longer does. `evenings` already comes from a counter that
+            // never resets.
+            const past = archivedClubTotals.get(groupId) ?? {
+                goals: 0, assists: 0, rounds: 0, cleanSheets: 0, shootoutRounds: 0,
+            };
+            return {
+                goals: num(cs.goals) + past.goals,
+                assists: clubAssists + past.assists,
+                rounds: num(cs.rounds) + past.rounds,
+                cleanSheets: clubCleanSheets + past.cleanSheets,
+                shootoutRounds: num(cs.shootoutRounds) + past.shootoutRounds,
+                evenings: eveningsSealed + 1,
+            };
+        })(),
         records: baseline,
         personalBests,
         standings: args.standings,
@@ -11654,6 +11663,23 @@ async function loadRetroGameContext(uid, gameId) {
     const isAdmin = game.createdBy === uid || adminIds.includes(uid);
     if (!isAdmin)
         throw new https_1.HttpsError('permission-denied', 'community admin only');
+    // A correction belongs to the season the evening was played in.
+    //
+    // Retro goals write straight into communityPlayerStats and communityStats,
+    // and those are the SEASON's counters. Correcting a goal from an evening in
+    // a season that has since closed therefore lands in the wrong season twice
+    // over: the sealed archive stays wrong, and the running season is credited
+    // with a goal nobody scored in it. Removing one is worse — the counter it
+    // decrements may be at zero, and Firestore's increment happily goes
+    // negative, so a club table starts showing −1 goals.
+    //
+    // The season stamp has been on every game since the feature landed; nothing
+    // read it until now.
+    const gameSeason = typeof game.seasonId === 'string' ? game.seasonId : '';
+    const seasons = grp.seasons;
+    if (seasons?.enabled && gameSeason && gameSeason !== seasons.currentId) {
+        throw new https_1.HttpsError('failed-precondition', 'closedSeasonGame: this evening belongs to a season that has already closed');
+    }
     return { game, groupId };
 }
 const isAlreadyExists = (err) => {
@@ -11812,8 +11838,13 @@ exports.onFeedbackCreated = (0, firestore_1.onDocumentCreated)('feedback/{feedba
  * summary at all.
  */
 const archNum = (v) => typeof v === 'number' && Number.isFinite(v) ? v : 0;
+/** Filled by the same pass as the player rows — the CLUB's sealed totals. */
+const archivedClubTotals = new Map();
 async function archivedCareerOf(groupId) {
     const out = new Map();
+    archivedClubTotals.set(groupId, {
+        goals: 0, assists: 0, rounds: 0, cleanSheets: 0, shootoutRounds: 0,
+    });
     if (!groupId)
         return out;
     try {
@@ -11821,7 +11852,20 @@ async function archivedCareerOf(groupId) {
             .collection('seasonSummary')
             .where('groupId', '==', groupId)
             .get();
+        const club = {
+            goals: 0, assists: 0, rounds: 0, cleanSheets: 0, shootoutRounds: 0,
+        };
         for (const doc of snap.docs) {
+            // The CLUB's history too. Its milestones ("the club's 1,000th goal") and
+            // its badges read communityStats, which the close zeroes — so without
+            // this a club re-earns its bronze badge and re-announces its thousandth
+            // goal every season, and its level drops the morning after a close.
+            const t = (doc.data()?.totals ?? {});
+            club.goals += archNum(t.goals);
+            club.assists += archNum(t.assists);
+            club.rounds += archNum(t.rounds);
+            club.cleanSheets += archNum(t.cleanSheets);
+            club.shootoutRounds += archNum(t.shootoutRounds);
             const players = (doc.data()?.players ?? {});
             for (const [uid, row] of Object.entries(players)) {
                 const cur = out.get(uid) ?? {
@@ -11836,6 +11880,7 @@ async function archivedCareerOf(groupId) {
                 out.set(uid, cur);
             }
         }
+        archivedClubTotals.set(groupId, club);
     }
     catch (err) {
         console.error('[season] archived career read failed', groupId, err);
@@ -11991,6 +12036,12 @@ function rebaseCadence(cadence, seasonStartedAt, now) {
 /** How long after kickoff a game still counts as "tonight". Past this it is
  *  stale, not in progress, and the cleanup sweep owns it. */
 const TONIGHT_MS = 12 * 60 * 60 * 1000;
+/** How long a just-reopened season is left alone, so the admin can move the
+ *  target that closed it before the sweep closes it again. */
+const REOPEN_GRACE_MS = 48 * 60 * 60 * 1000;
+/** How far ahead still counts as "about to be played". A game can be started
+ *  before its scheduled kickoff, so a window that ends at `now` misses it. */
+const STARTING_SOON_MS = 3 * 60 * 60 * 1000;
 async function clubIsQuiet(groupId) {
     // What must not happen is closing ACROSS an evening: each mini-game commits
     // separately, so rounds 1-3 would land in the old season and 4-6 in the new,
@@ -12011,7 +12062,11 @@ async function clubIsQuiet(groupId) {
         .collection('games')
         .where('groupId', '==', groupId)
         .where('status', 'in', ['scheduled', 'open', 'locked', 'active'])
-        .where('startsAt', '<=', now)
+        // Forward as well as back. An evening that kicked off early — the teams
+        // turned up at 19:40 for a 20:00 game and pressed start — has a startsAt in
+        // the future while the rotation is already running, and an upper bound of
+        // `now` walked straight past it. The window is the evening, not the clock.
+        .where('startsAt', '<=', now + STARTING_SOON_MS)
         .where('startsAt', '>=', now - TONIGHT_MS)
         .limit(1)
         .get();
@@ -12154,6 +12209,16 @@ async function runSeasonRollovers() {
                     now >= cadence.endsAt;
             if (!due)
                 continue;
+            // A season an admin has just REOPENED is due the instant it comes back —
+            // it met its target, that is why it closed. Closing it again within the
+            // hour would make the undo button useless and look like the app arguing.
+            // The grace is for the admin to move the finish line; after it, a target
+            // that is still met still closes the season, which is correct.
+            const reopenedAt = archNum(seasons.reopenedAt);
+            if (reopenedAt > 0 && now - reopenedAt < REOPEN_GRACE_MS) {
+                console.log('[season] due but just reopened — holding', doc.id);
+                continue;
+            }
             const quiet = await clubIsQuiet(doc.id);
             if (!quiet.ok) {
                 // Not a failure. The club is mid-evening; it will be due next hour too.
@@ -12183,6 +12248,7 @@ async function runSeasonRollovers() {
                     startedAt: now,
                     roundsAtStart: await sealedEveningsOf(doc.id),
                     playedRounds: 0,
+                    reopenedAt: 0,
                     // The whole reason this sweep is safe to run hourly: without a
                     // re-based end date it would close this club again next hour, and
                     // the hour after that, forever.
@@ -12468,6 +12534,7 @@ exports.reopenLastSeason = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
             currentId: lastId,
             startedAt: archNum(archive.get('startsAt')),
             roundsAtStart: reopenedRoundsAtStart,
+            reopenedAt: Date.now(),
             playedRounds: Math.max(0, (await sealedEveningsOf(groupId)) - reopenedRoundsAtStart),
             // The target it was closed against, so it is not immediately due
             // again on a date cadence.
@@ -12518,6 +12585,7 @@ exports.endSeasonNow = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK 
             startedAt: now,
             roundsAtStart: await sealedEveningsOf(groupId),
             playedRounds: 0,
+            reopenedAt: 0,
             // Same length, measured from now — an inherited end date is already
             // in the past and would close this season the moment it opened.
             cadence: rebaseCadence(seasons.cadence, seasons.startedAt ?? 0, now),

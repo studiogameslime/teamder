@@ -129,7 +129,17 @@ export function CommunityChampionship({
       <CommunityStatsTable
         players={data.players}
         groupId={groupId}
-        attendedByUser={attendedByUser}
+        // Suppressed when the club runs seasons.
+        //
+        // `attendedByUser` is an authoritative ALL-TIME scan of finished games,
+        // and it overrides the rollup's `games`. Under a table headed "עונה 3"
+        // that puts one lifetime column among season columns — a player shows
+        // 41 appearances beside 6 goals — and it silently breaks every
+        // per-game rate in the efficiency tab, which divides by it.
+        //
+        // The rollup's own `games` counter IS season-scoped, because the close
+        // winds it back with everything else. That is the right number here.
+        attendedByUser={seasonNo ? undefined : attendedByUser}
         mode={tab}
       />
 

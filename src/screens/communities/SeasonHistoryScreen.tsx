@@ -33,8 +33,10 @@ function formatRange(startsAt: number, endsAt: number): string {
       : '';
   const from = f(startsAt);
   const to = f(endsAt);
-  if (!from && !to) return '';
-  return from && to ? `${from} – ${to}` : from || to;
+  // Season 1 of a club that sealed its history began whenever the club did,
+  // which nothing recorded. Say so rather than leaving the line blank.
+  if (!from) return to ? he.seasonRangeUntil(to) : he.seasonRangeUnknown;
+  return to ? `${from} – ${to}` : from;
 }
 
 function SeasonCard({ season }: { season: FinishedSeason }) {

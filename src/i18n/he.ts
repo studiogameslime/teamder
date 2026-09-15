@@ -2143,6 +2143,11 @@ export const he = {
   // The number a title was won on. A percentage for the two rate titles, a
   // count for the rest — "62%" and "31 שערים" are both the answer to "on what?"
   seasonTitleValue: (key: string, value: number) => {
+    // Hebrew's 1-form. "1 שערים" is the same mistake as "1 חודשים" and it
+    // reaches the screen just as often — a title is routinely won on one of
+    // something in a young club.
+    const count = (one: string, many: string) =>
+      value === 1 ? one : `${value} ${many}`;
     switch (key) {
       case 'penaltyKing':
       case 'penaltyKeeper':
@@ -2150,16 +2155,16 @@ export const he = {
       case 'mvp':
         return value.toFixed(1);
       case 'topScorer':
-        return `${value} שערים`;
+        return count('שער אחד', 'שערים');
       case 'topAssister':
       case 'deadlyDuo':
-        return `${value} בישולים`;
+        return count('בישול אחד', 'בישולים');
       case 'topWinner':
-        return `${value} ניצחונות`;
+        return count('ניצחון אחד', 'ניצחונות');
       case 'mostLoyal':
-        return `${value} מחזורים`;
+        return count('מחזור אחד', 'מחזורים');
       case 'cleanSheetKing':
-        return `${value} שערים נקיים`;
+        return count('שער נקי אחד', 'שערים נקיים');
       default:
         return String(value);
     }
@@ -2174,6 +2179,8 @@ export const he = {
   seasonTitlesPending:
     'התארים מחולקים כשהעונה נסגרת.',
   seasonSummaryTitle: 'סיכום העונה שלי',
+  seasonRangeUntil: (to: string) => `מתחילת המועדון עד ${to}`,
+  seasonRangeUnknown: 'כל ההיסטוריה של המועדון',
   seasonNow: 'עכשיו',
   seasonNumberLabel: (no: number) => `עונה ${no}`,
   seasonClosedBadge: 'העונה הסתיימה',
@@ -2216,12 +2223,15 @@ export const he = {
   seasonPeerNemesisDetail: (faced: number, mine: number, theirs: number) =>
     `${faced} משחקונים זה מול זה — ${mine} ניצחונות שלי, ${theirs} שלו`,
   seasonPeerVictim: 'את מי ניצחתי הכי הרבה',
-  seasonPeerVictimDetail: (wins: number) => `ניצחתי אותו ${wins} פעמים`,
+  seasonPeerVictimDetail: (wins: number) =>
+    wins === 1 ? 'ניצחתי אותו פעם אחת' : `ניצחתי אותו ${wins} פעמים`,
   seasonPeerTormentor: 'מי ניצח אותי הכי הרבה',
-  seasonPeerTormentorDetail: (losses: number) => `הוא ניצח אותי ${losses} פעמים`,
+  seasonPeerTormentorDetail: (losses: number) =>
+    losses === 1 ? 'הוא ניצח אותי פעם אחת' : `הוא ניצח אותי ${losses} פעמים`,
   seasonPeerAssistedMost: 'למי בישלתי הכי הרבה',
   seasonPeerAssistedBy: 'מי בישל לי הכי הרבה',
-  seasonPeerAssistsDetail: (n: number) => `${n} בישולים`,
+  seasonPeerAssistsDetail: (n: number) =>
+    n === 1 ? 'בישול אחד' : `${n} בישולים`,
   seasonPeersEmpty:
     'עוד לא שיחקת מספיק כדי שיהיה מה לספר כאן. זה יתמלא מעצמו.',
   seasonPeersEmptyClosed: 'לא שיחקת מספיק בעונה הזאת כדי שיהיה מה לספר כאן.',

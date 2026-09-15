@@ -106,3 +106,39 @@ describe('the season countdown counts in Hebrew', () => {
     expect(he.seasonsProgressDays(-5)).toContain('בקרוב');
   });
 });
+
+describe('the season title values count in Hebrew too', () => {
+  // The 1-form pass fixed the countdown and skipped its neighbours. A title is
+  // routinely won on one of something in a young club, so "1 שערים" reaches
+  // the screen as easily as "1 חודשים" did.
+  it('one of anything has its own word', () => {
+    expect(he.seasonTitleValue('topScorer', 1)).toBe('שער אחד');
+    expect(he.seasonTitleValue('topAssister', 1)).toBe('בישול אחד');
+    expect(he.seasonTitleValue('topWinner', 1)).toBe('ניצחון אחד');
+    expect(he.seasonTitleValue('mostLoyal', 1)).toBe('מחזור אחד');
+    expect(he.seasonTitleValue('cleanSheetKing', 1)).toBe('שער נקי אחד');
+  });
+
+  it('and more than one reads normally', () => {
+    expect(he.seasonTitleValue('topScorer', 31)).toBe('31 שערים');
+    expect(he.seasonTitleValue('mostLoyal', 24)).toBe('24 מחזורים');
+  });
+
+  it('rates and averages are not counted things', () => {
+    expect(he.seasonTitleValue('penaltyKing', 0.625)).toBe('63%');
+    expect(he.seasonTitleValue('mvp', 8.37)).toBe('8.4');
+  });
+
+  it('no title value can ever print "1 <plural>"', () => {
+    for (const k of ['topScorer', 'topAssister', 'topWinner', 'mostLoyal',
+                     'cleanSheetKing', 'deadlyDuo']) {
+      expect(he.seasonTitleValue(k, 1)).not.toMatch(/^1 /);
+    }
+  });
+
+  it('the peer lines too', () => {
+    expect(he.seasonPeerVictimDetail(1)).toBe('ניצחתי אותו פעם אחת');
+    expect(he.seasonPeerTormentorDetail(1)).toBe('הוא ניצח אותי פעם אחת');
+    expect(he.seasonPeerAssistsDetail(1)).toBe('בישול אחד');
+  });
+});
