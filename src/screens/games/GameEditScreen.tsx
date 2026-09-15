@@ -283,17 +283,23 @@ export function GameEditScreen() {
         throw err;
       }
     }
-    // `registrationOpensAt` is patched only when the scheduled-reg toggle
-    // is ON and the game is still in 'scheduled' state — once the CF
-    // has flipped it to 'open' the field is moot. The CF's
-    // `openedNotificationSent` flag prevents a re-flip from
-    // dispatching a second push.
+    // `registrationOpensAt` is patched when the scheduled-reg toggle is ON and
+    // the game is still 'scheduled' — once the CF has flipped it to 'open' the
+    // field is moot, and `openedNotificationSent` stops a re-flip firing a
+    // second push.
+    //
+    // And when the toggle is switched OFF it is stamped to NOW, which is the
+    // whole point of switching it off: open the game and tell the roster. This
+    // branch simply did not exist — the patch was `{}` whenever the toggle was
+    // off, so turning it off wrote nothing and the game stayed scheduled for
+    // good, which is what was reported. Stamping "now" makes the game due and
+    // the server's own flip does the rest, with every one of its guards.
     const regOpensPatch =
-      v.scheduledRegEnabled &&
-      game.status === 'scheduled' &&
-      v.registrationOpensAt > 0
-        ? { registrationOpensAt: v.registrationOpensAt }
-        : {};
+      game.status !== 'scheduled'
+        ? {}
+        : v.scheduledRegEnabled && v.registrationOpensAt > 0
+          ? { registrationOpensAt: v.registrationOpensAt }
+          : { registrationOpensAt: Date.now() };
     try {
       await gameService.updateGameV2(game.id, {
         title: v.title.trim() || game.title,

@@ -5000,6 +5000,7 @@ export const onGameRosterChanged = onDocumentWritten(
           maxPlayers?: number;
           status?: string;
           capacityNoticeSent?: boolean;
+          openedNotificationSent?: boolean;
           arrivals?: Record<string, string>;
           pending?: string[];
           waitlist?: string[];
@@ -5019,6 +5020,7 @@ export const onGameRosterChanged = onDocumentWritten(
           status?: string;
           visibility?: string;
           capacityNoticeSent?: boolean;
+          openedNotificationSent?: boolean;
           title?: string;
           startsAt?: number;
           groupId?: string;
@@ -5126,6 +5128,41 @@ export const onGameRosterChanged = onDocumentWritten(
     }
 
     const ref = event.data!.after.ref;
+
+    // ── Scheduling switched OFF → open the game NOW ───────────────────────
+    //
+    // Turning off "תזמון פתיחת הרשמה" means the game should open on save and
+    // the roster should be told, which is exactly what the reporter expected
+    // and exactly what did not happen: the edit screen only ever PATCHED
+    // `registrationOpensAt` while the toggle was ON, so switching it off wrote
+    // nothing at all and the game stayed `scheduled` for good.
+    //
+    // The client now stamps `registrationOpensAt` to the moment of saving. That
+    // makes the game due, and the safety-net cron would pick it up within five
+    // minutes — but "after saving" is what was asked for, so the same
+    // self-verifying flip runs here too. It re-reads the game, re-checks every
+    // guard, and `openedNotificationSent` latches the push, so this racing the
+    // cron or a Cloud Task cannot double-notify.
+    try {
+      if (
+        after.status === 'scheduled' &&
+        after.openedNotificationSent !== true &&
+        typeof after.registrationOpensAt === 'number' &&
+        after.registrationOpensAt > 0 &&
+        after.registrationOpensAt <= Date.now() &&
+        // Only on the transition. Without this every unrelated write to a due
+        // game re-enters the flip.
+        before?.registrationOpensAt !== after.registrationOpensAt
+      ) {
+        await flipScheduledGameOnce(event.params.gameId);
+      }
+    } catch (err) {
+      console.error(
+        '[onGameRosterChanged] immediate open failed',
+        event.params.gameId,
+        err,
+      );
+    }
 
     // ── Waitlist-offer push (server-side, reliable) ───────────────────────
     // Model: a freed player seat is OFFERED to the head of the waitlist — the
