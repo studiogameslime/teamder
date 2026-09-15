@@ -14062,6 +14062,29 @@ async function loadRetroGameContext(
   const adminIds = (grp.adminIds as string[] | undefined) ?? [];
   const isAdmin = game.createdBy === uid || adminIds.includes(uid);
   if (!isAdmin) throw new HttpsError('permission-denied', 'community admin only');
+
+  // A correction belongs to the season the evening was played in.
+  //
+  // Retro goals write straight into communityPlayerStats and communityStats,
+  // and those are the SEASON's counters. Correcting a goal from an evening in
+  // a season that has since closed therefore lands in the wrong season twice
+  // over: the sealed archive stays wrong, and the running season is credited
+  // with a goal nobody scored in it. Removing one is worse — the counter it
+  // decrements may be at zero, and Firestore's increment happily goes
+  // negative, so a club table starts showing −1 goals.
+  //
+  // The season stamp has been on every game since the feature landed; nothing
+  // read it until now.
+  const gameSeason = typeof game.seasonId === 'string' ? game.seasonId : '';
+  const seasons = grp.seasons as
+    | { enabled?: boolean; currentId?: string }
+    | undefined;
+  if (seasons?.enabled && gameSeason && gameSeason !== seasons.currentId) {
+    throw new HttpsError(
+      'failed-precondition',
+      'closedSeasonGame: this evening belongs to a season that has already closed',
+    );
+  }
   return { game, groupId };
 }
 

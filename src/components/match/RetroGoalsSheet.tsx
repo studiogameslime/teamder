@@ -36,6 +36,19 @@ function genRetroId(): string {
   return `retro-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * The server refuses a correction to an evening from a season that has closed:
+ * the archive is sealed and the running season would be credited with a goal
+ * nobody scored in it. That is an answer the admin can act on, not a failure —
+ * "נסה שוב" would never work.
+ */
+function retroErrorText(err: unknown): string {
+  const msg = String((err as { message?: string })?.message ?? '');
+  return msg.includes('closedSeasonGame')
+    ? he.seasonBlockedClosedGame
+    : he.retroActionFailed;
+}
+
 export function RetroGoalsSheet({
   visible,
   gameId,
@@ -98,7 +111,7 @@ export function RetroGoalsSheet({
       onChanged();
     } catch (err) {
       logError('addRetroGoal', err, { gameId, scorerId });
-      toast.error(he.retroActionFailed);
+      toast.error(retroErrorText(err));
     } finally {
       savingRef.current = false;
       setBusy(false);
@@ -121,7 +134,7 @@ export function RetroGoalsSheet({
       onChanged();
     } catch (err) {
       logError('removeRetroGoal', err, { gameId, retroGoalId: id });
-      toast.error(he.retroActionFailed);
+      toast.error(retroErrorText(err));
     } finally {
       savingRef.current = false;
       setBusy(false);
