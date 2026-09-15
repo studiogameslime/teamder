@@ -4917,6 +4917,10 @@ async function sealRoundSummary(args: {
       since: typeof rec.since === 'number' ? rec.since : args.at,
       eveningsCompared: eveningsSealed,
     },
+    // Undefined for a club with no seasons, which behaves exactly as before.
+    ...(seasonRoundsAtStart !== null
+      ? { seasonEvenings: eveningsSealed + 1 - seasonRoundsAtStart }
+      : {}),
     now: Date.now(),
   });
 

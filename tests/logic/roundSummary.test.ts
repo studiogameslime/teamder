@@ -281,6 +281,29 @@ describe('table movement', () => {
     expect(s.events.filter((e) => e.type.startsWith('rank_'))).toHaveLength(0);
   });
 
+  it('invents nothing on the FIRST evening of a season', () => {
+    // rankDelta is derived by subtracting tonight from the cumulative rows, so
+    // after a season closes every "before" value is zero, the previous
+    // ordering is alphabetical by uid, and a table that did not exist produces
+    // a dozen dramatic climbs. The club's all-time counter cannot see the
+    // boundary; the season's own count can.
+    const rows = table([['a', 1, 5, 90], ['b', 2, 3, 80], ['c', 3, 2, 70], ['d', 4, 1, 60], ['e', 5, 4, 50], ['f', 6, 2, 40]]);
+    const s = buildRoundSummary(input({ standings: rows, seasonEvenings: 1 }));
+    expect(s.events.filter((e) => e.type.startsWith('rank_'))).toHaveLength(0);
+  });
+
+  it('but reports movement from the second evening on', () => {
+    const rows = table([['a', 1, 5, 90], ['b', 2, 3, 80], ['c', 3, 2, 70], ['d', 4, 1, 60], ['e', 5, 4, 50], ['f', 6, 2, 40]]);
+    const s = buildRoundSummary(input({ standings: rows, seasonEvenings: 2 }));
+    expect(s.events.some((e) => e.type.startsWith('rank_'))).toBe(true);
+  });
+
+  it('and a club with no seasons is untouched', () => {
+    const rows = table([['a', 1, 5, 90], ['b', 2, 3, 80], ['c', 3, 2, 70], ['d', 4, 1, 60], ['e', 5, 4, 50], ['f', 6, 2, 40]]);
+    const s = buildRoundSummary(input({ standings: rows }));
+    expect(s.events.some((e) => e.type.startsWith('rank_'))).toBe(true);
+  });
+
   it('reports a new leader only when someone climbed into first', () => {
     const rows = table([['a', 1, 3, 90], ['b', 2, 0, 80], ['c', 3, 0, 70], ['d', 4, 0, 60], ['e', 5, 0, 50], ['f', 6, 0, 40]]);
     const e = buildRoundSummary(input({ standings: rows })).events.find((x) => x.type === 'rank_first_place');
