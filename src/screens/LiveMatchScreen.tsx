@@ -188,6 +188,14 @@ function PlainLiveMatchScreen() {
   const [notFound, setNotFound] = useState(false);
   const [live, setLive] = useState<LiveMatchState | null>(null);
   const [endOpen, setEndOpen] = useState(false);
+  // "סיים מחזור" lives behind the header's overflow menu, not under the timer.
+  //
+  // It used to be a full-width button a thumb's width above the tab bar, which
+  // is the one place on the screen a finger lands by accident — and the action
+  // behind it ends the evening for everybody. The advanced screen moved it into
+  // a menu for exactly this reason after a coach called it a hazard; this
+  // screen kept the inline button, and the same coach reported it again.
+  const [menuOpen, setMenuOpen] = useState(false);
   const [stoppagesOpen, setStoppagesOpen] = useState(false);
   // 1s ticker so the still-ongoing stoppage duration counts up while paused
   // (the synced-timer hook only ticks while RUNNING).
@@ -536,7 +544,21 @@ function PlainLiveMatchScreen() {
         <Text style={styles.title} numberOfLines={1}>
           {game.title}
         </Text>
-        <View style={styles.headerSpacer} />
+        {/* Only once there is an evening to end — before the first press the
+            menu would open on a single disabled row. */}
+        {isAdmin && timerStarted ? (
+          <Pressable
+            onPress={() => setMenuOpen(true)}
+            hitSlop={12}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="עוד"
+          >
+            <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
+          </Pressable>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
       </View>
 
       {/* Timer */}
@@ -670,22 +692,6 @@ function PlainLiveMatchScreen() {
                 </Pressable>
               </View>
             )}
-            {timerStarted ? (
-              <Pressable
-                style={styles.endBtn}
-                onPress={() => {
-                  setEndOpen(true);
-                  logEvent(AnalyticsEvent.EndEveningPrompted, {
-                    gameId: game.id,
-                    source: 'inline_button',
-                    elapsedSec: Math.round(timerMs / 1000),
-                  });
-                }}
-                accessibilityRole="button"
-              >
-                <Text style={styles.endBtnText}>{he.liveEndEvening}</Text>
-              </Pressable>
-            ) : null}
           </>
         ) : (
           <Text style={styles.viewerHint}>{he.liveTimerViewerHint}</Text>
@@ -782,6 +788,45 @@ function PlainLiveMatchScreen() {
             <Text style={styles.stoppagesCloseText}>{he.close}</Text>
           </Pressable>
         </View>
+      </Modal>
+
+      {/* Overflow menu — the only place this screen can end the evening from.
+          Same shape as the advanced screen's, so the two live screens do not
+          hide the same action behind two different gestures. */}
+      <Modal
+        visible={menuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuOpen(false)}
+      >
+        <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)}>
+          <Pressable style={styles.menuCard} onPress={() => undefined}>
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                logEvent(AnalyticsEvent.EndEveningPrompted, {
+                  gameId: game.id,
+                  source: 'menu',
+                  elapsedSec: Math.round(timerMs / 1000),
+                });
+                setEndOpen(true);
+              }}
+              accessibilityRole="button"
+            >
+              {/* Label first: under forceRTL the first child renders rightmost,
+                  so the icon lands immediately to its LEFT rather than at the
+                  far edge of the sheet. */}
+              <Text style={[styles.menuItemText, styles.menuItemDanger]}>
+                {he.liveEndEvening}
+              </Text>
+              <Ionicons name="flag-outline" size={20} color="#DC2626" />
+            </Pressable>
+            <Pressable style={styles.menuCancel} onPress={() => setMenuOpen(false)}>
+              <Text style={styles.menuCancelText}>{he.cancel}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* End-game confirm — shared destructive modal (with ack checkbox). */}
@@ -1105,19 +1150,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
   },
-  endBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#FCA5A5',
-  },
-  endBtnText: {
-    color: '#DC2626',
-    fontSize: 16,
-    fontWeight: '700',
-  },
   viewerHint: {
     textAlign: 'center',
     color: '#64748B',
@@ -1125,6 +1157,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingVertical: 18,
   },
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 28,
+  },
+  menuCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 12,
+    gap: 4,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+  },
+  menuItemText: { fontSize: 16, fontWeight: '700', color: '#1D4ED8' },
+  menuItemDanger: { color: '#DC2626' },
+  menuCancel: { alignItems: 'center', paddingVertical: 14, marginTop: 4 },
+  menuCancelText: { fontSize: 15, fontWeight: '700', color: '#475569' },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.45)',

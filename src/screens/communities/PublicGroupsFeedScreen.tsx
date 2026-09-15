@@ -220,17 +220,30 @@ export function PublicGroupsFeedScreen() {
   // Ask the server which of my friends are in the clubs I can SEE and am not
   // already in. Batched (the callable caps at 30) and refreshed only when the
   // visible set changes, so scrolling costs nothing.
+  // Keyed on the id LIST, not on the three objects it is derived from.
+  //
+  // `items`, `memberIds` and `adminIds` each land at a different moment during
+  // a cold start, so the effect used to fire three times and send three
+  // callables for the same clubs — three server invocations, three cold
+  // starts, and two answers thrown away. The production log took three
+  // `fetchFriendsInClubs` failures in one instant from one device, with no
+  // matching server invocation at all: the burst was its own problem.
+  const friendsKey = useMemo(
+    () =>
+      (items ?? [])
+        .filter((g) => !memberIds.has(g.id) && !adminIds.has(g.id))
+        .slice(0, 30)
+        .map((g) => g.id)
+        .join(','),
+    [items, memberIds, adminIds],
+  );
   useEffect(() => {
-    const ids = (items ?? [])
-      .filter((g) => !memberIds.has(g.id) && !adminIds.has(g.id))
-      .slice(0, 30)
-      .map((g) => g.id);
-    if (ids.length === 0) {
+    if (!friendsKey) {
       setClubFriends({});
       return;
     }
     let alive = true;
-    fetchFriendsInClubs(ids)
+    fetchFriendsInClubs(friendsKey.split(','))
       .then((m) => {
         if (alive) setClubFriends(m);
       })
@@ -238,7 +251,7 @@ export function PublicGroupsFeedScreen() {
     return () => {
       alive = false;
     };
-  }, [items, memberIds, adminIds]);
+  }, [friendsKey]);
 
   function passesDiscoveryFilters(g: GroupPublic): boolean {
     // While the nearby toggle is on, wait for permission + first GPS

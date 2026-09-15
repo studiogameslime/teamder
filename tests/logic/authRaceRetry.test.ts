@@ -63,12 +63,14 @@ it('refreshes the token and retries once when denied WITH a session', async () =
 });
 
 it('gives up after a BOUNDED number of retries — a real rules failure still surfaces', async () => {
-  // Two retries, not one: a single 300 ms wait was not always enough on a slow
-  // cold start, and two of these still reached production. Bounded either way,
-  // so a genuine rules violation is never retried into invisibility.
+  // Three retries now, not two. 300+900 ms did not cover a cold start on a
+  // mid-range Android — 1.1.6 took twelve getTrustSummary denials in its first
+  // day, spread across users rather than stuck on one account, which is what a
+  // too-short window looks like. Bounded either way, so a genuine rules
+  // violation is never retried into invisibility: it surfaces in ~3 seconds.
   const run = jest.fn().mockRejectedValue(denied());
   await expect(withAuthRaceRetry(run)).rejects.toThrow('denied');
-  expect(run).toHaveBeenCalledTimes(3);
+  expect(run).toHaveBeenCalledTimes(4);
 });
 
 it('waits for a session that has not restored yet, then retries', async () => {

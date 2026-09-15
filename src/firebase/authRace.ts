@@ -43,10 +43,18 @@ const RACE_CODES = new Set(['permission-denied', 'functions/unauthenticated']);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** How long each retry waits before trying again. Two attempts, backing off:
- *  long enough to cover a slow cold start, short enough that a genuine
- *  permission error still surfaces quickly. */
-const RETRY_DELAYS_MS = [300, 900];
+/** How long each retry waits before trying again, backing off: long enough to
+ *  cover a slow cold start, short enough that a genuine permission error still
+ *  surfaces quickly.
+ *
+ *  Was [300, 900]. 1.1.6 took twelve `getTrustSummary` / permission-denied
+ *  reports in its first twenty-two hours — a steady trickle across users
+ *  rather than one broken account, which is the signature of a window that is
+ *  simply too short. 1.2s does not cover a cold start on a mid-range Android
+ *  where the session restores from disk before the ID token reaches the
+ *  Firestore channel; 3.2s does, and a real denial still surfaces inside a
+ *  few seconds. */
+const RETRY_DELAYS_MS = [300, 900, 2000];
 
 /**
  * The signed-in user, waiting up to `timeoutMs` for the session to restore.
