@@ -12199,16 +12199,25 @@ async function runSeasonRollovers() {
             continue;
         const cadence = seasons.cadence ?? {};
         try {
-            const played = await completedRoundsOf(doc.id, seasons.roundsAtStart);
-            const due = cadence.type === 'rounds'
-                ? typeof cadence.targetRounds === 'number' &&
-                    cadence.targetRounds > 0 &&
-                    played >= cadence.targetRounds
-                : typeof cadence.endsAt === 'number' &&
-                    cadence.endsAt > 0 &&
-                    now >= cadence.endsAt;
+            // A DATE cadence is answered from the club document already in hand. Only
+            // a rounds cadence needs the counter, so the common case — every club
+            // that is simply not due yet — costs no read at all.
+            let due;
+            if (cadence.type === 'rounds') {
+                const target = cadence.targetRounds;
+                if (typeof target !== 'number' || target <= 0)
+                    continue;
+                due = (await completedRoundsOf(doc.id, seasons.roundsAtStart)) >= target;
+            }
+            else {
+                due =
+                    typeof cadence.endsAt === 'number' &&
+                        cadence.endsAt > 0 &&
+                        now >= cadence.endsAt;
+            }
             if (!due)
                 continue;
+            const played = await completedRoundsOf(doc.id, seasons.roundsAtStart);
             // A season an admin has just REOPENED is due the instant it comes back —
             // it met its target, that is why it closed. Closing it again within the
             // hour would make the undo button useless and look like the app arguing.
@@ -12282,7 +12291,15 @@ async function runSeasonRollovers() {
         console.log(`[season] rollovers: ${closed} closed, ${waiting} waiting`);
     }
 }
-exports.enableClubSeasons = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+exports.enableClubSeasons = (0, https_1.onCall)({
+    enforceAppCheck: ENFORCE_APP_CHECK,
+    // Runs closeSeason (or its inverse): a transaction per player, one per
+    // pair, and a batch of titles. The onCall default is 60 seconds, and a
+    // sixty-player club is comfortably past it — being killed halfway leaves
+    // the half-closed state the resume path exists to recover from.
+    timeoutSeconds: 300,
+    memory: '512MiB',
+}, async (request) => {
     const uid = request.auth?.uid;
     if (!uid)
         throw new https_1.HttpsError('unauthenticated', 'sign-in required');
@@ -12510,7 +12527,15 @@ exports.updateSeasonTarget = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
  * The same quiet rule as closing. Restoring a table while an evening is being
  * played would fold that evening's rounds into the season being reopened.
  */
-exports.reopenLastSeason = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+exports.reopenLastSeason = (0, https_1.onCall)({
+    enforceAppCheck: ENFORCE_APP_CHECK,
+    // Runs closeSeason (or its inverse): a transaction per player, one per
+    // pair, and a batch of titles. The onCall default is 60 seconds, and a
+    // sixty-player club is comfortably past it — being killed halfway leaves
+    // the half-closed state the resume path exists to recover from.
+    timeoutSeconds: 300,
+    memory: '512MiB',
+}, async (request) => {
     const uid = request.auth?.uid;
     if (!uid)
         throw new https_1.HttpsError('unauthenticated', 'sign-in required');
@@ -12556,7 +12581,15 @@ exports.reopenLastSeason = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     }, { merge: true });
     return { ok: true, ...result, reopenedNo: lastNo };
 });
-exports.endSeasonNow = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+exports.endSeasonNow = (0, https_1.onCall)({
+    enforceAppCheck: ENFORCE_APP_CHECK,
+    // Runs closeSeason (or its inverse): a transaction per player, one per
+    // pair, and a batch of titles. The onCall default is 60 seconds, and a
+    // sixty-player club is comfortably past it — being killed halfway leaves
+    // the half-closed state the resume path exists to recover from.
+    timeoutSeconds: 300,
+    memory: '512MiB',
+}, async (request) => {
     const uid = request.auth?.uid;
     if (!uid)
         throw new https_1.HttpsError('unauthenticated', 'sign-in required');

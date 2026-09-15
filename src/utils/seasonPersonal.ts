@@ -272,9 +272,16 @@ export function buildPersonalSeason({
     if (o) oriented.push(o);
   }
 
-  // Decided rounds only. A tie is neither a win nor a loss, and dividing by
-  // every round would quietly punish a club that draws a lot.
-  const decided = wins + losses;
+  // Every mini-game, ties included — because that is what "% ניצחון" already
+  // means everywhere else in this app.
+  //
+  // Decided-only (wins / (wins + losses)) is the better statistic and it was
+  // the first thing written here. But the club's efficiency table has shipped
+  // for months computing wins / rounds under the same Hebrew name, on a screen
+  // one tap away, and two surfaces showing different numbers under one label
+  // is worse than the weaker formula. Nothing is hidden by it: wins, losses
+  // and ties are each their own tile right beside this one.
+  const decided = rounds;
   // The clean-sheet denominator is its own counter: the metric started being
   // collected later than `rounds`, so dividing by rounds understates every
   // veteran. Same correction the club efficiency table carries.

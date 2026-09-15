@@ -2036,7 +2036,6 @@ export const he = {
   seasonsOffButArchived:
     'המועדון לא מנהל עונות כרגע, אבל העונות שכבר הסתיימו שמורות והתארים שחולקו בהן נשארים.',
   seasonsCardTitle: 'עונות',
-  seasonsOffTitle: 'במועדון הזה אין עונות',
   seasonsOffBody:
     'עונה היא תחרות עם התחלה וסוף. כשהיא נגמרת הטבלה של המועדון מתאפסת, מחולקים תארים, והעונה נשמרת בארכיון. הסטטיסטיקה האישית המצטברת בפרופיל, ההישגים והרצפים לא מושפעים — תארי המועדון נספרים מהעונה הנוכחית.',
   seasonsEnableCta: 'הפעל עונות',
@@ -2070,7 +2069,6 @@ export const he = {
   seasonsEndConfirmTitle: 'לסיים את העונה?',
   seasonsEndConfirmBody:
     'העונה תיסגר עכשיו: הטבלה של המועדון מתאפסת והתארים מחולקים.\n\nהעונה נשמרת בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאם טעית אפשר לבטל את הסגירה מאותו מסך, כל עוד לא נסגרה עונה נוספת אחריה.',
-  seasonsEnableTitle: 'מתי העונה נגמרת?',
   seasonsCadenceDate: 'אחרי פרק זמן',
   seasonsCadenceRounds: 'אחרי מספר מחזורים',
   seasonsMonthsLabel: (n: number) => `${n} חודשים`,
@@ -2176,8 +2174,6 @@ export const he = {
   // it is shown just as often while browsing season 1 of a club that has since
   // played three more.
   seasonTitlesNone: 'לא לקחת תואר בעונה הזאת.',
-  seasonTitlesPending:
-    'התארים מחולקים כשהעונה נסגרת.',
   seasonSummaryTitle: 'סיכום העונה שלי',
   seasonRangeUntil: (to: string) => `מתחילת המועדון עד ${to}`,
   seasonRangeUnknown: 'כל ההיסטוריה של המועדון',

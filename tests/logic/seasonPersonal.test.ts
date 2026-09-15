@@ -42,14 +42,30 @@ describe('my own numbers', () => {
     expect(s.cleanSheetPct).toBeCloseTo(0.25);
   });
 
-  it('win % counts DECIDED rounds — a tie is not a loss', () => {
+  it('win % is over every mini-game, matching the club table', () => {
     const s = buildPersonalSeason({
       me: 'me',
       players: [player('me', { rounds: 10, wins: 6, losses: 2, ties: 2 })],
       pairs: [],
     });
-    // 6 of 8 decided, not 6 of 10.
-    expect(s.winPct).toBeCloseTo(0.75);
+    // 6 of 10. Decided-only (6 of 8) is the better statistic, but the club's
+    // efficiency table has shipped for months computing wins / rounds under
+    // the same Hebrew name one tap away, and two screens disagreeing about
+    // "אחוז ניצחון" is worse than the weaker formula.
+    expect(s.winPct).toBeCloseTo(0.6);
+  });
+
+  it('and agrees with the club table on the same row', () => {
+    // The exact numbers the efficiency table would render for this player.
+    const row = { rounds: 41, wins: 24, losses: 13, ties: 4 };
+    const s = buildPersonalSeason({
+      me: 'me',
+      players: [player('me', row)],
+      pairs: [],
+    });
+    expect(Math.round((s.winPct ?? 0) * 100)).toBe(
+      Math.round((row.wins / row.rounds) * 100),
+    );
   });
 
   it('clean-sheet % divides by its OWN denominator, not by rounds', () => {

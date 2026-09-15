@@ -540,7 +540,13 @@ export type NotificationType =
    * Per-player push when the evening finishes: "סיכום הערב שלך מוכן".
    * Carries `gameId` → deep-links to the shareable EveningSummary card.
    */
-  | 'eveningSummary';
+  | 'eveningSummary'
+  /**
+   * Per-player push when a SEASON closes. Carries `groupId` + `seasonId` and
+   * deep-links to that player's own season summary. Sent to everyone who
+   * played the season, including someone who has since left the club.
+   */
+  | 'seasonSummary';
 
 /**
  * Document shape for /notifications/{id}. The client writes these on
