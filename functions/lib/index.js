@@ -12311,7 +12311,14 @@ exports.enableClubSeasons = (0, https_1.onCall)({
         throw new https_1.HttpsError('failed-precondition', 'seasons already on');
     }
     const now = Date.now();
-    const played = await completedRoundsOf(groupId);
+    // Offset by whatever a previous run of seasons already sealed.
+    //
+    // Un-offset this is the club's ALL-TIME evening count, and it feeds two
+    // things that then get it wrong for a club switching seasons back on: the
+    // "continue" branch clamps its rounds target to `played + 1`, so an admin
+    // choosing 24 silently gets 201; and the seal branch hands it to the close
+    // as the season's length.
+    const played = await completedRoundsOf(groupId, existing?.roundsAtStart);
     const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
     let cadence;
     if (type === 'rounds') {
