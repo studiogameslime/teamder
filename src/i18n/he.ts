@@ -3245,6 +3245,13 @@ export const he = {
   effColRounds: 'משחקים',
   /** Shown under the efficiency table when any row's window is shorter than
    *  its history — clean sheets have only been recorded since 17.08. */
+  /** Shown under the efficiency table when the minimum-sample bar actually
+   *  removed someone — so a player who came twice knows why they are not
+   *  there, instead of reading it as lost stats. */
+  effMinRoundsNote: (minRounds: number, hidden: number) =>
+    `בטבלת היעילות מופיעים רק מי ששיחקו לפחות ${minRounds} משחקים במועדון — עשירית מהמשחקים שנערכו — כדי שערב אחד מוצלח לא יקפוץ לראש הטבלה. ${
+      hidden === 1 ? 'שחקן אחד לא מוצג' : `${hidden} שחקנים לא מוצגים`
+    }. בטבלה המצטברת כולם מופיעים.`,
   effPartialNote:
     'שערים נקיים נאספים מאמצע אוגוסט. אצל ותיקים האחוז מחושב רק מהמשחקים שבהם הנתון נאסף בפועל.',
   pairStatsSharedCommunities: 'מועדונים משותפים',

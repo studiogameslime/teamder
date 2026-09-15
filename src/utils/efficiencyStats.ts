@@ -130,3 +130,43 @@ export function sortEfficiency(
     return b.rounds - a.rounds;
   });
 }
+
+/**
+ * The share of the club's mini-games a player must have played to be RANKED.
+ *
+ * A rate over a handful of mini-games is not a measurement, it is a
+ * coincidence: one lucky night puts a visitor who came once above people who
+ * have turned up for two years. The cumulative table is a record of what
+ * everyone did and lists everyone; the efficiency table is a ranking, and a
+ * ranking without an entry requirement ranks noise.
+ *
+ * A tenth is the owner's number and it is a good one. A club playing ~6
+ * mini-games a night asks for roughly two evenings out of twenty — it clears
+ * the one-off visitor without touching anybody who actually turns up.
+ */
+export const MIN_RANKED_SHARE = 0.1;
+
+/** Mini-games needed to be ranked, given what the club has played. 0 disables
+ *  the bar entirely (a club with no recorded mini-games rates everyone). */
+export function minRoundsForRanking(clubRounds: number | undefined): number {
+  return typeof clubRounds === 'number' && clubRounds > 0
+    ? Math.ceil(clubRounds * MIN_RANKED_SHARE)
+    : 0;
+}
+
+/**
+ * The players the efficiency table may rank.
+ *
+ * Never returns empty. A young club can have nobody past the bar — everyone's
+ * sample is small while the club's is — and a blank tab reads as broken rather
+ * than as strict.
+ */
+export function eligibleForRanking<T extends { rounds?: number }>(
+  players: T[],
+  clubRounds: number | undefined,
+): T[] {
+  const min = minRoundsForRanking(clubRounds);
+  if (min <= 0) return players;
+  const eligible = players.filter((p) => (p.rounds ?? 0) >= min);
+  return eligible.length > 0 ? eligible : players;
+}

@@ -162,3 +162,68 @@ describe('sorting', () => {
     expect(input.map((r) => r.uid)).toEqual(['a', 'b']);
   });
 });
+
+// ── Entry bar for the efficiency ranking ────────────────────────────────────
+//
+// Owner's request: "שים אנשים רק עם 10 אחוז משחקים לפחות מתוך המועדון כדי לא
+// להציג אנשים שבאו פעם אחת." The cumulative table stays a record of everyone;
+// this one is a ranking, and a rate over three mini-games is a coincidence
+// rather than a measurement.
+import { minRoundsForRanking, eligibleForRanking } from '@/utils/efficiencyStats';
+
+describe('efficiency entry bar', () => {
+  it('asks for a tenth of the club, rounded up', () => {
+    expect(minRoundsForRanking(120)).toBe(12);
+    // Rounded UP, so a small club never ends up with a bar of zero that lets
+    // everyone through by accident.
+    expect(minRoundsForRanking(11)).toBe(2);
+    expect(minRoundsForRanking(1)).toBe(1);
+  });
+
+  it('rates everyone when the club has no mini-games recorded', () => {
+    expect(minRoundsForRanking(0)).toBe(0);
+    expect(minRoundsForRanking(undefined)).toBe(0);
+    const players = [{ uid: 'a', rounds: 1 }];
+    expect(eligibleForRanking(players, 0)).toEqual(players);
+    expect(eligibleForRanking(players, undefined)).toEqual(players);
+  });
+
+  it('drops the one-off visitor and keeps the regular', () => {
+    // 20 evenings at ~6 mini-games. The visitor came once, the regular came
+    // three times — the exact pair the bar exists to tell apart.
+    const players = [
+      { uid: 'visitor', rounds: 6 },
+      { uid: 'regular', rounds: 18 },
+      { uid: 'veteran', rounds: 110 },
+    ];
+    const out = eligibleForRanking(players, 120).map((p) => p.uid);
+    expect(out).toEqual(['regular', 'veteran']);
+  });
+
+  it('keeps a player sitting exactly on the bar', () => {
+    expect(eligibleForRanking([{ uid: 'a', rounds: 12 }], 120)).toHaveLength(1);
+    expect(eligibleForRanking([{ uid: 'a', rounds: 11 }], 120)).toHaveLength(1);
+    // …and 11 survived only because nothing else did — see the never-empty
+    // rule below. With a qualifying player present it goes.
+    const out = eligibleForRanking(
+      [{ uid: 'a', rounds: 11 }, { uid: 'b', rounds: 12 }],
+      120,
+    ).map((p) => p.uid);
+    expect(out).toEqual(['b']);
+  });
+
+  it('never empties the table', () => {
+    // A young club: two evenings played, everyone has a small sample. The bar
+    // must not blank the tab — that reads as broken rather than as strict.
+    const players = [{ uid: 'a', rounds: 0 }, { uid: 'b', rounds: 0 }];
+    expect(eligibleForRanking(players, 12)).toEqual(players);
+  });
+
+  it('treats a missing rounds count as no sample', () => {
+    const out = eligibleForRanking(
+      [{ uid: 'a' }, { uid: 'b', rounds: 40 }],
+      120,
+    ).map((p) => p.uid);
+    expect(out).toEqual(['b']);
+  });
+});

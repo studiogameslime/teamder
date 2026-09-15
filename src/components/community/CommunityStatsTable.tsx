@@ -21,6 +21,8 @@ import {
   formatPerGame,
   type EfficiencyRow,
   type EfficiencySortKey,
+  minRoundsForRanking,
+  eligibleForRanking,
 } from '@/utils/efficiencyStats';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -69,6 +71,9 @@ export function CommunityStatsTable({
    *  not short-circuit the lookup — a player who IS still around keeps their
    *  live name, their avatar and their card. */
   fallbackNames,
+  /** The club's own mini-game total, used ONLY by the efficiency tab to drop
+   *  players with too small a sample to rate. Omit to rate everyone. */
+  clubRounds,
   /** 'cumulative' is the table as it has always been — totals, ranked by wins.
    *  'efficiency' shows per-game rates over the SAME rows and the same
    *  chrome: identical name column, medals, row heights and header-tap
@@ -83,6 +88,7 @@ export function CommunityStatsTable({
   attendedByUser?: Record<string, number>;
   guestNames?: Record<string, string>;
   fallbackNames?: Record<string, string>;
+  clubRounds?: number;
   mode?: 'cumulative' | 'efficiency';
 }) {
   const nav = useNavigation<{ navigate: (s: string, p: object) => void }>();
@@ -120,24 +126,35 @@ export function CommunityStatsTable({
     return map;
   }, [effPlayers]);
 
+  // The efficiency tab's entry bar — a tenth of the club's mini-games. The
+  // reasoning, and the never-empty rule, live with the rates in
+  // @/utils/efficiencyStats, where they are unit-tested.
+  const minRounds = minRoundsForRanking(clubRounds);
+  const ranked = React.useMemo(
+    () => (mode === 'efficiency' ? eligibleForRanking(effPlayers, clubRounds) : effPlayers),
+    [effPlayers, mode, clubRounds],
+  );
+  /** True when the bar actually removed somebody, so the note can say so. */
+  const hiddenByBar = effPlayers.length - ranked.length;
+
   const rows = React.useMemo(() => {
     if (mode === 'efficiency') {
       // Sorted on the efficiency rows — which put unrankable players last
       // rather than calling them zero — then mapped back, because the name
       // column still renders from the championship row.
       const order = sortEfficiency(
-        effPlayers.map((p) => efficiency[p.uid]),
+        ranked.map((p) => efficiency[p.uid]),
         sortKey as EfficiencySortKey,
       );
       const byUid: Record<string, ChampionshipRow> = {};
-      for (const p of effPlayers) byUid[p.uid] = p;
+      for (const p of ranked) byUid[p.uid] = p;
       return order.map((e) => byUid[e.uid]).slice(0, limit);
     }
     return [...effPlayers]
       .sort((a, b) => Number(b[sortKey as keyof ChampionshipRow] ?? 0) -
                       Number(a[sortKey as keyof ChampionshipRow] ?? 0))
       .slice(0, limit);
-  }, [effPlayers, efficiency, sortKey, limit, mode]);
+  }, [effPlayers, ranked, efficiency, sortKey, limit, mode]);
 
   useEffect(() => {
     let alive = true;
@@ -335,12 +352,26 @@ export function CommunityStatsTable({
           </View>
         </ScrollView>
       </View>
+      {/* Who is missing, and why. Without this a player who came twice looks
+          for themselves, does not find themselves, and reads it as the club
+          losing their stats. */}
+      {mode === 'efficiency' && hiddenByBar > 0 ? (
+        <Text style={styles.barNote}>{he.effMinRoundsNote(minRounds, hiddenByBar)}</Text>
+      ) : null}
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
   table: { padding: 0, overflow: 'hidden' },
+  barNote: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    lineHeight: 17,
+  },
   split: { flexDirection: 'row' },
   nameCol: {
     width: NAME_W,

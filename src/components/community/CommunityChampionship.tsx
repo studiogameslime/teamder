@@ -159,6 +159,10 @@ export function CommunityChampionship({
         // winds it back with everything else. That is the right number here.
         attendedByUser={seasonNo || seasonId ? undefined : attendedByUser}
         fallbackNames={seasonId ? frozenNames : undefined}
+        // The same club mini-game total shown in the tile above, so the
+        // efficiency tab's entry bar is a share of the season on screen — a
+        // past season's bar is measured against that season, not against today.
+        clubRounds={data.totalRounds}
         mode={tab}
       />
 
