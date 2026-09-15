@@ -416,68 +416,12 @@ export const seasonSummaryService = {
       if (!seasons?.enabled) return null;
       const groupName = str(g.name);
 
-      const wantClosed = !!seasonId && seasonId !== seasons.currentId;
-      if (wantClosed) {
-        const snap = await getDoc(
-          doc(db, 'seasonSummary', `${groupId}__${seasonId}`),
-        );
-        if (!snap.exists()) return null;
-        const d = snap.data() as Record<string, unknown>;
-        const playersMap = (d.players ?? {}) as Record<string, Record<string, unknown>>;
-        const pairsMap = (d.pairs ?? {}) as Record<string, Record<string, unknown>>;
-        const players = Object.entries(playersMap).map(([uid, x]) => playerRow(x, uid));
-        const pairs: SeasonPairRow[] = [];
-        for (const x of Object.values(pairsMap)) {
-          // A season closed before the archive carried full pair counters
-          // stores a bare number here. It cannot answer the people questions,
-          // and a bare number is not a row — skip rather than invent zeroes.
-          if (typeof x !== 'object' || x === null) continue;
-          const row = pairRow(x);
-          if (row) pairs.push(row);
-        }
-        const me = buildPersonalSeason({ me: userId, players, pairs });
-        const frozen = new Map<string, string>();
-        for (const [uid, x] of Object.entries(playersMap)) {
-          const n = str(x.displayName);
-          if (n) frozen.set(uid, n);
-        }
-        return {
-          groupId,
-          groupName,
-          seasonId: str(d.seasonId) || seasonId!,
-          seasonNo: num(d.no),
-          startsAt: num(d.startsAt),
-          endsAt: num(d.endsAt) || null,
-          closed: true,
-          // totals.rounds, not the top-level completedRounds: that one counts
-          // sealed evenings and would silently change units when a season
-          // closed.
-          completedRounds: num(
-            (d.totals as Record<string, unknown> | undefined)?.rounds,
-          ),
-          me,
-          myTitles: titlesFor(d.awards as Record<string, unknown> | undefined, userId),
-          seasonTitles: allTitlesOf(
-            d.awards as Record<string, unknown> | undefined,
-            playersMap,
-            userId,
-          ),
-          names: await resolveNames(namedUids(me), frozen),
-          available: seasonChoices(seasons),
-        };
-      }
+      // Reaching here means the running season: a specific one was either
+      // served from its archive above or does not exist. The branch that used
+      // to re-read the archive here was unreachable from the moment the
+      // archive-first path landed, and a second implementation of "read a
+      // sealed season" is exactly how the two drift.
 
-      // Only the pairs that involve ME.
-      //
-      // This screen asks six questions about one player, and it was pulling the
-      // club's entire pair table to answer them: a fifty-player club is over a
-      // thousand documents, on a phone, to find out who somebody played beside
-      // most. A pair document stores its two members in `a` and `b`, and
-      // Firestore has no OR across fields, so it is two equality queries —
-      // roughly fifty documents instead of a thousand.
-      //
-      // The player rows are still read whole, and have to be: the club ranking
-      // on the screen is a fact about everybody.
       const [statRows, asA, asB] = await Promise.all([
         getDocs(query(collection(db, 'communityPlayerStats'), where('groupId', '==', groupId))),
         getDocs(

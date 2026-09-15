@@ -162,7 +162,33 @@ describe('the archive is taken before the wipe', () => {
       winsTogether: 12, lossesTogether: 8, cleanSheetsTogether: 5,
       against: 18, winsA: 10, winsB: 8, assistsAToB: 3, assistsBToA: 4,
     });
+    // NOT the 16 the caller passed. The season's length is derived from the
+    // same counter the eligibility gate compares against — per-player `games`
+    // — because the caller's number comes from a counter that only started
+    // being written two months later, and comparing the two opened the gate to
+    // almost everybody. u1 attended 16, u2 15, u3 3.
     assert.equal(s.completedRounds, 16);
+  });
+
+  test('the season length comes from attendance, not from the late counter', async () => {
+    // Same club, but the caller reports a much smaller number — which is what
+    // production actually looks like, because clubRecords.eveningsSealed only
+    // began in August while per-player `games` began in June. The gate must
+    // not be measured against it.
+    await wipe();
+    await seed();
+    await closeSeason(args({ completedRounds: 3 }));
+    const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
+    assert.equal(s.completedRounds, 16, 'derived from the most-attended player');
+    // Threshold is ceil(16/2) = 8. u3 attended 3 and must not be eligible for
+    // anything; on the caller's number the threshold would have been 2.
+    assert.ok(!s.awards.topScorer.winners.includes('u3'));
+    assert.deepEqual(s.awards.mostLoyal.winners, ['u1']);
+    assert.equal(s.awards.mostLoyal.value, 16);
+    // And the card quotes the same number, so the hall of fame cannot print
+    // "3 מחזורים" over a title won on 16.
+    const c = (await db.collection('seasonCards').doc(`${GID}__${SEASON}`).get()).data();
+    assert.equal(c.completedRounds, 16);
   });
 
   test('a coverage denominator that was never measured stays absent', async () => {
@@ -538,6 +564,32 @@ describe('a season closed by mistake can be reopened', () => {
   test('the titles come off the winners', async () => {
     const t = await db.collection('users').doc('u1').collection('seasonTitles').get();
     assert.equal(t.size, 0, 'a title for a season that no longer exists is worse than none');
+  });
+
+  test('a crash mid-reopen cannot give the club the season twice', async () => {
+    // The restore ADDS, and the only step that makes the operation
+    // non-repeatable — deleting the archive — is the last one. Without a latch
+    // a retry after a crash hands the club a second copy of the whole season.
+    await wipe();
+    await seed();
+    await closeSeason(args());
+    await reopenSeason({ db, groupId: GID, seasonId: SEASON });
+    const once = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
+    assert.equal(once.goals, 31);
+
+    // Put the archive back and run it again — a faithful "the delete never
+    // landed" retry.
+    await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).set({
+      groupId: GID, seasonId: SEASON, no: 1,
+      players: { u1: { goals: 31, rounds: 34, games: 16 } },
+      totals: { goals: 40, rounds: 78 },
+      awards: {},
+    });
+    await reopenSeason({ db, groupId: GID, seasonId: SEASON });
+    const twice = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
+    assert.equal(twice.goals, 31, 'still 31, not 62');
+    const club = (await db.collection('communityStats').doc(GID).get()).data();
+    assert.equal(club.goals, 40, 'the club totals did not double either');
   });
 
   test('and the archive is gone, so it cannot be reopened twice', async () => {

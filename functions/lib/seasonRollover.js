@@ -359,7 +359,28 @@ async function closeSeason(args) {
         score: p.assistsAToB + p.assistsBToA,
         together: p.sameTeam,
     }));
-    const awards = (0, seasonAwards_1.computeSeasonAwards)(awardLines, awardPairs, args.completedRounds);
+    // The season's length, derived from the SAME counter the gate compares
+    // against — and this is not a nicety, it is the difference between the gate
+    // working and not.
+    //
+    // `args.completedRounds` comes from `clubRecords.eveningsSealed`, which has
+    // only been written since 25.08. Per-player `games` has been counted since
+    // 22.06. So the numerator carries two extra months the denominator does not,
+    // and the two are not comparable at all. Measured on the real club the gate
+    // was calibrated against: 13 evenings played, eveningsSealed 3, threshold 2,
+    // and 25 of 29 players clear a gate meant to admit 13 — including seven who
+    // turned up twice. Exactly the failure the units fix already corrected once,
+    // reintroduced through the other side of the division.
+    //
+    // The most evenings any one player attended is in the same unit and the same
+    // era as every number it will be compared with. On that same club it gives
+    // 12 → threshold 6 → 13 eligible, which is the calibration the design
+    // documents. It can only under-count when nobody attended every evening,
+    // and under-counting a gate makes it stricter, not looser.
+    const seasonEvenings = Math.max(0, ...awardLines.map((l) => l.games), 
+    // A season with no players at all falls back to whatever the caller knew.
+    awardLines.length === 0 ? args.completedRounds : 0);
+    const awards = (0, seasonAwards_1.computeSeasonAwards)(awardLines, awardPairs, seasonEvenings);
     /** Set when we are resuming a close that died before it finished. */
     let resumedAwards = null;
     // ── 1. Archive, exactly once ────────────────────────────────────────────
@@ -378,7 +399,9 @@ async function closeSeason(args) {
             startsAt: args.startsAt,
             endsAt: now,
             closedAt: now,
-            completedRounds: args.completedRounds,
+            // The number the titles were actually decided on, so the hall of fame
+            // cannot print "3 מחזורים" over a title won on "12 מחזורים".
+            completedRounds: seasonEvenings,
             roundsAtStartOfSeason: args.roundsAtStart ?? 0,
             ...(args.endedEarly ? { endedEarly: true } : {}),
             ...(args.closedBy ? { closedBy: args.closedBy } : {}),
@@ -464,7 +487,7 @@ async function closeSeason(args) {
             no: args.seasonNo,
             startsAt: args.startsAt,
             endsAt: now,
-            completedRounds: args.completedRounds,
+            completedRounds: seasonEvenings,
             totals: {
                 rounds: totals.rounds ?? 0,
                 goals: totals.goals ?? 0,
@@ -620,6 +643,8 @@ async function closeSeason(args) {
         .doc(groupId)
         .set({
         ...zeroClub,
+        // Cleared so a later reopen can stamp its own restore.
+        seasonReopened: admin.firestore.FieldValue.delete(),
         // Re-stamped, or the new season's chemistry card would date itself from
         // the old one. It is only advanced when absent or earlier, so leaving it
         // alone would quietly keep the stale window.
@@ -687,9 +712,17 @@ async function reopenSeason(args) {
         await db.runTransaction(async (tx) => {
             const fresh = await tx.get(ref);
             const cur = (fresh.exists ? fresh.data() : {});
+            // The restore is an ADDITION, and the only thing that makes the whole
+            // operation non-repeatable — the archive delete — happens at the very
+            // end. So a crash anywhere before it, followed by a retry, would give
+            // the club a second copy of the whole season. Same latch the pair rows
+            // carry; cleared by the next close.
+            if (cur.seasonReopened === seasonId)
+                return;
             const patch = {
                 groupId,
                 userId: uid,
+                seasonReopened: seasonId,
                 seasonWoundBack: admin.firestore.FieldValue.delete(),
                 updatedAt: Date.now(),
             };
@@ -737,17 +770,19 @@ async function reopenSeason(args) {
             }, { merge: true });
         });
     }
-    // 2. And the club its totals.
-    await db
-        .collection('communityStats')
-        .doc(groupId)
-        .set(Object.fromEntries([
-        ...CLUB_SEASON_FIELDS.map((f) => [
-            f,
-            admin.firestore.FieldValue.increment(num2(totals[f])),
-        ]),
-        ['updatedAt', Date.now()],
-    ]), { merge: true });
+    // 2. And the club its totals — behind the same latch, since this also adds.
+    const clubRef = db.collection('communityStats').doc(groupId);
+    await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(clubRef);
+        const cur = (fresh.exists ? fresh.data() : {});
+        if (cur.seasonReopened === seasonId)
+            return;
+        tx.set(clubRef, {
+            seasonReopened: seasonId,
+            updatedAt: Date.now(),
+            ...Object.fromEntries(CLUB_SEASON_FIELDS.map((f) => [f, num2(cur[f]) + num2(totals[f])])),
+        }, { merge: true });
+    });
     // 3. Take the titles back off the winners' profiles. A title for a season
     //    that no longer exists is worse than no title.
     let titles = 0;
