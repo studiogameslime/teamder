@@ -10,10 +10,16 @@
 // screen needs — a date, three numbers, nine names — written by the same close
 // from the same numbers. One source, two sizes.
 
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 import { SEASON_TITLE_KEYS, type SeasonTitleKey } from '@/utils/seasonAwards';
+import { parseSeasonTable, type FinishedSeasonTable } from '@/utils/seasonArchive';
+
+import type { ChampionshipRow } from '@/utils/championship';
+import { mockPlayers } from '@/data/mockData';
+
+export { parseSeasonTable, type FinishedSeasonTable };
 
 export interface SeasonWinner {
   key: SeasonTitleKey;
@@ -87,27 +93,23 @@ function fromCard(d: Record<string, unknown>): FinishedSeason | null {
 }
 
 export const seasonHistoryService = {
-  /**
-   * Club totals across every closed season.
-   *
-   * The club's badges and level are computed from counters a season close
-   * zeroes, so without this a club un-earns its gold badge and drops a level
-   * the morning after a season ends — and a badge is a permanent thing the
-   * club did, not something the calendar can take away.
-   *
-   * Reads the cards, so it is cheap, and returns zeroes for the clubs that run
-   * no seasons rather than making the caller special-case them.
-   */
-  async clubTotals(groupId: string): Promise<{ goals: number; rounds: number }> {
-    const seasons = await seasonHistoryService.list(groupId);
-    if (seasons === 'error') return { goals: 0, rounds: 0 };
-    return seasons.reduce(
-      (acc, s) => ({
-        goals: acc.goals + s.totals.goals,
-        rounds: acc.rounds + s.totals.rounds,
-      }),
-      { goals: 0, rounds: 0 },
-    );
+  async table(
+    groupId: string,
+    seasonId: string,
+  ): Promise<FinishedSeasonTable | null> {
+    if (!groupId || !seasonId) return null;
+    if (USE_MOCK_DATA) return mockTable();
+    try {
+      const { db } = getFirebase();
+      const snap = await getDoc(
+        doc(db, 'seasonSummary', `${groupId}__${seasonId}`),
+      );
+      if (!snap.exists()) return null;
+      return parseSeasonTable(snap.data() as Record<string, unknown>);
+    } catch (err) {
+      logError('seasonHistoryTable', err, { groupId, seasonId });
+      return null;
+    }
   },
 
   /** Finished seasons for one club, newest first. */
@@ -168,4 +170,65 @@ function mockHistory(): FinishedSeason[] {
       ],
     },
   ];
+}
+
+/**
+ * A closed season in mock mode.
+ *
+ * Built from the real mock players so the picker's past-season view has
+ * avatars and names that resolve — plus one player who is NOT in the mock
+ * roster, standing in for somebody who has since left the club. That row must
+ * still render, off the frozen name alone; it is the whole reason the archive
+ * keeps names at all.
+ */
+function mockTable(): FinishedSeasonTable {
+  const row = (
+    uid: string,
+    goals: number,
+    assists: number,
+    rounds: number,
+    wins: number,
+    games: number,
+  ): ChampionshipRow => ({
+    uid,
+    goals,
+    assists,
+    rounds,
+    wins,
+    games,
+    ties: 2,
+    losses: Math.max(0, rounds - wins - 2),
+    penTaken: 0,
+    penScored: 0,
+    penFaced: 0,
+    penSaved: 0,
+    ownGoals: 0,
+    cleanSheets: Math.round(rounds / 5),
+    csRounds: rounds,
+  });
+  const p = (i: number) => mockPlayers[i % mockPlayers.length];
+  return {
+    totalGoals: 642,
+    totalRounds: 118,
+    tiedRounds: 21,
+    shootoutRounds: 6,
+    scorelessRounds: 9,
+    guestGoals: 37,
+    ownGoals: 11,
+    duo: { uidA: p(6).id, uidB: p(2).id, assists: 14 },
+    players: [
+      row(p(6).id, 41, 12, 24, 14, 8),
+      row(p(2).id, 18, 28, 20, 11, 6),
+      row(p(4).id, 22, 9, 12, 5, 4),
+      row(p(9).id, 7, 15, 18, 9, 7),
+      row('u_left_the_club', 13, 4, 9, 4, 3),
+    ],
+    names: {
+      [p(6).id]: p(6).displayName,
+      [p(2).id]: p(2).displayName,
+      [p(4).id]: p(4).displayName,
+      [p(9).id]: p(9).displayName,
+      u_left_the_club: 'שחקן שעזב',
+    },
+  };
 }

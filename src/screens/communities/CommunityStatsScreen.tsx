@@ -44,7 +44,11 @@ import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { ChemistrySection } from '@/components/chemistry/ChemistrySection';
 import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
-import { seasonHistoryService } from '@/services/seasonHistoryService';
+import {
+  seasonHistoryService,
+  type FinishedSeason,
+  type FinishedSeasonTable,
+} from '@/services/seasonHistoryService';
 import type { GroupSeasons, User } from '@/types';
 
 type Params = RouteProp<CommunitiesStackParamList, 'CommunityStats'>;
@@ -119,6 +123,19 @@ export function CommunityStatsScreen() {
   // Goals the club scored in seasons it has already closed. Zero for a club
   // that runs no seasons, which is every club today.
   const [archivedGoals, setArchivedGoals] = useState(0);
+  // The seasons this club has already finished, and which one the screen is
+  // currently showing.
+  //
+  // `null` is the running season — the live rows, which ARE that season. A
+  // seasonId is one that ended, read out of its archive and never recomputed.
+  // Without this the previous season becomes unreachable the moment it closes:
+  // the hall of fame lists who won what and then has nothing behind it, and
+  // the member who wants to know how many goals they finished on has to take
+  // the trophy's word for it.
+  const [pastSeasons, setPastSeasons] = useState<FinishedSeason[]>([]);
+  const [scope, setScope] = useState<string | null>(null);
+  const [archive, setArchive] = useState<FinishedSeasonTable | null>(null);
+  const [archiveBusy, setArchiveBusy] = useState(false);
   const [champ, setChamp] = useState<ChampData | null>(null);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [duo, setDuo] = useState<DeadlyDuo | null>(null);
@@ -150,10 +167,16 @@ export function CommunityStatsScreen() {
         // Only for a club that has actually closed a season; everyone else
         // pays nothing.
         if ((g.seasons?.count ?? 0) > 0) {
+          // One read of the cards answers both: the lifetime goal total the
+          // badges need, and the list the season picker offers.
           seasonHistoryService
-            .clubTotals(groupId)
-            .then((t) => {
-              if (alive) setArchivedGoals(t.goals);
+            .list(groupId)
+            .then((list) => {
+              if (!alive || list === 'error') return;
+              setPastSeasons(list);
+              setArchivedGoals(
+                list.reduce((a, x) => a + x.totals.goals, 0),
+              );
             })
             .catch(() => undefined);
         }
@@ -218,18 +241,75 @@ export function CommunityStatsScreen() {
     };
   }, [groupId]);
 
+  // Fetch a past season's archive the first time it is picked, and keep the
+  // live numbers untouched underneath — switching back is free.
+  useEffect(() => {
+    if (!scope) {
+      setArchive(null);
+      return;
+    }
+    let alive = true;
+    setArchiveBusy(true);
+    seasonHistoryService
+      .table(groupId, scope)
+      .then((t) => {
+        if (!alive) return;
+        setArchive(t);
+        setArchiveBusy(false);
+        // An archive that will not load is not an empty season. Falling back
+        // to the live rows under last season's heading would be worse than
+        // any error message, so the screen returns to the running season.
+        if (!t) setScope(null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setArchiveBusy(false);
+        setScope(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [groupId, scope]);
+
+  /** The card of the season on screen, for its evening count and its dates. */
+  const scopedCard = useMemo(
+    () => (scope ? (pastSeasons.find((x) => x.seasonId === scope) ?? null) : null),
+    [scope, pastSeasons],
+  );
+
+  // Everything below reads ONE of these, never `champ`/`duo` directly: the
+  // screen renders a past season through the same derivation as the running
+  // one, because the archive was built to hold exactly the same counters.
+  const viewChamp: ChampData | null = useMemo(
+    () =>
+      archive
+        ? {
+            totalGoals: archive.totalGoals,
+            totalRounds: archive.totalRounds,
+            tiedRounds: archive.tiedRounds,
+            shootoutRounds: archive.shootoutRounds,
+            scorelessRounds: archive.scorelessRounds,
+            guestGoals: archive.guestGoals,
+            ownGoals: archive.ownGoals,
+            players: archive.players,
+          }
+        : champ,
+    [archive, champ],
+  );
+  const viewDuo = archive ? archive.duo : duo;
+
   const derived = useMemo(() => {
-    const players = champ?.players ?? [];
+    const players = viewChamp?.players ?? [];
     const totalAssists = players.reduce((a, p) => a + p.assists, 0);
     const totalWins = players.reduce((a, p) => a + p.wins, 0);
-    const totalGoals = champ?.totalGoals ?? 0;
-    const totalRounds = champ?.totalRounds ?? 0;
-    const tiedRounds = champ?.tiedRounds ?? 0;
-    const shootoutRounds = champ?.shootoutRounds ?? 0;
-    const scorelessRounds = champ?.scorelessRounds ?? 0;
+    const totalGoals = viewChamp?.totalGoals ?? 0;
+    const totalRounds = viewChamp?.totalRounds ?? 0;
+    const tiedRounds = viewChamp?.tiedRounds ?? 0;
+    const shootoutRounds = viewChamp?.shootoutRounds ?? 0;
+    const scorelessRounds = viewChamp?.scorelessRounds ?? 0;
     // Goals scored by guests across the club — a separate breakout, NOT folded
     // into totalGoals (which is real ranked players only). Drives its own row.
-    const guestGoals = champ?.guestGoals ?? 0;
+    const guestGoals = viewChamp?.guestGoals ?? 0;
     const goalsPerMini = totalRounds > 0 ? totalGoals / totalRounds : 0;
     const drawPct = totalRounds > 0 ? Math.round((tiedRounds / totalRounds) * 100) : 0;
     const shootoutPct =
@@ -267,7 +347,7 @@ export function CommunityStatsScreen() {
       guestGoals,
       // Own goals — club total (for the fun fact) + the player who scored the
       // most (a dubious crown). null when nobody has an own goal yet.
-      totalOwnGoals: champ?.ownGoals ?? 0,
+      totalOwnGoals: viewChamp?.ownGoals ?? 0,
       ownGoalKing: leaderBy(players, (p) => p.ownGoals),
       penTakenTotal,
       penAccuracyPct,
@@ -291,16 +371,23 @@ export function CommunityStatsScreen() {
         players.map((p) => ({ userId: p.uid, penSaved: p.penSaved, penFaced: p.penFaced })),
       ),
     };
-  }, [champ]);
+  }, [viewChamp]);
 
   // "הכי מתמיד" = most nights attended, taken from the finished-nights scan in
   // getCommunityStats (topPlayers[0]) — NOT the communityPlayerStats `games`
   // rollup, which can lag behind and produced the "4 vs 5-in-a-row" mismatch
   // (a streak can never exceed total attendance when both share a source).
   const mostLoyal = useMemo(() => {
+    // A closed season has no nights left to scan — the games were archived
+    // with it. Its `games` column is that exact count, frozen, which is the
+    // same number the season's "הכי מתמיד" title was awarded on.
+    if (archive) {
+      const top = leaderBy(archive.players, (r) => r.games);
+      return top ? { uid: top.uid, nights: top.games } : null;
+    }
     const top = stats?.topPlayers?.[0];
     return top && top.attended > 0 ? { uid: top.uid, nights: top.attended } : null;
-  }, [stats]);
+  }, [stats, archive]);
 
   // Club achievements + level — derived from the same aggregates, client-side.
   const club = useMemo(() => {
@@ -333,9 +420,20 @@ export function CommunityStatsScreen() {
     appAlert(b.def.titleHe, `${b.def.howHe}\n\n${progress}`);
   };
 
-  const name = (uid?: string) =>
-    uid && people[uid] ? fullName(people[uid].name) : '—';
-  const resolved = (uid: string): Resolved => people[uid] ?? { id: uid, name: '' };
+  // Names, with the season's frozen copy as the fallback.
+  //
+  // /users is still preferred while it answers — an avatar and a changed name
+  // are both nicer than a two-month-old string. But a player who has since
+  // deleted their account or left the club resolves to nothing there, and a
+  // sealed season has to stay readable: the archive kept their name for
+  // exactly this.
+  const name = (uid?: string) => {
+    if (!uid) return '—';
+    const live = people[uid] ? fullName(people[uid].name) : '';
+    return live || archive?.names[uid] || '—';
+  };
+  const resolved = (uid: string): Resolved =>
+    people[uid] ?? { id: uid, name: archive?.names[uid] ?? '' };
 
   const isEmpty =
     !loading &&
@@ -370,7 +468,7 @@ export function CommunityStatsScreen() {
         >
           {/* The table below belongs to ONE season. Said out loud, at the top,
               because otherwise the numbers reset one day with no explanation. */}
-          {seasons?.enabled ? (
+          {seasons?.enabled && !scope ? (
             <Pressable
               style={styles.seasonBanner}
               onPress={() =>
@@ -401,6 +499,51 @@ export function CommunityStatsScreen() {
               ) : null}
             </Pressable>
           ) : null}
+          {/* בורר העונות. מופיע רק כשיש מה לבחור — למועדון שעוד לא סגר
+              עונה אחת זו רשימה בת פריט אחד. */}
+          {seasons?.enabled && pastSeasons.length > 0 ? (
+            <>
+              <View style={styles.scopeRow}>
+                <Text style={styles.scopeLabel}>{he.communityStatsScopeLabel}</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.scopeChips}
+                >
+                  {/* העונה הרצה ראשונה — היא ברירת המחדל, וב-RTL היא נופלת
+                      הכי ימינה, שם העין מתחילה. */}
+                  <ScopeChip
+                    text={he.communityStatsScopeCurrent(seasons.currentNo ?? 1)}
+                    active={!scope}
+                    onPress={() => setScope(null)}
+                  />
+                  {pastSeasons.map((ps) => (
+                    <ScopeChip
+                      key={ps.seasonId}
+                      text={he.communityStatsScopePast(ps.no)}
+                      active={scope === ps.seasonId}
+                      onPress={() => setScope(ps.seasonId)}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+              {scopedCard ? (
+                <Text style={styles.scopeNote}>
+                  {archiveBusy
+                    ? he.communityStatsScopeLoading
+                    : he.communityStatsScopeClosedNote(
+                        scopedCard.no,
+                        new Date(scopedCard.endsAt).toLocaleDateString('he-IL', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                        }),
+                      )}
+                </Text>
+              ) : null}
+            </>
+          ) : null}
+
           {/* ── המצטיין (מלך השערים) — הגיבור בראש המסך ── */}
           {derived.topScorer && derived.totalGoals > 0 ? (
             <AppearItem index={0}>
@@ -440,7 +583,7 @@ export function CommunityStatsScreen() {
             <HeroTile icon={<MaterialCommunityIcons name="soccer" size={24} color={colors.primary} />} tint={colors.primary} value={derived.totalGoals} label={he.communityStatsGoals} />
             <HeroTile icon={<MaterialCommunityIcons name="shoe-cleat" size={24} color="#7C3AED" />} tint="#7C3AED" value={derived.totalAssists} label={he.communityStatsAssists} />
             <HeroTile icon={<MaterialCommunityIcons name="soccer-field" size={24} color="#0EA5E9" />} tint="#0EA5E9" value={derived.totalRounds} label={he.communityStatsMiniGames} />
-            <HeroTile icon={<MaterialCommunityIcons name="calendar-month" size={24} color={colors.success} />} tint={colors.success} value={stats?.totalFinished ?? 0} label={he.communityStatsEvenings} />
+            <HeroTile icon={<MaterialCommunityIcons name="calendar-month" size={24} color={colors.success} />} tint={colors.success} value={scopedCard ? scopedCard.completedRounds : (stats?.totalFinished ?? 0)} label={he.communityStatsEvenings} />
           </View>
 
           {/* ── מובילי המועדון ── (only once goals exist; else all "—") */}
@@ -535,8 +678,14 @@ export function CommunityStatsScreen() {
           {/* After the leaders and before the fun facts: the leaders are about
               individuals, this is about who they play WITH, and the fun facts
               are club-wide. It reads in that order. */}
-          <SectionTitle icon="people" text={he.chemistrySection} />
-          <ChemistrySection groupId={groupId} />
+          {/* כימיה נקראת מהזוגות החיים, שהם של העונה הרצה. לעונה שנסגרה
+              מוצג הצמד הקטלני שלה ב"נתונים מעניינים" — משם, מהארכיון. */}
+          {archive ? null : (
+            <>
+              <SectionTitle icon="people" text={he.chemistrySection} />
+              <ChemistrySection groupId={groupId} />
+            </>
+          )}
 
           {/* ── נתונים מעניינים (מעל הטבלה — בקשת אלירן) ── */}
           <SectionTitle icon="sparkles" text={he.communityStatsSectionFun} />
@@ -562,24 +711,28 @@ export function CommunityStatsScreen() {
               <FunDonutRow index={4} pct={derived.shootoutPct} tint={colors.danger}
                 text="מהמשחקים הוכרעו בפנדלים" />
             ) : null}
-            <FunDonutRow index={5} pct={Math.round((stats?.organizationRate ?? 0) * 100)}
-              tint={colors.success} text="מהמחזורים המתוכננים יצאו לפועל" />
+            {/* אחוז ההתארגנות נספר מסריקת המשחקים של המועדון, לא ממונה
+                שהעונה שומרת — ולכן אין לו תשובה לעונה שנסגרה. */}
+            {archive ? null : (
+              <FunDonutRow index={5} pct={Math.round((stats?.organizationRate ?? 0) * 100)}
+                tint={colors.success} text="מהמחזורים המתוכננים יצאו לפועל" />
+            )}
             {/* עובדות טקסט (בלי אחוז) */}
-            {duo && duo.assists > 0 ? (
+            {viewDuo && viewDuo.assists > 0 ? (
               <FunRow
                 icon="git-network-outline"
                 tint="#7C3AED"
                 parts={[
-                  { t: name(duo.uidA), em: 'name' },
+                  { t: name(viewDuo.uidA), em: 'name' },
                   { t: ' ו' },
-                  { t: name(duo.uidB), em: 'name' },
+                  { t: name(viewDuo.uidB), em: 'name' },
                   { t: ' הם הצמד עם הכי הרבה בישולים משותפים (' },
-                  { t: `${duo.assists}`, em: 'num' },
+                  { t: `${viewDuo.assists}`, em: 'num' },
                   { t: ')' },
                 ]}
               />
             ) : null}
-            {stats && stats.longestStreak >= 2 ? (
+            {!archive && stats && stats.longestStreak >= 2 ? (
               <FunRow
                 icon="flame-outline"
                 tint={colors.danger}
@@ -591,15 +744,30 @@ export function CommunityStatsScreen() {
                 ]}
               />
             ) : null}
-            <FunRow
-              icon="calendar-outline"
-              tint={colors.primary}
-              parts={[
-                { t: `${stats?.activeThisYear ?? 0} שחקנים`, em: 'num' },
-                { t: ' היו פעילים השנה' },
-              ]}
-              last={!(derived.guestGoals > 0) && !(derived.totalOwnGoals > 0)}
-            />
+            {/* "פעילים השנה" נמדד מול היום, לא מול העונה — למחזור שנסגר
+                לפני חצי שנה זו לא תשובה. במקום זה: כמה שחקנים בכלל שיחקו
+                בעונה, מתוך השורות החתומות שלה. */}
+            {archive ? (
+              <FunRow
+                icon="calendar-outline"
+                tint={colors.primary}
+                parts={[
+                  { t: `${derived.players.length} שחקנים`, em: 'num' },
+                  { t: ' שיחקו בעונה' },
+                ]}
+                last={!(derived.guestGoals > 0) && !(derived.totalOwnGoals > 0)}
+              />
+            ) : (
+              <FunRow
+                icon="calendar-outline"
+                tint={colors.primary}
+                parts={[
+                  { t: `${stats?.activeThisYear ?? 0} שחקנים`, em: 'num' },
+                  { t: ' היו פעילים השנה' },
+                ]}
+                last={!(derived.guestGoals > 0) && !(derived.totalOwnGoals > 0)}
+              />
+            )}
             {/* גולים של אורחים — שורה נפרדת (רק אם קיים נתון). אורחים אינם
                 בטבלה המדורגת, אז זו הדרך היחידה שהתרומה שלהם נספרת גלוי. */}
             {derived.guestGoals > 0 ? (
@@ -633,10 +801,22 @@ export function CommunityStatsScreen() {
             groupId={groupId}
             memberIds={memberIds}
             attendedByUser={attended}
-            seasonNo={seasons?.enabled ? (seasons.currentNo ?? 1) : undefined}
+            seasonNo={
+              scopedCard
+                ? scopedCard.no
+                : seasons?.enabled
+                  ? (seasons.currentNo ?? 1)
+                  : undefined
+            }
+            seasonId={scope ?? undefined}
           />
 
           {/* ── הישגי המועדון (תארים) — הכי למטה ── */}
+          {/* התארים הם של המועדון לכל אורכו, לא של עונה אחת — הם נצברים מכל
+              העונות יחד ואינם מתאפסים. תחת עונה שנסגרה זו לא כותרת נכונה,
+              אז מי שרוצה לראות אותם חוזר לעונה הרצה. */}
+          {archive ? null : (
+          <>
           <SectionTitle icon="medal" text={he.communityStatsSectionAchievements} />
           <Card style={styles.badgeCard}>
             <View style={styles.badgeGrid}>
@@ -653,6 +833,8 @@ export function CommunityStatsScreen() {
               ))}
             </View>
           </Card>
+          </>
+          )}
 
           <View style={{ height: spacing.xl }} />
         </ScrollView>
@@ -662,6 +844,30 @@ export function CommunityStatsScreen() {
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────
+
+function ScopeChip({
+  text,
+  active,
+  onPress,
+}: {
+  text: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.scopeChip, active && styles.scopeChipOn]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      hitSlop={6}
+    >
+      <Text style={[styles.scopeChipText, active && styles.scopeChipTextOn]}>
+        {text}
+      </Text>
+    </Pressable>
+  );
+}
 
 function SectionTitle({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
   return (
@@ -833,6 +1039,30 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
   loadingText: { ...typography.body, color: colors.textMuted },
   scroll: { padding: spacing.md, gap: spacing.sm },
+
+  // Label first in source order → rightmost under forceRTL, chips running
+  // leftwards from it.
+  scopeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  scopeLabel: { ...typography.caption, color: colors.textMuted },
+  scopeChips: { gap: spacing.xs, paddingVertical: 2 },
+  scopeChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  scopeChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  scopeChipText: { ...typography.caption, color: colors.textMuted, fontWeight: '600' },
+  scopeChipTextOn: { color: '#fff' },
+  scopeNote: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    lineHeight: 18,
+    paddingHorizontal: spacing.xs,
+  },
 
   sectionTitle: {
     // Under forceRTL, 'row' packs the first child (icon) to the RIGHT and

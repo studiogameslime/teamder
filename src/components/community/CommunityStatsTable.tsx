@@ -62,6 +62,13 @@ export function CommunityStatsTable({
   /** Guest roster-id → name. Rows whose uid is here resolve to that name (no
    *  /users fetch) and open no player card. Used by the per-game table. */
   guestNames,
+  /** uid → the name a CLOSED season froze, used only where /users has no
+   *  answer. A player who deleted their account or left the club still played
+   *  that season and still holds their row in it; without this their name goes
+   *  to "—" and the season stops being readable. Unlike `guestNames` this does
+   *  not short-circuit the lookup — a player who IS still around keeps their
+   *  live name, their avatar and their card. */
+  fallbackNames,
   /** 'cumulative' is the table as it has always been — totals, ranked by wins.
    *  'efficiency' shows per-game rates over the SAME rows and the same
    *  chrome: identical name column, medals, row heights and header-tap
@@ -75,10 +82,14 @@ export function CommunityStatsTable({
   hideAppearances?: boolean;
   attendedByUser?: Record<string, number>;
   guestNames?: Record<string, string>;
+  fallbackNames?: Record<string, string>;
   mode?: 'cumulative' | 'efficiency';
 }) {
   const nav = useNavigation<{ navigate: (s: string, p: object) => void }>();
   const [people, setPeople] = useState<Record<string, Resolved>>({});
+  // Rows showing a season's frozen name because /users had no answer — most
+  // likely a player who has left. Their card would open on nothing.
+  const [nameOnly, setNameOnly] = useState<Set<string>>(new Set());
   // Tap a column header to sort by it. Cumulative leads on wins, the headline
   // stat; efficiency leads on goals+assists per game, the one the table exists
   // to surface.
@@ -141,6 +152,7 @@ export function CommunityStatsTable({
     ).then((fetched) => {
       if (!alive) return;
       const map: Record<string, Resolved> = {};
+      const frozen = new Set<string>();
       fetched.forEach((u) => {
         if (u) map[u.id] = u;
       });
@@ -149,8 +161,19 @@ export function CommunityStatsTable({
       for (const r of rows) {
         const gn = guestNames?.[r.uid];
         if (gn) map[r.uid] = { id: r.uid, name: gn, avatarId: '', photoUrl: '' };
+        // Only where the live lookup came back with nothing.
+        else if (!map[r.uid] && fallbackNames?.[r.uid]) {
+          map[r.uid] = {
+            id: r.uid,
+            name: fallbackNames[r.uid],
+            avatarId: '',
+            photoUrl: '',
+          };
+          frozen.add(r.uid);
+        }
       }
       setPeople(map);
+      setNameOnly(frozen);
     });
     return () => {
       alive = false;
@@ -161,8 +184,10 @@ export function CommunityStatsTable({
   if (rows.length === 0) return null;
 
   const openCard = (uid: string) => {
-    // Guests have no player card — their row is a name label only.
+    // Guests have no player card — their row is a name label only. Neither
+    // does a player /users could not resolve: the card would open on nothing.
     if (guestNames?.[uid]) return;
+    if (nameOnly.has(uid)) return;
     nav.navigate('PlayerCard', groupId ? { userId: uid, groupId } : { userId: uid });
   };
 

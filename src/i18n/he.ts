@@ -2119,6 +2119,16 @@ export const he = {
   communityStatsSeasonFreshCta: 'לראות את העונה הקודמת ואת התארים שחולקו',
   communityStatsSeasonBanner: (no: number) =>
     `הטבלה מציגה את עונה ${no} — העונה שרצה עכשיו. עונות שהסתיימו נשמרות בנפרד.`,
+  // בורר העונות שמעל הטבלה. "עכשיו" מסומן על העונה הרצה כדי שברור שזו
+  // ברירת המחדל ושאפשר לחזור אליה, ולא סתם עוד עונה ברשימה.
+  communityStatsScopeLabel: 'מציגים:',
+  communityStatsScopeCurrent: (no: number) => `עונה ${no} · עכשיו`,
+  communityStatsScopePast: (no: number) => `עונה ${no}`,
+  // מה כן ומה לא נשמר לעונה שהסתיימה. נאמר במפורש, כי מספר שנעלם בלי הסבר
+  // נקרא כתקלה — וכל מה שהוסתר כאן הוא נתון של המועדון כולו, לא של העונה.
+  communityStatsScopeClosedNote: (no: number, when: string) =>
+    `עונה ${no} הסתיימה ב-${when}. כל המספרים כאן הם שלה בלבד, בדיוק כפי שננעלו. אחוז ההתארגנות, הרצפים, הכימיה ותארי המועדון נמדדים על המועדון לאורך כל הדרך ולא על עונה בודדת, ולכן מוצגים רק בעונה הרצה.`,
+  communityStatsScopeLoading: 'טוענים את העונה…',
   seasonHistoryTitle: 'עונות קודמות',
   seasonHistoryCta: 'עונות קודמות ותארים',
   seasonHistoryLoadFailed:

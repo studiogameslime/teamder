@@ -12,6 +12,7 @@ import { Card } from '@/components/Card';
 import { CommunityStatsTable } from '@/components/community/CommunityStatsTable';
 import { MatchSegmentControl } from '@/components/match/MatchSegmentControl';
 import { gameService } from '@/services';
+import { seasonHistoryService } from '@/services/seasonHistoryService';
 import { appAlert } from '@/components/AppDialog';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -31,16 +32,22 @@ export function CommunityChampionship({
   // promise of a career, printed over one season, which is the single string
   // most likely to make a member believe their data was deleted.
   seasonNo,
+  // A CLOSED season to show instead of the running one. The archive holds
+  // every column this table renders, so a past season is exactly as complete
+  // as the live one — which is the whole reason it is worth offering.
+  seasonId,
 }: {
   groupId: string;
   memberIds?: string[];
   attendedByUser?: Record<string, number>;
   seasonNo?: number;
+  seasonId?: string;
 }) {
   // Which view of the same rows. 'מצטבר' is the table exactly as it has
   // always been; 'יעילות' is per-game rates over those same players. Not
   // remembered between visits — the totals are what most people come for.
   const [tab, setTab] = useState<'cumulative' | 'efficiency'>('cumulative');
+  const [frozenNames, setFrozenNames] = useState<Record<string, string>>({});
   const [data, setData] = useState<{
     totalGoals: number;
     totalRounds: number;
@@ -50,10 +57,21 @@ export function CommunityChampionship({
   const memberKey = (memberIds ?? []).join(',');
   useEffect(() => {
     let alive = true;
-    gameService
-      .getCommunityChampionship(groupId, memberIds)
+    setData(null);
+    // A past season comes from its archive; the running one from the live
+    // rows, which ARE that season.
+    setFrozenNames({});
+    const load = seasonId
+      ? seasonHistoryService.table(groupId, seasonId).then((t) => {
+          // The names the season sealed, so a player who has since left is
+          // still a name in the table they played in rather than a dash.
+          if (t && alive) setFrozenNames(t.names);
+          return t;
+        })
+      : gameService.getCommunityChampionship(groupId, memberIds);
+    load
       .then((d) => {
-        if (alive) setData(d);
+        if (alive) setData(d ?? null);
       })
       .catch(() => {
         /* leave null → render nothing */
@@ -62,7 +80,7 @@ export function CommunityChampionship({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, memberKey]);
+  }, [groupId, memberKey, seasonId]);
 
   // Clean sheets have only been recorded since mid-August, so a long-standing
   // player's percentage is computed over a shorter window than their history.
@@ -139,7 +157,8 @@ export function CommunityChampionship({
         //
         // The rollup's own `games` counter IS season-scoped, because the close
         // winds it back with everything else. That is the right number here.
-        attendedByUser={seasonNo ? undefined : attendedByUser}
+        attendedByUser={seasonNo || seasonId ? undefined : attendedByUser}
+        fallbackNames={seasonId ? frozenNames : undefined}
         mode={tab}
       />
 

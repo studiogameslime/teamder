@@ -34,6 +34,7 @@ import { eveningScoreServer } from './eveningScoreCore';
 import { occupancyOf, inFillerQuietHours } from './fillerRules';
 import { closeSeason, reopenSeason } from './seasonRollover';
 import { buildRoundSides } from './roundSides';
+import { wasActuallyPlayed, type PlayedEvidence } from './wasPlayed';
 import { onCall, HttpsError, onRequest } from 'firebase-functions/v2/https';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { getFunctions as getGcpFunctions } from 'firebase-admin/functions';
@@ -5446,15 +5447,10 @@ export const onGameRosterChanged = onDocumentWritten(
       }
     }
 
-    const afterLm = after.liveMatch as
-      | { startedAt?: number; phase?: string }
-      | undefined;
-    const afterPhase = afterLm?.phase;
-    const finishWasPlayed =
-      typeof afterLm?.startedAt === 'number' ||
-      afterPhase === 'roundRunning' ||
-      afterPhase === 'roundEnded' ||
-      afterPhase === 'live';
+    // Answered from every trace an evening leaves, not from the one field the
+    // app stamps on kickoff — see functions/src/wasPlayed.ts for why the old
+    // pair of checks was really a single point of failure.
+    const finishWasPlayed = wasActuallyPlayed(after as PlayedEvidence);
     if (
       before?.status !== 'finished' &&
       after.status === 'finished' &&
@@ -13880,6 +13876,49 @@ export const commitRoundStats = onCall(
     });
     if (outcome.alreadyCommitted) return { ok: true, alreadyCommitted: true };
 
+    // Stamp "this evening was played" from the server, if the app never did.
+    //
+    // A committed round is the strongest proof there is: real goals, by real
+    // players, on two real sides. The app is supposed to have stamped it at
+    // kickoff, but that write swallows its own failures — and while it was the
+    // ONLY record, a single dropped request on a bad pitch connection erased
+    // the whole evening from the club's history with everything on screen
+    // carrying on as normal.
+    //
+    // Outside the stats batch on purpose. This is a repair, not part of the
+    // round: it must not consume one of the batch's counted operations, and it
+    // must never be the reason a round of real goals fails to commit. If it
+    // fails, `wasActuallyPlayed` still reaches the right answer from the
+    // rotation this round left behind — a written fact is simply better than
+    // an inferred one, and this is the moment the fact is known.
+    //
+    // Only when absent, so a second round never moves a kickoff already
+    // recorded, and dated to kickoff rather than now, so a round committed at
+    // midnight does not claim the evening began then.
+    if (
+      typeof (game.liveMatch as { startedAt?: number } | undefined)?.startedAt !==
+      'number'
+    ) {
+      try {
+        await db
+          .collection('games')
+          .doc(gameId)
+          .set(
+            {
+              liveMatch: {
+                startedAt: typeof game.startsAt === 'number' ? game.startsAt : now,
+                // Marks the stamp as a repair rather than a real kickoff press,
+                // so anyone reading this later knows which it was.
+                startedAtBy: 'server',
+              },
+            },
+            { merge: true },
+          );
+      } catch (err) {
+        console.error('[commitRoundStats] played-stamp failed', gameId, err);
+      }
+    }
+
     return { ok: true, scorers: Object.keys(byScorer).length };
   },
 );
@@ -14654,10 +14693,12 @@ async function clubIsQuiet(groupId: string): Promise<{
     .get();
   for (const g of recent.docs) {
     const summary = await db.collection('roundSummaries').doc(g.id).get();
-    const lm = (g.data() as { liveMatch?: { startedAt?: number } }).liveMatch;
     // Only a game that was actually played gets sealed; one the cleanup
-    // finished without play never will, so it must not block forever.
-    if (!summary.exists && typeof lm?.startedAt === 'number') {
+    // finished without play never will, so it must not block forever. Same
+    // evidence the seal itself uses — if these two ever disagreed, a club
+    // would be blocked from closing a season by an evening that was never
+    // going to be sealed, or would close over one still waiting to be.
+    if (!summary.exists && wasActuallyPlayed(g.data() as PlayedEvidence)) {
       return { ok: false, blocker: 'unsealedGame' };
     }
   }
