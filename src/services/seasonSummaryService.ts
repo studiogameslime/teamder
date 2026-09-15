@@ -522,7 +522,14 @@ function mockSeasonSummary(
   const me = buildPersonalSeason({ me: userId, players, pairs });
   return {
     groupId,
-    groupName: 'שכחת שושי',
+    // The MOCK club's name, not a real one.
+    //
+    // This said 'שכחת שושי' — a real club, and the owner's own test club. Every
+    // screenshot of this screen therefore showed a real club's name over
+    // invented numbers, and the reasonable reading of that is "you reset my
+    // season". Nothing had been touched; the name alone was enough to look
+    // like it had. Mock data must never borrow a real name.
+    groupName: 'חמישי כדורגל',
     seasonId: past ? 's1' : 's2',
     seasonNo: past ? 1 : 2,
     startsAt: Date.now() - 1000 * 60 * 60 * 24 * (past ? 420 : 150),
