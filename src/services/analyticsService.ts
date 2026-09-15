@@ -51,6 +51,7 @@ export const AnalyticsEvent = {
   SeasonEndedEarly: 'season_ended_early',
   SeasonReopened: 'season_reopened',
   SeasonSummaryViewed: 'season_summary_viewed',
+  SeasonSummaryShared: 'season_summary_shared',
   SeasonHistoryViewed: 'season_history_viewed',
   GroupViewed: 'group_viewed',
   InviteShared: 'invite_shared',

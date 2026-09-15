@@ -23,7 +23,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { captureRef } from 'react-native-view-shot';
+
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { SeasonShareCard, SHARE_CARD_WIDTH } from '@/components/summary/SeasonShareCard';
+import { toast } from '@/components/Toast';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import {
   seasonSummaryService,
@@ -36,6 +40,7 @@ import type {
 } from '@/services/seasonSummaryService';
 import { useUserStore } from '@/store/userStore';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 import { colors, spacing, typography } from '@/theme';
 import { RTL_LABEL_ALIGN } from '@/theme/rtl';
 import { he } from '@/i18n/he';
@@ -199,6 +204,43 @@ export function SeasonSummaryScreen() {
     await load();
     setRefreshing(false);
   }, [load]);
+
+  const shareCardRef = useRef<View>(null);
+  const [sharing, setSharing] = useState(false);
+  const onShare = useCallback(async () => {
+    if (!shareCardRef.current || sharing) return;
+    setSharing(true);
+    try {
+      const uri = await captureRef(shareCardRef, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
+      });
+      // Lazy-required so the screen still loads on a binary that predates
+      // expo-sharing — the require only runs on a share tap. Same arrangement
+      // the evening summary uses.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+      const Sharing = require('expo-sharing') as typeof import('expo-sharing');
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/png',
+          dialogTitle: he.seasonShareTitle,
+        });
+        logEvent(AnalyticsEvent.SeasonSummaryShared, {
+          groupId,
+          seasonNo: model?.seasonNo ?? 0,
+          titles: model?.myTitles.length ?? 0,
+        });
+      } else {
+        toast.error(he.summaryShareUnavailable);
+      }
+    } catch (err) {
+      logError('shareSeasonSummary', err, { groupId });
+      toast.error(he.summaryShareFailed);
+    } finally {
+      setSharing(false);
+    }
+  }, [groupId, model, sharing]);
 
   if (loading) {
     return (
@@ -439,8 +481,29 @@ export function SeasonSummaryScreen() {
             </View>
           </>
         )}
+        {me.hasData ? (
+          <Pressable
+            onPress={onShare}
+            disabled={sharing}
+            style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.9 }]}
+            accessibilityRole="button"
+            accessibilityLabel={he.seasonShareCta}
+          >
+            <Text style={styles.shareText}>{he.seasonShareCta}</Text>
+          </Pressable>
+        ) : null}
+
         <Text style={styles.footnote}>{he.seasonSummaryFootnote}</Text>
       </ScrollView>
+
+      {/* Off-screen, at a fixed width, so the captured image is the same from
+          every phone. Positioned rather than hidden: a display:none subtree
+          has no layout and captures blank. */}
+      <View style={styles.shareStage} pointerEvents="none">
+        <View ref={shareCardRef} collapsable={false}>
+          <SeasonShareCard model={model} />
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -604,6 +667,19 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  shareBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  shareText: { ...typography.body, color: colors.surface, fontWeight: '700' },
+  shareStage: {
+    position: 'absolute',
+    top: 0,
+    left: -SHARE_CARD_WIDTH * 2,
+    width: SHARE_CARD_WIDTH,
   },
   footnote: {
     ...typography.caption,

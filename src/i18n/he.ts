@@ -2231,6 +2231,8 @@ export const he = {
   seasonPeersEmpty:
     'עוד לא שיחקת מספיק כדי שיהיה מה לספר כאן. זה יתמלא מעצמו.',
   seasonPeersEmptyClosed: 'לא שיחקת מספיק בעונה הזאת כדי שיהיה מה לספר כאן.',
+  seasonShareCta: 'שתף את סיכום העונה',
+  seasonShareTitle: 'סיכום העונה שלי',
   seasonSummaryFootnote:
     'כל המספרים כאן הם של העונה הזאת בלבד. הסטטיסטיקה המצטברת שלי נמצאת בפרופיל.',
   statGoals: 'שערים',
