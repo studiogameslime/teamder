@@ -497,7 +497,7 @@ function mockSeasonSummary(
   const past = seasonId === 's1';
   const players: SeasonPlayerRow[] = past
     ? [
-        { userId, games: 7, goals: 6, assists: 3, rounds: 22, wins: 9, losses: 11, ties: 2, cleanSheets: 4, csRounds: 22, ownGoals: 0, penTaken: 1, penScored: 0 },
+        { userId, games: 9, goals: 6, assists: 3, rounds: 22, wins: 9, losses: 11, ties: 2, cleanSheets: 4, csRounds: 22, ownGoals: 0, penTaken: 1, penScored: 0 },
         { userId: 'u_dani', games: 8, goals: 8, assists: 2, rounds: 24, wins: 13, losses: 9, ties: 2, cleanSheets: 6, csRounds: 24 },
         { userId: 'u_roi', games: 6, goals: 2, assists: 9, rounds: 20, wins: 11, losses: 7, ties: 2, cleanSheets: 5, csRounds: 20 },
         { userId: 'u_omer', games: 4, goals: 4, assists: 1, rounds: 12, wins: 5, losses: 6, ties: 1, cleanSheets: 2, csRounds: 12 },
@@ -533,14 +533,17 @@ function mockSeasonSummary(
     myTitles: past
       ? [
           { key: 'topAssister', value: 3, sharedWith: 1 },
-          { key: 'mostLoyal', value: 22, sharedWith: 0 },
+          // The number a title was won on must be the number the rest of the
+          // card shows. A mock that contradicts itself teaches the next person
+          // to read past exactly the contradiction it exists to catch.
+          { key: 'mostLoyal', value: 9, sharedWith: 0 },
         ]
       : [],
     seasonTitles: past
       ? [
           { key: 'topScorer', names: ['דני'], value: 8, mine: false },
           { key: 'topAssister', names: ['רועי', 'אני'], value: 3, mine: true },
-          { key: 'mostLoyal', names: ['אני'], value: 22, mine: true },
+          { key: 'mostLoyal', names: ['אני'], value: 9, mine: true },
           { key: 'cleanSheetKing', names: ['עומר'], value: 6, mine: false },
           { key: 'deadlyDuo', names: ['דני + רועי'], value: 5, mine: false },
         ]

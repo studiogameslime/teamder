@@ -675,10 +675,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   shareText: { ...typography.body, color: colors.surface, fontWeight: '700' },
+  // Parked ABOVE the screen rather than beside it.
+  //
+  // Either works — the captured PNG was verified complete both ways. Vertical
+  // is preferred only because a negative `left` is flipped by forceRTL, so the
+  // offset it produces depends on the app's language rather than on this file.
   shareStage: {
     position: 'absolute',
-    top: 0,
-    left: -SHARE_CARD_WIDTH * 2,
+    top: -10000,
     width: SHARE_CARD_WIDTH,
   },
   footnote: {
