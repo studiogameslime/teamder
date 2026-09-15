@@ -42,6 +42,16 @@ export const AnalyticsEvent = {
   GroupLeft: 'group_left',
   GroupMemberRemoved: 'group_member_removed',
   GroupSettingsEdited: 'group_settings_edited',
+  // Seasons. The whole feature is a behavioural bet — that a competition with
+  // an end makes people turn up — and it was shipping with no way to answer
+  // whether a single club ever enabled it.
+  SeasonsEnabled: 'seasons_enabled',
+  SeasonsDisabled: 'seasons_disabled',
+  SeasonTargetChanged: 'season_target_changed',
+  SeasonEndedEarly: 'season_ended_early',
+  SeasonReopened: 'season_reopened',
+  SeasonSummaryViewed: 'season_summary_viewed',
+  SeasonHistoryViewed: 'season_history_viewed',
   GroupViewed: 'group_viewed',
   InviteShared: 'invite_shared',
   InviteCodeCopied: 'invite_code_copied',

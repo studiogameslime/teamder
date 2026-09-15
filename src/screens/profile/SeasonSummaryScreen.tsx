@@ -32,6 +32,7 @@ import {
 import type { SeasonPeer } from '@/utils/seasonPersonal';
 import type { SeasonTitleWon } from '@/services/seasonSummaryService';
 import { useUserStore } from '@/store/userStore';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, spacing, typography } from '@/theme';
 import { RTL_LABEL_ALIGN } from '@/theme/rtl';
 import { he } from '@/i18n/he';
@@ -133,6 +134,14 @@ export function SeasonSummaryScreen() {
     });
     setModel(m);
     setLoading(false);
+    if (m) {
+      logEvent(AnalyticsEvent.SeasonSummaryViewed, {
+        groupId,
+        seasonNo: m.seasonNo,
+        closed: m.closed,
+        titles: m.myTitles.length,
+      });
+    }
   }, [currentUser?.id, groupId, seasonId]);
 
   useEffect(() => {

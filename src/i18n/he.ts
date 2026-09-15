@@ -2110,6 +2110,9 @@ export const he = {
     penaltyKeeper: 'שוער הפנדלים',
     deadlyDuo: 'הצמד הקטלני',
   } as const,
+  communityStatsSeasonFresh: (no: number) =>
+    `עונה ${no} רק התחילה, אז הטבלה עוד ריקה. שום דבר לא נמחק — כל מה ששיחקתם שמור בעונה הקודמת, והסטטיסטיקה המצטברת בפרופיל לא השתנתה.`,
+  communityStatsSeasonFreshCta: 'לראות את העונה הקודמת ואת התארים שחולקו',
   communityStatsSeasonBanner: (no: number) =>
     `הטבלה מציגה את עונה ${no} — העונה שרצה עכשיו. עונות שהסתיימו נשמרות בנפרד.`,
   seasonHistoryTitle: 'עונות קודמות',

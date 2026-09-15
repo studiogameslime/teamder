@@ -20,6 +20,7 @@ import { Button } from '@/components/Button';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 import { appAlert } from '@/components/AppDialog';
 import { toast } from '@/components/Toast';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   seasonService,
   seasonRefusalText,
@@ -167,6 +168,7 @@ export function SeasonsSettings({
           onPress: () =>
             run(async () => {
               await seasonService.disable(groupId);
+              logEvent(AnalyticsEvent.SeasonsDisabled, { groupId });
               setOpen(false);
               toast.success(he.seasonsDisabledToast);
             }),
@@ -184,6 +186,14 @@ export function SeasonsSettings({
           groupId,
           ...targetArgs,
           ...(sealHistory ? { closeFirstNow: true } : {}),
+        });
+        // `sealedHistory` is the question the feature actually turns on: how
+        // many clubs were willing to close two years to start clean.
+        logEvent(AnalyticsEvent.SeasonsEnabled, {
+          groupId,
+          cadence,
+          target: cadence === 'rounds' ? rounds : months,
+          sealedHistory: sealHistory,
         });
         toast.success(he.seasonsEnabledToast);
       });
@@ -206,6 +216,11 @@ export function SeasonsSettings({
   const saveTarget = useCallback(() => {
     run(async () => {
       await seasonService.updateTarget({ groupId, ...targetArgs });
+      logEvent(AnalyticsEvent.SeasonTargetChanged, {
+        groupId,
+        cadence,
+        target: cadence === 'rounds' ? rounds : months,
+      });
       toast.success(he.seasonsTargetSavedToast);
     });
   }, [groupId, targetArgs, run]);
@@ -218,6 +233,10 @@ export function SeasonsSettings({
         onPress: () =>
           run(async () => {
             const res = await seasonService.reopenLast(groupId);
+            logEvent(AnalyticsEvent.SeasonReopened, {
+              groupId,
+              seasonNo: res.reopenedNo,
+            });
             toast.success(he.seasonsReopenedToast(res.reopenedNo));
           }),
       },
@@ -233,6 +252,10 @@ export function SeasonsSettings({
         onPress: () =>
           run(async () => {
             const res = await seasonService.endNow(groupId);
+            logEvent(AnalyticsEvent.SeasonEndedEarly, {
+              groupId,
+              seasonNo: res.closedNo,
+            });
             toast.success(he.seasonsEndedToast(res.closedNo));
           }),
       },

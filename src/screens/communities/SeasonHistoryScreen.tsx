@@ -19,6 +19,7 @@ import {
   seasonHistoryService,
   type FinishedSeason,
 } from '@/services/seasonHistoryService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
@@ -89,7 +90,12 @@ export function SeasonHistoryScreen() {
   useEffect(() => {
     let alive = true;
     seasonHistoryService.list(groupId).then((s) => {
-      if (alive) setSeasons(s);
+      if (!alive) return;
+      setSeasons(s);
+      logEvent(AnalyticsEvent.SeasonHistoryViewed, {
+        groupId,
+        seasons: s.length,
+      });
     });
     return () => {
       alive = false;

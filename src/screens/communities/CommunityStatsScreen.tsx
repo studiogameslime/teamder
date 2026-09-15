@@ -360,10 +360,23 @@ export function CommunityStatsScreen() {
               accessibilityRole={(seasons.count ?? 0) > 0 ? 'button' : 'text'}
             >
               <Text style={styles.seasonBannerText}>
-                {he.communityStatsSeasonBanner(seasons.currentNo ?? 1)}
+                {/* A club whose new season has no goals yet is not an empty
+                    club — it is a club between seasons, and that is a very
+                    different sentence. Half this screen (the top scorer, the
+                    leaders, the donuts, the duo, eight fun facts) is gated on
+                    `> 0` and goes dark in one paint on the first evening after
+                    a close; without this the ten-year member reads it as
+                    "מחקו לי הכל". */}
+                {(seasons.count ?? 0) > 0 && !hasScoring
+                  ? he.communityStatsSeasonFresh(seasons.currentNo ?? 1)
+                  : he.communityStatsSeasonBanner(seasons.currentNo ?? 1)}
               </Text>
               {(seasons.count ?? 0) > 0 ? (
-                <Text style={styles.seasonBannerLink}>{he.seasonHistoryCta}</Text>
+                <Text style={styles.seasonBannerLink}>
+                  {!hasScoring
+                    ? he.communityStatsSeasonFreshCta
+                    : he.seasonHistoryCta}
+                </Text>
               ) : null}
             </Pressable>
           ) : null}

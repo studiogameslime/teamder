@@ -14314,6 +14314,71 @@ async function archivedCareerOf(groupId: string): Promise<
   return out;
 }
 
+/**
+ * Report a SERVER failure into the same inbox the app writes to.
+ *
+ * There was no such thing. Every server failure went to `console.error`, and
+ * the only unattended path in the app that destroys production data — the
+ * season sweep — swallowed its errors there. A club whose season had failed to
+ * roll for two months was discoverable by scrolling Cloud Logging and no other
+ * way: no Crashlytics, no alerting, and the dev inbox that exists precisely for
+ * this only ever heard from clients.
+ *
+ * Deliberately narrow. This is not a general server logger — it is for the
+ * handful of unattended operations whose silent failure is itself the bug.
+ * Mirrors the client's aggregated shape (fingerprint + count + first/lastSeen)
+ * so the inbox groups a recurring failure into one row instead of a flood.
+ */
+async function reportServerError(args: {
+  operation: string;
+  err: unknown;
+  context?: Record<string, unknown>;
+}): Promise<void> {
+  try {
+    const e = args.err as { message?: string; code?: string | number; stack?: string };
+    const message = String(e?.message ?? args.err ?? 'unknown');
+    // Signature, not incident: the same failure on the same club every hour is
+    // one row with a count, which is what makes it readable.
+    const fp = `srv_${args.operation}_${String(args.context?.groupId ?? '')}`
+      .replace(/[^\w]/g, '')
+      .slice(0, 80);
+    const ref = db.collection('errors').doc(fp);
+    const now = admin.firestore.Timestamp.now();
+    const common = {
+      operation: args.operation,
+      title: `שגיאת שרת · ${args.operation}`,
+      category: 'server',
+      lastMessage: message.slice(0, 500),
+      lastCode: e?.code != null ? String(e.code) : null,
+      lastStack: (e?.stack ?? '').slice(0, 2000) || null,
+      lastContext: args.context ?? {},
+      lastUserId: null,
+      lastScreen: null,
+      platform: 'server',
+      osVersion: '',
+      appVersion: 'functions',
+      lastSeen: now,
+    };
+    await db.runTransaction(async (tx) => {
+      const cur = await tx.get(ref);
+      if (cur.exists) {
+        tx.set(ref, { ...common, count: (cur.get('count') ?? 0) + 1 }, { merge: true });
+      } else {
+        tx.set(ref, {
+          ...common,
+          fingerprint: fp,
+          count: 1,
+          status: 'new',
+          firstSeen: now,
+        });
+      }
+    });
+  } catch (reportErr) {
+    // The reporter must never be the thing that breaks the caller.
+    console.error('[reportServerError] failed', args.operation, reportErr);
+  }
+}
+
 // ─── Seasons ─────────────────────────────────────────────────────────────
 //
 // Three admin actions and one sweep. Every one of them funnels into the same
@@ -14662,6 +14727,13 @@ async function runSeasonRollovers(): Promise<void> {
       closed += 1;
     } catch (err) {
       console.error('[season] rollover failed', doc.id, err);
+      // And into the inbox a person actually reads. A season that fails to
+      // roll is invisible otherwise, on the one path that destroys data.
+      await reportServerError({
+        operation: 'seasonRollover',
+        err,
+        context: { groupId: doc.id, seasonId: seasons.currentId ?? '' },
+      });
     }
   }
   if (closed || waiting) {
