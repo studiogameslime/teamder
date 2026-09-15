@@ -2030,7 +2030,7 @@ export const he = {
   seasonsTargetSavedToast: 'יעד העונה עודכן',
   seasonsDisableTitle: 'לכבות עונות?',
   seasonsDisableBody:
-    'המועדון יחזור לטבלה אחת שלא מתאפסת. העונה שרצה עכשיו לא תיסגר ולא יחולקו עליה תארים — אם רצית לסגור אותה, יש לזה כפתור נפרד.\n\nעונות שכבר הסתיימו נשארות בארכיון, ואם תפעילו עונות שוב הספירה תמשיך מהמקום שבו עצרה.',
+    'המועדון יחזור לטבלה אחת שלא מתאפסת. העונה שרצה עכשיו לא תיסגר ולא יחולקו עליה תארים — אם רצית לסגור אותה, יש לזה כפתור נפרד.\n\nעונות שכבר הסתיימו נשארות בארכיון, ואם תפעיל עונות שוב הספירה תמשיך מהמקום שבו עצרה.',
   seasonsDisableConfirm: 'כבה עונות',
   seasonsDisabledToast: 'העונות כובו במועדון',
   seasonsOffButArchived:
@@ -2082,9 +2082,9 @@ export const he = {
   seasonsEnabledToast: 'עונות הופעלו במועדון',
   seasonsEndedToast: (no: number) => `עונה ${no} הסתיימה. כל מי ששיחק קיבל את הסיכום שלו`,
   seasonBlockedOpenGame:
-    'יש מחזור פתוח במועדון. אפשר לסיים עונה רק כשאין מחזור בדרך — סיימו או בטלו אותו קודם.',
+    'יש מחזור פתוח במועדון. אפשר לסיים עונה רק כשאין מחזור בדרך — סיים או בטל אותו קודם.',
   seasonBlockedUnsealed:
-    'יש מחזור שהסתיים אבל הנתונים שלו עדיין לא נסגרו. חכו שיסתיים העדכון ונסו שוב.',
+    'יש מחזור שהסתיים אבל הנתונים שלו עדיין לא נסגרו. חכה שהעדכון יסתיים ונסה שוב.',
   seasonsReopenCta: 'בטל את סגירת העונה האחרונה',
   seasonsReopenConfirmTitle: 'לבטל את סגירת העונה?',
   seasonsReopenConfirmBody:
@@ -2094,20 +2094,20 @@ export const he = {
   seasonBlockedNothingToReopen:
     'אין עונה סגורה לפתוח מחדש.',
   seasonBlockedTargetBehind:
-    'היעד הזה כבר מאחורי המועדון, אז שמירה שלו הייתה סוגרת את העונה מיד. בחרו יעד גדול יותר, או השתמשו ב"סיים עונה עכשיו".',
+    'היעד הזה כבר מאחורי המועדון, אז שמירה שלו הייתה סוגרת את העונה מיד. בחר יעד גדול יותר, או השתמש ב"סיים עונה עכשיו".',
   seasonBlockedOff: 'העונות כבויות במועדון הזה.',
   seasonBlockedNotAdmin: 'רק מנהל המועדון יכול לסיים עונה.',
-  seasonActionFailed: 'משהו השתבש. נסו שוב עוד רגע.',
+  seasonActionFailed: 'משהו השתבש. נסה שוב עוד רגע.',
   // The nine season titles. Names, not descriptions — they are worn.
   seasonTitleNames: {
     topScorer: 'מלך השערים',
     topAssister: 'מלך הבישולים',
     mvp: 'שחקן העונה',
     topWinner: 'מלך הניצחונות',
-    mostLoyal: 'הנאמן של העונה',
+    mostLoyal: 'מלך ההתמדה',
     cleanSheetKing: 'מלך השערים הנקיים',
     penaltyKing: 'מלך הפנדלים',
-    penaltyKeeper: 'שוער הפנדלים',
+    penaltyKeeper: 'מלך שוערי הפנדלים',
     deadlyDuo: 'הצמד הקטלני',
   } as const,
   communityStatsSeasonFresh: (no: number) =>
@@ -2159,8 +2159,10 @@ export const he = {
   seasonSectionTitles: 'התארים שלי בעונה',
   seasonTitleSharedWith: (n: number) =>
     n === 1 ? 'במשותף עם עוד שחקן' : `במשותף עם עוד ${n} שחקנים`,
-  seasonTitlesNone:
-    'לא לקחת תואר בעונה הזאת. תשעה תארים מחכים בעונה הבאה.',
+  // Renders only for a CLOSED season, so it must not talk about the next one —
+  // it is shown just as often while browsing season 1 of a club that has since
+  // played three more.
+  seasonTitlesNone: 'לא לקחת תואר בעונה הזאת.',
   seasonTitlesPending:
     'התארים מחולקים כשהעונה נסגרת.',
   seasonSummaryTitle: 'סיכום העונה שלי',
@@ -2171,6 +2173,9 @@ export const he = {
   seasonSummaryUnavailable:
     'אין כאן סיכום עונה. המועדון הזה לא מנהל עונות.',
   seasonSummaryNoRounds: 'עוד לא שיחקת בעונה הזאת, אז אין מה לסכם עדיין.',
+  // The same fact about a season that is already over. "עדיין" and "יתמלא
+  // מעצמו" are promises a sealed season cannot keep.
+  seasonSummaryNoRoundsClosed: 'לא שיחקת בעונה הזאת.',
   seasonSectionNumbers: 'המספרים שלי בעונה',
   seasonSectionStanding: 'המיקום שלי במועדון',
   seasonSectionPeople: 'האנשים של העונה',
@@ -2206,6 +2211,7 @@ export const he = {
   seasonPeerAssistsDetail: (n: number) => `${n} בישולים`,
   seasonPeersEmpty:
     'עוד לא שיחקת מספיק כדי שיהיה מה לספר כאן. זה יתמלא מעצמו.',
+  seasonPeersEmptyClosed: 'לא שיחקת מספיק בעונה הזאת כדי שיהיה מה לספר כאן.',
   seasonSummaryFootnote:
     'כל המספרים כאן הם של העונה הזאת בלבד. הסטטיסטיקה המצטברת שלי נמצאת בפרופיל.',
   statGoals: 'שערים',
@@ -3197,6 +3203,7 @@ export const he = {
   // Per-game rates, beside the cumulative table rather than instead of it.
   // The cumulative one answers "who has done the most here", which after two
   // years answers "who has been here longest".
+  statsTabSeason: (no: number) => `עונה ${no}`,
   statsTabCumulative: 'מצטבר',
   statsTabEfficiency: 'יעילות',
   effColWinPct: '% ניצחון',

@@ -258,7 +258,11 @@ export function SeasonSummaryScreen() {
 
         {!me.hasData ? (
           <View style={styles.card}>
-            <Text style={styles.empty}>{he.seasonSummaryNoRounds}</Text>
+            <Text style={styles.empty}>
+              {model.closed
+                ? he.seasonSummaryNoRoundsClosed
+                : he.seasonSummaryNoRounds}
+            </Text>
           </View>
         ) : (
           <>
@@ -396,7 +400,9 @@ export function SeasonSummaryScreen() {
                 detail={(p) => he.seasonPeerAssistsDetail(p.count)}
               />
               {!me.partner && !me.nemesis ? (
-                <Text style={styles.cardNote}>{he.seasonPeersEmpty}</Text>
+                <Text style={styles.cardNote}>
+                  {model.closed ? he.seasonPeersEmptyClosed : he.seasonPeersEmpty}
+                </Text>
               ) : null}
             </View>
           </>

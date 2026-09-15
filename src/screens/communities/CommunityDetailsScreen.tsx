@@ -828,6 +828,9 @@ export function CommunityDetailsScreen() {
                 groupId={group.id}
                 memberIds={group.playerIds ?? []}
                 attendedByUser={communityStats?.attendedByUser}
+                seasonNo={
+                  group.seasons?.enabled ? (group.seasons.currentNo ?? 1) : undefined
+                }
               />
             </>
           ) : (

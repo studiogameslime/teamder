@@ -25,10 +25,17 @@ export function CommunityChampionship({
   // Authoritative "הופעות" per uid (finished-nights scan) — overrides the
   // drift-prone rollup for the appearances column.
   attendedByUser,
+  // The club's season, when it runs them. Only the LABEL changes: the numbers
+  // in this table already belong to the running season, because a rollover
+  // zeroes the rows it reads. What was wrong was calling them "מצטבר" — a
+  // promise of a career, printed over one season, which is the single string
+  // most likely to make a member believe their data was deleted.
+  seasonNo,
 }: {
   groupId: string;
   memberIds?: string[];
   attendedByUser?: Record<string, number>;
+  seasonNo?: number;
 }) {
   // Which view of the same rows. 'מצטבר' is the table exactly as it has
   // always been; 'יעילות' is per-game rates over those same players. Not
@@ -109,7 +116,12 @@ export function CommunityChampionship({
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'cumulative', label: he.statsTabCumulative },
+          {
+            value: 'cumulative',
+            label: seasonNo
+              ? he.statsTabSeason(seasonNo)
+              : he.statsTabCumulative,
+          },
           { value: 'efficiency', label: he.statsTabEfficiency },
         ]}
       />

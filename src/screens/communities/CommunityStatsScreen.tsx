@@ -612,6 +612,7 @@ export function CommunityStatsScreen() {
             groupId={groupId}
             memberIds={memberIds}
             attendedByUser={attended}
+            seasonNo={seasons?.enabled ? (seasons.currentNo ?? 1) : undefined}
           />
 
           {/* ── הישגי המועדון (תארים) — הכי למטה ── */}
