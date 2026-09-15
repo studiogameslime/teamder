@@ -96,6 +96,28 @@ describe('and so does somebody who PLAYED it and has since left', () => {
     assert.ok(snap.size >= 1);
   });
 
+  // A KEY in the map is not proof of playing. Stat rows are never deleted when
+  // somebody leaves a club, so before this an ex-member's zeroed row was
+  // archived into every later season and let them open seasons they were never
+  // part of. Fixed in two places: the close no longer archives an empty row,
+  // and the rule no longer trusts mere presence. (Found by the QA sweep, which
+  // wrote this case against the old behaviour.)
+  test('and not a later season their dead stat row still appears in', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'seasonSummary', `${GID}__s7`), {
+        groupId: GID, seasonId: 's7', no: 7, totals: { rounds: 44 },
+        players: {
+          [MEMBER]: { rounds: 22, goals: 31, displayName: 'דני' },
+          // Removed from the club long before season 7 opened.
+          [LEFT]: { rounds: 0, goals: 0, displayName: 'מודח' },
+        },
+        awards: { topScorer: { winners: [MEMBER], value: 31 } },
+      });
+    });
+    await assert.rejects(() =>
+      getDoc(doc(asDeparted(), 'seasonSummary', `${GID}__s7`)));
+  });
+
   test('but not a season they never played', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'seasonSummary', `${GID}__s0`), {

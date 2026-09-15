@@ -10630,7 +10630,18 @@ async function runClubActivitySweep() {
 async function runClubActivityIfDue() {
     await runIfDue('clubActivity', 20 * 60 * 60 * 1000, runClubActivitySweep);
 }
-exports.cronEvery60Min = (0, scheduler_1.onSchedule)({ schedule: 'every 60 minutes', timeZone: 'Asia/Jerusalem' }, async () => {
+exports.cronEvery60Min = (0, scheduler_1.onSchedule)({
+    schedule: 'every 60 minutes',
+    timeZone: 'Asia/Jerusalem',
+    // The default is 60 seconds, and this job now contains the season sweep —
+    // the only unattended path in the app that destroys production data. A
+    // close is a transaction per player plus a transaction per pair plus a
+    // batch of titles; for a sixty-player club that is comfortably past a
+    // minute, and being killed halfway is exactly the half-closed state the
+    // resume path exists to recover from. Better not to need it.
+    timeoutSeconds: 540,
+    memory: '512MiB',
+}, async () => {
     await runSweep('cleanupStaleGames', runCleanupStaleGames);
     await runSweep('sendPromotePrompts', runSendPromotePrompts);
     await runSweep('holidayGameNotices', runHolidayGameNotices);

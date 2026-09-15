@@ -330,7 +330,15 @@ service cloud.firestore {
         isOptionalShortString(request.resource.data, 'description', 500) &&
         isOptionalShortString(request.resource.data, 'city', 80) &&
         isOptionalShortString(request.resource.data, 'fieldName', 200) &&
-        isOptionalShortString(request.resource.data, 'fieldAddress', 300);
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300) &&
+        // A club cannot be BORN holding a seasons block.
+        //
+        // `allow update` makes the field server-owned, and create said nothing
+        // — so anyone could plant one: a club created with enabled:true is
+        // adopted by the hourly rollover without enableClubSeasons ever having
+        // run, with a `count` nobody validated. The client sizes its season
+        // picker from that number.
+        !('seasons' in request.resource.data);
 
       allow update: if (
         // Admin branch — can mutate freely BUT a few fields are
@@ -2131,9 +2139,15 @@ service cloud.firestore {
       // The single-document path is where the participant clause belongs: it
       // authorises exactly the document being read, so somebody who played the
       // season opens it whether or not they are still in the club.
+      // Belt and braces on the participant clause: a KEY in the map is not
+      // proof of playing. Stat rows are never deleted when somebody leaves a
+      // club, so an ex-member's zeroed row used to be archived into every
+      // later season. The close no longer archives empty rows, and this
+      // refuses to trust that it never will again.
       allow get: if isGroupMemberSafe(resource.data.get('groupId', '')) ||
         (request.auth != null &&
-         request.auth.uid in resource.data.get('players', {}));
+         request.auth.uid in resource.data.get('players', {}) &&
+         resource.data.players[request.auth.uid].get('rounds', 0) > 0);
       allow write: if false;
     }
     // ── /gamePlayerStats/{gameId__uid} — per-GAME rows ──────────────────

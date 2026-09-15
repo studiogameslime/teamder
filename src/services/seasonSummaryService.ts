@@ -42,6 +42,10 @@ export interface SeasonTitleAwarded {
   mine: boolean;
 }
 
+/** Ceiling on the season picker. A club playing weekly for twenty years on
+ *  three-month seasons has eighty. */
+const MAX_SEASON_CHOICES = 200;
+
 /** One season the club has, for the picker. */
 export interface SeasonChoice {
   no: number;
@@ -258,7 +262,12 @@ function seasonChoices(seasons: GroupSeasons): SeasonChoice[] {
   const out: SeasonChoice[] = [
     { no: seasons.currentNo, id: seasons.currentId, closed: false },
   ];
-  for (let no = seasons.count; no >= 1; no -= 1) {
+  // Never size a loop from a number in a document. `count` is server-written
+  // and the rules now stop a club being created with one, but a picker that
+  // spins a phone for a billion iterations is not a risk worth carrying for a
+  // list nobody scrolls past a dozen entries of anyway.
+  const closed = Math.max(0, Math.min(MAX_SEASON_CHOICES, seasons.count ?? 0));
+  for (let no = closed; no >= 1; no -= 1) {
     // A club that enabled, disabled and re-enabled keeps numbering, so the
     // current season's number can be higher than count + 1. Skip anything that
     // would duplicate the running one.
