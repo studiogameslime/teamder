@@ -467,9 +467,33 @@ export const seasonSummaryService = {
         };
       }
 
-      const [statRows, pairRows] = await Promise.all([
+      // Only the pairs that involve ME.
+      //
+      // This screen asks six questions about one player, and it was pulling the
+      // club's entire pair table to answer them: a fifty-player club is over a
+      // thousand documents, on a phone, to find out who somebody played beside
+      // most. A pair document stores its two members in `a` and `b`, and
+      // Firestore has no OR across fields, so it is two equality queries —
+      // roughly fifty documents instead of a thousand.
+      //
+      // The player rows are still read whole, and have to be: the club ranking
+      // on the screen is a fact about everybody.
+      const [statRows, asA, asB] = await Promise.all([
         getDocs(query(collection(db, 'communityPlayerStats'), where('groupId', '==', groupId))),
-        getDocs(query(collection(db, 'communityPairStats'), where('groupId', '==', groupId))),
+        getDocs(
+          query(
+            collection(db, 'communityPairStats'),
+            where('groupId', '==', groupId),
+            where('a', '==', userId),
+          ),
+        ),
+        getDocs(
+          query(
+            collection(db, 'communityPairStats'),
+            where('groupId', '==', groupId),
+            where('b', '==', userId),
+          ),
+        ),
       ]);
       const players: SeasonPlayerRow[] = [];
       statRows.forEach((d) => {
@@ -478,10 +502,12 @@ export const seasonSummaryService = {
         if (uid) players.push(playerRow(x, uid));
       });
       const pairs: SeasonPairRow[] = [];
-      pairRows.forEach((d) => {
-        const row = pairRow(d.data() as Record<string, unknown>);
-        if (row) pairs.push(row);
-      });
+      for (const snap of [asA, asB]) {
+        snap.forEach((d) => {
+          const row = pairRow(d.data() as Record<string, unknown>);
+          if (row) pairs.push(row);
+        });
+      }
       const me = buildPersonalSeason({ me: userId, players, pairs });
       // The club's finished rounds this season. `communityStats.rounds` is
       // zeroed by the same rollover, so it is already season-scoped.

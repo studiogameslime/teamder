@@ -14751,16 +14751,22 @@ async function runSeasonRollovers(): Promise<void> {
     const cadence = seasons.cadence ?? {};
 
     try {
-      const played = await completedRoundsOf(doc.id, seasons.roundsAtStart);
-      const due =
-        cadence.type === 'rounds'
-          ? typeof cadence.targetRounds === 'number' &&
-            cadence.targetRounds > 0 &&
-            played >= cadence.targetRounds
-          : typeof cadence.endsAt === 'number' &&
-            cadence.endsAt > 0 &&
-            now >= cadence.endsAt;
+      // A DATE cadence is answered from the club document already in hand. Only
+      // a rounds cadence needs the counter, so the common case — every club
+      // that is simply not due yet — costs no read at all.
+      let due: boolean;
+      if (cadence.type === 'rounds') {
+        const target = cadence.targetRounds;
+        if (typeof target !== 'number' || target <= 0) continue;
+        due = (await completedRoundsOf(doc.id, seasons.roundsAtStart)) >= target;
+      } else {
+        due =
+          typeof cadence.endsAt === 'number' &&
+          cadence.endsAt > 0 &&
+          now >= cadence.endsAt;
+      }
       if (!due) continue;
+      const played = await completedRoundsOf(doc.id, seasons.roundsAtStart);
 
       // A season an admin has just REOPENED is due the instant it comes back —
       // it met its target, that is why it closed. Closing it again within the
@@ -14842,7 +14848,15 @@ async function runSeasonRollovers(): Promise<void> {
 }
 
 export const enableClubSeasons = onCall(
-  { enforceAppCheck: ENFORCE_APP_CHECK },
+  {
+    enforceAppCheck: ENFORCE_APP_CHECK,
+    // Runs closeSeason (or its inverse): a transaction per player, one per
+    // pair, and a batch of titles. The onCall default is 60 seconds, and a
+    // sixty-player club is comfortably past it — being killed halfway leaves
+    // the half-closed state the resume path exists to recover from.
+    timeoutSeconds: 300,
+    memory: '512MiB',
+  },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
@@ -15121,7 +15135,15 @@ export const updateSeasonTarget = onCall(
  * played would fold that evening's rounds into the season being reopened.
  */
 export const reopenLastSeason = onCall(
-  { enforceAppCheck: ENFORCE_APP_CHECK },
+  {
+    enforceAppCheck: ENFORCE_APP_CHECK,
+    // Runs closeSeason (or its inverse): a transaction per player, one per
+    // pair, and a batch of titles. The onCall default is 60 seconds, and a
+    // sixty-player club is comfortably past it — being killed halfway leaves
+    // the half-closed state the resume path exists to recover from.
+    timeoutSeconds: 300,
+    memory: '512MiB',
+  },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
@@ -15191,7 +15213,15 @@ export const reopenLastSeason = onCall(
 );
 
 export const endSeasonNow = onCall(
-  { enforceAppCheck: ENFORCE_APP_CHECK },
+  {
+    enforceAppCheck: ENFORCE_APP_CHECK,
+    // Runs closeSeason (or its inverse): a transaction per player, one per
+    // pair, and a batch of titles. The onCall default is 60 seconds, and a
+    // sixty-player club is comfortably past it — being killed halfway leaves
+    // the half-closed state the resume path exists to recover from.
+    timeoutSeconds: 300,
+    memory: '512MiB',
+  },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
