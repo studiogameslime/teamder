@@ -1,8 +1,10 @@
 // playedGames — pure predicates for the "games played" model.
 //
-// CANONICAL definition (unified 2026-06-21): a game counts as PLAYED/ATTENDED
-// for a user when it is a FINISHED, PAST game, the user is in the final
-// `players[]`, and they were NOT marked `no_show`. This is the single source
+// CANONICAL definition (unified 2026-06-21, evening gate added 2026-09-15): a
+// game counts as PLAYED/ATTENDED for a user when the EVENING ITSELF HAPPENED
+// (see @/utils/eveningPlayed — the single source of truth for that question),
+// kickoff is past, the user is in the final `players[]`, and they were NOT
+// marked `no_show`. This is the single source
 // of truth shared by the Profile "games" count, the Statistics screen, the
 // History list, and the achievements derivation — previously these drifted
 // (the Profile used a stricter `draftTeams`-membership gate while the stats
@@ -15,10 +17,12 @@
 // `isAttendedGame`.
 
 import { DraftTeamsResult, UserId } from '@/types';
+import { didEveningHappen, type PlayableEvening } from '@/utils/eveningPlayed';
 
-/** Minimal shape needed to decide attendance — a subset of `Game`. */
-export interface AttendableGame {
-  status?: string;
+/** Minimal shape needed to decide attendance — a subset of `Game`. It extends
+ *  the evening shape because attendance is now two questions in order: did the
+ *  EVENING happen, and was this player at it. */
+export interface AttendableGame extends PlayableEvening {
   startsAt?: number;
   players?: string[];
   arrivals?: Record<string, string>;
@@ -37,7 +41,12 @@ export function isAttendedGame(
   now: number = Date.now(),
 ): boolean {
   if (!userId) return false;
-  if (game.status !== 'finished') return false;
+  // Did the EVENING happen — asked of the one module that answers it, never
+  // re-derived here. This used to be `status === 'finished'`, which is how a
+  // night the server refused to credit still showed up in a player's totals,
+  // their achievements and the club's history. An evening the system closed
+  // with no trace of play is not attendance until an admin says it is.
+  if (!didEveningHappen(game)) return false;
   if (typeof game.startsAt === 'number' && game.startsAt >= now) return false;
   if (!(game.players ?? []).includes(userId)) return false;
   if ((game.arrivals ?? {})[userId] === 'no_show') return false;

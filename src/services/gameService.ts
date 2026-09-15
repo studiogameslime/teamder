@@ -66,6 +66,7 @@ import { isStaleAfterStart, LATE_REG_GRACE_MS } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
 import { isAttendedGame } from '@/utils/playedGames';
+import { eveningPlayState, type PlayableEvening } from '@/utils/eveningPlayed';
 import { tallyDelta, tallyWithout } from '@/utils/goalTally';
 import {
   buildEditNotice,
@@ -301,21 +302,24 @@ function gameDocFromGame(g: Game): GameDoc {
 /** Lightweight GameSummary for a played game — no rounds fetch (timer-only
  *  games carry none), so matchCount is 0 and there's no per-round result.
  *  Accepts the structural subset shared by Game and the raw GameDoc. */
-function playedGameSummary(g: {
-  id: string;
-  groupId: GroupId;
-  startsAt: number;
-  status?: string;
-  title?: string;
-  fieldName?: string;
-  format?: GameFormat;
-}): GameSummary {
+function playedGameSummary(
+  g: {
+    id: string;
+    groupId: GroupId;
+    startsAt: number;
+    status?: string;
+    title?: string;
+    fieldName?: string;
+    format?: GameFormat;
+  } & PlayableEvening,
+): GameSummary {
   return {
     id: g.id,
     groupId: g.groupId,
     date: g.startsAt,
     matchCount: 0,
     status: g.status === 'cancelled' ? 'cancelled' : 'finished',
+    playState: eveningPlayState(g),
     title: g.title,
     fieldName: g.fieldName,
     format: g.format,
@@ -988,7 +992,26 @@ export const gameService = {
     const nights: Array<{ startsAt: number; attended: Set<UserId> }> = [];
     for (const doc of snap.docs) {
       const g = doc.data();
+      // ONE question, asked of the one module that answers it.
+      //
+      // This scan used to count every `finished` document as an evening the
+      // club held, while the server credited attendance only for evenings that
+      // left evidence of play. The two numbers on this very screen came from
+      // those two different rules, so a club could read a high organisation
+      // rate over nights that never advanced its season.
+      const state = eveningPlayState(g as PlayableEvening);
       if (g.status === 'cancelled') {
+        totalCancelled += 1;
+        continue;
+      }
+      // Closed by the system with nothing to show for it, and nobody has said
+      // either way. It is neither an evening the club held nor one it called
+      // off, so it counts as neither — and the organisation rate below stays
+      // honest by leaving it out of both halves of the fraction.
+      if (state === 'unverified') continue;
+      // An admin said it never happened. That is a cancellation in everything
+      // but name, and the rate should feel it the same way.
+      if (state === 'notHappened') {
         totalCancelled += 1;
         continue;
       }
@@ -1505,6 +1528,7 @@ export const gameService = {
           date: g.startsAt,
           matchCount: rounds.length,
           status: g.status === 'cancelled' ? 'cancelled' : 'finished',
+          playState: eveningPlayState(g as PlayableEvening),
           // Hand the title + field + format up to History so the row
           // can show what the game was without a second fetch.
           title: g.title,
@@ -7401,6 +7425,7 @@ export const gameService = {
       g.status = 'finished';
       g.locked = true;
       g.endedAt = Date.now();
+      g.endedBy = 'admin';
       if (g.liveMatch) {
         const openSeg =
           g.liveMatch.timerRunning && g.liveMatch.timerLastStartedAt
@@ -7454,6 +7479,15 @@ export const gameService = {
         status: 'finished',
         // The real end epoch — bounds the physical-data read window.
         endedAt: Date.now(),
+        // Ending the evening is a STATEMENT, not a technical signal: "this
+        // happened and I am closing it." Recorded so `eveningPlayState` can
+        // count it on its own, with no timer, no goals and no result — an
+        // admin who was there knows whether they played, and a club that
+        // organises in the app but plays offline leaves no other trace.
+        //
+        // It is also what tells this close apart from the sweep's, which
+        // knows nothing and must ask.
+        endedBy: 'admin',
         updatedAt: Date.now(),
       };
       if (data.liveMatch) {

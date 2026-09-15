@@ -1442,6 +1442,24 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
         : undefined,
       teams: d.teams ?? undefined,
       status,
+      // How the evening ended, and an admin's verdict on it if one was ever
+      // asked for. This reader rebuilds the game field by field, so a field
+      // absent HERE does not exist on the client no matter what Firestore
+      // holds — which is how a previous feature shipped invisible. Everything
+      // `eveningPlayState` reads has to be named in this list.
+      endedAt: typeof d.endedAt === 'number' ? d.endedAt : undefined,
+      endedBy:
+        d.endedBy === 'admin' || d.endedBy === 'auto' ? d.endedBy : undefined,
+      autoClosedAt:
+        typeof d.autoClosedAt === 'number' ? d.autoClosedAt : undefined,
+      // Absent stays absent: "nobody has been asked" is a third answer, and a
+      // `false` here would read as "an admin said it never happened".
+      playVerified:
+        typeof d.playVerified === 'boolean' ? d.playVerified : undefined,
+      committedRoundCount:
+        typeof d.committedRoundCount === 'number'
+          ? d.committedRoundCount
+          : undefined,
       locked: status !== 'open',
       currentMatchIndex: d.currentMatchIndex ?? 0,
       weather: d.weather ?? undefined,

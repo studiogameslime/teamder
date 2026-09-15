@@ -2129,6 +2129,13 @@ export const he = {
   communityStatsScopeClosedNote: (no: number, when: string) =>
     `עונה ${no} הסתיימה ב-${when}. כל המספרים כאן הם שלה בלבד, בדיוק כפי שננעלו. אחוז ההתארגנות, הרצפים, הכימיה ותארי המועדון נמדדים על המועדון לאורך כל הדרך ולא על עונה בודדת, ולכן מוצגים רק בעונה הרצה.`,
   communityStatsScopeLoading: 'טוענים את העונה…',
+  // המקרה היחיד שבו המערכת שואלת אם מחזור התקיים: היא סגרה אותו לבד ולא נשאר
+  // בו שום סימן שמישהו שיחק. בכל מקרה אחר יש לה תשובה ואין מה לשאול.
+  unverifiedEveningsTitle: 'מחזורים שממתינים לאישור',
+  unverifiedEveningsBody:
+    'המחזורים האלה נסגרו אוטומטית בלי שנרשמה בהם פעילות — לא הופעל טיימר ולא נשמרה תוצאה. עד שתכריעו הם לא נספרים במועדון, בנוכחות או בסטטיסטיקות.',
+  unverifiedEveningYes: 'התקיים',
+  unverifiedEveningNo: 'לא התקיים',
   seasonHistoryTitle: 'עונות קודמות',
   seasonHistoryCta: 'עונות קודמות ותארים',
   seasonHistoryLoadFailed:

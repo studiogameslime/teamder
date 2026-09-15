@@ -55,6 +55,7 @@ import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { CommunityStatsGrid } from '@/components/community/CommunityStatsGrid';
 import { CommunityChampionship } from '@/components/community/CommunityChampionship';
 import { SeasonsCard } from '@/components/community/SeasonsCard';
+import { UnverifiedEveningsCard } from '@/components/community/UnverifiedEveningsCard';
 import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
 import { NextGameCard } from '@/components/community/NextGameCard';
 import { UpcomingMoreRow } from '@/components/community/UpcomingMoreRow';
@@ -589,7 +590,10 @@ export function CommunityDetailsScreen() {
   // only until the stats load.
   const matchesHeld =
     communityStats?.totalFinished ??
-    history.filter((h) => h.status === 'finished').length;
+    // Evenings the club actually HELD. A summary with no `playState` was built
+    // before that question had one answer, and counted as held — which is what
+    // it did before, so nothing historical moves.
+    history.filter((h) => (h.playState ?? 'happened') === 'happened').length;
 
   // Hamburger menu — all admin / destructive / contact actions live
   // here. The ⋯ overflow opens the same sheet so users get one mental
@@ -839,6 +843,19 @@ export function CommunityDetailsScreen() {
               + superlatives + club level). Was duplicated — a club-level chip
               here AND a button lower down both opened CommunityStats; per owner
               request the chip was dropped and the button lives here at the top. */}
+          {/* The one question the system cannot answer itself. Above the
+              season card on purpose: an unconfirmed evening is missing from
+              the very numbers the card below reports, so asking about it
+              second would be explaining a total before correcting it. */}
+          <UnverifiedEveningsCard
+            groupId={group.id}
+            isAdmin={isAdmin}
+            // Confirming an evening adds it to the very numbers on this
+            // screen, so re-read them rather than leave a stale total under
+            // the card that just changed it.
+            onResolved={() => void reload({ pullToRefresh: true })}
+          />
+
           {/* Where the season stands. Managing it lives in club settings. */}
           <SeasonsCard
             groupId={group.id}

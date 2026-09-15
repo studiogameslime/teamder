@@ -34,7 +34,11 @@ import { eveningScoreServer } from './eveningScoreCore';
 import { occupancyOf, inFillerQuietHours } from './fillerRules';
 import { closeSeason, reopenSeason } from './seasonRollover';
 import { buildRoundSides } from './roundSides';
-import { wasActuallyPlayed, type PlayedEvidence } from './wasPlayed';
+import {
+  eveningPlayState,
+  didEveningHappen,
+  type PlayableEvening,
+} from './eveningPlayed';
 import { onCall, HttpsError, onRequest } from 'firebase-functions/v2/https';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { getFunctions as getGcpFunctions } from 'firebase-admin/functions';
@@ -3808,9 +3812,34 @@ async function runCleanupStaleGames(): Promise<void> {
       );
     } else {
       ops.push(
-        gameDoc.ref.update({ status: 'finished', locked: true }).then(() => {
+        (async () => {
+          // Transactional, and re-reads the status inside.
+          //
+          // The query snapshot above is already stale by the time this runs,
+          // and the one thing that can have changed is the very thing being
+          // written: an admin pressing "סיים מחזור" in the same minute. That
+          // close is a STATEMENT the evening happened; this one is a sweep
+          // that knows nothing. Overwriting the first with the second would
+          // turn a confirmed night into one waiting on a question nobody
+          // needs to answer.
+          await db.runTransaction(async (tx) => {
+            const snap = await tx.get(gameDoc.ref);
+            const st = snap.data()?.status;
+            if (st === 'finished' || st === 'cancelled') return; // already closed
+            tx.update(gameDoc.ref, {
+              status: 'finished',
+              locked: true,
+              // How it ended, recorded at the moment it ends. This is what
+              // lets `eveningPlayState` tell an evening the system closed on
+              // its own from one an admin closed deliberately — and from one
+              // closed before any of this existed, which carries neither.
+              endedBy: 'auto',
+              autoClosedAt: Date.now(),
+              updatedAt: Date.now(),
+            });
+          });
           finished++;
-        })
+        })()
       );
     }
   }
@@ -5447,14 +5476,25 @@ export const onGameRosterChanged = onDocumentWritten(
       }
     }
 
-    // Answered from every trace an evening leaves, not from the one field the
-    // app stamps on kickoff — see functions/src/wasPlayed.ts for why the old
-    // pair of checks was really a single point of failure.
-    const finishWasPlayed = wasActuallyPlayed(after as PlayedEvidence);
+    // Credit the evening the moment it BECOMES one, not the moment its status
+    // flips.
+    //
+    // The two used to be the same event, and now they are not: an evening the
+    // sweep closed with nothing to show for it is 'unverified' — finished, but
+    // not counted — until an admin says it happened. That decision arrives
+    // hours later as a field write, long after the status stopped changing, so
+    // a gate watching the status would never see it and the confirmed evening
+    // would be credited to nobody.
+    //
+    // Keyed on the answer instead: not-happened → happened, however it got
+    // there. The `finishCredited` latch below still makes it exactly once, so
+    // an evening that arrives here twice — a redelivered finish, then an
+    // admin's confirmation — credits once and only once.
+    const wasHappened = didEveningHappen(before as PlayableEvening | undefined);
+    const isHappened = didEveningHappen(after as PlayableEvening);
     if (
-      before?.status !== 'finished' &&
-      after.status === 'finished' &&
-      finishWasPlayed &&
+      !wasHappened &&
+      isHappened &&
       after.groupId &&
       Array.isArray(after.players) &&
       after.players.length > 0
@@ -13030,6 +13070,82 @@ export const getFriendsInClubs = onCall(
   },
 );
 
+/**
+ * An admin's verdict on an evening the system closed with nothing to show.
+ *
+ * This is the ONLY way an 'unverified' evening leaves that state, and the only
+ * question the app ever asks about whether a מחזור happened. It is not asked on
+ * an ordinary close: ending the evening is already an answer, and so is a
+ * timer, a goal or a committed round.
+ *
+ * A callable rather than a client write, because the rules deliberately forbid
+ * every client update to a finished game (`resource.data.status != 'finished'`)
+ * — the same reason addRetroGoal is one. Loosening that rule to let an app
+ * write two fields onto a closed evening would open every other field on it.
+ *
+ * Crediting is NOT done here. Setting `playVerified: true` makes
+ * `eveningPlayState` answer 'happened', and onGameRosterChanged is watching
+ * exactly that transition — so confirming an evening runs the same attendance
+ * credit, the same standings, the same summary and the same season progress
+ * that an ordinary evening gets, through the same code, behind the same
+ * `finishCredited` latch. One path, so a confirmed evening cannot be credited
+ * differently from one that never needed asking.
+ */
+export const setEveningPlayed = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
+    const { gameId, played } = (request.data ?? {}) as {
+      gameId?: string;
+      played?: boolean;
+    };
+    if (!gameId) throw new HttpsError('invalid-argument', 'gameId required');
+    if (typeof played !== 'boolean') {
+      throw new HttpsError('invalid-argument', 'played must be a boolean');
+    }
+
+    const ref = db.collection('games').doc(gameId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError('not-found', 'game not found');
+    const game = snap.data() as Record<string, unknown>;
+
+    const groupId = typeof game.groupId === 'string' ? game.groupId : '';
+    if (!groupId) {
+      throw new HttpsError('failed-precondition', 'game has no community');
+    }
+    const grp = await db.collection('groups').doc(groupId).get();
+    const admins = (grp.data()?.adminIds as string[] | undefined) ?? [];
+    if (!admins.includes(uid)) {
+      throw new HttpsError('permission-denied', 'community admin only');
+    }
+
+    // Only an evening that is actually waiting on an answer.
+    //
+    // Re-checked from the stored document rather than trusted from the client,
+    // so a stale screen cannot overwrite an evening that has since been
+    // decided, nor put a verdict on one that was never in question. An evening
+    // already answered is left exactly as it is — the call succeeds and says
+    // so, because a double tap is not an error.
+    const state = eveningPlayState(game as PlayableEvening);
+    if (state !== 'unverified') {
+      return { ok: true, changed: false, state };
+    }
+
+    await ref.update({
+      playVerified: played,
+      playVerifiedBy: uid,
+      playVerifiedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return {
+      ok: true,
+      changed: true,
+      state: played ? 'happened' : 'notHappened',
+    };
+  },
+);
+
 // ─── Advanced-mode round stats aggregation ─────────────────────────────────
 // Called by the game admin when a round ends. The client can't write other
 // players' stat docs (rules, correctly), so the aggregation runs here with the
@@ -13895,28 +14011,41 @@ export const commitRoundStats = onCall(
     // Only when absent, so a second round never moves a kickoff already
     // recorded, and dated to kickoff rather than now, so a round committed at
     // midnight does not claim the evening began then.
-    if (
-      typeof (game.liveMatch as { startedAt?: number } | undefined)?.startedAt !==
-      'number'
-    ) {
-      try {
-        await db
-          .collection('games')
-          .doc(gameId)
-          .set(
-            {
-              liveMatch: {
-                startedAt: typeof game.startsAt === 'number' ? game.startsAt : now,
-                // Marks the stamp as a repair rather than a real kickoff press,
-                // so anyone reading this later knows which it was.
-                startedAtBy: 'server',
-              },
-            },
-            { merge: true },
-          );
-      } catch (err) {
-        console.error('[commitRoundStats] played-stamp failed', gameId, err);
+    try {
+      const patch: Record<string, unknown> = {
+        // Evidence the server wrote itself.
+        //
+        // A committed round is the strongest proof an evening was played:
+        // real goals, by real players, on two real sides. Everything else
+        // `eveningPlayState` reads is written by the phone, and the phone can
+        // fail to write — which is how an evening could disappear from a
+        // club's history while every screen carried on working.
+        //
+        // A count, deliberately. It is read as "at least one round was
+        // aggregated", and it also says how many without a subcollection read.
+        committedRoundCount: admin.firestore.FieldValue.increment(1),
+        updatedAt: now,
+      };
+      // And repair the kickoff stamp if the app never landed it. Only when
+      // absent, so a later round never moves a kickoff already recorded, and
+      // dated to kickoff rather than to now — a round committed at midnight
+      // does not mean the evening began then.
+      if (
+        typeof (game.liveMatch as { startedAt?: number } | undefined)
+          ?.startedAt !== 'number'
+      ) {
+        patch.liveMatch = {
+          startedAt: typeof game.startsAt === 'number' ? game.startsAt : now,
+          // Marks the stamp as a repair rather than a real kickoff press.
+          startedAtBy: 'server',
+        };
       }
+      // Outside the stats batch on purpose: this is a record OF the round, not
+      // part of it, and it must never be the reason a round of real goals
+      // fails to commit.
+      await db.collection('games').doc(gameId).set(patch, { merge: true });
+    } catch (err) {
+      console.error('[commitRoundStats] played-stamp failed', gameId, err);
     }
 
     return { ok: true, scorers: Object.keys(byScorer).length };
@@ -14698,7 +14827,7 @@ async function clubIsQuiet(groupId: string): Promise<{
     // evidence the seal itself uses — if these two ever disagreed, a club
     // would be blocked from closing a season by an evening that was never
     // going to be sealed, or would close over one still waiting to be.
-    if (!summary.exists && wasActuallyPlayed(g.data() as PlayedEvidence)) {
+    if (!summary.exists && didEveningHappen(g.data() as PlayableEvening)) {
       return { ok: false, blocker: 'unsealedGame' };
     }
   }

@@ -1149,6 +1149,17 @@ export interface GameSummary {
    */
   status?: 'finished' | 'cancelled';
   /**
+   * Whether the evening ITSELF took place — from `@/utils/eveningPlayed`, the
+   * one module that decides it. Separate from `status`, which is the terminal
+   * lifecycle state and drives the row's banner: an evening the system closed
+   * with no trace of play is `status: 'finished'` but 'unverified' here, and
+   * must not be counted as a night the club held until an admin says so.
+   *
+   * Optional, because summaries built by older code carry none; a missing
+   * value is read as 'happened', which is how those rows behaved already.
+   */
+  playState?: 'happened' | 'notHappened' | 'unverified' | 'pending';
+  /**
    * Surface a couple of extra facets on the history row so the user
    * can tell games apart at a glance. Both optional — older summaries
    * skip them and the row degrades gracefully.
@@ -1548,6 +1559,36 @@ export interface Game {
   /** Set when the admin ends the evening — the real end epoch (ms). Used to
    *  bound the physical-data read window. */
   endedAt?: number;
+  /**
+   * HOW this evening reached its end, recorded at the moment it ends.
+   *
+   * 'admin' — somebody pressed "סיים מחזור". That is a statement the evening
+   *           happened, and it counts on its own.
+   * 'auto'  — the sweep closed one the admin forgot. It knows nothing about
+   *           whether anyone played.
+   *
+   * ABSENT on every evening closed before this shipped, and that absence is
+   * load-bearing: `eveningPlayState` reads it as "closed by an older build"
+   * and counts the evening exactly as it always did. That is what makes the
+   * whole change work with no migration and no historical number moving.
+   */
+  endedBy?: 'admin' | 'auto';
+  /** When the sweep closed it. Set alongside `endedBy: 'auto'`; used only to
+   *  date the question put to the admin. */
+  autoClosedAt?: number;
+  /**
+   * An admin's verdict on an evening the sweep closed with no trace of play.
+   *
+   * Written ONLY by `setEveningPlayed`, and only for that one case — there is
+   * no question asked on an ordinary close. true makes it an evening like any
+   * other; false closes it as one that never happened. Absent means nobody has
+   * been asked yet.
+   */
+  playVerified?: boolean;
+  /** Mini-games the server has aggregated for this evening. A count, not a
+   *  list: it is read as evidence that a real round was played, and the rounds
+   *  themselves live in the `roundHistory` subcollection. */
+  committedRoundCount?: number;
   fieldName: string;
   fieldLat?: number;
   fieldLng?: number;
