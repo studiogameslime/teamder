@@ -33,6 +33,15 @@ export interface SeasonTitleWon {
   sharedWith: number;
 }
 
+/** A title the season awarded, with the names of everyone holding it. */
+export interface SeasonTitleAwarded {
+  key: SeasonTitleKey;
+  names: string[];
+  value: number;
+  /** Whether the reader is one of the holders — the row is highlighted. */
+  mine: boolean;
+}
+
 /** One season the club has, for the picker. */
 export interface SeasonChoice {
   no: number;
@@ -69,6 +78,15 @@ export interface SeasonSummaryModel {
    * would be a promise the season has not made yet.
    */
   myTitles: SeasonTitleWon[];
+  /**
+   * Every title the season awarded, and who took it.
+   *
+   * The push sends every player who played to this screen, so it is where the
+   * club actually gathers the day a season ends — and until now nine champions
+   * were crowned in private, each told only about their own. Empty while a
+   * season is still running.
+   */
+  seasonTitles: SeasonTitleAwarded[];
   /**
    * Every season this club has had, newest first.
    *
@@ -149,6 +167,39 @@ function titlesFor(
     const mine = holders.some((w) => w === me || w.split('__').includes(me));
     if (!mine) continue;
     out.push({ key, value: num(a.value), sharedWith: Math.max(0, holders.length - 1) });
+  }
+  return out;
+}
+
+/**
+ * Every decided title, resolved to names off the archive's own frozen roster.
+ *
+ * The duo title is held under a joined key; both halves are looked up. A
+ * winner with no row renders as a dash rather than an empty string, so a
+ * missing name reads as deliberate.
+ */
+function allTitlesOf(
+  awards: Record<string, unknown> | undefined,
+  players: Record<string, Record<string, unknown>>,
+  me: string,
+): SeasonTitleAwarded[] {
+  if (!awards) return [];
+  const out: SeasonTitleAwarded[] = [];
+  for (const key of SEASON_TITLE_KEYS) {
+    const a = awards[key] as { winners?: unknown; value?: unknown } | null | undefined;
+    if (!a || !Array.isArray(a.winners) || a.winners.length === 0) continue;
+    const holders = a.winners.filter((w): w is string => typeof w === 'string');
+    out.push({
+      key,
+      names: holders.map((w) =>
+        w
+          .split('__')
+          .map((uid) => str(players[uid]?.displayName) || '—')
+          .join(' + '),
+      ),
+      value: num(a.value),
+      mine: holders.some((w) => w === me || w.split('__').includes(me)),
+    });
   }
   return out;
 }
@@ -287,6 +338,11 @@ function fromArchive(
     completedRounds: num(totals.rounds),
     me,
     myTitles: titlesFor(d.awards as Record<string, unknown> | undefined, ctx.userId),
+    seasonTitles: allTitlesOf(
+      d.awards as Record<string, unknown> | undefined,
+      playersMap,
+      ctx.userId,
+    ),
     // Names are already frozen in the archive; no /users read, which a player
     // outside the club may not be able to make anyway.
     names: Object.fromEntries(
@@ -387,6 +443,11 @@ export const seasonSummaryService = {
           ),
           me,
           myTitles: titlesFor(d.awards as Record<string, unknown> | undefined, userId),
+          seasonTitles: allTitlesOf(
+            d.awards as Record<string, unknown> | undefined,
+            playersMap,
+            userId,
+          ),
           names: await resolveNames(namedUids(me), frozen),
           available: seasonChoices(seasons),
         };
@@ -423,6 +484,7 @@ export const seasonSummaryService = {
         me,
         // A running season has no titles yet, by design.
         myTitles: [],
+        seasonTitles: [],
         names: await resolveNames(namedUids(me), new Map()),
         available: seasonChoices(seasons),
       };
@@ -485,6 +547,15 @@ function mockSeasonSummary(
       ? [
           { key: 'topAssister', value: 3, sharedWith: 1 },
           { key: 'mostLoyal', value: 22, sharedWith: 0 },
+        ]
+      : [],
+    seasonTitles: past
+      ? [
+          { key: 'topScorer', names: ['דני'], value: 8, mine: false },
+          { key: 'topAssister', names: ['רועי', 'אני'], value: 3, mine: true },
+          { key: 'mostLoyal', names: ['אני'], value: 22, mine: true },
+          { key: 'cleanSheetKing', names: ['עומר'], value: 6, mine: false },
+          { key: 'deadlyDuo', names: ['דני + רועי'], value: 5, mine: false },
         ]
       : [],
     names: { u_dani: 'דני', u_roi: 'רועי', u_omer: 'עומר' },

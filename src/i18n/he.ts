@@ -2131,6 +2131,31 @@ export const he = {
     n === 1 ? 'תואר אחד' : `${n} תארים`,
   seasonTitleWhere: (club: string, no: number) =>
     club ? `${club} · עונה ${no}` : `עונה ${no}`,
+  seasonSectionChampions: 'אלופי העונה',
+  // The number a title was won on. A percentage for the two rate titles, a
+  // count for the rest — "62%" and "31 שערים" are both the answer to "on what?"
+  seasonTitleValue: (key: string, value: number) => {
+    switch (key) {
+      case 'penaltyKing':
+      case 'penaltyKeeper':
+        return `${Math.round(value * 100)}%`;
+      case 'mvp':
+        return value.toFixed(1);
+      case 'topScorer':
+        return `${value} שערים`;
+      case 'topAssister':
+      case 'deadlyDuo':
+        return `${value} בישולים`;
+      case 'topWinner':
+        return `${value} ניצחונות`;
+      case 'mostLoyal':
+        return `${value} מחזורים`;
+      case 'cleanSheetKing':
+        return `${value} שערים נקיים`;
+      default:
+        return String(value);
+    }
+  },
   seasonSectionTitles: 'התארים שלי בעונה',
   seasonTitleSharedWith: (n: number) =>
     n === 1 ? 'במשותף עם עוד שחקן' : `במשותף עם עוד ${n} שחקנים`,

@@ -30,7 +30,10 @@ import {
   type SeasonSummaryModel,
 } from '@/services/seasonSummaryService';
 import type { SeasonPeer } from '@/utils/seasonPersonal';
-import type { SeasonTitleWon } from '@/services/seasonSummaryService';
+import type {
+  SeasonTitleAwarded,
+  SeasonTitleWon,
+} from '@/services/seasonSummaryService';
 import { useUserStore } from '@/store/userStore';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, spacing, typography } from '@/theme';
@@ -97,13 +100,31 @@ function TitleRow({ title }: { title: SeasonTitleWon }) {
     <View style={styles.titleRow}>
       <Text style={styles.titleMedal}>🏆</Text>
       <View style={styles.titleText}>
-        <Text style={styles.titleName}>{he.seasonTitleNames[title.key]}</Text>
+        <Text style={styles.titleName}>
+          {he.seasonTitleNames[title.key]} · {he.seasonTitleValue(title.key, title.value)}
+        </Text>
         {title.sharedWith > 0 ? (
           <Text style={styles.titleShared}>
             {he.seasonTitleSharedWith(title.sharedWith)}
           </Text>
         ) : null}
       </View>
+    </View>
+  );
+}
+
+function ChampionRow({ title }: { title: SeasonTitleAwarded }) {
+  return (
+    <View style={styles.championRow}>
+      <Text style={styles.championTitle}>{he.seasonTitleNames[title.key]}</Text>
+      <Text style={[styles.championName, title.mine && styles.championMine]}>
+        {title.names.join(' · ')}
+      </Text>
+      {/* The number it was won on. Fetched all along and thrown away — and it
+          is what makes a title an argument rather than a label. */}
+      <Text style={styles.championValue}>
+        {he.seasonTitleValue(title.key, title.value)}
+      </Text>
     </View>
   );
 }
@@ -252,6 +273,19 @@ export function SeasonSummaryScreen() {
                 ) : null}
                 {model.myTitles.map((t) => (
                   <TitleRow key={t.key} title={t} />
+                ))}
+              </View>
+            ) : null}
+
+            {/* And who took everything else. The push sends every player who
+                played to this screen, so it is where the club gathers the day
+                a season ends — nine champions were being crowned in private,
+                each told only about their own. */}
+            {model.closed && model.seasonTitles.length > 0 ? (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>{he.seasonSectionChampions}</Text>
+                {model.seasonTitles.map((t) => (
+                  <ChampionRow key={t.key} title={t} />
                 ))}
               </View>
             ) : null}
@@ -457,6 +491,26 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,
+  },
+  // Label first in source order → rightmost under forceRTL, name beside it.
+  championRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+    paddingVertical: 2,
+  },
+  championTitle: {
+    ...typography.caption,
+    color: colors.textMuted,
+    flex: 1,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  championName: { ...typography.caption, color: colors.text, fontWeight: '700' },
+  championMine: { color: colors.primary },
+  championValue: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
   },
   titleShared: {
     ...typography.caption,
