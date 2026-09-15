@@ -14503,6 +14503,14 @@ function rebaseCadence(
  *  stale, not in progress, and the cleanup sweep owns it. */
 const TONIGHT_MS = 12 * 60 * 60 * 1000;
 
+/** How long a just-reopened season is left alone, so the admin can move the
+ *  target that closed it before the sweep closes it again. */
+const REOPEN_GRACE_MS = 48 * 60 * 60 * 1000;
+
+/** How far ahead still counts as "about to be played". A game can be started
+ *  before its scheduled kickoff, so a window that ends at `now` misses it. */
+const STARTING_SOON_MS = 3 * 60 * 60 * 1000;
+
 async function clubIsQuiet(groupId: string): Promise<{
   ok: boolean;
   blocker?: 'openGame' | 'unsealedGame';
@@ -14526,7 +14534,11 @@ async function clubIsQuiet(groupId: string): Promise<{
     .collection('games')
     .where('groupId', '==', groupId)
     .where('status', 'in', ['scheduled', 'open', 'locked', 'active'])
-    .where('startsAt', '<=', now)
+    // Forward as well as back. An evening that kicked off early — the teams
+    // turned up at 19:40 for a 20:00 game and pressed start — has a startsAt in
+    // the future while the rotation is already running, and an upper bound of
+    // `now` walked straight past it. The window is the evening, not the clock.
+    .where('startsAt', '<=', now + STARTING_SOON_MS)
     .where('startsAt', '>=', now - TONIGHT_MS)
     .limit(1)
     .get();
@@ -14669,6 +14681,7 @@ async function runSeasonRollovers(): Promise<void> {
         currentId?: string;
         startedAt?: number;
         roundsAtStart?: number;
+        reopenedAt?: number;
         cadence?: { type?: string; months?: number; endsAt?: number; targetRounds?: number };
         count?: number;
       };
@@ -14688,6 +14701,17 @@ async function runSeasonRollovers(): Promise<void> {
             cadence.endsAt > 0 &&
             now >= cadence.endsAt;
       if (!due) continue;
+
+      // A season an admin has just REOPENED is due the instant it comes back —
+      // it met its target, that is why it closed. Closing it again within the
+      // hour would make the undo button useless and look like the app arguing.
+      // The grace is for the admin to move the finish line; after it, a target
+      // that is still met still closes the season, which is correct.
+      const reopenedAt = archNum(seasons.reopenedAt);
+      if (reopenedAt > 0 && now - reopenedAt < REOPEN_GRACE_MS) {
+        console.log('[season] due but just reopened — holding', doc.id);
+        continue;
+      }
 
       const quiet = await clubIsQuiet(doc.id);
       if (!quiet.ok) {
@@ -14721,6 +14745,7 @@ async function runSeasonRollovers(): Promise<void> {
             startedAt: now,
             roundsAtStart: await sealedEveningsOf(doc.id),
             playedRounds: 0,
+            reopenedAt: 0,
             // The whole reason this sweep is safe to run hourly: without a
             // re-based end date it would close this club again next hour, and
             // the hour after that, forever.
@@ -15072,6 +15097,7 @@ export const reopenLastSeason = onCall(
           currentId: lastId,
           startedAt: archNum(archive.get('startsAt')),
           roundsAtStart: reopenedRoundsAtStart,
+          reopenedAt: Date.now(),
           playedRounds: Math.max(
             0,
             (await sealedEveningsOf(groupId)) - reopenedRoundsAtStart,
@@ -15148,6 +15174,7 @@ export const endSeasonNow = onCall(
           startedAt: now,
           roundsAtStart: await sealedEveningsOf(groupId),
           playedRounds: 0,
+          reopenedAt: 0,
           // Same length, measured from now — an inherited end date is already
           // in the past and would close this season the moment it opened.
           cadence: rebaseCadence(seasons.cadence, seasons.startedAt ?? 0, now),

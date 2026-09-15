@@ -521,3 +521,51 @@ describe('a season closed by mistake can be reopened', () => {
     assert.equal(after.goals, 33);
   });
 });
+
+// ── The resume path, from the pair rows' side ────────────────────────────
+//
+// The player rows are wound back inside a transaction behind a
+// `seasonWoundBack` stamp, precisely so a retry cannot subtract the same
+// season twice. The pair rows are wound back by a plain batch with no stamp at
+// all, so the retry subtracts the archived season from them a SECOND time.
+//
+// It is invisible while nothing happens in between — 0 minus 20 clamps to 0
+// either way. It is not invisible when an evening was played between the close
+// that died and the retry that finished it: that evening's chemistry is
+// subtracted away and the pair row lands on zero, while the player rows beside
+// it keep the very same evening. Nothing reports it, and `communityPairStats`
+// is the entire source for who I played beside, who I faced and who beat me.
+describe('a close resumed after an evening was played', () => {
+  before(async () => {
+    await wipe();
+    await seed();
+    await closeSeason(args());
+    // The new season opens and the two of them play one evening together.
+    await db.collection('communityPlayerStats').doc(`${GID}__u1`).set(
+      { goals: admin.firestore.FieldValue.increment(2) }, { merge: true });
+    await db.collection('communityPairStats').doc(`${GID}__u1__u2`).set(
+      {
+        sameTeam: admin.firestore.FieldValue.increment(3),
+        winsTogether: admin.firestore.FieldValue.increment(2),
+      },
+      { merge: true },
+    );
+    // Rewind to the half-done state the resume path exists for: the archive
+    // landed, and nothing recorded that the wipe finished.
+    await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).update({
+      zeroedAt: admin.firestore.FieldValue.delete(),
+    });
+    await closeSeason(args());
+  });
+
+  test('the player row keeps that evening — it is stamped', async () => {
+    const p = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
+    assert.equal(p.goals, 2);
+  });
+
+  test('and the pair row keeps it too', async () => {
+    const p = (await db.collection('communityPairStats').doc(`${GID}__u1__u2`).get()).data();
+    assert.equal(p.sameTeam, 3, 'three mini-games beside each other, not zero');
+    assert.equal(p.winsTogether, 2);
+  });
+});
