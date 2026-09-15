@@ -4902,14 +4902,23 @@ async function sealRoundSummary(args: {
     players,
     rounds,
     career,
-    club: {
-      goals: num(cs.goals),
-      assists: clubAssists,
-      rounds: num(cs.rounds),
-      cleanSheets: clubCleanSheets,
-      shootoutRounds: num(cs.shootoutRounds),
-      evenings: eveningsSealed + 1,
-    },
+    club: (() => {
+      // Club totals are LIFETIME here, same as the player rows above: a
+      // milestone is a milestone, and the sealed seasons hold what the live
+      // document no longer does. `evenings` already comes from a counter that
+      // never resets.
+      const past = archivedClubTotals.get(groupId) ?? {
+        goals: 0, assists: 0, rounds: 0, cleanSheets: 0, shootoutRounds: 0,
+      };
+      return {
+        goals: num(cs.goals) + past.goals,
+        assists: clubAssists + past.assists,
+        rounds: num(cs.rounds) + past.rounds,
+        cleanSheets: clubCleanSheets + past.cleanSheets,
+        shootoutRounds: num(cs.shootoutRounds) + past.shootoutRounds,
+        evenings: eveningsSealed + 1,
+      };
+    })(),
     records: baseline,
     personalBests,
     standings: args.standings,
@@ -14295,6 +14304,17 @@ export const onFeedbackCreated = onDocumentCreated(
 const archNum = (v: unknown): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : 0;
 
+interface ArchivedClub {
+  goals: number;
+  assists: number;
+  rounds: number;
+  cleanSheets: number;
+  shootoutRounds: number;
+}
+
+/** Filled by the same pass as the player rows — the CLUB's sealed totals. */
+const archivedClubTotals = new Map<string, ArchivedClub>();
+
 async function archivedCareerOf(groupId: string): Promise<
   Map<string, { goals: number; assists: number; rounds: number; wins: number; cleanSheets: number; games: number }>
 > {
@@ -14302,13 +14322,29 @@ async function archivedCareerOf(groupId: string): Promise<
     string,
     { goals: number; assists: number; rounds: number; wins: number; cleanSheets: number; games: number }
   >();
+  archivedClubTotals.set(groupId, {
+    goals: 0, assists: 0, rounds: 0, cleanSheets: 0, shootoutRounds: 0,
+  });
   if (!groupId) return out;
   try {
     const snap = await db
       .collection('seasonSummary')
       .where('groupId', '==', groupId)
       .get();
+    const club: ArchivedClub = {
+      goals: 0, assists: 0, rounds: 0, cleanSheets: 0, shootoutRounds: 0,
+    };
     for (const doc of snap.docs) {
+      // The CLUB's history too. Its milestones ("the club's 1,000th goal") and
+      // its badges read communityStats, which the close zeroes — so without
+      // this a club re-earns its bronze badge and re-announces its thousandth
+      // goal every season, and its level drops the morning after a close.
+      const t = (doc.data()?.totals ?? {}) as Record<string, unknown>;
+      club.goals += archNum(t.goals);
+      club.assists += archNum(t.assists);
+      club.rounds += archNum(t.rounds);
+      club.cleanSheets += archNum(t.cleanSheets);
+      club.shootoutRounds += archNum(t.shootoutRounds);
       const players = (doc.data()?.players ?? {}) as Record<string, Record<string, unknown>>;
       for (const [uid, row] of Object.entries(players)) {
         const cur = out.get(uid) ?? {
@@ -14323,6 +14359,7 @@ async function archivedCareerOf(groupId: string): Promise<
         out.set(uid, cur);
       }
     }
+    archivedClubTotals.set(groupId, club);
   } catch (err) {
     console.error('[season] archived career read failed', groupId, err);
   }

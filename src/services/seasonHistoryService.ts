@@ -87,6 +87,29 @@ function fromCard(d: Record<string, unknown>): FinishedSeason | null {
 }
 
 export const seasonHistoryService = {
+  /**
+   * Club totals across every closed season.
+   *
+   * The club's badges and level are computed from counters a season close
+   * zeroes, so without this a club un-earns its gold badge and drops a level
+   * the morning after a season ends — and a badge is a permanent thing the
+   * club did, not something the calendar can take away.
+   *
+   * Reads the cards, so it is cheap, and returns zeroes for the clubs that run
+   * no seasons rather than making the caller special-case them.
+   */
+  async clubTotals(groupId: string): Promise<{ goals: number; rounds: number }> {
+    const seasons = await seasonHistoryService.list(groupId);
+    if (seasons === 'error') return { goals: 0, rounds: 0 };
+    return seasons.reduce(
+      (acc, s) => ({
+        goals: acc.goals + s.totals.goals,
+        rounds: acc.rounds + s.totals.rounds,
+      }),
+      { goals: 0, rounds: 0 },
+    );
+  },
+
   /** Finished seasons for one club, newest first. */
   async list(groupId: string): Promise<FinishedSeason[] | 'error'> {
     if (!groupId) return [];

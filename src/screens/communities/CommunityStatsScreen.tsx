@@ -44,6 +44,7 @@ import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { ChemistrySection } from '@/components/chemistry/ChemistrySection';
 import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
+import { seasonHistoryService } from '@/services/seasonHistoryService';
 import type { GroupSeasons, User } from '@/types';
 
 type Params = RouteProp<CommunitiesStackParamList, 'CommunityStats'>;
@@ -115,6 +116,9 @@ export function CommunityStatsScreen() {
   // season closed. The numbers on this screen are the running season's — that
   // is what a season IS — so the screen has to say so.
   const [seasons, setSeasons] = useState<GroupSeasons | undefined>(undefined);
+  // Goals the club scored in seasons it has already closed. Zero for a club
+  // that runs no seasons, which is every club today.
+  const [archivedGoals, setArchivedGoals] = useState(0);
   const [champ, setChamp] = useState<ChampData | null>(null);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [duo, setDuo] = useState<DeadlyDuo | null>(null);
@@ -143,6 +147,16 @@ export function CommunityStatsScreen() {
       if (g) {
         setSubtitle(g.name);
         setSeasons(g.seasons);
+        // Only for a club that has actually closed a season; everyone else
+        // pays nothing.
+        if ((g.seasons?.count ?? 0) > 0) {
+          seasonHistoryService
+            .clubTotals(groupId)
+            .then((t) => {
+              if (alive) setArchivedGoals(t.goals);
+            })
+            .catch(() => undefined);
+        }
         setMemberIds(g.playerIds ?? []);
         setClubMeta({
           members: g.playerIds?.length ?? 0,
@@ -292,7 +306,14 @@ export function CommunityStatsScreen() {
   const club = useMemo(() => {
     const metrics: ClubMetrics = {
       gameNights: stats?.totalFinished ?? 0,
-      clubGoals: champ?.totalGoals ?? 0,
+      // Lifetime goals, not this season's.
+      //
+      // `champ.totalGoals` is summed from communityPlayerStats, which a season
+      // close zeroes — so the morning after, a club that had earned its gold
+      // "שערי המועדון" badge un-earned it and dropped a level. A badge is a
+      // permanent thing the club did; it cannot be taken away by the calendar.
+      // The sealed seasons hold what the live rows no longer do.
+      clubGoals: (champ?.totalGoals ?? 0) + archivedGoals,
       members: clubMeta?.members ?? 0,
       ageYears: clubMeta
         ? Math.floor((Date.now() - clubMeta.createdAt) / (365.25 * 24 * 3600 * 1000))
@@ -301,7 +322,7 @@ export function CommunityStatsScreen() {
       organizationRatePct: Math.round((stats?.organizationRate ?? 0) * 100),
     };
     return { badges: computeClubBadges(metrics), level: computeClubLevel(metrics) };
-  }, [stats, champ, clubMeta]);
+  }, [stats, champ, clubMeta, archivedGoals]);
 
   const onBadgePress = (b: ClubBadge) => {
     const target = b.next?.threshold ?? b.def.tiers[b.def.tiers.length - 1].threshold;
