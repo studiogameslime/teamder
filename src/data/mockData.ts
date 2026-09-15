@@ -745,6 +745,47 @@ export const mockGamesV2: Game[] = [
     notes: 'טורניר בין-קבוצתי, 3 קבוצות במחזור',
     createdAt: Date.now() - 1000 * 60 * 60 * 4,
   },
+  // 6z. UNVERIFIED — the sweep closed it and it left no trace of play.
+  //
+  //     The one state the system refuses to decide alone: `endedBy: 'auto'`
+  //     with no timer, no goals, no rotation and no committed round. It is
+  //     finished but NOT counted — not in the club's evenings, not in anyone's
+  //     attendance — and it waits for an admin.
+  //
+  //     Here because the card that asks about it is otherwise unreachable in
+  //     mock mode, which would make it impossible to see and therefore
+  //     impossible to review. Deliberately the ONLY such evening in the mock:
+  //     the card's normal state is not existing at all, and a demo club full
+  //     of unanswered nights would misrepresent how rare this is.
+  {
+    id: 'gv2-unverified',
+    groupId: 'g1',
+    title: 'חמישי כדורגל',
+    startsAt: daysAgo(5, 20, 0),
+    fieldName: 'המגרש הקבוע',
+    maxPlayers: 15,
+    minPlayers: 10,
+    players: mockPlayers.slice(0, 12).map((p) => p.id),
+    waitlist: [],
+    pending: [],
+    participantIds: unionIds(mockPlayers.slice(0, 12).map((p) => p.id), [], []),
+    status: 'finished',
+    locked: true,
+    // Closed by the sweep, three hours after kickoff, by nobody.
+    endedBy: 'auto' as const,
+    autoClosedAt: daysAgo(5, 23, 0),
+    currentMatchIndex: 0,
+    matches: [],
+    createdBy: mockPlayers[0].id,
+    visibility: 'community' as const,
+    requiresApproval: false,
+    format: '5v5',
+    numberOfTeams: 3,
+    fieldType: 'synthetic',
+    matchDurationMinutes: 90,
+    cancelDeadlineHours: 12,
+    createdAt: daysAgo(6, 12, 0),
+  },
   // 7. Recently finished community game — populates the "history" feel
   //    when the user scrolls past upcoming.
   {
