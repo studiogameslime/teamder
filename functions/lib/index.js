@@ -56,7 +56,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stampMembershipDates = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.availabilityCounts = exports.onFillerInterestCreated = exports.startGameFillerPulse = exports.fillerPulseTask = exports.serveInviteCode = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminReorderRoster = exports.adminAddPlayers = exports.sendGameInvite = exports.reportChatMessage = exports.deleteMyAccount = exports.setGuestRating = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
-exports.endSeasonNow = exports.reopenLastSeason = exports.updateSeasonTarget = exports.disableClubSeasons = exports.enableClubSeasons = exports.onFeedbackCreated = exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.getFriendsInClubs = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.getInvitePreview = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = void 0;
+exports.endSeasonNow = exports.reopenLastSeason = exports.updateSeasonTarget = exports.disableClubSeasons = exports.enableClubSeasons = exports.onFeedbackCreated = exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.setEveningPlayed = exports.getFriendsInClubs = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.getInvitePreview = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -66,6 +66,7 @@ const eveningScoreCore_1 = require("./eveningScoreCore");
 const fillerRules_1 = require("./fillerRules");
 const seasonRollover_1 = require("./seasonRollover");
 const roundSides_1 = require("./roundSides");
+const eveningPlayed_1 = require("./eveningPlayed");
 const https_1 = require("firebase-functions/v2/https");
 const tasks_1 = require("firebase-functions/v2/tasks");
 const functions_1 = require("firebase-admin/functions");
@@ -3327,9 +3328,35 @@ async function runCleanupStaleGames() {
             })());
         }
         else {
-            ops.push(gameDoc.ref.update({ status: 'finished', locked: true }).then(() => {
+            ops.push((async () => {
+                // Transactional, and re-reads the status inside.
+                //
+                // The query snapshot above is already stale by the time this runs,
+                // and the one thing that can have changed is the very thing being
+                // written: an admin pressing "סיים מחזור" in the same minute. That
+                // close is a STATEMENT the evening happened; this one is a sweep
+                // that knows nothing. Overwriting the first with the second would
+                // turn a confirmed night into one waiting on a question nobody
+                // needs to answer.
+                await db.runTransaction(async (tx) => {
+                    const snap = await tx.get(gameDoc.ref);
+                    const st = snap.data()?.status;
+                    if (st === 'finished' || st === 'cancelled')
+                        return; // already closed
+                    tx.update(gameDoc.ref, {
+                        status: 'finished',
+                        locked: true,
+                        // How it ended, recorded at the moment it ends. This is what
+                        // lets `eveningPlayState` tell an evening the system closed on
+                        // its own from one an admin closed deliberately — and from one
+                        // closed before any of this existed, which carries neither.
+                        endedBy: 'auto',
+                        autoClosedAt: Date.now(),
+                        updatedAt: Date.now(),
+                    });
+                });
                 finished++;
-            }));
+            })());
         }
     }
     // allSettled (not all): one failing delete/finish must not abandon the rest
@@ -4290,7 +4317,23 @@ async function sealRoundSummary(args) {
     batch.set(db.collection('clubRecords').doc(groupId), {
         groupId,
         ...next,
-        eveningsSealed: eveningsSealed + 1,
+        // INCREMENT, not `read + 1`.
+        //
+        // This counter is what a season's progress is measured against and what
+        // the title-eligibility threshold divides — so it has to be exact, and
+        // an absolute write computed from a value read at the top of this
+        // function is a read-modify-write with nothing guarding it. Two evenings
+        // sealing at once both read N and both write N+1, and one of them is
+        // simply gone.
+        //
+        // Reproduced in production on the QA club: three evenings sealed within
+        // a minute of each other left three summaries and a counter of two. A
+        // club playing two games in a night, or draining a backlog after an
+        // outage, hits exactly this.
+        //
+        // Safe to increment because `summaryRef.create()` above throws if the
+        // evening was already sealed, so this batch runs at most once per game.
+        eveningsSealed: admin.firestore.FieldValue.increment(1),
         since: typeof rec.since === 'number' ? rec.since : args.at,
         updatedAt: Date.now(),
     }, { merge: true });
@@ -4303,7 +4346,16 @@ async function sealRoundSummary(args) {
     // on a document the app already reads, written on the same batch that seals
     // the evening, and zeroed by every path that opens a season.
     if (seasonRoundsAtStart !== null) {
-        batch.set(db.collection('groups').doc(groupId), { seasons: { playedRounds: eveningsSealed + 1 - seasonRoundsAtStart } }, { merge: true });
+        batch.set(db.collection('groups').doc(groupId), 
+        // Incremented for the same reason as the counter it mirrors — computing
+        // it from the same stale read would reintroduce the lost update on the
+        // number the app actually SHOWS ("2 מתוך 3 מחזורים"). Every path that
+        // opens a season zeroes this field, so counting up from there is exact.
+        {
+            seasons: {
+                playedRounds: admin.firestore.FieldValue.increment(1),
+            },
+        }, { merge: true });
     }
     // Each player's own high-water mark, for next time.
     for (const p of players) {
@@ -4676,15 +4728,24 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
             console.error('[season] stamp failed', event.params.gameId, err);
         }
     }
-    const afterLm = after.liveMatch;
-    const afterPhase = afterLm?.phase;
-    const finishWasPlayed = typeof afterLm?.startedAt === 'number' ||
-        afterPhase === 'roundRunning' ||
-        afterPhase === 'roundEnded' ||
-        afterPhase === 'live';
-    if (before?.status !== 'finished' &&
-        after.status === 'finished' &&
-        finishWasPlayed &&
+    // Credit the evening the moment it BECOMES one, not the moment its status
+    // flips.
+    //
+    // The two used to be the same event, and now they are not: an evening the
+    // sweep closed with nothing to show for it is 'unverified' — finished, but
+    // not counted — until an admin says it happened. That decision arrives
+    // hours later as a field write, long after the status stopped changing, so
+    // a gate watching the status would never see it and the confirmed evening
+    // would be credited to nobody.
+    //
+    // Keyed on the answer instead: not-happened → happened, however it got
+    // there. The `finishCredited` latch below still makes it exactly once, so
+    // an evening that arrives here twice — a redelivered finish, then an
+    // admin's confirmation — credits once and only once.
+    const wasHappened = (0, eveningPlayed_1.didEveningHappen)(before);
+    const isHappened = (0, eveningPlayed_1.didEveningHappen)(after);
+    if (!wasHappened &&
+        isHappened &&
         after.groupId &&
         Array.isArray(after.players) &&
         after.players.length > 0) {
@@ -7901,7 +7962,15 @@ async function recomputeCommunityShowcase(groupId, preloaded) {
     for (const doc of gamesSnap.docs) {
         const g = doc.data();
         const status = g.status === 'cancelled' ? 'cancelled' : 'finished';
-        if (status === 'cancelled') {
+        // The showcase counts the club's evenings and its organisation rate, so it
+        // asks the same question the rest of the app does rather than reading the
+        // status. An evening the sweep closed with nothing on it is neither one
+        // the club held nor one it called off: it belongs to neither half of the
+        // fraction until an admin says which.
+        const played = (0, eveningPlayed_1.eveningPlayState)(g);
+        if (played === 'unverified')
+            continue;
+        if (status === 'cancelled' || played === 'notHappened') {
             totalCancelled += 1;
         }
         else {
@@ -10756,6 +10825,96 @@ exports.getFriendsInClubs = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_C
     }
     return { clubs };
 });
+/**
+ * An admin's verdict on an evening the system closed with nothing to show.
+ *
+ * This is the ONLY way an 'unverified' evening leaves that state, and the only
+ * question the app ever asks about whether a מחזור happened. It is not asked on
+ * an ordinary close: ending the evening is already an answer, and so is a
+ * timer, a goal or a committed round.
+ *
+ * A callable rather than a client write, because the rules deliberately forbid
+ * every client update to a finished game (`resource.data.status != 'finished'`)
+ * — the same reason addRetroGoal is one. Loosening that rule to let an app
+ * write two fields onto a closed evening would open every other field on it.
+ *
+ * Crediting is NOT done here. Setting `playVerified: true` makes
+ * `eveningPlayState` answer 'happened', and onGameRosterChanged is watching
+ * exactly that transition — so confirming an evening runs the same attendance
+ * credit, the same standings, the same summary and the same season progress
+ * that an ordinary evening gets, through the same code, behind the same
+ * `finishCredited` latch. One path, so a confirmed evening cannot be credited
+ * differently from one that never needed asking.
+ */
+exports.setEveningPlayed = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid)
+        throw new https_1.HttpsError('unauthenticated', 'sign in required');
+    const { gameId, played } = (request.data ?? {});
+    if (!gameId)
+        throw new https_1.HttpsError('invalid-argument', 'gameId required');
+    if (typeof played !== 'boolean') {
+        throw new https_1.HttpsError('invalid-argument', 'played must be a boolean');
+    }
+    const ref = db.collection('games').doc(gameId);
+    const snap = await ref.get();
+    if (!snap.exists)
+        throw new https_1.HttpsError('not-found', 'game not found');
+    const game = snap.data();
+    const groupId = typeof game.groupId === 'string' ? game.groupId : '';
+    if (!groupId) {
+        throw new https_1.HttpsError('failed-precondition', 'game has no community');
+    }
+    const grp = await db.collection('groups').doc(groupId).get();
+    const admins = grp.data()?.adminIds ?? [];
+    if (!admins.includes(uid)) {
+        throw new https_1.HttpsError('permission-denied', 'community admin only');
+    }
+    // Read and write in ONE transaction.
+    //
+    // The check and the write used to straddle two network round-trips, which
+    // is a real window on a screen two admins can both be looking at: the
+    // second verdict would overwrite the first, and since a "no" deletes the
+    // evening from the club's history for good, the loser of that race never
+    // finds out. Inside a transaction the second call re-reads, sees the
+    // question already answered, and changes nothing.
+    const outcome = await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(ref);
+        if (!fresh.exists)
+            return { changed: false, state: 'pending' };
+        const cur = fresh.data();
+        const state = (0, eveningPlayed_1.eveningPlayState)(cur);
+        // An evening already answered is left exactly as it is — a double tap is
+        // not an error, and neither is arriving second.
+        //
+        // With ONE exception, and it is deliberately one-way. A mis-tapped "לא
+        // התקיים" deletes a night from the club's history with no way back: the
+        // rows are already excluded everywhere, and nothing in the app can ask
+        // again. Letting an admin correct that to "כן" is safe precisely because
+        // a "no" never credited anything — the confirmation runs the ordinary
+        // credit path from a clean slate.
+        //
+        // The reverse is NOT allowed. Undoing a "yes" would mean taking back
+        // attendance, standings, a sealed summary and a season's progress, and
+        // the seal is written once and never recomputed. An admin who wants that
+        // is asking for something this callable must not pretend to do.
+        const correctingAMistap = state === 'notHappened' && cur.playVerified === false && played;
+        if (state !== 'unverified' && !correctingAMistap) {
+            return { changed: false, state };
+        }
+        tx.update(ref, {
+            playVerified: played,
+            playVerifiedBy: uid,
+            playVerifiedAt: Date.now(),
+            updatedAt: Date.now(),
+        });
+        return {
+            changed: true,
+            state: played ? 'happened' : 'notHappened',
+        };
+    });
+    return { ok: true, ...outcome };
+});
 // ─── Advanced-mode round stats aggregation ─────────────────────────────────
 // Called by the game admin when a round ends. The client can't write other
 // players' stat docs (rules, correctly), so the aggregation runs here with the
@@ -11495,6 +11654,60 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     });
     if (outcome.alreadyCommitted)
         return { ok: true, alreadyCommitted: true };
+    // Stamp "this evening was played" from the server, if the app never did.
+    //
+    // A committed round is the strongest proof there is: real goals, by real
+    // players, on two real sides. The app is supposed to have stamped it at
+    // kickoff, but that write swallows its own failures — and while it was the
+    // ONLY record, a single dropped request on a bad pitch connection erased
+    // the whole evening from the club's history with everything on screen
+    // carrying on as normal.
+    //
+    // Outside the stats batch on purpose. This is a repair, not part of the
+    // round: it must not consume one of the batch's counted operations, and it
+    // must never be the reason a round of real goals fails to commit. If it
+    // fails, `wasActuallyPlayed` still reaches the right answer from the
+    // rotation this round left behind — a written fact is simply better than
+    // an inferred one, and this is the moment the fact is known.
+    //
+    // Only when absent, so a second round never moves a kickoff already
+    // recorded, and dated to kickoff rather than now, so a round committed at
+    // midnight does not claim the evening began then.
+    try {
+        const patch = {
+            // Evidence the server wrote itself.
+            //
+            // A committed round is the strongest proof an evening was played:
+            // real goals, by real players, on two real sides. Everything else
+            // `eveningPlayState` reads is written by the phone, and the phone can
+            // fail to write — which is how an evening could disappear from a
+            // club's history while every screen carried on working.
+            //
+            // A count, deliberately. It is read as "at least one round was
+            // aggregated", and it also says how many without a subcollection read.
+            committedRoundCount: admin.firestore.FieldValue.increment(1),
+            updatedAt: now,
+        };
+        // And repair the kickoff stamp if the app never landed it. Only when
+        // absent, so a later round never moves a kickoff already recorded, and
+        // dated to kickoff rather than to now — a round committed at midnight
+        // does not mean the evening began then.
+        if (typeof game.liveMatch
+            ?.startedAt !== 'number') {
+            patch.liveMatch = {
+                startedAt: typeof game.startsAt === 'number' ? game.startsAt : now,
+                // Marks the stamp as a repair rather than a real kickoff press.
+                startedAtBy: 'server',
+            };
+        }
+        // Outside the stats batch on purpose: this is a record OF the round, not
+        // part of it, and it must never be the reason a round of real goals
+        // fails to commit.
+        await db.collection('games').doc(gameId).set(patch, { merge: true });
+    }
+    catch (err) {
+        console.error('[commitRoundStats] played-stamp failed', gameId, err);
+    }
     return { ok: true, scorers: Object.keys(byScorer).length };
 });
 // ── Physical stats (wearables) ───────────────────────────────────────────────
@@ -12029,23 +12242,6 @@ async function announceSeasonClosed(args) {
         console.error('[season] summary fan-out failed', groupId, seasonId, err);
     }
 }
-/** Is the club quiet enough to close a season right now? */
-/**
- * The cadence a newly-opened season should carry.
- *
- * A rounds target needs nothing: it is measured from `roundsAtStart`, so the
- * same number means "another N rounds" for every season.
- *
- * A DATE target does. The end date belongs to the season that just closed, and
- * inheriting it hands the new season a deadline in the past — which makes it
- * due the moment it opens. With the hourly sweep running, that is a club that
- * archives one empty season every hour, forever, each one pushing every player
- * a summary of nothing. The season is re-based to the same LENGTH from now.
- *
- * A legacy cadence with no `months` (written before the length was stored)
- * falls back to the length of the season that just ended, and to six months
- * when even that is unknowable — anything but a date already behind us.
- */
 function rebaseCadence(cadence, seasonStartedAt, now) {
     if (!cadence || cadence.type !== 'date') {
         return (cadence ?? { type: 'date', months: 6 });
@@ -12060,7 +12256,15 @@ function rebaseCadence(cadence, seasonStartedAt, now) {
     }
     if (!months)
         months = 6;
-    return { type: 'date', months, endsAt: addMonthsClampedServer(now, months) };
+    // targetRounds cleared for the same reason the enable path clears it: this
+    // is written into a merge:true map, so an omitted field keeps whatever the
+    // club's previous cadence left there.
+    return {
+        type: 'date',
+        months,
+        endsAt: addMonthsClampedServer(now, months),
+        targetRounds: null,
+    };
 }
 /** How long after kickoff a game still counts as "tonight". Past this it is
  *  stale, not in progress, and the cleanup sweep owns it. */
@@ -12114,10 +12318,12 @@ async function clubIsQuiet(groupId) {
         .get();
     for (const g of recent.docs) {
         const summary = await db.collection('roundSummaries').doc(g.id).get();
-        const lm = g.data().liveMatch;
         // Only a game that was actually played gets sealed; one the cleanup
-        // finished without play never will, so it must not block forever.
-        if (!summary.exists && typeof lm?.startedAt === 'number') {
+        // finished without play never will, so it must not block forever. Same
+        // evidence the seal itself uses — if these two ever disagreed, a club
+        // would be blocked from closing a season by an evening that was never
+        // going to be sealed, or would close over one still waiting to be.
+        if (!summary.exists && (0, eveningPlayed_1.didEveningHappen)(g.data())) {
             return { ok: false, blocker: 'unsealedGame' };
         }
     }
@@ -12348,14 +12554,41 @@ exports.enableClubSeasons = (0, https_1.onCall)({
     // choosing 24 silently gets 201; and the seal branch hands it to the close
     // as the season's length.
     const played = await completedRoundsOf(groupId, existing?.roundsAtStart);
+    // The ABSOLUTE sealed count, which is a different number from `played`.
+    //
+    // `played` is season-relative: all-time minus the previous run's offset.
+    // `roundsAtStart` is subtracted FROM the all-time count by
+    // completedRoundsOf, so stamping the relative number there double-counts
+    // the offset. A club with 200 sealed evenings whose last run started at
+    // 180 has played 20; stamping 20 makes its next season read 180 evenings
+    // as already played, and a 24-round target is due the hour it opens —
+    // precisely the failure the comment beside that stamp warns about.
+    const sealedAllTime = await sealedEveningsOf(groupId);
     const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
+    // `null` and not `undefined` on the unused half: this map is written with
+    // merge:true, and only an explicit null clears a field a previous cadence
+    // left behind.
     let cadence;
     if (type === 'rounds') {
         const asked = Number(data.targetRounds);
         if (!Number.isFinite(asked) || asked <= 0) {
             throw new https_1.HttpsError('invalid-argument', 'targetRounds required');
         }
-        cadence = { type: 'rounds', targetRounds: Math.round(asked) };
+        // The OTHER type's fields are cleared explicitly, not left out.
+        //
+        // The seasons block is written with merge:true, and a merge into a
+        // nested map merges field by field — so simply omitting `endsAt` leaves
+        // whatever a previous configuration put there. A club that switched from
+        // a date season to a rounds season kept an `endsAt` on a cadence that
+        // has no date at all. Nothing reads it today (both the sweep and the
+        // card branch on `type` first), which is exactly why it would have sat
+        // there until something did.
+        cadence = {
+            type: 'rounds',
+            targetRounds: Math.round(asked),
+            months: null,
+            endsAt: null,
+        };
     }
     else {
         const months = MONTH_CHOICES.includes(Number(data.months))
@@ -12364,7 +12597,12 @@ exports.enableClubSeasons = (0, https_1.onCall)({
         // `months` is stored beside the date, not just the date. Without it a
         // season that rolls over has no way to compute its OWN end date, and
         // inherits a deadline that has already passed — see rebaseCadence.
-        cadence = { type: 'date', months, endsAt: addMonthsClampedServer(now, months) };
+        cadence = {
+            type: 'date',
+            months,
+            endsAt: addMonthsClampedServer(now, months),
+            targetRounds: null,
+        };
     }
     // Numbering CONTINUES across the feature being switched off and on again:
     // a club that ran seasons 1-3 and re-enables opens season 4, never 1.
@@ -12402,7 +12640,7 @@ exports.enableClubSeasons = (0, https_1.onCall)({
                 // the moment it opens, and the sweep archives an empty season
                 // within the hour — nine null awards, count bumped past anything
                 // ever played.
-                roundsAtStart: played,
+                roundsAtStart: sealedAllTime,
                 playedRounds: 0,
                 reopenedAt: 0,
                 // Measured from NOW: the cadence the admin just chose describes a

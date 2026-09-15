@@ -880,6 +880,20 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
       : undefined,
     updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : undefined,
     startedAt: typeof o.startedAt === 'number' ? o.startedAt : undefined,
+    // The windows the clock actually ran. Named here because this reader
+    // rebuilds liveMatch field by field, and `eveningPlayed` treats these as
+    // evidence the evening was played — a branch that was dead on every client
+    // while the field never survived the read. Also what scopes the physical
+    // (Health Connect) read, so dropping it understated real per-player data.
+    activeIntervals: Array.isArray(o.activeIntervals)
+      ? (o.activeIntervals as unknown[]).filter(
+          (w): w is { s: number; e: number } =>
+            !!w &&
+            typeof w === 'object' &&
+            typeof (w as { s?: unknown }).s === 'number' &&
+            typeof (w as { e?: unknown }).e === 'number',
+        )
+      : undefined,
   };
 }
 

@@ -4973,7 +4973,23 @@ async function sealRoundSummary(args: {
     {
       groupId,
       ...next,
-      eveningsSealed: eveningsSealed + 1,
+      // INCREMENT, not `read + 1`.
+      //
+      // This counter is what a season's progress is measured against and what
+      // the title-eligibility threshold divides — so it has to be exact, and
+      // an absolute write computed from a value read at the top of this
+      // function is a read-modify-write with nothing guarding it. Two evenings
+      // sealing at once both read N and both write N+1, and one of them is
+      // simply gone.
+      //
+      // Reproduced in production on the QA club: three evenings sealed within
+      // a minute of each other left three summaries and a counter of two. A
+      // club playing two games in a night, or draining a backlog after an
+      // outage, hits exactly this.
+      //
+      // Safe to increment because `summaryRef.create()` above throws if the
+      // evening was already sealed, so this batch runs at most once per game.
+      eveningsSealed: admin.firestore.FieldValue.increment(1),
       since: typeof rec.since === 'number' ? rec.since : args.at,
       updatedAt: Date.now(),
     },
@@ -4990,7 +5006,15 @@ async function sealRoundSummary(args: {
   if (seasonRoundsAtStart !== null) {
     batch.set(
       db.collection('groups').doc(groupId),
-      { seasons: { playedRounds: eveningsSealed + 1 - seasonRoundsAtStart } },
+      // Incremented for the same reason as the counter it mirrors — computing
+      // it from the same stale read would reintroduce the lost update on the
+      // number the app actually SHOWS ("2 מתוך 3 מחזורים"). Every path that
+      // opens a season zeroes this field, so counting up from there is exact.
+      {
+        seasons: {
+          playedRounds: admin.firestore.FieldValue.increment(1),
+        },
+      },
       { merge: true },
     );
   }
@@ -9536,7 +9560,14 @@ async function recomputeCommunityShowcase(
       arrivals?: Record<string, string>;
     };
     const status = g.status === 'cancelled' ? 'cancelled' : 'finished';
-    if (status === 'cancelled') {
+    // The showcase counts the club's evenings and its organisation rate, so it
+    // asks the same question the rest of the app does rather than reading the
+    // status. An evening the sweep closed with nothing on it is neither one
+    // the club held nor one it called off: it belongs to neither half of the
+    // fraction until an admin says which.
+    const played = eveningPlayState(g as PlayableEvening);
+    if (played === 'unverified') continue;
+    if (status === 'cancelled' || played === 'notHappened') {
       totalCancelled += 1;
     } else {
       totalFinished += 1;
@@ -13120,29 +13151,50 @@ export const setEveningPlayed = onCall(
       throw new HttpsError('permission-denied', 'community admin only');
     }
 
-    // Only an evening that is actually waiting on an answer.
+    // Read and write in ONE transaction.
     //
-    // Re-checked from the stored document rather than trusted from the client,
-    // so a stale screen cannot overwrite an evening that has since been
-    // decided, nor put a verdict on one that was never in question. An evening
-    // already answered is left exactly as it is — the call succeeds and says
-    // so, because a double tap is not an error.
-    const state = eveningPlayState(game as PlayableEvening);
-    if (state !== 'unverified') {
-      return { ok: true, changed: false, state };
-    }
-
-    await ref.update({
-      playVerified: played,
-      playVerifiedBy: uid,
-      playVerifiedAt: Date.now(),
-      updatedAt: Date.now(),
+    // The check and the write used to straddle two network round-trips, which
+    // is a real window on a screen two admins can both be looking at: the
+    // second verdict would overwrite the first, and since a "no" deletes the
+    // evening from the club's history for good, the loser of that race never
+    // finds out. Inside a transaction the second call re-reads, sees the
+    // question already answered, and changes nothing.
+    const outcome = await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(ref);
+      if (!fresh.exists) return { changed: false, state: 'pending' as const };
+      const cur = fresh.data() as Record<string, unknown>;
+      const state = eveningPlayState(cur as PlayableEvening);
+      // An evening already answered is left exactly as it is — a double tap is
+      // not an error, and neither is arriving second.
+      //
+      // With ONE exception, and it is deliberately one-way. A mis-tapped "לא
+      // התקיים" deletes a night from the club's history with no way back: the
+      // rows are already excluded everywhere, and nothing in the app can ask
+      // again. Letting an admin correct that to "כן" is safe precisely because
+      // a "no" never credited anything — the confirmation runs the ordinary
+      // credit path from a clean slate.
+      //
+      // The reverse is NOT allowed. Undoing a "yes" would mean taking back
+      // attendance, standings, a sealed summary and a season's progress, and
+      // the seal is written once and never recomputed. An admin who wants that
+      // is asking for something this callable must not pretend to do.
+      const correctingAMistap =
+        state === 'notHappened' && cur.playVerified === false && played;
+      if (state !== 'unverified' && !correctingAMistap) {
+        return { changed: false, state };
+      }
+      tx.update(ref, {
+        playVerified: played,
+        playVerifiedBy: uid,
+        playVerifiedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return {
+        changed: true,
+        state: played ? ('happened' as const) : ('notHappened' as const),
+      };
     });
-    return {
-      ok: true,
-      changed: true,
-      state: played ? 'happened' : 'notHappened',
-    };
+    return { ok: true, ...outcome };
   },
 );
 
@@ -14739,11 +14791,20 @@ async function announceSeasonClosed(args: {
  * falls back to the length of the season that just ended, and to six months
  * when even that is unknowable — anything but a date already behind us.
  */
+/** `null` is admitted on the unused half of a cadence because that is how a
+ *  merge:true write CLEARS a field the previous cadence left behind. */
+type Cadence = {
+  type?: string;
+  months?: number | null;
+  endsAt?: number | null;
+  targetRounds?: number | null;
+};
+
 function rebaseCadence(
-  cadence: { type?: string; months?: number; endsAt?: number; targetRounds?: number } | undefined,
+  cadence: Cadence | undefined,
   seasonStartedAt: number,
   now: number,
-): { type: string; months?: number; endsAt?: number; targetRounds?: number } {
+): Cadence & { type: string } {
   if (!cadence || cadence.type !== 'date') {
     return (cadence ?? { type: 'date', months: 6 }) as {
       type: string;
@@ -14761,7 +14822,15 @@ function rebaseCadence(
     months = MONTH_CHOICES.includes(ranMonths) ? ranMonths : 0;
   }
   if (!months) months = 6;
-  return { type: 'date', months, endsAt: addMonthsClampedServer(now, months) };
+  // targetRounds cleared for the same reason the enable path clears it: this
+  // is written into a merge:true map, so an omitted field keeps whatever the
+  // club's previous cadence left there.
+  return {
+    type: 'date',
+    months,
+    endsAt: addMonthsClampedServer(now, months),
+    targetRounds: null,
+  };
 }
 
 /** How long after kickoff a game still counts as "tonight". Past this it is
@@ -15093,15 +15162,47 @@ export const enableClubSeasons = onCall(
     // choosing 24 silently gets 201; and the seal branch hands it to the close
     // as the season's length.
     const played = await completedRoundsOf(groupId, existing?.roundsAtStart);
+    // The ABSOLUTE sealed count, which is a different number from `played`.
+    //
+    // `played` is season-relative: all-time minus the previous run's offset.
+    // `roundsAtStart` is subtracted FROM the all-time count by
+    // completedRoundsOf, so stamping the relative number there double-counts
+    // the offset. A club with 200 sealed evenings whose last run started at
+    // 180 has played 20; stamping 20 makes its next season read 180 evenings
+    // as already played, and a 24-round target is due the hour it opens —
+    // precisely the failure the comment beside that stamp warns about.
+    const sealedAllTime = await sealedEveningsOf(groupId);
     const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
 
-    let cadence: { type: string; months?: number; endsAt?: number; targetRounds?: number };
+    // `null` and not `undefined` on the unused half: this map is written with
+    // merge:true, and only an explicit null clears a field a previous cadence
+    // left behind.
+    let cadence: {
+      type: string;
+      months?: number | null;
+      endsAt?: number | null;
+      targetRounds?: number | null;
+    };
     if (type === 'rounds') {
       const asked = Number(data.targetRounds);
       if (!Number.isFinite(asked) || asked <= 0) {
         throw new HttpsError('invalid-argument', 'targetRounds required');
       }
-      cadence = { type: 'rounds', targetRounds: Math.round(asked) };
+      // The OTHER type's fields are cleared explicitly, not left out.
+      //
+      // The seasons block is written with merge:true, and a merge into a
+      // nested map merges field by field — so simply omitting `endsAt` leaves
+      // whatever a previous configuration put there. A club that switched from
+      // a date season to a rounds season kept an `endsAt` on a cadence that
+      // has no date at all. Nothing reads it today (both the sweep and the
+      // card branch on `type` first), which is exactly why it would have sat
+      // there until something did.
+      cadence = {
+        type: 'rounds',
+        targetRounds: Math.round(asked),
+        months: null,
+        endsAt: null,
+      };
     } else {
       const months = MONTH_CHOICES.includes(Number(data.months))
         ? Number(data.months)
@@ -15109,7 +15210,12 @@ export const enableClubSeasons = onCall(
       // `months` is stored beside the date, not just the date. Without it a
       // season that rolls over has no way to compute its OWN end date, and
       // inherits a deadline that has already passed — see rebaseCadence.
-      cadence = { type: 'date', months, endsAt: addMonthsClampedServer(now, months) };
+      cadence = {
+        type: 'date',
+        months,
+        endsAt: addMonthsClampedServer(now, months),
+        targetRounds: null,
+      };
     }
 
     // Numbering CONTINUES across the feature being switched off and on again:
@@ -15150,7 +15256,7 @@ export const enableClubSeasons = onCall(
             // the moment it opens, and the sweep archives an empty season
             // within the hour — nine null awards, count bumped past anything
             // ever played.
-            roundsAtStart: played,
+            roundsAtStart: sealedAllTime,
             playedRounds: 0,
             reopenedAt: 0,
             // Measured from NOW: the cadence the admin just chose describes a

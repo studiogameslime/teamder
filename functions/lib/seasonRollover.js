@@ -61,6 +61,7 @@ exports.__seasonFields = void 0;
 exports.closeSeason = closeSeason;
 exports.reopenSeason = reopenSeason;
 const admin = __importStar(require("firebase-admin"));
+const seasonParticipants_1 = require("./seasonParticipants");
 const seasonAwards_1 = require("./seasonAwards");
 /** A per-game identity with no account. See the archive note below. */
 const isReal = (id) => !!id && !id.startsWith('guest:');
@@ -383,6 +384,9 @@ async function closeSeason(args) {
     const awards = (0, seasonAwards_1.computeSeasonAwards)(awardLines, awardPairs, seasonEvenings);
     /** Set when we are resuming a close that died before it finished. */
     let resumedAwards = null;
+    let resumedPlayers = null;
+    let resumedTotals = null;
+    let resumedEvenings = null;
     // ── 1. Archive, exactly once ────────────────────────────────────────────
     const summaryRef = db
         .collection('seasonSummary')
@@ -445,6 +449,17 @@ async function closeSeason(args) {
         // live rows may be half-zeroed by the pass that died, and a title decided
         // from those would be a different title from the one already sealed.
         resumedAwards = (existing.get('awards') ?? null);
+        // The ROWS come from the archive too, for the same reason the titles do.
+        //
+        // Without this the resume path had nothing safe to build the card from, so
+        // it skipped the card entirely — and if the pass that died never got as
+        // far as writing one, the season stayed sealed in the archive and absent
+        // from the hall of fame for ever. The archive is protected by create() and
+        // holds the frozen names and totals, so a card built from it is the same
+        // card the first pass would have written.
+        resumedPlayers = (existing.get('players') ?? null);
+        resumedTotals = (existing.get('totals') ?? null);
+        resumedEvenings = existing.get('completedRounds');
     }
     // ── 1a. A compact card for the list ─────────────────────────────────────
     //
@@ -472,12 +487,25 @@ async function closeSeason(args) {
             key,
             names: award.winners.map((w) => w
                 .split('__')
-                .map((uid) => String(players[uid]?.displayName ?? '') || '—')
+                .map((uid) => String((resumedPlayers ?? players)[uid]?.displayName ?? '') ||
+                '—')
                 .join(' + ')),
             value: award.value,
         });
     }
-    if (!resumedAwards) {
+    // Written on BOTH paths now.
+    //
+    // It used to be skipped whenever the close was resuming, because the live
+    // rows it was built from may have been half-wiped by the pass that died. But
+    // if that pass never reached the card, skipping meant the season stayed in
+    // the archive and out of the hall of fame permanently — sealed and invisible.
+    // The resume now builds it from the ARCHIVE instead, which is the protected
+    // record, so the card it writes is the card the first pass would have
+    // written. `merge: true` makes re-writing an existing one a no-op in effect.
+    {
+        const cardPlayers = resumedPlayers ?? players;
+        const cardTotals = resumedTotals ?? totals;
+        const cardEvenings = typeof resumedEvenings === 'number' ? resumedEvenings : seasonEvenings;
         await db
             .collection('seasonCards')
             .doc(`${groupId}__${seasonId}`)
@@ -487,16 +515,27 @@ async function closeSeason(args) {
             no: args.seasonNo,
             startsAt: args.startsAt,
             endsAt: now,
-            completedRounds: seasonEvenings,
+            completedRounds: cardEvenings,
             totals: {
-                rounds: totals.rounds ?? 0,
-                goals: totals.goals ?? 0,
-                assists: totals.assists ?? 0,
+                rounds: cardTotals.rounds ?? 0,
+                goals: cardTotals.goals ?? 0,
+                assists: cardTotals.assists ?? 0,
             },
-            // Only people who actually played. A member who never turned up has a
-            // row of zeros and did not take part in the season.
-            players: Object.values(players).filter((p) => num(p.rounds) > 0)
-                .length,
+            // Only people who actually played — counted on EVENINGS attended,
+            // with mini-games as a fallback.
+            //
+            // This used to count `rounds > 0` alone, which is mini-games. A club
+            // that runs the plain live screen never records a single one: that
+            // screen is a clock, and mini-games only exist in advanced mode. So
+            // every season such a club ever closed reported "0 שחקנים" in its
+            // hall of fame, no matter how many people turned up all year.
+            // Caught on the QA club, whose evenings were timer-only.
+            //
+            // `games` is the right signal for "took part", and it is the one the
+            // evening-played rules now make reliable: it only counts an evening
+            // that actually happened. `rounds` stays in the test as a safety net
+            // for a row credited a mini-game without an evening.
+            players: (0, seasonParticipants_1.countSeasonParticipants)(cardPlayers),
             ...(args.endedEarly ? { endedEarly: true } : {}),
             ...(args.partialData ? { partialData: true } : {}),
             winners: cardWinners,
@@ -581,6 +620,18 @@ async function closeSeason(args) {
                 return; // already done
             const patch = {
                 seasonWoundBack: seasonId,
+                // Cleared so a LATER reopen can stamp its own restore.
+                //
+                // The pair wipe and the club wipe below have always done this; the
+                // player rows — the one class that holds goals, assists, rounds, wins
+                // and the evening-score mean — did not, and that asymmetry was silent
+                // and permanent. Close s1, reopen it, play on, close it again, then
+                // reopen once more: reopenSeason's per-row guard sees the stamp its
+                // OWN first restore left behind and returns for every player, so club
+                // totals and pair chemistry come back while every player's season
+                // stays at zero. The archive is deleted on the way out, so the two can
+                // never be reconciled again.
+                seasonReopened: admin.firestore.FieldValue.delete(),
                 updatedAt: now,
             };
             for (const f of PLAYER_SEASON_FIELDS) {

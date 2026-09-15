@@ -167,6 +167,21 @@ describe('parseSeasonTable', () => {
     expect(t.duo).toEqual({ uidA: 'u_dani', uidB: 'u_roi', assists: 14 });
   });
 
+  it('reads pairs written as a MAP, which is how closeSeason writes them', () => {
+    // The writer builds `pairs` as Record<"<lo>__<hi>", row> and stores it as
+    // a map. The reader demanded an array and returned null for every past
+    // season's duo — silently, because "no duo" is a legitimate outcome.
+    const a = archive() as Record<string, unknown>;
+    a.pairs = Object.fromEntries(
+      (a.pairs as Array<{ a: string; b: string }>).map((p) => [`${p.a}__${p.b}`, p]),
+    );
+    expect(parseSeasonTable(a).duo).toEqual({
+      uidA: 'u_dani',
+      uidB: 'u_roi',
+      assists: 14,
+    });
+  });
+
   it('skips a pair whose other half has no sealed name', () => {
     const t = parseSeasonTable(archive());
     // The 40-assist pair outranks every real one but cannot be rendered.

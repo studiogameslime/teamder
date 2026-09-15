@@ -280,9 +280,17 @@ export function CommunityStatsScreen() {
   // Everything below reads ONE of these, never `champ`/`duo` directly: the
   // screen renders a past season through the same derivation as the running
   // one, because the archive was built to hold exactly the same counters.
+  // `scope` flips the instant the chip is tapped; `archive` only arrives a
+  // network round-trip later. Deriving from `champ` in that gap printed the
+  // RUNNING season's numbers — its top scorer, its tiles, its whole table —
+  // under a heading that already said "עונה 1". Nothing marked them as stale,
+  // so they simply read as that season's record.
+  const scopeLoading = !!scope && !archive;
   const viewChamp: ChampData | null = useMemo(
     () =>
-      archive
+      scopeLoading
+        ? null
+        : archive
         ? {
             totalGoals: archive.totalGoals,
             totalRounds: archive.totalRounds,
@@ -294,9 +302,9 @@ export function CommunityStatsScreen() {
             players: archive.players,
           }
         : champ,
-    [archive, champ],
+    [archive, champ, scopeLoading],
   );
-  const viewDuo = archive ? archive.duo : duo;
+  const viewDuo = scope ? (archive ? archive.duo : null) : duo;
 
   const derived = useMemo(() => {
     const players = viewChamp?.players ?? [];
@@ -381,13 +389,14 @@ export function CommunityStatsScreen() {
     // A closed season has no nights left to scan — the games were archived
     // with it. Its `games` column is that exact count, frozen, which is the
     // same number the season's "הכי מתמיד" title was awarded on.
-    if (archive) {
+    if (scope) {
+      if (!archive) return null;
       const top = leaderBy(archive.players, (r) => r.games);
       return top ? { uid: top.uid, nights: top.games } : null;
     }
     const top = stats?.topPlayers?.[0];
     return top && top.attended > 0 ? { uid: top.uid, nights: top.attended } : null;
-  }, [stats, archive]);
+  }, [stats, archive, scope]);
 
   // Club achievements + level — derived from the same aggregates, client-side.
   const club = useMemo(() => {
@@ -437,6 +446,11 @@ export function CommunityStatsScreen() {
 
   const isEmpty =
     !loading &&
+    // NEVER while a past season is selected. The empty state replaces the
+    // whole scroll view — including the season picker — so a club whose
+    // archive is still loading, or whose chosen season really was empty, would
+    // land on a dead end with no way back to the running season.
+    !scope &&
     derived.totalGoals === 0 &&
     (stats?.totalFinished ?? 0) === 0 &&
     derived.players.length === 0;
@@ -680,7 +694,7 @@ export function CommunityStatsScreen() {
               are club-wide. It reads in that order. */}
           {/* כימיה נקראת מהזוגות החיים, שהם של העונה הרצה. לעונה שנסגרה
               מוצג הצמד הקטלני שלה ב"נתונים מעניינים" — משם, מהארכיון. */}
-          {archive ? null : (
+          {scope ? null : (
             <>
               <SectionTitle icon="people" text={he.chemistrySection} />
               <ChemistrySection groupId={groupId} />
@@ -713,7 +727,7 @@ export function CommunityStatsScreen() {
             ) : null}
             {/* אחוז ההתארגנות נספר מסריקת המשחקים של המועדון, לא ממונה
                 שהעונה שומרת — ולכן אין לו תשובה לעונה שנסגרה. */}
-            {archive ? null : (
+            {scope ? null : (
               <FunDonutRow index={5} pct={Math.round((stats?.organizationRate ?? 0) * 100)}
                 tint={colors.success} text="מהמחזורים המתוכננים יצאו לפועל" />
             )}
@@ -732,7 +746,7 @@ export function CommunityStatsScreen() {
                 ]}
               />
             ) : null}
-            {!archive && stats && stats.longestStreak >= 2 ? (
+            {!scope && stats && stats.longestStreak >= 2 ? (
               <FunRow
                 icon="flame-outline"
                 tint={colors.danger}
@@ -747,7 +761,7 @@ export function CommunityStatsScreen() {
             {/* "פעילים השנה" נמדד מול היום, לא מול העונה — למחזור שנסגר
                 לפני חצי שנה זו לא תשובה. במקום זה: כמה שחקנים בכלל שיחקו
                 בעונה, מתוך השורות החתומות שלה. */}
-            {archive ? (
+            {scope ? (
               <FunRow
                 icon="calendar-outline"
                 tint={colors.primary}
@@ -815,7 +829,7 @@ export function CommunityStatsScreen() {
           {/* התארים הם של המועדון לכל אורכו, לא של עונה אחת — הם נצברים מכל
               העונות יחד ואינם מתאפסים. תחת עונה שנסגרה זו לא כותרת נכונה,
               אז מי שרוצה לראות אותם חוזר לעונה הרצה. */}
-          {archive ? null : (
+          {scope ? null : (
           <>
           <SectionTitle icon="medal" text={he.communityStatsSectionAchievements} />
           <Card style={styles.badgeCard}>

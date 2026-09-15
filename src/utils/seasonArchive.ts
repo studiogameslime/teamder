@@ -115,9 +115,20 @@ function topDuo(
   raw: unknown,
   names: Record<string, string>,
 ): { uidA: string; uidB: string; assists: number } | null {
-  if (!Array.isArray(raw)) return null;
+  // The archive stores pairs as a MAP keyed "<lo>__<hi>", not an array.
+  //
+  // This read `Array.isArray(raw)` and bailed, so every closed season's
+  // deadliest duo came back null — silently, because a season with no duo is a
+  // legitimate outcome and looks identical. Accepting both shapes costs one
+  // line and makes the reader independent of how the writer happens to spell
+  // a collection.
+  const rows: unknown[] = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object'
+      ? Object.values(raw as Record<string, unknown>)
+      : [];
   let best: { uidA: string; uidB: string; assists: number } | null = null;
-  for (const p of raw) {
+  for (const p of rows) {
     if (typeof p !== 'object' || p === null) continue;
     const x = p as Record<string, unknown>;
     const a = str(x.a);

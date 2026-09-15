@@ -18,7 +18,14 @@ const ROOT = path.join(__dirname, '..', '..');
 const MARKER =
   '// ---- everything below this line is a copy of the client file ----';
 
-describe('the two copies of the evening-played rule', () => {
+describe.each([
+  ['eveningPlayed', 'src/utils/eveningPlayed.ts', 'functions/src/eveningPlayed.ts'],
+  [
+    'seasonParticipants',
+    'src/utils/seasonParticipants.ts',
+    'functions/src/seasonParticipants.ts',
+  ],
+])('the two copies of %s', (_name, clientPath, serverPath) => {
   const client = fs.readFileSync(
     path.join(ROOT, 'src/utils/eveningPlayed.ts'),
     'utf8',

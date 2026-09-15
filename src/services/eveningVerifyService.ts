@@ -82,10 +82,44 @@ export const eveningVerifyService = {
       });
       return out.sort((a, b) => a.startsAt - b.startsAt).slice(0, MAX_SHOWN);
     } catch (err) {
-      // Never surfaced. This drives a banner that should not exist most of the
-      // time; a failed lookup shows nothing, exactly like having none.
+      // A failed lookup here is NOT the same as having nothing to verify, and
+      // treating it that way is how this feature could die silently: the card
+      // renders nothing on an empty list, so a query that always throws looks
+      // exactly like a healthy club — while every auto-closed evening stays
+      // uncounted for ever, because this card is the only way out of that
+      // state. It shipped needing a composite index that did not exist.
+      //
+      // So: log it, then fall back to an index the app has always had
+      // (groupId + status + startsAt) and filter in memory. Sixty documents is
+      // a cheap price for a screen that must not be able to lie.
       logError('listUnverifiedEvenings', err, { groupId });
-      return [];
+      try {
+        const { db } = getFirebase();
+        const snap = await getDocs(
+          query(
+            collection(db, 'games'),
+            where('groupId', '==', groupId),
+            where('status', '==', 'finished'),
+            orderBy('startsAt', 'desc'),
+            fsLimit(60),
+          ),
+        );
+        const out: UnverifiedEvening[] = [];
+        snap.forEach((d) => {
+          const g = d.data() as Record<string, unknown>;
+          if (typeof g.startsAt !== 'number' || g.startsAt < since) return;
+          if (eveningPlayState(g as PlayableEvening) !== 'unverified') return;
+          out.push({
+            id: d.id,
+            title: typeof g.title === 'string' ? g.title : '',
+            startsAt: g.startsAt,
+          });
+        });
+        return out.sort((a, b) => a.startsAt - b.startsAt).slice(0, MAX_SHOWN);
+      } catch (err2) {
+        logError('listUnverifiedEveningsFallback', err2, { groupId });
+        return [];
+      }
     }
   },
 

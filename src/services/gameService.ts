@@ -821,7 +821,11 @@ export const gameService = {
     const nowMs = Date.now();
     for (const doc of snap.docs) {
       const g = doc.data();
-      if (g.status !== 'finished') continue;
+      // Asked of the module that decides it, so this card cannot drift from
+      // the Statistics screen — which is exactly what its own comment below
+      // promises. Status alone counted evenings the system closed with no
+      // trace of play, and nobody had confirmed.
+      if (!didEveningHappen(g as PlayableEvening)) continue;
       // Guard against a 'finished'-but-future game (same rule as the canonical
       // isAttendedGame) so the pair card can't drift from the Statistics screen.
       if (typeof g.startsAt === 'number' && g.startsAt >= nowMs) continue;
