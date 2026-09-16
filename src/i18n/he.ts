@@ -2237,14 +2237,14 @@ export const he = {
         return String(value);
     }
   },
-  seasonSectionTitles: 'התארים שלי בעונה',
+  seasonSectionTitles: 'תארים בעונה',
   seasonTitleSharedWith: (n: number) =>
     n === 1 ? 'במשותף עם עוד שחקן' : `במשותף עם עוד ${n} שחקנים`,
   // Renders only for a CLOSED season, so it must not talk about the next one —
   // it is shown just as often while browsing season 1 of a club that has since
   // played three more.
-  seasonTitlesNone: 'לא לקחת תואר בעונה הזאת.',
-  seasonSummaryTitle: 'סיכום העונה שלי',
+  seasonTitlesNone: 'לא נלקח תואר בעונה הזאת.',
+  seasonSummaryTitle: 'סיכום העונה',
   seasonRangeUntil: (to: string) => `מתחילת המועדון עד ${to}`,
   seasonRangeUnknown: 'כל ההיסטוריה של המועדון',
   seasonNow: 'עכשיו',
@@ -2258,53 +2258,53 @@ export const he = {
   // somebody who just tapped a push about a season they played.
   seasonSummaryLoadFailed:
     'לא הצלחנו לטעון את סיכום העונה. משכו למטה כדי לנסות שוב.',
-  seasonSummaryNoRounds: 'עוד לא שיחקת בעונה הזאת, אז אין מה לסכם עדיין.',
+  seasonSummaryNoRounds: 'עדיין אין משחקים בעונה הזאת, אז אין מה לסכם.',
   // The same fact about a season that is already over. "עדיין" and "יתמלא
   // מעצמו" are promises a sealed season cannot keep.
-  seasonSummaryNoRoundsClosed: 'לא שיחקת בעונה הזאת.',
-  seasonSectionNumbers: 'המספרים שלי בעונה',
-  seasonSectionStanding: 'המיקום שלי במועדון',
+  seasonSummaryNoRoundsClosed: 'לא היו משחקים בעונה הזאת.',
+  seasonSectionNumbers: 'המספרים בעונה',
+  seasonSectionStanding: 'המיקום במועדון',
   seasonSectionPeople: 'האנשים של העונה',
   seasonStatContributions: 'שערים + בישולים',
-  seasonStatEvenings: 'מחזורים שהגעתי',
-  seasonStatRounds: 'משחקונים',
+  seasonStatEvenings: 'מחזורים',
+  seasonStatRounds: 'משחקים',
   seasonStatWins: 'ניצחונות',
   seasonStatLosses: 'הפסדים',
   seasonStatTies: 'תיקו',
   seasonStatWinPct: 'אחוז ניצחון',
   seasonStatCleanSheets: 'שערים נקיים',
   seasonStatCleanSheetPct: 'אחוז שער נקי',
-  seasonStatGoalsPerRound: 'שערים למשחקון',
-  seasonStatAssistsPerRound: 'בישולים למשחקון',
-  seasonStatPenalties: 'פנדלים שהבקעתי',
-  seasonStatPenSaves: 'פנדלים שעצרתי',
+  seasonStatGoalsPerRound: 'שערים למשחק',
+  seasonStatAssistsPerRound: 'בישולים למשחק',
+  seasonStatPenalties: 'פנדלים שהובקעו',
+  seasonStatPenSaves: 'פנדלים שנעצרו',
   seasonStatOwnGoals: 'שערים עצמיים',
   seasonRankOf: (rank: number, of: number) => `${rank} מתוך ${of}`,
   seasonClubRounds: (rounds: number) =>
-    `${rounds} משחקונים שוחקו במועדון בעונה הזאת. המיקום מחושב מול מי ששיחק בה.`,
+    `${rounds} משחקים שוחקו במועדון בעונה הזאת. המיקום מחושב מול מי ששיחק בה.`,
   seasonPeerPartner: 'הכי הרבה יחד באותה קבוצה',
   seasonPeerPartnerDetail: (together: number, wins: number) =>
-    `${together} משחקונים באותה קבוצה, ${wins} מהם ניצחנו`,
+    `${together} משחקים באותה קבוצה, ${wins} מהם בניצחון`,
   seasonPeerNemesis: 'היריב הכי גדול',
   seasonPeerNemesisDetail: (faced: number, mine: number, theirs: number) =>
-    `${faced} משחקונים זה מול זה — ${mine} ניצחונות שלי, ${theirs} שלו`,
-  seasonPeerVictim: 'את מי ניצחתי הכי הרבה',
+    `${faced} משחקים זה מול זה — ${mine} ניצחונות מול ${theirs}`,
+  seasonPeerVictim: 'מי הובס הכי הרבה',
   seasonPeerVictimDetail: (wins: number) =>
-    wins === 1 ? 'ניצחתי אותו פעם אחת' : `ניצחתי אותו ${wins} פעמים`,
-  seasonPeerTormentor: 'מי ניצח אותי הכי הרבה',
+    wins === 1 ? 'ניצחון אחד מולו' : `${wins} ניצחונות מולו`,
+  seasonPeerTormentor: 'מי ניצח הכי הרבה',
   seasonPeerTormentorDetail: (losses: number) =>
-    losses === 1 ? 'הוא ניצח אותי פעם אחת' : `הוא ניצח אותי ${losses} פעמים`,
-  seasonPeerAssistedMost: 'למי בישלתי הכי הרבה',
-  seasonPeerAssistedBy: 'מי בישל לי הכי הרבה',
+    losses === 1 ? 'הפסד אחד מולו' : `${losses} הפסדים מולו`,
+  seasonPeerAssistedMost: 'למי הכי הרבה בישולים',
+  seasonPeerAssistedBy: 'ממי הכי הרבה בישולים',
   seasonPeerAssistsDetail: (n: number) =>
     n === 1 ? 'בישול אחד' : `${n} בישולים`,
   seasonPeersEmpty:
-    'עוד לא שיחקת מספיק כדי שיהיה מה לספר כאן. זה יתמלא מעצמו.',
-  seasonPeersEmptyClosed: 'לא שיחקת מספיק בעונה הזאת כדי שיהיה מה לספר כאן.',
+    'עוד אין מספיק משחקים כדי שיהיה מה לספר כאן. זה יתמלא מעצמו.',
+  seasonPeersEmptyClosed: 'לא היו מספיק משחקים בעונה הזאת כדי שיהיה מה לספר כאן.',
   seasonShareCta: 'שתף את סיכום העונה',
-  seasonShareTitle: 'סיכום העונה שלי',
+  seasonShareTitle: 'סיכום העונה',
   seasonSummaryFootnote:
-    'כל המספרים כאן הם של העונה הזאת בלבד. הסטטיסטיקה המצטברת שלי נמצאת בפרופיל.',
+    'כל המספרים כאן הם של העונה הזאת בלבד. הסטטיסטיקה המצטברת נמצאת בפרופיל.',
   statGoals: 'שערים',
   statAssists: 'בישולים',
   statOwnGoals: 'שערים עצמיים',

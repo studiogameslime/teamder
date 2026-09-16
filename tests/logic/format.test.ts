@@ -137,8 +137,20 @@ describe('the season title values count in Hebrew too', () => {
   });
 
   it('the peer lines too', () => {
-    expect(he.seasonPeerVictimDetail(1)).toBe('ניצחתי אותו פעם אחת');
-    expect(he.seasonPeerTormentorDetail(1)).toBe('הוא ניצח אותי פעם אחת');
-    expect(he.seasonPeerAssistsDetail(1)).toBe('בישול אחד');
+    // Asserting the RULE, not the sentence. The wording was rewritten out of
+    // the first person ("ניצחתי אותו" → "ניצחון אחד מולו") and pinning the old
+    // literals would have made a copy change look like a regression — while
+    // what actually matters is that a count of one never reads "1 ניצחונות".
+    for (const line of [
+      he.seasonPeerVictimDetail(1),
+      he.seasonPeerTormentorDetail(1),
+      he.seasonPeerAssistsDetail(1),
+    ]) {
+      expect(line).not.toMatch(/[0-9]/);
+      expect(line).toMatch(/אחד|אחת/);
+    }
+    // …and more than one still carries the digit.
+    expect(he.seasonPeerVictimDetail(4)).toMatch(/4/);
+    expect(he.seasonPeerAssistsDetail(3)).toMatch(/3/);
   });
 });
