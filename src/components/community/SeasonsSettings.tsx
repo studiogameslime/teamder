@@ -13,10 +13,11 @@
 // zeroes every stat row in the club. Those belong to the server and deserve
 // their own deliberate press.
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { SeasonConfirmSheet } from '@/components/community/SeasonConfirmSheet';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 import { appAlert } from '@/components/AppDialog';
 import { toast } from '@/components/Toast';
@@ -26,7 +27,23 @@ import {
   seasonRefusalText,
   SeasonRefusedError,
 } from '@/services/seasonService';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { gameService } from '@/services/gameService';
+import {
+  todayIn,
+  seasonEndDate,
+  nextSeasonStart,
+  formatCalendarDate,
+  isValidSeasonMonths,
+  MIN_SEASON_MONTHS,
+  MAX_SEASON_MONTHS,
+  type CalendarDate,
+} from '@/utils/seasonDates';
+import {
+  planActivation,
+  MIN_SEASON_ROUNDS,
+  type ActivationPlan,
+} from '@/utils/seasonActivation';
+import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { GroupSeasons } from '@/types';
 
@@ -35,6 +52,10 @@ type Cadence = 'date' | 'rounds';
 /** Deliberately few. A club picking a season length should not be designing one. */
 const MONTH_CHOICES = [3, 6, 12] as const;
 const ROUND_CHOICES = [24, 48, 96] as const;
+/** The step for the custom pickers. One at a time for months (there are only
+ *  24 of them); rounds move in fours, because a club setting 37 is really
+ *  setting "about three dozen". Long-press is not a gesture this app uses. */
+const ROUND_STEP = 4;
 
 function formatDate(ms: number): string {
   return new Date(ms).toLocaleDateString('he-IL', {
@@ -42,6 +63,108 @@ function formatDate(ms: number): string {
     month: 'long',
     year: 'numeric',
   });
+}
+
+/**
+ * A count, chosen by tapping rather than typing.
+ *
+ * The ranges here are small and the value is always a whole number, so a
+ * keyboard over a settings sheet would be a heavier gesture than the choice
+ * deserves. Bounds are enforced here rather than announced: a button that
+ * cannot take you out of range never has to tell you that you went.
+ */
+function Stepper({
+  label,
+  value,
+  unit,
+  min,
+  max,
+  step = 1,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+  min: number;
+  max?: number;
+  step?: number;
+  onChange: (n: number) => void;
+}) {
+  const clamp = (n: number) =>
+    Math.max(min, Math.min(typeof max === 'number' ? max : n, n));
+  const canDown = value > min;
+  const canUp = typeof max !== 'number' || value < max;
+  return (
+    <View style={styles.stepper}>
+      <Text style={styles.stepperLabel}>{label}</Text>
+      {/* Minus first in source order → RIGHTMOST under forceRTL, which is
+          where the thumb rests and where "less" belongs in a right-to-left
+          row. */}
+      <View style={styles.stepperControls}>
+        <Pressable
+          onPress={() => canDown && onChange(clamp(value - step))}
+          disabled={!canDown}
+          style={[styles.stepperBtn, !canDown && styles.stepperBtnOff]}
+          accessibilityRole="button"
+          accessibilityLabel="-"
+        >
+          <Text style={styles.stepperBtnText}>−</Text>
+        </Pressable>
+        <Text style={styles.stepperValue}>{unit}</Text>
+        <Pressable
+          onPress={() => canUp && onChange(clamp(value + step))}
+          disabled={!canUp}
+          style={[styles.stepperBtn, !canUp && styles.stepperBtnOff]}
+          accessibilityRole="button"
+          accessibilityLabel="+"
+        >
+          <Text style={styles.stepperBtnText}>+</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+/** One "label / value" line. Used for the dates under the chips and for every
+ *  row of the confirmation, so the two read as the same object. */
+function DateLine({
+  label,
+  value,
+  muted,
+}: {
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
+  return (
+    <View style={styles.dateLine}>
+      <Text style={styles.dateLineLabel}>{label}</Text>
+      <Text style={[styles.dateLineValue, muted && styles.dateLineValueMuted]}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+/** The refusal, in the admin's own numbers. Every message names the figure
+ *  that caused it, because "not allowed" is not something anyone can act on. */
+function planErrorText(plan: ActivationPlan, target: number): string {
+  switch (plan.error) {
+    case 'historyExceedsTarget':
+      return he.seasonsErrHistoryExceeds(plan.playedHistory, target);
+    case 'historyFillsTarget':
+      return he.seasonsErrHistoryFills(plan.playedHistory);
+    case 'monthsInvalid':
+      return he.seasonsErrMonths;
+    case 'roundsInvalid':
+      return he.seasonsErrRounds;
+    case 'season1EndRequired':
+      return he.seasonsErrSeason1End;
+    case 'season1EndNotFuture':
+      return he.seasonsErrSeason1Past;
+    default:
+      return he.error;
+  }
 }
 
 function Chip({
@@ -102,8 +225,38 @@ export function SeasonsSettings({
   );
   /** Only asked on the FIRST enable — after that there is no loose history. */
   const [sealHistory, setSealHistory] = useState(false);
+  /** Custom lengths sit beside the presets rather than replacing them. */
+  const [customMonths, setCustomMonths] = useState(false);
+  const [customRounds, setCustomRounds] = useState(false);
+  /** The last day of season 1, when carrying it on under a date cadence.
+   *  There is no honest start date to compute for it — the history reaches
+   *  back as far as the club does — so the admin names its end instead. */
+  const [season1EndsOn, setSeason1EndsOn] = useState<CalendarDate | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  /** Evenings the club has already played. Asked for once, when the options
+   *  open, because every validation and every line of the confirmation is
+   *  measured against it. */
+  const [history, setHistory] = useState<number | null>(null);
+
 
   const firstTime = (seasons?.count ?? 0) === 0 && !live;
+
+  useEffect(() => {
+    if (!open || !firstTime) return;
+    let alive = true;
+    void gameService
+      .getCommunityStats(groupId)
+      .then((st) => {
+        if (alive) setHistory(st?.totalFinished ?? 0);
+      })
+      .catch(() => {
+        if (alive) setHistory(0);
+      });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, groupId]);
   /** Does the club's current target correspond to one of the chips below? */
   const offeredTarget =
     seasons?.cadence?.type === 'rounds'
@@ -141,6 +294,37 @@ export function SeasonsSettings({
     }
     return c?.type !== 'date' || c.months !== months;
   }, [live, seasons?.cadence, cadence, months, rounds]);
+
+  /**
+   * What pressing the button will do — recomputed on every keystroke.
+   *
+   * ONE plan drives the dates under the chips, the red validation line, whether
+   * the button is enabled, and every figure in the confirmation. They cannot
+   * drift apart, because there is nothing to drift: the sheet an admin approves
+   * is this object, and the server recomputes the same one before acting.
+   */
+  const today = useMemo(() => todayIn(), []);
+  const plan = useMemo(
+    () =>
+      planActivation({
+        cadence,
+        months,
+        targetRounds: rounds,
+        choice: sealHistory ? 'sealNow' : 'continue',
+        playedHistory: history ?? 0,
+        today,
+        season1EndsOn: season1EndsOn ?? undefined,
+      }),
+    [cadence, months, rounds, sealHistory, history, today, season1EndsOn],
+  );
+
+  /** The dates shown under the length chips, for a club with no history to
+   *  argue about — a plain "this season runs from here to here". */
+  const previewDates = useMemo(() => {
+    if (cadence !== 'date' || !isValidSeasonMonths(months)) return null;
+    const endsOn = seasonEndDate(today, months);
+    return { startsOn: today, endsOn, nextStartsOn: nextSeasonStart(endsOn) };
+  }, [cadence, months, today]);
 
   const targetArgs = useMemo(
     () =>
@@ -185,7 +369,9 @@ export function SeasonsSettings({
         await seasonService.enable({
           groupId,
           ...targetArgs,
+          historyChoice: sealHistory ? 'sealNow' : 'continue',
           ...(sealHistory ? { closeFirstNow: true } : {}),
+          ...(season1EndsOn ? { season1EndsOn } : {}),
         });
         // `sealedHistory` is the question the feature actually turns on: how
         // many clubs were willing to close two years to start clean.
@@ -197,21 +383,8 @@ export function SeasonsSettings({
         });
         toast.success(he.seasonsEnabledToast);
       });
-    // Switching seasons on is ordinary. Switching them on while sealing the
-    // club's ENTIRE history as season 1 is not: it archives every number the
-    // club has ever recorded, resets the table, and hands out nine permanent
-    // titles — and it was one unconfirmed tap away, on a button whose label
-    // only says "הפעל עונות". The destructive half gets the same confirmation
-    // that ending a season does.
-    if (!sealHistory) {
-      go();
-      return;
-    }
-    appAlert(he.seasonsSealConfirmTitle, he.seasonsSealConfirmBody, [
-      { text: he.seasonsSealConfirmCta, style: 'destructive', onPress: go },
-      { text: he.cancel, style: 'cancel' },
-    ]);
-  }, [groupId, targetArgs, sealHistory, run]);
+    go();
+  }, [groupId, targetArgs, sealHistory, season1EndsOn, run]);
 
   const saveTarget = useCallback(() => {
     run(async () => {
@@ -330,24 +503,91 @@ export function SeasonsSettings({
             <Text style={styles.fieldHint}>{he.seasonsTargetCustom}</Text>
           ) : null}
           <View style={styles.chipRow}>
-            {cadence === 'date'
-              ? MONTH_CHOICES.map((m) => (
+            {cadence === 'date' ? (
+              <>
+                {MONTH_CHOICES.map((m) => (
                   <Chip
                     key={m}
                     label={he.seasonsMonthsLabel(m)}
-                    active={months === m}
-                    onPress={() => setMonths(m)}
+                    active={!customMonths && months === m}
+                    onPress={() => {
+                      setCustomMonths(false);
+                      setMonths(m);
+                    }}
                   />
-                ))
-              : ROUND_CHOICES.map((r) => (
+                ))}
+                <Chip
+                  label={he.seasonsCustom}
+                  active={customMonths}
+                  onPress={() => setCustomMonths(true)}
+                />
+              </>
+            ) : (
+              <>
+                {ROUND_CHOICES.map((r) => (
                   <Chip
                     key={r}
                     label={he.seasonsRoundsLabel(r)}
-                    active={rounds === r}
-                    onPress={() => setRounds(r)}
+                    active={!customRounds && rounds === r}
+                    onPress={() => {
+                      setCustomRounds(false);
+                      setRounds(r);
+                    }}
                   />
                 ))}
+                <Chip
+                  label={he.seasonsCustom}
+                  active={customRounds}
+                  onPress={() => setCustomRounds(true)}
+                />
+              </>
+            )}
           </View>
+
+          {/* The custom pickers. A stepper rather than a text field: the range
+              is small, the value is a count, and a keyboard over a settings
+              sheet is a heavier gesture than this deserves. */}
+          {cadence === 'date' && customMonths ? (
+            <Stepper
+              label={he.seasonsCustomMonths}
+              value={months}
+              unit={he.seasonsMonthsUnit(months)}
+              min={MIN_SEASON_MONTHS}
+              max={MAX_SEASON_MONTHS}
+              onChange={setMonths}
+            />
+          ) : null}
+          {cadence === 'rounds' && customRounds ? (
+            <Stepper
+              label={he.seasonsCustomRounds}
+              value={rounds}
+              unit={he.seasonsRoundsUnit(rounds)}
+              min={MIN_SEASON_ROUNDS}
+              step={ROUND_STEP}
+              onChange={setRounds}
+            />
+          ) : null}
+
+          {/* The dates, live. They answer "what am I actually choosing?" while
+              the admin is still choosing, which is the whole point of showing
+              them here rather than in the confirmation alone. */}
+          {previewDates && !(firstTime && !sealHistory) ? (
+            <View style={styles.dateBox}>
+              <DateLine
+                label={he.seasonsStartsOnLabel}
+                value={formatCalendarDate(previewDates.startsOn)}
+              />
+              <DateLine
+                label={he.seasonsEndsOnLabel}
+                value={formatCalendarDate(previewDates.endsOn)}
+              />
+              <DateLine
+                label={he.seasonsNextStartsLabel}
+                value={formatCalendarDate(previewDates.nextStartsOn)}
+                muted
+              />
+            </View>
+          ) : null}
 
           {firstTime ? (
             <>
@@ -365,7 +605,52 @@ export function SeasonsSettings({
                   onPress={() => setSealHistory(true)}
                 />
               </View>
+
+              {/* Carrying season 1 on under a date cadence: it holds the whole
+                  history, so there is no start date to compute — only an end
+                  the admin names. */}
+              {cadence === 'date' && !sealHistory ? (
+                <>
+                  <Text style={styles.fieldLabel}>{he.seasonsSeason1EndLabel}</Text>
+                  <Text style={styles.fieldHint}>{he.seasonsSeason1EndHint}</Text>
+                  <View style={styles.chipRow}>
+                    {[1, 2, 3, 6].map((m) => {
+                      const d = seasonEndDate(today, m);
+                      return (
+                        <Chip
+                          key={m}
+                          label={formatCalendarDate(d)}
+                          active={season1EndsOn === d}
+                          onPress={() => setSeason1EndsOn(d)}
+                        />
+                      );
+                    })}
+                  </View>
+                </>
+              ) : null}
+
+              {/* What the plan says will happen, in the admin's own numbers. */}
+              {plan.ok && plan.nextStartsOn ? (
+                <View style={styles.dateBox}>
+                  {plan.endsOn ? (
+                    <DateLine
+                      label={he.seasonsConfirmSeason1Ends}
+                      value={formatCalendarDate(plan.endsOn)}
+                    />
+                  ) : null}
+                  <DateLine
+                    label={he.seasonsConfirmSeason2Starts}
+                    value={formatCalendarDate(plan.nextStartsOn)}
+                    muted
+                  />
+                </View>
+              ) : null}
             </>
+          ) : null}
+
+          {/* The refusal, in red, beside the thing that caused it. */}
+          {firstTime && !plan.ok && history !== null ? (
+            <Text style={styles.errorLine}>{planErrorText(plan, rounds)}</Text>
           ) : null}
 
           {/* Its own press, not the screen's Save: none of this is a document
@@ -377,8 +662,18 @@ export function SeasonsSettings({
             // Nothing to save when the chips still show what the club holds.
             // A live "update" button on an unchanged target invites an admin
             // to move a finish line they only came to look at.
-            disabled={busy || (live && !targetChanged)}
-            onPress={live ? saveTarget : enable}
+            //
+            // And never while the plan is refused: the red line above says why,
+            // and a button that submits anyway would make it decorative.
+            disabled={
+              busy ||
+              (live && !targetChanged) ||
+              (firstTime && (history === null || !plan.ok))
+            }
+            // Enabling never acts on the press. It opens a sheet that spells
+            // out, in this club's own numbers, exactly what is about to happen
+            // to its history — and only the button in there does anything.
+            onPress={live ? saveTarget : () => setConfirmOpen(true)}
           />
 
           {/* This block is not saved by the screen's שמור, and it sits among
@@ -409,6 +704,24 @@ export function SeasonsSettings({
           ) : null}
         </View>
       )}
+
+      {/* What is about to happen, in this club's own numbers.
+          Built from the SAME plan the screen above validated and the server
+          recomputes — so the summary a person approves is not a description of
+          the action, it IS the action. */}
+      <SeasonConfirmSheet
+        visible={confirmOpen}
+        plan={plan}
+        cadence={cadence}
+        months={months}
+        rounds={rounds}
+        busy={busy}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          enable();
+        }}
+      />
     </View>
   );
 }
@@ -461,6 +774,58 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  stepper: { gap: spacing.xs, paddingVertical: spacing.xs },
+  stepperLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  stepperControls: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  stepperBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  stepperBtnOff: { opacity: 0.35 },
+  stepperBtnText: { ...typography.h3, color: colors.text },
+  stepperValue: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '800',
+    minWidth: 96,
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
+  dateBox: {
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  // Label first → rightmost under forceRTL, value trailing to its left.
+  dateLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  dateLineLabel: { ...typography.caption, color: colors.textMuted, flex: 1, textAlign: RTL_LABEL_ALIGN },
+  dateLineValue: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  dateLineValueMuted: { ...typography.caption, color: colors.textMuted, fontWeight: '600' },
+  errorLine: {
+    ...typography.caption,
+    color: colors.danger,
+    textAlign: RTL_LABEL_ALIGN,
+    lineHeight: 18,
+  },
   chip: {
     paddingHorizontal: spacing.md,
     // A settings control has to be a thumb's worth of target.

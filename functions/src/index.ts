@@ -36,6 +36,15 @@ import { closeSeason, reopenSeason } from './seasonRollover';
 import { buildRoundSides } from './roundSides';
 import { seasonSeed } from './seasonSeed';
 import {
+  todayIn,
+  isSeasonOver,
+  seasonEndDate,
+  nextSeasonStart,
+  isCalendarDate,
+  type CalendarDate,
+} from './seasonDates';
+import { planActivation, type HistoryChoice } from './seasonActivation';
+import {
   eveningPlayState,
   didEveningHappen,
   type PlayableEvening,
@@ -15093,7 +15102,17 @@ async function runSeasonRollovers(): Promise<void> {
             seasons.roundsAtStart,
             seasons.playedRounds,
           )) >= target;
+      } else if (isCalendarDate((cadence as { endsOn?: unknown }).endsOn)) {
+        // The season runs through the END of its last day, in the CLUB's
+        // calendar. Compared as dates, not instants, so the rollover cannot
+        // land at 02:00 or 03:00 local just because Cloud Functions run in UTC.
+        due = isSeasonOver(
+          (cadence as { endsOn: CalendarDate }).endsOn,
+          todayIn(undefined, now),
+        );
       } else {
+        // A season opened before calendar boundaries existed. Left on the epoch
+        // it was created with, so its dates do not move under it.
         due =
           typeof cadence.endsAt === 'number' &&
           cadence.endsAt > 0 &&
@@ -15204,6 +15223,10 @@ export const enableClubSeasons = onCall(
       cadenceType?: unknown;
       months?: unknown;
       targetRounds?: unknown;
+      /** 'continue' carries season 1 on; 'sealNow' seals it and opens 2. */
+      historyChoice?: unknown;
+      /** Chosen last day of season 1, when carrying it on under a date cadence. */
+      season1EndsOn?: unknown;
     };
     const { ref, group } = await requireClubAdmin(data.groupId, uid);
     const groupId = data.groupId as string;
@@ -15243,6 +15266,9 @@ export const enableClubSeasons = onCall(
       type: string;
       months?: number | null;
       endsAt?: number | null;
+      /** First and LAST day of the season, in the club's calendar. */
+      startsOn?: CalendarDate | null;
+      endsOn?: CalendarDate | null;
       targetRounds?: number | null;
     };
     if (type === 'rounds') {
@@ -15264,6 +15290,8 @@ export const enableClubSeasons = onCall(
         targetRounds: Math.round(asked),
         months: null,
         endsAt: null,
+        endsOn: null,
+        startsOn: null,
       };
     } else {
       const months = MONTH_CHOICES.includes(Number(data.months))
@@ -15272,9 +15300,19 @@ export const enableClubSeasons = onCall(
       // `months` is stored beside the date, not just the date. Without it a
       // season that rolls over has no way to compute its OWN end date, and
       // inherits a deadline that has already passed — see rebaseCadence.
+      // Calendar boundaries alongside the legacy epoch.
+      //
+      // `endsOn` is the LAST day the season is valid, in the club's calendar:
+      // three months from 16.09 runs through 15.12, and the next season begins
+      // on the 16th. `endsAt` is still written so a client that predates this
+      // keeps rendering something, and so the club already running a season on
+      // it does not have its dates moved underneath it.
+      const startsOn = todayIn(undefined, now);
       cadence = {
         type: 'date',
         months,
+        startsOn,
+        endsOn: seasonEndDate(startsOn, months),
         endsAt: addMonthsClampedServer(now, months),
         targetRounds: null,
       };
@@ -15284,7 +15322,39 @@ export const enableClubSeasons = onCall(
     // a club that ran seasons 1-3 and re-enables opens season 4, never 1.
     const closedSoFar = existing?.count ?? 0;
 
-    if (data.closeFirstNow === true) {
+    // The SAME plan the settings screen and the confirmation sheet computed.
+    //
+    // Re-derived here from the club's own history rather than trusted from the
+    // request: the refusal to carry on a season that is already full is a rule
+    // about the club's data, and a rule only the client enforces is a rule an
+    // old build or a replayed call walks straight through.
+    const choice: HistoryChoice =
+      data.historyChoice === 'sealNow' || data.closeFirstNow === true
+        ? 'sealNow'
+        : 'continue';
+    const plan = planActivation({
+      cadence: type,
+      months: type === 'date' ? Number(data.months) : undefined,
+      targetRounds: type === 'rounds' ? Math.round(Number(data.targetRounds)) : undefined,
+      choice,
+      playedHistory: await playedEveningsFromGames(groupId),
+      today: todayIn(undefined, now),
+      season1EndsOn: isCalendarDate(data.season1EndsOn)
+        ? data.season1EndsOn
+        : undefined,
+    });
+    if (!plan.ok) {
+      throw new HttpsError('failed-precondition', `season-plan:${plan.error}`);
+    }
+    // Carrying season 1 on under a DATE cadence: the admin picked its last day,
+    // and the chosen length only starts applying from season 2.
+    if (type === 'date' && choice === 'continue' && plan.endsOn) {
+      cadence.startsOn = null; // season 1 reaches back as far as the club does
+      cadence.endsOn = plan.endsOn;
+      cadence.endsAt = null;
+    }
+
+    if (choice === 'sealNow') {
       const quiet = await clubIsQuiet(groupId);
       if (!quiet.ok) {
         throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');

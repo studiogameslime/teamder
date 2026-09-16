@@ -98,6 +98,12 @@ export interface EnableSeasonsArgs {
   groupId: string;
   /** `date` ends the season on a deadline; `rounds` when a round count is hit. */
   cadenceType: 'date' | 'rounds';
+  /** What to do with the club's existing history: carry season 1 on, or seal
+   *  it now and open season 2. Only meaningful on the first enable. */
+  historyChoice?: 'continue' | 'sealNow';
+  /** The last day of season 1, when carrying it on under a date cadence — it
+   *  holds the whole history, so there is no start date to compute. */
+  season1EndsOn?: string;
   /** For `date`. */
   months?: number;
   /** For `rounds` — the season's TOTAL finished rounds, not a remainder. */

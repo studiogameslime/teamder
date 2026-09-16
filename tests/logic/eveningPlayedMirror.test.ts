@@ -26,6 +26,12 @@ describe.each([
     'functions/src/seasonParticipants.ts',
   ],
   ['seasonSeed', 'src/utils/seasonSeed.ts', 'functions/src/seasonSeed.ts'],
+  ['seasonDates', 'src/utils/seasonDates.ts', 'functions/src/seasonDates.ts'],
+  [
+    'seasonActivation',
+    'src/utils/seasonActivation.ts',
+    'functions/src/seasonActivation.ts',
+  ],
 ])('the two copies of %s', (_name, clientPath, serverPath) => {
   const client = fs.readFileSync(
     path.join(ROOT, 'src/utils/eveningPlayed.ts'),
@@ -43,7 +49,10 @@ describe.each([
   it('and is byte-identical to the client file below the marker', () => {
     const copied = server
       .slice(server.indexOf(MARKER) + MARKER.length)
-      .replace(/^\n+/, '');
+      .replace(/^\n+/, '')
+      // Cloud Functions have no `@/` alias, so that one line is allowed to
+      // differ — and ONLY that one.
+      .replace(/from '\.\/seasonDates'/g, "from '@/utils/seasonDates'");
     expect(copied).toBe(client);
   });
 });

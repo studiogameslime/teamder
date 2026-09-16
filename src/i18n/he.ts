@@ -2136,6 +2136,59 @@ export const he = {
     'המחזורים האלה נסגרו אוטומטית בלי שנרשמה בהם פעילות — לא הופעל טיימר ולא נשמרה תוצאה. עד שתכריעו הם לא נספרים במועדון, בנוכחות או בסטטיסטיקות.',
   unverifiedEveningYes: 'התקיים',
   unverifiedEveningNo: 'לא התקיים',
+  // ── הגדרת עונות ──
+  seasonsLengthLabel: 'משך עונה',
+  seasonsCustom: 'מותאם אישית',
+  seasonsCustomMonths: 'כמות חודשים',
+  seasonsCustomRounds: 'כמות מחזורים',
+  seasonsMonthsUnit: (n: number) => (n === 1 ? 'חודש' : `${n} חודשים`),
+  seasonsRoundsUnit: (n: number) => `${n} מחזורים`,
+  seasonsStartsOnLabel: 'תחילת העונה',
+  seasonsEndsOnLabel: 'סיום העונה',
+  seasonsNextStartsLabel: 'העונה הבאה תתחיל',
+  // עונה 1 היא עונת מעבר: היא מכילה את כל ההיסטוריה, ולכן אין לה תאריך התחלה
+  // אמיתי לחשב — המנהל קובע רק מתי היא נגמרת.
+  seasonsSeason1EndLabel: 'סיום עונה 1',
+  seasonsSeason1EndHint:
+    'עונה 1 מכילה את כל מה שהמועדון שיחק עד היום, אז אין לה תאריך התחלה לחשב — רק תאריך סיום שאתם קובעים.',
+  seasonsPickDate: 'בחרו תאריך',
+  // validation
+  seasonsErrHistoryExceeds: (played: number, target: number) =>
+    `במועדון כבר התקיימו ${played} מחזורים. לא ניתן להמשיך את עונה 1 עם הגדרה של ${target} מחזורים לעונה.`,
+  seasonsErrHistoryFills: (played: number) =>
+    `במועדון כבר התקיימו ${played} מחזורים — בדיוק מכסת העונה. עונה 1 חייבת להסתיים, ועונה 2 תתחיל במקומה.`,
+  seasonsErrMonths: `בחרו בין ${1} ל-24 חודשים.`,
+  seasonsErrRounds: 'עונה חייבת להכיל לפחות 2 מחזורים.',
+  seasonsErrSeason1End: 'בחרו תאריך סיום לעונה 1.',
+  seasonsErrSeason1Past: 'תאריך הסיום של עונה 1 חייב להיות בעתיד.',
+  // confirmation
+  seasonsConfirmTitle: 'הפעלת עונות',
+  seasonsConfirmMethod: 'שיטה',
+  seasonsConfirmMethodDate: 'פרק זמן',
+  seasonsConfirmMethodRounds: 'כמות מחזורים',
+  seasonsConfirmExisting: 'מחזורים קיימים',
+  seasonsConfirmHistory: 'היסטוריה',
+  seasonsConfirmHistoryValue: 'כל הנתונים הקיימים ישויכו לעונה 1',
+  seasonsConfirmChoice: 'בחירה',
+  seasonsConfirmChoiceContinue: 'להמשיך את עונה 1',
+  seasonsConfirmChoiceSeal: 'לסיים את עונה 1 ולהתחיל עונה חדשה',
+  seasonsConfirmSeason1State: (played: number, target: number) =>
+    `${played}/${target}`,
+  seasonsConfirmSeason1StateLabel: 'מצב עונה 1 לאחר ההפעלה',
+  seasonsConfirmRemaining: 'נותרו',
+  seasonsConfirmRemainingValue: (n: number) => `${n} מחזורים`,
+  seasonsConfirmAfterTarget: (target: number) =>
+    `לאחר המחזור ה-${target}: עונה 1 תסתיים ועונה 2 תתחיל.`,
+  seasonsConfirmSealedNow: (played: number) =>
+    `${played} מחזורים קיימים — תיסגר כעת`,
+  seasonsConfirmSeason2: 'עונה 2',
+  seasonsConfirmSeason1: 'עונה 1',
+  seasonsConfirmNextRound: 'המחזור הבא',
+  seasonsConfirmNextRoundValue: (target: number) => `1/${target} של עונה 2`,
+  seasonsConfirmSeason1Ends: 'עונה 1 תסתיים',
+  seasonsConfirmSeason2Starts: 'עונה 2 תתחיל',
+  seasonsConfirmFromSeason2: 'משך עונה 2 והלאה',
+  seasonsConfirmCta: 'אישור והפעלה',
   seasonHistoryTitle: 'עונות קודמות',
   seasonHistoryCta: 'עונות קודמות ותארים',
   seasonHistoryLoadFailed:

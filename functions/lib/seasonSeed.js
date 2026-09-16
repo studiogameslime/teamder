@@ -23,5 +23,8 @@ exports.seasonSeed = seasonSeed;
 // here, so the card and the sweep can never disagree.
 const num = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
 function seasonSeed(sealedEvenings, playedHistory = 0) {
-    return { roundsAtStart: num(sealedEvenings), playedRounds: num(playedHistory) };
+    return {
+        roundsAtStart: num(sealedEvenings),
+        playedRounds: num(playedHistory),
+    };
 }
