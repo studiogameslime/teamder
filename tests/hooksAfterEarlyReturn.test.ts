@@ -23,9 +23,28 @@ import path from 'path';
 
 const ROOT = path.resolve(__dirname, '..');
 
-/** Screens that return early from the component body and so must keep every
- *  hook above the first return. Add a screen here when it grows an early exit. */
-const SCREENS = ['src/screens/AdvancedLiveMatchScreen.tsx'];
+/**
+ * EVERY screen, discovered — not a hand-kept list.
+ *
+ * This guarded one file, and the bug promptly recurred in a second:
+ * CommunityDetailsScreen grew a `useMemo` below its two guard clauses and the
+ * club screen stopped rendering entirely — "Rendered more hooks than during the
+ * previous render", caught on a device rather than by this test, which is the
+ * wrong way round. A list somebody has to remember to add to is a list that
+ * protects the file that already broke.
+ *
+ * Screens with no early return are skipped by `firstEarlyReturn` returning -1,
+ * so this costs nothing on the ones it does not apply to.
+ */
+function allScreens(dir: string, out: string[] = []): string[] {
+  for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+    const rel = `${dir}/${e.name}`;
+    if (e.isDirectory()) allScreens(rel, out);
+    else if (e.name.endsWith('.tsx')) out.push(rel);
+  }
+  return out;
+}
+const SCREENS = allScreens('src/screens');
 
 const HOOK_CALL = /(?:^|[^.\w])(?:React\.)?(use[A-Z]\w*)\s*\(/;
 
@@ -41,6 +60,10 @@ const HOOK_CALL = /(?:^|[^.\w])(?:React\.)?(use[A-Z]\w*)\s*\(/;
 const GUARD_OPEN = /^ {2}if \(/;
 const GUARD_CLOSE = /^ {2}\}/;
 const GUARD_RETURN = /^ {4}return\b/;
+/** The one-line form — `if (!user) return null;` — which the block scan above
+ *  never sees, because it looks for a `return` on a LATER line. ProfileScreen
+ *  had exactly this with a `useRef` below it. */
+const GUARD_INLINE = /^ {2}if \(.*\)\s*return\b/;
 
 /** Where the component itself begins. Module-level helpers above it are
  *  indented the same way and have guard clauses of their own — scanning from
@@ -51,11 +74,29 @@ function componentStart(lines: string[], name: string): number {
   return lines.findIndex((l) => decl.test(l));
 }
 
+/**
+ * Where the component ENDS — the next top-level declaration, or the file's end.
+ *
+ * Without this the scan runs straight on into whatever is defined below. Files
+ * here routinely hold several components (LiveMatchScreen is a small dispatcher
+ * with PlainLiveMatchScreen beneath it), so an early return in the first one
+ * made every hook in the second look like an offender — five false alarms the
+ * moment this guard was widened past its original single file.
+ */
+function componentEnd(lines: string[], start: number): number {
+  const NEXT_TOP_LEVEL = /^(?:export )?(?:default )?(?:function |const [A-Za-z]\w*(?:: |= ))/;
+  for (let i = start + 1; i < lines.length; i++) {
+    if (NEXT_TOP_LEVEL.test(lines[i])) return i;
+  }
+  return lines.length;
+}
+
 /** Line index of the first guard clause that returns, or -1. */
-function firstEarlyReturn(lines: string[], from: number): number {
-  for (let i = from; i < lines.length; i++) {
+function firstEarlyReturn(lines: string[], from: number, to: number): number {
+  for (let i = from; i < to; i++) {
+    if (GUARD_INLINE.test(lines[i])) return i;
     if (!GUARD_OPEN.test(lines[i])) continue;
-    for (let j = i + 1; j < lines.length && !GUARD_CLOSE.test(lines[j]); j++) {
+    for (let j = i + 1; j < to && !GUARD_CLOSE.test(lines[j]); j++) {
       if (GUARD_RETURN.test(lines[j])) return j;
     }
   }
@@ -78,13 +119,17 @@ describe('no hook is called after a component bails out early', () => {
       const lines = src.split('\n');
 
       const start = componentStart(lines, path.basename(rel, '.tsx'));
-      expect(start).toBeGreaterThan(-1); // the component must be findable
+      // A file whose component is not named after it (a barrel, a helper) is
+      // not what this guard is about.
+      if (start < 0) return;
 
-      const firstReturn = firstEarlyReturn(lines, start);
-      expect(firstReturn).toBeGreaterThan(-1); // the guard needs a bail-out to guard
+      const end = componentEnd(lines, start);
+      const firstReturn = firstEarlyReturn(lines, start, end);
+      // A screen with no guard clause has nothing to get wrong here.
+      if (firstReturn < 0) return;
 
       const offenders: string[] = [];
-      for (let i = firstReturn + 1; i < lines.length; i++) {
+      for (let i = firstReturn + 1; i < end; i++) {
         const line = lines[i];
         if (!isRealCall(line)) continue;
         const m = HOOK_CALL.exec(line);

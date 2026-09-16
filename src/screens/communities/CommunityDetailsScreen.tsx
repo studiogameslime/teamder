@@ -537,6 +537,25 @@ export function CommunityDetailsScreen() {
 
   // ─── Loading / empty states ─────────────────────────────────────────────
 
+  /**
+   * A game of THIS club being played right now.
+   *
+   * Asked of `canEnterLive`, the same gate both live screens use, so this
+   * button can never offer a door the next screen would shut — including its
+   * membership rule, which lets a member who is not on tonight's roster watch.
+   */
+  const liveNow = useMemo(
+    () =>
+      upcoming.find((g) =>
+        canEnterLive(g, {
+          isOrganizerOrAdmin: isAdmin,
+          isParticipant: !!me && (g.players ?? []).includes(me.id),
+          isClubMember: isMember || isAdmin,
+        }),
+      ) ?? null,
+    [upcoming, isAdmin, isMember, me],
+  );
+
   if (loading && !group) {
     return (
       <View style={styles.root}>
@@ -586,24 +605,6 @@ export function CommunityDetailsScreen() {
   }
 
   const nextGame = upcoming[0];
-  /**
-   * A game of THIS club being played right now.
-   *
-   * Asked of `canEnterLive`, the same gate both live screens use, so this
-   * button can never offer a door the next screen would shut — including its
-   * membership rule, which lets a member who is not on tonight's roster watch.
-   */
-  const liveNow = useMemo(
-    () =>
-      upcoming.find((g) =>
-        canEnterLive(g, {
-          isOrganizerOrAdmin: isAdmin,
-          isParticipant: !!me && (g.players ?? []).includes(me.id),
-          isClubMember: isMember || isAdmin,
-        }),
-      ) ?? null,
-    [upcoming, isAdmin, isMember, me],
-  );
   // Use the authoritative finished-games count from getCommunityStats (windowed
   // to ~200 terminal docs, cancelled excluded) so this number AGREES with the
   // "מחזורים שיצאו לפועל" stat shown lower on the same screen. The old source

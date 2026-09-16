@@ -621,6 +621,15 @@ export function ProfileScreen() {
     }
   };
 
+  // Drawn once per mount: the coach says something new every time the app
+  // opens, and holds that line while the screen is up — a re-roll on each
+  // render would reshuffle the words mid-read.
+  const assistantNonce = useRef(newAssistantNonce()).current;
+
+  // Every hook above this line, and this line is why. The component bails out
+  // here when the user has not loaded; a hook below it runs on the render
+  // AFTER the user arrives and not on the one before, which is the count
+  // mismatch that unmounts a screen outright.
   if (!user) return null;
 
   // Live played-games count (teams-drawn + game passed). Falls back to the
@@ -797,10 +806,6 @@ export function ProfileScreen() {
   // are on screen right now, so an availability message can silence itself
   // when the recommended-day banner or the podium is already stating the very
   // same headcount a few rows down.
-  // Drawn once per mount: the coach says something new every time the app
-  // opens, and holds that line while the screen is up — a re-roll on each
-  // render would reshuffle the words mid-read.
-  const assistantNonce = useRef(newAssistantNonce()).current;
 
   const assistantMessage = useMemo<AssistantMessage | null>(() => {
     const now = Date.now();

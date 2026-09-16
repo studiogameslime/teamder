@@ -55,40 +55,11 @@ export function ProfileEditScreen() {
     setAvatarId(user.avatarId);
   }, [user?.id, user?.name, user?.photoUrl, user?.avatarId]);
 
-  if (!user) return null;
-
-  const previewUser = {
-    id: user.id,
-    name: name.trim() || user.name,
-    photoUrl,
-    avatarId,
-  };
-
-  const nameDirty = name.trim().length > 0 && name.trim() !== user.name;
-  const photoDirty = photoUrl !== user.photoUrl;
-  const avatarDirty = avatarId !== user.avatarId;
-  const isDirty = nameDirty || photoDirty || avatarDirty;
-  const canSave = !busy && !uploading && isDirty;
-
-  // Catch back-navigation attempts when there are unsaved changes.
-  // Without this the user can hit the system back button and lose
-  // their photo upload silently.
-  //
-  // CRITICAL: we read `isDirty` and `savingRef` THROUGH refs at
-  // event time, not as captured closure values. Two reasons:
-  //   1. The save flow calls `nav.goBack()` synchronously after
-  //      `await updateProfile()`. React 18 may not have re-rendered
-  //      yet when goBack fires beforeRemove, so a listener that
-  //      captured `busy=false` at registration would still consider
-  //      the doc dirty and pop the "unsaved changes" dialog —
-  //      blocking the legitimate save→back flow. The ref pattern
-  //      reads the live value at event time and skips the dialog
   //      mid-save.
   //   2. Same trick guards against multiple re-renders shifting
   //      which listener is active mid-save.
   const dirtyRef = useRef(false);
   const savingRef = useRef(false);
-  dirtyRef.current = isDirty;
 
   useEffect(() => {
     const unsub = (nav as unknown as {
@@ -124,6 +95,42 @@ export function ProfileEditScreen() {
     });
     return unsub;
   }, [nav]);
+
+  // Every hook above this line. The component bails out here while the user
+  // loads, so a hook below it runs on the render AFTER the user arrives and
+  // not on the one before — the count mismatch that unmounts a screen.
+  if (!user) return null;
+
+  const previewUser = {
+    id: user.id,
+    name: name.trim() || user.name,
+    photoUrl,
+    avatarId,
+  };
+
+  const nameDirty = name.trim().length > 0 && name.trim() !== user.name;
+  const photoDirty = photoUrl !== user.photoUrl;
+  const avatarDirty = avatarId !== user.avatarId;
+  const isDirty = nameDirty || photoDirty || avatarDirty;
+  // Kept on a ref so the beforeRemove listener above reads the CURRENT value
+  // rather than the one captured when it was registered. A plain assignment,
+  // not a hook, so it stays here beside the value it mirrors.
+  dirtyRef.current = isDirty;
+  const canSave = !busy && !uploading && isDirty;
+
+  // Catch back-navigation attempts when there are unsaved changes.
+  // Without this the user can hit the system back button and lose
+  // their photo upload silently.
+  //
+  // CRITICAL: we read `isDirty` and `savingRef` THROUGH refs at
+  // event time, not as captured closure values. Two reasons:
+  //   1. The save flow calls `nav.goBack()` synchronously after
+  //      `await updateProfile()`. React 18 may not have re-rendered
+  //      yet when goBack fires beforeRemove, so a listener that
+  //      captured `busy=false` at registration would still consider
+  //      the doc dirty and pop the "unsaved changes" dialog —
+  //      blocking the legitimate save→back flow. The ref pattern
+  //      reads the live value at event time and skips the dialog
 
   const handlePickPhoto = async () => {
     setUploading(true);
