@@ -36,12 +36,22 @@ export function CommunityChampionship({
   // every column this table renders, so a past season is exactly as complete
   // as the live one — which is the whole reason it is worth offering.
   seasonId,
+  /** Rows the caller has ALREADY assembled — used for the all-time scope,
+   *  which is the live table plus every archive and therefore cannot be
+   *  fetched as one document. When given, nothing is loaded here. */
+  rows,
 }: {
   groupId: string;
   memberIds?: string[];
   attendedByUser?: Record<string, number>;
   seasonNo?: number;
   seasonId?: string;
+  rows?: {
+    totalGoals: number;
+    totalRounds: number;
+    players: ChampionshipRow[];
+    names?: Record<string, string>;
+  } | null;
 }) {
   // Which view of the same rows. 'מצטבר' is the table exactly as it has
   // always been; 'יעילות' is per-game rates over those same players. Not
@@ -60,6 +70,15 @@ export function CommunityChampionship({
     setData(null);
     // A past season comes from its archive; the running one from the live
     // rows, which ARE that season.
+    if (rows) {
+      // Already assembled by the caller; a fetch here would be a second,
+      // narrower answer to a question that has one.
+      setData(rows);
+      setFrozenNames(rows.names ?? {});
+      return () => {
+        alive = false;
+      };
+    }
     setFrozenNames({});
     const load = seasonId
       ? seasonHistoryService.table(groupId, seasonId).then((t) => {
@@ -80,7 +99,7 @@ export function CommunityChampionship({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, memberKey, seasonId]);
+  }, [groupId, memberKey, seasonId, rows]);
 
   // Clean sheets have only been recorded since mid-August, so a long-standing
   // player's percentage is computed over a shorter window than their history.
@@ -157,8 +176,8 @@ export function CommunityChampionship({
         //
         // The rollup's own `games` counter IS season-scoped, because the close
         // winds it back with everything else. That is the right number here.
-        attendedByUser={seasonNo || seasonId ? undefined : attendedByUser}
-        fallbackNames={seasonId ? frozenNames : undefined}
+        attendedByUser={seasonNo || seasonId || rows ? undefined : attendedByUser}
+        fallbackNames={seasonId || rows ? frozenNames : undefined}
         // The same club mini-game total shown in the tile above, so the
         // efficiency tab's entry bar is a share of the season on screen — a
         // past season's bar is measured against that season, not against today.

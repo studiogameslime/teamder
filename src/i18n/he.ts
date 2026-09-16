@@ -2126,6 +2126,11 @@ export const he = {
   // בורר העונות שמעל הטבלה. "עכשיו" מסומן על העונה הרצה כדי שברור שזו
   // ברירת המחדל ושאפשר לחזור אליה, ולא סתם עוד עונה ברשימה.
   communityStatsScopeLabel: 'מציגים:',
+  communityStatsScopeAllTime: 'כל הזמנים',
+  // מוצג כשבוחרים "כל הזמנים": המספרים כאן הם סכום של כל העונות, כולל אלה
+  // שנסגרו — וזו הסיבה שהם גדולים מאלה של העונה הרצה.
+  communityStatsScopeAllTimeNote: (seasons: number) =>
+    `כל המספרים כאן הם סכום של ${seasons === 1 ? 'העונה שנסגרה' : `${seasons} העונות שנסגרו`} ושל העונה הרצה יחד.`,
   communityStatsScopeCurrent: (no: number) => `עונה ${no} · עכשיו`,
   communityStatsScopePast: (no: number) => `עונה ${no}`,
   // מה כן ומה לא נשמר לעונה שהסתיימה. נאמר במפורש, כי מספר שנעלם בלי הסבר
