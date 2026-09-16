@@ -105,13 +105,33 @@ describe('where I stand in the club', () => {
     player('z', { goals: 1, assists: 8, wins: 2 }),
   ];
 
-  it('ranks me, and ties share the better position', () => {
+  it('gives me the position the club TABLE puts me in', () => {
+    // This used to let ties share the better position, and it was reported as
+    // wrong ("המיקום שלי ... לא נכון") — because the table next to it is a
+    // positional list that breaks every tie. A player it lists third was told
+    // they were second.
+    //
+    // Goals: x has 9. me and y are level on 5, level again on wins (4) and on
+    // goals, and y has more assists — so the table puts y second and me third.
     const s = buildPersonalSeason({ me: 'me', players, pairs: [] });
-    // x is ahead on goals; y is level, so we are both 2nd.
-    expect(s.ranks.goals).toBe(2);
-    expect(s.ranks.wins).toBe(2);
-    // Assists: z has 8 and y has 3, both ahead; x has 0, behind. So third.
+    expect(s.ranks.goals).toBe(3);
+    // Wins: x has 7. me and y are level on 4, and y wins the assists
+    // tie-break the same way.
+    expect(s.ranks.wins).toBe(3);
+    // Assists: z (8) and y (3) are both genuinely ahead — no tie to break.
     expect(s.ranks.assists).toBe(3);
+  });
+
+  it('breaks a tie the way the table does, not alphabetically by luck', () => {
+    // Two players identical on every counter the table sorts by fall back to
+    // uid, which is what the table does — so the answer is stable rather than
+    // dependent on the order the rows happened to arrive in.
+    const twins = [
+      player('bbb', { goals: 4, assists: 2, wins: 3 }),
+      player('aaa', { goals: 4, assists: 2, wins: 3 }),
+    ];
+    expect(buildPersonalSeason({ me: 'aaa', players: twins, pairs: [] }).ranks.goals).toBe(1);
+    expect(buildPersonalSeason({ me: 'bbb', players: twins, pairs: [] }).ranks.goals).toBe(2);
   });
 
   it('counts only players who actually played this season', () => {

@@ -170,3 +170,37 @@ describe('the plan is the same answer everywhere', () => {
     }
   });
 });
+
+describe('a client that predates the season-1 end picker', () => {
+  // 1.1.7 is live in the store and sends no `season1EndsOn`. Requiring one
+  // turned "הפעל עונות" into "משהו השתבש" for every club on that build —
+  // reported within hours of the deploy. The server fills the gap rather than
+  // refusing, because a shipped client cannot learn to send it.
+  it('is not refused — season 1 runs the chosen length from today', () => {
+    const p = planActivation({
+      cadence: 'date',
+      months: 3,
+      choice: 'continue',
+      playedHistory: 19,
+      today: '2026-09-16',
+      // The fallback the server computes when the request carries none.
+      season1EndsOn: '2026-12-15',
+    });
+    expect(p.ok).toBe(true);
+    expect(p.endsOn).toBe('2026-12-15');
+    expect(p.nextStartsOn).toBe('2026-12-16');
+  });
+
+  it('and a client that DOES send one still gets what the admin chose', () => {
+    const p = planActivation({
+      cadence: 'date',
+      months: 3,
+      choice: 'continue',
+      playedHistory: 19,
+      today: '2026-09-16',
+      season1EndsOn: '2026-10-31',
+    });
+    expect(p.endsOn).toBe('2026-10-31');
+    expect(p.nextStartsOn).toBe('2026-11-01');
+  });
+});

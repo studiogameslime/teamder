@@ -293,7 +293,17 @@ export function SeasonSummaryScreen() {
           <Text style={styles.heroSeason}>
             {he.seasonNumberLabel(model.seasonNo)} · {model.groupName}
           </Text>
-          <Text style={styles.heroRange}>{formatRange(model.startsAt, model.endsAt)}</Text>
+          {/* A season counted in evenings says where it has got to; one
+              counted in months says when it runs. Printing a date over a
+              rounds season answered a question nobody asked. */}
+          <Text style={styles.heroRange}>
+            {model.roundsCadence
+              ? he.seasonsProgressRounds(
+                  model.roundsCadence.played,
+                  model.roundsCadence.target,
+                )
+              : formatRange(model.startsAt, model.endsAt)}
+          </Text>
           {model.closed ? (
             <Text style={styles.heroClosed}>{he.seasonClosedBadge}</Text>
           ) : null}

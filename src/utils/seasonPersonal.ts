@@ -226,10 +226,17 @@ function best(
 /**
  * Where I stand in the club on one counter.
  *
- * Only players who actually played are ranked — a club of 40 where 12 turned
- * up this season should say "3rd of 12", not "3rd of 40". Ties share the
- * better position (two top scorers are both 1st), which is how a league table
- * reads and how people talk.
+ * THE TABLE'S POSITION, not a count of who is ahead.
+ *
+ * These two are not the same thing, and the difference was visible: the club
+ * table is a positional list that breaks every tie (wins → goals → assists →
+ * uid, and tapping a column re-sorts stably on it), while this used to count
+ * "how many are strictly ahead, +1" and let ties SHARE a position. So a player
+ * the table listed third was told they were second — reported as "המיקום שלי
+ * ... לא נכון", and correctly.
+ *
+ * Mirrors the table's comparator exactly so the two can never disagree: the
+ * chosen metric first, then the table's own tie-breakers.
  */
 function rankOf(
   rows: readonly SeasonPlayerRow[],
@@ -237,11 +244,17 @@ function rankOf(
   pick: (r: SeasonPlayerRow) => number,
 ): { rank: number | null; of: number } {
   const played = rows.filter((r) => num(r.rounds) > 0 && isReal(r.userId));
-  const mine = played.find((r) => r.userId === me);
-  if (!mine) return { rank: null, of: played.length };
-  const myValue = pick(mine);
-  const ahead = played.filter((r) => pick(r) > myValue).length;
-  return { rank: ahead + 1, of: played.length };
+  const order = [...played].sort(
+    (a, b) =>
+      pick(b) - pick(a) ||
+      num(b.wins) - num(a.wins) ||
+      num(b.goals) - num(a.goals) ||
+      num(b.assists) - num(a.assists) ||
+      a.userId.localeCompare(b.userId),
+  );
+  const i = order.findIndex((r) => r.userId === me);
+  // A player with no row at all is not ranked — they did not play.
+  return { rank: i < 0 ? null : i + 1, of: order.length };
 }
 
 export interface PersonalSeasonInput {

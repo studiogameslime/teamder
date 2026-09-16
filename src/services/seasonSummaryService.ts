@@ -64,6 +64,21 @@ export interface SeasonSummaryModel {
   endsAt: number | null;
   closed: boolean;
   /**
+   * Set ONLY for a season that is running and measured in evenings.
+   *
+   * The hero line otherwise prints a date range, which for a rounds season is
+   * an answer to a question nobody asked — the club is counting מחזורים, not
+   * months, and the card on the club screen says so. Reported as "העונה
+   * מוגדרת במחזורים ולא לפי תאריך".
+   *
+   * A CLOSED season deliberately has none: its dates are real and finished,
+   * while `cadence` and `playedRounds` live on the live club document and
+   * describe whatever season is running NOW — reading them for a sealed one
+   * would print this season's progress over last season's heading.
+   */
+  roundsCadence?: { played: number; target: number };
+
+  /**
    * MINI-GAMES the club played this season — the context every rank sits in.
    *
    * Not the same counter as a rounds-cadence target, which counts sealed
@@ -465,6 +480,17 @@ export const seasonSummaryService = {
         endsAt: null,
         closed: false,
         completedRounds: num(clubSnap.data()?.rounds),
+        // Exactly the derivation SeasonsCard uses, so the two surfaces cannot
+        // drift into showing different progress for the same season.
+        ...(seasons.cadence?.type === 'rounds' &&
+        typeof seasons.cadence.targetRounds === 'number'
+          ? {
+              roundsCadence: {
+                played: num(seasons.playedRounds),
+                target: seasons.cadence.targetRounds,
+              },
+            }
+          : {}),
         me,
         // A running season has no titles yet, by design.
         myTitles: [],

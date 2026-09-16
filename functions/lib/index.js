@@ -12691,16 +12691,31 @@ exports.enableClubSeasons = (0, https_1.onCall)({
     const choice = data.historyChoice === 'sealNow' || data.closeFirstNow === true
         ? 'sealNow'
         : 'continue';
+    const today = (0, seasonDates_1.todayIn)(undefined, now);
+    const askedMonths = type === 'date' ? Number(data.months) : undefined;
+    // A shipped client that predates the season-1 end picker sends no date.
+    //
+    // It must NOT be refused: 1.1.7 is live in the store and cannot learn to
+    // send one, so requiring it turned "הפעל עונות" into "משהו השתבש" for
+    // every club on the current build — reported within hours of the deploy,
+    // and entirely my doing for putting the rule on the server first.
+    //
+    // Absent, season 1 simply runs the chosen length from today, which is what
+    // the app did before the picker existed. A client that DOES send a date
+    // still gets exactly what the admin chose.
+    const season1EndsOn = (0, seasonDates_1.isCalendarDate)(data.season1EndsOn)
+        ? data.season1EndsOn
+        : type === 'date' && choice === 'continue' && (0, seasonDates_1.isValidSeasonMonths)(askedMonths)
+            ? (0, seasonDates_1.seasonEndDate)(today, askedMonths)
+            : undefined;
     const plan = (0, seasonActivation_1.planActivation)({
         cadence: type,
-        months: type === 'date' ? Number(data.months) : undefined,
+        months: askedMonths,
         targetRounds: type === 'rounds' ? Math.round(Number(data.targetRounds)) : undefined,
         choice,
         playedHistory: await playedEveningsFromGames(groupId),
-        today: (0, seasonDates_1.todayIn)(undefined, now),
-        season1EndsOn: (0, seasonDates_1.isCalendarDate)(data.season1EndsOn)
-            ? data.season1EndsOn
-            : undefined,
+        today,
+        season1EndsOn,
     });
     if (!plan.ok) {
         throw new https_1.HttpsError('failed-precondition', `season-plan:${plan.error}`);

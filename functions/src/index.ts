@@ -41,6 +41,7 @@ import {
   seasonEndDate,
   nextSeasonStart,
   isCalendarDate,
+  isValidSeasonMonths,
   type CalendarDate,
 } from './seasonDates';
 import { planActivation, type HistoryChoice } from './seasonActivation';
@@ -15332,16 +15333,31 @@ export const enableClubSeasons = onCall(
       data.historyChoice === 'sealNow' || data.closeFirstNow === true
         ? 'sealNow'
         : 'continue';
+    const today = todayIn(undefined, now);
+    const askedMonths = type === 'date' ? Number(data.months) : undefined;
+    // A shipped client that predates the season-1 end picker sends no date.
+    //
+    // It must NOT be refused: 1.1.7 is live in the store and cannot learn to
+    // send one, so requiring it turned "הפעל עונות" into "משהו השתבש" for
+    // every club on the current build — reported within hours of the deploy,
+    // and entirely my doing for putting the rule on the server first.
+    //
+    // Absent, season 1 simply runs the chosen length from today, which is what
+    // the app did before the picker existed. A client that DOES send a date
+    // still gets exactly what the admin chose.
+    const season1EndsOn = isCalendarDate(data.season1EndsOn)
+      ? data.season1EndsOn
+      : type === 'date' && choice === 'continue' && isValidSeasonMonths(askedMonths)
+        ? seasonEndDate(today, askedMonths as number)
+        : undefined;
     const plan = planActivation({
       cadence: type,
-      months: type === 'date' ? Number(data.months) : undefined,
+      months: askedMonths,
       targetRounds: type === 'rounds' ? Math.round(Number(data.targetRounds)) : undefined,
       choice,
       playedHistory: await playedEveningsFromGames(groupId),
-      today: todayIn(undefined, now),
-      season1EndsOn: isCalendarDate(data.season1EndsOn)
-        ? data.season1EndsOn
-        : undefined,
+      today,
+      season1EndsOn,
     });
     if (!plan.ok) {
       throw new HttpsError('failed-precondition', `season-plan:${plan.error}`);
@@ -15529,7 +15545,24 @@ export const updateSeasonTarget = onCall(
     const played = await completedRoundsOf(groupId, seasons.roundsAtStart);
     const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
 
-    let next: { type: string; months?: number; endsAt?: number; targetRounds?: number };
+    // `null` on the unused half, for the same reason enableClubSeasons does it:
+    // the seasons block is written with merge:true, and a merge into a nested
+    // map merges field BY FIELD. Omitting a field leaves whatever the previous
+    // cadence put there.
+    //
+    // Seen in production on a real club: an admin tried a date cadence, went
+    // back to rounds, and the stored cadence kept `months: 3` and a stale
+    // `endsAt` from the experiment. Nothing reads them today — every reader
+    // branches on `type` first — which is exactly why they would have sat there
+    // until one didn't.
+    let next: {
+      type: string;
+      months?: number | null;
+      endsAt?: number | null;
+      endsOn?: CalendarDate | null;
+      startsOn?: CalendarDate | null;
+      targetRounds?: number | null;
+    };
     if (type === 'rounds') {
       const asked = Math.round(Number(data.targetRounds));
       if (!Number.isFinite(asked) || asked <= 0) {
@@ -15541,7 +15574,14 @@ export const updateSeasonTarget = onCall(
           `target ${asked} is not above the ${played} rounds already played`,
         );
       }
-      next = { type: 'rounds', targetRounds: asked };
+      next = {
+        type: 'rounds',
+        targetRounds: asked,
+        months: null,
+        endsAt: null,
+        endsOn: null,
+        startsOn: null,
+      };
     } else {
       const months = MONTH_CHOICES.includes(Number(data.months))
         ? Number(data.months)
@@ -15550,7 +15590,16 @@ export const updateSeasonTarget = onCall(
       if (endsAt <= now) {
         throw new HttpsError('failed-precondition', 'end date is in the past');
       }
-      next = { type: 'date', months, endsAt };
+      // Calendar boundaries alongside the legacy epoch, same as the enable path.
+      const startsOn = todayIn(undefined, now);
+      next = {
+        type: 'date',
+        months,
+        endsAt,
+        startsOn,
+        endsOn: seasonEndDate(startsOn, months),
+        targetRounds: null,
+      };
     }
 
     const who = await db.collection('users').doc(uid).get();
