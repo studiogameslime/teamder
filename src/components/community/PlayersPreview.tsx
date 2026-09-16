@@ -99,6 +99,12 @@ export function PlayersPreview({
           accessibilityLabel={u.name}
         >
           <UserAvatar user={u} size={SHIRT_SIZE} />
+          <Text style={styles.name} numberOfLines={1}>
+            {u.name}
+          </Text>
+          {/* Under the name, not over it. The tag qualifies the person, so it
+              reads after them — and above the name it separated the face from
+              the name it belongs to. */}
           {isAdmin ? (
             <View style={styles.adminBadge}>
               <Text style={styles.adminBadgeText} numberOfLines={1}>
@@ -106,9 +112,6 @@ export function PlayersPreview({
               </Text>
             </View>
           ) : null}
-          <Text style={styles.name} numberOfLines={1}>
-            {u.name}
-          </Text>
         </Pressable>
       );
     },

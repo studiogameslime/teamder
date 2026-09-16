@@ -54,6 +54,7 @@ import { CoverImagePicker } from '@/components/community/CoverImagePicker';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { CommunityStatsGrid } from '@/components/community/CommunityStatsGrid';
 import { CommunityChampionship } from '@/components/community/CommunityChampionship';
+import { canEnterLive } from '@/services/gameLifecycle';
 import { SeasonsCard } from '@/components/community/SeasonsCard';
 import { UnverifiedEveningsCard } from '@/components/community/UnverifiedEveningsCard';
 import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
@@ -585,6 +586,24 @@ export function CommunityDetailsScreen() {
   }
 
   const nextGame = upcoming[0];
+  /**
+   * A game of THIS club being played right now.
+   *
+   * Asked of `canEnterLive`, the same gate both live screens use, so this
+   * button can never offer a door the next screen would shut — including its
+   * membership rule, which lets a member who is not on tonight's roster watch.
+   */
+  const liveNow = useMemo(
+    () =>
+      upcoming.find((g) =>
+        canEnterLive(g, {
+          isOrganizerOrAdmin: isAdmin,
+          isParticipant: !!me && (g.players ?? []).includes(me.id),
+          isClubMember: isMember || isAdmin,
+        }),
+      ) ?? null,
+    [upcoming, isAdmin, isMember, me],
+  );
   // Use the authoritative finished-games count from getCommunityStats (windowed
   // to ~200 terminal docs, cancelled excluded) so this number AGREES with the
   // "מחזורים שיצאו לפועל" stat shown lower on the same screen. The old source
@@ -846,6 +865,25 @@ export function CommunityDetailsScreen() {
               + superlatives + club level). Was duplicated — a club-level chip
               here AND a button lower down both opened CommunityStats; per owner
               request the chip was dropped and the button lives here at the top. */}
+          {/* A game being played RIGHT NOW is the most urgent thing this
+              screen can say, so it sits directly under the club's numbers and
+              above everything that describes the past. */}
+          {liveNow ? (
+            <Button
+              title={he.communityLiveNowCta}
+              variant="primary"
+              size="lg"
+              fullWidth
+              iconLeft="football"
+              onPress={() =>
+                (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                  'MatchDetails',
+                  { gameId: liveNow.id },
+                )
+              }
+            />
+          ) : null}
+
           {/* The one question the system cannot answer itself. Above the
               season card on purpose: an unconfirmed evening is missing from
               the very numbers the card below reports, so asking about it

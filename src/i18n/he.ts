@@ -1252,13 +1252,16 @@ export const he = {
   createGroupIsOpen: 'מועדון פתוח',
   createGroupIsOpenHint: 'כשמופעל — שחקנים חדשים מצטרפים אוטומטית. כבוי = דורש אישור מנהל.',
   createGroupInternalRating: 'דירוג פנימי',
+  // Players have not rated each other since 24.06 — peer rating was removed
+  // and only admins rate now, on a 1–10 scale. The old hint still promised
+  // "הדירוג נקבע מהצבעות השחקנים", which is a setting the app no longer has.
   createGroupInternalRatingHint:
-    'כשמופעל — המנהלים קובעים בעצמם את דירוג השחקנים, והדירוג הזה הוא שיוצג בפרטי המחזור ובמועדון במקום דירוג השחקנים. כבוי = הדירוג נקבע מהצבעות השחקנים.',
+    'כשמופעל — המנהלים מדרגים את השחקנים, והדירוג הזה מוצג בפרטי המחזור ובמועדון ומשמש לאיזון הכוחות. כבוי = לא מוצג דירוג כלל.',
   createGroupHideInternalRating: 'להסתיר דירוג פנימי',
   createGroupHideInternalRatingHint:
     'כשמופעל — השחקנים לא יוכלו לראות את הדירוגים כלל (לא של עצמם ולא של אחרים). הדירוג ישמש כנתון פנימי של המנהלים בלבד.',
   communityAdminRatingTitle: (name: string) => `דירוג ${name}`,
-  communityAdminRatingHint: 'דרג את השחקן (0.0–5.0). דירוג פנימי — נראה למנהלים בלבד.',
+  communityAdminRatingHint: 'דרגו את השחקן (0.0–5.0). דירוג פנימי — מנהלים בלבד.',
   communityAdminRatingClear: 'נקה דירוג',
   communityAdminRatingSet: 'דרג',
   // ── Community statistics screen ──
@@ -1634,6 +1637,7 @@ export const he = {
   groupWizardSubmitFailed: 'יצירת המועדון נכשלה. נסה שוב.',
   communityInviteFriendsSent: (n: number) =>
     n > 1 ? `נשלחו ${n} הזמנות` : n === 1 ? 'נשלחה הזמנה' : 'אין חברים חדשים להזמין',
+  communityLiveNowCta: 'יש מחזור שמשוחק עכשיו — לפרטים',
   communityStatsCreatedAt: 'תאריך הקמה',
   communityStatsMembers: 'סגל',
   communityStatsField: 'מגרש קבוע',

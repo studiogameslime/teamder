@@ -65,6 +65,7 @@ export function SeasonsCard({
         <Button
           title={he.seasonHistoryCta}
           variant="outline"
+          size="lg"
           fullWidth
           onPress={openHistory}
         />
@@ -96,9 +97,13 @@ export function SeasonsCard({
       {daysLeft !== null ? (
         <Text style={styles.note}>{he.seasonsProgressDays(daysLeft)}</Text>
       ) : null}
+      {/* size="lg" to match "טבלת המועדון והסטטיסטיקות" directly below this
+          card. Without it these render a notch smaller and the column of
+          buttons steps down for no reason a reader can see. */}
       <Button
         title={he.seasonsMySummaryCta}
         variant="outline"
+        size="lg"
         fullWidth
         onPress={openMySummary}
       />

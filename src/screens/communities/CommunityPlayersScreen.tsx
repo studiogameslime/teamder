@@ -478,7 +478,11 @@ export function CommunityPlayersScreen() {
   }, [members, stats, group]);
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+    // Top only. This screen sits inside the tab navigator, which already
+    // reserves the bottom inset — claiming it here counted it twice and left a
+    // visible band above the ad banner. Same shape as the two live screens
+    // that had it before; targeting API 36 made the inset large enough to see.
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.communityPlayersScreenTitle} />
       {loading && !group ? (
         <View style={styles.center}>

@@ -15,7 +15,7 @@ import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { toast } from '@/components/Toast';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useGroupStore } from '@/store/groupStore';
 import { useUserStore } from '@/store/userStore';
@@ -166,10 +166,26 @@ export function AdminApprovalScreen() {
         <FlatList
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
           data={rows}
+          // A heading above the first request of each club.
+          //
+          // The club's name was already on every row, but repeated under each
+          // face it reads as part of that person rather than as the group they
+          // are asking to join — so an admin of three clubs saw one flat list
+          // and had to check each line to know what they were approving into.
+          //
+          // Derived from the row order rather than by regrouping the data: the
+          // list is already built club by club, so "is this the first row of
+          // its club" is a comparison with the row before it.
           // Composite key so the same user requesting two groups doesn't
           // collapse to a single row.
           keyExtractor={(row) => `${row.group.id}:${row.user.id}`}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
+            <>
+              {index === 0 || rows[index - 1].group.id !== item.group.id ? (
+                <Text style={styles.clubHeading} numberOfLines={1}>
+                  {item.group.name}
+                </Text>
+              ) : null}
             <Card style={styles.row}>
               <Pressable
                 style={styles.identityHit}
@@ -206,6 +222,7 @@ export function AdminApprovalScreen() {
                 onPress={() => handleReject(item)}
               />
             </Card>
+            </>
           )}
         />
       )}
@@ -215,6 +232,13 @@ export function AdminApprovalScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  clubHeading: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+    paddingTop: spacing.sm,
+  },
   empty: {
     ...typography.body,
     color: colors.textMuted,
