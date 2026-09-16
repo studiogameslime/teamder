@@ -1,21 +1,30 @@
 // Where a season starts counting.
 //
-// A season starts at ZERO — always, including a club's first. It used to seed
-// season 1 with the club's history, read from a counter that only began when
-// evening-sealing shipped, so a club that had played 19 evenings was shown
-// "7 מתוך 24": not its history, not a fresh start, just however far that
-// counter happened to have got.
+// A season OWNS the history the club has already played. Turn seasons on in a
+// club that has played 19 evenings and asked for 24, and it stands at 19 — five
+// evenings from its first title.
 //
-// Progress is `sealedEvenings - roundsAtStart`, so the two fields below MUST be
-// derived from the same instant. Seeding the offset from a stale value while
-// showing 0 gives a season that reads "0 מתוך 24" and closes after 17.
+// That was always the intent; the number was just read from the wrong place.
+// It came from `clubRecords.eveningsSealed`, a counter that only began when
+// evening-sealing shipped, so the same club was shown "7 מתוך 24" — not its
+// history, not a fresh start, but however far a young counter happened to have
+// got. The owner's report: "שיחקנו 19 ולא 7". The history is counted from the
+// games now, which is where the club screen has always counted it.
+//
+// `roundsAtStart` is the sealed count at this instant, so that every FUTURE
+// seal adds exactly one. `playedRounds` is the number the club is shown and the
+// number the rollover closes on — one value, seeded here, incremented from
+// here, so the card and the sweep can never disagree.
 
 const num = (v: unknown): number =>
-  typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
+  typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
 
-export function seasonSeed(sealedEvenings: number): {
-  roundsAtStart: number;
-  playedRounds: number;
-} {
-  return { roundsAtStart: num(sealedEvenings), playedRounds: 0 };
+export function seasonSeed(
+  sealedEvenings: number,
+  playedHistory = 0,
+): { roundsAtStart: number; playedRounds: number } {
+  return {
+    roundsAtStart: num(sealedEvenings),
+    playedRounds: num(playedHistory),
+  };
 }

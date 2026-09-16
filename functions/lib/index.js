@@ -12352,7 +12352,58 @@ async function sealedEveningsOf(groupId) {
  * first: season 2 of a club with 200 sealed evenings would be measured against
  * 200 and be "due" the instant it opened, over and over.
  */
-async function completedRoundsOf(groupId, roundsAtStart) {
+/**
+ * How many evenings a club has actually played, counted from the GAMES.
+ *
+ * `clubRecords.eveningsSealed` only began on 26.08.2026, when evening-sealing
+ * shipped, so it cannot see a club's earlier history: a club with 19 finished
+ * evenings had a counter of 7. That is fine for measuring a season FORWARD —
+ * it increments on every seal — and useless for answering "what has this club
+ * already played", which is exactly what season 1 is seeded with.
+ *
+ * So the history is counted where it actually lives. Bounded to the same 200
+ * terminal documents the club-stats scan reads, and asked of the one module
+ * that decides whether an evening happened, so this number can never disagree
+ * with the "מפגשים שנערכו" the club screen has shown all along.
+ */
+async function playedEveningsFromGames(groupId) {
+    try {
+        const snap = await db
+            .collection('games')
+            .where('groupId', '==', groupId)
+            .where('status', 'in', ['finished', 'cancelled'])
+            .orderBy('startsAt', 'desc')
+            .limit(200)
+            .get();
+        let n = 0;
+        snap.forEach((d) => {
+            if ((0, eveningPlayed_1.didEveningHappen)(d.data()))
+                n += 1;
+        });
+        return n;
+    }
+    catch (err) {
+        // Never fatal: a failed count falls back to the counter, which is the
+        // behaviour this replaced rather than something worse.
+        console.warn('[season] history count failed', groupId, err);
+        return 0;
+    }
+}
+/**
+ * A season's progress.
+ *
+ * `seasons.playedRounds` is the number the club is SHOWN, seeded when the
+ * season opens and incremented by every seal. Reading it here means the sweep
+ * closes a season on the same number the card displays — they used to be
+ * computed two different ways, so a club could read "19 מתוך 24" while the
+ * sweep measured 7.
+ *
+ * Falls back to the old derivation for a season opened before this shipped,
+ * which has no seeded mirror to read.
+ */
+async function completedRoundsOf(groupId, roundsAtStart, playedRounds) {
+    if (typeof playedRounds === 'number' && playedRounds >= 0)
+        return playedRounds;
     const all = await sealedEveningsOf(groupId);
     const base = typeof roundsAtStart === 'number' && roundsAtStart > 0 ? roundsAtStart : 0;
     return Math.max(0, all - base);
@@ -12443,7 +12494,8 @@ async function runSeasonRollovers() {
                 const target = cadence.targetRounds;
                 if (typeof target !== 'number' || target <= 0)
                     continue;
-                due = (await completedRoundsOf(doc.id, seasons.roundsAtStart)) >= target;
+                due =
+                    (await completedRoundsOf(doc.id, seasons.roundsAtStart, seasons.playedRounds)) >= target;
             }
             else {
                 due =
@@ -12453,7 +12505,7 @@ async function runSeasonRollovers() {
             }
             if (!due)
                 continue;
-            const played = await completedRoundsOf(doc.id, seasons.roundsAtStart);
+            const played = await completedRoundsOf(doc.id, seasons.roundsAtStart, seasons.playedRounds);
             // A season an admin has just REOPENED is due the instant it comes back —
             // it met its target, that is why it closed. Closing it again within the
             // hour would make the undo button useless and look like the app arguing.
@@ -12692,7 +12744,10 @@ exports.enableClubSeasons = (0, https_1.onCall)({
             // The club's lifetime history is untouched and still shown as it
             // always was: "מפגשים שנערכו" on the club screen counts the games
             // themselves, which is why it correctly said 19 all along.
-            ...(0, seasonSeed_1.seasonSeed)(await sealedEveningsOf(groupId)),
+            // The club's real history, counted from its games. See seasonSeed:
+            // the counter cannot see evenings older than 26.08.2026, and season 1
+            // is supposed to own them.
+            ...(0, seasonSeed_1.seasonSeed)(await sealedEveningsOf(groupId), await playedEveningsFromGames(groupId)),
             cadence,
             targetHistory: [],
             count: closedSoFar,

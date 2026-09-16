@@ -1,5 +1,5 @@
 /**
- * A season starts at zero, and its two numbers agree from the first instant.
+ * A season owns the history the club has already played, and its numbers agree.
  *
  * Owner's report on a live club: "הפעלנו עונות בשככת שושי, ומופיע לנו 7 מתוך 24
  * מחזורים, שיחקנו בפועל 19". Both numbers were wrong in different directions.
