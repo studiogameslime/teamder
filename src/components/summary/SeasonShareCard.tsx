@@ -28,23 +28,60 @@ function Big({ value, label }: { value: string; label: string }) {
   );
 }
 
-export function SeasonShareCard({ model }: { model: SeasonSummaryModel }) {
+export function SeasonShareCard({
+  model,
+  playerName,
+}: {
+  model: SeasonSummaryModel;
+  /** Whose season this is. A card with no name is a card nobody can place. */
+  playerName?: string;
+}) {
   const { me } = model;
-  const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`);
+  const pct = (v: number | null) =>
+    v === null ? '—' : `${Math.round(v * 100)}%`;
+  /** The best of the three placings, and what it was in. Nothing is more
+   *  shareable than a podium finish, and none of it reached the card. */
+  const bestRank: { rank: number; what: string } | undefined = (
+    [
+      { rank: me.ranks.goals, what: he.statGoals as string },
+      { rank: me.ranks.assists, what: he.statAssists as string },
+      { rank: me.ranks.wins, what: he.seasonStatWins as string },
+    ] as Array<{ rank: number | null; what: string }>
+  )
+    .filter(
+      (r): r is { rank: number; what: string } => typeof r.rank === 'number',
+    )
+    .sort((a, b) => a.rank - b.rank)[0];
 
   return (
     <View style={styles.card}>
       <Text style={styles.club} numberOfLines={1}>
-        {model.groupName}
+        {playerName ? `${playerName} · ${model.groupName}` : model.groupName}
       </Text>
       <Text style={styles.season}>{he.seasonNumberLabel(model.seasonNo)}</Text>
 
       <View style={styles.row}>
         <Big value={String(me.goals)} label={he.statGoals} />
         <Big value={String(me.assists)} label={he.statAssists} />
-        <Big value={String(me.evenings)} label={he.seasonStatEvenings} />
+        {/* MINI-GAMES, not evenings: the win percentage beside it is wins over
+            mini-games, so showing evenings put a rate on the card next to a
+            denominator that did not produce it. */}
+        <Big value={String(me.rounds)} label={he.seasonStatRounds} />
         <Big value={pct(me.winPct)} label={he.seasonStatWinPct} />
       </View>
+
+      <View style={styles.row}>
+        <Big value={String(me.wins)} label={he.seasonStatWins} />
+        <Big value={String(me.losses)} label={he.seasonStatLosses} />
+        <Big value={String(me.ties)} label={he.seasonStatTies} />
+        <Big value={String(me.cleanSheets)} label={he.seasonStatCleanSheets} />
+      </View>
+
+      {bestRank ? (
+        <Text style={styles.rank} numberOfLines={1}>
+          {he.seasonShareRank(bestRank.rank, me.ranks.of, bestRank.what)}
+        </Text>
+      ) : null}
 
       {/* Titles only when there are any. An empty trophy row on a card someone
           is about to send is worse than a shorter card. */}
@@ -52,10 +89,30 @@ export function SeasonShareCard({ model }: { model: SeasonSummaryModel }) {
         <View style={styles.titles}>
           {model.myTitles.map((t) => (
             <Text key={t.key} style={styles.title} numberOfLines={1}>
-              🏆 {he.seasonTitleNames[t.key]} · {he.seasonTitleValue(t.key, t.value)}
+              🏆 {he.seasonTitleNames[t.key]} ·{' '}
+              {he.seasonTitleValue(t.key, t.value)}
             </Text>
           ))}
         </View>
+      ) : null}
+
+      {/* The people of the season — the half of this screen a person actually
+          talks about, and none of it used to leave the app. */}
+      {model.me.partner ? (
+        <Text style={styles.peer} numberOfLines={1}>
+          {he.seasonSharePartner(
+            model.names[model.me.partner.userId] ?? '—',
+            model.me.partner.count,
+          )}
+        </Text>
+      ) : null}
+      {model.me.nemesis ? (
+        <Text style={styles.peer} numberOfLines={1}>
+          {he.seasonShareNemesis(
+            model.names[model.me.nemesis.userId] ?? '—',
+            model.me.nemesis.count,
+          )}
+        </Text>
       ) : null}
 
       <Text style={styles.brand}>Teamder</Text>
@@ -95,6 +152,18 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
     fontSize: 11,
+  },
+  rank: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: spacing.sm,
+  },
+  peer: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
   },
   titles: { gap: 2, marginTop: spacing.sm },
   title: {

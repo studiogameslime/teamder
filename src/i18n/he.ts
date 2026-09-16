@@ -2311,6 +2311,13 @@ export const he = {
   seasonPeersEmpty:
     'עוד אין מספיק משחקים כדי שיהיה מה לספר כאן. זה יתמלא מעצמו.',
   seasonPeersEmptyClosed: 'לא היו מספיק משחקים בעונה הזאת כדי שיהיה מה לספר כאן.',
+  // כרטיס השיתוף. שורות קצרות בכוונה — הוא תמונה שנשלחת לקבוצת ווטסאפ, לא מסך.
+  seasonShareRank: (rank: number, of: number, what: string) =>
+    `מקום ${rank} מתוך ${of} ב${what} במועדון`,
+  seasonSharePartner: (name: string, together: number) =>
+    `הכי הרבה יחד: ${name} (${together} משחקים)`,
+  seasonShareNemesis: (name: string, faced: number) =>
+    `היריב הגדול: ${name} (${faced} משחקים)`,
   seasonShareCta: 'שתף את סיכום העונה',
   seasonShareTitle: 'סיכום העונה',
   seasonSummaryFootnote:

@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { UserAvatar } from '@/components/UserAvatar';
 import { SeasonShareCard, SHARE_CARD_WIDTH } from '@/components/summary/SeasonShareCard';
 import { toast } from '@/components/Toast';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
@@ -66,11 +67,64 @@ function formatRange(startsAt: number, endsAt: number | null): string {
   return endsAt ? `${f(startsAt)} – ${f(endsAt)}` : `${f(startsAt)} – ${he.seasonNow}`;
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+/**
+ * One number.
+ *
+ * Thirteen of these sat in a grid as identical grey squares, so nothing on the
+ * screen was louder than anything else and the eye had nowhere to land —
+ * "תעשה את המסך הזה קצת יותר חי וצבעוני". An icon and a tint give each one an
+ * identity; the tint is applied at `1A` alpha, the idiom the club stats screen
+ * already uses for exactly this, rather than a second colour helper.
+ */
+function Stat({
+  label,
+  value,
+  icon,
+  tint = colors.primary,
+}: {
+  label: string;
+  value: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+  tint?: string;
+}) {
   return (
     <View style={styles.stat}>
-      <Text style={styles.statValue}>{value}</Text>
+      {icon ? (
+        <View style={[styles.statIcon, { backgroundColor: tint + '1A' }]}>
+          <Ionicons name={icon} size={14} color={tint} />
+        </View>
+      ) : null}
+      <Text style={[styles.statValue, icon ? { color: tint } : null]}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+/** A section heading with an icon, matching the club stats screen so the two
+ *  read as the same app rather than two different ones. */
+/** Gold, silver and bronze for the top three; the muted podium otherwise.
+ *  A rank of null (did not play) gets no medal at all — an empty season is
+ *  not a fourth place. */
+const MEDAL_TINTS = ['#F4B73E', '#9AA4B2', '#CD7F32'];
+function rankTint(rank: number | null): string {
+  return rank && rank <= 3 ? MEDAL_TINTS[rank - 1] : colors.textMuted;
+}
+function rankIcon(rank: number | null): keyof typeof Ionicons.glyphMap {
+  return rank && rank <= 3 ? 'medal' : 'podium-outline';
+}
+
+function CardTitle({
+  icon,
+  text,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
+}) {
+  return (
+    <View style={styles.cardTitleRow}>
+      {/* Icon first → rightmost under forceRTL, beside the words. */}
+      <Ionicons name={icon} size={18} color={colors.primary} />
+      <Text style={styles.cardTitle}>{text}</Text>
     </View>
   );
 }
@@ -81,12 +135,14 @@ function PeerRow({
   peer,
   names,
   detail,
+  tint = colors.primary,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   peer: SeasonPeer | null;
   names: Record<string, string>;
   detail: (p: SeasonPeer) => string;
+  tint?: string;
 }) {
   // A line with no answer is left out rather than shown empty: in a first
   // season half of these are genuinely unanswerable, and six greyed-out rows
@@ -94,8 +150,14 @@ function PeerRow({
   if (!peer) return null;
   return (
     <View style={styles.peerRow}>
-      <View style={styles.peerIcon}>
-        <Ionicons name={icon} size={18} color={colors.primary} />
+      {/* A face, not just a name. Every other person-row in the app shows one,
+          and these six are the most human thing on the screen. */}
+      <UserAvatar
+        user={{ id: peer.userId, name: names[peer.userId] ?? '' }}
+        size={38}
+      />
+      <View style={[styles.peerIcon, { backgroundColor: tint + '1A' }]}>
+        <Ionicons name={icon} size={16} color={tint} />
       </View>
       <View style={styles.peerText}>
         <Text style={styles.peerLabel}>{label}</Text>
@@ -109,7 +171,11 @@ function PeerRow({
 function TitleRow({ title }: { title: SeasonTitleWon }) {
   return (
     <View style={styles.titleRow}>
-      <Text style={styles.titleMedal}>🏆</Text>
+      {/* A gold disc rather than a 22px emoji. This is the loudest thing the
+          screen can say about a season, and it was the quietest element on it. */}
+      <View style={styles.titleMedalDisc}>
+        <Ionicons name="trophy" size={18} color="#fff" />
+      </View>
       <View style={styles.titleText}>
         <Text style={styles.titleName}>
           {he.seasonTitleNames[title.key]} · {he.seasonTitleValue(title.key, title.value)}
@@ -355,7 +421,7 @@ export function SeasonSummaryScreen() {
                 none by design — they are decided when the numbers stop. */}
             {model.closed ? (
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>{he.seasonSectionTitles}</Text>
+                <CardTitle icon="medal" text={he.seasonSectionTitles} />
                 {me.hasData && model.myTitles.length === 0 ? (
                   <Text style={styles.cardNote}>{he.seasonTitlesNone}</Text>
                 ) : null}
@@ -371,7 +437,7 @@ export function SeasonSummaryScreen() {
                 each told only about their own. */}
             {model.closed && model.seasonTitles.length > 0 ? (
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>{he.seasonSectionChampions}</Text>
+                <CardTitle icon="trophy" text={he.seasonSectionChampions} />
                 {model.seasonTitles.map((t) => (
                   <ChampionRow key={t.key} title={t} />
                 ))}
@@ -379,21 +445,21 @@ export function SeasonSummaryScreen() {
             ) : null}
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>{he.seasonSectionNumbers}</Text>
+              <CardTitle icon="stats-chart" text={he.seasonSectionNumbers} />
               <View style={styles.statGrid}>
-                <Stat label={he.statGoals} value={String(me.goals)} />
-                <Stat label={he.statAssists} value={String(me.assists)} />
-                <Stat label={he.seasonStatContributions} value={String(me.contributions)} />
-                <Stat label={he.seasonStatEvenings} value={String(me.evenings)} />
-                <Stat label={he.seasonStatRounds} value={String(me.rounds)} />
-                <Stat label={he.seasonStatWins} value={String(me.wins)} />
-                <Stat label={he.seasonStatLosses} value={String(me.losses)} />
-                <Stat label={he.seasonStatTies} value={String(me.ties)} />
-                <Stat label={he.seasonStatWinPct} value={pct(me.winPct)} />
-                <Stat label={he.seasonStatCleanSheets} value={String(me.cleanSheets)} />
-                <Stat label={he.seasonStatCleanSheetPct} value={pct(me.cleanSheetPct)} />
-                <Stat label={he.seasonStatGoalsPerRound} value={per(me.goalsPerRound)} />
-                <Stat label={he.seasonStatAssistsPerRound} value={per(me.assistsPerRound)} />
+                <Stat label={he.statGoals} value={String(me.goals)} icon="football" tint={colors.primary} />
+                <Stat label={he.statAssists} value={String(me.assists)} icon="footsteps-outline" tint="#7C3AED" />
+                <Stat label={he.seasonStatContributions} value={String(me.contributions)} icon="flash-outline" tint="#F59E0B" />
+                <Stat label={he.seasonStatEvenings} value={String(me.evenings)} icon="calendar-outline" tint={colors.success} />
+                <Stat label={he.seasonStatRounds} value={String(me.rounds)} icon="grid-outline" tint="#0EA5E9" />
+                <Stat label={he.seasonStatWins} value={String(me.wins)} icon="trophy-outline" tint={colors.success} />
+                <Stat label={he.seasonStatLosses} value={String(me.losses)} icon="close-circle-outline" tint={colors.danger} />
+                <Stat label={he.seasonStatTies} value={String(me.ties)} icon="remove-circle-outline" tint={colors.textMuted} />
+                <Stat label={he.seasonStatWinPct} value={pct(me.winPct)} icon="stats-chart-outline" tint={colors.success} />
+                <Stat label={he.seasonStatCleanSheets} value={String(me.cleanSheets)} icon="shield-checkmark-outline" tint={colors.info} />
+                <Stat label={he.seasonStatCleanSheetPct} value={pct(me.cleanSheetPct)} icon="shield-outline" tint={colors.info} />
+                <Stat label={he.seasonStatGoalsPerRound} value={per(me.goalsPerRound)} icon="speedometer-outline" tint={colors.primary} />
+                <Stat label={he.seasonStatAssistsPerRound} value={per(me.assistsPerRound)} icon="git-network-outline" tint="#7C3AED" />
               </View>
               {me.penTaken > 0 || me.penFaced > 0 || me.ownGoals > 0 ? (
                 <View style={styles.statGrid}>
@@ -417,19 +483,29 @@ export function SeasonSummaryScreen() {
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>{he.seasonSectionStanding}</Text>
+              <CardTitle icon="podium" text={he.seasonSectionStanding} />
               <View style={styles.statGrid}>
+                {/* A medal for a podium finish, the plain icon otherwise. The
+                    three tiles here are the only ones on the screen that are a
+                    PLACE rather than a count, so they are allowed to celebrate
+                    when the place is worth celebrating. */}
                 <Stat
                   label={he.statGoals}
                   value={me.ranks.goals ? he.seasonRankOf(me.ranks.goals, me.ranks.of) : '—'}
+                  icon={rankIcon(me.ranks.goals)}
+                  tint={rankTint(me.ranks.goals)}
                 />
                 <Stat
                   label={he.statAssists}
                   value={me.ranks.assists ? he.seasonRankOf(me.ranks.assists, me.ranks.of) : '—'}
+                  icon={rankIcon(me.ranks.assists)}
+                  tint={rankTint(me.ranks.assists)}
                 />
                 <Stat
                   label={he.seasonStatWins}
                   value={me.ranks.wins ? he.seasonRankOf(me.ranks.wins, me.ranks.of) : '—'}
+                  icon={rankIcon(me.ranks.wins)}
+                  tint={rankTint(me.ranks.wins)}
                 />
               </View>
               <Text style={styles.cardNote}>
@@ -438,10 +514,11 @@ export function SeasonSummaryScreen() {
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>{he.seasonSectionPeople}</Text>
+              <CardTitle icon="people" text={he.seasonSectionPeople} />
               <PeerRow
                 icon="people-outline"
                 label={he.seasonPeerPartner}
+                tint={colors.success}
                 peer={me.partner}
                 names={names}
                 // winsTogether, not myWins: this line is about the two of us
@@ -451,6 +528,7 @@ export function SeasonSummaryScreen() {
               <PeerRow
                 icon="flame-outline"
                 label={he.seasonPeerNemesis}
+                tint={colors.danger}
                 peer={me.nemesis}
                 names={names}
                 detail={(p) => he.seasonPeerNemesisDetail(p.count, p.myWins, p.theirWins)}
@@ -458,6 +536,7 @@ export function SeasonSummaryScreen() {
               <PeerRow
                 icon="trophy-outline"
                 label={he.seasonPeerVictim}
+                tint={"#F59E0B"}
                 peer={me.victim}
                 names={names}
                 detail={(p) => he.seasonPeerVictimDetail(p.count)}
@@ -465,6 +544,7 @@ export function SeasonSummaryScreen() {
               <PeerRow
                 icon="skull-outline"
                 label={he.seasonPeerTormentor}
+                tint={"#7C3AED"}
                 peer={me.tormentor}
                 names={names}
                 detail={(p) => he.seasonPeerTormentorDetail(p.count)}
@@ -472,6 +552,7 @@ export function SeasonSummaryScreen() {
               <PeerRow
                 icon="football-outline"
                 label={he.seasonPeerAssistedMost}
+                tint={colors.info}
                 peer={me.assistedMost}
                 names={names}
                 detail={(p) => he.seasonPeerAssistsDetail(p.count)}
@@ -479,6 +560,7 @@ export function SeasonSummaryScreen() {
               <PeerRow
                 icon="hand-left-outline"
                 label={he.seasonPeerAssistedBy}
+                tint={colors.primary}
                 peer={me.assistedBy}
                 names={names}
                 detail={(p) => he.seasonPeerAssistsDetail(p.count)}
@@ -499,6 +581,12 @@ export function SeasonSummaryScreen() {
             accessibilityRole="button"
             accessibilityLabel={he.seasonShareCta}
           >
+            {/* Icon first → rightmost under forceRTL, beside the label. */}
+            <Ionicons
+              name={sharing ? 'hourglass-outline' : 'share-social'}
+              size={18}
+              color="#fff"
+            />
             <Text style={styles.shareText}>{he.seasonShareCta}</Text>
           </Pressable>
         ) : null}
@@ -511,7 +599,9 @@ export function SeasonSummaryScreen() {
           has no layout and captures blank. */}
       <View style={styles.shareStage} pointerEvents="none">
         <View ref={shareCardRef} collapsable={false}>
-          <SeasonShareCard model={model} />
+          {/* The name belongs on a card that leaves the app — without it the
+              image is a set of numbers nobody can place. */}
+          <SeasonShareCard model={model} playerName={currentUser?.name} />
         </View>
       </View>
     </SafeAreaView>
@@ -573,6 +663,15 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  statIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
   stat: {
     minWidth: 96,
     // NOT flexGrow. A grid of thirteen tiles in rows of three leaves one on
@@ -678,11 +777,23 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
   },
+  titleMedalDisc: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F4B73E',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   shareBtn: {
     backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: spacing.md,
+    // A row now, because the label has an icon beside it.
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
   },
   shareText: { ...typography.body, color: colors.surface, fontWeight: '700' },
   // Parked ABOVE the screen rather than beside it.
