@@ -25,6 +25,7 @@ describe.each([
     'src/utils/seasonParticipants.ts',
     'functions/src/seasonParticipants.ts',
   ],
+  ['seasonSeed', 'src/utils/seasonSeed.ts', 'functions/src/seasonSeed.ts'],
 ])('the two copies of %s', (_name, clientPath, serverPath) => {
   const client = fs.readFileSync(
     path.join(ROOT, 'src/utils/eveningPlayed.ts'),

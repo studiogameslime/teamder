@@ -63,17 +63,25 @@ describe('every place that opens a season', () => {
     expect(blocks.length).toBe(5);
   });
 
+  // `...seasonSeed(n)` supplies BOTH fields and is the preferred way to write
+  // them — it is the one place that guarantees the offset and the progress are
+  // derived from the same instant, which is what stops a season reading
+  // "0 מתוך 24" while the sweep closes it at 17. Naming them individually is
+  // still accepted for the paths that genuinely need their own values.
+  const seeds = (body: string, field: RegExp) =>
+    field.test(body) || /\.\.\.seasonSeed\(/.test(body);
+
   it.each(blocks.map((b) => [b.at, b.body] as const))(
     'stamps roundsAtStart (functions/src/index.ts:%i)',
     (_line, body) => {
-      expect(body).toMatch(/roundsAtStart:/);
+      expect(seeds(body, /roundsAtStart:/)).toBe(true);
     },
   );
 
   it.each(blocks.map((b) => [b.at, b.body] as const))(
     'stamps playedRounds (functions/src/index.ts:%i)',
     (_line, body) => {
-      expect(body).toMatch(/playedRounds:/);
+      expect(seeds(body, /playedRounds:/)).toBe(true);
     },
   );
 });

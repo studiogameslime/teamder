@@ -66,6 +66,7 @@ const eveningScoreCore_1 = require("./eveningScoreCore");
 const fillerRules_1 = require("./fillerRules");
 const seasonRollover_1 = require("./seasonRollover");
 const roundSides_1 = require("./roundSides");
+const seasonSeed_1 = require("./seasonSeed");
 const eveningPlayed_1 = require("./eveningPlayed");
 const https_1 = require("firebase-functions/v2/https");
 const tasks_1 = require("firebase-functions/v2/tasks");
@@ -12670,21 +12671,28 @@ exports.enableClubSeasons = (0, https_1.onCall)({
             currentNo: no,
             currentId: `s${no}`,
             startedAt: now,
-            // "Continue" means this season owns the club's whole history — but
-            // only the FIRST time. A club that ran three seasons, switched the
-            // feature off and switched it back on has three sealed seasons whose
-            // evenings belong to them; counting from zero would measure season 4
-            // against the club's entire lifetime and make it due on day one. The
-            // surviving offset is reused, or the current count when there is
-            // none to reuse.
-            roundsAtStart: closedSoFar > 0
-                ? (existing?.roundsAtStart ?? (await sealedEveningsOf(groupId)))
-                : 0,
-            // A club that CONTINUES its history starts the progress line at
-            // everything it has already played, not at zero.
-            playedRounds: closedSoFar > 0
-                ? 0
-                : await sealedEveningsOf(groupId),
+            // A season starts at ZERO. Always, including the first one.
+            //
+            // It used to seed season 1 with the club's history, on the reasoning
+            // that the first season owns everything played so far. The trouble is
+            // that "everything played so far" was read from `eveningsSealed`, a
+            // counter that only began on 26.08.2026 when evening-sealing shipped.
+            // So a club that had played 19 evenings turned seasons on, asked for
+            // 24, and was shown "7 מתוך 24" — not its history (19), and not a
+            // fresh start (0), but however many evenings a young counter happened
+            // to have seen. The owner's report, and he was right to push back:
+            // "שיחקנו 19 ולא 7".
+            //
+            // Starting at zero fixes both halves. The number can no longer
+            // disagree with what the club actually played, because it no longer
+            // claims anything about the past — and "24 מחזורים" now means 24
+            // evenings from the day you asked for them, which is what a person
+            // means when they type it.
+            //
+            // The club's lifetime history is untouched and still shown as it
+            // always was: "מפגשים שנערכו" on the club screen counts the games
+            // themselves, which is why it correctly said 19 all along.
+            ...(0, seasonSeed_1.seasonSeed)(await sealedEveningsOf(groupId)),
             cadence,
             targetHistory: [],
             count: closedSoFar,
