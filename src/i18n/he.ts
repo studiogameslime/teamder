@@ -2146,6 +2146,7 @@ export const he = {
   unverifiedEveningYes: 'התקיים',
   unverifiedEveningNo: 'לא התקיים',
   // ── הגדרת עונות ──
+  seasonsTargetUnchanged: 'זה היעד שמוגדר כרגע במועדון. שנו אותו כדי לעדכן.',
   seasonsLengthLabel: 'משך עונה',
   seasonsCustom: 'מותאם אישית',
   seasonsCustomMonths: 'כמות חודשים',

@@ -58,6 +58,7 @@ import {
   GroupSeasons,
 } from '@/types';
 import { TEAM_SIZE_MAX, TEAM_SIZE_MIN } from '@/types';
+import { isCalendarDate } from '@/utils/seasonDates';
 import { getFirebase } from './config';
 
 // ─── Top-level types not yet in @/types ────────────────────────────────────
@@ -662,6 +663,17 @@ export function readGroupSeasons(v: unknown): GroupSeasons | undefined {
       ...(typeof c.targetRounds === 'number'
         ? { targetRounds: c.targetRounds }
         : {}),
+      // The CALENDAR boundaries. Named here because this reader rebuilds the
+      // cadence field by field, so a field absent from this list does not
+      // exist on the client whatever Firestore holds.
+      //
+      // It matters for one path in particular: enabling a date season while
+      // carrying the club's history on writes `endsAt: null` and puts the real
+      // deadline only in `endsOn`. Without these lines the app sees a date
+      // season with no date at all, and the club card has nothing to show —
+      // "העונות פועלות אבל המסך נראה כאילו לא".
+      ...(isCalendarDate(c.startsOn) ? { startsOn: c.startsOn as string } : {}),
+      ...(isCalendarDate(c.endsOn) ? { endsOn: c.endsOn as string } : {}),
     },
     count: typeof d.count === 'number' ? d.count : 0,
   };

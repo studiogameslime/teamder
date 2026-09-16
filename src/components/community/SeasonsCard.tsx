@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { isCalendarDate, formatCalendarDate } from '@/utils/seasonDates';
 import { he } from '@/i18n/he';
 import type { GroupSeasons } from '@/types';
 
@@ -80,7 +81,12 @@ export function SeasonsCard({
   const line =
     cadence?.type === 'rounds' && typeof cadence.targetRounds === 'number'
       ? he.seasonsProgressRounds(seasons.playedRounds ?? 0, cadence.targetRounds)
-      : typeof cadence?.endsAt === 'number'
+      : // The CALENDAR end first. A season opened while carrying a club's
+        // history on has its deadline only here — `endsAt` is null for it — so
+        // reading the epoch alone left those clubs with no date at all.
+        isCalendarDate(cadence?.endsOn)
+        ? he.seasonsTargetDate(formatCalendarDate(cadence!.endsOn as string))
+        : typeof cadence?.endsAt === 'number'
         ? he.seasonsTargetDate(formatDate(cadence.endsAt))
         : '';
   const daysLeft =

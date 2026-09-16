@@ -12873,6 +12873,16 @@ exports.updateSeasonTarget = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
     const now = Date.now();
     const played = await completedRoundsOf(groupId, seasons.roundsAtStart);
     const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
+    // `null` on the unused half, for the same reason enableClubSeasons does it:
+    // the seasons block is written with merge:true, and a merge into a nested
+    // map merges field BY FIELD. Omitting a field leaves whatever the previous
+    // cadence put there.
+    //
+    // Seen in production on a real club: an admin tried a date cadence, went
+    // back to rounds, and the stored cadence kept `months: 3` and a stale
+    // `endsAt` from the experiment. Nothing reads them today — every reader
+    // branches on `type` first — which is exactly why they would have sat there
+    // until one didn't.
     let next;
     if (type === 'rounds') {
         const asked = Math.round(Number(data.targetRounds));
@@ -12882,7 +12892,14 @@ exports.updateSeasonTarget = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
         if (asked <= played) {
             throw new https_1.HttpsError('failed-precondition', `target ${asked} is not above the ${played} rounds already played`);
         }
-        next = { type: 'rounds', targetRounds: asked };
+        next = {
+            type: 'rounds',
+            targetRounds: asked,
+            months: null,
+            endsAt: null,
+            endsOn: null,
+            startsOn: null,
+        };
     }
     else {
         const months = MONTH_CHOICES.includes(Number(data.months))
@@ -12892,7 +12909,16 @@ exports.updateSeasonTarget = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
         if (endsAt <= now) {
             throw new https_1.HttpsError('failed-precondition', 'end date is in the past');
         }
-        next = { type: 'date', months, endsAt };
+        // Calendar boundaries alongside the legacy epoch, same as the enable path.
+        const startsOn = (0, seasonDates_1.todayIn)(undefined, now);
+        next = {
+            type: 'date',
+            months,
+            endsAt,
+            startsOn,
+            endsOn: (0, seasonDates_1.seasonEndDate)(startsOn, months),
+            targetRounds: null,
+        };
     }
     const who = await db.collection('users').doc(uid).get();
     const byName = who.data()?.name ?? '';

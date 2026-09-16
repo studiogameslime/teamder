@@ -33,6 +33,7 @@ import {
   seasonEndDate,
   nextSeasonStart,
   formatCalendarDate,
+  isCalendarDate,
   isValidSeasonMonths,
   MIN_SEASON_MONTHS,
   MAX_SEASON_MONTHS,
@@ -40,6 +41,7 @@ import {
 } from '@/utils/seasonDates';
 import {
   planActivation,
+  isValidSeasonRounds,
   MIN_SEASON_ROUNDS,
   type ActivationPlan,
 } from '@/utils/seasonActivation';
@@ -213,21 +215,41 @@ export function SeasonsSettings({
   const [cadence, setCadence] = useState<Cadence>(
     seasons?.cadence?.type === 'rounds' ? 'rounds' : 'date',
   );
+  // Seeded from the club's target whenever it is VALID, not only when it
+  // happens to be one of the chips.
+  //
+  // These fell back to 6 / 24 for anything else, so a club on a custom length
+  // opened the screen showing a preset it had never chosen — and "עדכן את יעד
+  // העונה" then wrote that preset back, moving a finish line the admin came
+  // only to look at. Reported as settings that do not keep what was set.
   const [months, setMonths] = useState<number>(() =>
-    MONTH_CHOICES.includes(seasons?.cadence?.months as never)
+    isValidSeasonMonths(seasons?.cadence?.months)
       ? (seasons?.cadence?.months as number)
       : 6,
   );
   const [rounds, setRounds] = useState<number>(() =>
-    ROUND_CHOICES.includes(seasons?.cadence?.targetRounds as never)
+    isValidSeasonRounds(seasons?.cadence?.targetRounds)
       ? (seasons?.cadence?.targetRounds as number)
       : 24,
   );
   /** Only asked on the FIRST enable — after that there is no loose history. */
   const [sealHistory, setSealHistory] = useState(false);
   /** Custom lengths sit beside the presets rather than replacing them. */
-  const [customMonths, setCustomMonths] = useState(false);
-  const [customRounds, setCustomRounds] = useState(false);
+  // …and the custom stepper opens already open when the stored value is one.
+  // Otherwise a custom target rendered with no chip selected and no stepper,
+  // which looks like a screen that failed to load its own setting.
+  const [customMonths, setCustomMonths] = useState(
+    () =>
+      seasons?.cadence?.type === 'date' &&
+      isValidSeasonMonths(seasons.cadence.months) &&
+      !MONTH_CHOICES.includes(seasons.cadence.months as never),
+  );
+  const [customRounds, setCustomRounds] = useState(
+    () =>
+      seasons?.cadence?.type === 'rounds' &&
+      isValidSeasonRounds(seasons.cadence.targetRounds) &&
+      !ROUND_CHOICES.includes(seasons.cadence.targetRounds as never),
+  );
   /** The last day of season 1, when carrying it on under a date cadence.
    *  There is no honest start date to compute for it — the history reaches
    *  back as far as the club does — so the admin names its end instead. */
@@ -440,7 +462,11 @@ export function SeasonsSettings({
     seasons?.cadence?.type === 'rounds' &&
     typeof seasons.cadence.targetRounds === 'number'
       ? he.seasonsTargetRounds(seasons.cadence.targetRounds)
-      : typeof seasons?.cadence?.endsAt === 'number'
+      : isCalendarDate(seasons?.cadence?.endsOn)
+        ? he.seasonsTargetDate(
+            formatCalendarDate(seasons!.cadence!.endsOn as string),
+          )
+        : typeof seasons?.cadence?.endsAt === 'number'
         ? he.seasonsTargetDate(formatDate(seasons.cadence.endsAt))
         : '';
 
@@ -651,6 +677,13 @@ export function SeasonsSettings({
           {/* The refusal, in red, beside the thing that caused it. */}
           {firstTime && !plan.ok && history !== null ? (
             <Text style={styles.errorLine}>{planErrorText(plan, rounds)}</Text>
+          ) : null}
+
+          {/* An inactive button that says nothing reads as broken. This one is
+              off on entry by design — the chips already show the club's own
+              target — so it says so rather than sitting dead. */}
+          {live && !targetChanged ? (
+            <Text style={styles.fieldHint}>{he.seasonsTargetUnchanged}</Text>
           ) : null}
 
           {/* Its own press, not the screen's Save: none of this is a document

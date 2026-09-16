@@ -982,8 +982,15 @@ export interface GroupSeasons {
      *  because a season that rolls over has to compute its own end date; an
      *  inherited one is already in the past. */
     months?: number;
-    /** `date`: when the season is due to end. */
+    /** `date`: when the season is due to end, as an epoch. Kept for seasons
+     *  opened before calendar boundaries existed; `endsOn` is the one to
+     *  prefer, because it lands on the CLUB's midnight rather than UTC's. */
     endsAt?: number;
+    /** `date`: the season's first day, 'YYYY-MM-DD' in the club's calendar. */
+    startsOn?: string;
+    /** `date`: the LAST day the season is valid — it runs through the end of
+     *  it, and the next season begins the following day. */
+    endsOn?: string;
     /** `rounds`: the season's TOTAL finished rounds, not a remainder. A club
      *  that has already played 17 and sets 24 has 7 left. */
     targetRounds?: number;
