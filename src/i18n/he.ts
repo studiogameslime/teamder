@@ -339,6 +339,11 @@ export const he = {
   rotationStartHint: 'מנצחת נשארת, מפסידה יוצאת, הממתינה נכנסת. קבוצה חסרה מושלמת אוטומטית.',
   rotationStartCta: 'התחל רוטציה',
   rotationNotEnough: 'אין מספיק שחקנים לשתי קבוצות מלאות',
+  // What actually blocks a start now: a side with nobody on it. Being short
+  // of the format does not — clubs play a man down every week.
+  rotationEmptySide: 'באחת הקבוצות הפותחות אין אף שחקן',
+  rotationShortOfFormat: (a: number, b: number) =>
+    `מתחילים ${a} נגד ${b} — פחות מהפורמט, אפשר להתחיל`,
   rotationPlayingNow: 'מחזורים עכשיו',
   rotationWonCta: 'ניצחה',
   rotationReset: 'אפס',

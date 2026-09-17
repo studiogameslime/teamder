@@ -57,9 +57,24 @@ export function rosterOf(
 }
 
 /** Can a rotation be started at all? Need enough players for two full teams. */
-export function canStart(teams: RotationTeam[], perTeam: number): boolean {
-  const total = teams.reduce((s, t) => s + t.playerIds.length, 0);
-  return teams.length >= 2 && total >= perTeam * 2;
+export function canStart(teams: RotationTeam[]): boolean {
+  // Two teams with somebody in each of them, and nothing about the FORMAT.
+  //
+  // This used to demand `total >= perTeam * 2` — two teams full to the size
+  // the game was created with. Owner report: eight people at the pitch, a game
+  // created 4v4, and the evening could not be started at all. That is the
+  // common case, not the edge one; clubs play a man short every week, and the
+  // format is the plan for the evening, not a rule about who may play.
+  //
+  // The engine already copes with short teams everywhere else: fillAll stops
+  // when the donor pool is empty, and prepareRefillPlaying exists precisely
+  // because somebody goes home mid-evening and the round carries on 4v3. The
+  // start was the only place that refused.
+  //
+  // What is still refused is a side with nobody on it. A 7v0 is not a short
+  // match, it is a broken one.
+  const manned = teams.filter((t) => t.playerIds.length > 0).length;
+  return teams.length >= 2 && manned >= 2;
 }
 
 /**
@@ -205,7 +220,7 @@ export function startRotationSkeleton(
    *  engine stays pure (randomness lives in the caller, so tests stay stable). */
   order?: number[],
 ): RotationFillState | null {
-  if (!canStart(teams, perTeam)) return null;
+  if (!canStart(teams)) return null;
   const byIndex = [...teams].sort((a, b) => a.index - b.index).map((t) => t.index);
   // Use the caller's order only when it's a valid permutation of the teams.
   const valid =

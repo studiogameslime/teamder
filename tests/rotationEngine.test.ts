@@ -55,17 +55,44 @@ describe('rotationEngine — 5v5, 13 guests → teams 5-4-4', () => {
   });
 });
 
-describe('rotationEngine — 8 players cannot start (need 10 = two full 5s)', () => {
+// The format is the PLAN for the evening, not a rule about who may play.
+// Eight people who turned up to a 5v5 game play 4v4, and until this they could
+// not start at all — the owner's report, and the reason the rule changed.
+describe('rotationEngine — a short evening still starts', () => {
   const perTeam = 5;
   const teams: RotationTeam[] = [
     { index: 0, playerIds: ['a1', 'a2', 'a3', 'a4'] },
     { index: 1, playerIds: ['b1', 'b2', 'b3', 'b4'] },
   ];
-  it('canStart is false and startRotation returns null', () => {
-    expect(canStart(teams, perTeam)).toBe(false);
-    expect(startRotation(teams, perTeam, 'temporary', pickFirst)).toBeNull();
-    // eslint-disable-next-line no-console
-    console.log('\n[GATE] 8 players, perTeam=5 → canStart=false (need 10). Rotation NOT started.\n');
+  it('8 players in a 5v5 game start as 4v4', () => {
+    expect(canStart(teams)).toBe(true);
+    const r = startRotation(teams, perTeam, 'temporary', pickFirst);
+    expect(r).not.toBeNull();
+    expect(r!.rotation.playing).toEqual([0, 1]);
+    // Nobody is borrowed: there is no third team to borrow FROM, and the two
+    // sides stay as they were drafted.
+    expect(rosterOf(0, r!.teams, r!.rotation.loans).length).toBe(4);
+    expect(rosterOf(1, r!.teams, r!.rotation.loans).length).toBe(4);
+  });
+
+  it('starts uneven too — 4 against 3 is a real evening', () => {
+    const uneven: RotationTeam[] = [
+      { index: 0, playerIds: ['a1', 'a2', 'a3', 'a4'] },
+      { index: 1, playerIds: ['b1', 'b2', 'b3'] },
+    ];
+    expect(canStart(uneven)).toBe(true);
+    expect(startRotation(uneven, perTeam, 'temporary', pickFirst)).not.toBeNull();
+  });
+
+  // What is still refused: a side with nobody on it. That is not a short
+  // match, it is a broken one.
+  it('refuses a team with no players, and a single team', () => {
+    expect(canStart([
+      { index: 0, playerIds: ['a1', 'a2'] },
+      { index: 1, playerIds: [] },
+    ])).toBe(false);
+    expect(canStart([{ index: 0, playerIds: ['a1', 'a2'] }])).toBe(false);
+    expect(canStart([])).toBe(false);
   });
 });
 

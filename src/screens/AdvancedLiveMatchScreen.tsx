@@ -1353,10 +1353,26 @@ export function AdvancedLiveMatchScreen() {
     0,
   );
   const perTeam = teamSizeFromFormat(game.format);
-  const enoughPlayers = hasTeams && totalDrafted >= perTeam * 2;
+  // The two sides that are actually about to play. The gate asks about THEM,
+  // not about the format: a game created 4v4 with seven people at the pitch
+  // plays 4v3, and refusing that left an evening with no way to begin (owner
+  // report). Mirrors rotationEngine.canStart, which refuses only a side with
+  // nobody on it.
+  const startingSizes = effectiveStartOrder
+    .slice(0, 2)
+    .map(
+      (i) =>
+        (draftTeams?.teams.find((t) => t.index === i)?.playerIds.length ?? 0),
+    );
+  const bothSidesManned =
+    startingSizes.length === 2 && startingSizes.every((n) => n > 0);
   // Also require exactly two chosen starters (effectiveStartOrder is empty
   // until then) so we never start with an ambiguous opening pair.
-  const canStartRound = enoughPlayers && effectiveStartOrder.length >= 2;
+  const canStartRound =
+    hasTeams && effectiveStartOrder.length >= 2 && bothSidesManned;
+  /** Short of the format, but playable — said out loud rather than blocked. */
+  const shortOfFormat =
+    canStartRound && totalDrafted < perTeam * 2;
 
   const reshuffleStart = () => {
     if (!draftTeams) return;
@@ -1904,10 +1920,16 @@ export function AdvancedLiveMatchScreen() {
               <Ionicons name="play" size={26} color="#FFFFFF" />
               <Text style={styles.primaryBtnText}>{he.rotationStartRound}</Text>
             </Pressable>
-            {!enoughPlayers ? (
-              <Text style={styles.warnText}>{he.rotationNotEnough}</Text>
-            ) : !canStartRound ? (
+            {effectiveStartOrder.length < 2 ? (
               <Text style={styles.warnText}>{he.rotationPickStartingNeedTwo}</Text>
+            ) : !bothSidesManned ? (
+              <Text style={styles.warnText}>{he.rotationEmptySide}</Text>
+            ) : shortOfFormat ? (
+              // Not a warning — a statement of what is about to be played, so
+              // the admin starts knowing it and is not stopped by it.
+              <Text style={styles.hintText}>
+                {he.rotationShortOfFormat(startingSizes[0], startingSizes[1])}
+              </Text>
             ) : null}
           </>
         ) : (
@@ -2446,6 +2468,9 @@ const styles = StyleSheet.create({
   endRoundBtnText: { color: '#1D4ED8', fontSize: 16, fontWeight: '800' },
   btnDisabled: { opacity: 0.5 },
   warnText: { textAlign: 'center', color: '#DC2626', fontSize: 13, fontWeight: '600' },
+  // Grey, not red: the evening is about to start, it is simply smaller than
+  // the format planned for.
+  hintText: { textAlign: 'center', color: '#6B7280', fontSize: 13, fontWeight: '600' },
   menuCard: {
     width: '100%',
     maxWidth: 360,

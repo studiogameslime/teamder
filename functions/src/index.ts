@@ -5053,6 +5053,17 @@ async function sealRoundSummary(args: {
     `[roundSummary] sealed ${gameId}: ${summary.stats.rounds} mini-games, ` +
       `${summary.stats.goals} goals, ${summary.events.length} event(s)`,
   );
+
+  // The evening that meets the season's target ENDS the season — here, not at
+  // the top of the next hour. `playedRounds` went up in the batch above, so
+  // this is the first moment the answer can be yes, and the club is as quiet
+  // as it will ever be: the evening finished a line ago. Owner: "ברגע שאני
+  // מסיים את המחזור האחרון של עונה — ישר לסיים אותה, בלי שעה".
+  //
+  // After the commit and never inside it. The seal is the record of the
+  // evening and must stand whatever happens next; the hourly sweep still
+  // catches every season this does not.
+  await closeSeasonIfRoundsTargetMet(groupId, gameId);
 }
 
 export const onGameRosterChanged = onDocumentWritten(
@@ -14856,7 +14867,16 @@ const REOPEN_GRACE_MS = 48 * 60 * 60 * 1000;
  *  before its scheduled kickoff, so a window that ends at `now` misses it. */
 const STARTING_SOON_MS = 3 * 60 * 60 * 1000;
 
-async function clubIsQuiet(groupId: string): Promise<{
+async function clubIsQuiet(
+  groupId: string,
+  /** `afterSeal` is the moment an evening has just been sealed. The evening the
+   *  season would be split across is the one that ended a second ago, so the
+   *  only thing that may still block is another evening genuinely mid-play —
+   *  not next week's clone, and not tonight's second game sitting unstarted.
+   *  The hourly sweep keeps the wider guard, where "is anything about to
+   *  happen" is the only question it can ask. */
+  opts?: { mode?: 'sweep' | 'afterSeal'; exceptGameId?: string },
+): Promise<{
   ok: boolean;
   blocker?: 'openGame' | 'unsealedGame';
 }> {
@@ -14875,19 +14895,26 @@ async function clubIsQuiet(groupId: string): Promise<{
   // cleanup sweep owns those) and must not hold a club's season hostage
   // forever.
   const now = Date.now();
+  const afterSeal = opts?.mode === 'afterSeal';
   const open = await db
     .collection('games')
     .where('groupId', '==', groupId)
-    .where('status', 'in', ['scheduled', 'open', 'locked', 'active'])
+    .where(
+      'status',
+      'in',
+      afterSeal ? ['active'] : ['scheduled', 'open', 'locked', 'active'],
+    )
     // Forward as well as back. An evening that kicked off early — the teams
     // turned up at 19:40 for a 20:00 game and pressed start — has a startsAt in
     // the future while the rotation is already running, and an upper bound of
     // `now` walked straight past it. The window is the evening, not the clock.
     .where('startsAt', '<=', now + STARTING_SOON_MS)
     .where('startsAt', '>=', now - TONIGHT_MS)
-    .limit(1)
+    .limit(2)
     .get();
-  if (!open.empty) return { ok: false, blocker: 'openGame' };
+  if (open.docs.some((d) => d.id !== opts?.exceptGameId)) {
+    return { ok: false, blocker: 'openGame' };
+  }
 
   // Finished but not yet sealed. Closing in that gap makes sealRoundSummary
   // compare tonight against a table with no history, so every stat reads as a
@@ -15059,6 +15086,158 @@ function addMonthsClampedServer(from: number, months: number): number {
  *   others. `closeSeason` is idempotent on its own (the archive is a create()),
  *   so a retry after a partial failure cannot double-archive.
  */
+/**
+ * Close one season and open the next: archive, re-base, announce.
+ *
+ * Extracted because there are now TWO ways in. The hourly sweep is the
+ * backstop — it catches date cadences and anything the other path missed — and
+ * the seal of an evening is the fast one: the moment a club finishes the round
+ * that meets its target, the season is over, and waiting up to an hour to say
+ * so made the app look like it had not noticed. One implementation, because a
+ * second way to close a season is a second set of bugs on the only unattended
+ * path that destroys production data.
+ */
+async function performSeasonClose(args: {
+  groupId: string;
+  groupName: string;
+  seasonId: string;
+  seasonNo: number;
+  startedAt: number;
+  played: number;
+  roundsAtStart: number;
+  cadence: { type?: string; months?: number; endsAt?: number; targetRounds?: number };
+  count: number;
+  now: number;
+}): Promise<void> {
+  const { groupId, groupName, seasonId, seasonNo, cadence, now } = args;
+  const result = await closeSeason({
+    db,
+    groupId,
+    groupName,
+    seasonId,
+    seasonNo,
+    startsAt: args.startedAt,
+    completedRounds: args.played,
+    roundsAtStart: args.roundsAtStart,
+    originalTarget: cadence as { type: string; endsAt?: number; targetRounds?: number },
+    now,
+  });
+
+  const nextNo = seasonNo + 1;
+  await db.collection('groups').doc(groupId).set(
+    {
+      seasons: {
+        currentNo: nextNo,
+        currentId: `s${nextNo}`,
+        startedAt: now,
+        roundsAtStart: await sealedEveningsOf(groupId),
+        playedRounds: 0,
+        reopenedAt: 0,
+        // The whole reason the sweep is safe to run hourly: without a re-based
+        // end date it would close this club again next hour, and the hour
+        // after that, forever.
+        cadence: rebaseCadence(cadence, args.startedAt, now),
+        targetHistory: [],
+        count: args.count + 1,
+      },
+    },
+    { merge: true },
+  );
+  if (result.archived) {
+    await announceSeasonClosed({ groupId, groupName, seasonId, seasonNo });
+  }
+}
+
+/**
+ * The evening just sealed was the one the season was waiting for — so end it
+ * now, not at the top of the next hour.
+ *
+ * Only a ROUNDS cadence can be finished by an evening; a date cadence is
+ * finished by a date, and that is the sweep's job. Best-effort throughout: the
+ * seal has already committed, and a season that fails to close here is closed
+ * by the sweep within the hour exactly as before.
+ */
+async function closeSeasonIfRoundsTargetMet(
+  groupId: string,
+  sealedGameId: string,
+): Promise<void> {
+  try {
+    const gSnap = await db.collection('groups').doc(groupId).get();
+    const g = gSnap.data() as
+      | {
+          name?: string;
+          seasons?: {
+            enabled?: boolean;
+            currentNo?: number;
+            currentId?: string;
+            startedAt?: number;
+            roundsAtStart?: number;
+            playedRounds?: number;
+            reopenedAt?: number;
+            cadence?: {
+              type?: string;
+              months?: number;
+              endsAt?: number;
+              targetRounds?: number;
+            };
+            count?: number;
+          };
+        }
+      | undefined;
+    const seasons = g?.seasons;
+    if (!seasons?.enabled || !seasons.currentId) return;
+    const cadence = seasons.cadence ?? {};
+    if (cadence.type !== 'rounds') return;
+    const target = cadence.targetRounds;
+    if (typeof target !== 'number' || target <= 0) return;
+
+    const played = await completedRoundsOf(
+      groupId,
+      seasons.roundsAtStart,
+      seasons.playedRounds,
+    );
+    if (played < target) return;
+
+    // An admin who has just pulled the season back open gets their grace here
+    // too, for the same reason: they reopened it because it met its target,
+    // and closing it again on the next evening's seal would be the app
+    // arguing.
+    const reopenedAt = archNum(seasons.reopenedAt);
+    const now = Date.now();
+    if (reopenedAt > 0 && now - reopenedAt < REOPEN_GRACE_MS) return;
+
+    const quiet = await clubIsQuiet(groupId, {
+      mode: 'afterSeal',
+      exceptGameId: sealedGameId,
+    });
+    if (!quiet.ok) {
+      console.log('[season] target met but club busy — sweep will close', groupId, quiet.blocker);
+      return;
+    }
+
+    await performSeasonClose({
+      groupId,
+      groupName: g?.name ?? '',
+      seasonId: seasons.currentId,
+      seasonNo: seasons.currentNo ?? 1,
+      startedAt: seasons.startedAt ?? 0,
+      played,
+      roundsAtStart: seasons.roundsAtStart ?? 0,
+      cadence,
+      count: seasons.count ?? 0,
+      now,
+    });
+    console.log(`[season] closed on seal: ${groupId} ${seasons.currentId} at ${played}/${target}`);
+  } catch (err) {
+    console.error('[season] close-on-seal failed', groupId, err);
+    await reportServerError({
+      operation: 'closeSeasonOnSeal',
+      err,
+      context: { groupId, gameId: sealedGameId },
+    });
+  }
+}
+
 async function runSeasonRollovers(): Promise<void> {
   const now = Date.now();
   const clubs = await db
@@ -15147,47 +15326,18 @@ async function runSeasonRollovers(): Promise<void> {
 
       const seasonId = seasons.currentId;
       const seasonNo = seasons.currentNo ?? 1;
-      const result = await closeSeason({
-        db,
+      await performSeasonClose({
         groupId: doc.id,
         groupName: g.name ?? '',
         seasonId,
         seasonNo,
-        startsAt: seasons.startedAt ?? 0,
-        completedRounds: played,
+        startedAt: seasons.startedAt ?? 0,
+        played,
         roundsAtStart: seasons.roundsAtStart ?? 0,
-        originalTarget: cadence as { type: string; endsAt?: number; targetRounds?: number },
+        cadence,
+        count: seasons.count ?? 0,
         now,
       });
-
-      const nextNo = seasonNo + 1;
-      await doc.ref.set(
-        {
-          seasons: {
-            currentNo: nextNo,
-            currentId: `s${nextNo}`,
-            startedAt: now,
-            roundsAtStart: await sealedEveningsOf(doc.id),
-            playedRounds: 0,
-            reopenedAt: 0,
-            // The whole reason this sweep is safe to run hourly: without a
-            // re-based end date it would close this club again next hour, and
-            // the hour after that, forever.
-            cadence: rebaseCadence(cadence, seasons.startedAt ?? 0, now),
-            targetHistory: [],
-            count: (seasons.count ?? 0) + 1,
-          },
-        },
-        { merge: true },
-      );
-      if (result.archived) {
-        await announceSeasonClosed({
-          groupId: doc.id,
-          groupName: g.name ?? '',
-          seasonId,
-          seasonNo,
-        });
-      }
       closed += 1;
     } catch (err) {
       console.error('[season] rollover failed', doc.id, err);

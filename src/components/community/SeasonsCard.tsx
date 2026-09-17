@@ -6,8 +6,10 @@
 // switch — which is where it lives now (SeasonsSettings). Ending a season went
 // with it, so an admin has one place to manage seasons instead of two.
 //
-// What is left is the part everyone needs: which season it is, when it ends,
-// and the way into my own summary.
+// What is left is the part everyone needs: which season it is and where it has
+// got to. A personal summary is NOT here — it belongs to a season that ended,
+// and by the time one has, the club is already playing the next. It lives in
+// the club's stats screen instead, under the finished season it describes.
 
 import React, { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -16,7 +18,6 @@ import { useNavigation } from '@react-navigation/native';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { isCalendarDate, formatCalendarDate } from '@/utils/seasonDates';
-import { lastClosedSeason } from '@/utils/seasonChoices';
 import { he } from '@/i18n/he';
 import type { GroupSeasons } from '@/types';
 
@@ -42,16 +43,6 @@ export function SeasonsCard({
   isMember: boolean;
 }) {
   const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
-  // A summary is of a season that ENDED. While one is running there are no
-  // titles, no final table and no closing date, so the page it opened was
-  // half-written — and a summary people learn to distrust is worse than one
-  // they have to wait for. Owner: "אנחנו לא צריכים להציג סיכום עונה אם היא לא
-  // הסתיימה".
-  const closed = lastClosedSeason(seasons);
-  const openMySummary = useCallback(() => {
-    if (!closed) return;
-    nav.navigate('SeasonSummary', { groupId, seasonId: closed.id });
-  }, [nav, groupId, closed]);
   const openHistory = useCallback(() => {
     nav.navigate('SeasonHistory', { groupId });
   }, [nav, groupId]);
@@ -110,19 +101,6 @@ export function SeasonsCard({
       {line ? <Text style={styles.note}>{line}</Text> : null}
       {daysLeft !== null ? (
         <Text style={styles.note}>{he.seasonsProgressDays(daysLeft)}</Text>
-      ) : null}
-      {/* Only for a season that has ended, and named so nobody taps it
-          expecting tonight. size="lg" matches "טבלת המועדון והסטטיסטיקות"
-          directly below; without it the column of buttons steps down for no
-          reason a reader can see. */}
-      {closed ? (
-        <Button
-          title={he.seasonsMySummaryOfCta(closed.no)}
-          variant="outline"
-          size="lg"
-          fullWidth
-          onPress={openMySummary}
-        />
       ) : null}
       {/* Only once there is history to look at — a club in its first season
           would otherwise be offered an empty room. */}

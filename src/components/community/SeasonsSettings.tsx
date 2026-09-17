@@ -53,6 +53,11 @@ type Cadence = 'date' | 'rounds';
 
 /** Deliberately few. A club picking a season length should not be designing one. */
 const MONTH_CHOICES = [3, 6, 12] as const;
+/** Shortcuts for how long season 1 runs when it is carrying a club's whole
+ *  history. Shorter than MONTH_CHOICES on purpose: this season already
+ *  holds everything played so far, so its remaining stretch is usually the
+ *  short one. Anything else is the custom stepper beside them. */
+const SEASON1_MONTH_CHOICES = [1, 2, 3, 6] as const;
 const ROUND_CHOICES = [24, 48, 96] as const;
 /** The step for the custom pickers. One at a time for months (there are only
  *  24 of them); rounds move in fours, because a club setting 37 is really
@@ -254,6 +259,11 @@ export function SeasonsSettings({
    *  There is no honest start date to compute for it — the history reaches
    *  back as far as the club does — so the admin names its end instead. */
   const [season1EndsOn, setSeason1EndsOn] = useState<CalendarDate | null>(null);
+  /** The same presets-plus-custom shape as the season length above, because it
+   *  is the same question asked about a different season — "1, 2, 3 or 6
+   *  months" are shortcuts, not the whole range an admin may want. */
+  const [season1Custom, setSeason1Custom] = useState(false);
+  const [season1Months, setSeason1Months] = useState(3);
   const [confirmOpen, setConfirmOpen] = useState(false);
   /** Evenings the club has already played. Asked for once, when the options
    *  open, because every validation and every line of the confirmation is
@@ -640,18 +650,46 @@ export function SeasonsSettings({
                   <Text style={styles.fieldLabel}>{he.seasonsSeason1EndLabel}</Text>
                   <Text style={styles.fieldHint}>{he.seasonsSeason1EndHint}</Text>
                   <View style={styles.chipRow}>
-                    {[1, 2, 3, 6].map((m) => {
+                    {SEASON1_MONTH_CHOICES.map((m) => {
                       const d = seasonEndDate(today, m);
                       return (
                         <Chip
                           key={m}
                           label={formatCalendarDate(d)}
-                          active={season1EndsOn === d}
-                          onPress={() => setSeason1EndsOn(d)}
+                          active={!season1Custom && season1EndsOn === d}
+                          onPress={() => {
+                            setSeason1Custom(false);
+                            setSeason1Months(m);
+                            setSeason1EndsOn(d);
+                          }}
                         />
                       );
                     })}
+                    <Chip
+                      label={he.seasonsCustom}
+                      active={season1Custom}
+                      onPress={() => {
+                        setSeason1Custom(true);
+                        setSeason1EndsOn(seasonEndDate(today, season1Months));
+                      }}
+                    />
                   </View>
+                  {season1Custom ? (
+                    <Stepper
+                      label={he.seasonsCustomMonths}
+                      value={season1Months}
+                      unit={he.seasonsMonthsUnit(season1Months)}
+                      min={MIN_SEASON_MONTHS}
+                      max={MAX_SEASON_MONTHS}
+                      onChange={(m) => {
+                        setSeason1Months(m);
+                        // The chips ARE dates, so the stepper has to be one
+                        // too — otherwise the admin moves a number and the
+                        // date they are actually choosing never changes.
+                        setSeason1EndsOn(seasonEndDate(today, m));
+                      }}
+                    />
+                  ) : null}
                 </>
               ) : null}
 

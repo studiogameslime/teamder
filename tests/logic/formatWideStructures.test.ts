@@ -76,7 +76,7 @@ describe.each(SCENARIOS)('$label', ({ perTeam, numTeams }) => {
 
   it('starts a rotation with two on the pitch and the rest queued', () => {
     const teams = teamsFrom(split.teams);
-    expect(canStart(teams, perTeam)).toBe(true);
+    expect(canStart(teams)).toBe(true);
 
     const started = startRotation(teams, perTeam, 'temporary', pickFirst);
     expect(started).not.toBeNull();

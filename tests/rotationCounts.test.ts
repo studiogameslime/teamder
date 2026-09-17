@@ -30,7 +30,7 @@ describe('rotationEngine — registered-player counts 10/11/12/14/15', () => {
   for (const { n, sizes } of CASES) {
     it(`${n} players (${sizes.join('-')}): two full teams + correct waiting`, () => {
       const teams = build(sizes);
-      expect(canStart(teams, PER)).toBe(true);
+      expect(canStart(teams)).toBe(true);
       const start = startRotation(teams, PER, 'temporary', pickFirst)!;
       const r = start.rotation;
       // Both playing teams full.
