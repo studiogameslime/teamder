@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { isCalendarDate, formatCalendarDate } from '@/utils/seasonDates';
+import { lastClosedSeason } from '@/utils/seasonChoices';
 import { he } from '@/i18n/he';
 import type { GroupSeasons } from '@/types';
 
@@ -41,9 +42,16 @@ export function SeasonsCard({
   isMember: boolean;
 }) {
   const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
+  // A summary is of a season that ENDED. While one is running there are no
+  // titles, no final table and no closing date, so the page it opened was
+  // half-written — and a summary people learn to distrust is worse than one
+  // they have to wait for. Owner: "אנחנו לא צריכים להציג סיכום עונה אם היא לא
+  // הסתיימה".
+  const closed = lastClosedSeason(seasons);
   const openMySummary = useCallback(() => {
-    nav.navigate('SeasonSummary', { groupId });
-  }, [nav, groupId]);
+    if (!closed) return;
+    nav.navigate('SeasonSummary', { groupId, seasonId: closed.id });
+  }, [nav, groupId, closed]);
   const openHistory = useCallback(() => {
     nav.navigate('SeasonHistory', { groupId });
   }, [nav, groupId]);
@@ -103,16 +111,19 @@ export function SeasonsCard({
       {daysLeft !== null ? (
         <Text style={styles.note}>{he.seasonsProgressDays(daysLeft)}</Text>
       ) : null}
-      {/* size="lg" to match "טבלת המועדון והסטטיסטיקות" directly below this
-          card. Without it these render a notch smaller and the column of
-          buttons steps down for no reason a reader can see. */}
-      <Button
-        title={he.seasonsMySummaryCta}
-        variant="outline"
-        size="lg"
-        fullWidth
-        onPress={openMySummary}
-      />
+      {/* Only for a season that has ended, and named so nobody taps it
+          expecting tonight. size="lg" matches "טבלת המועדון והסטטיסטיקות"
+          directly below; without it the column of buttons steps down for no
+          reason a reader can see. */}
+      {closed ? (
+        <Button
+          title={he.seasonsMySummaryOfCta(closed.no)}
+          variant="outline"
+          size="lg"
+          fullWidth
+          onPress={openMySummary}
+        />
+      ) : null}
       {/* Only once there is history to look at — a club in its first season
           would otherwise be offered an empty room. */}
       {closedSeasons > 0 ? (

@@ -2045,6 +2045,10 @@ export const he = {
   seasonsEnableCta: 'הפעל עונות',
   seasonsEndCta: 'סיים עונה עכשיו',
   seasonsMySummaryCta: 'סיכום העונה שלי',
+  // Named, because the season it opens is the one that ENDED — the club is
+  // already playing the next. "סיכום העונה שלי" beside a running season 5
+  // reads as season 5.
+  seasonsMySummaryOfCta: (no: number) => `סיכום עונה ${no} שלי`,
   seasonsTargetDate: (when: string) => `העונה מסתיימת ב־${when}`,
   seasonsTargetRounds: (target: number) =>
     `העונה תסתיים אחרי ${target} מחזורים`,

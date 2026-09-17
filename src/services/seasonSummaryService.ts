@@ -13,6 +13,7 @@
 
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { seasonChoices, type SeasonChoice } from '@/utils/seasonChoices';
 import { logError } from '@/services/errorLog';
 import { userService } from '@/services/userService';
 import {
@@ -44,15 +45,11 @@ export interface SeasonTitleAwarded {
 
 /** Ceiling on the season picker. A club playing weekly for twenty years on
  *  three-month seasons has eighty. */
-const MAX_SEASON_CHOICES = 200;
 
-/** One season the club has, for the picker. */
-export interface SeasonChoice {
-  no: number;
-  id: string;
-  /** False for the one still running. */
-  closed: boolean;
-}
+/** One season the club has, for the picker. Defined with the derivation in
+ *  utils/seasonChoices and re-exported here so existing importers are
+ *  unaffected — one shape, one place it is computed. */
+export type { SeasonChoice };
 
 export interface SeasonSummaryModel {
   groupId: string;
@@ -273,24 +270,6 @@ async function resolveNames(
 
 
 /** The club's seasons, newest first. `count` have closed; `currentNo` runs. */
-function seasonChoices(seasons: GroupSeasons): SeasonChoice[] {
-  const out: SeasonChoice[] = [
-    { no: seasons.currentNo, id: seasons.currentId, closed: false },
-  ];
-  // Never size a loop from a number in a document. `count` is server-written
-  // and the rules now stop a club being created with one, but a picker that
-  // spins a phone for a billion iterations is not a risk worth carrying for a
-  // list nobody scrolls past a dozen entries of anyway.
-  const closed = Math.max(0, Math.min(MAX_SEASON_CHOICES, seasons.count ?? 0));
-  for (let no = closed; no >= 1; no -= 1) {
-    // A club that enabled, disabled and re-enabled keeps numbering, so the
-    // current season's number can be higher than count + 1. Skip anything that
-    // would duplicate the running one.
-    if (no === seasons.currentNo) continue;
-    out.push({ no, id: `s${no}`, closed: true });
-  }
-  return out;
-}
 
 export interface LoadSeasonArgs {
   groupId: string;

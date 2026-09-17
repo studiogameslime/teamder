@@ -96,6 +96,7 @@ import {
   canEditGame,
   canEnterLive,
   canJoinGame,
+  canStartEvening,
   isCancelled,
   isFinished,
   isOpen,
@@ -1934,7 +1935,20 @@ export function MatchDetailsScreen() {
           icon: 'person-add-outline' as const,
         };
       }
-      if (sessionStatus === 'waiting_for_players') {
+      // A short roster hides the live CTA — UNTIL the evening is actually
+      // about to start. Owner report: seven people at the pitch, a 4v4 game
+      // whose format implies eight, and no way in at all. `waiting_for_players`
+      // is a recruiting state, and thirty minutes before kickoff recruiting is
+      // over: whoever turned up is who is playing, and they can play 4v3 or
+      // change the format from the live screen.
+      //
+      // canStartEvening carries both bounds (not before the lead, not after
+      // the evening has gone stale) and existed for exactly this — it simply
+      // had no caller, which is why the hole was invisible.
+      if (
+        sessionStatus === 'waiting_for_players' &&
+        !canStartEvening(game, { isOrganizerOrAdmin: isAdmin })
+      ) {
         return {
           title: he.sessionActionInvitePlayers,
           onPress: handleShare,

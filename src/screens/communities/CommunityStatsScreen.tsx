@@ -20,6 +20,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { EmptyState } from '@/components/EmptyState';
+import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { AchievementBadge } from '@/components/AchievementBadge';
@@ -620,6 +621,23 @@ export function CommunityStatsScreen() {
                         }),
                       )}
                 </Text>
+              ) : null}
+              {/* The club's table for a finished season is right here, and the
+                  reader's own season is one tap away — but only for a season
+                  that ENDED. There is nothing to summarise about the one being
+                  played, and the scope chip already says which is on screen. */}
+              {scopedCard ? (
+                <Button
+                  title={he.seasonsMySummaryOfCta(scopedCard.no)}
+                  variant="outline"
+                  fullWidth
+                  onPress={() =>
+                    nav.navigate('SeasonSummary', {
+                      groupId,
+                      seasonId: scopedCard.seasonId,
+                    })
+                  }
+                />
               ) : null}
             </>
           ) : null}
