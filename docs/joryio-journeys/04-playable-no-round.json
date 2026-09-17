@@ -1,6 +1,6 @@
 {
   "name": "המחזור הראשון — יש סגל, עוד אין משחק",
-  "description": "מלווה מועדון שכבר הגיע ל-10 שחקנים ועדיין לא פתח מחזור. כל שלב ממתין לפתיחת משחק; מי שפותח יוצא מהמסע מיד, ומי שלא מקבל תזכורת אחת שמסבירה בדיוק מה מרוויחים מהמחזור הקבוע.",
+  "description": "מלווה מועדון שהגיע ל-10 שחקנים ועדיין לא פתח מחזור. מי שפותח משחק יוצא מהמסע מיד; מי שלא מקבל תזכורת אחת לשלב.",
   "nodes": [
     {
       "id": "trigger",
@@ -53,13 +53,13 @@
       "type": "message",
       "position": {
         "x": 600,
-        "y": 130
+        "y": 140
       },
       "config": {
         "channel": "push",
         "blockName": "תזכורת 1 — עוד לא נפתח מחזור",
         "pushTitle": "יש לכם סגל ⚽",
-        "pushBody": "הקשה כבר מאחוריך. פתיחת מחזור לוקחת פחות מדקה, וכל הסגל מקבל הזמנה אוטומטית.",
+        "pushBody": "הקשה כבר מאחוריך. פתיחת מחזור לוקחת פחות מדקה, וכל הסגל מקבל הזמנה.",
         "pushDeepLink": "footy://games/create",
         "pushSound": "Default",
         "pushBadge": 1,
@@ -111,13 +111,13 @@
       "type": "message",
       "position": {
         "x": 1200,
-        "y": 130
+        "y": 140
       },
       "config": {
         "channel": "push",
         "blockName": "תזכורת 2 — עוד לא נפתח מחזור",
         "pushTitle": "מחזור קבוע נפתח לבד",
-        "pushBody": "קבע יום ושעה פעם אחת — וכל שבוע המחזור ייפתח מעצמו וישלח הזמנה לכל הסגל.",
+        "pushBody": "קבע יום ושעה פעם אחת — וכל שבוע המחזור ייפתח מעצמו וישלח הזמנה לסגל.",
         "pushDeepLink": "footy://games/create",
         "pushSound": "Default",
         "pushBadge": 1,
@@ -169,13 +169,13 @@
       "type": "message",
       "position": {
         "x": 1800,
-        "y": 130
+        "y": 140
       },
       "config": {
         "channel": "push",
         "blockName": "תזכורת 3 — עוד לא נפתח מחזור",
         "pushTitle": "הסגל מחכה למחזור",
-        "pushBody": "עשרה שחקנים בפנים וכלום לא קבוע. דקה אחת של הגדרה, ויש לכם כדורגל שבועי.",
+        "pushBody": "עשרה שחקנים בפנים וכלום לא קבוע. דקה של הגדרה, ויש לכם כדורגל שבועי.",
         "pushDeepLink": "footy://games/create",
         "pushSound": "Default",
         "pushBadge": 1,
@@ -201,7 +201,7 @@
       "source": "split_1",
       "target": "push_1",
       "sourceHandle": "timed_out",
-      "label": "עוד לא נפתח מחזור"
+      "label": "עוד לא הגיע"
     },
     {
       "id": "e_push_1__split_2",
@@ -213,7 +213,7 @@
       "source": "split_2",
       "target": "push_2",
       "sourceHandle": "timed_out",
-      "label": "עוד לא נפתח מחזור"
+      "label": "עוד לא הגיע"
     },
     {
       "id": "e_push_2__split_3",
@@ -225,7 +225,7 @@
       "source": "split_3",
       "target": "push_3",
       "sourceHandle": "timed_out",
-      "label": "עוד לא נפתח מחזור"
+      "label": "עוד לא הגיע"
     }
   ]
 }

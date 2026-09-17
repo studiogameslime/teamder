@@ -1,6 +1,6 @@
 {
   "name": "בניית הסגל — מועדון חדש בדרך ל-10 שחקנים",
-  "description": "מלווה מארגן שפתח מועדון עד שיש לו סגל בן 10 שחקנים. בכל שלב המסע בודק מה באמת קרה: מי שהגיע ל-10 יוצא מיד, מי שצירף שחקן או שיתף קישור מקבל חיזוק, ורק מי שלא זז מקבל תזכורת. כך הטקסט אף פעם לא מבקש 'את החבר הראשון' ממי שכבר צירף שלושה.",
+  "description": "מלווה מארגן שפתח מועדון עד שיש לו 10 שחקנים, ויוצא ברגע שהגיע. כל פוש קורא את מספר השחקנים העדכני מהפרופיל ואומר כמה עוד חסרים, כך שהטקסט נכון גם אם הצטרפו שלושה בין שני השלבים.",
   "nodes": [
     {
       "id": "trigger",
@@ -23,106 +23,37 @@
         "y": 0
       },
       "config": {
-        "blockName": "שלב 1 — 2 ימים: מה קרה במועדון?",
-        "mode": "multi",
-        "selected": 0,
+        "blockName": "שלב 1 — 2 ימים: הגיע ל-10?",
+        "mode": "yesno",
+        "pathName": "הגיע ל-10 שחקנים — יוצא מהמסע",
+        "triggers": [
+          {
+            "id": "t_club_became_playable",
+            "kind": "event",
+            "eventName": "Club Became Playable",
+            "filters": []
+          }
+        ],
         "advance": "immediate",
         "windowAmount": 2,
         "windowUnit": "days",
         "windowPersonalize": false,
         "windowVarType": "ctx",
-        "windowVar": "",
-        "groups": [
-          {
-            "id": "s1_playable",
-            "name": "הגיע ל-10 שחקנים — יוצא מהמסע",
-            "triggers": [
-              {
-                "id": "t_club_became_playable",
-                "kind": "event",
-                "eventName": "Club Became Playable",
-                "filters": []
-              }
-            ],
-            "exitCanvas": true
-          },
-          {
-            "id": "s1_progress",
-            "name": "צירף שחקן או שיתף קישור",
-            "triggers": [
-              {
-                "id": "t_club_roster_milestone",
-                "kind": "event",
-                "eventName": "Club Roster Milestone",
-                "filters": []
-              },
-              {
-                "id": "t_community_join_approved",
-                "kind": "event",
-                "eventName": "Community Join Approved",
-                "filters": []
-              },
-              {
-                "id": "t_invite_shared",
-                "kind": "event",
-                "eventName": "Invite Shared",
-                "filters": []
-              },
-              {
-                "id": "t_invite_link_created",
-                "kind": "event",
-                "eventName": "Invite Link Created",
-                "filters": []
-              }
-            ],
-            "exitCanvas": false
-          },
-          {
-            "id": "s1_to",
-            "name": "לא זז כלום",
-            "isTimedOut": true,
-            "exitCanvas": false
-          }
-        ]
+        "windowVar": ""
       }
     },
     {
-      "id": "push_1_progress",
+      "id": "push_1",
       "type": "message",
       "position": {
         "x": 600,
-        "y": -130
+        "y": 140
       },
       "config": {
         "channel": "push",
-        "blockName": "עידוד — התקדם (2 ימים)",
-        "pushTitle": "הסגל התחיל להיבנות 👏",
-        "pushBody": "יפה. עוד כמה כאלה ואפשר לפתוח מחזור. הקישור עדיין פעיל — שלח אותו שוב לקבוצה.",
-        "pushDeepLink": "footy://communities",
-        "pushSound": "Default",
-        "pushBadge": 1,
-        "appIds": [
-          "61169e4e-72ab-45fd-84f0-7ec606be0424",
-          "582c204f-327e-4d76-9703-b8655454b887"
-        ],
-        "pushPlatforms": [
-          "ios",
-          "android"
-        ]
-      }
-    },
-    {
-      "id": "push_1_nudge",
-      "type": "message",
-      "position": {
-        "x": 600,
-        "y": 130
-      },
-      "config": {
-        "channel": "push",
-        "blockName": "תזכורת — לא זז (2 ימים)",
+        "blockName": "תזכורת 1 — כמה חסרים לסגל",
         "pushTitle": "המועדון שלך מוכן ⚽",
-        "pushBody": "נשאר רק להכניס את החבר'ה. שלח את קישור ההצטרפות בוואטסאפ — מי שלוחץ נכנס ישר פנימה.",
+        "pushBody": "עוד {{ user.custom.club_missing | default: \"כמה\" }} שחקנים ויש לכם מחזור. שלח את קישור ההצטרפות בקבוצת הוואטסאפ.",
         "pushDeepLink": "footy://communities",
         "pushSound": "Default",
         "pushBadge": 1,
@@ -144,106 +75,37 @@
         "y": 0
       },
       "config": {
-        "blockName": "שלב 2 — 5 ימים: מה קרה במועדון?",
-        "mode": "multi",
-        "selected": 0,
+        "blockName": "שלב 2 — 5 ימים: הגיע ל-10?",
+        "mode": "yesno",
+        "pathName": "הגיע ל-10 שחקנים — יוצא מהמסע",
+        "triggers": [
+          {
+            "id": "t_club_became_playable",
+            "kind": "event",
+            "eventName": "Club Became Playable",
+            "filters": []
+          }
+        ],
         "advance": "immediate",
         "windowAmount": 5,
         "windowUnit": "days",
         "windowPersonalize": false,
         "windowVarType": "ctx",
-        "windowVar": "",
-        "groups": [
-          {
-            "id": "s2_playable",
-            "name": "הגיע ל-10 שחקנים — יוצא מהמסע",
-            "triggers": [
-              {
-                "id": "t_club_became_playable",
-                "kind": "event",
-                "eventName": "Club Became Playable",
-                "filters": []
-              }
-            ],
-            "exitCanvas": true
-          },
-          {
-            "id": "s2_progress",
-            "name": "צירף שחקן או שיתף קישור",
-            "triggers": [
-              {
-                "id": "t_club_roster_milestone",
-                "kind": "event",
-                "eventName": "Club Roster Milestone",
-                "filters": []
-              },
-              {
-                "id": "t_community_join_approved",
-                "kind": "event",
-                "eventName": "Community Join Approved",
-                "filters": []
-              },
-              {
-                "id": "t_invite_shared",
-                "kind": "event",
-                "eventName": "Invite Shared",
-                "filters": []
-              },
-              {
-                "id": "t_invite_link_created",
-                "kind": "event",
-                "eventName": "Invite Link Created",
-                "filters": []
-              }
-            ],
-            "exitCanvas": false
-          },
-          {
-            "id": "s2_to",
-            "name": "לא זז כלום",
-            "isTimedOut": true,
-            "exitCanvas": false
-          }
-        ]
+        "windowVar": ""
       }
     },
     {
-      "id": "push_2_progress",
+      "id": "push_2",
       "type": "message",
       "position": {
         "x": 1200,
-        "y": -130
+        "y": 140
       },
       "config": {
         "channel": "push",
-        "blockName": "עידוד — התקדם (5 ימים)",
-        "pushTitle": "עוד שחקן נכנס למועדון",
-        "pushBody": "אתה בכיוון הנכון. בעשרה שחקנים המחזור השבועי נפתח לבד והכוחות מתאזנים לבד.",
-        "pushDeepLink": "footy://communities",
-        "pushSound": "Default",
-        "pushBadge": 1,
-        "appIds": [
-          "61169e4e-72ab-45fd-84f0-7ec606be0424",
-          "582c204f-327e-4d76-9703-b8655454b887"
-        ],
-        "pushPlatforms": [
-          "ios",
-          "android"
-        ]
-      }
-    },
-    {
-      "id": "push_2_nudge",
-      "type": "message",
-      "position": {
-        "x": 1200,
-        "y": 130
-      },
-      "config": {
-        "channel": "push",
-        "blockName": "תזכורת — לא זז (5 ימים)",
+        "blockName": "תזכורת 2 — כמה חסרים לסגל",
         "pushTitle": "הקבוצה מחכה לך",
-        "pushBody": "רוב המארגנים ממלאים את הסגל בשיתוף אחד בוואטסאפ. שנייה של העתקה, והם בפנים.",
+        "pushBody": "במועדון כבר {{ user.custom.club_size | default: \"כמה\" }} שחקנים. עוד {{ user.custom.club_missing | default: \"כמה\" }} ואתם פותחים מחזור ראשון.",
         "pushDeepLink": "footy://communities",
         "pushSound": "Default",
         "pushBadge": 1,
@@ -265,106 +127,37 @@
         "y": 0
       },
       "config": {
-        "blockName": "שלב 3 — 10 ימים: מה קרה במועדון?",
-        "mode": "multi",
-        "selected": 0,
+        "blockName": "שלב 3 — 10 ימים: הגיע ל-10?",
+        "mode": "yesno",
+        "pathName": "הגיע ל-10 שחקנים — יוצא מהמסע",
+        "triggers": [
+          {
+            "id": "t_club_became_playable",
+            "kind": "event",
+            "eventName": "Club Became Playable",
+            "filters": []
+          }
+        ],
         "advance": "immediate",
         "windowAmount": 10,
         "windowUnit": "days",
         "windowPersonalize": false,
         "windowVarType": "ctx",
-        "windowVar": "",
-        "groups": [
-          {
-            "id": "s3_playable",
-            "name": "הגיע ל-10 שחקנים — יוצא מהמסע",
-            "triggers": [
-              {
-                "id": "t_club_became_playable",
-                "kind": "event",
-                "eventName": "Club Became Playable",
-                "filters": []
-              }
-            ],
-            "exitCanvas": true
-          },
-          {
-            "id": "s3_progress",
-            "name": "צירף שחקן או שיתף קישור",
-            "triggers": [
-              {
-                "id": "t_club_roster_milestone",
-                "kind": "event",
-                "eventName": "Club Roster Milestone",
-                "filters": []
-              },
-              {
-                "id": "t_community_join_approved",
-                "kind": "event",
-                "eventName": "Community Join Approved",
-                "filters": []
-              },
-              {
-                "id": "t_invite_shared",
-                "kind": "event",
-                "eventName": "Invite Shared",
-                "filters": []
-              },
-              {
-                "id": "t_invite_link_created",
-                "kind": "event",
-                "eventName": "Invite Link Created",
-                "filters": []
-              }
-            ],
-            "exitCanvas": false
-          },
-          {
-            "id": "s3_to",
-            "name": "לא זז כלום",
-            "isTimedOut": true,
-            "exitCanvas": false
-          }
-        ]
+        "windowVar": ""
       }
     },
     {
-      "id": "push_3_progress",
+      "id": "push_3",
       "type": "message",
       "position": {
         "x": 1800,
-        "y": -130
+        "y": 140
       },
       "config": {
         "channel": "push",
-        "blockName": "עידוד — התקדם (10 ימים)",
-        "pushTitle": "הסגל גדל 📈",
-        "pushBody": "כל שחקן שנכנס מקרב אותך למחזור הראשון. עוד שיתוף אחד בקבוצה ואתה שם.",
-        "pushDeepLink": "footy://communities",
-        "pushSound": "Default",
-        "pushBadge": 1,
-        "appIds": [
-          "61169e4e-72ab-45fd-84f0-7ec606be0424",
-          "582c204f-327e-4d76-9703-b8655454b887"
-        ],
-        "pushPlatforms": [
-          "ios",
-          "android"
-        ]
-      }
-    },
-    {
-      "id": "push_3_nudge",
-      "type": "message",
-      "position": {
-        "x": 1800,
-        "y": 130
-      },
-      "config": {
-        "channel": "push",
-        "blockName": "תזכורת — לא זז (10 ימים)",
-        "pushTitle": "נשארו מקומות בסגל",
-        "pushBody": "מועדון עם עשרה שחקנים כבר מריץ מחזור שבועי קבוע. שתף את הקישור והגעת לשם.",
+        "blockName": "תזכורת 3 — כמה חסרים לסגל",
+        "pushTitle": "אתם ממש קרובים",
+        "pushBody": "עוד {{ user.custom.club_missing | default: \"כמה\" }} שחקנים ל-10. שיתוף אחד בוואטסאפ בדרך כלל סוגר את הפער.",
         "pushDeepLink": "footy://communities",
         "pushSound": "Default",
         "pushBadge": 1,
@@ -386,81 +179,37 @@
         "y": 0
       },
       "config": {
-        "blockName": "שלב 4 — 14 ימים: מה קרה במועדון?",
-        "mode": "multi",
-        "selected": 0,
+        "blockName": "שלב 4 — 14 ימים: הגיע ל-10?",
+        "mode": "yesno",
+        "pathName": "הגיע ל-10 שחקנים — יוצא מהמסע",
+        "triggers": [
+          {
+            "id": "t_club_became_playable",
+            "kind": "event",
+            "eventName": "Club Became Playable",
+            "filters": []
+          }
+        ],
         "advance": "immediate",
         "windowAmount": 14,
         "windowUnit": "days",
         "windowPersonalize": false,
         "windowVarType": "ctx",
-        "windowVar": "",
-        "groups": [
-          {
-            "id": "s4_playable",
-            "name": "הגיע ל-10 שחקנים — יוצא מהמסע",
-            "triggers": [
-              {
-                "id": "t_club_became_playable",
-                "kind": "event",
-                "eventName": "Club Became Playable",
-                "filters": []
-              }
-            ],
-            "exitCanvas": true
-          },
-          {
-            "id": "s4_progress",
-            "name": "צירף שחקן או שיתף קישור",
-            "triggers": [
-              {
-                "id": "t_club_roster_milestone",
-                "kind": "event",
-                "eventName": "Club Roster Milestone",
-                "filters": []
-              },
-              {
-                "id": "t_community_join_approved",
-                "kind": "event",
-                "eventName": "Community Join Approved",
-                "filters": []
-              },
-              {
-                "id": "t_invite_shared",
-                "kind": "event",
-                "eventName": "Invite Shared",
-                "filters": []
-              },
-              {
-                "id": "t_invite_link_created",
-                "kind": "event",
-                "eventName": "Invite Link Created",
-                "filters": []
-              }
-            ],
-            "exitCanvas": false
-          },
-          {
-            "id": "s4_to",
-            "name": "לא זז כלום",
-            "isTimedOut": true,
-            "exitCanvas": false
-          }
-        ]
+        "windowVar": ""
       }
     },
     {
-      "id": "push_4_progress",
+      "id": "push_4",
       "type": "message",
       "position": {
         "x": 2400,
-        "y": -130
+        "y": 140
       },
       "config": {
         "channel": "push",
-        "blockName": "עידוד — התקדם (14 ימים)",
-        "pushTitle": "כמעט סגל מלא",
-        "pushBody": "נשאר ממש קצת. כשהמועדון מגיע לעשרה, פתיחת מחזור לוקחת פחות מדקה.",
+        "blockName": "תזכורת 4 — כמה חסרים לסגל",
+        "pushTitle": "נשאר מעט לסגל מלא",
+        "pushBody": "במועדון {{ user.custom.club_size | default: \"כמה\" }} שחקנים, חסרים {{ user.custom.club_missing | default: \"כמה\" }}. הקישור להצטרפות עדיין פעיל.",
         "pushDeepLink": "footy://communities",
         "pushSound": "Default",
         "pushBadge": 1,
@@ -475,17 +224,44 @@
       }
     },
     {
-      "id": "push_4_nudge",
+      "id": "split_5",
+      "type": "behavior_split",
+      "position": {
+        "x": 2700,
+        "y": 0
+      },
+      "config": {
+        "blockName": "שלב 5 — 30 ימים: הגיע ל-10?",
+        "mode": "yesno",
+        "pathName": "הגיע ל-10 שחקנים — יוצא מהמסע",
+        "triggers": [
+          {
+            "id": "t_club_became_playable",
+            "kind": "event",
+            "eventName": "Club Became Playable",
+            "filters": []
+          }
+        ],
+        "advance": "immediate",
+        "windowAmount": 30,
+        "windowUnit": "days",
+        "windowPersonalize": false,
+        "windowVarType": "ctx",
+        "windowVar": ""
+      }
+    },
+    {
+      "id": "push_5",
       "type": "message",
       "position": {
-        "x": 2400,
-        "y": 130
+        "x": 3000,
+        "y": 140
       },
       "config": {
         "channel": "push",
-        "blockName": "תזכורת — לא זז (14 ימים)",
+        "blockName": "תזכורת 5 — כמה חסרים לסגל",
         "pushTitle": "המועדון עדיין פתוח",
-        "pushBody": "הקישור לא פג. אם בא לך להחזיר את זה לחיים — שיתוף אחד בוואטסאפ מספיק.",
+        "pushBody": "עוד {{ user.custom.club_missing | default: \"כמה\" }} שחקנים והמחזור השבועי ייפתח מעצמו כל שבוע.",
         "pushDeepLink": "footy://communities",
         "pushSound": "Default",
         "pushBadge": 1,
@@ -507,90 +283,59 @@
       "target": "split_1"
     },
     {
-      "id": "e_split_1__push_1_progress",
+      "id": "e_split_1__push_1",
       "source": "split_1",
-      "target": "push_1_progress",
-      "sourceHandle": "s1_progress",
-      "label": "צירף שחקן"
-    },
-    {
-      "id": "e_split_1__push_1_nudge",
-      "source": "split_1",
-      "target": "push_1_nudge",
+      "target": "push_1",
       "sourceHandle": "timed_out",
-      "label": "לא זז כלום"
+      "label": "עוד לא הגיע"
     },
     {
-      "id": "e_push_1_progress__split_2",
-      "source": "push_1_progress",
+      "id": "e_push_1__split_2",
+      "source": "push_1",
       "target": "split_2"
     },
     {
-      "id": "e_push_1_nudge__split_2",
-      "source": "push_1_nudge",
-      "target": "split_2"
-    },
-    {
-      "id": "e_split_2__push_2_progress",
+      "id": "e_split_2__push_2",
       "source": "split_2",
-      "target": "push_2_progress",
-      "sourceHandle": "s2_progress",
-      "label": "צירף שחקן"
-    },
-    {
-      "id": "e_split_2__push_2_nudge",
-      "source": "split_2",
-      "target": "push_2_nudge",
+      "target": "push_2",
       "sourceHandle": "timed_out",
-      "label": "לא זז כלום"
+      "label": "עוד לא הגיע"
     },
     {
-      "id": "e_push_2_progress__split_3",
-      "source": "push_2_progress",
+      "id": "e_push_2__split_3",
+      "source": "push_2",
       "target": "split_3"
     },
     {
-      "id": "e_push_2_nudge__split_3",
-      "source": "push_2_nudge",
-      "target": "split_3"
-    },
-    {
-      "id": "e_split_3__push_3_progress",
+      "id": "e_split_3__push_3",
       "source": "split_3",
-      "target": "push_3_progress",
-      "sourceHandle": "s3_progress",
-      "label": "צירף שחקן"
-    },
-    {
-      "id": "e_split_3__push_3_nudge",
-      "source": "split_3",
-      "target": "push_3_nudge",
+      "target": "push_3",
       "sourceHandle": "timed_out",
-      "label": "לא זז כלום"
+      "label": "עוד לא הגיע"
     },
     {
-      "id": "e_push_3_progress__split_4",
-      "source": "push_3_progress",
+      "id": "e_push_3__split_4",
+      "source": "push_3",
       "target": "split_4"
     },
     {
-      "id": "e_push_3_nudge__split_4",
-      "source": "push_3_nudge",
-      "target": "split_4"
-    },
-    {
-      "id": "e_split_4__push_4_progress",
+      "id": "e_split_4__push_4",
       "source": "split_4",
-      "target": "push_4_progress",
-      "sourceHandle": "s4_progress",
-      "label": "צירף שחקן"
-    },
-    {
-      "id": "e_split_4__push_4_nudge",
-      "source": "split_4",
-      "target": "push_4_nudge",
+      "target": "push_4",
       "sourceHandle": "timed_out",
-      "label": "לא זז כלום"
+      "label": "עוד לא הגיע"
+    },
+    {
+      "id": "e_push_4__split_5",
+      "source": "push_4",
+      "target": "split_5"
+    },
+    {
+      "id": "e_split_5__push_5",
+      "source": "split_5",
+      "target": "push_5",
+      "sourceHandle": "timed_out",
+      "label": "עוד לא הגיע"
     }
   ]
 }
