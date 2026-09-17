@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { Group, GroupId, User, UserId } from '@/types';
+import { reportOrganiserState } from '@/services/organiserSignals';
 import { groupService } from '@/services';
 import { storage } from '@/services/storage';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -146,6 +147,15 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
       // stay as the initial hydrate set them; selectors tolerate a missing
       // current group.
       set({ groups, hydrated: true });
+      // Tell Joryio what kind of organiser this is.
+      //
+      // Hooked to the LIVE listener rather than to a screen, because this fires
+      // the moment a roster actually changes — which is exactly when the
+      // squad-building journey needs to know, and is the difference between a
+      // push that says "עוד 4" and one that says it after they already added
+      // them. Fire-and-forget: it feeds marketing, and nothing about the club
+      // list may wait on it or fail because of it.
+      void reportOrganiserState(userId, groups);
     });
     return () => {
       if (groupsUnsub) {

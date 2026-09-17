@@ -1,0 +1,97 @@
+{
+  "name": "Build the squad — club created, not yet playable",
+  "description": "An organiser opened a club and it cannot field a game yet. This is the largest measured leak in the funnel: of ~56 real clubs created, fewer than half ever got a second member in, and only 16 reached a playable roster. IMPORTANT: this journey deliberately does NOT exit when the first member joins — one player is not a game. It exits on Club Became Playable (10+), and the three touches escalate in interval (3 / 7 / 14 days) and change in KIND rather than repeating a reminder. The app now sends club_size, club_stage, club_missing and clubs_admin as user attributes so the copy can name the club's real position; if the journey builder supports an attribute split, branch the body on club_stage using the reference copy in _copyByStage below. Otherwise the neutral bodies here are safe at every size — none of them says 'your first player'.",
+  "entryTrigger": { "type": "event", "config": { "event": "Group Created" } },
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "trigger",
+      "position": { "x": 0, "y": 0 },
+      "config": {
+        "event": "Group Created",
+        "_note": "The moment a club exists. Every organiser passes through here exactly once per club."
+      }
+    },
+    {
+      "id": "wait_1",
+      "type": "behavior_split",
+      "position": { "x": 260, "y": 0 },
+      "config": {
+        "event": "Club Became Playable",
+        "window": { "value": 3, "unit": "days" },
+        "_note": "Three days. An organiser who pasted the link into WhatsApp on day one is already done and leaves through `did` — saying anything to them would be noise."
+      }
+    },
+    {
+      "id": "push_1",
+      "type": "message",
+      "position": { "x": 520, "y": 80 },
+      "config": {
+        "channel": "push",
+        "title": "המועדון שלך מוכן",
+        "body": "רק אתה רואה אותו כרגע. שלח את הקישור לקבוצת הוואטסאפ — מי שלוחץ נכנס ישר פנימה.",
+        "data": { "deeplink": "footy://communities" },
+        "_note": "Touch 1 = HOW. The commonest reason a club stays empty is that nobody knew sharing was one tap."
+      }
+    },
+    {
+      "id": "wait_2",
+      "type": "behavior_split",
+      "position": { "x": 780, "y": 80 },
+      "config": {
+        "event": "Club Became Playable",
+        "window": { "value": 7, "unit": "days" },
+        "_note": "A week, not another three days. The gap grows on purpose: somebody who ignored the first message will not be persuaded by the same message sooner."
+      }
+    },
+    {
+      "id": "push_2",
+      "type": "message",
+      "position": { "x": 1040, "y": 160 },
+      "config": {
+        "channel": "push",
+        "title": "עוד כמה שחקנים ויש מחזור",
+        "body": "מרגע שיש סגל, המחזור השבועי נפתח לבד והכוחות מתאזנים בלי ויכוח במגרש.",
+        "data": { "deeplink": "footy://communities" },
+        "_note": "Touch 2 = WHY. Not a reminder — the payoff, which is a different argument from touch 1."
+      }
+    },
+    {
+      "id": "wait_3",
+      "type": "behavior_split",
+      "position": { "x": 1300, "y": 160 },
+      "config": {
+        "event": "Club Became Playable",
+        "window": { "value": 14, "unit": "days" },
+        "_note": "Two weeks. The last wait, and the longest."
+      }
+    },
+    {
+      "id": "push_3",
+      "type": "message",
+      "position": { "x": 1560, "y": 240 },
+      "config": {
+        "channel": "push",
+        "title": "המועדון שלך עדיין מחכה",
+        "body": "הקישור עדיין פעיל — שיתוף אחד בקבוצה וזה מתחיל לזוז.",
+        "data": { "deeplink": "footy://communities" },
+        "_note": "Touch 3 and LAST. Three unanswered touches mean the answer is no; a fourth costs the notification permission and buys nothing."
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "trigger", "target": "wait_1" },
+    { "id": "e2", "source": "wait_1", "target": "push_1", "sourceHandle": "timed_out", "label": "Still not playable" },
+    { "id": "e3", "source": "push_1", "target": "wait_2" },
+    { "id": "e4", "source": "wait_2", "target": "push_2", "sourceHandle": "timed_out", "label": "Still not playable" },
+    { "id": "e5", "source": "push_2", "target": "wait_3" },
+    { "id": "e6", "source": "wait_3", "target": "push_3", "sourceHandle": "timed_out", "label": "Still not playable" }
+  ],
+  "_copyByStage": {
+    "_note": "Reference copy if the body can be branched on the club_stage attribute. The rule behind it: never name a number the organiser has already beaten, and never say 'first' to somebody who has three.",
+    "empty": "רק אתה רואה את המועדון כרגע. שלח את הקישור לקבוצה ומי שלוחץ נכנס ישר פנימה.",
+    "seeded": "ההתחלה נעשתה. ל-5 על 5 צריך בערך 10 — עוד כמה שיתופים ואתם שם.",
+    "forming": "הסגל מתחיל להיראות. מכאן הכוחות כבר מתאזנים לבד, בלי ויכוח במגרש.",
+    "nearly": "אתם ממש על הקו. עוד שניים ויש לכם מחזור מלא."
+  }
+}

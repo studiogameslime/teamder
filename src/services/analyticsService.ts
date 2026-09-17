@@ -544,6 +544,13 @@ export const AnalyticsEvent = {
   SpotOfferDecided: 'spot_offer_decided',   // gameId, decision ('passed'|'admin_advanced')
   AvailablePlayerInvited: 'available_player_invited',   // gameId, targetId
   FillerPulseSent: 'filler_pulse_sent',   // gameId, started, reason
+  /** A club this person ADMINS crossed 2 / 5 / 10 members. Fired at most once
+   *  per milestone per club — see milestoneCrossed. Carries `size` and
+   *  `milestone` so a journey can branch without a merge field, which is the
+   *  only way copy here can name a number. */
+  ClubRosterMilestone: 'club_roster_milestone',   // groupId, milestone, size
+  /** A club became playable (10+) — the trigger for "now run a round". */
+  ClubBecamePlayable: 'club_became_playable',   // groupId, size
 } as const;
 
 export type AnalyticsEventName =

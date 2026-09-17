@@ -149,6 +149,39 @@ export async function identify(
   }
 }
 
+/**
+ * Update what Joryio knows about this person, without re-identifying them.
+ *
+ * `identify` binds an install to a person and is called once at sign-in; this
+ * keeps the FACTS fresh afterwards. The distinction matters because journeys
+ * here can only be built from events and attributes — we send no merge fields,
+ * so a message that wants to say "you have 3 players" needs the 3 to already
+ * be on the profile when the journey branches.
+ *
+ * Primitives only, same as identify: the native `setAttributes` takes a flat
+ * map and silently drops anything else.
+ */
+export async function setAttributes(
+  attributes: Record<string, unknown>,
+): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  if (!started) await initJoryio();
+  const clean: Record<string, string | number | boolean | null> = {};
+  for (const [k, v] of Object.entries(attributes)) {
+    if (v === undefined) continue;
+    if (
+      v === null ||
+      typeof v === 'string' ||
+      typeof v === 'number' ||
+      typeof v === 'boolean'
+    ) {
+      clean[k] = v;
+    }
+  }
+  if (Object.keys(clean).length === 0) return;
+  Joryio.setAttributes(clean);
+}
+
 /** Forget the person, keep the install identity. */
 export function resetUser(): void {
   if (USE_MOCK_DATA) return;
@@ -370,6 +403,7 @@ export const joryio = {
   init: initJoryio,
   track,
   identify,
+  setAttributes,
   resetUser,
   registerPushToken,
   trackPushClick,

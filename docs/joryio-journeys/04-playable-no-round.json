@@ -1,0 +1,66 @@
+{
+  "name": "Playable club — a squad, but no round opened",
+  "description": "A club that has reached a playable roster (10+) and has not opened a round. This is the step after Build the squad: the hard part is done, fifteen people are sitting in a club, and nothing is scheduled. Entry is Club Became Playable, which the app raises once per club the moment it crosses ten — so this can never fire for a club that is still being assembled, and never twice for the same club. Exit is Game Created: the instant a round exists there is nothing to say.",
+  "entryTrigger": { "type": "event", "config": { "event": "Club Became Playable" } },
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "trigger",
+      "position": { "x": 0, "y": 0 },
+      "config": {
+        "event": "Club Became Playable",
+        "_note": "Raised once per club, against that club's own high-water mark, so losing a player and re-adding them cannot re-enter anybody here."
+      }
+    },
+    {
+      "id": "wait_1",
+      "type": "behavior_split",
+      "position": { "x": 260, "y": 0 },
+      "config": {
+        "event": "Game Created",
+        "window": { "value": 2, "unit": "days" },
+        "_note": "Short on purpose, unlike the squad journey. An organiser who has just finished gathering people is at their most motivated, and the window where a first round happens naturally is measured in days."
+      }
+    },
+    {
+      "id": "push_1",
+      "type": "message",
+      "position": { "x": 520, "y": 80 },
+      "config": {
+        "channel": "push",
+        "title": "יש לכם סגל ⚽",
+        "body": "הכי קשה כבר מאחוריכם. פתיחת מחזור לוקחת פחות מדקה, וכולם מקבלים הזמנה.",
+        "data": { "deeplink": "footy://games/create" },
+        "_note": "Names what they achieved before asking for the next thing. The deeplink lands on creation, not on a list they would have to navigate."
+      }
+    },
+    {
+      "id": "wait_2",
+      "type": "behavior_split",
+      "position": { "x": 780, "y": 80 },
+      "config": {
+        "event": "Game Created",
+        "window": { "value": 7, "unit": "days" },
+        "_note": "A week before the second and last touch."
+      }
+    },
+    {
+      "id": "push_2",
+      "type": "message",
+      "position": { "x": 1040, "y": 160 },
+      "config": {
+        "channel": "push",
+        "title": "מחזור קבוע נפתח לבד",
+        "body": "קבעו יום ושעה פעם אחת — וכל שבוע המחזור ייפתח מעצמו עם הזמנה לכל הסגל.",
+        "data": { "deeplink": "footy://games/create" },
+        "_note": "Touch 2 = the recurring round, which is a different offer from touch 1: not 'open one', but 'never open one again'. Last touch — two unanswered is an answer."
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "trigger", "target": "wait_1" },
+    { "id": "e2", "source": "wait_1", "target": "push_1", "sourceHandle": "timed_out", "label": "No round opened" },
+    { "id": "e3", "source": "push_1", "target": "wait_2" },
+    { "id": "e4", "source": "wait_2", "target": "push_2", "sourceHandle": "timed_out", "label": "Still no round" }
+  ]
+}
