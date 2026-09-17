@@ -7,6 +7,7 @@ import { Linking } from 'react-native';
 import { createNavigationContainerRef } from '@react-navigation/native';
 
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import type { AppDestination } from '@/utils/appLinks';
 
 export const navigationRef = createNavigationContainerRef();
 
@@ -136,6 +137,40 @@ export function navigateInvite(args: {
     params: { groupId: args.id },
   });
   return true;
+}
+
+/**
+ * Route a `footy://open/<where>` campaign link — an in-app message's CTA or a
+ * push's deep link — to the screen it names.
+ *
+ * Separate from navigateInvite because the argument is a DESTINATION, not an
+ * invite: there is no id to resolve, no membership to check and nothing to
+ * attribute. Returns false when the navigator is not ready, and App.tsx holds
+ * the link until it is — a campaign tap that arrives one frame early must not
+ * be the tap that does nothing.
+ */
+export function navigateAppDestination(dest: AppDestination): boolean {
+  if (!navigationRef.isReady()) return false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
+  switch (dest) {
+    case 'create-community':
+      // `initial: false` keeps the feed underneath, so backing out of the
+      // wizard lands somewhere rather than closing the tab.
+      nav.navigate('CommunitiesTab', { screen: 'CommunitiesCreate', initial: false });
+      return true;
+    case 'communities':
+      nav.navigate('CommunitiesTab', { screen: 'CommunitiesFeed' });
+      return true;
+    case 'create-game':
+      nav.navigate('GameTab', { screen: 'GameCreate', initial: false });
+      return true;
+    case 'games':
+      nav.navigate('GameTab', { screen: 'GamesList' });
+      return true;
+    default:
+      return false;
+  }
 }
 
 /**

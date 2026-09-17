@@ -551,6 +551,11 @@ export const AnalyticsEvent = {
   ClubRosterMilestone: 'club_roster_milestone',   // groupId, milestone, size
   /** A club became playable (10+) — the trigger for "now run a round". */
   ClubBecamePlayable: 'club_became_playable',   // groupId, size
+  /** The first-run question: organiser or player. Carries `role`, and the same
+   *  answer is written to Joryio as `user_type` — the event says WHEN somebody
+   *  answered, the attribute says what they are, and targeting needs the
+   *  second. */
+  RoleSelected: 'role_selected',   // role
 } as const;
 
 export type AnalyticsEventName =

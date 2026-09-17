@@ -209,7 +209,13 @@ import {
 } from '@/services/errorLog';
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { CampaignGate } from '@/components/CampaignGate';
-import { navigationRef, navigateInvite } from '@/navigation/navigationRef';
+import {
+  navigationRef,
+  navigateInvite,
+  navigateAppDestination,
+} from '@/navigation/navigationRef';
+import { parseAppLink, type AppDestination } from '@/utils/appLinks';
+import { recordRole } from '@/services/roleService';
 import { useAndroidBack } from '@/navigation/useAndroidBack';
 import { he } from '@/i18n/he';
 import { useScreenAwake } from '@/hooks/useScreenAwake';
@@ -358,6 +364,12 @@ export default function App() {
     type: 'session' | 'team';
     id: string;
   } | null>(null);
+  // Same idea for a campaign link (`footy://open/<where>`). Kept apart from
+  // pendingLink because it needs LESS: no auth, no membership lookup, no
+  // stash that survives a restart. A tab is a tab — if the navigator is up,
+  // it can go there, and a marketing tap is not worth resurrecting on the
+  // next launch.
+  const [pendingDest, setPendingDest] = useState<AppDestination | null>(null);
   // Auth signals — already maintained by the user store. We watch
   // them here so the consumer effect re-fires the moment the user
   // finishes signing in / completes onboarding while the link is
@@ -424,6 +436,16 @@ export default function App() {
     const handleCold = async (url: string | null) => {
       if (!url) return;
       if (isDuplicate(url)) return;
+      // Campaign links first. They share the scheme with invites but mean
+      // something else, and parseInviteUrl answers null for every one of them
+      // — which is how a CTA pointing at a screen used to do nothing at all.
+      const campaign = parseAppLink(url);
+      if (campaign) {
+        if (campaign.role) void recordRole(campaign.role);
+        adsService.noteIntentfulOpen();
+        setPendingDest(campaign.dest);
+        return;
+      }
       const parsed = parseInviteUrl(url);
       if (!parsed) return;
       // Opened via an invite link → suppress the next app-open ad.
@@ -451,6 +473,15 @@ export default function App() {
     const handleWarm = async (url: string) => {
       if (!url) return;
       if (isDuplicate(url)) return;
+      const campaign = parseAppLink(url);
+      if (campaign) {
+        if (campaign.role) void recordRole(campaign.role);
+        adsService.noteIntentfulOpen();
+        // Straight there when we can; the consumer below covers the frame
+        // where the navigator has not mounted yet.
+        if (!navigateAppDestination(campaign.dest)) setPendingDest(campaign.dest);
+        return;
+      }
       const parsed = parseInviteUrl(url);
       if (!parsed) return;
       // Opened via an invite link → suppress the next app-open ad.
@@ -548,6 +579,16 @@ export default function App() {
     const sub = Linking.addEventListener('url', (e) => handleWarm(e.url));
     return () => sub.remove();
   }, []);
+
+  // Pending-destination consumer. Deliberately does NOT wait on auth: the
+  // role picker shows on a first run, and the tab it opens is reachable
+  // before a profile is complete. Gating it the way an invite is gated would
+  // swallow the answer at exactly the moment it is given.
+  useEffect(() => {
+    if (!pendingDest) return;
+    if (!navReady) return;
+    if (navigateAppDestination(pendingDest)) setPendingDest(null);
+  }, [pendingDest, navReady]);
 
   // Pending-link consumer. Re-runs on every change of (pendingLink,
   // navReady, currentUserId, profileComplete, onboardingComplete) —

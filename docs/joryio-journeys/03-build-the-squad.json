@@ -54,7 +54,7 @@
         "blockName": "תזכורת 1 — כמה חסרים לסגל",
         "pushTitle": "המועדון שלך מוכן ⚽",
         "pushBody": "עוד {{ user.custom.club_missing | default: \"כמה\" }} שחקנים ויש לכם מחזור. שלח את קישור ההצטרפות בקבוצת הוואטסאפ.",
-        "pushDeepLink": "footy://communities",
+        "pushDeepLink": "footy://open/communities",
         "pushSound": "Default",
         "pushBadge": 1,
         "appIds": [
@@ -106,7 +106,7 @@
         "blockName": "תזכורת 2 — כמה חסרים לסגל",
         "pushTitle": "הקבוצה מחכה לך",
         "pushBody": "במועדון כבר {{ user.custom.club_size | default: \"כמה\" }} שחקנים. עוד {{ user.custom.club_missing | default: \"כמה\" }} ואתם פותחים מחזור ראשון.",
-        "pushDeepLink": "footy://communities",
+        "pushDeepLink": "footy://open/communities",
         "pushSound": "Default",
         "pushBadge": 1,
         "appIds": [
@@ -158,7 +158,7 @@
         "blockName": "תזכורת 3 — כמה חסרים לסגל",
         "pushTitle": "אתם ממש קרובים",
         "pushBody": "עוד {{ user.custom.club_missing | default: \"כמה\" }} שחקנים ל-10. שיתוף אחד בוואטסאפ בדרך כלל סוגר את הפער.",
-        "pushDeepLink": "footy://communities",
+        "pushDeepLink": "footy://open/communities",
         "pushSound": "Default",
         "pushBadge": 1,
         "appIds": [
@@ -210,7 +210,7 @@
         "blockName": "תזכורת 4 — כמה חסרים לסגל",
         "pushTitle": "נשאר מעט לסגל מלא",
         "pushBody": "במועדון {{ user.custom.club_size | default: \"כמה\" }} שחקנים, חסרים {{ user.custom.club_missing | default: \"כמה\" }}. הקישור להצטרפות עדיין פעיל.",
-        "pushDeepLink": "footy://communities",
+        "pushDeepLink": "footy://open/communities",
         "pushSound": "Default",
         "pushBadge": 1,
         "appIds": [
@@ -262,7 +262,7 @@
         "blockName": "תזכורת 5 — כמה חסרים לסגל",
         "pushTitle": "המועדון עדיין פתוח",
         "pushBody": "עוד {{ user.custom.club_missing | default: \"כמה\" }} שחקנים והמחזור השבועי ייפתח מעצמו כל שבוע.",
-        "pushDeepLink": "footy://communities",
+        "pushDeepLink": "footy://open/communities",
         "pushSound": "Default",
         "pushBadge": 1,
         "appIds": [

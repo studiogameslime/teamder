@@ -1,0 +1,131 @@
+/* Teamder — first-run role picker.
+   Author JS cannot run here: HtmlMessageView serves the document under
+   script-src 'none', so every motion below is CSS. Fonts are the system stack
+   for the same reason — a Google Fonts <link> needs a style-src host the CSP
+   does not grant, and it would fail silently. */
+
+.td-wrap{
+  position:relative;
+  direction:rtl;
+  overflow:hidden;
+  padding:26px 18px 18px;
+  border-radius:22px;
+  background:
+    radial-gradient(120% 70% at 50% -10%, #17264A 0%, rgba(23,38,74,0) 62%),
+    linear-gradient(180deg, #0C1424 0%, #080D18 100%);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Hebrew","Segoe UI",Roboto,
+    "Noto Sans Hebrew","Arial Hebrew",Arial,sans-serif;
+  color:#F8FAFC;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Floodlight. One beam that crosses the header once on entry and settles —
+   a loop would pull the eye away from the two choices, which is the only
+   thing on this card that matters. */
+.td-flood{
+  position:absolute; inset:-40% -60% auto -60%; height:190px;
+  background:linear-gradient(100deg,
+    rgba(253,230,138,0) 38%, rgba(253,230,138,.17) 50%, rgba(253,230,138,0) 62%);
+  transform:translateX(-45%);
+  animation:td-sweep 1.5s cubic-bezier(.22,.61,.36,1) .25s both;
+  pointer-events:none;
+}
+/* The pitch, drawn rather than fetched: img-src allows https and data, but a
+   remote asset is one more thing that can be slow or missing behind a modal
+   the user is already looking at.
+
+   It sits behind the HEADER, not the footer. At the bottom the centre circle
+   read through the translucent option cards as a smudge across the second
+   one — decoration that lands on top of a choice is not decoration. */
+.td-pitch{
+  position:absolute; inset:0 0 auto 0; height:150px;
+  background:linear-gradient(180deg, rgba(22,163,74,.10) 0%, rgba(22,163,74,0) 100%);
+  pointer-events:none;
+}
+.td-line--half{
+  position:absolute; inset:74px 0 auto 0; height:1px;
+  background:rgba(255,255,255,.07);
+}
+.td-circle{
+  position:absolute; left:50%; top:40px;
+  width:70px; height:70px; margin-left:-35px;
+  border:1px solid rgba(255,255,255,.08); border-radius:50%;
+}
+
+.td-head{ position:relative; text-align:center; margin-bottom:20px; }
+
+.td-ball{
+  font-size:34px; line-height:1;
+  animation:td-drop .62s cubic-bezier(.18,.9,.3,1.2) both,
+            td-bob 3.4s ease-in-out 1.1s infinite;
+}
+.td-title{
+  margin:12px 0 0; font-size:21px; font-weight:800; letter-spacing:-.2px;
+  animation:td-rise .5s cubic-bezier(.22,.61,.36,1) .18s both;
+}
+.td-sub{
+  margin:6px 0 0; font-size:13.5px; line-height:1.45; color:#94A3B8;
+  animation:td-rise .5s cubic-bezier(.22,.61,.36,1) .28s both;
+}
+
+/* A choice, not a button: the whole row is the target, and it reads as a card
+   so neither option looks like the secondary one. */
+.td-opt{
+  position:relative; z-index:1;
+  display:flex; align-items:center; gap:12px;
+  margin-bottom:10px; padding:14px 14px 14px 12px;
+  border:1px solid rgba(255,255,255,.10); border-radius:16px;
+  background:rgba(255,255,255,.07);
+  text-decoration:none; color:inherit;
+  transition:transform .14s ease, background .2s ease, border-color .2s ease;
+  animation:td-rise .52s cubic-bezier(.22,.61,.36,1) both;
+}
+.td-opt--org{ animation-delay:.38s; }
+.td-opt--play{ animation-delay:.48s; }
+.td-opt:active{ transform:scale(.978); background:rgba(255,255,255,.085); }
+
+.td-ico{
+  flex:0 0 auto; width:44px; height:44px; border-radius:13px;
+  display:flex; align-items:center; justify-content:center; font-size:21px;
+}
+.td-opt--org .td-ico{ background:rgba(22,163,74,.18); box-shadow:inset 0 0 0 1px rgba(34,197,94,.30); }
+.td-opt--play .td-ico{ background:rgba(59,130,246,.18); box-shadow:inset 0 0 0 1px rgba(96,165,250,.30); }
+
+.td-txt{ flex:1 1 auto; min-width:0; }
+.td-txt b{ display:block; font-size:15px; font-weight:700; }
+.td-txt small{ display:block; margin-top:3px; font-size:12.5px; line-height:1.4; color:#94A3B8; }
+
+.td-arw{
+  flex:0 0 auto; width:9px; height:9px; margin:0 2px 0 6px;
+  border-left:2px solid #64748B; border-bottom:2px solid #64748B;
+  transform:rotate(45deg);
+}
+.td-opt--org .td-arw{ border-color:#22C55E; }
+.td-opt--play .td-arw{ border-color:#60A5FA; }
+
+/* The organiser row breathes once the entrance is over. Everything a club
+   needs starts with somebody opening one, so that is the row worth a look —
+   slow enough not to nag, and it stops nothing from being read. */
+.td-opt--org{ animation:td-rise .52s cubic-bezier(.22,.61,.36,1) .38s both,
+                        td-glow 3.6s ease-in-out 1.4s infinite; }
+
+.td-foot{
+  position:relative; z-index:1;
+  margin:14px 0 2px; text-align:center; font-size:11.5px; color:#64748B;
+  animation:td-rise .5s ease .6s both;
+}
+
+@keyframes td-rise{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:none;} }
+@keyframes td-drop{ from{opacity:0; transform:translateY(-22px) scale(.7);} to{opacity:1; transform:none;} }
+@keyframes td-bob { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-5px);} }
+@keyframes td-sweep{ from{transform:translateX(-45%);} to{transform:translateX(45%);} }
+@keyframes td-glow{
+  0%,100%{ border-color:rgba(255,255,255,.10); box-shadow:0 0 0 0 rgba(34,197,94,0); }
+  50%    { border-color:rgba(34,197,94,.42);   box-shadow:0 0 0 4px rgba(34,197,94,.09); }
+}
+
+/* Somebody who asked the system for less motion gets the card, not the show. */
+@media (prefers-reduced-motion: reduce){
+  .td-flood{ display:none; }
+  .td-ball,.td-title,.td-sub,.td-opt,.td-opt--org,.td-opt--play,.td-foot{ animation:none; }
+}

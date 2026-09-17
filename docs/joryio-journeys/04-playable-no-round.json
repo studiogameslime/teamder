@@ -60,7 +60,7 @@
         "blockName": "תזכורת 1 — עוד לא נפתח מחזור",
         "pushTitle": "יש לכם סגל ⚽",
         "pushBody": "הקשה כבר מאחוריך. פתיחת מחזור לוקחת פחות מדקה, וכל הסגל מקבל הזמנה.",
-        "pushDeepLink": "footy://games/create",
+        "pushDeepLink": "footy://open/create-game",
         "pushSound": "Default",
         "pushBadge": 1,
         "appIds": [
@@ -118,7 +118,7 @@
         "blockName": "תזכורת 2 — עוד לא נפתח מחזור",
         "pushTitle": "מחזור קבוע נפתח לבד",
         "pushBody": "קבע יום ושעה פעם אחת — וכל שבוע המחזור ייפתח מעצמו וישלח הזמנה לסגל.",
-        "pushDeepLink": "footy://games/create",
+        "pushDeepLink": "footy://open/create-game",
         "pushSound": "Default",
         "pushBadge": 1,
         "appIds": [
@@ -176,7 +176,7 @@
         "blockName": "תזכורת 3 — עוד לא נפתח מחזור",
         "pushTitle": "הסגל מחכה למחזור",
         "pushBody": "עשרה שחקנים בפנים וכלום לא קבוע. דקה של הגדרה, ויש לכם כדורגל שבועי.",
-        "pushDeepLink": "footy://games/create",
+        "pushDeepLink": "footy://open/create-game",
         "pushSound": "Default",
         "pushBadge": 1,
         "appIds": [
