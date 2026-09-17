@@ -1,66 +1,231 @@
 {
-  "name": "Playable club — a squad, but no round opened",
-  "description": "A club that has reached a playable roster (10+) and has not opened a round. This is the step after Build the squad: the hard part is done, fifteen people are sitting in a club, and nothing is scheduled. Entry is Club Became Playable, which the app raises once per club the moment it crosses ten — so this can never fire for a club that is still being assembled, and never twice for the same club. Exit is Game Created: the instant a round exists there is nothing to say.",
-  "entryTrigger": { "type": "event", "config": { "event": "Club Became Playable" } },
+  "name": "המחזור הראשון — יש סגל, עוד אין משחק",
+  "description": "מלווה מועדון שכבר הגיע ל-10 שחקנים ועדיין לא פתח מחזור. כל שלב ממתין לפתיחת משחק; מי שפותח יוצא מהמסע מיד, ומי שלא מקבל תזכורת אחת שמסבירה בדיוק מה מרוויחים מהמחזור הקבוע.",
   "nodes": [
     {
       "id": "trigger",
       "type": "trigger",
-      "position": { "x": 0, "y": 0 },
+      "position": {
+        "x": 0,
+        "y": 0
+      },
       "config": {
-        "event": "Club Became Playable",
-        "_note": "Raised once per club, against that club's own high-water mark, so losing a player and re-adding them cannot re-enter anybody here."
+        "triggerType": "event",
+        "eventName": "Club Became Playable",
+        "blockName": "המועדון הגיע ל-10 שחקנים"
       }
     },
     {
-      "id": "wait_1",
+      "id": "split_1",
       "type": "behavior_split",
-      "position": { "x": 260, "y": 0 },
+      "position": {
+        "x": 300,
+        "y": 0
+      },
       "config": {
-        "event": "Game Created",
-        "window": { "value": 2, "unit": "days" },
-        "_note": "Short on purpose, unlike the squad journey. An organiser who has just finished gathering people is at their most motivated, and the window where a first round happens naturally is measured in days."
+        "blockName": "שלב 1 — 2 ימים: נפתח מחזור?",
+        "mode": "yesno",
+        "pathName": "פתח מחזור — יוצא מהמסע",
+        "triggers": [
+          {
+            "id": "t_game_created",
+            "kind": "event",
+            "eventName": "Game Created",
+            "filters": []
+          },
+          {
+            "id": "t_recurring_game_created",
+            "kind": "event",
+            "eventName": "Recurring Game Created",
+            "filters": []
+          }
+        ],
+        "advance": "immediate",
+        "windowAmount": 2,
+        "windowUnit": "days",
+        "windowPersonalize": false,
+        "windowVarType": "ctx",
+        "windowVar": ""
       }
     },
     {
       "id": "push_1",
       "type": "message",
-      "position": { "x": 520, "y": 80 },
+      "position": {
+        "x": 600,
+        "y": 130
+      },
       "config": {
         "channel": "push",
-        "title": "יש לכם סגל ⚽",
-        "body": "הכי קשה כבר מאחוריכם. פתיחת מחזור לוקחת פחות מדקה, וכולם מקבלים הזמנה.",
-        "data": { "deeplink": "footy://games/create" },
-        "_note": "Names what they achieved before asking for the next thing. The deeplink lands on creation, not on a list they would have to navigate."
+        "blockName": "תזכורת 1 — עוד לא נפתח מחזור",
+        "pushTitle": "יש לכם סגל ⚽",
+        "pushBody": "הקשה כבר מאחוריך. פתיחת מחזור לוקחת פחות מדקה, וכל הסגל מקבל הזמנה אוטומטית.",
+        "pushDeepLink": "footy://games/create",
+        "pushSound": "Default",
+        "pushBadge": 1,
+        "appIds": [
+          "61169e4e-72ab-45fd-84f0-7ec606be0424",
+          "582c204f-327e-4d76-9703-b8655454b887"
+        ],
+        "pushPlatforms": [
+          "ios",
+          "android"
+        ]
       }
     },
     {
-      "id": "wait_2",
+      "id": "split_2",
       "type": "behavior_split",
-      "position": { "x": 780, "y": 80 },
+      "position": {
+        "x": 900,
+        "y": 0
+      },
       "config": {
-        "event": "Game Created",
-        "window": { "value": 7, "unit": "days" },
-        "_note": "A week before the second and last touch."
+        "blockName": "שלב 2 — 5 ימים: נפתח מחזור?",
+        "mode": "yesno",
+        "pathName": "פתח מחזור — יוצא מהמסע",
+        "triggers": [
+          {
+            "id": "t_game_created",
+            "kind": "event",
+            "eventName": "Game Created",
+            "filters": []
+          },
+          {
+            "id": "t_recurring_game_created",
+            "kind": "event",
+            "eventName": "Recurring Game Created",
+            "filters": []
+          }
+        ],
+        "advance": "immediate",
+        "windowAmount": 5,
+        "windowUnit": "days",
+        "windowPersonalize": false,
+        "windowVarType": "ctx",
+        "windowVar": ""
       }
     },
     {
       "id": "push_2",
       "type": "message",
-      "position": { "x": 1040, "y": 160 },
+      "position": {
+        "x": 1200,
+        "y": 130
+      },
       "config": {
         "channel": "push",
-        "title": "מחזור קבוע נפתח לבד",
-        "body": "קבעו יום ושעה פעם אחת — וכל שבוע המחזור ייפתח מעצמו עם הזמנה לכל הסגל.",
-        "data": { "deeplink": "footy://games/create" },
-        "_note": "Touch 2 = the recurring round, which is a different offer from touch 1: not 'open one', but 'never open one again'. Last touch — two unanswered is an answer."
+        "blockName": "תזכורת 2 — עוד לא נפתח מחזור",
+        "pushTitle": "מחזור קבוע נפתח לבד",
+        "pushBody": "קבע יום ושעה פעם אחת — וכל שבוע המחזור ייפתח מעצמו וישלח הזמנה לכל הסגל.",
+        "pushDeepLink": "footy://games/create",
+        "pushSound": "Default",
+        "pushBadge": 1,
+        "appIds": [
+          "61169e4e-72ab-45fd-84f0-7ec606be0424",
+          "582c204f-327e-4d76-9703-b8655454b887"
+        ],
+        "pushPlatforms": [
+          "ios",
+          "android"
+        ]
+      }
+    },
+    {
+      "id": "split_3",
+      "type": "behavior_split",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "blockName": "שלב 3 — 14 ימים: נפתח מחזור?",
+        "mode": "yesno",
+        "pathName": "פתח מחזור — יוצא מהמסע",
+        "triggers": [
+          {
+            "id": "t_game_created",
+            "kind": "event",
+            "eventName": "Game Created",
+            "filters": []
+          },
+          {
+            "id": "t_recurring_game_created",
+            "kind": "event",
+            "eventName": "Recurring Game Created",
+            "filters": []
+          }
+        ],
+        "advance": "immediate",
+        "windowAmount": 14,
+        "windowUnit": "days",
+        "windowPersonalize": false,
+        "windowVarType": "ctx",
+        "windowVar": ""
+      }
+    },
+    {
+      "id": "push_3",
+      "type": "message",
+      "position": {
+        "x": 1800,
+        "y": 130
+      },
+      "config": {
+        "channel": "push",
+        "blockName": "תזכורת 3 — עוד לא נפתח מחזור",
+        "pushTitle": "הסגל מחכה למחזור",
+        "pushBody": "עשרה שחקנים בפנים וכלום לא קבוע. דקה אחת של הגדרה, ויש לכם כדורגל שבועי.",
+        "pushDeepLink": "footy://games/create",
+        "pushSound": "Default",
+        "pushBadge": 1,
+        "appIds": [
+          "61169e4e-72ab-45fd-84f0-7ec606be0424",
+          "582c204f-327e-4d76-9703-b8655454b887"
+        ],
+        "pushPlatforms": [
+          "ios",
+          "android"
+        ]
       }
     }
   ],
   "edges": [
-    { "id": "e1", "source": "trigger", "target": "wait_1" },
-    { "id": "e2", "source": "wait_1", "target": "push_1", "sourceHandle": "timed_out", "label": "No round opened" },
-    { "id": "e3", "source": "push_1", "target": "wait_2" },
-    { "id": "e4", "source": "wait_2", "target": "push_2", "sourceHandle": "timed_out", "label": "Still no round" }
+    {
+      "id": "e_trigger__split_1",
+      "source": "trigger",
+      "target": "split_1"
+    },
+    {
+      "id": "e_split_1__push_1",
+      "source": "split_1",
+      "target": "push_1",
+      "sourceHandle": "timed_out",
+      "label": "עוד לא נפתח מחזור"
+    },
+    {
+      "id": "e_push_1__split_2",
+      "source": "push_1",
+      "target": "split_2"
+    },
+    {
+      "id": "e_split_2__push_2",
+      "source": "split_2",
+      "target": "push_2",
+      "sourceHandle": "timed_out",
+      "label": "עוד לא נפתח מחזור"
+    },
+    {
+      "id": "e_push_2__split_3",
+      "source": "push_2",
+      "target": "split_3"
+    },
+    {
+      "id": "e_split_3__push_3",
+      "source": "split_3",
+      "target": "push_3",
+      "sourceHandle": "timed_out",
+      "label": "עוד לא נפתח מחזור"
+    }
   ]
 }
