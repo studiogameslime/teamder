@@ -60,6 +60,14 @@ type Params = RouteProp<CommunitiesStackParamList, 'SeasonHistory'>;
 /** How many cards get the staggered entrance — roughly a screenful. */
 const ENTRANCE_ROWS = 3;
 
+/** A one-day season needs a day, not a month — otherwise a season that lasted
+ *  a minute prints the same string as one that lasted five weeks. */
+function formatDay(ms: number): string {
+  return ms > 0
+    ? new Date(ms).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })
+    : '';
+}
+
 function formatRange(startsAt: number, endsAt: number): string {
   const f = (ms: number) =>
     ms > 0
@@ -70,23 +78,28 @@ function formatRange(startsAt: number, endsAt: number): string {
   // Season 1 of a club that sealed its history began whenever the club did,
   // which nothing recorded. Say so rather than leaving the line blank.
   if (!from) return to ? he.seasonRangeUntil(to) : he.seasonRangeUnknown;
+  // Same month at both ends is a real range, not a missing one.
+  //
   // A season 1 that CARRIED the club's history has a startsAt of the moment
-  // seasons were switched on, not of the first evening it contains — so the
-  // club's only sealed season, spanning 28.06 to 17.09, printed
-  // "ספט׳ 2026 – ספט׳ 2026" over "22 מחזורים". Two identical months on a
-  // season that holds twenty-two evenings is not a date range, it is a
-  // contradiction, so it says the one thing it actually knows instead.
-  if (from === to) return to ? he.seasonRangeUntil(to) : he.seasonRangeUnknown;
-  return to ? `${from} – ${to}` : from;
+  // seasons were switched on, not of the first evening it contains, so the
+  // club's only sealed season printed "ספט׳ 2026 – ספט׳ 2026" over
+  // "22 מחזורים" — two identical months on a season holding twenty-two
+  // evenings, which is a contradiction rather than a date range.
+  //
+  // The first attempt fell back to "מתחילת המועדון עד …" — and THAT sentence
+  // means the start is unknown. It is for season 1 of a club that sealed its
+  // history with no startsAt at all, and for nothing else. A club's fifth
+  // season, with a perfectly good start date, was then captioned as if nobody
+  // knew when it began, permanently, on a card written once and never
+  // rewritten; a 1- or 2-month season is an offered chip and a rounds-cadence
+  // season can finish inside a month, so it is not a corner case.
+  //
+  // The honest answer is more precision, not less: when the months collide,
+  // give the days.
+  if (from === to) return he.seasonRangeDays(formatDay(startsAt), formatDay(endsAt));
+  return to ? he.seasonRangeDays(from, to) : from;
 }
 
-/** A one-day season needs a day, not a month — otherwise a season that lasted
- *  a minute prints the same string as one that lasted five weeks. */
-function formatDay(ms: number): string {
-  return ms > 0
-    ? new Date(ms).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })
-    : '';
-}
 
 /** The seeding-bug season: a line between two real ones, not a card.
  *
