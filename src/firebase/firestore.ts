@@ -77,6 +77,13 @@ export interface GroupJoinRequestDoc {
 
 // ─── Converters ────────────────────────────────────────────────────────────
 
+/** Exported for the grid round-trip test. Pure. */
+export function readAvailabilityForTest(
+  d: DocumentData,
+): UserAvailability | undefined {
+  return readAvailability(d);
+}
+
 function readAvailability(d: DocumentData): UserAvailability | undefined {
   const a = d.availability;
   if (!a || typeof a !== 'object') return undefined;
@@ -112,6 +119,26 @@ function readAvailability(d: DocumentData): UserAvailability | undefined {
       typeof a.availabilityRadiusKm === 'number'
         ? a.availabilityRadiusKm
         : undefined,
+    // The per-day grid, same reason as `preferredTimes` above it: a field this
+    // reader does not name does not exist on the client, so the screen rebuilt
+    // the grid from the coarse derived values every time it opened and lost
+    // whatever the user had actually ticked.
+    availabilitySlots: (() => {
+      const raw = a.availabilitySlots;
+      if (!raw || typeof raw !== 'object') return undefined;
+      const out: Record<number, string[]> = {};
+      for (const [day, buckets] of Object.entries(raw as Record<string, unknown>)) {
+        const n = Number(day);
+        if (!Number.isInteger(n) || n < 0 || n > 6) continue;
+        if (Array.isArray(buckets)) {
+          const ok = buckets.filter((b): b is string => typeof b === 'string');
+          if (ok.length > 0) out[n] = ok;
+        }
+      }
+      return Object.keys(out).length > 0
+        ? (out as UserAvailability['availabilitySlots'])
+        : undefined;
+    })(),
     isAvailableForInvites: a.isAvailableForInvites !== false,
     acceptsFillerPush:
       typeof a.acceptsFillerPush === 'boolean'

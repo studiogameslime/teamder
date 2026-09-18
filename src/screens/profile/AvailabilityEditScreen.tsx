@@ -677,10 +677,35 @@ async function persistAvailability(
     }
     return;
   }
+  // The grid itself, not only what was derived from it.
+  //
+  // `availabilitySlots` is the precise per-day answer this screen collects —
+  // "Tuesday evenings and Friday mornings" — and the server has a whole
+  // matching branch for it (`availabilityCovers`, which prefers the grid and
+  // falls back to the coarse preferredDays × preferredTimes cross-product).
+  // It was built in the object above, passed in here, and never written, so
+  // that branch could not fire for anybody: every user matched on the
+  // cross-product, which says Friday EVENINGS too. And because the field was
+  // never written it was never read back either, so reopening the screen
+  // rebuilt the grid from the coarse values and quietly lost the distinction
+  // the user had just drawn.
+  //
+  // Bounded on the way out: seven days, and the buckets are a closed set, so a
+  // malformed local state cannot write an unbounded map into a document every
+  // availability query reads.
+  const slots: Record<string, string[]> = {};
+  for (const [day, buckets] of Object.entries(availability.availabilitySlots ?? {})) {
+    const n = Number(day);
+    if (!Number.isInteger(n) || n < 0 || n > 6) continue;
+    if (Array.isArray(buckets) && buckets.length > 0) {
+      slots[String(n)] = buckets.filter((b) => typeof b === 'string').slice(0, 8);
+    }
+  }
   await updateDoc(docs.user(uid), {
     availability: {
       preferredDays: availability.preferredDays,
       preferredTimes: availability.preferredTimes ?? [],
+      availabilitySlots: slots,
       preferredCity: availability.preferredCity ?? null,
       cities: Array.isArray(availability.cities) ? availability.cities : [],
       homeCity: availability.homeCity ?? null,
