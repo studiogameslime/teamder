@@ -92,6 +92,13 @@ interface StatsData {
     totalCancelled: number;
     organizationRate: number;
     activeThisMonth: number;
+    /** A year means a year. The season-scoped twin intersects the 365-day
+     *  window with the season filter, so it reads a handful of days after a
+     *  close while the label still says "השנה". */
+    activeThisYear: number;
+    /** The club's longest-ever run, and its holder. A record is permanent. */
+    longestStreak: number;
+    longestStreakUid: string | null;
   };
 }
 interface DeadlyDuo {
@@ -238,6 +245,9 @@ export function CommunityStatsScreen() {
             totalCancelled: 0,
             organizationRate: 0,
             activeThisMonth: 0,
+            activeThisYear: 0,
+            longestStreak: 0,
+            longestStreakUid: null,
           },
           totalFinished: 0,
           organizationRate: 0,
@@ -880,9 +890,21 @@ export function CommunityStatsScreen() {
                 text="מהמשחקים הוכרעו בפנדלים" />
             ) : null}
             {/* אחוז ההתארגנות נספר מסריקת המשחקים של המועדון, לא ממונה
-                שהעונה שומרת — ולכן אין לו תשובה לעונה שנסגרה. */}
-            {scope.k === 'current' ? (
-              <FunDonutRow index={5} pct={Math.round((stats?.organizationRate ?? 0) * 100)}
+                שהעונה שומרת — ולכן אין לו תשובה לעונה שנסגרה.
+                LIFETIME, and gated on there being something to measure.
+                It read `stats.organizationRate`, the season-scoped figure, and
+                was the only donut here gated on the SCOPE instead of on its own
+                value — so a club three days into a new season was told, in
+                green, that 0% of its planned evenings had happened. That club
+                had never cancelled an evening in its life: its real rate was
+                96%, sitting unused in `lifetime` ten lines away. "No attempts
+                yet" and "every attempt failed" are the same number, and this
+                was rendering the second meaning. */}
+            {scope.k === 'current' &&
+            (stats?.lifetime?.totalFinished ?? 0) +
+              (stats?.lifetime?.totalCancelled ?? 0) >
+              0 ? (
+              <FunDonutRow index={5} pct={Math.round((stats?.lifetime?.organizationRate ?? 0) * 100)}
                 tint={colors.success} text="מהמחזורים המתוכננים יצאו לפועל" />
             ) : null}
             {/* עובדות טקסט (בלי אחוז) */}
@@ -900,14 +922,19 @@ export function CommunityStatsScreen() {
                 ]}
               />
             ) : null}
-            {scope.k === 'current' && stats && stats.longestStreak >= 2 ? (
+            {/* The club's longest-ever run. The tooltip under the scope picker
+                tells the reader in so many words that the streaks are measured
+                over the club's whole life — and this read the season-scoped
+                figure, so a club's 22-night record vanished from the app
+                entirely the morning after a close. */}
+            {scope.k === 'current' && stats && (stats.lifetime?.longestStreak ?? stats.longestStreak) >= 2 ? (
               <FunRow
                 icon="flame-outline"
                 tint={colors.danger}
                 parts={[
-                  { t: name(stats.longestStreakUid ?? undefined), em: 'name' },
+                  { t: name(stats.lifetime?.longestStreakUid ?? stats.longestStreakUid ?? undefined), em: 'name' },
                   { t: ' הגיע ' },
-                  { t: `${stats.longestStreak} מחזורים`, em: 'num' },
+                  { t: `${stats.lifetime?.longestStreak ?? stats.longestStreak} מחזורים`, em: 'num' },
                   { t: ' ברצף — הרצף הארוך במועדון' },
                 ]}
               />
@@ -930,7 +957,15 @@ export function CommunityStatsScreen() {
                 icon="calendar-outline"
                 tint={colors.primary}
                 parts={[
-                  { t: `${stats?.activeThisYear ?? 0} שחקנים`, em: 'num' },
+                  // LIFETIME. `activeThisYear` is a 365-day window INTERSECTED
+                  // with the season filter, so the morning after a close it is
+                  // a 365-day label on a several-day window: a club whose
+                  // entire roster played this month read "0 שחקנים היו פעילים
+                  // השנה". Every other row in this card carries the season
+                  // banner above it to say what it is scoped to; the word
+                  // "השנה" is the only scope this one declares, so it has to
+                  // be true.
+                  { t: `${stats?.lifetime?.activeThisYear ?? stats?.activeThisYear ?? 0} שחקנים`, em: 'num' },
                   { t: ' היו פעילים השנה' },
                 ]}
                 last={!(derived.guestGoals > 0) && !(derived.totalOwnGoals > 0)}

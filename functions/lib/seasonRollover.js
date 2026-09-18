@@ -559,6 +559,18 @@ async function closeSeason(args) {
             // that actually happened. `rounds` stays in the test as a safety net
             // for a row credited a mini-game without an evening.
             players: (0, seasonParticipants_1.countSeasonParticipants)(cardPlayers),
+            // The number the TITLES were decided against.
+            //
+            // It is not `completedRounds`, and it is not meant to be: the gate
+            // is measured in per-player `games`, which is a different counter
+            // over a different era from the season's length (see the long note
+            // above `seasonEvenings`). It was written to the archive for exactly
+            // this reason — "so the hall of fame can still say what a title was
+            // decided on" — and then never put on the card, which is the only
+            // document the hall of fame reads. So the medal graded מלך ההתמדה's
+            // 19 against a season of 22 and drew gold for perfect attendance,
+            // making platinum structurally unreachable.
+            awardsDenominator: seasonEvenings,
             ...(args.endedEarly ? { endedEarly: true } : {}),
             ...(args.partialData ? { partialData: true } : {}),
             winners: cardWinners,
@@ -843,6 +855,45 @@ async function reopenSeason(args) {
                 ...Object.fromEntries(PAIR_SEASON_FIELDS.map((f) => [f, num2(cur[f]) + num2(row[f])])),
             }, { merge: true });
         });
+    }
+    // Every OTHER pair the close stamped still carries it.
+    //
+    // The wipe stamps `seasonWoundBack` on every pair row it touches — including
+    // the ones it zeroes rather than subtracts, which is every guest pair and
+    // every pair the archive dropped for being empty. The restore above only
+    // reaches pairs that are IN the archive, so the rest keep a stamp naming a
+    // season that is running again.
+    //
+    // The next close of that same season then reads its own stamp on those rows
+    // and skips the wind-back entirely, while still archiving them — so the
+    // chemistry is sealed into the archive AND left standing live, and the
+    // following season opens holding the previous one's pairings.
+    //
+    // Measured on the one club that has ever run seasons: all 314 pair rows
+    // carried `seasonWoundBack: 's2'` while s2 was the running season. 293 of
+    // them are guest pairs, which are never archived, so this is not an edge
+    // case — after any reopen it is most of the collection.
+    let stale = 0;
+    const stamped = await db
+        .collection('communityPairStats')
+        .where('groupId', '==', groupId)
+        .where('seasonWoundBack', '==', seasonId)
+        .get();
+    let clearBatch = db.batch();
+    let clearOps = 0;
+    for (const d of stamped.docs) {
+        clearBatch.set(d.ref, { seasonWoundBack: admin.firestore.FieldValue.delete() }, { merge: true });
+        stale += 1;
+        if (++clearOps >= 400) {
+            await clearBatch.commit();
+            clearBatch = db.batch();
+            clearOps = 0;
+        }
+    }
+    if (clearOps > 0)
+        await clearBatch.commit();
+    if (stale > 0) {
+        console.log('[season] reopen cleared stale pair stamps', groupId, seasonId, stale);
     }
     // 2. And the club its totals — behind the same latch, since this also adds.
     const clubRef = db.collection('communityStats').doc(groupId);

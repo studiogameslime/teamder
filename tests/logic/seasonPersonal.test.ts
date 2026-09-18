@@ -332,3 +332,48 @@ describe('evenings attended is its own number', () => {
     expect(s.evenings).toBe(0);
   });
 });
+
+describe('the three rival rows name three different people', () => {
+  // In a club of regulars the person you face most is usually also the one you
+  // beat most and lose to most, so three independent picks produced the same
+  // name and the same face three times — on 5 of the 7 players of the one club
+  // that has closed a season.
+  const vs = (other: string, against: number, myWins: number, theirWins: number) => ({
+    a: 'me',
+    b: other,
+    against,
+    sameTeam: 0,
+    winsTogether: 0,
+    winsA: myWins,
+    winsB: theirWins,
+    assistsAToB: 0,
+    assistsBToA: 0,
+  });
+
+  it('falls through to the runner-up instead of repeating a name', () => {
+    const s = buildPersonalSeason({
+      me: 'me',
+      players: [player('me')],
+      pairs: [vs('top', 10, 6, 4), vs('mid', 8, 5, 3), vs('low', 6, 2, 4)],
+    });
+    const named = [s.nemesis?.userId, s.victim?.userId, s.tormentor?.userId].filter(
+      Boolean,
+    );
+    expect(named).toHaveLength(3);
+    expect(new Set(named).size).toBe(3);
+    // The most-faced opponent still takes the row that is actually about that.
+    expect(s.nemesis?.userId).toBe('top');
+  });
+
+  it('but repeats a true answer rather than hiding a row', () => {
+    // One opponent: all three rows really are about that person.
+    const s = buildPersonalSeason({
+      me: 'me',
+      players: [player('me')],
+      pairs: [vs('only', 4, 3, 1)],
+    });
+    expect(s.nemesis?.userId).toBe('only');
+    expect(s.victim?.userId).toBe('only');
+    expect(s.tormentor?.userId).toBe('only');
+  });
+});

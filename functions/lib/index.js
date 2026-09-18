@@ -4270,8 +4270,29 @@ async function sealRoundSummary(args) {
     try {
         const gDoc = await db.collection('groups').doc(groupId).get();
         const sea = gDoc.data()?.seasons;
-        if (sea?.enabled)
-            seasonRoundsAtStart = num(sea.roundsAtStart);
+        // Only for an evening that belongs to the season being credited.
+        //
+        // The seal fires on the transition into 'happened', which is not only the
+        // night itself: an admin confirming a forgotten evening days later runs
+        // exactly this path. Without the stamp check that confirmation pushed the
+        // CURRENT season one evening closer to its target for an evening played in
+        // a season already in the archive — while the statistics screen, which
+        // does compare the stamp, did not move. Two screens, one season, two
+        // numbers, which is the failure this feature keeps repeating.
+        //
+        // An unstamped evening belongs to season 1, the same rule the client has
+        // encoded since the feature shipped: the stamp only began being written
+        // when seasons landed, and a club that carried its history into season 1
+        // played those nights inside it.
+        if (sea?.enabled) {
+            const stamp = typeof args.seasonId === 'string' ? args.seasonId : '';
+            const mine = stamp ? stamp === sea.currentId : sea.currentNo === 1;
+            if (mine)
+                seasonRoundsAtStart = num(sea.roundsAtStart);
+            else {
+                console.log('[season] seal is not for the running season — progress not credited', groupId, gameId, stamp, sea.currentId);
+            }
+        }
     }
     catch (err) {
         console.warn('[season] progress mirror skipped', groupId, err);
@@ -11932,8 +11953,20 @@ async function loadRetroGameContext(uid, gameId) {
     // read it until now.
     const gameSeason = typeof game.seasonId === 'string' ? game.seasonId : '';
     const seasons = grp.seasons;
-    if (seasons?.enabled && gameSeason && gameSeason !== seasons.currentId) {
-        throw new https_1.HttpsError('failed-precondition', 'closedSeasonGame: this evening belongs to a season that has already closed');
+    // An UNSTAMPED evening belongs to season 1, not to whatever is running.
+    //
+    // The guard required a stamp to be present, and the stamp only began being
+    // written when seasons shipped — so every evening a club played before that
+    // walked straight through it. On the one club that has ever run seasons that
+    // is 19 of 22 evenings: an admin completing a goal missed in June would have
+    // credited it to season 2, inflating its totals and its מלך השערים, while
+    // season 1's sealed archive stayed wrong with no way to correct it. Which is
+    // precisely the outcome the comment above this guard describes preventing.
+    if (seasons?.enabled) {
+        const belongsTo = gameSeason || (seasons.currentNo === 1 ? seasons.currentId ?? '' : 's1');
+        if (belongsTo !== seasons.currentId) {
+            throw new https_1.HttpsError('failed-precondition', 'closedSeasonGame: this evening belongs to a season that has already closed');
+        }
     }
     return { game, groupId };
 }
@@ -12303,6 +12336,10 @@ const TONIGHT_MS = 12 * 60 * 60 * 1000;
 /** How long a just-reopened season is left alone, so the admin can move the
  *  target that closed it before the sweep closes it again. */
 const REOPEN_GRACE_MS = 48 * 60 * 60 * 1000;
+/** An evening this old is not waiting for its seal any more. Generous: the seal
+ *  fires on the roster trigger within seconds, so a day is already three orders
+ *  of magnitude of slack. */
+const STALE_SEAL_MS = 24 * 60 * 60 * 1000;
 /** How far ahead still counts as "about to be played". A game can be started
  *  before its scheduled kickoff, so a window that ends at `now` misses it. */
 const STARTING_SOON_MS = 3 * 60 * 60 * 1000;
@@ -12357,13 +12394,40 @@ opts) {
         .limit(3)
         .get();
     for (const g of recent.docs) {
-        const summary = await db.collection('roundSummaries').doc(g.id).get();
+        const data = g.data();
         // Only a game that was actually played gets sealed; one the cleanup
         // finished without play never will, so it must not block forever. Same
         // evidence the seal itself uses — if these two ever disagreed, a club
         // would be blocked from closing a season by an evening that was never
         // going to be sealed, or would close over one still waiting to be.
-        if (!summary.exists && (0, eveningPlayed_1.didEveningHappen)(g.data())) {
+        if (!(0, eveningPlayed_1.didEveningHappen)(data))
+            continue;
+        // …and neither will an evening that was closed before the seal existed.
+        //
+        // `roundSummaries` began on 26.08.2026. Every evening finished before that
+        // carries no `endedBy` — that absence is exactly what `isLegacyClose`
+        // reads to call it 'happened' — and no summary will ever be written for
+        // it, because nothing will ever run the seal over a terminal game again.
+        // So "finished but not yet sealed" was permanently true for them, and this
+        // guard refused to let the club close a season, enable the feature, or
+        // undo a close, for ever, while the Hebrew told the admin to wait for an
+        // update that had already finished eight weeks earlier.
+        //
+        // Measured on production: 24 of the 30 clubs that have ever finished a
+        // game were blocked by this, permanently. The window only advances when
+        // the club plays a NEW evening, and these games are terminal.
+        if (data.endedBy !== 'admin' && data.endedBy !== 'auto')
+            continue;
+        // A second floor, for the same failure shape from a different cause: the
+        // seal runs on the roster trigger within seconds of the close, so an
+        // evening that finished yesterday and still has no summary is not waiting
+        // for one — something dropped it, and a dropped seal must not hold the
+        // club's season hostage in perpetuity either.
+        const startsAt = typeof data.startsAt === 'number' ? data.startsAt : 0;
+        if (startsAt > 0 && now - startsAt > STALE_SEAL_MS)
+            continue;
+        const summary = await db.collection('roundSummaries').doc(g.id).get();
+        if (!summary.exists) {
             return { ok: false, blocker: 'unsealedGame' };
         }
     }

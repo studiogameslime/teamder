@@ -62,6 +62,20 @@ export function parseSeasonTable(
   const totals = (d.totals ?? {}) as Record<string, unknown>;
   const players: ChampionshipRow[] = [];
   const names: Record<string, string> = {};
+  // Deterministic order, established here and not left to the caller.
+  //
+  // `Object.entries` over a Firestore map returns whatever order the wire gave
+  // it, and two consecutive reads of the SAME sealed document really do come
+  // back differently — verified against production. The table that renders
+  // these sorts on one column with no tie-break, and V8's sort is stable, so
+  // every player tied on the sorted column moved between refreshes: the silver
+  // medal ring changed hands on a document that is immutable by design, and
+  // the rank a player's share card prints changed with it.
+  //
+  // A record must read the same way every time it is opened. Sorting by uid is
+  // arbitrary but fixed, which is the whole requirement — the display sort runs
+  // on top of it.
+
   for (const [uid, x] of Object.entries(rows)) {
     if (typeof x !== 'object' || x === null) continue;
     const n = str(x.displayName);
@@ -97,7 +111,7 @@ export function parseSeasonTable(
     scorelessRounds: num(totals.scorelessRounds),
     guestGoals: num(totals.guestGoals),
     ownGoals: num(totals.ownGoals),
-    players,
+    players: players.sort((a, b) => a.uid.localeCompare(b.uid)),
     duo: topDuo(d.pairs, names),
     names,
   };

@@ -536,6 +536,44 @@ export type JoinSource =
   | 'admin_added'       // an admin put them in
   | 'unknown';
 
+/**
+ * Longest consecutive-night attendance streak, and who holds it.
+ *
+ * Walk the nights oldest→newest; for each player a run of attended nights
+ * grows and a missed night resets it. Extracted so the club's LIFETIME record
+ * can be computed from the same rule as the season's — a record is permanent,
+ * and the club's longest-ever run used to disappear from the app entirely the
+ * morning after a season closed, because the only streak anyone computed was
+ * the season-scoped one.
+ */
+function lifetimeStreak(
+  nights: Array<{ startsAt: number; attended: Set<UserId> }>,
+): {
+  longestStreak: number;
+  longestStreakUid: UserId | null;
+  /** Each player's CURRENT run once the walk reaches the latest night — a
+   *  missed night has already zeroed it. Free: the walk computed it anyway. */
+  run: Record<UserId, number>;
+} {
+  const ordered = [...nights].sort((a, b) => a.startsAt - b.startsAt);
+  const run: Record<UserId, number> = {};
+  let longestStreak = 0;
+  let longestStreakUid: UserId | null = null;
+  for (const night of ordered) {
+    for (const uid of Object.keys(run)) {
+      if (!night.attended.has(uid)) run[uid] = 0;
+    }
+    for (const uid of night.attended) {
+      run[uid] = (run[uid] ?? 0) + 1;
+      if (run[uid] > longestStreak) {
+        longestStreak = run[uid];
+        longestStreakUid = uid;
+      }
+    }
+  }
+  return { longestStreak, longestStreakUid, run };
+}
+
 export const gameService = {
   /**
    * Returns the active game for a group, or null if none exists yet.
@@ -956,6 +994,14 @@ export const gameService = {
       totalCancelled: number;
       organizationRate: number;
       activeThisMonth: number;
+      /** Distinct people who played in the last 365 days, club-wide. The
+       *  season-scoped `activeThisYear` intersects that window with the season
+       *  filter, which makes a year label mean a few days after a close. */
+      activeThisYear: number;
+      /** The club's longest-ever run of consecutive evenings, and who holds
+       *  it. A record is permanent; a season closing must not erase it. */
+      longestStreak: number;
+      longestStreakUid: UserId | null;
     };
   }> {
     const empty = {
@@ -975,6 +1021,9 @@ export const gameService = {
         totalFinished: 0,
         totalCancelled: 0,
         organizationRate: 0,
+        activeThisYear: 0,
+        longestStreak: 0,
+        longestStreakUid: null,
         activeThisMonth: 0,
       },
     };
@@ -1005,6 +1054,9 @@ export const gameService = {
           totalCancelled: 3,
           organizationRate: 0.93,
           activeThisMonth: 14,
+          activeThisYear: 18,
+          longestStreak: 9,
+          longestStreakUid: null,
         },
       };
     }
@@ -1051,6 +1103,9 @@ export const gameService = {
     let lifeFinished = 0;
     let lifeCancelled = 0;
     const lifeActiveMonth = new Set<UserId>();
+    const lifeActiveYear = new Set<UserId>();
+    /** Every lifetime evening, newest first, for the club-wide streak. */
+    const lifeNights: Array<{ startsAt: number; attended: Set<UserId> }> = [];
     for (const doc of snap.docs) {
       const g = doc.data();
       // Lifetime first, BEFORE the season gate — one pass, two tallies. The
@@ -1061,12 +1116,15 @@ export const gameService = {
         if (g.status === 'cancelled' || st === 'notHappened') lifeCancelled += 1;
         else if (st !== 'unverified') {
           lifeFinished += 1;
-          if (typeof g.startsAt === 'number' && g.startsAt >= monthAgo) {
-            const arr = (g.arrivals ?? {}) as Record<UserId, ArrivalStatus>;
-            for (const uid of (g.players ?? []) as UserId[]) {
-              if (arr[uid] !== 'no_show') lifeActiveMonth.add(uid);
-            }
+          const arr = (g.arrivals ?? {}) as Record<UserId, ArrivalStatus>;
+          const came = new Set<UserId>();
+          for (const uid of (g.players ?? []) as UserId[]) {
+            if (arr[uid] !== 'no_show') came.add(uid);
           }
+          const at = typeof g.startsAt === 'number' ? g.startsAt : 0;
+          if (at >= monthAgo) came.forEach((uid) => lifeActiveMonth.add(uid));
+          if (at >= yearAgo) came.forEach((uid) => lifeActiveYear.add(uid));
+          lifeNights.push({ startsAt: at, attended: came });
         }
       }
       if (!inSeason(g as { seasonId?: string })) continue;
@@ -1116,25 +1174,7 @@ export const gameService = {
       attendanceSum += attendedHere;
       nights.push({ startsAt: (g.startsAt as number) ?? 0, attended: attendedSet });
     }
-    // Longest consecutive-night attendance streak. Walk nights oldest→newest;
-    // for each player a run of attended nights grows, a missed night resets it.
-    nights.sort((a, b) => a.startsAt - b.startsAt);
-    const run: Record<UserId, number> = {};
-    let longestStreak = 0;
-    let longestStreakUid: UserId | null = null;
-    for (const night of nights) {
-      // Reset anyone who didn't attend this night.
-      for (const uid of Object.keys(run)) {
-        if (!night.attended.has(uid)) run[uid] = 0;
-      }
-      for (const uid of night.attended) {
-        run[uid] = (run[uid] ?? 0) + 1;
-        if (run[uid] > longestStreak) {
-          longestStreak = run[uid];
-          longestStreakUid = uid;
-        }
-      }
-    }
+    const { longestStreak, longestStreakUid, run } = lifetimeStreak(nights);
     const organizationRate =
       totalFinished + totalCancelled > 0
         ? totalFinished / (totalFinished + totalCancelled)
@@ -1152,6 +1192,12 @@ export const gameService = {
         totalCancelled: lifeCancelled,
         organizationRate: lifetimeAttempts ? lifeFinished / lifetimeAttempts : 0,
         activeThisMonth: lifeActiveMonth.size,
+        activeThisYear: lifeActiveYear.size,
+        ...(() => {
+          const { longestStreak: ls, longestStreakUid: lu } =
+            lifetimeStreak(lifeNights);
+          return { longestStreak: ls, longestStreakUid: lu };
+        })(),
       },
       totalFinished,
       totalCancelled,

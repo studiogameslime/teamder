@@ -336,9 +336,44 @@ export function buildPersonalSeason({
     partner: best(oriented, (o) => o.sameTeam, (o) => o.winsTogether),
     // The opponent I faced most, tie broken towards the one who beat me more:
     // "biggest rival" should lean to the harder rivalry, not the friendlier.
-    nemesis: best(oriented, (o) => o.against, (o) => o.theirWins),
-    victim: best(oriented, (o) => o.myWins, (o) => o.against),
-    tormentor: best(oriented, (o) => o.theirWins, (o) => o.against),
+    //
+    // The three rival rows are picked in order and each one refuses whoever
+    // the row above it already named.
+    //
+    // They were picked independently, and in a club of regulars the person you
+    // face most is almost always also the one you beat most and lose to most —
+    // so the card's whole point, "the people of your season", came out as the
+    // same name and the same face three times. On the one club that has closed
+    // a season that was 5 of 7 players; one of them saw the same person in all
+    // four rows he had. And "מי ניצח אותי הכי הרבה" named a man he had beaten
+    // 5-3, because nothing made the third pick step aside for the second.
+    //
+    // Falling through to the runner-up is the right answer rather than hiding
+    // the row: the second-most-faced opponent is a true fact and an
+    // interesting one. A row only disappears when there is genuinely nobody
+    // left, which is what `best` already returns null for.
+    ...(() => {
+      const taken = new Set<string>();
+      const distinct = (
+        pick: (o: Oriented) => number,
+        tiebreak: (o: Oriented) => number,
+      ): SeasonPeer | null => {
+        // Prefer someone this card has not already named — but only when
+        // there IS someone else. With one opponent all three rows are
+        // genuinely about that person, and hiding two of them would be a
+        // worse answer than repeating a true one.
+        const peer =
+          best(oriented.filter((o) => !taken.has(o.other)), pick, tiebreak) ??
+          best(oriented, pick, tiebreak);
+        if (peer) taken.add(peer.userId);
+        return peer;
+      };
+      return {
+        nemesis: distinct((o) => o.against, (o) => o.theirWins),
+        victim: distinct((o) => o.myWins, (o) => o.against),
+        tormentor: distinct((o) => o.theirWins, (o) => o.against),
+      };
+    })(),
     assistedMost: best(oriented, (o) => o.iAssistedThem, (o) => o.sameTeam),
     assistedBy: best(oriented, (o) => o.theyAssistedMe, (o) => o.sameTeam),
   };

@@ -55,6 +55,13 @@ function formatRange(startsAt: number, endsAt: number): string {
   // Season 1 of a club that sealed its history began whenever the club did,
   // which nothing recorded. Say so rather than leaving the line blank.
   if (!from) return to ? he.seasonRangeUntil(to) : he.seasonRangeUnknown;
+  // A season 1 that CARRIED the club's history has a startsAt of the moment
+  // seasons were switched on, not of the first evening it contains — so the
+  // club's only sealed season, spanning 28.06 to 17.09, printed
+  // "ספט׳ 2026 – ספט׳ 2026" over "22 מחזורים". Two identical months on a
+  // season that holds twenty-two evenings is not a date range, it is a
+  // contradiction, so it says the one thing it actually knows instead.
+  if (from === to) return to ? he.seasonRangeUntil(to) : he.seasonRangeUnknown;
   return to ? `${from} – ${to}` : from;
 }
 
@@ -143,11 +150,20 @@ function Cabinet({
                 </Text>
                 {w ? (
                   <>
+                    {/* A name, then how many shared it. It used to render the
+                        suffix INSTEAD of the names — "במשותף עם עוד 6 שחקנים"
+                        with "עוד" pointing at nobody — so on the one club that
+                        has closed a season, the שחקן העונה medal named none of
+                        its seven winners. The screen exists to answer "so who
+                        actually won?". */}
                     <Text style={styles.slotName} numberOfLines={2}>
-                      {w.names.length > 2
-                        ? he.seasonTitleSharedWith(w.names.length - 1)
-                        : w.names.join(' · ')}
+                      {w.names.slice(0, 2).join(' · ')}
                     </Text>
+                    {w.names.length > 2 ? (
+                      <Text style={styles.slotShared} numberOfLines={1}>
+                        {he.seasonTitleSharedWith(w.names.length - 2)}
+                      </Text>
+                    ) : null}
                     <Text style={styles.slotValue} numberOfLines={1}>
                       {he.seasonTitleValue(key, w.value)}
                     </Text>
@@ -491,6 +507,14 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
     marginTop: 2,
+  },
+  slotShared: {
+    ...typography.caption,
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: '700',
+    color: '#9AA3B2',
+    textAlign: 'center',
   },
   slotValue: {
     ...typography.caption,
