@@ -15000,6 +15000,47 @@ async function sealedEveningsOf(groupId: string): Promise<number> {
  * that decides whether an evening happened, so this number can never disagree
  * with the "מפגשים שנערכו" the club screen has shown all along.
  */
+/**
+ * How many evenings a season has actually held, counted from the GAMES that
+ * carry its stamp.
+ *
+ * `seasons.playedRounds` is a mirror, and a mirror can drift. It drifted badly
+ * on a real club: a season reopened from an archive whose `completedRounds`
+ * had itself inherited the club's lifetime count came back holding 22 while
+ * the stats screen — which counts stamped games — showed 0 for the same
+ * season. Two screens, one season, two numbers, and nothing to arbitrate.
+ *
+ * The games are the arbiter. Every game is stamped with the open season's id
+ * the moment it goes active (see onGameRosterChanged), so the stamp is the
+ * only record of which season an evening was played in, and
+ * `didEveningHappen` is the only thing allowed to say whether it happened.
+ */
+async function playedEveningsOfSeason(
+  groupId: string,
+  seasonId: string,
+): Promise<number> {
+  if (!seasonId) return 0;
+  try {
+    const snap = await db
+      .collection('games')
+      .where('groupId', '==', groupId)
+      .where('seasonId', '==', seasonId)
+      .limit(300)
+      .get();
+    let n = 0;
+    snap.forEach((d) => {
+      if (didEveningHappen(d.data() as PlayableEvening)) n += 1;
+    });
+    return n;
+  } catch (err) {
+    // A failed count must not become a zero: returning -1 lets the caller keep
+    // whatever it already had rather than wiping a season's progress because
+    // one query failed.
+    console.warn('[season] season count failed', groupId, seasonId, err);
+    return -1;
+  }
+}
+
 async function playedEveningsFromGames(groupId: string): Promise<number> {
   try {
     const snap = await db
@@ -15926,22 +15967,35 @@ export const reopenLastSeason = onCall(
           startedAt: archNum(archive.get('startsAt')),
           roundsAtStart: reopenedRoundsAtStart,
           reopenedAt: Date.now(),
-          // What the season HELD, taken from its own archive.
+          // What the season HELD — counted from its own games, not from a
+          // counter and not from its archive.
           //
-          // This used to be recomputed as `eveningsSealed - roundsAtStart`, a
-          // subtraction of two counters that drift for different reasons — so
-          // a season closed at 23 evenings came back as 1, and the admin who
-          // pressed undo watched the club's season shrink to nothing. The
-          // archive is the record of what the season was; restoring is reading
-          // it, not deriving it. Falls back to the old arithmetic only when the
-          // archive has no figure at all.
-          playedRounds:
-            typeof archive.get('completedRounds') === 'number'
+          // It was `eveningsSealed - roundsAtStart` once: a subtraction of two
+          // counters that drift for different reasons, so a season closed at 23
+          // evenings came back as 1 and the admin who pressed undo watched it
+          // shrink to nothing. Reading `archive.completedRounds` instead fixed
+          // that and introduced the opposite failure: a season whose archive
+          // figure was itself wrong came back holding that wrong figure. On a
+          // real club a season that held NOTHING was reopened holding 22 —
+          // the club's whole lifetime, inherited through the archive of a
+          // season a seeding bug had created and closed inside a minute — and
+          // the club card then said "22 מתוך 24" while the statistics screen,
+          // which counts stamped games, said 0 for the same season.
+          //
+          // So it is counted where it can be checked. The games carry the
+          // season's stamp; `didEveningHappen` decides which of them happened.
+          // A failed count (-1) keeps the archive figure rather than zeroing a
+          // season because one query timed out.
+          playedRounds: await (async () => {
+            const counted = await playedEveningsOfSeason(groupId, lastId);
+            if (counted >= 0) return counted;
+            return typeof archive.get('completedRounds') === 'number'
               ? archNum(archive.get('completedRounds'))
               : Math.max(
                   0,
                   (await sealedEveningsOf(groupId)) - reopenedRoundsAtStart,
-                ),
+                );
+          })(),
           // The target it was closed against, so it is not immediately due
           // again on a date cadence.
           cadence: rebaseCadence(
