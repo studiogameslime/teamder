@@ -1,9 +1,10 @@
 // What switching seasons on will do, spelled out before it happens.
 //
 // This is the last screen before an irreversible change to a club's whole
-// history: everything it has ever played becomes season 1, and depending on one
-// chip above, season 1 either carries on or is sealed on the spot with its
-// champions handed out permanently.
+// history: everything it has ever played becomes the season being opened, and
+// depending on one chip above, that season either carries on or is sealed on
+// the spot with its champions handed out permanently. Which season that is
+// arrives as a prop — it is 1 only for a club that has never closed one.
 //
 // Every line is derived from the SAME `ActivationPlan` the settings screen
 // validated and the server recomputes before acting. Nothing here is written
@@ -42,6 +43,7 @@ export function SeasonConfirmSheet({
   cadence,
   months,
   rounds,
+  seasonNo,
   busy,
   onCancel,
   onConfirm,
@@ -51,11 +53,25 @@ export function SeasonConfirmSheet({
   cadence: Cadence;
   months: number;
   rounds: number;
+  /**
+   * The season this activation opens — and NOT 1.
+   *
+   * Every season line below was hardcoded to "עונה 1" and "עונה 2", while the
+   * numbering continues across the feature being switched off and on again. A
+   * club that had already played three seasons and switched them back on read
+   * "עונה 1 תסתיים ועונה 2 תתחיל" on the last screen before its table was
+   * archived and reset — a plan for two seasons it finished months ago.
+   */
+  seasonNo: number;
   busy: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
   const hasHistory = plan.playedHistory > 0;
+  // The season being sealed or carried on, and the one that follows it. Both
+  // read off the same number so they can never name different pairs.
+  const no = seasonNo;
+  const nextNo = seasonNo + 1;
 
   return (
     <Modal
@@ -96,14 +112,14 @@ export function SeasonConfirmSheet({
                 />
                 <Row
                   label={he.seasonsConfirmHistory}
-                  value={he.seasonsConfirmHistoryValue}
+                  value={he.seasonsConfirmHistoryValueOf(no)}
                 />
                 <Row
                   label={he.seasonsConfirmChoice}
                   value={
                     plan.sealsSeason1
-                      ? he.seasonsConfirmChoiceSeal
-                      : he.seasonsConfirmChoiceContinue
+                      ? he.seasonsConfirmChoiceSealOf(no)
+                      : he.seasonsConfirmChoiceContinueOf(no)
                   }
                 />
               </>
@@ -113,7 +129,7 @@ export function SeasonConfirmSheet({
             {cadence === 'rounds' && !plan.sealsSeason1 ? (
               <>
                 <Row
-                  label={he.seasonsConfirmSeason1StateLabel}
+                  label={he.seasonsConfirmSeasonStateLabelOf(no)}
                   value={he.seasonsConfirmSeason1State(
                     plan.startsAtRounds ?? 0,
                     plan.targetRounds ?? rounds,
@@ -126,7 +142,11 @@ export function SeasonConfirmSheet({
                   )}
                 />
                 <Text style={styles.note}>
-                  {he.seasonsConfirmAfterTarget(plan.targetRounds ?? rounds)}
+                  {he.seasonsConfirmAfterTargetOf(
+                    plan.targetRounds ?? rounds,
+                    no,
+                    nextNo,
+                  )}
                 </Text>
               </>
             ) : null}
@@ -135,12 +155,12 @@ export function SeasonConfirmSheet({
               <>
                 {hasHistory ? (
                   <Row
-                    label={he.seasonsConfirmSeason1}
+                    label={he.seasonNumberLabel(no)}
                     value={he.seasonsConfirmSealedNow(plan.playedHistory)}
                   />
                 ) : null}
                 <Row
-                  label={he.seasonsConfirmSeason2}
+                  label={he.seasonNumberLabel(nextNo)}
                   value={he.seasonsConfirmSeason1State(
                     0,
                     plan.targetRounds ?? rounds,
@@ -148,8 +168,9 @@ export function SeasonConfirmSheet({
                 />
                 <Row
                   label={he.seasonsConfirmNextRound}
-                  value={he.seasonsConfirmNextRoundValue(
+                  value={he.seasonsConfirmNextRoundValueOf(
                     plan.targetRounds ?? rounds,
+                    nextNo,
                   )}
                 />
               </>
@@ -167,7 +188,7 @@ export function SeasonConfirmSheet({
                 label={
                   plan.sealsSeason1
                     ? he.seasonsEndsOnLabel
-                    : he.seasonsConfirmSeason1Ends
+                    : he.seasonsEndsLabel(no)
                 }
                 value={formatCalendarDate(plan.endsOn)}
               />
@@ -177,14 +198,14 @@ export function SeasonConfirmSheet({
                 label={
                   plan.sealsSeason1
                     ? he.seasonsNextStartsLabel
-                    : he.seasonsConfirmSeason2Starts
+                    : he.seasonsStartsLabel(nextNo)
                 }
                 value={formatCalendarDate(plan.nextStartsOn)}
               />
             ) : null}
             {cadence === 'date' && !plan.sealsSeason1 && hasHistory ? (
               <Row
-                label={he.seasonsConfirmFromSeason2}
+                label={he.seasonsConfirmFromSeasonOn(nextNo)}
                 value={he.seasonsMonthsUnit(months)}
               />
             ) : null}

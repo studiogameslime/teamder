@@ -28,8 +28,16 @@ import { radius, spacing, typography } from '@/theme';
 import { RTL_LABEL_ALIGN } from '@/theme/rtl';
 import { he } from '@/i18n/he';
 
-/** The plate. Night over turf — the two stops the stadium heroes already use. */
-const PLATE = ['#0B1226', '#0E1B2E', '#0E4D26'] as const;
+/** The plate. Night over turf — the two stops the stadium heroes already use.
+ *
+ *  The third stop used to be #0E4D26 parked at `locations` 1.25, i.e. a quarter
+ *  of the way past the end of the gradient, so the green the plate actually
+ *  reached was the two-thirds mix below. expo-linear-gradient documents
+ *  locations as 0-1 and hands them to CAGradientLayer / Android's
+ *  LinearGradient untouched; out-of-range stops are undefined behaviour, and on
+ *  a future RN release they clamp and the plate turns a shade of green it was
+ *  never designed in. Same pixels, inside the contract. */
+const PLATE = ['#0B1226', '#0E1B2E', '#0E3D28'] as const;
 const GOLD = '#F4B73E';
 const POSTER_H = 214;
 
@@ -40,11 +48,19 @@ interface Props {
   celebrate?: boolean;
 }
 
+/** Two names fit across a 35pt headline. The rest are counted, not printed —
+ *  `winners[0]` on a club with no unshared title is routinely every member who
+ *  turned up, and a 78-character list at 35pt with `adjustsFontSizeToFit` is a
+ *  grey smear that ends mid-name. */
+const MAX_HERO_NAMES = 2;
+
 /** Chalk. Six static primitives, drawn to bleed off the leading edge. */
 function Chalk() {
   const stroke = 'rgba(255,255,255,0.14)';
   return (
     <Svg
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       style={StyleSheet.absoluteFill}
       viewBox={`0 0 390 ${POSTER_H}`}
       preserveAspectRatio="xMidYMid slice"
@@ -69,12 +85,14 @@ export function SeasonPoster({ season, hero, celebrate = false }: Props) {
     hero && hero.key === 'topScorer' && season.totals.goals > 0
       ? Math.round((hero.value / season.totals.goals) * 100)
       : null;
+  const heroNames = hero ? hero.names.slice(0, MAX_HERO_NAMES) : [];
+  const heroShared = hero ? hero.names.length - heroNames.length : 0;
 
   return (
     <View style={styles.poster}>
       <LinearGradient
         colors={PLATE}
-        locations={[0, 0.46, 1.25]}
+        locations={[0, 0.46, 1]}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -86,7 +104,12 @@ export function SeasonPoster({ season, hero, celebrate = false }: Props) {
 
       {/* Engraved, behind everything, on the trailing edge so it never sits
           under the Hebrew that is set from the right. */}
-      <Text style={styles.ghostNo} allowFontScaling={false}>
+      <Text
+        style={styles.ghostNo}
+        allowFontScaling={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         {String(season.no)}
       </Text>
       {hero ? (
@@ -95,6 +118,8 @@ export function SeasonPoster({ season, hero, celebrate = false }: Props) {
           size={84}
           color="#FFFFFF"
           style={styles.ghostIcon}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
         />
       ) : null}
 
@@ -117,7 +142,14 @@ export function SeasonPoster({ season, hero, celebrate = false }: Props) {
           <>
             <View style={[styles.pill, { backgroundColor: tint + '4D', borderColor: tint + '80' }]}>
               <Ionicons name={seasonTitleIcon(hero.key)} size={13} color="#FFFFFF" />
-              <Text style={styles.pillText} numberOfLines={1}>
+              {/* The plate is a fixed 214pt, so every text on it is capped
+                  rather than left to grow off the bottom of the poster at the
+                  OS "largest" setting. */}
+              <Text
+                style={styles.pillText}
+                numberOfLines={1}
+                maxFontSizeMultiplier={1.2}
+              >
                 {he.seasonTitleNames[hero.key]}
               </Text>
             </View>
@@ -127,13 +159,26 @@ export function SeasonPoster({ season, hero, celebrate = false }: Props) {
               adjustsFontSizeToFit
               minimumFontScale={0.55}
             >
-              {hero.names.join(' · ')}
+              {heroNames.join(' · ')}
             </Text>
+            {heroShared > 0 ? (
+              <Text
+                style={styles.heroShared}
+                numberOfLines={1}
+                maxFontSizeMultiplier={1.2}
+              >
+                {he.seasonTitleSharedWith(heroShared)}
+              </Text>
+            ) : null}
             <View style={styles.valueRow}>
               <Text style={styles.heroValue} allowFontScaling={false}>
                 {value.big}
               </Text>
-              <Text style={styles.heroUnit} numberOfLines={1}>
+              <Text
+                style={styles.heroUnit}
+                numberOfLines={1}
+                maxFontSizeMultiplier={1.2}
+              >
                 {share !== null
                   ? `${value.unit} · ${he.seasonHeroShare(share)}`
                   : value.unit}
@@ -147,25 +192,59 @@ export function SeasonPoster({ season, hero, celebrate = false }: Props) {
         )}
       </View>
 
+      {/* Counting up is for the season being celebrated. Every poster used to
+          run three requestAnimationFrame counters on mount, so a club with
+          twelve sealed seasons started thirty-six JS-thread timers in the same
+          frame as the list itself. */}
       <View style={styles.strip}>
-        <Stat n={season.completedRounds} label={he.seasonStatRoundsShort} />
+        <Stat
+          n={season.completedRounds}
+          label={he.seasonStatRoundsShort}
+          animate={celebrate}
+        />
         {/* Mini-games exist only in advanced mode. Printing "0 משחקונים" on
             every season of every timer-only club is a column of zeros that
             reports nothing. */}
         {season.totals.rounds > 0 ? (
-          <Stat n={season.totals.rounds} label={he.seasonStatMiniShort} />
+          <Stat
+            n={season.totals.rounds}
+            label={he.seasonStatMiniShort}
+            animate={celebrate}
+          />
         ) : null}
-        <Stat n={season.players} label={he.seasonStatPlayersShort} />
+        <Stat
+          n={season.players}
+          label={he.seasonStatPlayersShort}
+          animate={celebrate}
+        />
       </View>
     </View>
   );
 }
 
-function Stat({ n, label }: { n: number; label: string }) {
+function Stat({
+  n,
+  label,
+  animate,
+}: {
+  n: number;
+  label: string;
+  animate: boolean;
+}) {
   return (
-    <View style={styles.statBox}>
-      <CountUp to={n} from={0} durationMs={800} style={styles.statNum} />
-      <Text style={styles.statLabel} numberOfLines={1}>
+    <View style={styles.statBox} accessible accessibilityLabel={`${n} ${label}`}>
+      {/* `from` omitted renders the number static — no rAF at all. */}
+      <CountUp
+        to={n}
+        from={animate ? 0 : undefined}
+        durationMs={800}
+        style={styles.statNum}
+      />
+      <Text
+        style={styles.statLabel}
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.2}
+      >
         {label}
       </Text>
     </View>
@@ -175,7 +254,11 @@ function Stat({ n, label }: { n: number; label: string }) {
 const styles = StyleSheet.create({
   fill: { ...StyleSheet.absoluteFillObject },
   poster: {
-    height: POSTER_H,
+    // A floor, not a fixed height. The plate is set from the bottom up, so a
+    // shared-title line (or a font-scale bump) on a fixed 214 pushed the title
+    // pill out through `overflow: 'hidden'` at the top and the poster lost the
+    // one element that names the title.
+    minHeight: POSTER_H,
     overflow: 'hidden',
     justifyContent: 'flex-end',
     padding: spacing.lg,
@@ -213,6 +296,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   pillText: { ...typography.caption, fontSize: 11, fontWeight: '800', color: '#FFFFFF' },
+  heroShared: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.74)',
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: 2,
+  },
   heroName: {
     fontSize: 35,
     lineHeight: 40,

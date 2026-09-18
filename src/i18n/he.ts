@@ -1,6 +1,15 @@
 // All Hebrew strings used in the app, centralized so future i18n is trivial.
 // Keep keys in English (camelCase); values in Hebrew.
 
+// Hebrew's 1-form. "1 משחקונים" is the same mistake as "1 חודשים", and it
+// reaches the screen far more often than it looks: a young season crowns its
+// titles on one of something, and after a single evening every peer counter on
+// the summary is 1. This lived inside `seasonTitleValue` and nothing else could
+// reach it, so the neighbouring lines shipped "1 משחקים" and
+// "1 ניצחונות מול 1". Every interpolated count goes through here.
+const count = (n: number, one: string, many: string) =>
+  n === 1 ? one : `${n} ${many}`;
+
 export const he = {
   // Common
   back: 'חזור',
@@ -1236,7 +1245,7 @@ export const he = {
   statsEmptySub: 'הסטטיסטיקות יתעדכנו אחרי המחזורים הראשונים שלך',
   historyEmptyReal: 'אין עדיין היסטוריית מחזורים',
   historyLoadError: 'שגיאה בטעינת ההיסטוריה',
-  retry: 'נסה שוב',
+  retry: 'נסו שוב',
   historyEmptyHint: 'ברגע שתסיים מחזורים, הם יופיעו כאן',
 
   // Mock mode banner
@@ -2032,8 +2041,14 @@ export const he = {
   seasonsToggleHint: 'לחלק את המועדון לעונות עם התחלה, סוף ותארים',
   // What the switch actually does, said once, plainly — the explanation the
   // most complicated setting on the screen never had.
+  //
+  // It used to promise "מחולקים תשעה תארים". The one season ever closed
+  // awarded eight, and six of the nine are decided on mini-game numbers that
+  // only the advanced live screen records — so a timer-only club, which is most
+  // of them, can never award more than three. A count nobody can reach is a
+  // promise, so it is gone and the sentence says what is actually measured.
   seasonsToggleInfo:
-    'עונה היא פרק זמן עם התחלה וסוף. אפשר למדוד אותה בערבי משחק (״אחרי 20 מחזורים״) או בזמן (״אחרי חצי שנה״).\n\nכשעונה נגמרת: מחולקים תשעה תארים, טבלת המועדון מתחילה מאפס, והעונה נשמרת בארכיון ואפשר תמיד לחזור אליה.\n\nמה שלא מושפע: הסטטיסטיקה המצטברת בפרופיל, ההישגים והרצפים. אפשר לכבות עונות בכל רגע — העונות שכבר נסגרו נשארות.',
+    'עונה היא פרק זמן עם התחלה וסוף. אפשר למדוד אותה בערבי משחק (״אחרי 20 מחזורים״) או בזמן (״אחרי חצי שנה״).\n\nכשעונה נגמרת: מחולקים תארים למי שהוביל בה — רק לפי מה שהמועדון באמת מדד, טבלת המועדון מתחילה מאפס, והעונה נשמרת בארכיון ואפשר תמיד לחזור אליה.\n\nמה שלא מושפע: הסטטיסטיקה המצטברת בפרופיל, ההישגים והרצפים. אפשר לכבות עונות בכל רגע — העונות שכבר נסגרו נשארות.',
   seasonsCadenceQuestion: 'איך העונה נגמרת',
   seasonsHowLong: 'אחרי כמה זמן',
   seasonsHowMany: 'אחרי כמה מחזורים',
@@ -2043,7 +2058,7 @@ export const he = {
   seasonsTargetSavedToast: 'יעד העונה עודכן',
   seasonsDisableTitle: 'לכבות עונות?',
   seasonsDisableBody:
-    'המועדון יחזור לטבלה אחת שלא מתאפסת. העונה שרצה עכשיו לא תיסגר ולא יחולקו עליה תארים — אם רצית לסגור אותה, יש לזה כפתור נפרד.\n\nעונות שכבר הסתיימו נשארות בארכיון, ואם תפעיל עונות שוב הספירה תמשיך מהמקום שבו עצרה.',
+    'המועדון יחזור לטבלה אחת שלא מתאפסת. העונה שרצה עכשיו לא תיסגר ולא יחולקו עליה תארים — אם רציתם לסגור אותה, יש לזה כפתור נפרד.\n\nעונות שכבר הסתיימו נשארות בארכיון, ואם תפעילו עונות שוב הספירה תמשיך מהמקום שבו עצרה.',
   seasonsDisableConfirm: 'כבה עונות',
   seasonsDisabledToast: 'העונות כובו במועדון',
   seasonsOffButArchived:
@@ -2053,9 +2068,14 @@ export const he = {
   seasonsCardOfTarget: (target: number) => `מתוך ${target} מחזורים`,
   // What is LEFT. The big number above already says how far the club has got,
   // so repeating "0 מתוך 2 מחזורים" underneath it says nothing twice.
+  //
+  // At the target it used to say "תיסגר בסיום הערב הבא", which made the
+  // close wait for an evening that nothing requires: the hourly sweep closes a
+  // season that met its target on its next run, and a club that plays once a
+  // week read a two-day-old card promising something that had already happened.
   seasonsCardRemaining: (left: number) =>
     left <= 0
-      ? 'העונה הגיעה ליעד ותיסגר בסיום הערב הבא'
+      ? 'העונה הגיעה ליעד ותיסגר מעצמה בשעה הקרובה'
       : left === 1
         ? 'נשאר מחזור אחד'
         : `נשארו ${left} מחזורים`,
@@ -2085,7 +2105,9 @@ export const he = {
   seasonsProgressRounds: (played: number, target: number) =>
     played >= target
       ? `${played} מתוך ${target} מחזורים — העונה תיסגר בקרוב`
-      : `${played} מתוך ${target} מחזורים · נשארו ${target - played}`,
+      : `${played} מתוך ${target} מחזורים · ${
+          target - played === 1 ? 'נשאר אחד' : `נשארו ${target - played}`
+        }`,
   // Hebrew counts 1 and 2 differently, and rounding days to months produced
   // "נשארו 1 חודשים" on the club card. Days up to two months, then months with
   // their own forms.
@@ -2098,17 +2120,20 @@ export const he = {
     if (months === 2) return 'נשארו חודשיים לעונה';
     return `נשארו ${months} חודשים לעונה`;
   },
-  seasonsSealConfirmTitle: 'לסגור את כל ההיסטוריה כעונה 1?',
+  // The title that went with the body below is gone: nothing rendered it, and
+  // it asked "לסגור את כל ההיסטוריה כעונה 1?" — the seal happens on whatever
+  // season the club is actually on, which after a disable/enable is 4, not 1.
+  // Whoever revives this dialog should title it with seasonNumberLabel(no).
   seasonsSealConfirmBody:
-    'כל מה שהמועדון שיחק עד היום ייסגר כעונה שהסתיימה: יחולקו עליה תארים, והטבלה תתחיל מאפס.\n\nהעונה תישמר בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאם טעית אפשר לבטל את הסגירה מאותו מסך, כל עוד לא נסגרה עונה נוספת אחריה.',
+    'כל מה שהמועדון שיחק עד היום ייסגר כעונה שהסתיימה: יחולקו עליה תארים, והטבלה תתחיל מאפס.\n\nהעונה תישמר בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאם טעיתם אפשר לבטל את הסגירה מאותו מסך, כל עוד לא נסגרה עונה נוספת אחריה.',
   seasonsSealConfirmCta: 'סגור והתחל מאפס',
   seasonsEndConfirmTitle: 'לסיים את העונה?',
   seasonsEndConfirmBody:
-    'העונה תיסגר עכשיו: הטבלה של המועדון מתאפסת והתארים מחולקים.\n\nהעונה נשמרת בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאם טעית אפשר לבטל את הסגירה מאותו מסך, כל עוד לא נסגרה עונה נוספת אחריה.',
+    'העונה תיסגר עכשיו: הטבלה של המועדון מתאפסת והתארים מחולקים.\n\nהעונה נשמרת בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאם טעיתם אפשר לבטל את הסגירה מאותו מסך, כל עוד לא נסגרה עונה נוספת אחריה.',
   seasonsCadenceDate: 'אחרי פרק זמן',
   seasonsCadenceRounds: 'אחרי מספר מחזורים',
-  seasonsMonthsLabel: (n: number) => `${n} חודשים`,
-  seasonsRoundsLabel: (n: number) => `${n} מחזורים`,
+  seasonsMonthsLabel: (n: number) => count(n, 'חודש אחד', 'חודשים'),
+  seasonsRoundsLabel: (n: number) => count(n, 'מחזור אחד', 'מחזורים'),
   seasonsCloseFirstTitle: 'ומה עם כל מה ששיחקתם עד היום?',
   seasonsCloseFirstBody:
     'אפשר לצרף את כל ההיסטוריה של המועדון לעונה הנוכחית, או לסגור אותה כעונה שהסתיימה — לחלק עליה תארים — ולהתחיל את העונה החדשה מאפס.',
@@ -2118,15 +2143,41 @@ export const he = {
   seasonsCloseFirstKeep: 'לצרף לעונה הנוכחית',
   seasonsCloseFirstSeal: 'לסגור ולהתחיל מאפס',
   seasonsEnabledToast: 'עונות הופעלו במועדון',
-  seasonsEndedToast: (no: number) => `עונה ${no} הסתיימה. כל מי ששיחק קיבל את הסיכום שלו`,
+  // Only what the admin's own tap actually did. "כל מי ששיחק קיבל את הסיכום
+  // שלו" was a claim about a push fan-out that runs after the close, dedupes on
+  // a 7-day bucket and reaches nobody at all on a re-close — so the toast
+  // reported deliveries that never happened.
+  seasonsEndedToast: (no: number) => `עונה ${no} הסתיימה ונשמרה בארכיון`,
+  // Every refusal here used to address one man — "סיים", "חכה", "בחר", "נסה" —
+  // while every validation line on the same screen speaks in the plural
+  // ("שנו", "בחרו"). They land a gesture apart, so the admin read two voices in
+  // one screen. The plural is also the only one of the two that fits everyone.
   seasonBlockedOpenGame:
-    'יש מחזור פתוח במועדון. אפשר לסיים עונה רק כשאין מחזור בדרך — סיים או בטל אותו קודם.',
+    'יש מחזור פתוח במועדון. אפשר לסיים עונה רק כשאין מחזור בדרך — סיימו או בטלו אותו קודם.',
   seasonBlockedUnsealed:
-    'יש מחזור שהסתיים אבל הנתונים שלו עדיין לא נסגרו. חכה שהעדכון יסתיים ונסה שוב.',
+    'יש מחזור שהסתיים אבל הנתונים שלו עדיין לא נסגרו. חכו שהעדכון יסתיים ונסו שוב.',
   seasonsReopenCta: 'בטל את סגירת העונה האחרונה',
   seasonsReopenConfirmTitle: 'לבטל את סגירת העונה?',
+  // The body asserted two things that are false exactly when the undo is used.
+  // It said the season "כבר הגיעה ליעד שלה" — but the button exists for a
+  // season ended EARLY, which by definition did not — and that it would
+  // re-close "תוך יומיים", which is a rounds cadence talking; a date season
+  // re-closes when its date arrives, and a season already at its target
+  // re-closes on the next hourly sweep, not in two days. It also named no
+  // season, and never said that the titles and the summary are DELETED rather
+  // than parked: the archive doc goes, and the guest pair chemistry inside it
+  // does not come back.
+  //
+  // This one drops both claims, so it is safe wherever the cadence is unknown.
+  // The twin below takes the facts and is the one to render from the settings
+  // screen, which knows them.
   seasonsReopenConfirmBody:
-    'העונה האחרונה שנסגרה תיפתח מחדש: הטבלה תחזור למצב שבו הייתה, התארים יוסרו מהשחקנים שקיבלו אותם, והארכיון שלה יימחק.\n\nמה ששוחק מאז הסגירה נשמר ומתווסף חזרה.\n\nהעונה הזאת כבר הגיעה ליעד שלה — אם לא תזיז את היעד תוך יומיים, היא תיסגר שוב מעצמה.',
+    'העונה האחרונה שנסגרה תיפתח מחדש: הטבלה תחזור למצב שבו הייתה, התארים יוסרו מהשחקנים שקיבלו אותם, וסיכום העונה והארכיון שלה יימחקו — אי אפשר לשחזר אותם אחר כך.\n\nמה ששוחק מאז הסגירה נשמר ומתווסף חזרה.',
+  seasonsReopenConfirmBodyOf: (no: number, willRecloseNow: boolean) =>
+    `סגירת עונה ${no} תבוטל והיא תיפתח מחדש: הטבלה תחזור למצב שבו הייתה, התארים יוסרו מהשחקנים שקיבלו אותם, וסיכום העונה והארכיון שלה יימחקו — אי אפשר לשחזר אותם אחר כך.\n\nמה ששוחק מאז הסגירה נשמר ומתווסף חזרה.` +
+    (willRecloseNow
+      ? `\n\nעונה ${no} כבר עומדת ביעד שלה, אז היא תיסגר שוב מעצמה בשעה הקרובה — אלא אם תעדכנו קודם את היעד.`
+      : ''),
   seasonsReopenConfirmCta: 'פתח מחדש',
   seasonsReopenedToast: (no: number) => `עונה ${no} נפתחה מחדש`,
   seasonBlockedClosedGame:
@@ -2134,25 +2185,42 @@ export const he = {
   seasonBlockedNothingToReopen:
     'אין עונה סגורה לפתוח מחדש.',
   seasonBlockedTargetBehind:
-    'היעד הזה כבר מאחורי המועדון, אז שמירה שלו הייתה סוגרת את העונה מיד. בחר יעד גדול יותר, או השתמש ב"סיים עונה עכשיו".',
+    'היעד הזה כבר מאחורי המועדון, אז שמירה שלו הייתה סוגרת את העונה מיד. בחרו יעד גדול יותר, או השתמשו ב"סיים עונה עכשיו".',
   // With the number, when the server named one. "כבר מאחורי המועדון" is not
   // something an admin can act on without knowing what it is behind — and this
   // screen never shows the season's progress anywhere else.
   seasonBlockedTargetBehindAt: (played: number) =>
-    `המועדון כבר שיחק ${played} מחזורים בעונה הזו, אז יעד נמוך יותר היה סוגר אותה מיד. בחר יעד גדול מ-${played}, או השתמש ב"סיים עונה עכשיו".`,
+    `המועדון כבר שיחק ${count(played, 'מחזור אחד', 'מחזורים')} בעונה הזו, אז יעד נמוך יותר היה סוגר אותה מיד. בחרו יעד גדול מ-${played}, או השתמשו ב"סיים עונה עכשיו".`,
+  // Reachable only from a screen whose club document is behind the server. It
+  // used to reuse `seasonsEnabledToast` — a SUCCESS line — inside a dialog
+  // titled "שגיאה", so an admin whose destructive press had just been refused
+  // read that the thing had happened.
+  seasonsAlreadyOnRefusal:
+    'עונות כבר פעילות במועדון. רעננו את המסך כדי לראות את המצב העדכני.',
   seasonBlockedOff: 'העונות כבויות במועדון הזה.',
   seasonBlockedNotAdmin: 'רק מנהל המועדון יכול לסיים עונה.',
-  seasonActionFailed: 'משהו השתבש. נסה שוב עוד רגע.',
+  seasonActionFailed: 'משהו השתבש. נסו שוב עוד רגע.',
   // The nine season titles. Names, not descriptions — they are worn.
+  //
+  // Seven of them were "מלך", and "שחקן העונה" is no better. On the only club
+  // that has closed a season a woman holds four of the eight awarded, so the
+  // medal cabinet, the poster, the summary row, the share PNG and the profile
+  // shelf all called her a king, four times over on one card. There is no
+  // gender field in the app and there will not be one, so the names themselves
+  // have to fit anybody: כתר is the thing won, not the person who won it, and
+  // it is the word Israeli football already uses for exactly this.
+  //
+  // They stay short on purpose — the medal caption is a single 60pt line and
+  // the longest of these is shorter than the two titles it replaces.
   seasonTitleNames: {
-    topScorer: 'מלך השערים',
-    topAssister: 'מלך הבישולים',
-    mvp: 'שחקן העונה',
-    topWinner: 'מלך הניצחונות',
-    mostLoyal: 'מלך ההתמדה',
-    cleanSheetKing: 'מלך השערים הנקיים',
-    penaltyKing: 'מלך הפנדלים',
-    penaltyKeeper: 'מלך שוערי הפנדלים',
+    topScorer: 'כתר השערים',
+    topAssister: 'כתר הבישולים',
+    mvp: 'כתר העונה',
+    topWinner: 'כתר הניצחונות',
+    mostLoyal: 'כתר ההתמדה',
+    cleanSheetKing: 'כתר השער הנקי',
+    penaltyKing: 'כתר הפנדלים',
+    penaltyKeeper: 'כתר העצירות',
     deadlyDuo: 'הצמד הקטלני',
   } as const,
   communityStatsSeasonFresh: (no: number) =>
@@ -2166,8 +2234,13 @@ export const he = {
   communityStatsScopeAllTime: 'כל הזמנים',
   // מוצג כשבוחרים "כל הזמנים": המספרים כאן הם סכום של כל העונות, כולל אלה
   // שנסגרו — וזו הסיבה שהם גדולים מאלה של העונה הרצה.
+  // "2 העונות שנסגרו" is a cardinal in front of a definite noun, which Hebrew
+  // does not do — it needs "שתי", and "3 העונות" needs "שלוש". Saying the
+  // number before an INDEFINITE noun sidesteps the whole series.
   communityStatsScopeAllTimeNote: (seasons: number) =>
-    `כל המספרים כאן הם סכום של ${seasons === 1 ? 'העונה שנסגרה' : `${seasons} העונות שנסגרו`} ושל העונה הרצה יחד.`,
+    seasons === 1
+      ? 'כל המספרים כאן הם סכום של העונה הרצה ושל העונה שנסגרה לפניה.'
+      : `כל המספרים כאן הם סכום של העונה הרצה ושל ${seasons} עונות שנסגרו לפניה.`,
   communityStatsScopeCurrent: (no: number) => `עונה ${no} · עכשיו`,
   communityStatsScopePast: (no: number) => `עונה ${no}`,
   // מה כן ומה לא נשמר לעונה שהסתיימה. נאמר במפורש, כי מספר שנעלם בלי הסבר
@@ -2195,7 +2268,7 @@ export const he = {
   seasonsCustomMonths: 'כמות חודשים',
   seasonsCustomRounds: 'כמות מחזורים',
   seasonsMonthsUnit: (n: number) => (n === 1 ? 'חודש' : `${n} חודשים`),
-  seasonsRoundsUnit: (n: number) => `${n} מחזורים`,
+  seasonsRoundsUnit: (n: number) => count(n, 'מחזור אחד', 'מחזורים'),
   seasonsStartsOnLabel: 'תחילת העונה',
   seasonsEndsOnLabel: 'סיום העונה',
   seasonsNextStartsLabel: 'העונה הבאה תתחיל',
@@ -2204,16 +2277,35 @@ export const he = {
   seasonsSeason1EndLabel: 'סיום עונה 1',
   seasonsSeason1EndHint:
     'עונה 1 מכילה את כל מה שהמועדון שיחק עד היום, אז אין לה תאריך התחלה לחשב — רק תאריך סיום שאתם קובעים.',
+  // The same two with the season the club is actually on. Numbering continues
+  // across the feature being switched off and on, so a club re-enabling on
+  // season 4 was told to pick an end date for "עונה 1" — a season it closed
+  // months ago.
+  seasonsSeasonEndLabelOf: (no: number) => `סיום עונה ${no}`,
+  seasonsSeasonEndHintOf: (no: number) =>
+    `עונה ${no} מכילה את כל מה שהמועדון שיחק עד היום, אז אין לה תאריך התחלה לחשב — רק תאריך סיום שאתם קובעים.`,
   seasonsPickDate: 'בחרו תאריך',
   // validation
   seasonsErrHistoryExceeds: (played: number, target: number) =>
     `במועדון כבר התקיימו ${played} מחזורים. לא ניתן להמשיך את עונה 1 עם הגדרה של ${target} מחזורים לעונה.`,
   seasonsErrHistoryFills: (played: number) =>
     `במועדון כבר התקיימו ${played} מחזורים — בדיוק מכסת העונה. עונה 1 חייבת להסתיים, ועונה 2 תתחיל במקומה.`,
+  // The same refusals, naming the seasons that are really involved and with
+  // Hebrew's 1-form on the count.
+  seasonsErrHistoryExceedsOf: (played: number, target: number, no: number) =>
+    `במועדון כבר התקיימו ${count(played, 'מחזור אחד', 'מחזורים')}. לא ניתן להמשיך את עונה ${no} עם הגדרה של ${target} מחזורים לעונה.`,
+  seasonsErrHistoryFillsOf: (played: number, endingNo: number, startingNo: number) =>
+    `במועדון כבר התקיימו ${count(played, 'מחזור אחד', 'מחזורים')} — בדיוק מכסת העונה. עונה ${endingNo} חייבת להסתיים, ועונה ${startingNo} תתחיל במקומה.`,
   seasonsErrMonths: `בחרו בין ${1} ל-24 חודשים.`,
   seasonsErrRounds: 'עונה חייבת להכיל לפחות 2 מחזורים.',
   seasonsErrSeason1End: 'בחרו תאריך סיום לעונה 1.',
   seasonsErrSeason1Past: 'תאריך הסיום של עונה 1 חייב להיות בעתיד.',
+  // The pair above blocks the save while naming a season that is not the one
+  // being set up — on a re-enable it is "עונה 1" against a club on season 4,
+  // so the admin is refused over a date field that is not on the screen.
+  seasonsErrSeasonEndOf: (no: number) => `בחרו תאריך סיום לעונה ${no}.`,
+  seasonsErrSeasonPastOf: (no: number) =>
+    `תאריך הסיום של עונה ${no} חייב להיות בעתיד.`,
   // confirmation
   seasonsConfirmTitle: 'הפעלת עונות',
   seasonsConfirmMethod: 'שיטה',
@@ -2222,22 +2314,38 @@ export const he = {
   seasonsConfirmExisting: 'מחזורים קיימים',
   seasonsConfirmHistory: 'היסטוריה',
   seasonsConfirmHistoryValue: 'כל הנתונים הקיימים ישויכו לעונה 1',
+  // Everything below that says "עונה 1"/"עונה 2" is hardcoded, and this sheet
+  // is the last thing an admin reads before an irreversible change — a club on
+  // season 4 was shown a plan for two seasons it has already played. Twins with
+  // the real numbers; the plain row labels "עונה N" are seasonNumberLabel(no).
+  seasonsConfirmHistoryValueOf: (no: number) =>
+    `כל הנתונים הקיימים ישויכו לעונה ${no}`,
   seasonsConfirmChoice: 'בחירה',
   seasonsConfirmChoiceContinue: 'להמשיך את עונה 1',
   seasonsConfirmChoiceSeal: 'לסיים את עונה 1 ולהתחיל עונה חדשה',
+  seasonsConfirmChoiceContinueOf: (no: number) => `להמשיך את עונה ${no}`,
+  seasonsConfirmChoiceSealOf: (no: number) =>
+    `לסיים את עונה ${no} ולהתחיל עונה חדשה`,
   seasonsConfirmSeason1State: (played: number, target: number) =>
     `${played}/${target}`,
   seasonsConfirmSeason1StateLabel: 'מצב עונה 1 לאחר ההפעלה',
+  seasonsConfirmSeasonStateLabelOf: (no: number) =>
+    `מצב עונה ${no} לאחר ההפעלה`,
   seasonsConfirmRemaining: 'נותרו',
-  seasonsConfirmRemainingValue: (n: number) => `${n} מחזורים`,
+  seasonsConfirmRemainingValue: (n: number) =>
+    count(n, 'מחזור אחד', 'מחזורים'),
   seasonsConfirmAfterTarget: (target: number) =>
     `לאחר המחזור ה-${target}: עונה 1 תסתיים ועונה 2 תתחיל.`,
+  seasonsConfirmAfterTargetOf: (target: number, endingNo: number, startingNo: number) =>
+    `לאחר המחזור ה-${target}: עונה ${endingNo} תסתיים ועונה ${startingNo} תתחיל.`,
   seasonsConfirmSealedNow: (played: number) =>
-    `${played} מחזורים קיימים — תיסגר כעת`,
+    `${count(played, 'מחזור אחד', 'מחזורים')} קיימים — תיסגר כעת`,
   seasonsConfirmSeason2: 'עונה 2',
   seasonsConfirmSeason1: 'עונה 1',
   seasonsConfirmNextRound: 'המחזור הבא',
   seasonsConfirmNextRoundValue: (target: number) => `1/${target} של עונה 2`,
+  seasonsConfirmNextRoundValueOf: (target: number, no: number) =>
+    `1/${target} של עונה ${no}`,
   seasonsConfirmSeason1Ends: 'עונה 1 תסתיים',
   seasonsConfirmSeason2Starts: 'עונה 2 תתחיל',
   // With the real numbers. The pair above is hardcoded to 1 and 2, and season
@@ -2247,6 +2355,7 @@ export const he = {
   seasonsEndsLabel: (no: number) => `עונה ${no} תסתיים`,
   seasonsStartsLabel: (no: number) => `עונה ${no} תתחיל`,
   seasonsConfirmFromSeason2: 'משך עונה 2 והלאה',
+  seasonsConfirmFromSeasonOn: (no: number) => `משך עונה ${no} והלאה`,
   seasonsConfirmCta: 'אישור והפעלה',
   seasonHistoryTitle: 'עונות קודמות',
   seasonHistoryCta: 'עונות קודמות ותארים',
@@ -2254,13 +2363,19 @@ export const he = {
     'לא הצלחנו לטעון את העונות. משכו למטה כדי לנסות שוב.',
   seasonHistoryEmpty:
     'עוד לא הסתיימה עונה במועדון. כשהראשונה תיסגר היא תופיע כאן עם התארים שחולקו בה.',
-  seasonHistoryLine: (rounds: number, miniGames: number, players: number) =>
-    `${rounds} מחזורים · ${miniGames} משחקונים · ${players} שחקנים`,
+  // (The three-part history line is gone: nothing rendered it, it had no
+  // 1-form anywhere, and its middle segment printed "0 משחקונים" for every
+  // timer-only club — which is most of them. The cabinet shows the same three
+  // numbers with seasonStatRoundsShort / MiniShort / PlayersShort.)
   seasonHistoryEndedEarly: 'העונה נסגרה ידנית לפני שהגיעה ליעד',
   seasonHistoryPartial:
     'חלק מהנתונים לא נאספו לאורך כל העונה, אז המספרים חלקיים',
+  // Do not blame the players. The attendance gate is one reason a season ends
+  // with nothing; the other is that every award returns null when the season's
+  // own length counts 0 — and a season whose counter never advanced is not the
+  // fault of the people who showed up to it.
   seasonHistoryNoTitles:
-    'לא חולקו תארים בעונה הזאת — תואר ניתן רק למי שהגיע לפחות לחצי מערבי המשחק של העונה, ואף אחד לא הגיע לסף.',
+    'לא חולקו תארים בעונה הזאת. תואר ניתן רק למי שהגיע לפחות לחצי מערבי המשחק של העונה, ואם לא נספרו בעונה מחזורים כלל — אין על מה לחלק.',
   seasonTitlesShelfTitle: 'תארי עונה',
   seasonTitlesShelfCount: (n: number) =>
     n === 1 ? 'תואר אחד' : `${n} תארים`,
@@ -2270,11 +2385,7 @@ export const he = {
   // The number a title was won on. A percentage for the two rate titles, a
   // count for the rest — "62%" and "31 שערים" are both the answer to "on what?"
   seasonTitleValue: (key: string, value: number) => {
-    // Hebrew's 1-form. "1 שערים" is the same mistake as "1 חודשים" and it
-    // reaches the screen just as often — a title is routinely won on one of
-    // something in a young club.
-    const count = (one: string, many: string) =>
-      value === 1 ? one : `${value} ${many}`;
+    const c = (one: string, many: string) => count(value, one, many);
     switch (key) {
       case 'penaltyKing':
       case 'penaltyKeeper':
@@ -2285,16 +2396,16 @@ export const he = {
         // count of something. It is the mean of the player's evening scores.
         return `ציון ${value.toFixed(1)}`;
       case 'topScorer':
-        return count('שער אחד', 'שערים');
+        return c('שער אחד', 'שערים');
       case 'topAssister':
       case 'deadlyDuo':
-        return count('בישול אחד', 'בישולים');
+        return c('בישול אחד', 'בישולים');
       case 'topWinner':
-        return count('ניצחון אחד', 'ניצחונות');
+        return c('ניצחון אחד', 'ניצחונות');
       case 'mostLoyal':
-        return count('מחזור אחד', 'מחזורים');
+        return c('מחזור אחד', 'מחזורים');
       case 'cleanSheetKing':
-        return count('שער נקי אחד', 'שערים נקיים');
+        return c('שער נקי אחד', 'שערים נקיים');
       default:
         return String(value);
     }
@@ -2305,10 +2416,13 @@ export const he = {
   // number it qualifies.
   seasonHeroValue: (key: string, value: number): { big: string; unit: string } => {
     switch (key) {
+      // Not 'מהפנדלים שבעט' / 'שעצר': the poster's subject is whoever won the
+      // title, and on the one closed season that is a woman. The rate says the
+      // same thing with no verb to gender.
       case 'penaltyKing':
-        return { big: `${Math.round(value * 100)}%`, unit: 'מהפנדלים שבעט' };
+        return { big: `${Math.round(value * 100)}%`, unit: 'הצלחה בפנדלים' };
       case 'penaltyKeeper':
-        return { big: `${Math.round(value * 100)}%`, unit: 'מהפנדלים שעצר' };
+        return { big: `${Math.round(value * 100)}%`, unit: 'עצירה בפנדלים' };
       case 'mvp':
         return { big: value.toFixed(1), unit: 'ציון העונה' };
       case 'topScorer':
@@ -2320,8 +2434,14 @@ export const he = {
         return { big: String(value), unit: value === 1 ? 'ניצחון' : 'ניצחונות' };
       case 'mostLoyal':
         return { big: String(value), unit: value === 1 ? 'מחזור' : 'מחזורים' };
+      // The 1-form the neighbouring cases all have. A club's first clean-sheet
+      // title is routinely won on one, and the poster set it in 45pt: "1" over
+      // "שערים נקיים".
       case 'cleanSheetKing':
-        return { big: String(value), unit: 'שערים נקיים' };
+        return {
+          big: String(value),
+          unit: value === 1 ? 'שער נקי' : 'שערים נקיים',
+        };
       default:
         return { big: String(value), unit: '' };
     }
@@ -2341,10 +2461,11 @@ export const he = {
   // It is kept — it is a record, and the numbering depends on it — but it is a
   // line, not a card, and it must not repeat the half-season explanation:
   // nobody failed that gate, nobody played at all.
+  // "משחק" named neither unit: what did not happen here is a מחזור, a whole
+  // evening. (Its longer twin seasonVoidDetail is gone — nothing rendered it,
+  // and the ribbon is one line by design.)
   seasonVoidLine: (no: number, when: string) =>
-    `עונה ${no} · ${when} — נסגרה בלי שנרשם בה משחק`,
-  seasonVoidDetail:
-    'העונה נפתחה ונסגרה באותו יום ולא נרשם בה אף מחזור. היא נשמרת כאן רק כדי שמספור העונות יישאר רצוף.',
+    `עונה ${no} · ${when} — נסגרה בלי שנרשם בה מחזור`,
   seasonHistoryEndedEarlyChip: 'נסגרה ידנית',
   seasonHistoryPartialChip: 'נתונים חלקיים',
   // Shown INSTEAD of the list when a refresh fails but we already have seasons
@@ -2357,8 +2478,13 @@ export const he = {
   // Renders only for a CLOSED season, so it must not talk about the next one —
   // it is shown just as often while browsing season 1 of a club that has since
   // played three more.
+  //
+  // And it renders on `myTitles.length === 0`, a condition about the READER,
+  // one card above the list of the season's eight champions. "לא נלקח תואר
+  // בעונה הזאת" said the season crowned nobody while the next card named eight
+  // people. It is my shelf that is empty.
   seasonTitlesNone:
-    'לא נלקח תואר בעונה הזאת. תארים ניתנים רק למי שהגיע לפחות לחצי מערבי המשחק של העונה.',
+    'לא לקחת תואר בעונה הזאת. תארים ניתנים רק למי שהגיע לפחות לחצי מערבי המשחק של העונה.',
   seasonSummaryTitle: 'סיכום העונה',
   seasonRangeUntil: (to: string) => `מתחילת המועדון עד ${to}`,
   seasonRangeUnknown: 'כל ההיסטוריה של המועדון',
@@ -2373,10 +2499,13 @@ export const he = {
   // somebody who just tapped a push about a season they played.
   seasonSummaryLoadFailed:
     'לא הצלחנו לטעון את סיכום העונה. משכו למטה כדי לנסות שוב.',
-  seasonSummaryNoRounds: 'עדיין אין משחקים בעונה הזאת, אז אין מה לסכם.',
-  // The same fact about a season that is already over. "עדיין" and "יתמלא
-  // מעצמו" are promises a sealed season cannot keep.
-  seasonSummaryNoRoundsClosed: 'לא היו משחקים בעונה הזאת.',
+  // Both render on `!me.hasData` — the reader played nothing — not on an empty
+  // season. "לא היו משחקים בעונה הזאת" went to somebody looking at a season
+  // with 22 evenings and 27 goals in it, and called neither unit by its name.
+  seasonSummaryNoRounds: 'עדיין לא שיחקת בעונה הזאת, אז אין מה לסכם.',
+  // The same fact about a season that is already over. "עדיין" is a promise a
+  // sealed season cannot keep.
+  seasonSummaryNoRoundsClosed: 'לא שיחקת בעונה הזאת, אז אין לך סיכום ממנה.',
   seasonSectionNumbers: 'המספרים בעונה',
   seasonSectionStanding: 'המיקום במועדון',
   seasonSectionPeople: 'האנשים של העונה',
@@ -2393,40 +2522,87 @@ export const he = {
   seasonStatWinPct: 'אחוז ניצחון',
   seasonStatCleanSheets: 'שערים נקיים',
   seasonStatCleanSheetPct: 'אחוז שער נקי',
-  seasonStatGoalsPerRound: 'שערים למשחק',
-  seasonStatAssistsPerRound: 'בישולים למשחק',
+  // Both are per-משחקון — "למשחק" named neither unit and read as per-evening,
+  // which is six times smaller.
+  //
+  // Their denominators are NOT the same field, though, and the reader cannot
+  // tell: goals divide by `rounds`, the number the "משחקונים" tile two places
+  // along prints, while assists divide by `asRounds` — the mini-games in which
+  // assists were being collected at all, which is shorter for anyone who was
+  // here before mid-June. That is why the coverage note sits under the grid.
+  seasonStatGoalsPerRound: 'שערים למשחקון',
+  seasonStatAssistsPerRound: 'בישולים למשחקון',
   seasonStatPenalties: 'פנדלים שהובקעו',
   seasonStatPenSaves: 'פנדלים שנעצרו',
   seasonStatOwnGoals: 'שערים עצמיים',
   seasonRankOf: (rank: number, of: number) => `${rank} מתוך ${of}`,
-  seasonClubRounds: (rounds: number) =>
-    `${rounds} משחקים שוחקו במועדון בעונה הזאת. המיקום מחושב מול מי ששיחק בה.`,
+  // Evenings, not mini-games, and the word says so. It printed "37 משחקים"
+  // under a hall of fame reading "37 משחקונים" for the same season, and
+  // "0 משחקים שוחקו" for every timer-only club — a club that played all year.
+  // The caller must pass the season's evenings (completedRounds), which is the
+  // one count every club records.
+  seasonClubRounds: (evenings: number) =>
+    evenings === 1
+      ? 'מחזור אחד שוחק במועדון בעונה הזאת. המיקום מחושב מול מי ששיחק בה.'
+      : `${evenings} מחזורים שוחקו במועדון בעונה הזאת. המיקום מחושב מול מי ששיחק בה.`,
   seasonPeerPartner: 'הכי הרבה יחד באותה קבוצה',
+  // The pair counters are written per משחקון by the advanced live screen, and
+  // the first evening leaves them at 1 — which is how "1 משחקים באותה קבוצה"
+  // reached the screen beside four neighbouring rows that all have a 1-form.
+  // "מהם" is plural, so it cannot hang off a singular subject: a pair that
+  // shared exactly one mini-game — the first evening of every advanced-mode
+  // club, so the card's opening state rather than an edge — read
+  // "משחקון אחד באותה קבוצה, אחד מהם בניצחון". The single case gets its own
+  // sentence, and zero gets one too rather than "0 מהם".
   seasonPeerPartnerDetail: (together: number, wins: number) =>
-    `${together} משחקים באותה קבוצה, ${wins} מהם בניצחון`,
+    together === 1
+      ? wins === 1
+        ? 'משחקון אחד באותה קבוצה, וניצחתם בו'
+        : 'משחקון אחד באותה קבוצה'
+      : `${together} משחקונים באותה קבוצה${
+          wins === 0 ? '' : `, ${wins === 1 ? 'אחד מהם' : `${wins} מהם`} בניצחון`
+        }`,
   seasonPeerNemesis: 'היריב הכי גדול',
   seasonPeerNemesisDetail: (faced: number, mine: number, theirs: number) =>
-    `${faced} משחקים זה מול זה — ${mine} ניצחונות מול ${theirs}`,
+    faced === 1
+      ? mine === 1
+        ? 'משחקון אחד זה מול זה, וניצחתם'
+        : 'משחקון אחד זה מול זה, והפסדתם'
+      : `${faced} משחקונים זה מול זה — ${
+          mine === 1 ? 'ניצחון אחד' : `${mine} ניצחונות`
+        } מול ${theirs}`,
   seasonPeerVictim: 'מי הובס הכי הרבה',
+  // No "מולו". It sits directly under the other player's name and avatar, and
+  // on the only closed season that player is a woman; the rows around it say
+  // the number and nothing else, which is the way out that needs no pronoun.
   seasonPeerVictimDetail: (wins: number) =>
-    wins === 1 ? 'ניצחון אחד מולו' : `${wins} ניצחונות מולו`,
+    count(wins, 'ניצחון אחד', 'ניצחונות'),
   seasonPeerTormentor: 'מי ניצח הכי הרבה',
   seasonPeerTormentorDetail: (losses: number) =>
-    losses === 1 ? 'הפסד אחד מולו' : `${losses} הפסדים מולו`,
+    count(losses, 'הפסד אחד', 'הפסדים'),
   seasonPeerAssistedMost: 'למי הכי הרבה בישולים',
   seasonPeerAssistedBy: 'ממי הכי הרבה בישולים',
-  seasonPeerAssistsDetail: (n: number) =>
-    n === 1 ? 'בישול אחד' : `${n} בישולים`,
+  seasonPeerAssistsDetail: (n: number) => count(n, 'בישול אחד', 'בישולים'),
+  // "זה יתמלא מעצמו" is a promise this card cannot keep: who played with whom
+  // is counted only inside the advanced live screen's משחקונים, so a club that
+  // runs on the plain timer will see this same empty card forever, no matter
+  // how much it plays. Say where the numbers come from instead.
   seasonPeersEmpty:
-    'עוד אין מספיק משחקים כדי שיהיה מה לספר כאן. זה יתמלא מעצמו.',
-  seasonPeersEmptyClosed: 'לא היו מספיק משחקים בעונה הזאת כדי שיהיה מה לספר כאן.',
+    'עוד אין כאן מה לספר. מי שיחק עם מי נספר רק במחזורים שמנוהלים במסך הלייב המתקדם.',
+  seasonPeersEmptyClosed:
+    'אין מה לספר על העונה הזאת. מי שיחק עם מי נספר רק במחזורים שמנוהלים במסך הלייב המתקדם.',
   // כרטיס השיתוף. שורות קצרות בכוונה — הוא תמונה שנשלחת לקבוצת ווטסאפ, לא מסך.
   seasonShareRank: (rank: number, of: number, what: string) =>
     `מקום ${rank} מתוך ${of} ב${what} במועדון`,
+  // One unit, named once: the card already prints "משחקונים 26" forty points
+  // above, and these two lines called the same thing "משחקים". The parentheses
+  // are gone with them — four of the seven frozen names are Latin, and bidi
+  // resolves the closing paren after a Latin name to RTL and mirrors it, so the
+  // PNG that leaves the app read "(6 משחקונים(".
   seasonSharePartner: (name: string, together: number) =>
-    `הכי הרבה יחד: ${name} (${together} משחקים)`,
+    `הכי הרבה יחד: ${name} · ${count(together, 'משחקון אחד', 'משחקונים')}`,
   seasonShareNemesis: (name: string, faced: number) =>
-    `היריב הגדול: ${name} (${faced} משחקים)`,
+    `היריב הגדול: ${name} · ${count(faced, 'משחקון אחד', 'משחקונים')}`,
   seasonShareCta: 'שתף את סיכום העונה',
   seasonShareTitle: 'סיכום העונה',
   seasonSummaryFootnote:
@@ -3438,6 +3614,12 @@ export const he = {
     `בטבלת היעילות מופיעים רק מי ששיחקו לפחות ${minRounds} משחקים במועדון — עשירית מהמשחקים שנערכו — כדי שערב אחד מוצלח לא יקפוץ לראש הטבלה. ${
       hidden === 1 ? 'שחקן אחד לא מוצג' : `${hidden} שחקנים לא מוצגים`
     }. בטבלה המצטברת כולם מופיעים.`,
+  // Covers BOTH partial counters, because the flag that shows it is
+  // `csRounds < rounds || asRounds < rounds`. The clean-sheets-only wording sat
+  // under a grid where the tile that does not divide can just as easily be
+  // בישולים, and then explained nothing about it.
+  seasonPartialCoverageNote:
+    'הבישולים נאספים מאמצע יוני והשערים הנקיים מאמצע אוגוסט. אצל ותיקים האחוזים מחושבים רק מהמשחקונים שבהם הנתון כבר נאסף.',
   effPartialNote:
     'שערים נקיים נאספים מאמצע אוגוסט. אצל ותיקים האחוז מחושב רק מהמשחקים שבהם הנתון נאסף בפועל.',
   pairStatsSharedCommunities: 'מועדונים משותפים',

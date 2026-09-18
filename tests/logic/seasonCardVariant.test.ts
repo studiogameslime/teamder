@@ -4,6 +4,7 @@ import {
   seasonCardVariant,
 } from '@/utils/seasonCardVariant';
 import type { FinishedSeason } from '@/services/seasonHistoryService';
+import { SEALED_CARD } from '../fixtures/realClub';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -42,6 +43,12 @@ describe('seasonCardVariant', () => {
           no: 2,
           players: 0,
           winners: [],
+          // Sealed nothing, in either unit. The fixture used to leave the
+          // default 19 standing here, which made this the only "void" case in
+          // the file that was void for the wrong reason — it passed against an
+          // implementation keyed on mini-games, which is exactly the
+          // regression the module's own header warns about.
+          completedRounds: 0,
           totals: { rounds: 0, goals: 0, assists: 0 },
           startsAt: start,
           endsAt: start + 7 * 60 * 1000,
@@ -73,6 +80,74 @@ describe('seasonCardVariant', () => {
         }),
       ),
     ).toBe('noTitles');
+  });
+
+  it('the real club’s only sealed season is a card', () => {
+    // The season this whole feature exists for, from the production fixture:
+    // 22 evenings, 31 goals, seven players, and ZERO mini-games because the
+    // club has never opened advanced mode. Every one of those numbers is on
+    // the card and only one of them is a mini-game count.
+    expect(
+      seasonCardVariant(
+        season({
+          completedRounds: SEALED_CARD.completedRounds,
+          totals: SEALED_CARD.totals,
+          players: SEALED_CARD.players,
+        }),
+      ),
+    ).toBe('full');
+  });
+});
+
+// ── The one thing that must not be keyed on ────────────────────────────────
+//
+// The module's header says it in as many words: keying the void state on
+// `totals.rounds` erases every season of every timer-only club, which is most
+// of them. Yet every case above could be satisfied by an implementation that
+// did exactly that plus a winners check — the discriminating case, a season
+// with no mini-games and something else to show, was the one nobody wrote.
+//
+// So each counter gets a turn at being the ONLY non-zero thing on the card. A
+// card that records anything at all is a card; the ribbon is for a season that
+// recorded nothing, anywhere.
+describe('any single counter is enough to keep a season off the ribbon', () => {
+  const nothing = (): Partial<FinishedSeason> => ({
+    players: 0,
+    winners: [],
+    completedRounds: 0,
+    totals: { rounds: 0, goals: 0, assists: 0 },
+  });
+
+  it.each([
+    ['22 evenings and nothing else — the timer-only club', { completedRounds: 22 }],
+    ['37 mini-games and nothing else', { totals: { rounds: 37, goals: 0, assists: 0 } }],
+    ['31 goals and nothing else', { totals: { rounds: 0, goals: 31, assists: 0 } }],
+    ['12 assists and nothing else', { totals: { rounds: 0, goals: 0, assists: 12 } }],
+    ['seven people and nothing else', { players: 7 }],
+    [
+      'one title and nothing else',
+      { winners: [{ key: 'mostLoyal' as const, names: ['מתן'], value: 22 }] },
+    ],
+  ])('%s', (_name, only) => {
+    expect(
+      seasonCardVariant(season({ ...nothing(), ...only })),
+    ).not.toBe('void');
+  });
+
+  it('and with all six at zero it is a ribbon', () => {
+    // The other side of the same table: the state really does exist, and it is
+    // reached only when nothing was recorded at all.
+    expect(seasonCardVariant(season(nothing()))).toBe('void');
+  });
+
+  it('a season is never void because its mini-game count is', () => {
+    // Stated on its own because it is the regression that actually shipped:
+    // 23 of the 87 real stat rows have `games > 0` and no `rounds` at all.
+    expect(
+      seasonCardVariant(
+        season({ completedRounds: 22, totals: { rounds: 0, goals: 0, assists: 0 } }),
+      ),
+    ).not.toBe('void');
   });
 });
 
@@ -120,6 +195,7 @@ describe('heroSeasonId', () => {
       no: 2,
       players: 0,
       winners: [],
+      completedRounds: 0,
       totals: { rounds: 0, goals: 0, assists: 0 },
       startsAt: start,
       endsAt: start + 60_000,
@@ -140,6 +216,7 @@ describe('heroSeasonId', () => {
         season({
           players: 0,
           winners: [],
+          completedRounds: 0,
           totals: { rounds: 0, goals: 0, assists: 0 },
           startsAt: start,
           endsAt: start + 60_000,

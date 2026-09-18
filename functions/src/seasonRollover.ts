@@ -30,6 +30,125 @@ import { computeSeasonAwards } from './seasonAwards';
 /** A per-game identity with no account. See the archive note below. */
 const isReal = (id: string): boolean => !!id && !id.startsWith('guest:');
 
+// ─── The arithmetic, pulled out where a test can reach it ──────────────────
+//
+// Everything below is pure, and every one of it used to be an inline loop
+// inside a function that only runs against a live Firestore. A close is
+// irreversible — the archive is written with create(), the rows are wound back
+// by subtraction — and the hourly sweep performs one unattended; between them
+// they had no functional test at all, only a list of field names. These are
+// the number choices those two paths make, extracted verbatim so they can be
+// pinned in tests/logic/seasonCloseNumbers.test.ts without an emulator.
+
+const rowNum = (v: unknown): number =>
+  typeof v === 'number' && Number.isFinite(v) ? v : 0;
+
+/**
+ * What a row holds after its season has been taken out of it.
+ *
+ * SUBTRACT what was archived; do not write zeroes. The rows are read at the
+ * top of the close and wiped at the end of it, so a mini-game committed in
+ * between is not in the archive — an absolute zero would erase it from the
+ * live table too and it would then exist nowhere, with nothing to detect it.
+ * Subtracting leaves exactly that evening behind as the next season's opening
+ * balance, which is where it belongs.
+ *
+ * `archived` of null means "this row belongs to no season": a pair past the
+ * archive cap, which is zeroed rather than carried into the next season.
+ *
+ * Clamped at zero, so a row that somehow holds less than the archive took from
+ * it lands on zero rather than on a negative goal tally.
+ */
+export function windBackRow(
+  current: Record<string, unknown> | undefined,
+  archived: Record<string, unknown> | null | undefined,
+  fields: readonly string[],
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const f of fields) {
+    out[f] = archived
+      ? Math.max(0, rowNum(current?.[f]) - rowNum(archived[f]))
+      : 0;
+  }
+  return out;
+}
+
+/**
+ * What a row holds once an undone season is given back to it.
+ *
+ * ADD, for the same reason the wind-back subtracts: an evening played between
+ * the close and the undo keeps its own contribution instead of being
+ * overwritten by a snapshot of the past. Which is why both halves are behind a
+ * per-row stamp — addition is not idempotent either.
+ */
+export function restoreRow(
+  current: Record<string, unknown> | undefined,
+  archived: Record<string, unknown> | undefined,
+  fields: readonly string[],
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const f of fields) out[f] = rowNum(current?.[f]) + rowNum(archived?.[f]);
+  return out;
+}
+
+/**
+ * The archive's key for a pair, and whether the live document's a/b are the
+ * wrong way round for it.
+ *
+ * The directional counters — `winsA`, `assistsAToB` — are meaningless unless
+ * the reader knows which player is which, and the live document's own a/b need
+ * not be sorted. One key, derived one way, used by the wipe and by the restore
+ * alike: if these two ever disagreed, a reopen would restore chemistry onto a
+ * pair that never played.
+ */
+export function seasonPairKey(
+  a: string,
+  b: string,
+): { key: string; lo: string; hi: string; flip: boolean } {
+  const [lo, hi] = [a, b].sort();
+  return { key: `${lo}__${hi}`, lo, hi, flip: lo !== a };
+}
+
+/**
+ * The number the TITLES are decided against.
+ *
+ * The most evenings any ONE player attended — deliberately not the season's
+ * length. Per-player `games` has been counted since 22.06 and the season's
+ * length comes from a counter born on 25.08, so comparing a numerator from one
+ * era against a denominator from the other is not a comparison at all: on the
+ * club the gate was calibrated against it admitted 25 of 29 players to a gate
+ * meant to admit 13, including seven who turned up twice.
+ *
+ * A season with no players at all falls back to whatever the caller knew.
+ */
+export function awardsDenominatorOf(
+  attendances: readonly number[],
+  fallback: number,
+): number {
+  if (attendances.length === 0) return Math.max(0, rowNum(fallback));
+  return Math.max(0, ...attendances.map((g) => rowNum(g)));
+}
+
+/**
+ * The "N מחזורים" the hall of fame prints for a sealed season.
+ *
+ * The season's LENGTH, which is not the awards denominator: the card carries
+ * both and they differ by three on the one real club. A resume reads it back
+ * off the archive the first pass already wrote — the protected record — rather
+ * than re-deriving it from rows that pass may have half-wiped.
+ */
+export function sealedCardEvenings(
+  fromArchive: unknown,
+  completedRounds: unknown,
+  awardsDenominator: number,
+): number {
+  if (typeof fromArchive === 'number') return fromArchive;
+  if (typeof completedRounds === 'number' && completedRounds > 0) {
+    return completedRounds;
+  }
+  return awardsDenominator;
+}
+
 /**
  * Ceiling on archived pairs, so one document cannot grow past Firestore's 1MB
  * limit and make the club permanently unable to close a season.
@@ -141,6 +260,16 @@ export interface RolloverArgs {
   closedBy?: string;
   closedByName?: string;
   originalTarget?: { type: string; endsAt?: number; targetRounds?: number };
+  /**
+   * Every time an admin moved this season's finish line.
+   *
+   * The club block's copy is reset to `[]` the moment the next season opens,
+   * so a close that does not seal it destroys the only record that the line
+   * ever moved. The one club that has run seasons went 22 → 2 → 24 and just
+   * the last of those three survives anywhere — which is exactly the history
+   * somebody would want when asking why a season ended when it did.
+   */
+  targetHistory?: unknown[];
   /** Season 1 of a club that predates a metric — see the spec. */
   partialData?: boolean;
   now: number;
@@ -314,9 +443,8 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     // Sorted key, and the archived a/b sorted WITH it — the direction of
     // `winsA` and `assistsAToB` is meaningless unless the reader knows which
     // player is which, and the live document's own a/b need not be sorted.
-    const [lo, hi] = [a, b].sort();
-    const flip = lo !== a;
-    pairs[`${lo}__${hi}`] = {
+    const { key: pairId, lo, hi, flip } = seasonPairKey(a, b);
+    pairs[pairId] = {
       a: lo,
       b: hi,
       sameTeam: num(x.sameTeam),
@@ -410,11 +538,9 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   // 12 → threshold 6 → 13 eligible, which is the calibration the design
   // documents. It can only under-count when nobody attended every evening,
   // and under-counting a gate makes it stricter, not looser.
-  const seasonEvenings = Math.max(
-    0,
-    ...awardLines.map((l) => l.games),
-    // A season with no players at all falls back to whatever the caller knew.
-    awardLines.length === 0 ? args.completedRounds : 0,
+  const seasonEvenings = awardsDenominatorOf(
+    awardLines.map((l) => l.games),
+    args.completedRounds,
   );
   const awards = computeSeasonAwards(awardLines, awardPairs, seasonEvenings);
   /** Set when we are resuming a close that died before it finished. */
@@ -463,6 +589,11 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       ...(args.closedBy ? { closedBy: args.closedBy } : {}),
       ...(args.closedByName ? { closedByName: args.closedByName } : {}),
       ...(args.originalTarget ? { originalTarget: args.originalTarget } : {}),
+      // Omitted when empty so an untouched season carries no field at all,
+      // which is how a reader tells "never moved" from "moved and lost".
+      ...(Array.isArray(args.targetHistory) && args.targetHistory.length > 0
+        ? { targetHistory: args.targetHistory }
+        : {}),
       ...(args.partialData ? { partialData: true } : {}),
       totals,
       players,
@@ -573,12 +704,11 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     // what the hall of fame prints as "N מחזורים", and that has to be the
     // season's length rather than its best single attendance record. On a
     // resume it comes from the archive the first pass already wrote.
-    const cardEvenings =
-      typeof resumedEvenings === 'number'
-        ? resumedEvenings
-        : typeof args.completedRounds === 'number' && args.completedRounds > 0
-          ? args.completedRounds
-          : seasonEvenings;
+    const cardEvenings = sealedCardEvenings(
+      resumedEvenings,
+      args.completedRounds,
+      seasonEvenings,
+    );
     await db
       .collection('seasonCards')
       .doc(`${groupId}__${seasonId}`)
@@ -696,9 +826,6 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   // per row: a retry — including the resume path above — sees the stamp and
   // skips. Once per player per season, so the cost is a few dozen transactions
   // a year for a club.
-  const clampAtZero = (v: unknown, minus: number): number =>
-    Math.max(0, (typeof v === 'number' && Number.isFinite(v) ? v : 0) - minus);
-
   for (const d of psSnap.docs) {
     const archivedRow = players[(d.data() as { userId?: string }).userId ?? ''];
     if (!archivedRow) continue;
@@ -723,15 +850,14 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
         seasonReopened: admin.firestore.FieldValue.delete(),
         updatedAt: now,
       };
-      for (const f of PLAYER_SEASON_FIELDS) {
-        patch[f] = clampAtZero(data[f], num(archivedRow[f]));
-      }
+      Object.assign(patch, windBackRow(data, archivedRow, PLAYER_SEASON_FIELDS));
       tx.set(d.ref, patch, { merge: true });
     });
   }
 
   let batch = db.batch();
   let ops = 0;
+  let deletedGuestPairs = 0;
   const flush = async () => {
     if (ops === 0) return;
     await batch.commit();
@@ -742,11 +868,35 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   // reason: an evening committed between the read and the wipe would otherwise
   // be erased from both the archive and the live table.
   //
-  // A pair with no archived row — a guest pair, or one past the cap — is set to
-  // zero rather than skipped: it belongs to no season, and leaving it standing
-  // would carry it into the next one.
+  // A pair with no archived row — one past the cap — is set to zero rather than
+  // skipped: it belongs to no season, and leaving it standing would carry it
+  // into the next one. A GUEST pair is deleted outright; see below.
   for (const d of pairSnap.docs) {
     const x = d.data() as Record<string, unknown>;
+    // A guest pair is DELETED, not wound back.
+    //
+    // A guest id is minted fresh for every game, so this collection gains a
+    // permanent new document for every stranger who ever turns out, and until
+    // now nothing had ever removed one. Measured on the seven-player club that
+    // has actually run a season: 314 pair documents, 293 of them guest pairs —
+    // 93% of what every close reads, and the archive keeps none of them
+    // (`isReal` drops them above, and the log for that real close reads "kept
+    // 0, dropped 293 guest, 21 empty"). At roughly 45 pair documents per player
+    // a sixty-player club is about 2,700 reads per close, in the sweep that
+    // runs LAST inside cronEvery60Min's shared 540-second budget.
+    //
+    // Nothing is lost that the wind-back was not already destroying: the branch
+    // this replaces wrote a zero into every counter of exactly these documents.
+    // Deleting is the same erasure, and it is the only version of it that does
+    // not leave the row behind to be read again by every close after this one.
+    //
+    // Before the stamp check on purpose, so a resumed close still clears them.
+    if (!isReal(String(x.a ?? '')) || !isReal(String(x.b ?? ''))) {
+      batch.delete(d.ref);
+      deletedGuestPairs += 1;
+      if (++ops >= 400) await flush();
+      continue;
+    }
     // Already wound back for this season — skip.
     //
     // The player rows carry this stamp and the pair rows did not, so the two
@@ -758,18 +908,16 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     // first pass — no transaction needed, since the quiet check and the
     // create() latch serialise the close.
     if (x.seasonWoundBack === seasonId) continue;
-    const key = [String(x.a ?? ''), String(x.b ?? '')].sort().join('__');
-    const archivedPair = pairs[key] as unknown as
-      Record<string, number> | undefined;
+    const { key } = seasonPairKey(String(x.a ?? ''), String(x.b ?? ''));
+    // A pair with no archived row — one past the cap — is zeroed rather than
+    // subtracted: it belongs to no season, and leaving it standing would carry
+    // it into the next one.
+    const archivedPair = (pairs[key] ?? null) as unknown as
+      Record<string, number> | null;
     batch.set(
       d.ref,
       {
-        ...Object.fromEntries(
-          PAIR_SEASON_FIELDS.map((f) => [
-            f,
-            archivedPair ? Math.max(0, num(x[f]) - num(archivedPair[f])) : 0,
-          ]),
-        ),
+        ...windBackRow(x, archivedPair, PAIR_SEASON_FIELDS),
         seasonWoundBack: seasonId,
         // Cleared so a later reopen can stamp its own restore.
         seasonReopened: admin.firestore.FieldValue.delete(),
@@ -780,6 +928,15 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     if (++ops >= 400) await flush();
   }
   await flush();
+  if (deletedGuestPairs > 0) {
+    // Never silent, same rule as the archive's own drop log: this is the one
+    // place in the app that removes a document rather than winding it back.
+    console.log(
+      `[season] pair wipe: ${deletedGuestPairs} guest pair doc(s) deleted`,
+      groupId,
+      seasonId,
+    );
+  }
 
   const zeroClub: Record<string, number> = {};
   for (const f of CLUB_SEASON_FIELDS) zeroClub[f] = 0;
@@ -866,9 +1023,6 @@ export async function reopenSeason(args: {
     string,
     { winners?: unknown } | null
   >;
-  const num2 = (v: unknown) =>
-    typeof v === 'number' && Number.isFinite(v) ? v : 0;
-
   // 1. Give every player their season back.
   let restored = 0;
   for (const [uid, row] of Object.entries(players)) {
@@ -889,9 +1043,7 @@ export async function reopenSeason(args: {
         seasonWoundBack: admin.firestore.FieldValue.delete(),
         updatedAt: Date.now(),
       };
-      for (const f of PLAYER_SEASON_FIELDS) {
-        patch[f] = num2(cur[f]) + num2(row[f]);
-      }
+      Object.assign(patch, restoreRow(cur, row, PLAYER_SEASON_FIELDS));
       tx.set(ref, patch, { merge: true });
     });
     restored += 1;
@@ -932,9 +1084,7 @@ export async function reopenSeason(args: {
           // wound back and skip it.
           seasonWoundBack: admin.firestore.FieldValue.delete(),
           updatedAt: Date.now(),
-          ...Object.fromEntries(
-            PAIR_SEASON_FIELDS.map((f) => [f, num2(cur[f]) + num2(row[f])]),
-          ),
+          ...restoreRow(cur, row, PAIR_SEASON_FIELDS),
         },
         { merge: true },
       );
@@ -995,9 +1145,7 @@ export async function reopenSeason(args: {
       {
         seasonReopened: seasonId,
         updatedAt: Date.now(),
-        ...Object.fromEntries(
-          CLUB_SEASON_FIELDS.map((f) => [f, num2(cur[f]) + num2(totals[f])]),
-        ),
+        ...restoreRow(cur, totals, CLUB_SEASON_FIELDS),
       },
       { merge: true },
     );

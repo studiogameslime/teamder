@@ -13,13 +13,28 @@ import { logError } from '@/services/errorLog';
 import { withAuthRaceRetry } from '@/firebase/authRace';
 import { he } from '@/i18n/he';
 
-/** Why the server said no. Anything else is a real failure. */
+/** Why the server said no. Anything else is a real failure.
+ *
+ *  Every refusal the five seasons callables can actually throw has a name here.
+ *  It used to be four substrings and a bail-out on any code but
+ *  permission-denied/failed-precondition, so the six `season-plan:*` refusals,
+ *  the invalid-argument ones, "seasons already on" and reopenLastSeason's
+ *  not-found all arrived as "משהו השתבש. נסו שוב עוד רגע." — advice that could
+ *  never work, printed beside a destructive button and an invitation to press
+ *  it again. Six of the explanations were already written and unreachable. */
 export type SeasonRefusal =
   | 'openGame'
   | 'unsealedGame'
   | 'seasonsOff'
+  | 'seasonsAlreadyOn'
   | 'notAdmin'
   | 'targetBehind'
+  | 'targetInvalid'
+  | 'lengthInvalid'
+  | 'historyExceedsTarget'
+  | 'historyFillsTarget'
+  | 'seasonEndRequired'
+  | 'seasonEndPast'
   | 'nothingToReopen'
   | 'closedSeasonGame'
   | 'unknown';
@@ -39,13 +54,33 @@ export class SeasonRefusedError extends Error {
   }
 }
 
+/**
+ * What the screen knows and the server's message does not carry.
+ *
+ * The plan refusals are written about a named season and a named target — and
+ * season numbering CONTINUES across the feature being switched off and on, so
+ * it is never simply 1. The server throws `season-plan:historyFillsTarget` and
+ * nothing else; the numbers to say it with live on the screen that asked.
+ */
+export interface SeasonRefusalContext {
+  /** The season the action is about. */
+  seasonNo: number;
+  /** Evenings that season already holds, as the screen has them. Overridden by
+   *  the figure the server named, when it named one. */
+  played?: number;
+  /** The rounds target the admin asked for. */
+  target?: number;
+}
+
 /** The refusals worth wording carefully — a club mid-evening must not be told
  *  "something went wrong" when the answer is "finish tonight first". */
 export function seasonRefusalText(
   reason: SeasonRefusal,
-  /** The figure the server refused against, when it named one. */
-  played?: number,
+  ctx?: SeasonRefusalContext,
 ): string {
+  const no = ctx?.seasonNo ?? 1;
+  const played = ctx?.played;
+  const target = ctx?.target;
   switch (reason) {
     case 'openGame':
       return he.seasonBlockedOpenGame;
@@ -53,10 +88,32 @@ export function seasonRefusalText(
       return he.seasonBlockedUnsealed;
     case 'seasonsOff':
       return he.seasonBlockedOff;
+    case 'seasonsAlreadyOn':
+      // NOT the success toast. This is rendered inside a dialog titled
+      // "שגיאה", so borrowing "עונות הופעלו במועדון" told an admin whose press
+      // had just been REFUSED that the thing they attempted had happened —
+      // which is worse than a generic line, not better.
+      return he.seasonsAlreadyOnRefusal;
     case 'targetBehind':
       return typeof played === 'number'
         ? he.seasonBlockedTargetBehindAt(played)
         : he.seasonBlockedTargetBehind;
+    case 'targetInvalid':
+      return he.seasonsErrRounds;
+    case 'lengthInvalid':
+      return he.seasonsErrMonths;
+    case 'historyExceedsTarget':
+      return typeof played === 'number' && typeof target === 'number'
+        ? he.seasonsErrHistoryExceedsOf(played, target, no)
+        : he.seasonBlockedTargetBehind;
+    case 'historyFillsTarget':
+      return typeof played === 'number'
+        ? he.seasonsErrHistoryFillsOf(played, no, no + 1)
+        : he.seasonBlockedTargetBehind;
+    case 'seasonEndRequired':
+      return he.seasonsErrSeasonEndOf(no);
+    case 'seasonEndPast':
+      return he.seasonsErrSeasonPastOf(no);
     case 'nothingToReopen':
       return he.seasonBlockedNothingToReopen;
     case 'closedSeasonGame':
@@ -71,15 +128,49 @@ export function seasonRefusalText(
 function refusalOf(err: unknown): SeasonRefusal | null {
   const e = err as { code?: string; message?: string };
   const code = String(e?.code ?? '');
-  if (code === 'functions/permission-denied') return 'notAdmin';
-  if (code !== 'functions/failed-precondition') return null;
   const msg = String(e?.message ?? '');
-  if (msg.includes('openGame')) return 'openGame';
-  if (msg.includes('unsealedGame')) return 'unsealedGame';
-  if (msg.includes('seasons are off')) return 'seasonsOff';
-  if (msg.includes('no closed season') || msg.includes('no archive')) {
-    return 'nothingToReopen';
+  if (code === 'functions/permission-denied') return 'notAdmin';
+  // `not-found` never reached the substring test at all — it bailed on the
+  // code. So the one refusal reopenLastSeason throws about the thing the
+  // button exists for, "there is no archive to reopen", was answered with
+  // "try again in a moment" beside a button that never could. The club's own
+  // document going missing is a real failure and still falls through.
+  if (code === 'functions/not-found') {
+    return msg.includes('no archive') ? 'nothingToReopen' : null;
   }
+  // The server validates the ARGUMENT before it validates the plan, and does
+  // it with a different code. Same refusal to the admin either way: the number
+  // they typed is not a number a season can be measured in.
+  if (code === 'functions/invalid-argument') {
+    return msg.includes('targetRounds') ? 'targetInvalid' : null;
+  }
+  if (code !== 'functions/failed-precondition') return null;
+  // planActivation's own verdicts, thrown back as `season-plan:<error>`. The
+  // six explanations for them were written, and rendered only when the CLIENT
+  // reached the same verdict first — so a client one build behind, or one
+  // measuring against a different history figure from the server's, got the
+  // generic line for a refusal that is permanent.
+  if (msg.includes('season-plan:')) {
+    if (msg.includes('monthsInvalid')) return 'lengthInvalid';
+    if (msg.includes('roundsInvalid')) return 'targetInvalid';
+    if (msg.includes('historyExceedsTarget')) return 'historyExceedsTarget';
+    if (msg.includes('historyFillsTarget')) return 'historyFillsTarget';
+    if (msg.includes('season1EndRequired')) return 'seasonEndRequired';
+    if (msg.includes('season1EndNotFuture')) return 'seasonEndPast';
+    return 'unknown';
+  }
+  // `busy` is the fallback clubIsQuiet's callers pass when it refuses without
+  // naming a blocker. It cannot do that today, which is exactly why it would
+  // have gone unworded the day it could.
+  if (msg.includes('openGame')) return 'openGame';
+  // NOT folded into 'openGame'. `busy` is what a quiet check throws when it
+  // refuses without naming a blocker, so mapping it here would tell the admin
+  // "יש מחזור פתוח במועדון" — a specific fact nobody established — and send
+  // them to end an evening that may not exist. An unnamed refusal is unknown.
+  if (msg.includes('unsealedGame')) return 'unsealedGame';
+  if (msg.includes('seasons already on')) return 'seasonsAlreadyOn';
+  if (msg.includes('seasons are off')) return 'seasonsOff';
+  if (msg.includes('no closed season')) return 'nothingToReopen';
   if (msg.includes('closedSeasonGame')) return 'closedSeasonGame';
   // The server refuses a target the club has already passed, because saving it
   // would close the season on the spot — "end it now" without the confirmation

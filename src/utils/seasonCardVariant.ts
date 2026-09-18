@@ -22,27 +22,38 @@ export type SeasonCardVariant =
   /** Nothing happened in it at all. A ribbon, not a card. */
   | 'void';
 
-/** A season that opened and closed inside two days did not have a season in it. */
-const VOID_SPAN_MS = 48 * 60 * 60 * 1000;
-
 export function seasonCardVariant(s: FinishedSeason): SeasonCardVariant {
-  // NOT keyed on `totals.rounds`. Mini-games exist only in advanced mode, so a
-  // timer-only club — the common case — records 0 משחקונים for every season it
-  // ever plays. Keying the void state on that would erase real seasons.
+  // Every counter a club can record, and nothing else.
+  //
+  // NOT keyed on `totals.rounds` alone: mini-games exist only in advanced mode,
+  // so a timer-only club — the common case — records 0 משחקונים for every
+  // season it ever plays, and keying the void state on that would erase real
+  // seasons.
+  //
+  // And no longer keyed on how long the season lasted. `endsAt - startsAt` was
+  // read as "a season that opened and closed inside two days did not have a
+  // season in it", but startsAt is stamped when seasons are switched ON, not at
+  // the first evening the season contains: on the one real closed season in
+  // production that difference is 31.6 HOURS for three months of football. It
+  // sat inside a 48h window, and only `players !== 0` kept a club's entire hall
+  // of fame from collapsing into one grey dashed line. Put the span back and it
+  // collapses.
+  //
+  // What is left is a season in which NOTHING was recorded anywhere — no
+  // evening sealed, no mini-game, no goal, no assist, nobody who played, no
+  // title. There is nothing for a poster to print, whatever the cause, so it is
+  // a ribbon. A season with any of those non-zero and still no titles keeps its
+  // card: a club with 19 sealed evenings and empty stats is a data problem, and
+  // hiding it would hide the problem.
   const nothingRecorded =
     s.players === 0 &&
     s.winners.length === 0 &&
+    s.completedRounds === 0 &&
+    s.totals.rounds === 0 &&
     s.totals.goals === 0 &&
     s.totals.assists === 0;
-  if (!nothingRecorded) {
-    return s.winners.length === 0 ? 'noTitles' : 'full';
-  }
-  // A club CAN legitimately record nothing: an admin closes a season early,
-  // the week after it opened, before anyone played. That is still void.
-  // But a long season with people in it that reports nothing is a data
-  // problem, not an empty season, and hiding it would hide the problem.
-  const span = s.endsAt > 0 && s.startsAt > 0 ? s.endsAt - s.startsAt : 0;
-  return span > 0 && span <= VOID_SPAN_MS ? 'void' : 'noTitles';
+  if (nothingRecorded) return 'void';
+  return s.winners.length === 0 ? 'noTitles' : 'full';
 }
 
 /**
@@ -75,7 +86,16 @@ export function heroWinner(
     const w = s.winners.find((x) => x.key === key);
     if (w && w.names.length <= MAX_SHARED_HERO) return w;
   }
-  // Nothing unshared to crown → the first title the season did award, so the
-  // poster still has a subject rather than falling back to an empty plate.
-  return s.winners[0] ?? null;
+  // Nothing unshared to crown → the title the FEWEST people share, so the
+  // poster still has a subject rather than an empty plate.
+  //
+  // It used to take `winners[0]`, which is canonical-order, not smallest: on a
+  // timer-only club this fallback is the default poster, and the title that
+  // lands first is routinely מלך ההתמדה, held jointly by everyone who turned
+  // up. That is a 78-character list of the entire club as a 35pt headline.
+  // Fewest-first at least crowns the closest thing the season has to a person;
+  // the poster caps the names it prints on top of that.
+  return (
+    [...s.winners].sort((a, b) => a.names.length - b.names.length)[0] ?? null
+  );
 }

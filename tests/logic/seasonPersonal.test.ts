@@ -377,3 +377,35 @@ describe('the three rival rows name three different people', () => {
     expect(s.tormentor?.userId).toBe('only');
   });
 });
+
+describe('a column nobody scored in has no first place', () => {
+  // Widening the rank denominator to include attendance gave a timer-only club
+  // its tiles back — and also handed a gold medal and "מקום 1 מתוך 15" to
+  // whichever three user ids sorted first, in a season with no goals. The
+  // share card's gate is a ratio, so that sentence left the app in a PNG whose
+  // own tiles read 0 שערים.
+  const rows = ['ccc', 'aaa', 'bbb'].map((uid) => ({
+    userId: uid,
+    games: 4,
+    rounds: 0,
+    goals: 0,
+    assists: 0,
+    wins: 0,
+  }));
+
+  it('gives no rank at all rather than an alphabetical one', () => {
+    const s = buildPersonalSeason({ me: 'aaa', players: rows, pairs: [] });
+    expect(s.ranks.goals).toBeNull();
+    expect(s.ranks.assists).toBeNull();
+    expect(s.ranks.wins).toBeNull();
+    // The denominator still says who played, which is what the tiles need.
+    expect(s.ranks.of).toBe(3);
+  });
+
+  it('but one real number is enough to rank the column', () => {
+    const scored = rows.map((r) => (r.userId === 'bbb' ? { ...r, goals: 1 } : r));
+    const s = buildPersonalSeason({ me: 'bbb', players: scored, pairs: [] });
+    expect(s.ranks.goals).toBe(1);
+    expect(s.ranks.wins).toBeNull();
+  });
+});

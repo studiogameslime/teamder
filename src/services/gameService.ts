@@ -71,6 +71,7 @@ import {
   didEveningHappen,
   type PlayableEvening,
 } from '@/utils/eveningPlayed';
+import { inSeason } from '@/utils/seasonScope';
 import { tallyDelta, tallyWithout } from '@/utils/goalTally';
 import {
   buildEditNotice,
@@ -1092,14 +1093,6 @@ export const gameService = {
     // Per finished night, the set of attendees — collected so we can compute
     // the longest consecutive-attendance streak (the club's "most loyal" run).
     const nights: Array<{ startsAt: number; attended: Set<UserId> }> = [];
-    /** A game with NO stamp belongs to season 1: the stamp only began being
-     *  written when the feature landed, and a club that carried its history
-     *  into season 1 played those nights inside it. */
-    const inSeason = (g: { seasonId?: string }): boolean => {
-      if (!season) return true;
-      const stamp = typeof g.seasonId === 'string' ? g.seasonId : '';
-      return stamp ? stamp === season.currentId : season.currentNo === 1;
-    };
     let lifeFinished = 0;
     let lifeCancelled = 0;
     const lifeActiveMonth = new Set<UserId>();
@@ -1127,7 +1120,7 @@ export const gameService = {
           lifeNights.push({ startsAt: at, attended: came });
         }
       }
-      if (!inSeason(g as { seasonId?: string })) continue;
+      if (!inSeason(g as { seasonId?: string }, season)) continue;
       // ONE question, asked of the one module that answers it.
       //
       // This scan used to count every `finished` document as an evening the

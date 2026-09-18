@@ -76,16 +76,38 @@ export interface SeasonSummaryModel {
   roundsCadence?: { played: number; target: number };
 
   /**
-   * MINI-GAMES the club played this season — the context every rank sits in.
+   * EVENINGS (מחזורים) the club played this season — the context every rank
+   * sits in, and the same number the club card, the history screen and the
+   * poster all print for it.
    *
-   * Not the same counter as a rounds-cadence target, which counts sealed
-   * EVENINGS. The archive happens to carry both; this reads the one the live
-   * season can also answer, so the number means one thing on both paths.
+   * It used to be `totals.rounds`, the mini-game count, on the reasoning that
+   * the live season could answer that one too. Both halves were wrong. The
+   * archive carries a `completedRounds` of its own — the figure the club
+   * watched all season and approved the close on — and it was never read by
+   * anything, so the same sealed season read 22 on the history screen and 37
+   * here. And a club on the plain timer records no mini-games at all, so the
+   * line under its standing card said "0 משחקים שוחקו" for a season it had
+   * played every week of. A running season answers from `seasons.playedRounds`,
+   * the same mirror the card's progress comes from.
    */
   completedRounds: number;
   me: PersonalSeason;
   /** Display names for the handful of people the summary actually names. */
   names: Record<string, string>;
+  /**
+   * The face that goes with each of those names, where we have one.
+   *
+   * Kept beside `names` rather than folded into it because the share card
+   * reads that map as plain strings. A RUNNING season already fetches the
+   * whole user document to get the name and was throwing everything else
+   * away, so all six peer rows drew the deterministic fallback disc while the
+   * same six people show their own picture on every other screen in the app.
+   *
+   * A CLOSED season answers from its frozen roster, which stores a name and
+   * nothing else — those rows keep the fallback, and that is the price of a
+   * summary that still reads after somebody deletes their account.
+   */
+  peerAvatars: Record<string, { avatarId?: string; photoUrl?: string }>;
   /**
    * Titles this player took in this season, decided when it closed.
    *
@@ -236,36 +258,54 @@ function namedUids(me: PersonalSeason): string[] {
   return [...out];
 }
 
+/** What a peer row needs to render: a name and, when there is one, a face. */
+interface PeerIdentity {
+  names: Record<string, string>;
+  avatars: Record<string, { avatarId?: string; photoUrl?: string }>;
+}
+
 /**
- * Names for the peers.
+ * Names and faces for the peers.
  *
  * A CLOSED season answers from its own archive, which froze the names at
  * closing time precisely so a summary still reads after somebody deletes their
- * account. Only a running season has to go to /users.
+ * account. Only a running season has to go to /users — and since that read is
+ * being made anyway, it hands back the avatar as well. Keeping only `u.name`
+ * off a whole user document was what left every row on a live season showing
+ * the generic disc.
  */
-async function resolveNames(
+async function resolvePeers(
   uids: string[],
   frozen: Map<string, string>,
-): Promise<Record<string, string>> {
-  const out: Record<string, string> = {};
+): Promise<PeerIdentity> {
+  const names: Record<string, string> = {};
+  const avatars: Record<string, { avatarId?: string; photoUrl?: string }> = {};
   const missing: string[] = [];
   for (const uid of uids) {
     const f = frozen.get(uid);
-    if (f) out[uid] = f;
+    if (f) names[uid] = f;
     else missing.push(uid);
   }
   await Promise.all(
     missing.map(async (uid) => {
       try {
         const u = await userService.getUserById(uid);
-        if (u?.name) out[uid] = u.name;
+        if (u?.name) names[uid] = u.name;
+        // Only what the avatar actually uses, and only when it is there — an
+        // empty string is a photo URL as far as <UserAvatar> is concerned.
+        if (u?.avatarId || u?.photoUrl) {
+          avatars[uid] = {
+            ...(u.avatarId ? { avatarId: u.avatarId } : {}),
+            ...(u.photoUrl ? { photoUrl: u.photoUrl } : {}),
+          };
+        }
       } catch {
         // A name we cannot resolve renders as a dash; it must not take the
         // whole summary down with it.
       }
     }),
   );
-  return out;
+  return { names, avatars };
 }
 
 
@@ -329,7 +369,6 @@ function fromArchive(
     const n = str(x.displayName);
     if (n) frozen.set(uid, n);
   }
-  const totals = (d.totals ?? {}) as Record<string, unknown>;
   return {
     groupId: ctx.groupId,
     groupName: str(d.groupName),
@@ -338,7 +377,9 @@ function fromArchive(
     startsAt: num(d.startsAt),
     endsAt: num(d.endsAt) || null,
     closed: true,
-    completedRounds: num(totals.rounds),
+    // The archive's own count of the season's evenings. It has been written
+    // since the archive existed and read by nothing until now.
+    completedRounds: num(d.completedRounds),
     me,
     myTitles: titlesFor(d.awards as Record<string, unknown> | undefined, ctx.userId),
     seasonTitles: allTitlesOf(
@@ -356,6 +397,11 @@ function fromArchive(
         .map((uid) => [uid, frozen.get(uid) ?? ''] as const)
         .filter(([, n]) => !!n),
     ),
+    // The frozen roster keeps a name and nothing else, so these rows show the
+    // deterministic disc. Going to /users for six faces would undo the one
+    // property that makes this path work — it makes no club read at all, which
+    // is why a player who has left can still open the season they played.
+    peerAvatars: {},
     available: ctx.seasons
       ? seasonChoices(ctx.seasons)
       : [{ no: num(d.no), id: str(d.seasonId) || ctx.seasonId, closed: true }],
@@ -447,9 +493,7 @@ export const seasonSummaryService = {
         });
       }
       const me = buildPersonalSeason({ me: userId, players, pairs });
-      // The club's finished rounds this season. `communityStats.rounds` is
-      // zeroed by the same rollover, so it is already season-scoped.
-      const clubSnap = await getDoc(doc(db, 'communityStats', groupId));
+      const peers = await resolvePeers(namedUids(me), new Map());
       return {
         groupId,
         groupName,
@@ -458,7 +502,14 @@ export const seasonSummaryService = {
         startsAt: num(seasons.startedAt),
         endsAt: null,
         closed: false,
-        completedRounds: num(clubSnap.data()?.rounds),
+        // The season's EVENINGS, off the mirror the seal increments — the very
+        // number `roundsCadence` below shows as progress, so the hero line and
+        // the line under the standing card can never say two different things
+        // about the same season. This used to be a separate read of
+        // `communityStats.rounds`, which is season-scoped but counts mini-games,
+        // and is 0 for every club that plays on the plain timer. That read is
+        // gone with it.
+        completedRounds: num(seasons.playedRounds),
         // Exactly the derivation SeasonsCard uses, so the two surfaces cannot
         // drift into showing different progress for the same season.
         ...(seasons.cadence?.type === 'rounds' &&
@@ -474,7 +525,8 @@ export const seasonSummaryService = {
         // A running season has no titles yet, by design.
         myTitles: [],
         seasonTitles: [],
-        names: await resolveNames(namedUids(me), new Map()),
+        names: peers.names,
+        peerAvatars: peers.avatars,
         available: seasonChoices(seasons),
       };
     } catch (err) {
@@ -502,7 +554,12 @@ function mockSeasonSummary(
   const past = seasonId === 's1';
   const players: SeasonPlayerRow[] = past
     ? [
-        { userId, games: 9, goals: 6, assists: 3, rounds: 22, wins: 9, losses: 11, ties: 2, cleanSheets: 4, csRounds: 22, ownGoals: 0, penTaken: 1, penScored: 0 },
+        // PARTIAL coverage on the reader's own row, deliberately: clean sheets
+        // and assists both started being recorded after this club did, which
+        // is the shape of every real veteran and the one that makes
+        // cleanSheets/rounds disagree with the percentage beside it. Without
+        // it the coverage note under the grid is unreachable in mock.
+        { userId, games: 9, goals: 6, assists: 3, rounds: 22, wins: 9, losses: 11, ties: 2, cleanSheets: 4, csRounds: 17, asRounds: 19, ownGoals: 0, penTaken: 1, penScored: 0 },
         { userId: 'u_dani', games: 8, goals: 8, assists: 2, rounds: 24, wins: 13, losses: 9, ties: 2, cleanSheets: 6, csRounds: 24 },
         { userId: 'u_roi', games: 6, goals: 2, assists: 9, rounds: 20, wins: 11, losses: 7, ties: 2, cleanSheets: 5, csRounds: 20 },
         { userId: 'u_omer', games: 4, goals: 4, assists: 1, rounds: 12, wins: 5, losses: 6, ties: 1, cleanSheets: 2, csRounds: 12 },
@@ -540,7 +597,10 @@ function mockSeasonSummary(
     startsAt: Date.now() - 1000 * 60 * 60 * 24 * (past ? 420 : 150),
     endsAt: past ? Date.now() - 1000 * 60 * 60 * 24 * 160 : null,
     closed: past,
-    completedRounds: past ? 26 : 48,
+    // EVENINGS, and they have to sit above the biggest `games` in the rows
+    // above (9 and 13) — a season the club played fewer nights of than one of
+    // its members attended is not a season anyone can have.
+    completedRounds: past ? 11 : 15,
     me,
     myTitles: past
       ? [
@@ -561,6 +621,13 @@ function mockSeasonSummary(
         ]
       : [],
     names: { u_dani: 'דני', u_roi: 'רועי', u_omer: 'עומר' },
+    // A face on every peer row, because the fallback disc is what the bug
+    // looked like — a mock that hands back no avatar cannot tell the two
+    // apart. Empty for the closed season, which is what the frozen archive
+    // really answers.
+    peerAvatars: past
+      ? {}
+      : { u_dani: { avatarId: 'a03' }, u_roi: { avatarId: 'a09' }, u_omer: { avatarId: 'a11' } },
     available: [
       { no: 2, id: 's2', closed: false },
       { no: 1, id: 's1', closed: true },

@@ -7,8 +7,8 @@
 // The medal has two axes and they are deliberately separate:
 //   the RING says how strong  (the tier — bronze → platinum)
 //   the CORE says which title (the tint the rest of the app already uses)
-// So a מלך ההתמדה who made 19 of 19 evenings reads differently from a
-// מלך הבישולים who took it on five assists, without either of them changing
+// So a כתר ההתמדה who made 19 of 19 evenings reads differently from a
+// כתר הבישולים who took it on five assists, without either of them changing
 // colour and breaking the vocabulary shared with the profile shelf, the season
 // summary and the share card.
 //
@@ -42,6 +42,16 @@ interface Props {
   /** Disc diameter. The ribbon and badge scale off it. */
   size?: number;
 }
+
+// The medal says everything it says in colour and metal, which is exactly
+// nothing to a screen reader: TalkBack met a disc, an icon font and a bare
+// "×2" and read out the icon's name. The slot around it renders the title, the
+// holders, the value and the tier as real text and owns the whole label, so
+// the medal is hidden from the accessibility tree rather than read twice.
+const DECORATIVE = {
+  accessibilityElementsHidden: true,
+  importantForAccessibility: 'no-hide-descendants',
+} as const;
 
 function Notches({ size }: { size: number }) {
   const r = size / 2;
@@ -85,7 +95,10 @@ export function SeasonMedal({
 
   if (empty) {
     return (
-      <View style={[styles.root, { width: size, height: size + ribbonH * 0.5 }]}>
+      <View
+        {...DECORATIVE}
+        style={[styles.root, { width: size, height: size + ribbonH * 0.5 }]}
+      >
         <View
           style={[
             styles.socket,
@@ -99,7 +112,10 @@ export function SeasonMedal({
   }
 
   return (
-    <View style={[styles.root, { width: size, height: size + ribbonH * 0.5 }]}>
+    <View
+      {...DECORATIVE}
+      style={[styles.root, { width: size, height: size + ribbonH * 0.5 }]}
+    >
       {/* The ribbon, in the TITLE's colour — it is the one part of the medal
           that is allowed to name the title from across the shelf. */}
       <Svg
@@ -159,7 +175,10 @@ export function SeasonMedal({
 
       {streak > 1 ? (
         <View style={styles.streak}>
-          <Text style={styles.streakText} allowFontScaling={false}>
+          {/* 9pt that refused to scale at all. The pill sizes itself off the
+              text, so the badge can follow the OS font setting some way before
+              it eats the disc — capped rather than frozen. */}
+          <Text style={styles.streakText} maxFontSizeMultiplier={1.3}>
             {`×${streak}`}
           </Text>
         </View>

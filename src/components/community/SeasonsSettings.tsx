@@ -29,6 +29,10 @@ import {
 } from '@/services/seasonService';
 import { gameService } from '@/services/gameService';
 import {
+  seasonHistoryService,
+  type FinishedSeason,
+} from '@/services/seasonHistoryService';
+import {
   todayIn,
   seasonEndDate,
   nextSeasonStart,
@@ -62,10 +66,17 @@ const MONTH_CHOICES = [3, 6, 12] as const;
  *  short one. Anything else is the custom stepper beside them. */
 const SEASON1_MONTH_CHOICES = [1, 2, 3, 6] as const;
 const ROUND_CHOICES = [24, 48, 96] as const;
-/** The step for the custom pickers. One at a time for months (there are only
- *  24 of them); rounds move in fours, because a club setting 37 is really
- *  setting "about three dozen". Long-press is not a gesture this app uses. */
-const ROUND_STEP = 4;
+/** The step for the custom pickers. One at a time, for both.
+ *
+ *  Rounds used to move in fours, on the reasoning that a club setting 37 is
+ *  really setting "about three dozen". The trouble is that a step of four from
+ *  a chip divisible by four, against a floor of 2, is a lattice and not a
+ *  range: 5, 7, 9 and 11 could not be reached at all, 37 could not be reached
+ *  from 24, and 6 and 10 could only be reached by walking all the way down to
+ *  2 and back up. A picker that cannot reach a number is worse than one that
+ *  takes an extra tap to get there, and the long journeys are what the 24 / 48
+ *  / 96 chips beside it are for. */
+const ROUND_STEP = 1;
 
 function formatDate(ms: number): string {
   return new Date(ms).toLocaleDateString('he-IL', {
@@ -157,21 +168,30 @@ function DateLine({
 }
 
 /** The refusal, in the admin's own numbers. Every message names the figure
- *  that caused it, because "not allowed" is not something anyone can act on. */
-function planErrorText(plan: ActivationPlan, target: number): string {
+ *  that caused it, because "not allowed" is not something anyone can act on.
+ *
+ *  And the season it is really about. Every one of these was written against
+ *  "עונה 1", while numbering continues across the feature being switched off
+ *  and on — so the line that blocks a re-enable on season 4 told the admin to
+ *  pick an end date for season 1, a season the club archived months ago. */
+function planErrorText(
+  plan: ActivationPlan,
+  target: number,
+  no: number,
+): string {
   switch (plan.error) {
     case 'historyExceedsTarget':
-      return he.seasonsErrHistoryExceeds(plan.playedHistory, target);
+      return he.seasonsErrHistoryExceedsOf(plan.playedHistory, target, no);
     case 'historyFillsTarget':
-      return he.seasonsErrHistoryFills(plan.playedHistory);
+      return he.seasonsErrHistoryFillsOf(plan.playedHistory, no, no + 1);
     case 'monthsInvalid':
       return he.seasonsErrMonths;
     case 'roundsInvalid':
       return he.seasonsErrRounds;
     case 'season1EndRequired':
-      return he.seasonsErrSeason1End;
+      return he.seasonsErrSeasonEndOf(no);
     case 'season1EndNotFuture':
-      return he.seasonsErrSeason1Past;
+      return he.seasonsErrSeasonPastOf(no);
     default:
       return he.error;
   }
@@ -270,8 +290,20 @@ export function SeasonsSettings({
   const [confirmOpen, setConfirmOpen] = useState(false);
   /** Evenings the club has already played. Asked for once, when the options
    *  open, because every validation and every line of the confirmation is
-   *  measured against it. */
+   *  measured against it. `null` means "not answered yet", never "none". */
   const [history, setHistory] = useState<number | null>(null);
+  /**
+   * The read failed, as opposed to answering zero.
+   *
+   * A failed or denied read used to be recorded as "0 evenings played", and
+   * zero is a CLAIM: it tells the confirmation sheet the club has never played,
+   * so every line about its history disappears from the last page the admin
+   * approves — while the server goes on to count the real 22 and seal all of
+   * them. The two states have to be different things.
+   */
+  const [historyFailed, setHistoryFailed] = useState(false);
+  /** Bumped by the retry button, to ask again. */
+  const [historyAttempt, setHistoryAttempt] = useState(0);
 
 
   const firstTime = (seasons?.count ?? 0) === 0 && !live;
@@ -284,30 +316,50 @@ export function SeasonsSettings({
 
   useEffect(() => {
     if (!open) return;
+    setHistoryFailed(false);
     // A club that has closed a season before carries NO loose history: those
     // evenings are sealed inside an archive, and the season about to open
     // starts at zero. Asking the server for the figure would get the same
     // answer it now gives itself — see the playedHistory comment in
     // enableClubSeasons — and a non-null value here is what lets the plan be
     // computed and its refusal explained at all.
+    //
+    // A LIVE club is the other half of that sentence, and it was getting the
+    // same zero. Its running season holds evenings, and the target being
+    // edited on this screen is measured against exactly them — by the server,
+    // which refuses a target at or under the count. Pinning zero made
+    // historyExceedsTarget and historyFillsTarget dead code on the whole
+    // target-change path, so a club 22 evenings into a season could pick 12,
+    // press the button, and learn the rule only as a refusal. This is the same
+    // figure the card shows and the same one the server measures against.
     if (!firstTime) {
-      setHistory(0);
+      setHistory(live ? Math.max(0, seasons?.playedRounds ?? 0) : 0);
       return;
     }
     let alive = true;
     void gameService
       .getCommunityStats(groupId)
       .then((st) => {
-        if (alive) setHistory(st?.totalFinished ?? 0);
+        if (!alive) return;
+        const played = st?.totalFinished;
+        if (typeof played === 'number' && Number.isFinite(played)) {
+          setHistory(Math.max(0, played));
+          return;
+        }
+        setHistory(null);
+        setHistoryFailed(true);
       })
       .catch(() => {
-        if (alive) setHistory(0);
+        // NOT zero. See historyFailed: zero would tell the sheet this club has
+        // no history, one press before the server seals the history it has.
+        if (!alive) return;
+        setHistory(null);
+        setHistoryFailed(true);
       });
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, groupId, firstTime]);
+  }, [open, groupId, firstTime, live, seasons?.playedRounds, historyAttempt]);
   /** Does the club's current target correspond to one of the chips below? */
   const offeredTarget =
     seasons?.cadence?.type === 'rounds'
@@ -323,17 +375,26 @@ export function SeasonsSettings({
       } catch (err) {
         // A refusal is an answer the admin can act on ("finish tonight's game
         // first"), not a failure. Only a real one gets the generic line.
+        //
+        // The season number and the numbers the plan refusals are written
+        // about travel with it: the server throws `season-plan:historyFills`
+        // and nothing else, and "עונה 1" is wrong for every club that has
+        // closed one.
         appAlert(
           he.error,
           err instanceof SeasonRefusedError
-            ? seasonRefusalText(err.reason, err.played)
+            ? seasonRefusalText(err.reason, {
+                seasonNo: thisSeasonNo,
+                played: err.played ?? history ?? undefined,
+                target: rounds,
+              })
             : he.seasonActionFailed,
         );
       } finally {
         setBusy(false);
       }
     },
-    [onChanged],
+    [onChanged, thisSeasonNo, history, rounds],
   );
 
   /** Has the admin actually moved the target away from the club's own? */
@@ -369,7 +430,16 @@ export function SeasonsSettings({
         // control on screen that could pick a date for it.
         hasHistory: !firstTime,
       }),
-    [cadence, months, rounds, sealHistory, history, today, season1EndsOn],
+    [
+      cadence,
+      months,
+      rounds,
+      sealHistory,
+      history,
+      today,
+      season1EndsOn,
+      firstTime,
+    ],
   );
 
   /** The dates shown under the length chips, for a club with no history to
@@ -453,26 +523,86 @@ export function SeasonsSettings({
   }, [groupId, targetArgs, run]);
 
   const reopenLast = useCallback(() => {
-    appAlert(he.seasonsReopenConfirmTitle, he.seasonsReopenConfirmBody, [
-      {
-        text: he.seasonsReopenConfirmCta,
-        style: 'destructive',
-        onPress: () =>
-          run(async () => {
-            const res = await seasonService.reopenLast(groupId);
-            logEvent(AnalyticsEvent.SeasonReopened, {
-              groupId,
-              seasonNo: res.reopenedNo,
-            });
-            toast.success(he.seasonsReopenedToast(res.reopenedNo));
-          }),
+    // The season the server will actually reopen: the last one it closed.
+    const closedNo = seasons?.count ?? 0;
+    const target =
+      seasons?.cadence?.type === 'rounds'
+        ? seasons.cadence.targetRounds
+        : undefined;
+
+    const ask = (last: FinishedSeason | null) => {
+      // Will it simply close again?
+      //
+      // The old body said "כבר הגיעה ליעד שלה" as flat prose, which is false
+      // in exactly the case the undo exists for — a season an admin ended a
+      // week early never reached anything. A season that closed on the sweep
+      // DID reach its target, and comes back still holding it; so does one
+      // ended early whose count had already passed the target. Only then is
+      // there a warning to give, and when the card cannot be read there is no
+      // warning to give at all, which is the safe half of the sentence.
+      const willRecloseNow =
+        last !== null &&
+        (!last.endedEarly ||
+          (typeof target === 'number' && last.completedRounds >= target));
+      appAlert(
+        he.seasonsReopenConfirmTitle,
+        he.seasonsReopenConfirmBodyOf(last?.no ?? closedNo, willRecloseNow),
+        [
+          {
+            text: he.seasonsReopenConfirmCta,
+            style: 'destructive',
+            onPress: () =>
+              run(async () => {
+                const res = await seasonService.reopenLast(groupId);
+                logEvent(AnalyticsEvent.SeasonReopened, {
+                  groupId,
+                  seasonNo: res.reopenedNo,
+                });
+                toast.success(he.seasonsReopenedToast(res.reopenedNo));
+              }),
+          },
+          { text: he.cancel, style: 'cancel' },
+        ],
+      );
+    };
+
+    // The facts come from the season's own card, not from prose about what
+    // usually happens. It is one small document and it is read BEFORE the
+    // dialog, because a dialog that fills itself in afterwards is a dialog
+    // whose first sentence the admin has already read.
+    setBusy(true);
+    void seasonHistoryService.list(groupId).then(
+      (list) => {
+        setBusy(false);
+        ask(
+          list === 'error'
+            ? null
+            : (list.find((season) => season.no === closedNo) ?? null),
+        );
       },
-      { text: he.cancel, style: 'cancel' },
-    ]);
-  }, [groupId, run]);
+      () => {
+        setBusy(false);
+        ask(null);
+      },
+    );
+  }, [groupId, seasons?.count, seasons?.cadence, run]);
 
   const endNow = useCallback(() => {
-    appAlert(he.seasonsEndConfirmTitle, he.seasonsEndConfirmBody, [
+    // Which season, and how much of it there is.
+    //
+    // The paragraph on its own reads identically for a season holding nothing
+    // and one holding thirty evenings, and names neither. It is the last thing
+    // an admin reads before the club's table is archived and zeroed and nine
+    // titles are handed out for good — and the server's own comment on
+    // endSeasonNow says this client "shows the admin exactly which titles are
+    // about to be awarded before they confirm", which it does not. The titles
+    // are not computed anywhere this component can reach; the season and its
+    // evening count are, so those at least are said out loud.
+    const played = Math.max(0, seasons?.playedRounds ?? 0);
+    const body = `${he.seasonNumberLabel(thisSeasonNo)} · ${he.seasonsConfirmSealedNow(
+      played,
+    )}\n\n${he.seasonsEndConfirmBody}`;
+    appAlert(he.seasonsEndConfirmTitle, body, [
       {
         text: he.seasonsEndCta,
         style: 'destructive',
@@ -488,7 +618,7 @@ export function SeasonsSettings({
       },
       { text: he.cancel, style: 'cancel' },
     ]);
-  }, [groupId, run]);
+  }, [groupId, run, seasons?.playedRounds, thisSeasonNo]);
 
   const currentTargetLine =
     seasons?.cadence?.type === 'rounds' &&
@@ -687,8 +817,16 @@ export function SeasonsSettings({
                   the admin names. */}
               {cadence === 'date' && !sealHistory ? (
                 <>
-                  <Text style={styles.fieldLabel}>{he.seasonsSeason1EndLabel}</Text>
-                  <Text style={styles.fieldHint}>{he.seasonsSeason1EndHint}</Text>
+                  {/* Named, not "עונה 1". This block only renders on a first
+                      activation today, but the season it describes is the one
+                      the club is opening, and that is the number every other
+                      line on this screen already carries. */}
+                  <Text style={styles.fieldLabel}>
+                    {he.seasonsSeasonEndLabelOf(thisSeasonNo)}
+                  </Text>
+                  <Text style={styles.fieldHint}>
+                    {he.seasonsSeasonEndHintOf(thisSeasonNo)}
+                  </Text>
                   <View style={styles.chipRow}>
                     {SEASON1_MONTH_CHOICES.map((m) => {
                       const d = seasonEndDate(today, m);
@@ -757,8 +895,30 @@ export function SeasonsSettings({
               first activation, so a club re-enabling seasons got a refusal
               from the server and a generic "משהו השתבש" — while the sentence
               that explains it was sitting right here, unrendered. */}
-          {!plan.ok && history !== null ? (
-            <Text style={styles.errorLine}>{planErrorText(plan, rounds)}</Text>
+          {/* And not before the admin has touched anything: a live club whose
+              season is sitting exactly on its target is not making a mistake,
+              it is waiting for the sweep. The validation is about the EDIT. */}
+          {!plan.ok && history !== null && !(live && !targetChanged) ? (
+            <Text style={styles.errorLine}>
+              {planErrorText(plan, rounds, thisSeasonNo)}
+            </Text>
+          ) : null}
+
+          {/* A read that FAILED, said as one. The alternative was to call it
+              zero, which reads as "this club has never played" and quietly
+              empties the confirmation sheet of every line about the history it
+              is about to seal. Nothing below can be pressed until it answers. */}
+          {historyFailed ? (
+            <>
+              <Text style={styles.errorLine}>{he.seasonActionFailed}</Text>
+              <Button
+                title={he.retry}
+                variant="outline"
+                fullWidth
+                disabled={busy}
+                onPress={() => setHistoryAttempt((n) => n + 1)}
+              />
+            </>
           ) : null}
 
           {/* An inactive button that says nothing reads as broken. This one is
@@ -838,6 +998,7 @@ export function SeasonsSettings({
         cadence={cadence}
         months={months}
         rounds={rounds}
+        seasonNo={thisSeasonNo}
         busy={busy}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => {

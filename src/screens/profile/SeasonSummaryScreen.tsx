@@ -175,6 +175,7 @@ function PeerRow({
   label,
   peer,
   names,
+  avatars,
   detail,
   tint = colors.primary,
 }: {
@@ -182,6 +183,7 @@ function PeerRow({
   label: string;
   peer: SeasonPeer | null;
   names: Record<string, string>;
+  avatars: Record<string, { avatarId?: string; photoUrl?: string }>;
   detail: (p: SeasonPeer) => string;
   tint?: string;
 }) {
@@ -192,9 +194,20 @@ function PeerRow({
   return (
     <View style={styles.peerRow}>
       {/* A face, not just a name. Every other person-row in the app shows one,
-          and these six are the most human thing on the screen. */}
+          and these six are the most human thing on the screen.
+
+          THEIR face. Built from `{id, name}` alone this fell through to the
+          deterministic fallback disc every time, so the six people of your
+          season were the only six people in the app without their own picture
+          — on a running season, where the user document had already been
+          fetched and the avatar dropped on the floor. A closed season has only
+          the frozen name, and there the fallback is the honest answer. */}
       <UserAvatar
-        user={{ id: peer.userId, name: names[peer.userId] ?? '' }}
+        user={{
+          id: peer.userId,
+          name: names[peer.userId] ?? '',
+          ...avatars[peer.userId],
+        }}
         size={38}
       />
       <View style={[styles.peerIcon, { backgroundColor: tint + '1A' }]}>
@@ -385,7 +398,7 @@ export function SeasonSummaryScreen() {
     );
   }
 
-  const { me, names } = model;
+  const { me, names, peerAvatars } = model;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -447,6 +460,34 @@ export function SeasonSummaryScreen() {
           </ScrollView>
         ) : null}
 
+        {/* MY half and the CLUB's half are two different questions, and one
+            ternary on `me.hasData` used to answer both with "no".
+
+            Somebody who missed the season got a single card reading "לא שיחקת
+            בעונה הזאת" — and lost "אלופי העונה" with it, which is the same
+            list for every reader, is the reason the end-of-season push sends
+            the whole club here, and is the only place the champions are ever
+            named. It was fetched and thrown away on the way to the render. So
+            the personal cards stay behind `hasData` and the club's do not. */}
+
+        {/* Titles first when there are any: it is the one thing on this screen
+            a person tells someone else about. A running season has none by
+            design — they are decided when the numbers stop. */}
+        {me.hasData && model.closed ? (
+          <View style={styles.card}>
+            <CardTitle icon="medal" text={he.seasonSectionTitles} />
+            {model.myTitles.length === 0 ? (
+              <Text style={styles.cardNote}>{he.seasonTitlesNone}</Text>
+            ) : null}
+            {model.myTitles.map((t) => (
+              <TitleRow key={t.key} title={t} />
+            ))}
+          </View>
+        ) : null}
+
+        {/* Said before the champions, not instead of them: it explains why the
+            personal cards below are missing, and the club's season carries on
+            underneath it. */}
         {!me.hasData ? (
           <View style={styles.card}>
             <Text style={styles.empty}>
@@ -455,36 +496,23 @@ export function SeasonSummaryScreen() {
                 : he.seasonSummaryNoRounds}
             </Text>
           </View>
-        ) : (
+        ) : null}
+
+        {/* Every title the season decided, and who took it. The push sends
+            every player who played to this screen, so it is where the club
+            gathers the day a season ends — nine champions were being crowned
+            in private, each told only about their own. */}
+        {model.closed && model.seasonTitles.length > 0 ? (
+          <View style={styles.card}>
+            <CardTitle icon="trophy" text={he.seasonSectionChampions} />
+            {model.seasonTitles.map((t) => (
+              <ChampionRow key={t.key} title={t} />
+            ))}
+          </View>
+        ) : null}
+
+        {me.hasData ? (
           <>
-            {/* Titles first when there are any: it is the one thing on this
-                screen a person tells someone else about. A running season has
-                none by design — they are decided when the numbers stop. */}
-            {model.closed ? (
-              <View style={styles.card}>
-                <CardTitle icon="medal" text={he.seasonSectionTitles} />
-                {me.hasData && model.myTitles.length === 0 ? (
-                  <Text style={styles.cardNote}>{he.seasonTitlesNone}</Text>
-                ) : null}
-                {model.myTitles.map((t) => (
-                  <TitleRow key={t.key} title={t} />
-                ))}
-              </View>
-            ) : null}
-
-            {/* And who took everything else. The push sends every player who
-                played to this screen, so it is where the club gathers the day
-                a season ends — nine champions were being crowned in private,
-                each told only about their own. */}
-            {model.closed && model.seasonTitles.length > 0 ? (
-              <View style={styles.card}>
-                <CardTitle icon="trophy" text={he.seasonSectionChampions} />
-                {model.seasonTitles.map((t) => (
-                  <ChampionRow key={t.key} title={t} />
-                ))}
-              </View>
-            ) : null}
-
             <View style={styles.card}>
               <CardTitle icon="stats-chart" text={he.seasonSectionNumbers} />
               <View style={styles.leadRow}>
@@ -522,6 +550,19 @@ export function SeasonSummaryScreen() {
                     <Stat label={he.seasonStatOwnGoals} value={String(me.ownGoals)} />
                   ) : null}
                 </View>
+              ) : null}
+              {/* Why the tiles above do not divide into each other.
+                  Clean sheets have only been recorded since 17.08 and assists
+                  since 21.06, both later than the club — so for a veteran both
+                  rates are measured over a shorter window than the "משחקונים"
+                  tile two along. Four clean sheets in twenty-two is 18%, and
+                  the tile beside it says 24%, because 24% is the honest answer
+                  over the seventeen that were measured. The club's efficiency
+                  table already prints this note under the same numbers; this
+                  grid was the one place a reader could watch the arithmetic
+                  fail with nothing to explain it. */}
+              {me.partialCoverage ? (
+                <Text style={styles.cardNote}>{he.seasonPartialCoverageNote}</Text>
               ) : null}
             </View>
 
@@ -564,6 +605,7 @@ export function SeasonSummaryScreen() {
                 tint={colors.success}
                 peer={me.partner}
                 names={names}
+                avatars={peerAvatars}
                 // winsTogether, not myWins: this line is about the two of us
                 // on the SAME side, and myWins counts the opposite.
                 detail={(p) => he.seasonPeerPartnerDetail(p.count, p.winsTogether)}
@@ -574,6 +616,7 @@ export function SeasonSummaryScreen() {
                 tint={colors.danger}
                 peer={me.nemesis}
                 names={names}
+                avatars={peerAvatars}
                 detail={(p) => he.seasonPeerNemesisDetail(p.count, p.myWins, p.theirWins)}
               />
               <PeerRow
@@ -582,6 +625,7 @@ export function SeasonSummaryScreen() {
                 tint={"#F59E0B"}
                 peer={me.victim}
                 names={names}
+                avatars={peerAvatars}
                 detail={(p) => he.seasonPeerVictimDetail(p.count)}
               />
               <PeerRow
@@ -590,6 +634,7 @@ export function SeasonSummaryScreen() {
                 tint={"#7C3AED"}
                 peer={me.tormentor}
                 names={names}
+                avatars={peerAvatars}
                 detail={(p) => he.seasonPeerTormentorDetail(p.count)}
               />
               <PeerRow
@@ -598,6 +643,7 @@ export function SeasonSummaryScreen() {
                 tint={colors.info}
                 peer={me.assistedMost}
                 names={names}
+                avatars={peerAvatars}
                 detail={(p) => he.seasonPeerAssistsDetail(p.count)}
               />
               <PeerRow
@@ -606,6 +652,7 @@ export function SeasonSummaryScreen() {
                 tint={colors.primary}
                 peer={me.assistedBy}
                 names={names}
+                avatars={peerAvatars}
                 detail={(p) => he.seasonPeerAssistsDetail(p.count)}
               />
               {!me.partner && !me.nemesis ? (
@@ -615,7 +662,8 @@ export function SeasonSummaryScreen() {
               ) : null}
             </View>
           </>
-        )}
+        ) : null}
+
         {me.hasData ? (
           <Pressable
             onPress={onShare}

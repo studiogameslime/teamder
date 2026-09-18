@@ -75,16 +75,19 @@ export interface SeasonPeer {
 }
 
 export interface PersonalSeasonRank {
-  /** 1-based position in the club, or null when the player has no rounds. */
+  /** 1-based position in the club, or null when the player has no row. */
   goals: number | null;
   assists: number | null;
   wins: number | null;
-  /** How many players the position is out of — those who actually played. */
+  /** How many players the position is out of — those who turned up. */
   of: number;
 }
 
 export interface PersonalSeason {
-  /** False when the player has not played a single mini-game this season. */
+  /** False when the player has no row in this season at all — no evening
+   *  attended and no mini-game played. Attendance counts: mini-games exist
+   *  only in advanced mode, so keying this on them alone emptied the whole
+   *  screen for every club that runs the plain timer. */
   hasData: boolean;
   goals: number;
   assists: number;
@@ -112,6 +115,20 @@ export interface PersonalSeason {
   penSaved: number;
   goalsPerRound: number | null;
   assistsPerRound: number | null;
+  /**
+   * True when one of the rates above was measured over a shorter window than
+   * `rounds`.
+   *
+   * Clean sheets have only been recorded since 17.08 and assists since 21.06,
+   * both long after clubs started counting mini-games — so for anyone who was
+   * here before, `cleanSheets / rounds` does not give `cleanSheetPct` and
+   * `assists / rounds` does not give `assistsPerRound`. Three tiles sit in one
+   * grid and cannot be reconciled by arithmetic, which reads as a broken
+   * number rather than a short sample. The club's efficiency table already
+   * prints a note for exactly this; same derivation as `toEfficiencyRow`, so
+   * the two raise it on the same rows.
+   */
+  partialCoverage: boolean;
   ranks: PersonalSeasonRank;
   /** Most mini-games on my side. */
   partner: SeasonPeer | null;
@@ -243,7 +260,16 @@ function rankOf(
   me: string,
   pick: (r: SeasonPlayerRow) => number,
 ): { rank: number | null; of: number } {
-  const played = rows.filter((r) => num(r.rounds) > 0 && isReal(r.userId));
+  // Attendance OR mini-games, the same test `hasData` makes below — and it has
+  // to be the same test. `rounds` counts משחקונים, which only a club running
+  // the advanced live screen ever records, so a timer-only club gave every
+  // player `of: 0`: seven of the thirteen tiles dashed out while the club table
+  // one tap away listed all seven players in order. `hasData` was corrected for
+  // this and the denominator it is ranked against was not, which left the two
+  // disagreeing about who played.
+  const played = rows.filter(
+    (r) => (num(r.rounds) > 0 || num(r.games) > 0) && isReal(r.userId),
+  );
   const order = [...played].sort(
     (a, b) =>
       pick(b) - pick(a) ||
@@ -253,8 +279,21 @@ function rankOf(
       a.userId.localeCompare(b.userId),
   );
   const i = order.findIndex((r) => r.userId === me);
-  // A player with no row at all is not ranked — they did not play.
-  return { rank: i < 0 ? null : i + 1, of: order.length };
+  // A column nobody has a number in does not have a first place.
+  //
+  // Widening the denominator to include attendance was right — a timer-only
+  // club used to get `of: 0` and seven dashed tiles — but it also handed a rank
+  // to every player in a column where every value is zero. The sort then falls
+  // all the way through to `userId.localeCompare`, so three players got a GOLD
+  // medal and "מקום 1 מתוך 15 בשערים" decided by how their user ids happen to
+  // sort, in a season with no goals in it. The share card's gate is a ratio, so
+  // 1-of-15 passed it and that sentence left the app in a PNG whose own tiles
+  // read 0 שערים.
+  //
+  // A blank is the honest answer here, and it is the one the screen already
+  // knows how to draw.
+  const anyValue = order.some((r) => pick(r) > 0);
+  return { rank: i < 0 || !anyValue ? null : i + 1, of: order.length };
 }
 
 export interface PersonalSeasonInput {
@@ -299,6 +338,13 @@ export function buildPersonalSeason({
   // collected later than `rounds`, so dividing by rounds understates every
   // veteran. Same correction the club efficiency table carries.
   const csRounds = typeof mine?.csRounds === 'number' ? mine.csRounds : rounds;
+  // And assists have one too, for the same reason and a different date: they
+  // began being recorded on 21.06, months after `rounds` started counting. The
+  // club's efficiency table has divided by this counter since it shipped, so
+  // dividing by `rounds` here gave 4 of the 7 players on the only closed season
+  // two different "בישולים למשחקון" for one season, one tap apart. The value
+  // was fetched, plumbed through the archive reader and never used.
+  const asRounds = typeof mine?.asRounds === 'number' ? mine.asRounds : rounds;
 
   const g = rankOf(players, me, (r) => num(r.goals));
   const a = rankOf(players, me, (r) => num(r.assists));
@@ -328,7 +374,8 @@ export function buildPersonalSeason({
     penFaced: num(mine?.penFaced),
     penSaved: num(mine?.penSaved),
     goalsPerRound: rate(goals, rounds),
-    assistsPerRound: rate(assists, rounds),
+    assistsPerRound: rate(assists, asRounds),
+    partialCoverage: rounds > 0 && (csRounds < rounds || asRounds < rounds),
     ranks: { goals: g.rank, assists: a.rank, wins: w.rank, of: g.of },
     // The teammate I shared a side with most. Tie broken on how often we WON
     // together — of two people I played 10 mini-games beside, the one I kept

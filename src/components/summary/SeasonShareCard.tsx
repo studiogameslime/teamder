@@ -2,9 +2,16 @@
 //
 // The screen it lives on scrolls for a page and a half — twelve stat tiles, six
 // people, a champions list — and none of that survives being sent to a WhatsApp
-// group. A share card is a different job from a summary screen: pick the four
+// group. A share card is a different job from a summary screen: pick the
 // numbers a person would actually say out loud, put the titles they won beside
 // them, and stop.
+//
+// Which numbers those are depends on the club. Everything except ערבי משחק is
+// counted inside the advanced live screen's משחקונים, and a club that runs on
+// the plain timer never opens it: 23 of the 87 stat rows in production have
+// evenings and not one mini-game. Printing the mini-game set regardless gave
+// those players a card of eight zeros and a dash to send to their group, while
+// the screen behind it said they turned up fourteen times.
 //
 // Rendered off-screen at a fixed width so the capture is the same on every
 // phone. Nothing here is interactive; it exists to be turned into a PNG.
@@ -22,11 +29,29 @@ import { he } from '@/i18n/he';
 /** Fixed, so the image is identical from a small phone and a large one. */
 export const SHARE_CARD_WIDTH = 340;
 
+/** Three to a row. At four the tiles were 72pt wide, which is where a 100% and
+ *  a two-word label started colliding; three leaves ~98pt and lets the
+ *  timer-only club's short row fill the card instead of trailing off. */
+const PER_ROW = 3;
+
+/** Below this a "top three" says more about the club than about the player. */
+const MIN_CLUB_FOR_PODIUM = 8;
+
 function Big({ value, label }: { value: string; label: string }) {
   return (
     <View style={styles.big}>
-      <Text style={styles.bigValue}>{value}</Text>
-      <Text style={styles.bigLabel}>{label}</Text>
+      {/* allowFontScaling off, everywhere on this card.
+          The card is a fixed 340pt rendered OFF-SCREEN and turned straight into
+          a PNG, so the phone's font setting changes the capture and nobody can
+          see the result before it is sent: at Android "Largest" a 100% grew out
+          of its tile and a 30-character name clipped mid-word. The image is the
+          same size on every phone; so is the type on it. */}
+      <Text style={styles.bigValue} allowFontScaling={false}>
+        {value}
+      </Text>
+      <Text style={styles.bigLabel} allowFontScaling={false} numberOfLines={2}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -60,11 +85,45 @@ export function SeasonShareCard({
    *  bestRank took the numerically lowest of three ranks with no threshold at
    *  all, so a player ranked 27th of 30 in everything had "מקום 27 מתוך 30"
    *  printed in bold on a card they were about to send to the group. Top three,
-   *  or the top third of a club big enough for that to mean something. */
+   *  or the top third of a club big enough for that to mean something.
+   *
+   *  And the top-three arm needs a club to be top three OF: with `of` at 3 it
+   *  put "מקום 3 מתוך 3" in bold — last place, on a card, in the group chat.
+   *  Below eight players a podium is not a podium, and the top-third arm still
+   *  passes anyone who is genuinely at the front of a small club (1 of 5 is
+   *  20%). */
   const worthShowing =
     !!bestRank &&
     me.ranks.of > 1 &&
-    (bestRank.rank <= 3 || bestRank.rank / me.ranks.of <= 0.34);
+    ((bestRank.rank <= 3 && me.ranks.of >= MIN_CLUB_FOR_PODIUM) ||
+      bestRank.rank / me.ranks.of <= 0.34);
+
+  // ערבי משחק first of the mini-game counters and never conditional: it is the
+  // one number every club records, the one the screen behind this card shows,
+  // and the unit every season title is judged in. The rest describe משחקונים
+  // and are printed only by a club that has any — including אחוז ניצחון, whose
+  // denominator is mini-games, which is why it cannot simply be re-pointed at
+  // evenings.
+  const mini = me.rounds > 0;
+  const tiles: Array<{ value: string; label: string }> = [
+    { value: String(me.goals), label: he.statGoals },
+    { value: String(me.assists), label: he.statAssists },
+    { value: String(me.evenings), label: he.seasonStatEvenings },
+    ...(mini
+      ? [
+          { value: String(me.rounds), label: he.seasonStatRounds },
+          { value: pct(me.winPct), label: he.seasonStatWinPct },
+          { value: String(me.cleanSheets), label: he.seasonStatCleanSheets },
+          { value: String(me.wins), label: he.seasonStatWins },
+          { value: String(me.losses), label: he.seasonStatLosses },
+          { value: String(me.ties), label: he.seasonStatTies },
+        ]
+      : []),
+  ];
+  const rows: Array<Array<{ value: string; label: string }>> = [];
+  for (let i = 0; i < tiles.length; i += PER_ROW) {
+    rows.push(tiles.slice(i, i + PER_ROW));
+  }
 
   return (
     <View style={styles.card}>
@@ -76,8 +135,10 @@ export function SeasonShareCard({
         <View style={styles.mark}>
           <Ionicons name="football" size={13} color="#FFFFFF" />
         </View>
-        <Text style={styles.brandName}>Teamder</Text>
-        <Text style={styles.seasonPill}>
+        <Text style={styles.brandName} allowFontScaling={false}>
+          Teamder
+        </Text>
+        <Text style={styles.seasonPill} allowFontScaling={false}>
           {he.seasonNumberLabel(model.seasonNo)}
         </Text>
       </View>
@@ -86,33 +147,28 @@ export function SeasonShareCard({
           308pt at 18px, so one of the two was always cut — the same bug already
           fixed on EveningSummaryCard. */}
       {playerName ? (
-        <Text style={styles.club} numberOfLines={1}>
+        <Text style={styles.club} numberOfLines={1} allowFontScaling={false}>
           {playerName}
         </Text>
       ) : null}
-      <Text style={styles.season} numberOfLines={1}>
+      <Text style={styles.season} numberOfLines={1} allowFontScaling={false}>
         {model.groupName}
       </Text>
 
-      <View style={styles.row}>
-        <Big value={String(me.goals)} label={he.statGoals} />
-        <Big value={String(me.assists)} label={he.statAssists} />
-        {/* MINI-GAMES, not evenings: the win percentage beside it is wins over
-            mini-games, so showing evenings put a rate on the card next to a
-            denominator that did not produce it. */}
-        <Big value={String(me.rounds)} label={he.seasonStatRounds} />
-        <Big value={pct(me.winPct)} label={he.seasonStatWinPct} />
-      </View>
-
-      <View style={styles.row}>
-        <Big value={String(me.wins)} label={he.seasonStatWins} />
-        <Big value={String(me.losses)} label={he.seasonStatLosses} />
-        <Big value={String(me.ties)} label={he.seasonStatTies} />
-        <Big value={String(me.cleanSheets)} label={he.seasonStatCleanSheets} />
-      </View>
+      {rows.map((row, i) => (
+        <View key={i} style={styles.row}>
+          {row.map((t) => (
+            <Big key={t.label} value={t.value} label={t.label} />
+          ))}
+          {/* Keep a short last row on the same grid as the ones above it. */}
+          {Array.from({ length: PER_ROW - row.length }, (_, j) => (
+            <View key={`pad${j}`} style={styles.big} />
+          ))}
+        </View>
+      ))}
 
       {worthShowing && bestRank ? (
-        <Text style={styles.rank} numberOfLines={1}>
+        <Text style={styles.rank} numberOfLines={1} allowFontScaling={false}>
           {he.seasonShareRank(bestRank.rank, me.ranks.of, bestRank.what)}
         </Text>
       ) : null}
@@ -138,9 +194,21 @@ export function SeasonShareCard({
                   color={seasonTitleTint(t.key)}
                 />
               </View>
-              <Text style={styles.title} numberOfLines={1}>
+              {/* Ties are shared and never broken, and `sharedWith` has been
+                  computed all along and thrown away here — so all seven holders
+                  of one כתר העונה sent the same exclusive-looking claim into
+                  the same group chat within a minute of each other. If the
+                  title is shared, the card says so. */}
+              <Text
+                style={styles.title}
+                numberOfLines={2}
+                allowFontScaling={false}
+              >
                 {he.seasonTitleNames[t.key]} ·{' '}
                 {he.seasonTitleValue(t.key, t.value)}
+                {t.sharedWith > 0
+                  ? ` · ${he.seasonTitleSharedWith(t.sharedWith)}`
+                  : ''}
               </Text>
             </View>
           ))}
@@ -150,7 +218,7 @@ export function SeasonShareCard({
       {/* The people of the season — the half of this screen a person actually
           talks about, and none of it used to leave the app. */}
       {model.me.partner ? (
-        <Text style={styles.peer} numberOfLines={1}>
+        <Text style={styles.peer} numberOfLines={1} allowFontScaling={false}>
           {he.seasonSharePartner(
             model.names[model.me.partner.userId] ?? '—',
             model.me.partner.count,
@@ -158,7 +226,7 @@ export function SeasonShareCard({
         </Text>
       ) : null}
       {model.me.nemesis ? (
-        <Text style={styles.peer} numberOfLines={1}>
+        <Text style={styles.peer} numberOfLines={1} allowFontScaling={false}>
           {he.seasonShareNemesis(
             model.names[model.me.nemesis.userId] ?? '—',
             model.me.nemesis.count,

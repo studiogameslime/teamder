@@ -17,8 +17,15 @@
 
 import { Ionicons } from '@expo/vector-icons';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FlatList,
+  type ListRenderItemInfo,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 
@@ -28,7 +35,12 @@ import { SeasonMedal } from '@/components/community/SeasonMedal';
 import { SeasonPoster } from '@/components/community/SeasonPoster';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { SEASON_TITLE_KEYS, type SeasonTitleKey } from '@/utils/seasonAwards';
-import { medalTier, titleStreak } from '@/utils/seasonMedalTier';
+import {
+  medalTier,
+  titleStreak,
+  TIER_NAME,
+  type MedalTier,
+} from '@/utils/seasonMedalTier';
 import {
   heroSeasonId,
   heroWinner,
@@ -44,6 +56,9 @@ import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
 type Params = RouteProp<CommunitiesStackParamList, 'SeasonHistory'>;
+
+/** How many cards get the staggered entrance — roughly a screenful. */
+const ENTRANCE_ROWS = 3;
 
 function formatRange(startsAt: number, endsAt: number): string {
   const f = (ms: number) =>
@@ -73,18 +88,21 @@ function formatDay(ms: number): string {
     : '';
 }
 
-/** The seeding-bug season: a line between two real ones, not a card. */
+/** The seeding-bug season: a line between two real ones, not a card.
+ *
+ *  The whole sentence, as i18n wrote it. It used to render the season number in
+ *  its own chip and then strip that number back out of the sentence with
+ *  `.replace('עונה N · ', '')` — a screen reaching into a string to undo part
+ *  of it, which survives exactly until the copy owner changes the separator or
+ *  drops the prefix, and then silently prints the number twice or not at all.
+ *  The line is short enough to be one line. */
 function VoidRibbon({ season }: { season: FinishedSeason }) {
+  const line = he.seasonVoidLine(season.no, formatDay(season.endsAt));
   return (
-    <View style={styles.ribbon}>
-      <Text style={styles.ribbonNo} allowFontScaling={false}>
-        {he.seasonNumberLabel(season.no)}
-      </Text>
+    <View style={styles.ribbon} accessible accessibilityLabel={line}>
+      <View style={styles.ribbonDot} />
       <Text style={styles.ribbonText} numberOfLines={2}>
-        {he.seasonVoidLine(season.no, formatDay(season.endsAt)).replace(
-          `${he.seasonNumberLabel(season.no)} · `,
-          '',
-        )}
+        {line}
       </Text>
     </View>
   );
@@ -124,24 +142,44 @@ function Cabinet({
           {row.map((key) => {
             const w = byKey.get(key);
             const streak = w ? titleStreak(all, index, key) : 1;
+            // Against what the title was DECIDED on, not against the season's
+            // length. Those are two counters over two eras, and grading
+            // 19-of-19 attendance as 19-of-22 put gold on the one record in the
+            // app that is unarguably perfect.
+            const tier: MedalTier = w
+              ? medalTier(
+                  key,
+                  w.value,
+                  season.awardsDenominator ?? season.completedRounds,
+                )
+              : 'bronze';
+            const names = w ? w.names.slice(0, 2).join(' · ') : '';
+            const shared = w && w.names.length > 2 ? w.names.length - 2 : 0;
+            // One slot, one thing said once. Nine medals of icon fonts and
+            // gradients are nine unlabelled images to TalkBack, and the tier —
+            // the entire second axis of the design — was carried by the colour
+            // of a ring and by nothing else, so a reader who cannot see it was
+            // told only that somebody won something.
+            const label = [
+              he.seasonTitleNames[key],
+              w ? names : he.seasonTitleNotAwarded,
+              shared > 0 ? he.seasonTitleSharedWith(shared) : '',
+              w ? he.seasonTitleValue(key, w.value) : '',
+              w ? TIER_NAME[tier] : '',
+              w && streak > 1 ? `×${streak}` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ');
             return (
-              <View key={key} style={styles.slot}>
+              <View
+                key={key}
+                style={styles.slot}
+                accessible
+                accessibilityLabel={label}
+              >
                 <SeasonMedal
                   titleKey={key}
-                  tier={
-                    w
-                      ? // Against what the title was DECIDED on, not against
-                        // the season's length. Those are two counters over two
-                        // eras, and grading 19-of-19 attendance as 19-of-22
-                        // put gold on the one record in the app that is
-                        // unarguably perfect.
-                        medalTier(
-                          key,
-                          w.value,
-                          season.awardsDenominator ?? season.completedRounds,
-                        )
-                      : 'bronze'
-                  }
+                  tier={tier}
                   streak={streak}
                   empty={!w}
                 />
@@ -153,19 +191,26 @@ function Cabinet({
                     {/* A name, then how many shared it. It used to render the
                         suffix INSTEAD of the names — "במשותף עם עוד 6 שחקנים"
                         with "עוד" pointing at nobody — so on the one club that
-                        has closed a season, the שחקן העונה medal named none of
+                        has closed a season, the כתר העונה medal named none of
                         its seven winners. The screen exists to answer "so who
                         actually won?". */}
                     <Text style={styles.slotName} numberOfLines={2}>
-                      {w.names.slice(0, 2).join(' · ')}
+                      {names}
                     </Text>
-                    {w.names.length > 2 ? (
+                    {shared > 0 ? (
                       <Text style={styles.slotShared} numberOfLines={1}>
-                        {he.seasonTitleSharedWith(w.names.length - 2)}
+                        {he.seasonTitleSharedWith(shared)}
                       </Text>
                     ) : null}
                     <Text style={styles.slotValue} numberOfLines={1}>
                       {he.seasonTitleValue(key, w.value)}
+                    </Text>
+                    {/* The metal, in words. TIER_NAME has existed since the
+                        medal was built and nothing ever rendered it, which left
+                        ארד and פלטינה distinguishable only by hue — on a 54pt
+                        disc, to a sighted reader, in Hebrew. */}
+                    <Text style={styles.slotTier} numberOfLines={1}>
+                      {TIER_NAME[tier]}
                     </Text>
                   </>
                 ) : (
@@ -186,7 +231,7 @@ function Cabinet({
   );
 }
 
-function SeasonCard({
+const SeasonCard = React.memo(function SeasonCard({
   season,
   all,
   index,
@@ -198,15 +243,22 @@ function SeasonCard({
   celebrate: boolean;
 }) {
   const hero = heroWinner(season);
+  // On the VARIANT, not on `winners.length`. The two answered the same question
+  // in two places and drifted: a season in which nobody played at all still
+  // reached this branch and was handed the half-season-gate explanation, which
+  // blames a roster that never existed. seasonCardVariant owns that decision —
+  // a season with nothing recorded anywhere never gets here at all, it is a
+  // ribbon — and this reads it rather than deciding it again.
+  const full = seasonCardVariant(season) === 'full';
   return (
     <View style={styles.card}>
       <SeasonPoster season={season} hero={hero} celebrate={celebrate} />
-      {season.winners.length === 0 ? (
+      {full ? (
+        <Cabinet season={season} all={all} index={index} />
+      ) : (
         // A club that played four evenings has nobody past the half-season
         // gate. The season happened; say so, and keep the card.
         <Text style={styles.noTitles}>{he.seasonHistoryNoTitles}</Text>
-      ) : (
-        <Cabinet season={season} all={all} index={index} />
       )}
       <View style={styles.foot}>
         <Text style={styles.range}>{formatRange(season.startsAt, season.endsAt)}</Text>
@@ -219,7 +271,7 @@ function SeasonCard({
       </View>
     </View>
   );
-}
+});
 
 export function SeasonHistoryScreen() {
   const params = useRoute<Params>().params;
@@ -234,10 +286,18 @@ export function SeasonHistoryScreen() {
   // dropped connection on a pull-to-refresh replaced a club's whole history
   // with the empty state, which reads as "the seasons are gone". The list is
   // kept and the failure is said above it.
+  // One view per visit. The event fired from `apply`, which also runs on every
+  // pull-to-refresh, so a club scrolling its own hall of fame and tugging the
+  // list four times reported four views and made the funnel behind the season
+  // push unreadable. A refresh is not a new view.
+  const viewLogged = useRef(false);
+
   const apply = useCallback((r: FinishedSeason[] | 'error') => {
     setFailed(r === 'error');
     if (r === 'error') return;
     setSeasons(r);
+    if (viewLogged.current) return;
+    viewLogged.current = true;
     logEvent(AnalyticsEvent.SeasonHistoryViewed, { groupId, seasons: r.length });
   }, [groupId]);
 
@@ -266,12 +326,47 @@ export function SeasonHistoryScreen() {
 
   const heroId = useMemo(() => heroSeasonId(seasons ?? []), [seasons]);
 
+  const list = seasons ?? [];
+  const renderItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<FinishedSeason>) => {
+      const row =
+        seasonCardVariant(item) === 'void' ? (
+          <VoidRibbon season={item} />
+        ) : (
+          <SeasonCard
+            season={item}
+            all={list}
+            index={index}
+            celebrate={item.seasonId === heroId}
+          />
+        );
+      // The entrance belongs to the screen arriving, not to scrolling. A
+      // virtualised row mounts when it comes into view, and ScreenEntrance is
+      // one-shot per MOUNT — so past the first screenful every card would fade
+      // and rise again each time the list was scrolled back over it.
+      return index < ENTRANCE_ROWS ? (
+        <ScreenEntrance index={index + 1}>{row}</ScreenEntrance>
+      ) : (
+        row
+      );
+    },
+    [heroId, list],
+  );
+
+  // Two sums, and only sums.
+  //
+  // There was a third number here, labelled "שחקנים", and it was
+  // `Math.max(players)` sitting between two `reduce(+)` totals — the same row,
+  // the same type, one of them answering a different question. A sum is the
+  // wrong answer too: the same fourteen people across four seasons are not
+  // fifty-six players. The club's roster size is a fact this screen does not
+  // hold, and each season's own players count is already on its poster, where
+  // it is exactly right.
   const totals = useMemo(() => {
     const list = seasons ?? [];
     return {
       rounds: list.reduce((n, s) => n + s.completedRounds, 0),
       mini: list.reduce((n, s) => n + s.totals.rounds, 0),
-      players: list.reduce((n, s) => Math.max(n, s.players), 0),
     };
   }, [seasons]);
 
@@ -289,9 +384,25 @@ export function SeasonHistoryScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader title={he.seasonHistoryTitle} />
-      <ScrollView
+      {/* VIRTUALISED, and it has to be.
+          Every season card is a floodlit plate (a gradient, a six-primitive
+          chalk Svg, an elevation layer) over a cabinet of nine medals, and each
+          medal is its own Svg plus three gradients. A club with twelve sealed
+          seasons therefore mounted 228 Svg roots, 336 gradients and ~1,584 SVG
+          nodes into a plain ScrollView in one frame, none of which it could
+          ever see at once. FlatList mounts the window and nothing else; the
+          count-ups are down to the one celebrated poster; and SeasonCard is
+          memoised so a pull-to-refresh that returns the same rows re-renders
+          nothing. */}
+      <FlatList
+        data={seasons}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={5}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -299,68 +410,64 @@ export function SeasonHistoryScreen() {
             tintColor={colors.primary}
           />
         }
-      >
-        {failed && seasons.length > 0 ? (
-          <Text style={styles.refreshFailed}>{he.seasonHistoryRefreshFailed}</Text>
-        ) : null}
-
-        {seasons.length === 0 ? (
+        ListHeaderComponent={
+          <>
+            {failed && seasons.length > 0 ? (
+              <Text style={styles.refreshFailed}>
+                {he.seasonHistoryRefreshFailed}
+              </Text>
+            ) : null}
+            {seasons.length > 0 ? (
+              <ScreenEntrance hero>
+                <View style={styles.crest}>
+                  <View style={styles.crestBadge}>
+                    <Ionicons name="trophy" size={20} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.crestText}>
+                    <Text style={styles.crestTitle}>{he.seasonHallTitle}</Text>
+                    <Text style={styles.crestMeta} numberOfLines={1}>
+                      {he.seasonHallClosed(seasons.length)}
+                    </Text>
+                  </View>
+                  <View style={styles.crestNums}>
+                    <CrestNum
+                      n={totals.rounds}
+                      label={he.seasonStatRoundsShort}
+                    />
+                    {/* Mini-games exist only in advanced mode, so most clubs
+                        have none and are not told a zero about it. */}
+                    {totals.mini > 0 ? (
+                      <CrestNum n={totals.mini} label={he.seasonStatMiniShort} />
+                    ) : null}
+                  </View>
+                </View>
+              </ScreenEntrance>
+            ) : null}
+          </>
+        }
+        ListEmptyComponent={
           <Text style={styles.empty}>
             {failed ? he.seasonHistoryLoadFailed : he.seasonHistoryEmpty}
           </Text>
-        ) : (
-          <>
-            <ScreenEntrance hero>
-              <View style={styles.crest}>
-                <View style={styles.crestBadge}>
-                  <Ionicons name="trophy" size={20} color="#FFFFFF" />
-                </View>
-                <View style={styles.crestText}>
-                  <Text style={styles.crestTitle}>{he.seasonHallTitle}</Text>
-                  <Text style={styles.crestMeta} numberOfLines={1}>
-                    {he.seasonHallClosed(seasons.length)}
-                  </Text>
-                </View>
-                <View style={styles.crestNums}>
-                  <CrestNum n={totals.rounds} label={he.seasonStatRoundsShort} />
-                  {totals.mini > 0 ? (
-                    <CrestNum n={totals.mini} label={he.seasonStatMiniShort} />
-                  ) : null}
-                  <CrestNum n={totals.players} label={he.seasonStatPlayersShort} />
-                </View>
-              </View>
-            </ScreenEntrance>
-
-            {seasons.map((s, i) =>
-              seasonCardVariant(s) === 'void' ? (
-                <ScreenEntrance key={s.seasonId} index={i + 1}>
-                  <VoidRibbon season={s} />
-                </ScreenEntrance>
-              ) : (
-                <ScreenEntrance key={s.seasonId} index={i + 1}>
-                  <SeasonCard
-                    season={s}
-                    all={seasons}
-                    index={i}
-                    celebrate={s.seasonId === heroId}
-                  />
-                </ScreenEntrance>
-              ),
-            )}
-          </>
-        )}
-      </ScrollView>
+        }
+      />
     </SafeAreaView>
   );
 }
 
+const keyExtractor = (s: FinishedSeason) => s.seasonId;
+
 function CrestNum({ n, label }: { n: number; label: string }) {
   return (
-    <View style={styles.crestNum}>
-      <Text style={styles.crestNumValue} allowFontScaling={false}>
+    <View style={styles.crestNum} accessible accessibilityLabel={`${n} ${label}`}>
+      <Text style={styles.crestNumValue} maxFontSizeMultiplier={1.4}>
         {n}
       </Text>
-      <Text style={styles.crestNumLabel} numberOfLines={1}>
+      <Text
+        style={styles.crestNumLabel}
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.4}
+      >
         {label}
       </Text>
     </View>
@@ -442,16 +549,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  ribbonNo: {
-    ...typography.caption,
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#9AA3B2',
-    backgroundColor: '#E7EAF0',
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    overflow: 'hidden',
+  // A mark where the season-number chip used to be, so the ribbon still reads
+  // as an entry in the column rather than as a loose sentence. It carries no
+  // text: the line names its own season.
+  ribbonDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#C3CAD6',
   },
   ribbonText: {
     ...typography.caption,
@@ -523,6 +628,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textMuted,
     fontVariant: ['tabular-nums'],
+    textAlign: 'center',
+  },
+  slotTier: {
+    ...typography.caption,
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: '800',
+    color: '#9AA3B2',
     textAlign: 'center',
   },
   slotEmpty: {

@@ -14,37 +14,59 @@
  * A source-level guard, in the spirit of tests/hooksAfterEarlyReturn.ts: there
  * is no way to unit-test a Firestore race from here, but there IS a way to
  * make sure nobody rewrites the fix as an absolute assignment again.
+ *
+ * Over the WHOLE backend, not over index.ts alone. The rule is "nothing
+ * anywhere writes these two counters as an absolute value", and the version
+ * that shipped read one file — so the same write in seasonRollover.ts, or in a
+ * file created tomorrow, passed it in silence. Both counters are already
+ * mentioned by name in four other server files.
  */
-import * as fs from 'fs';
-import * as path from 'path';
+import { codeLines, serverFiles } from '../fixtures/serverSource';
 
-const SRC = fs.readFileSync(
-  path.join(__dirname, '..', '..', 'functions/src/index.ts'),
-  'utf8',
-);
+/** Both counters, and what a caller must never do to them. */
+const COUNTERS = ['eveningsSealed', 'playedRounds'] as const;
 
-describe('sealRoundSummary counters', () => {
-  it('never writes eveningsSealed as an absolute value', () => {
-    // `eveningsSealed: <anything> + 1` is the shape that lost an evening.
-    const absolute =
-      /eveningsSealed:\s*(?!admin\.firestore\.FieldValue\.increment)[^,\n]*\+\s*1/;
-    expect(SRC).not.toMatch(absolute);
-  });
-
-  it('increments it atomically instead', () => {
-    expect(SRC).toMatch(
-      /eveningsSealed:\s*admin\.firestore\.FieldValue\.increment\(1\)/,
+describe('the two evening counters', () => {
+  it.each(COUNTERS)('%s is never written as an absolute value', (field) => {
+    // `<field>: <anything> + 1` is the shape that lost an evening. Comments
+    // are excluded, or the note explaining the fix would trip its own guard.
+    const absolute = new RegExp(
+      `${field}:\\s*(?!admin\\.firestore\\.FieldValue\\.increment)[^,\\n]*\\+\\s*1`,
     );
+    const offenders = codeLines()
+      .filter((l) => absolute.test(l.line))
+      .map((l) => `${l.where} — ${l.line.trim()}`);
+    expect(offenders).toEqual([]);
   });
 
-  it('increments the season mirror the same way', () => {
+  it('and neither is derived from the other', () => {
     // `seasons.playedRounds` is the number the club actually SEES ("2 מתוך 3
     // מחזורים"). Computing it from the same stale read reintroduces the bug on
     // the visible half.
-    expect(SRC).toMatch(
-      /playedRounds:\s*admin\.firestore\.FieldValue\.increment\(1\)/,
+    const offenders = codeLines()
+      .filter((l) => /playedRounds:\s*eveningsSealed/.test(l.line))
+      .map((l) => l.where);
+    expect(offenders).toEqual([]);
+  });
+
+  it('the seal increments both atomically', () => {
+    const src = serverFiles()
+      .map((f) => f.text)
+      .join('\n');
+    for (const field of COUNTERS) {
+      expect(src).toMatch(
+        new RegExp(`${field}:\\s*admin\\.firestore\\.FieldValue\\.increment\\(1\\)`),
+      );
+    }
+  });
+
+  it('and the guard is reading the file the seal is actually in', () => {
+    // The failure this whole file guards against is a write that moved. So the
+    // scan proves it can see the seal before it certifies anything: a guard
+    // that reads the wrong file reports a clean run for ever.
+    const seen = serverFiles().filter((f) =>
+      /eveningsSealed:\s*admin\.firestore\.FieldValue\.increment/.test(f.text),
     );
-    const absolute = /playedRounds:\s*eveningsSealed\s*\+\s*1/;
-    expect(SRC).not.toMatch(absolute);
+    expect(seen.length).toBeGreaterThan(0);
   });
 });
