@@ -2030,6 +2030,10 @@ export const he = {
     'ההגדרות כאן נשמרות בכפתור שמעל, לא ב"שמור" שבתחתית המסך.',
   seasonsToggleLabel: 'עונות',
   seasonsToggleHint: 'לחלק את המועדון לעונות עם התחלה, סוף ותארים',
+  // What the switch actually does, said once, plainly — the explanation the
+  // most complicated setting on the screen never had.
+  seasonsToggleInfo:
+    'עונה היא פרק זמן עם התחלה וסוף. אפשר למדוד אותה בערבי משחק (״אחרי 20 מחזורים״) או בזמן (״אחרי חצי שנה״).\n\nכשעונה נגמרת: מחולקים תשעה תארים, טבלת המועדון מתחילה מאפס, והעונה נשמרת בארכיון ואפשר תמיד לחזור אליה.\n\nמה שלא מושפע: הסטטיסטיקה המצטברת בפרופיל, ההישגים והרצפים. אפשר לכבות עונות בכל רגע — העונות שכבר נסגרו נשארות.',
   seasonsCadenceQuestion: 'איך העונה נגמרת',
   seasonsHowLong: 'אחרי כמה זמן',
   seasonsHowMany: 'אחרי כמה מחזורים',
@@ -2230,6 +2234,12 @@ export const he = {
   seasonsConfirmNextRoundValue: (target: number) => `1/${target} של עונה 2`,
   seasonsConfirmSeason1Ends: 'עונה 1 תסתיים',
   seasonsConfirmSeason2Starts: 'עונה 2 תתחיל',
+  // With the real numbers. The pair above is hardcoded to 1 and 2, and season
+  // numbering CONTINUES across the feature being switched off and on — so a
+  // club already on season 3 read "עונה 1 תסתיים ועונה 2 תתחיל" on the last
+  // screen before an irreversible change.
+  seasonsEndsLabel: (no: number) => `עונה ${no} תסתיים`,
+  seasonsStartsLabel: (no: number) => `עונה ${no} תתחיל`,
   seasonsConfirmFromSeason2: 'משך עונה 2 והלאה',
   seasonsConfirmCta: 'אישור והפעלה',
   seasonHistoryTitle: 'עונות קודמות',

@@ -47,6 +47,9 @@ import {
 } from '@/utils/seasonActivation';
 import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { Ionicons } from '@expo/vector-icons';
+
+import { InfoTip } from '@/components/InfoTip';
 import type { GroupSeasons } from '@/types';
 
 type Cadence = 'date' | 'rounds';
@@ -272,6 +275,12 @@ export function SeasonsSettings({
 
 
   const firstTime = (seasons?.count ?? 0) === 0 && !live;
+  /** The season this action is about. Numbering CONTINUES across the feature
+   *  being switched off and on, so it is never simply 1 — and every label on
+   *  this screen used to say so. */
+  const thisSeasonNo = live
+    ? (seasons?.currentNo ?? 1)
+    : (seasons?.count ?? 0) + 1;
 
   useEffect(() => {
     if (!open) return;
@@ -499,7 +508,15 @@ export function SeasonsSettings({
         accessibilityState={{ checked: open }}
       >
         <View style={styles.toggleText}>
-          <Text style={styles.toggleLabel}>{he.seasonsToggleLabel}</Text>
+          <View style={styles.toggleTitleRow}>
+            <Text style={styles.toggleLabel}>{he.seasonsToggleLabel}</Text>
+            {/* Every other switch on this screen carries one — מועדון פתוח,
+                דירוג פנימי, להסתיר דירוג, כרטיסים — and this was the only one
+                without, while being by far the hardest thing on it. The owner
+                wrote the spec for this feature and still said "I do not
+                understand what is going on there". */}
+            <InfoTip title={he.seasonsToggleLabel} text={he.seasonsToggleInfo} />
+          </View>
           <Text style={styles.toggleHint}>{he.seasonsToggleHint}</Text>
         </View>
         <BallSwitch
@@ -525,7 +542,10 @@ export function SeasonsSettings({
             <Text style={styles.fieldHint}>{he.seasonsOffBody}</Text>
           )}
 
-          <Text style={styles.fieldLabel}>{he.seasonsCadenceQuestion}</Text>
+          <View style={styles.sectionHead}>
+            <Ionicons name="flag-outline" size={16} color={colors.primary} />
+            <Text style={styles.sectionHeadText}>{he.seasonsCadenceQuestion}</Text>
+          </View>
           <View style={styles.chipRow}>
             <Chip
               label={he.seasonsCadenceDate}
@@ -616,8 +636,12 @@ export function SeasonsSettings({
 
           {/* The dates, live. They answer "what am I actually choosing?" while
               the admin is still choosing, which is the whole point of showing
-              them here rather than in the confirmation alone. */}
-          {previewDates && !(firstTime && !sealHistory) ? (
+              them here rather than in the confirmation alone.
+              NOT on a first activation: the plan-based box below knows about
+              the history choice and this one does not, and on the seal path
+              both used to render together — two identical-looking boxes, the
+              second labelling a different season's end with the first's name. */}
+          {previewDates && !firstTime ? (
             <View style={styles.dateBox}>
               <DateLine
                 label={he.seasonsStartsOnLabel}
@@ -637,7 +661,10 @@ export function SeasonsSettings({
 
           {firstTime ? (
             <>
-              <Text style={styles.fieldLabel}>{he.seasonsCloseFirstTitle}</Text>
+              <View style={styles.sectionHead}>
+                <Ionicons name="archive-outline" size={16} color={colors.primary} />
+                <Text style={styles.sectionHeadText}>{he.seasonsCloseFirstTitle}</Text>
+              </View>
               <Text style={styles.fieldHint}>{he.seasonsCloseFirstBody}</Text>
               <View style={styles.chipRow}>
                 <Chip
@@ -708,12 +735,12 @@ export function SeasonsSettings({
                 <View style={styles.dateBox}>
                   {plan.endsOn ? (
                     <DateLine
-                      label={he.seasonsConfirmSeason1Ends}
+                      label={he.seasonsEndsLabel(thisSeasonNo)}
                       value={formatCalendarDate(plan.endsOn)}
                     />
                   ) : null}
                   <DateLine
-                    label={he.seasonsConfirmSeason2Starts}
+                    label={he.seasonsStartsLabel(thisSeasonNo + 1)}
                     value={formatCalendarDate(plan.nextStartsOn)}
                     muted
                   />
@@ -832,6 +859,11 @@ const styles = StyleSheet.create({
   // matching every other toggle on this screen.
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   toggleText: { flex: 1, gap: 2 },
+  toggleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   toggleLabel: {
     ...typography.body,
     color: colors.text,
@@ -854,12 +886,31 @@ const styles = StyleSheet.create({
     color: colors.primary,
     textAlign: RTL_LABEL_ALIGN,
   },
+  // A HEADING, not another caption.
+  //
+  // The whole body was one flat 8px column of ~20 elements, nearly all at the
+  // same 13px caption size — labels, hints, warnings, previews and buttons all
+  // carrying identical weight, with nothing for the eye to anchor on. This is
+  // the one element that is allowed to be bigger, and it gets real space above
+  // it so the things under it read as belonging to it.
   fieldLabel: {
-    ...typography.caption,
+    ...typography.label,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
-    marginTop: spacing.xs,
+    marginTop: spacing.md,
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.md,
+  },
+  sectionHeadText: {
+    ...typography.label,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
   },
   fieldHint: {
     ...typography.caption,
