@@ -365,6 +365,9 @@ export function SeasonsSettings({
         playedHistory: history ?? 0,
         today,
         season1EndsOn: season1EndsOn ?? undefined,
+        // No season 1 to date when the club has already run one — and no
+        // control on screen that could pick a date for it.
+        hasHistory: !firstTime,
       }),
     [cadence, months, rounds, sealHistory, history, today, season1EndsOn],
   );

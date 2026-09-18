@@ -33,14 +33,17 @@ describe.each([
     'functions/src/seasonActivation.ts',
   ],
 ])('the two copies of %s', (_name, clientPath, serverPath) => {
-  const client = fs.readFileSync(
-    path.join(ROOT, 'src/utils/eveningPlayed.ts'),
-    'utf8',
-  );
-  const server = fs.readFileSync(
-    path.join(ROOT, 'functions/src/eveningPlayed.ts'),
-    'utf8',
-  );
+  // The paths the table declares, not one file hard-coded five times.
+  //
+  // This block read `src/utils/eveningPlayed.ts` regardless of which row was
+  // running, so four of the five mirrors were never compared at all and the
+  // suite reported ten green assertions that were two assertions run five
+  // times. seasonSeed decides `roundsAtStart` and `playedRounds` for every
+  // season the server opens, seasonActivation decides what "continue" means,
+  // seasonParticipants decides the "0 שחקנים" number — all four could drift
+  // from the client copy with this test passing.
+  const client = fs.readFileSync(path.join(ROOT, clientPath), 'utf8');
+  const server = fs.readFileSync(path.join(ROOT, serverPath), 'utf8');
 
   it('the server copy declares itself a copy', () => {
     expect(server).toContain(MARKER);

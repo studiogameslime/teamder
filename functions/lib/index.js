@@ -12420,19 +12420,35 @@ async function sealedEveningsOf(groupId) {
  * only record of which season an evening was played in, and
  * `didEveningHappen` is the only thing allowed to say whether it happened.
  */
-async function playedEveningsOfSeason(groupId, seasonId) {
+async function playedEveningsOfSeason(groupId, seasonId, 
+/**
+ * Season 1 owns the evenings played before the stamp existed.
+ *
+ * The stamp only began being written when the feature shipped, so a club
+ * that carried its history into season 1 has evenings that belong to it and
+ * carry nothing — nineteen of twenty-two on the one real club. Counting only
+ * the stamped ones brought that season back holding 3, which is the same
+ * defect as the counter subtraction this replaced, from the other side. The
+ * client has encoded this rule since the feature shipped
+ * (`gameService.inSeason`); the server had not.
+ */
+seasonNo) {
     if (!seasonId)
         return 0;
     try {
         const snap = await db
             .collection('games')
             .where('groupId', '==', groupId)
-            .where('seasonId', '==', seasonId)
+            .where('status', 'in', ['finished', 'cancelled'])
+            .orderBy('startsAt', 'desc')
             .limit(300)
             .get();
         let n = 0;
         snap.forEach((d) => {
-            if ((0, eveningPlayed_1.didEveningHappen)(d.data()))
+            const g = d.data();
+            const stamp = typeof g.seasonId === 'string' ? g.seasonId : '';
+            const mine = stamp ? stamp === seasonId : seasonNo === 1;
+            if (mine && (0, eveningPlayed_1.didEveningHappen)(g))
                 n += 1;
         });
         return n;
@@ -13227,7 +13243,7 @@ exports.reopenLastSeason = (0, https_1.onCall)({
             // A failed count (-1) keeps the archive figure rather than zeroing a
             // season because one query timed out.
             playedRounds: await (async () => {
-                const counted = await playedEveningsOfSeason(groupId, lastId);
+                const counted = await playedEveningsOfSeason(groupId, lastId, lastNo);
                 if (counted >= 0)
                     return counted;
                 return typeof archive.get('completedRounds') === 'number'
@@ -13274,7 +13290,15 @@ exports.endSeasonNow = (0, https_1.onCall)({
         seasonId: seasons.currentId,
         seasonNo: seasons.currentNo ?? 1,
         startsAt: seasons.startedAt ?? 0,
-        completedRounds: await completedRoundsOf(groupId, seasons.roundsAtStart),
+        // THREE arguments, like every other close.
+        //
+        // This one passed two, so `completedRoundsOf` fell through to
+        // `eveningsSealed - roundsAtStart` — a subtraction of two counters that
+        // are not even in the same era. On the one club that has ever run
+        // seasons those are 10 and 7, so "סיים עונה עכשיו" would have sealed a
+        // season of THREE that the club had watched reach twenty-two, into an
+        // archive that is written once and never recomputed.
+        completedRounds: await completedRoundsOf(groupId, seasons.roundsAtStart, seasons.playedRounds),
         roundsAtStart: seasons.roundsAtStart ?? 0,
         endedEarly: true,
         closedBy: uid,

@@ -123,7 +123,16 @@ function Cabinet({
                   titleKey={key}
                   tier={
                     w
-                      ? medalTier(key, w.value, season.completedRounds)
+                      ? // Against what the title was DECIDED on, not against
+                        // the season's length. Those are two counters over two
+                        // eras, and grading 19-of-19 attendance as 19-of-22
+                        // put gold on the one record in the app that is
+                        // unarguably perfect.
+                        medalTier(
+                          key,
+                          w.value,
+                          season.awardsDenominator ?? season.completedRounds,
+                        )
                       : 'bronze'
                   }
                   streak={streak}

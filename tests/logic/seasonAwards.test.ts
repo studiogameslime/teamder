@@ -323,3 +323,29 @@ describe('a season with no finished evenings', () => {
     expect(a.topScorer?.winners).toEqual(['real']);
   });
 });
+
+describe('the MVP scale floor', () => {
+  // The evening score is clamped to [6, 10] and returns exactly 6.0 for a
+  // player who played no mini-games — which is every player of every
+  // timer-only club. With the old floor of 0 that sentinel won.
+  const flat = (uid: string) => player(uid, { games: 18, mvpAvg: 6 });
+
+  it('nobody is player of the season on the bottom of the scale', () => {
+    const rows = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(flat);
+    expect(computeSeasonAwards(rows, [], 22).mvp).toBeNull();
+  });
+
+  it('and the whole club does not share it', () => {
+    // The exact production shape: seven members, every mvpAvg 6.0, seven
+    // title documents written to seven profiles.
+    const rows = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(flat);
+    expect(computeSeasonAwards(rows, [], 22).mvp?.winners ?? []).toHaveLength(0);
+  });
+
+  it('one player above the floor still takes it', () => {
+    const rows = [flat('a'), flat('b'), player('c', { games: 18, mvpAvg: 6.4 })];
+    const mvp = computeSeasonAwards(rows, [], 22).mvp;
+    expect(mvp?.winners).toEqual(['c']);
+    expect(mvp?.value).toBeCloseTo(6.4);
+  });
+});

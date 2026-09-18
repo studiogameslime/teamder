@@ -47,6 +47,13 @@ jest.mock('@/services/achievementsService', () => ({
 jest.mock('@/store/userStore', () => ({
   useUserStore: { getState: () => ({ currentUser: null }) },
 }));
+// groupStore reaches organiserSignals → joryio, which is untransformed ESM in
+// node_modules. Without this the whole suite fails to RUN — which it had been
+// doing since 17.09, silently, taking with it the repo's only test of "a failed
+// refresh must not destroy what we already had".
+jest.mock('@/services/organiserSignals', () => ({
+  reportOrganiserState: jest.fn(),
+}));
 jest.mock('@/services/errorLog', () => ({ logError: jest.fn() }));
 
 import { useGroupStore } from '@/store/groupStore';

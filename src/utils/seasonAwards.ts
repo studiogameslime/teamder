@@ -136,6 +136,10 @@ export function minPenaltyAttempts(completedRounds: number): number {
  */
 const MIN_DUO_ASSISTS = 3;
 
+/** The bottom of the evening-score scale. A season in which nobody rose above
+ *  it has no player of the season — see the note at the `mvp` call. */
+const MVP_SCALE_FLOOR = 6;
+
 /** Everyone holding the maximum, or null when the max is not worth a title. */
 function leaders<T>(
   rows: readonly T[],
@@ -201,7 +205,20 @@ export function computeSeasonAwards(
     topAssister: leaders(eligible, (p) => p.assists, (p) => p.uid),
     // Average, not sum: the spec's call. The half-season gate is what stops
     // it rewarding someone who only shows up on the easy nights.
-    mvp: leaders(eligible, (p) => p.mvpAvg, (p) => p.uid),
+    //
+    // Floored at the SCALE's own bottom, not at zero.
+    //
+    // The evening score is clamped to [6, 10], and 6.0 is also what it returns
+    // for a player who took the field for no mini-games — which is every
+    // player of every club that runs the plain timer, because mini-games only
+    // exist in advanced mode. With a floor of 0 the sentinel cleared it, so
+    // the title that is supposed to name the season was awarded to the entire
+    // eligible roster at the value that means "nothing was recorded".
+    //
+    // On the one club that has ever closed a season, all seven members hold
+    // שחקן העונה at exactly 6.0, and seven title documents sit on seven
+    // profiles. Nobody beat anybody.
+    mvp: leaders(eligible, (p) => p.mvpAvg, (p) => p.uid, MVP_SCALE_FLOOR),
     topWinner: leaders(eligible, (p) => p.wins, (p) => p.uid),
     // Loyalty is turning up, so it counts EVENINGS. On mini-games it would
     // reward whoever happened to play in the longest rotations instead.

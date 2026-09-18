@@ -204,3 +204,41 @@ describe('a client that predates the season-1 end picker', () => {
     expect(p.nextStartsOn).toBe('2026-11-01');
   });
 });
+
+describe('a club that already ran a season', () => {
+  // The date picker for "when does season 1 end" is rendered only on a first
+  // activation. Demanding its value from a club that has no season 1 left the
+  // date cadence permanently unreachable: dead button, and a red line naming a
+  // season the club archived months ago.
+  const base = {
+    cadence: 'date' as const,
+    months: 6,
+    choice: 'continue' as const,
+    playedHistory: 22,
+    today: '2026-09-18' as const,
+  };
+
+  it('does not have to date a season 1 it no longer has', () => {
+    const plan = planActivation({ ...base, hasHistory: true });
+    expect(plan.ok).toBe(true);
+    expect(plan.error).toBeUndefined();
+    expect(plan.endsOn).toBe('2027-03-17');
+  });
+
+  it('a first activation still must pick one', () => {
+    expect(planActivation({ ...base, hasHistory: false }).error).toBe(
+      'season1EndRequired',
+    );
+    expect(planActivation(base).error).toBe('season1EndRequired');
+  });
+
+  it('an explicit date still wins over the derived one', () => {
+    const plan = planActivation({
+      ...base,
+      hasHistory: true,
+      season1EndsOn: '2026-11-30',
+    });
+    expect(plan.ok).toBe(true);
+    expect(plan.endsOn).toBe('2026-11-30');
+  });
+});

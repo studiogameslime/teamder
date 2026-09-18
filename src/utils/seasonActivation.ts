@@ -33,6 +33,9 @@ export interface ActivationInput {
   today: CalendarDate;
   /** Chosen end for season 1 when carrying it on under a DATE cadence. */
   season1EndsOn?: CalendarDate;
+  /** The club has already run at least one season — so there is no season 1 to
+   *  give an end date to, and no control on screen that could pick one. */
+  hasHistory?: boolean;
 }
 
 export type ActivationError =
@@ -145,8 +148,21 @@ export function planActivation(input: ActivationInput): ActivationPlan {
   // compute — the history stretches back as far as the club does. So season 1 is
   // a transitional season whose END the admin picks, and the chosen length only
   // begins to apply from season 2.
+  //
+  // Only on a FIRST activation, though. A club that is already running seasons,
+  // or that closed some and is switching the feature back on, has no season 1 to
+  // give an end date to — and the control that picks one is rendered only on a
+  // first activation, so demanding it left every such club with a dead button, a
+  // red line naming a season it archived months ago, and no date picker anywhere
+  // on the screen. The date cadence was unreachable for the entire life of a
+  // club. The server already derives the date itself in this case.
   const end = input.season1EndsOn;
-  if (!end) return { ...base, error: 'season1EndRequired' };
+  if (!end) {
+    if (input.hasHistory) {
+      return { ...base, ok: true, endsOn: seasonEndDate(today, months!) };
+    }
+    return { ...base, error: 'season1EndRequired' };
+  }
   if (end <= today) return { ...base, error: 'season1EndNotFuture' };
   return {
     ...base,
