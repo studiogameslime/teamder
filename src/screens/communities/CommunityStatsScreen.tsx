@@ -22,6 +22,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { InfoTip } from '@/components/InfoTip';
 import { UserAvatar } from '@/components/UserAvatar';
 import { AchievementBadge } from '@/components/AchievementBadge';
 import { appAlert } from '@/components/AppDialog';
@@ -567,39 +568,6 @@ export function CommunityStatsScreen() {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          {/* The table below belongs to ONE season. Said out loud, at the top,
-              because otherwise the numbers reset one day with no explanation. */}
-          {seasons?.enabled && scope.k === 'current' ? (
-            <Pressable
-              style={styles.seasonBanner}
-              onPress={() =>
-                (seasons.count ?? 0) > 0
-                  ? nav.navigate('SeasonHistory', { groupId })
-                  : undefined
-              }
-              accessibilityRole={(seasons.count ?? 0) > 0 ? 'button' : 'text'}
-            >
-              <Text style={styles.seasonBannerText}>
-                {/* A club whose new season has no goals yet is not an empty
-                    club — it is a club between seasons, and that is a very
-                    different sentence. Half this screen (the top scorer, the
-                    leaders, the donuts, the duo, eight fun facts) is gated on
-                    `> 0` and goes dark in one paint on the first evening after
-                    a close; without this the ten-year member reads it as
-                    "מחקו לי הכל". */}
-                {(seasons.count ?? 0) > 0 && !hasScoring
-                  ? he.communityStatsSeasonFresh(seasons.currentNo ?? 1)
-                  : he.communityStatsSeasonBanner(seasons.currentNo ?? 1)}
-              </Text>
-              {(seasons.count ?? 0) > 0 ? (
-                <Text style={styles.seasonBannerLink}>
-                  {!hasScoring
-                    ? he.communityStatsSeasonFreshCta
-                    : he.seasonHistoryCta}
-                </Text>
-              ) : null}
-            </Pressable>
-          ) : null}
           {/* בורר התצוגה. מופיע לכל מועדון שמנהל עונות — גם לפני שנסגרה
               עונה ראשונה, כי בלעדיו אי אפשר לדעת שהמספרים על המסך הם של
               העונה ולא של כל הזמנים. זו בדיוק השאלה שנשאלה. */}
@@ -627,12 +595,17 @@ export function CommunityStatsScreen() {
                   />
                   {/* כל הזמנים = השורות החיות ועוד כל עונה שנסגרה. אחרי
                       הסגירה הראשונה זה המקום היחיד שעונה על "כמה שערים
-                      הבקעתי במועדון הזה אי פעם". */}
-                  <ScopeChip
-                    text={he.communityStatsScopeAllTime}
-                    active={scope.k === 'all'}
-                    onPress={() => setScope({ k: 'all' })}
-                  />
+                      הבקעתי במועדון הזה אי פעם".
+                      Only once there IS a closed season to add. Offered to a
+                      club with none, it was a chip identical to the one beside
+                      it whose note read "0 העונות שנסגרו". */}
+                  {pastSeasons.length > 0 ? (
+                    <ScopeChip
+                      text={he.communityStatsScopeAllTime}
+                      active={scope.k === 'all'}
+                      onPress={() => setScope({ k: 'all' })}
+                    />
+                  ) : null}
                   {pastSeasons.map((ps) => (
                     <ScopeChip
                       key={ps.seasonId}
@@ -643,6 +616,45 @@ export function CommunityStatsScreen() {
                   ))}
                 </ScrollView>
               </View>
+              {/* The table below belongs to ONE season. Said out loud, because
+                  otherwise the numbers reset one day with no explanation.
+                  BELOW the picker, not above it: this block renders only for
+                  the running season, so while it sat on top the chips jumped
+                  up two lines the moment you tapped a past season — the row
+                  you were aiming at moved out from under your finger. Under
+                  the picker every scope has exactly one explanatory line in
+                  exactly one place. */}
+              {seasons?.enabled && scope.k === 'current' ? (
+                <Pressable
+                  style={styles.seasonBanner}
+                  onPress={() =>
+                    (seasons.count ?? 0) > 0
+                      ? nav.navigate('SeasonHistory', { groupId })
+                      : undefined
+                  }
+                  accessibilityRole={(seasons.count ?? 0) > 0 ? 'button' : 'text'}
+                >
+                  <Text style={styles.seasonBannerText}>
+                    {/* A club whose new season has no goals yet is not an empty
+                        club — it is a club between seasons, and that is a very
+                        different sentence. Half this screen (the top scorer, the
+                        leaders, the donuts, the duo, eight fun facts) is gated on
+                        `> 0` and goes dark in one paint on the first evening after
+                        a close; without this the ten-year member reads it as
+                        "מחקו לי הכל". */}
+                    {(seasons.count ?? 0) > 0 && !hasScoring
+                      ? he.communityStatsSeasonFresh(seasons.currentNo ?? 1)
+                      : he.communityStatsSeasonBanner(seasons.currentNo ?? 1)}
+                  </Text>
+                  {(seasons.count ?? 0) > 0 ? (
+                    <Text style={styles.seasonBannerLink}>
+                      {!hasScoring
+                        ? he.communityStatsSeasonFreshCta
+                        : he.seasonHistoryCta}
+                    </Text>
+                  ) : null}
+                </Pressable>
+              ) : null}
               {scope.k === 'all' ? (
                 <Text style={styles.scopeNote}>
                   {archiveBusy
@@ -651,6 +663,7 @@ export function CommunityStatsScreen() {
                 </Text>
               ) : null}
               {scopedCard ? (
+                <View style={styles.scopeNoteRow}>
                 <Text style={styles.scopeNote}>
                   {archiveBusy
                     ? he.communityStatsScopeLoading
@@ -663,6 +676,12 @@ export function CommunityStatsScreen() {
                         }),
                       )}
                 </Text>
+                {/* The half that explains what is NOT here. It used to be
+                    three more lines of the same permanent paragraph. */}
+                {!archiveBusy ? (
+                  <InfoTip text={he.communityStatsScopeClosedInfo} />
+                ) : null}
+                </View>
               ) : null}
               {/* The club's table for a finished season is right here, and the
                   reader's own season is one tap away — but only for a season
@@ -1197,6 +1216,11 @@ const styles = StyleSheet.create({
   scopeChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   scopeChipText: { ...typography.caption, color: colors.textMuted, fontWeight: '600' },
   scopeChipTextOn: { color: '#fff' },
+  scopeNoteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   scopeNote: {
     ...typography.caption,
     color: colors.textMuted,

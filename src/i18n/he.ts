@@ -2172,8 +2172,14 @@ export const he = {
   communityStatsScopePast: (no: number) => `עונה ${no}`,
   // מה כן ומה לא נשמר לעונה שהסתיימה. נאמר במפורש, כי מספר שנעלם בלי הסבר
   // נקרא כתקלה — וכל מה שהוסתר כאן הוא נתון של המועדון כולו, לא של העונה.
+  // One line on screen. The long version was four lines pinned permanently
+  // under the picker, and a paragraph that never goes away stops being read.
+  // The half that explains what is MISSING moved into a tooltip, where it is
+  // there for whoever asks.
   communityStatsScopeClosedNote: (no: number, when: string) =>
-    `עונה ${no} הסתיימה ב-${when}. כל המספרים כאן הם שלה בלבד, בדיוק כפי שננעלו. אחוז ההתארגנות, הרצפים, הכימיה ותארי המועדון נמדדים על המועדון לאורך כל הדרך ולא על עונה בודדת, ולכן מוצגים רק בעונה הרצה.`,
+    `עונה ${no} הסתיימה ב-${when} — המספרים כאן הם שלה בלבד.`,
+  communityStatsScopeClosedInfo:
+    'אחוז ההתארגנות, הרצפים, הכימיה בין השחקנים ותארי המועדון נמדדים על המועדון לאורך כל הדרך, לא על עונה בודדת — ולכן הם מוצגים רק בעונה הרצה.',
   communityStatsScopeLoading: 'טוענים את העונה…',
   // המקרה היחיד שבו המערכת שואלת אם מחזור התקיים: היא סגרה אותו לבד ולא נשאר
   // בו שום סימן שמישהו שיחק. בכל מקרה אחר יש לה תשובה ואין מה לשאול.

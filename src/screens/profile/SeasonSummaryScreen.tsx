@@ -42,7 +42,7 @@ import type {
 import { useUserStore } from '@/store/userStore';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
-import { colors, spacing, typography } from '@/theme';
+import { colors, radius, shadows, spacing, typography } from '@/theme';
 import { RTL_LABEL_ALIGN } from '@/theme/rtl';
 import { he } from '@/i18n/he';
 import type { ProfileStackParamList } from '@/navigation/ProfileStack';
@@ -100,7 +100,12 @@ function Stat({
           1.9:1 for amber — nine of the thirteen accents on this screen fell
           under 3:1, and the number a player came here to read was the least
           legible thing on it. */}
-      <Text style={styles.statValue}>{value}</Text>
+      {/* One line, always. "1 מתוך 12" does not fit 68pt at this size, and a
+          rank that wraps onto a second line pushed its own label out of the
+          tile. */}
+      <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        {value}
+      </Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
@@ -117,6 +122,36 @@ function rankTint(rank: number | null): string {
 }
 function rankIcon(rank: number | null): keyof typeof Ionicons.glyphMap {
   return rank && rank <= 3 ? 'medal' : 'podium-outline';
+}
+
+/** The three numbers a player came for, one step above the other ten.
+ *
+ *  The card was thirteen identical tiles: goals sat beside clean-sheet
+ *  percentage at the same size, in the same grey, with the same disc — so the
+ *  card had no entry point and nothing to read first. These three keep the
+ *  tile shape and take the headline weight. */
+function LeadStat({
+  label,
+  value,
+  icon,
+  tint,
+}: {
+  label: string;
+  value: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  tint: string;
+}) {
+  return (
+    <View style={[styles.leadStat, { borderColor: tint + '33', backgroundColor: tint + '0F' }]}>
+      <View style={styles.leadHead}>
+        <Ionicons name={icon} size={14} color={tint} />
+        <Text style={styles.leadLabel}>{label}</Text>
+      </View>
+      <Text style={styles.leadValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+        {value}
+      </Text>
+    </View>
+  );
 }
 
 function CardTitle({
@@ -452,10 +487,12 @@ export function SeasonSummaryScreen() {
 
             <View style={styles.card}>
               <CardTitle icon="stats-chart" text={he.seasonSectionNumbers} />
+              <View style={styles.leadRow}>
+                <LeadStat label={he.statGoals} value={String(me.goals)} icon="football" tint={colors.primary} />
+                <LeadStat label={he.statAssists} value={String(me.assists)} icon="footsteps-outline" tint="#7C3AED" />
+                <LeadStat label={he.seasonStatContributions} value={String(me.contributions)} icon="flash-outline" tint="#F59E0B" />
+              </View>
               <View style={styles.statGrid}>
-                <Stat label={he.statGoals} value={String(me.goals)} icon="football" tint={colors.primary} />
-                <Stat label={he.statAssists} value={String(me.assists)} icon="footsteps-outline" tint="#7C3AED" />
-                <Stat label={he.seasonStatContributions} value={String(me.contributions)} icon="flash-outline" tint="#F59E0B" />
                 <Stat label={he.seasonStatEvenings} value={String(me.evenings)} icon="calendar-outline" tint={colors.success} />
                 <Stat label={he.seasonStatRounds} value={String(me.rounds)} icon="grid-outline" tint="#0EA5E9" />
                 <Stat label={he.seasonStatWins} value={String(me.wins)} icon="trophy-outline" tint={colors.success} />
@@ -654,13 +691,22 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    // The app's own token and the app's own shadow, like every other card in
+    // the app. #FFFFFF on #F9FAFB is 1.05:1 and #11161D on #0B0F14 is 1.06:1 —
+    // with no border and no elevation nothing on this screen had an edge, and
+    // the tiles inside were worse in the direction that matters.
+    borderRadius: radius.xl,
+    ...shadows.card,
     padding: spacing.lg,
     gap: spacing.md,
   },
   cardTitle: {
-    ...typography.h3,
-    color: colors.text,
+    // A heading, one step above its contents. It was typography.h3 and so was
+    // statValue — the card's title and its data competed at the same size and
+    // the same weight, so nothing on the screen led.
+    ...typography.label,
+    color: colors.textMuted,
+    fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
   },
   cardNote: {
@@ -669,6 +715,36 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  leadRow: { flexDirection: 'row', gap: spacing.sm },
+  leadStat: {
+    flexGrow: 0,
+    flexBasis: '31%',
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    gap: 2,
+  },
+  // Icon first in source order → rightmost under forceRTL, beside its word.
+  leadHead: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  leadLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+    flex: 1,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  leadValue: {
+    // Pushed to the bottom of the tile. The three tiles stretch to the tallest,
+    // and "שערים + בישולים" is a two-line label — so without this its number
+    // sat a line lower than the two beside it and the row had no baseline.
+    marginTop: 'auto',
+    ...typography.h1,
+    fontWeight: '900',
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+    fontVariant: ['tabular-nums'],
+  },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   statIcon: {
     width: 26,
@@ -699,7 +775,10 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   statValue: {
-    ...typography.h3,
+    // Bigger than the heading above it, not equal to it — this is the number
+    // the screen exists for.
+    ...typography.h2,
+    fontWeight: '900',
     color: colors.text,
     textAlign: RTL_LABEL_ALIGN,
     fontVariant: ['tabular-nums'],
