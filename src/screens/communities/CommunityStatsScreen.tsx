@@ -579,6 +579,14 @@ export function CommunityStatsScreen() {
               wiped. */}
           {seasons?.enabled || (seasons?.count ?? 0) > 0 ? (
             <>
+              {/* A picker needs something to pick. Before the club's first
+                  close there is exactly one scope, and the row was a label
+                  followed by a single chip that was always already selected.
+                  Gated on the CLOSED COUNT, not on pastSeasons.length, so the
+                  row does not pop in when the archive finishes loading.
+                  The banner below still says the numbers belong to a season —
+                  that was this row's other job, and it keeps doing it. */}
+              {(seasons?.count ?? 0) > 0 ? (
               <View style={styles.scopeRow}>
                 <Text style={styles.scopeLabel}>{he.communityStatsScopeLabel}</Text>
                 <ScrollView
@@ -616,6 +624,7 @@ export function CommunityStatsScreen() {
                   ))}
                 </ScrollView>
               </View>
+              ) : null}
               {/* The table below belongs to ONE season. Said out loud, because
                   otherwise the numbers reset one day with no explanation.
                   BELOW the picker, not above it: this block renders only for
