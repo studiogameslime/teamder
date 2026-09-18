@@ -235,14 +235,21 @@ const styles = StyleSheet.create({
   label: {
     ...typography.caption,
     color: colors.textMuted,
-    flex: 1,
+    // `flex: 1` means flexBasis 0, so the label got only what the value left
+    // over — and the value, being the bold half, took nearly all of it. On the
+    // sheet a club approves before an irreversible change, the Hebrew labels
+    // collapsed to about twenty pixels and stacked one character per line.
+    // Both halves share, and the label keeps enough to read.
+    flexShrink: 1,
+    flexGrow: 1,
+    flexBasis: 'auto',
     textAlign: RTL_LABEL_ALIGN,
   },
   value: {
     ...typography.body,
     color: colors.text,
     fontWeight: '700',
-    flexShrink: 1,
+    flexShrink: 0,
     textAlign: RTL_LABEL_ALIGN,
   },
   note: {

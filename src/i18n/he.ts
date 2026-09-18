@@ -2045,6 +2045,21 @@ export const he = {
   seasonsOffButArchived:
     'המועדון לא מנהל עונות כרגע, אבל העונות שכבר הסתיימו שמורות והתארים שחולקו בהן נשארים.',
   seasonsCardTitle: 'עונות',
+  // Read beside the big number: "12" then "מתוך 22 מחזורים".
+  seasonsCardOfTarget: (target: number) => `מתוך ${target} מחזורים`,
+  // What is LEFT. The big number above already says how far the club has got,
+  // so repeating "0 מתוך 2 מחזורים" underneath it says nothing twice.
+  seasonsCardRemaining: (left: number) =>
+    left <= 0
+      ? 'העונה הגיעה ליעד ותיסגר בסיום הערב הבא'
+      : left === 1
+        ? 'נשאר מחזור אחד'
+        : `נשארו ${left} מחזורים`,
+  // The explanation the card never offered. It names the unit, because מחזור
+  // and משחקון are the pair people confuse, and it says what the end does —
+  // which is the part that worries an admin.
+  seasonsCardInfo:
+    'מחזור הוא ערב משחק שלם, לא משחקון בודד בתוכו. הספירה עולה כשערב מסתיים ונחתם.\n\nכשהעונה מגיעה ליעד היא נסגרת מעצמה: מחולקים תארים, הטבלה של המועדון מתחילה מאפס, והעונה נשמרת בארכיון. הסטטיסטיקה המצטברת בפרופיל וההישגים לא מושפעים.',
   seasonsOffBody:
     'עונה היא תחרות עם התחלה וסוף. כשהיא נגמרת הטבלה של המועדון מתאפסת, מחולקים תארים, והעונה נשמרת בארכיון. הסטטיסטיקה האישית המצטברת בפרופיל, ההישגים והרצפים לא מושפעים — תארי המועדון נספרים מהעונה הנוכחית.',
   seasonsEnableCta: 'הפעל עונות',

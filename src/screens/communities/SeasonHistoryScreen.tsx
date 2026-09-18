@@ -8,12 +8,15 @@
 // and without it the whole competition would end in a push notification and
 // then vanish.
 
+import { Ionicons } from '@expo/vector-icons';
+
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { seasonTitleIcon, seasonTitleTint } from '@/utils/seasonTitleIcon';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import {
   seasonHistoryService,
@@ -66,20 +69,34 @@ function SeasonCard({ season }: { season: FinishedSeason }) {
         <View style={styles.winners}>
           {season.winners.map((w) => (
             <View key={w.key} style={styles.winnerRow}>
-              <Text style={styles.medal}>🏆</Text>
+              {/* Its own mark. Nine titles shared one 🏆 here, so the hall of
+                  fame could only be read line by line — and 🏆 already means
+                  "wins" everywhere else in the app. */}
+              <View
+                style={[
+                  styles.medalDisc,
+                  { backgroundColor: seasonTitleTint(w.key) + '1A' },
+                ]}
+              >
+                <Ionicons
+                  name={seasonTitleIcon(w.key)}
+                  size={16}
+                  color={seasonTitleTint(w.key)}
+                />
+              </View>
               <View style={styles.winnerText}>
                 <Text style={styles.winnerTitle}>{he.seasonTitleNames[w.key]}</Text>
-                <Text style={styles.winnerName}>
+                <Text style={styles.winnerName} numberOfLines={1}>
                   {w.names.join(' · ')}
-                  {/* The number it was won on. A title without it is a label;
-                      with it, it is the argument people actually have. Same
-                      line as the summary's champions card, so the two agree. */}
-                  <Text style={styles.winnerValue}>
-                    {'  '}
-                    {he.seasonTitleValue(w.key, w.value)}
-                  </Text>
                 </Text>
               </View>
+              {/* The number it was won on, in its own column. Nested after two
+                  literal spaces it trailed whatever length the names happened
+                  to be, so nine values never formed a column — and a value
+                  like "62%" sat in a bidi-neutral run inside a Hebrew line. */}
+              <Text style={styles.winnerValue}>
+                {he.seasonTitleValue(w.key, w.value)}
+              </Text>
             </View>
           ))}
         </View>
@@ -181,7 +198,13 @@ const styles = StyleSheet.create({
   winners: { gap: spacing.sm, paddingTop: spacing.sm },
   // Medal first in source order → rightmost under forceRTL.
   winnerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  medal: { fontSize: 20 },
+  medalDisc: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   winnerText: { flex: 1, gap: 1 },
   winnerTitle: {
     ...typography.caption,
@@ -197,8 +220,12 @@ const styles = StyleSheet.create({
   winnerValue: {
     ...typography.caption,
     color: colors.textMuted,
-    fontWeight: '400',
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
+    // Its own column, so the nine values line up and each one is isolated
+    // from the Hebrew run beside it.
+    minWidth: 52,
+    textAlign: 'center',
   },
   empty: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
 });

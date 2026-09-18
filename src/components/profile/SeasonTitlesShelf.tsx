@@ -10,6 +10,8 @@
 // the player leaving that club and the club being renamed, and a live lookup
 // would render both as a dash.
 
+import { Ionicons } from '@expo/vector-icons';
+
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { collection, getDocs } from 'firebase/firestore';
@@ -19,6 +21,7 @@ import { logError } from '@/services/errorLog';
 import { SEASON_TITLE_KEYS, type SeasonTitleKey } from '@/utils/seasonAwards';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { seasonTitleIcon, seasonTitleTint } from '@/utils/seasonTitleIcon';
 import type { UserId } from '@/types';
 
 interface Held {
@@ -91,7 +94,21 @@ export function SeasonTitlesShelf({ userId }: { userId: UserId }) {
       </View>
       {titles.map((t) => (
         <View key={t.id} style={styles.row}>
-          <Text style={styles.medal}>🏆</Text>
+          {/* Its own mark, the same one the hall of fame and the summary
+              draw for this title. Nine titles shared one 🏆 across four
+              surfaces. */}
+          <View
+            style={[
+              styles.medalDisc,
+              { backgroundColor: seasonTitleTint(t.titleKey) + '1A' },
+            ]}
+          >
+            <Ionicons
+              name={seasonTitleIcon(t.titleKey)}
+              size={16}
+              color={seasonTitleTint(t.titleKey)}
+            />
+          </View>
           <View style={styles.rowText}>
             <Text style={styles.rowTitle}>{he.seasonTitleNames[t.titleKey]}</Text>
             <Text style={styles.rowWhere}>
@@ -122,7 +139,13 @@ const styles = StyleSheet.create({
   },
   count: { ...typography.caption, color: colors.textMuted },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  medal: { fontSize: 22 },
+  medalDisc: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   rowText: { flex: 1, gap: 1 },
   rowTitle: {
     ...typography.body,

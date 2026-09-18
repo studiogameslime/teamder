@@ -94,7 +94,13 @@ function Stat({
           <Ionicons name={icon} size={14} color={tint} />
         </View>
       ) : null}
-      <Text style={[styles.statValue, icon ? { color: tint } : null]}>{value}</Text>
+      {/* The VALUE stays ink. The tint belongs to the icon disc above it,
+          where it sits on its own 10%-opacity wash and is a decoration; used
+          as text colour on the tile's #F3F4F6 it measured 1.6:1 for gold and
+          1.9:1 for amber — nine of the thirteen accents on this screen fell
+          under 3:1, and the number a player came here to read was the least
+          legible thing on it. */}
+      <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
@@ -673,11 +679,15 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   stat: {
-    minWidth: 96,
-    // NOT flexGrow. A grid of thirteen tiles in rows of three leaves one on
-    // the last row, and letting it grow stretched a single number across the
-    // whole width — the screen ended on a slab. A fixed basis leaves the last
-    // row short, which is what a grid is supposed to look like.
+    // No minWidth. On a 360dp phone the card's inner width is 296, so 31% is
+    // 91.8 — under the 96 this used to set. flexShrink defaults to 0, so the
+    // basis lost and three tiles could not fit: the grid dropped to two
+    // columns and every row ended in a tile-wide hole.
+    //
+    // NOT flexGrow either. Thirteen tiles in rows of three leave one on the
+    // last row, and letting it grow stretched a single number across the whole
+    // width — the screen ended on a slab. A fixed basis leaves the last row
+    // short, which is what a grid is supposed to look like.
     flexGrow: 0,
     flexBasis: '31%',
     // Sits ON a card, so it needs the muted surface — the page background

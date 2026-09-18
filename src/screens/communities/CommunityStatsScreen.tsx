@@ -1243,7 +1243,15 @@ const styles = StyleSheet.create({
   mvpRibbonText: { ...typography.caption, color: '#fff', fontWeight: '900' },
   // `row` (not row-reverse): under forceRTL first child (avatar) → visual RIGHT,
   // text block to its left, and the big number pinned far LEFT (like the sketch).
-  mvpRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  // The ribbon is pinned to the card's top-right corner and is ~26px tall, so
+  // it landed across the top of the avatar that sits in that corner. The row
+  // starts below it instead of under it.
+  mvpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
   mvpMid: { flex: 1, minWidth: 0 },
   mvpCat: { ...typography.caption, color: colors.warning, fontWeight: '900', textAlign: RTL_LABEL_ALIGN },
   mvpName: { ...typography.h3, color: colors.text, fontWeight: '900', textAlign: RTL_LABEL_ALIGN },
@@ -1253,11 +1261,17 @@ const styles = StyleSheet.create({
   mvpBigLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '800' },
 
   // hero grid — 2×2, compact horizontal tiles (icon + number/label)
-  heroGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: spacing.sm },
+  //
+  // `row`, like every other row on this screen. Under forceRTL `row` puts the
+  // first child on the visual RIGHT and `row-reverse` puts it on the LEFT —
+  // the file says so itself four times below. These two were the only places
+  // that used row-reverse for a WRAPPING grid, so the four tiles filled left
+  // to right: the first number a Hebrew reader meets was the last one written.
+  heroGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   heroTile: {
     width: '48.5%',
     minWidth: 0,
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.md,
