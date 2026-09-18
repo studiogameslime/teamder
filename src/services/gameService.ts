@@ -1030,35 +1030,83 @@ export const gameService = {
     };
     if (!groupId) return empty;
     if (USE_MOCK_DATA) {
-      // Demo numbers so the community stats + club-achievements UI render.
-      return {
-        totalFinished: 42,
-        totalCancelled: 3,
-        organizationRate: 0.93,
-        avgAttendance: 11,
-        thisMonthFinished: 4,
+      // Demo numbers for the community-stats + club-achievements UI. Derived,
+      // not typed — because the hand-written block this replaces described a
+      // club the scan below cannot produce. It carried lifetime.activeThisYear
+      // 18 under a season-scoped 28, but the season figure is that same 365-day
+      // window INTERSECTED with the season filter, so it can never be the
+      // larger of the two; and it carried longestStreak 9 with a null
+      // longestStreakUid, which lifetimeStreak returns only at streak 0. So
+      // mock QA read "18 שחקנים היו פעילים השנה" under a season row saying 28 —
+      // a contradiction it was right to file as a bug — while the one shape
+      // that would prove the lifetime streak broken, a record with nobody
+      // holding it, was hard-coded here as the normal case.
+      //
+      // The club: 45 evening attempts all told, 42 held; the running season
+      // holds the most recent 13 of them, 12 held. Every season counter is
+      // therefore ≤ its lifetime twin, which is the invariant the whole
+      // lifetime block exists to keep.
+      const rate = (held: number, off: number) =>
+        held + off > 0 ? held / (held + off) : 0;
+      /** attendedByUser and topPlayers as the scan builds them: a monotone
+       *  tail, so the top five really are the top five, and nobody attends more
+       *  nights than the club held. */
+      const tally = (people: number, nights: number, floor: number) =>
+        mockPlayers
+          .slice(0, people)
+          .map((p, i) => ({ uid: p.id, attended: Math.max(floor, nights - i) }));
+      const sum = (t: Array<{ attended: number }>) =>
+        t.reduce((n, r) => n + r.attended, 0);
+      const LIFE_HELD = 42;
+      const LIFE_OFF = 3;
+      const SEASON_HELD = 12;
+      const SEASON_OFF = 1;
+      const lifeTally = tally(25, 30, 6);
+      const seasonTally = tally(20, SEASON_HELD, 5);
+      const lifetime = {
+        totalFinished: LIFE_HELD,
+        totalCancelled: LIFE_OFF,
+        organizationRate: rate(LIFE_HELD, LIFE_OFF),
         activeThisMonth: 14,
-        activeThisYear: 28,
-        topPlayers: mockPlayers
-          .slice(0, 5)
-          .map((p, i) => ({ uid: p.id, attended: 40 - i * 4 })),
-        attendedByUser: Object.fromEntries(
-          mockPlayers.slice(0, 8).map((p, i) => [p.id, 40 - i * 4]),
-        ),
-        longestStreak: 9,
-        longestStreakUid: mockPlayers[0].id,
+        // More people turned up over the year than played this season — which
+        // is the entire reason the lifetime block is counted separately.
+        activeThisYear: 23,
+        longestStreak: 14,
+        // A DIFFERENT person from the season holder, deliberately: a row that
+        // points at the lifetime record but looks the name up by the
+        // season-scoped uid renders "—", and only differing uids catch it.
+        longestStreakUid: mockPlayers[2].id,
+      };
+      // No scope means no season filter, and inSeason() then lets every game
+      // through — so a caller that passes none (the club screen, the seasons
+      // settings card) must see the lifetime numbers in BOTH halves, exactly as
+      // the real scan returns them, not a season's.
+      const scoped = !!season;
+      const t = scoped ? seasonTally : lifeTally;
+      const held = scoped ? SEASON_HELD : LIFE_HELD;
+      const off = scoped ? SEASON_OFF : LIFE_OFF;
+      return {
+        totalFinished: held,
+        totalCancelled: off,
+        organizationRate: rate(held, off),
+        avgAttendance: sum(t) / held,
+        thisMonthFinished: 4,
+        // The 30-day window sits entirely inside the running season, so both
+        // scopes see the same month — equality is the honest answer here, not
+        // a rounding of one down.
+        activeThisMonth: lifetime.activeThisMonth,
+        activeThisYear: scoped ? seasonTally.length : lifetime.activeThisYear,
+        topPlayers: t.slice(0, 5),
+        attendedByUser: Object.fromEntries(t.map((r) => [r.uid, r.attended])),
+        longestStreak: scoped ? 8 : lifetime.longestStreak,
+        longestStreakUid: scoped ? mockPlayers[0].id : lifetime.longestStreakUid,
+        // A current run can only ever be shorter than the record, and a
+        // lifetime run can only ever be longer than the season one it extends
+        // back from.
         currentStreakByUser: Object.fromEntries(
-          mockPlayers.slice(0, 8).map((p, i) => [p.id, Math.max(0, 7 - i)]),
+          t.map((r, i) => [r.uid, Math.max(0, (scoped ? 8 : 9) - i)]),
         ),
-        lifetime: {
-          totalFinished: 42,
-          totalCancelled: 3,
-          organizationRate: 0.93,
-          activeThisMonth: 14,
-          activeThisYear: 18,
-          longestStreak: 9,
-          longestStreakUid: null,
-        },
+        lifetime,
       };
     }
     const q = query(

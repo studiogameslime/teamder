@@ -31,6 +31,24 @@ The suite uses Node's built-in `node:test` runner (no Jest). Each
 test boots a clean Firestore environment, seeds the docs the
 scenario needs, then asserts allow / deny.
 
+`npm test` runs **every** `*.test.mjs` in this directory. It used to
+name `firestore.test.mjs` and nothing else, so the seven suites added
+after it — antiHijack, clubIsolation, joinRequest, oldClientCompat,
+publishTeams, roundHistoryAccess, seasonSummary — were never executed
+by anything: 38 of 146 assertions ran, and the other 108 were text.
+The seasonSummary pair covering the timer-only club (`rounds` absent,
+`games` set) was written against a rules change and had never once
+been run when it landed.
+
+`--test-concurrency=1` is load-bearing, not tidiness. Five of the
+eight suites share `projectId: 'demo-soccer'` and each calls
+`clearFirestore()` in its setup, so run in parallel — the runner's
+default is one process per core — they wipe each other's fixtures
+mid-flight. Measured on the same commit: 4 failures serially, 19 in
+parallel, the extra 15 being pure cross-talk. If you ever split the
+suites by projectId you can drop the flag; until then a parallel run
+reports failures that aren't real and hides the ones that are.
+
 ## What it covers
 
 | Collection | Scenarios |

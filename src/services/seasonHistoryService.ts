@@ -35,13 +35,6 @@ export interface FinishedSeason {
   endsAt: number;
   /** Rounds the club finished, from the sealed count. */
   completedRounds: number;
-  /**
-   * What the titles were actually decided against — the most evenings any one
-   * player attended, which is the unit the eligibility gate is measured in.
-   * Absent on any season sealed before the card carried it, in which case
-   * `completedRounds` is the only number available.
-   */
-  awardsDenominator?: number;
   /** Mini-games, goals and assists the club recorded that season. */
   totals: { rounds: number; goals: number; assists: number };
   /** How many people played at all. */
@@ -87,9 +80,6 @@ function fromCard(d: Record<string, unknown>): FinishedSeason | null {
     startsAt: num(d.startsAt),
     endsAt: num(d.endsAt),
     completedRounds: num(d.completedRounds),
-    ...(typeof d.awardsDenominator === 'number' && d.awardsDenominator > 0
-      ? { awardsDenominator: d.awardsDenominator }
-      : {}),
     totals: {
       rounds: num(totals.rounds),
       goals: num(totals.goals),

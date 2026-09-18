@@ -159,7 +159,15 @@ export function planActivation(input: ActivationInput): ActivationPlan {
   const end = input.season1EndsOn;
   if (!end) {
     if (input.hasHistory) {
-      return { ...base, ok: true, endsOn: seasonEndDate(today, months!) };
+      // nextStartsOn as well, not the end date alone. Every other activation
+      // path hands the confirmation sheet all three of its lines, and the sheet
+      // renders each only when its field is present — so this branch, the one a
+      // club takes when it switches seasons back ON, was the single plan that
+      // came up a line short: an end date and no "עונה N+1 מתחילה ב-". Derived
+      // the same way the two sibling successes derive it, from the end date
+      // this branch has just computed.
+      const endsOn = seasonEndDate(today, months!);
+      return { ...base, ok: true, endsOn, nextStartsOn: nextSeasonStart(endsOn) };
     }
     return { ...base, error: 'season1EndRequired' };
   }

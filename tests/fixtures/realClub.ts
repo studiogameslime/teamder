@@ -207,20 +207,21 @@ export const ARCHIVED_PLAYER_ROWS: Record<string, { games: number }> = {
  * `completedRounds` is EVENINGS (22) and `totals.rounds` is MINI-GAMES (37).
  * They are different units and the gap between them is the point.
  */
+/**
+ * The most evenings any ONE player attended — the denominator the eligibility
+ * gate is measured in. It is NOT on the card and never was: it lived there for
+ * half a day and the write was removed, because it is by construction identical
+ * to כתר ההתמדה's own winning value and anything dividing by it gets 1.0.
+ * It stays here because the gate still uses it server-side.
+ */
+export const AWARDS_DENOMINATOR = 19;
+
 export const SEALED_CARD = {
   seasonId: 's1',
   no: 1,
   completedRounds: 22,
   totals: { rounds: 37, goals: 27, assists: 13 },
   players: 7,
-  /** The most evenings any ONE player attended — the number the titles were
-   *  decided against, and NOT the season's length.
-   *
-   *  ⚠️ The real card carries NO such field: it was sealed before the close
-   *  wrote it. So this stands for a card sealed from now on, and any consumer
-   *  must still handle its absence — which is why the reader falls back to
-   *  `completedRounds`. */
-  awardsDenominator: 19,
 };
 
 /**

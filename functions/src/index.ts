@@ -86,6 +86,7 @@ import {
   buildRoundSummary,
   nextRecordBaseline,
   type ClubRecordBaseline,
+  type ClubTotals,
   type PersonalBest,
   type PlayerCareer,
   type PlayerEvening,
@@ -1534,6 +1535,16 @@ async function deliverBatch(
   // 'approved'/'rejected' are two types governed by the single 'approvedRejected'
   // toggle — without this map a user who turned that toggle OFF still got the
   // pushes (the gate looked up a non-existent 'approved'/'rejected' key).
+  //
+  // 'seasonSummary' and 'eveningSummary' take the 1:1 branch, i.e. the keys
+  // `seasonSummary` and `eveningSummary`. That is the contract the client must
+  // ship the toggles under — and it is not honoured end-to-end yet: neither key
+  // is in `defaultNotificationPrefs`, and `readNotificationPrefs` rebuilds the
+  // object from that list, so a stored `seasonSummary: false` is dropped on
+  // read and can never be written back. Until those land, the gate below is
+  // dead for both — which matters most for seasonSummary, the one type that
+  // deliberately ignores the dormant cutoff and so pushes people who have not
+  // opened the app in three weeks with no switch anywhere in the app.
   const prefKey =
     type === 'approved' || type === 'rejected'
       ? 'approvedRejected'
@@ -1944,6 +1955,7 @@ export const onNotificationCreated = onDocumentCreated(
     let totalFailed = 0;
     let skippedPref = 0;
     let skippedNoToken = 0;
+    let skippedDormant = 0;
     try {
       const recipients = await resolveRecipients(notif);
       // The data payload that ships with the FCM message is built from
@@ -1961,10 +1973,19 @@ export const onNotificationCreated = onDocumentCreated(
       totalFailed = res.failed;
       skippedPref = res.skippedPref;
       skippedNoToken = res.skippedNoToken;
+      skippedDormant = res.skippedDormant;
     } catch (err) {
       console.error('[onNotificationCreated] delivery failed', err);
     }
 
+    // The stats block must account for EVERY recipient deliverBatch was handed,
+    // because there is no in-app inbox: this is the only durable record that a
+    // push existed at all. It omitted skippedDormant, the one reason that can
+    // account for an entire batch on its own, so 279 of the 1,206 docs that
+    // carry a block (23%) read {ok:0, failed:0, skippedPref:0, skippedNoToken:0}
+    // — a deliberately-suppressed announcement and a silently-broken dispatcher
+    // were the same four zeroes. The number was only ever in the Cloud Run log
+    // line, which ages out after 30 days.
     await snap.ref.update({
       delivered: true,
       deliveredAt: Date.now(),
@@ -1973,6 +1994,7 @@ export const onNotificationCreated = onDocumentCreated(
         failed: totalFailed,
         skippedPref,
         skippedNoToken,
+        skippedDormant,
       },
     });
   }
@@ -4797,6 +4819,24 @@ type LiveSeasonsBlock = {
   count?: number;
 };
 
+/**
+ * Club totals as "nothing has happened yet".
+ *
+ * Handed to the summary core when the club's real totals are the wrong ones to
+ * measure this evening against — a forgotten evening confirmed after later
+ * ones have already been played and counted. `crossed()` reports a milestone
+ * only when the total REACHES the step, so a zero total reports none, which is
+ * the point: better no milestone than one attached to the wrong night.
+ */
+const NO_CLUB_TOTALS: ClubTotals = {
+  goals: 0,
+  assists: 0,
+  rounds: 0,
+  cleanSheets: 0,
+  shootoutRounds: 0,
+  evenings: 0,
+};
+
 async function sealRoundSummary(args: {
   gameId: string;
   groupId: string;
@@ -4966,9 +5006,68 @@ async function sealRoundSummary(args: {
   // invisible to it, and saying "record" on the strength of them would be a
   // guess dressed as a fact.
   const eveningsSealed = num(rec.eveningsSealed);
+
+  // ── Is this the club's latest evening, or one being confirmed late? ──
+  //
+  // The seal fires on the transition into 'happened', and that is not only the
+  // night itself: `setEveningPlayed` reaches it days later by writing
+  // `playVerified` on an evening the sweep auto-closed as unverified. When it
+  // does, every comparison below is read AS OF THE CONFIRMATION — the club's
+  // evening number, the career totals a milestone is measured on, the record
+  // baseline, each player's best evening — while the story being written is
+  // about a night that came before some of them.
+  //
+  // What that produces is not a small error. The summary calls it the club's
+  // Nth evening when it was the (N−k)th; a career milestone crossed last week
+  // is attached to this one; and a record the night genuinely set is WITHHELD,
+  // because the baseline it is compared against already contains the evening
+  // that beat it. The write is `create()` and nothing recomputes it, so the
+  // wrong story is permanent.
+  //
+  // None of that is reconstructible here — the "before" states no longer exist
+  // anywhere — so the honest move is to claim nothing that needs one. See the
+  // input to `buildRoundSummary` below: what the night's own documents prove
+  // (the totals, the titles, the teams, the pair) is sealed as usual, and
+  // every comparison is neutralised into the state the core already treats as
+  // "no baseline".
+  //
+  // `lastEveningAt` is written by the batch at the bottom of this function, so
+  // it starts empty on every existing club and the first seal after this ships
+  // seeds it. A club that seals nothing seals nothing wrongly, and one that
+  // seals two evenings on the same night is not late — hence the grace, which
+  // is the same span the rest of this file calls "tonight".
+  const lastEveningAt = num(rec.lastEveningAt);
+  const lateConfirmation =
+    args.at > 0 && lastEveningAt > 0 && args.at < lastEveningAt - TONIGHT_MS;
+  if (lateConfirmation) {
+    console.log(
+      '[roundSummary] late confirmation — comparisons suppressed',
+      groupId, gameId, args.at, lastEveningAt,
+    );
+  }
+
   // Where the running season started counting, or null when the club does not
   // run seasons (in which case there is no progress to mirror).
   let seasonRoundsAtStart: number | null = null;
+  // Where the LIVE TABLE was last emptied — a different question, and it took
+  // a regression to notice that.
+  //
+  // `seasonRoundsAtStart` answers "does this evening credit the RUNNING
+  // season's progress", and the evening's stamp decides it. `tableZeroedAt`
+  // answers "how many evenings has the table this summary ranks people in had
+  // since it was zeroed", and only the running season can answer that: the
+  // close is what empties `communityPlayerStats`, whatever stamp the evening
+  // in hand happens to carry.
+  //
+  // They were one variable, and gating it on the stamp therefore took
+  // `seasonEvenings` away from any evening whose stamp is not the running
+  // season — which switches OFF the one guard that exists for this
+  // (`rankEventsOf`: `seasonEvenings === 1` → no rank events). Absent, the
+  // field reads as 0, the guard never fires, and the summary invents the dozen
+  // dramatic climbs out of an all-zero table that commit 28d0823 was written
+  // to kill. Production already holds a game stamped 's3' on a club that knows
+  // only 's2', so the case is reachable.
+  let tableZeroedAt: number | null = null;
   /** Kept past the try, for the close check at the very bottom of this
    *  function — which used to fetch this same document all over again. */
   let liveSeasons: LiveSeasonsBlock | undefined;
@@ -4991,9 +5090,12 @@ async function sealRoundSummary(args: {
     // when seasons landed, and a club that carried its history into season 1
     // played those nights inside it.
     if (sea?.enabled) {
+      // Unconditional: the table was zeroed when the RUNNING season opened,
+      // and that is true of this evening whatever it is stamped with.
+      tableZeroedAt = num(sea.roundsAtStart);
       const stamp = typeof args.seasonId === 'string' ? args.seasonId : '';
       const mine = stamp ? stamp === sea.currentId : sea.currentNo === 1;
-      if (mine) seasonRoundsAtStart = num(sea.roundsAtStart);
+      if (mine) seasonRoundsAtStart = tableZeroedAt;
       else {
         console.log(
           '[season] seal is not for the running season — progress not credited',
@@ -5004,45 +5106,66 @@ async function sealRoundSummary(args: {
   } catch (err) {
     console.warn('[season] progress mirror skipped', groupId, err);
   }
+  // Club totals are LIFETIME here, same as the player rows above: a milestone
+  // is a milestone, and the sealed seasons hold what the live document no
+  // longer does. `evenings` already comes from a counter that never resets.
+  const clubTotals: ClubTotals = (() => {
+    const past = archivedClubTotals.get(groupId) ?? {
+      goals: 0, assists: 0, rounds: 0, cleanSheets: 0, shootoutRounds: 0,
+    };
+    return {
+      goals: num(cs.goals) + past.goals,
+      assists: clubAssists + past.assists,
+      rounds: num(cs.rounds) + past.rounds,
+      cleanSheets: clubCleanSheets + past.cleanSheets,
+      shootoutRounds: num(cs.shootoutRounds) + past.shootoutRounds,
+      evenings: eveningsSealed + 1,
+    };
+  })();
+
   const summary = buildRoundSummary({
     gameId,
     groupId,
     at: args.at,
+    // The night's own documents. True whenever this runs.
     players,
     rounds,
-    career,
-    club: (() => {
-      // Club totals are LIFETIME here, same as the player rows above: a
-      // milestone is a milestone, and the sealed seasons hold what the live
-      // document no longer does. `evenings` already comes from a counter that
-      // never resets.
-      const past = archivedClubTotals.get(groupId) ?? {
-        goals: 0, assists: 0, rounds: 0, cleanSheets: 0, shootoutRounds: 0,
-      };
-      return {
-        goals: num(cs.goals) + past.goals,
-        assists: clubAssists + past.assists,
-        rounds: num(cs.rounds) + past.rounds,
-        cleanSheets: clubCleanSheets + past.cleanSheets,
-        shootoutRounds: num(cs.shootoutRounds) + past.shootoutRounds,
-        evenings: eveningsSealed + 1,
-      };
-    })(),
-    records: baseline,
-    personalBests,
-    standings: args.standings,
+    // ── and from here down, every input is a COMPARISON ──
+    //
+    // Each one is emptied on a late confirmation into the exact state the core
+    // already knows how to handle: no career rows → no player milestones, a
+    // zeroed club total → no club milestone (`crossed()` needs the total to
+    // reach the step), no baseline and `eveningsCompared: 0` → no club record,
+    // no personal record and no first-ever, no standings → no rank movement.
+    // The alternative was to keep computing them against a history that has
+    // moved past this evening, which is how the summary came to withhold a
+    // record the night actually set.
+    career: lateConfirmation ? [] : career,
+    club: lateConfirmation ? NO_CLUB_TOTALS : clubTotals,
+    records: lateConfirmation ? null : baseline,
+    personalBests: lateConfirmation ? {} : personalBests,
+    standings: lateConfirmation ? [] : args.standings,
     basis: {
       since: typeof rec.since === 'number' ? rec.since : args.at,
-      eveningsCompared: eveningsSealed,
+      // 0 is the literal truth on a late confirmation: there are no past
+      // evenings this summary can honestly be compared against, because the
+      // window it would compare with contains evenings that came AFTER it.
+      eveningsCompared: lateConfirmation ? 0 : eveningsSealed,
     },
     // Undefined for a club with no seasons, which behaves exactly as before.
-    ...(seasonRoundsAtStart !== null
-      ? { seasonEvenings: eveningsSealed + 1 - seasonRoundsAtStart }
+    ...(tableZeroedAt !== null
+      ? { seasonEvenings: eveningsSealed + 1 - tableZeroedAt }
       : {}),
     now: Date.now(),
   });
 
-  await summaryRef.create(summary as unknown as admin.firestore.DocumentData);
+  await summaryRef.create({
+    ...(summary as unknown as admin.firestore.DocumentData),
+    // Carried on the document so the screen can say why the evening has no
+    // records and no movement, instead of reading as a night where nothing
+    // happened. Nothing renders it yet — see the note in the handover.
+    ...(lateConfirmation ? { lateConfirmation: true } : {}),
+  });
 
   // ── and only NOW does the baseline move ──
   const next = nextRecordBaseline(baseline, summary, players);
@@ -5070,6 +5193,17 @@ async function sealRoundSummary(args: {
       // evening was already sealed, so this batch runs at most once per game.
       eveningsSealed: admin.firestore.FieldValue.increment(1),
       since: typeof rec.since === 'number' ? rec.since : args.at,
+      // The newest evening the club has SEALED, by when it was played rather
+      // than by when it was sealed — the only thing that lets the next seal
+      // tell a forgotten evening confirmed days later from tonight's. `max`
+      // and not a plain write, so a late confirmation cannot rewind it and
+      // make the evening after it look late in turn.
+      //
+      // Read-modify-write on a value read at the top of this function, unlike
+      // the counter above it, because Firestore has no atomic max. Two seals
+      // racing can lose the later one's stamp; the cost of that is one evening
+      // that is not recognised as late, not a lost count.
+      lastEveningAt: Math.max(num(rec.lastEveningAt), args.at),
       updatedAt: Date.now(),
     },
     { merge: true },
@@ -5309,14 +5443,33 @@ export const onGameRosterChanged = onDocumentWritten(
     // Lazy, so a trigger that touches none of them still pays nothing, and by
     // promise rather than by value so two blocks racing inside the same
     // invocation share one round trip.
+    //
+    // The SUCCESS is memoised, never the failure. `??=` stored the promise
+    // itself, so a rejected read stayed in the slot and every later consumer
+    // re-threw the same error: one transient blip on `groups/{id}` cost the
+    // invocation its season stamp, its season progress mirror AND the
+    // join-request push to the club's admins, each degrading quietly behind
+    // its own catch. Before the memo those were three independent reads and a
+    // blip cost at most one of them. Clearing the slot on rejection puts that
+    // back — the next caller opens a fresh round trip — while a club that
+    // reads fine still pays exactly one.
     /** A season stamp this execution wrote itself — see the stamp block. */
     let stampedSeasonId = '';
     let groupSnapOnce: Promise<admin.firestore.DocumentSnapshot> | null = null;
-    const groupOnce = (): Promise<admin.firestore.DocumentSnapshot> =>
-      (groupSnapOnce ??= db
+    const groupOnce = (): Promise<admin.firestore.DocumentSnapshot> => {
+      if (groupSnapOnce) return groupSnapOnce;
+      const p = db
         .collection('groups')
         .doc(String(after.groupId ?? ''))
-        .get());
+        .get();
+      groupSnapOnce = p;
+      // Attached here so the rejection is observed even if no consumer ever
+      // awaits it — an unhandled rejection would take the whole function down.
+      p.catch(() => {
+        if (groupSnapOnce === p) groupSnapOnce = null;
+      });
+      return p;
+    };
 
     // ── Scheduling switched OFF → open the game NOW ───────────────────────
     //
@@ -5629,29 +5782,72 @@ export const onGameRosterChanged = onDocumentWritten(
     // The two transitions are still both of them: `active` is where the stamp
     // belongs, and `finished` is the backstop for an evening whose active
     // transition lost its read. A redelivery of either event replays it.
+    //
+    // A status transition is not the only way back in, because it cannot be:
+    // there are exactly two of them and a finished game has no more. Gating on
+    // the transition alone is what the absent-check used to provide for free —
+    // every write retried — and an evening that loses the group read on BOTH
+    // transitions would then never be stamped at all. That is not a neutral
+    // outcome: an unstamped evening resolves to season 1 for the client
+    // (`src/utils/seasonScope.ts`) and for the seal alike, so a club past its
+    // first season files the night under an archived one, and with finished
+    // games client-read-only and the stamp write-once there is no path that
+    // repairs it.
+    //
+    // So a failed read leaves a marker on the game and the next write to it —
+    // an arrival, an admin's confirmation, the finish itself — tries again.
+    // The marker is written only when it is not already there, so a club whose
+    // reads keep failing writes it once and stops, rather than re-triggering
+    // itself in a loop.
     const stampStatusChanged = before?.status !== after.status;
+    const stampRetryPending =
+      (after as { seasonStampRetry?: boolean }).seasonStampRetry === true;
     if (
       after.groupId &&
-      stampStatusChanged &&
+      (stampStatusChanged || stampRetryPending) &&
       !(after as { seasonId?: string }).seasonId &&
       (after.status === 'active' || after.status === 'finished')
     ) {
       try {
         const gSnap = await groupOnce();
         const seasons = (gSnap.data() as { seasons?: { enabled?: boolean; currentId?: string } } | undefined)?.seasons;
+        // The marker has done its job the moment the READ succeeds, whatever
+        // the answer was: a club with seasons off is not waiting for a stamp,
+        // and leaving the flag on would make every later write re-read the
+        // club document for ever — the cost the transition gate exists to
+        // avoid for the 191 clubs that have seasons switched off.
+        const clearRetry = stampRetryPending
+          ? { seasonStampRetry: admin.firestore.FieldValue.delete() }
+          : {};
         if (seasons?.enabled && seasons.currentId) {
-          await event.data!.after.ref.update({ seasonId: seasons.currentId });
+          await event.data!.after.ref.update({
+            seasonId: seasons.currentId,
+            ...clearRetry,
+          });
           // Kept for the seal further down. The in-memory `after` was captured
           // before this write, so it still has no stamp — and the seal decides
           // whether this evening credits the running season by comparing
           // exactly that field.
           stampedSeasonId = seasons.currentId;
+        } else if (stampRetryPending) {
+          await event.data!.after.ref.update(clearRetry);
         }
       } catch (err) {
         // A missing stamp is recoverable — the rollover resolves an unstamped
         // game to the open season. Losing the evening's stats is not, so this
         // never throws into the rest of the trigger.
         console.error('[season] stamp failed', event.params.gameId, err);
+        if (!stampRetryPending) {
+          try {
+            await event.data!.after.ref.update({ seasonStampRetry: true });
+          } catch (flagErr) {
+            console.error(
+              '[season] stamp retry marker failed',
+              event.params.gameId,
+              flagErr,
+            );
+          }
+        }
       }
     }
 
@@ -5781,6 +5977,7 @@ export const onGameRosterChanged = onDocumentWritten(
                 assists?: number;
                 wins?: number;
                 lastEveningScore?: number;
+                lastEveningAt?: number;
               };
               return {
                 uid: typeof x.userId === 'string' ? x.userId : '',
@@ -5791,6 +5988,12 @@ export const onGameRosterChanged = onDocumentWritten(
                   typeof x.lastEveningScore === 'number'
                     ? x.lastEveningScore
                     : null,
+                // Which evening that score came from. Absent on every row
+                // written before this shipped, and absence is treated as
+                // "older" — which is what it almost always is, and what the
+                // code assumed unconditionally until now.
+                lastScoreAt:
+                  typeof x.lastEveningAt === 'number' ? x.lastEveningAt : null,
               };
             })
             .filter((r) => r.uid);
@@ -5899,6 +6102,33 @@ export const onGameRosterChanged = onDocumentWritten(
           const beforeRanked = rankByPoints(beforePoints, beforeGoals);
           const total = cum.length;
 
+          // ── Was there a table before tonight AT ALL? ────────────────────
+          //
+          // Both orderings above are derived by subtracting tonight from the
+          // cumulative rows, so when every "before" value is zero the previous
+          // ordering is not a ranking — it is the uid tie-break, alphabetical.
+          // Two clubs are in that state constantly: one on the first evening
+          // after a season close (`PLAYER_SEASON_FIELDS` zeroes goals, assists
+          // and wins), and the TIMER-ONLY club, which records no goals, no
+          // assists and no wins ever and therefore has an all-zero table every
+          // single week.
+          //
+          // What came out of it: the alphabetically-first player was told
+          // "שמרת על התואר מלך השערים" — that he KEPT a title — off a table
+          // that had been wiped the day before or had never existed, and
+          // everybody else got a ▲N for climbing past people who were never
+          // ahead of them. The club summary has had a guard for this since
+          // 28d0823 (`seasonEvenings === 1`); the personal card, which is the
+          // shareable one, had none.
+          //
+          // Measured on the data rather than on the season config, because the
+          // condition IS the data: no read to make, and it catches the
+          // timer-only club and a brand-new club's first evening too, neither
+          // of which is a season boundary.
+          const hadTable = (m: Metric) =>
+            cum.some((c) => cumOf(c.uid, m) - evOf(c.uid, m) > 0);
+          const hadPointsTable = cum.some((c) => beforePoints(c.uid) > 0);
+
           // ── Per-metric movement: goals, assists, wins ────────────────────
           // The combined ranking above already answers "where am I", but not
           // the thing players actually talk about: WHO you went past tonight.
@@ -5937,6 +6167,11 @@ export const onGameRosterChanged = onDocumentWritten(
           const nameIds = new Set<string>();
           for (const uid of attendees) {
             for (const m of METRICS) {
+              // Same guard as `metricsFor`, and here it also saves the reads:
+              // on an all-zero table the walk between two positions spans the
+              // whole club, so this was fetching every member's name to quote
+              // it in a block that is not written.
+              if (!hadTable(m)) continue;
               const o = orders[m];
               const iNow = o.now.indexOf(uid);
               const iBefore = o.before.indexOf(uid);
@@ -5963,6 +6198,16 @@ export const onGameRosterChanged = onDocumentWritten(
           const metricsFor = (uid: string) => {
             const out: Record<string, unknown> = {};
             for (const m of METRICS) {
+              // No table before tonight → no movement in it, and no title to
+              // have held. The whole block is omitted rather than written with
+              // a null delta: the card's reader defaults a missing delta to 0
+              // and 0 is precisely the value that prints "שמרת על התואר", so
+              // the honest value has to be no value at all. Nothing else on
+              // the card reads this block — the overtake lists are empty by
+              // construction on a zeroed table, and the per-metric place is
+              // not rendered — so the only line lost is one that would have
+              // been a coin-flip on uid order.
+              if (!hadTable(m)) continue;
               const o = orders[m];
               const iNow = o.now.indexOf(uid);
               const iBefore = o.before.indexOf(uid);
@@ -6022,6 +6267,17 @@ export const onGameRosterChanged = onDocumentWritten(
             (a, b) => (scoreOf.get(b) ?? 0) - (scoreOf.get(a) ?? 0) || a.localeCompare(b),
           );
 
+          // The evening's OWN timestamp, for everything stamped below.
+          //
+          // `Date.now()` is the moment the trigger ran, which is the same
+          // thing right up until it isn't: an admin confirming a forgotten
+          // evening runs this path days later. Same source the seal beside it
+          // already uses.
+          const eveningAt =
+            typeof after.startsAt === 'number' && after.startsAt > 0
+              ? after.startsAt
+              : Date.now();
+
           const standingBatch = db.batch();
           for (const uid of attendees) {
             const e = evStat[uid];
@@ -6034,7 +6290,18 @@ export const onGameRosterChanged = onDocumentWritten(
               assistsFor10,
               e.pen,
             );
-            const prev = cumMap.get(uid)?.lastScore ?? null;
+            // Only compare against an evening that came BEFORE this one.
+            //
+            // `lastEveningScore` is "the last score written", and on a late
+            // confirmation the last score written belongs to an evening played
+            // AFTER the one being sealed — so the arrow on the card measured
+            // the night against its own future. No comparable evening is null,
+            // which the card renders as no delta at all, rather than a number
+            // pointing the wrong way.
+            const prevRow = cumMap.get(uid);
+            const prevIsOlder =
+              prevRow?.lastScoreAt == null || prevRow.lastScoreAt <= eveningAt;
+            const prev = prevIsOlder ? prevRow?.lastScore ?? null : null;
             const rankNow = nowRanked.findIndex((c) => c.uid === uid) + 1;
             const rankBefore = beforeRanked.findIndex((c) => c.uid === uid) + 1;
             standingBatch.set(
@@ -6050,13 +6317,32 @@ export const onGameRosterChanged = onDocumentWritten(
                   prev == null ? null : Math.round((score - prev) * 10) / 10,
                 rank: rankNow > 0 ? rankNow : null,
                 rankTotal: total > 0 ? total : null,
-                // + = climbed N places since before this evening.
+                // + = climbed N places since before this evening. Null when
+                // there was no table before this evening — see `hadTable`:
+                // the "before" ordering is then the uid tie-break and every
+                // arrow drawn off it is fiction. Null is what the card already
+                // reads as "no movement to show".
+                //
+                // …and null for a player who had no points of his OWN, even
+                // when the club did. His "before" position came out of the
+                // zero-block, which is ordered by user id, so a newcomer who
+                // scores three goals on evening 5 was announced as having
+                // "climbed N places" from a rank he only ever held
+                // alphabetically. The personal card already refuses to draw
+                // that arrow (`movementReal` in eveningProgress), so the two
+                // surfaces were telling the same player two different stories
+                // about the same night — and the club summary was the fiction.
                 rankDelta:
-                  rankNow > 0 && rankBefore > 0 ? rankBefore - rankNow : null,
+                  hadPointsTable &&
+                  beforePoints(uid) > 0 &&
+                  rankNow > 0 &&
+                  rankBefore > 0
+                    ? rankBefore - rankNow
+                    : null,
                 metrics: metricsFor(uid),
                 scoreRank: scoreRanked.indexOf(uid) + 1,
                 scoreTotal: scoreRanked.length,
-                at: Date.now(),
+                at: eveningAt,
               },
               { merge: true },
             );
@@ -6076,7 +6362,19 @@ export const onGameRosterChanged = onDocumentWritten(
             standingBatch.set(
               db.collection('communityPlayerStats').doc(`${gid}__${uid}`),
               {
-                lastEveningScore: score,
+                // The score of the player's LATEST evening, which a late
+                // confirmation must not overwrite with an older one — doing so
+                // measured the next real evening's delta against a night from
+                // days earlier. Stamped with the evening it came from so the
+                // comparison above can tell the two apart at all; the pair is
+                // written together or not at all.
+                //
+                // Both survive a rollover (neither is in PLAYER_SEASON_FIELDS)
+                // for the same reason: the delta is "against your last night",
+                // not "against your last night this season".
+                ...(prevIsOlder
+                  ? { lastEveningScore: score, lastEveningAt: eveningAt }
+                  : {}),
                 eveningScoreSum: admin.firestore.FieldValue.increment(score),
                 eveningScoreCount: admin.firestore.FieldValue.increment(1),
               },
@@ -6133,15 +6431,25 @@ export const onGameRosterChanged = onDocumentWritten(
               seasonId:
                 (after as { seasonId?: string }).seasonId || stampedSeasonId || undefined,
               groupOnce,
-              standings: attendees.map((uid) => ({
-                userId: uid,
-                score: scoreOf.get(uid) ?? 0,
-                rank: nowRanked.findIndex((c) => c.uid === uid) + 1 || null,
-                rankTotal: nowRanked.length || null,
-                rankDelta:
-                  beforeRanked.findIndex((c) => c.uid === uid) -
-                  nowRanked.findIndex((c) => c.uid === uid),
-              })),
+              // Empty when there was no table before tonight — see `hadTable`.
+              // This is the ONLY thing `rankEventsOf` reads, and on an
+              // all-zero table every line it can draw from it is fiction: who
+              // "climbed into first place", who "jumped", who "entered the top
+              // three", all off an ordering that is alphabetical by uid. The
+              // club summary's own guard covers the first evening of a season;
+              // it does not cover the timer-only club, whose table is all
+              // zeros every week of its life.
+              standings: hadPointsTable
+                ? attendees.map((uid) => ({
+                    userId: uid,
+                    score: scoreOf.get(uid) ?? 0,
+                    rank: nowRanked.findIndex((c) => c.uid === uid) + 1 || null,
+                    rankTotal: nowRanked.length || null,
+                    rankDelta:
+                      beforeRanked.findIndex((c) => c.uid === uid) -
+                      nowRanked.findIndex((c) => c.uid === uid),
+                  }))
+                : [],
             });
           } catch (err) {
             console.error(
@@ -7294,24 +7602,66 @@ function joinHebrewNames(names: string[]): string {
   return `${names.slice(0, -1).join(', ')} ו${names[names.length - 1]}`;
 }
 
+// `teamsGenerated` is the ONE notification type missing from this side's
+// notificationDedup mirror. The client mirror (src/services/notificationDedup.ts)
+// has carried it since the fan-out shipped — 60s cooldown, entity `game`, reason
+// `teams-generated` — but functions/src/notificationDedup.ts never got the entry,
+// so `createNotificationOnce({type: 'teamsGenerated'})` does not type-check and
+// this fan-out has always hand-rolled its own write. That divergence is what the
+// two constants below exist to close; once the server mirror is back in lockstep
+// this whole block should become a plain createNotificationOnce loop.
+const TEAMS_READY_COOLDOWN_MS = 60 * 1000;
+const TEAMS_READY_REASON = 'teams-generated';
+
+/**
+ * Doc id + dedupeKey for one (game, player) teams-ready notice, built to the
+ * exact recipe of dedupeKeyFor/dedupeIdFor so a teamsGenerated doc is
+ * indistinguishable from every other doc in /notifications.
+ *
+ * The id used to be a FIXED `${gameId}__teamsReady__${uid}`, which meant the
+ * second fan-out for a game was an UPDATE of the first doc — and
+ * `onNotificationCreated` is an onDocumentCreated trigger, so it never fired.
+ * An admin who edited teams and tapped "הודע לשחקנים" got {ok:true} and nobody
+ * was told; the overwrite also reset `delivered` to false on an already-sent
+ * doc. Production held 39 such docs across three games, every one of the only
+ * undelivered notifications in the whole collection, for eleven weeks. Bucketing
+ * the id by the 60s cooldown restores the push: a retry or a scheduled/manual
+ * race inside the window still collapses onto one doc, a deliberate re-notify
+ * after that mints a new one and the trigger fires.
+ */
+function teamsReadyNotifId(
+  gameId: string,
+  uid: string,
+  nowMs: number,
+): { id: string; dedupeKey: string } {
+  const dedupeKey = `teamsGenerated:${uid}:game:${gameId}:${TEAMS_READY_REASON}`;
+  const raw = `${dedupeKey}__b${Math.floor(nowMs / TEAMS_READY_COOLDOWN_MS)}`;
+  const safe = raw.replace(/[^A-Za-z0-9:_\-.]/g, '_');
+  return { id: safe.length > 480 ? safe.slice(0, 480) : safe, dedupeKey };
+}
+
 /**
  * Fan out one `teamsGenerated` notification per registered player, each with
  * a personal body listing their same-team members — registered teammates AND
  * guests on that team (guests get no push of their own, but their names still
  * appear in their teammates' lists). Stamps `teamsNotifiedAt` so a later
  * edit/re-save can't re-spam.
+ *
+ * Returns how many docs were actually minted vs. collapsed onto an existing
+ * one, so the callable can report whether a re-notify reached anybody instead
+ * of answering {ok:true} either way.
  */
 async function fanOutTeamsReadyPush(
   ref: FirebaseFirestore.DocumentReference,
   gameId: string,
   teams: DraftTeamDoc[],
-): Promise<void> {
+): Promise<{ created: number; duplicate: number }> {
   // Only real users (skip guest:* ids) receive a push.
   const realByTeam = teams.map((t) =>
     t.playerIds.filter((id) => !id.startsWith(GUEST_ID_PREFIX)),
   );
   const allReal = realByTeam.flat();
-  if (allReal.length === 0) return;
+  if (allReal.length === 0) return { created: 0, duplicate: 0 };
   // Resolve guest names (keyed `guest:<id>`) from the game doc so guests can be
   // listed alongside registered teammates in each push body.
   const guestNameById: Record<string, string> = {};
@@ -7333,7 +7683,10 @@ async function fanOutTeamsReadyPush(
       .filter((n): n is string => !!n),
   );
   const firstNames = await loadFirstNames(allReal);
-  const batch = db.batch();
+  // ONE timestamp for the whole fan-out, so every player of a given publish
+  // lands in the same cooldown bucket no matter how long the loop takes.
+  const now = Date.now();
+  const writes: Promise<'created' | 'duplicate'>[] = [];
   teams.forEach((t, ti) => {
     const mates = realByTeam[ti];
     mates.forEach((uid) => {
@@ -7344,27 +7697,79 @@ async function fanOutTeamsReadyPush(
           .filter((n): n is string => !!n),
         ...guestNamesByTeam[ti],
       ];
-      // Deterministic id per (game, player) so a second fan-out — the manual
-      // "notify" callable racing the scheduled path, or a retry — overwrites
-      // the same doc instead of creating a duplicate that fires a second push
-      // (onNotificationCreated only triggers on CREATE). N6.
-      const notifRef = db
-        .collection('notifications')
-        .doc(`${gameId}__teamsReady__${uid}`);
-      batch.set(notifRef, {
-        type: 'teamsGenerated',
-        recipientId: uid,
-        payload: {
-          gameId,
-          teammates: joinHebrewNames(teammateNames),
-        },
-        delivered: false,
-        createdAt: Date.now(),
-      });
+      const { id, dedupeKey } = teamsReadyNotifId(gameId, uid, now);
+      const notifRef = db.collection('notifications').doc(id);
+      // `create`, never `set` — the same atomic write createNotificationOnce
+      // uses. A racing retry loses on AlreadyExists and is swallowed below
+      // instead of overwriting a doc the trigger has already delivered.
+      //
+      // The field list is createNotificationOnce's, verbatim. The old
+      // hand-rolled write stored FIVE fields and, worse, `createdAt` as a
+      // NUMBER while every other type stores a server timestamp — and
+      // Firestore's total ordering puts every integer ahead of every
+      // timestamp, so all 223 teamsGenerated docs sort in front of the other
+      // 1,029 — which is the TAIL of a descending read, and a descending
+      // `orderBy('createdAt')` is how this project reads /notifications
+      // (plain list reads come back stale). The type was therefore absent
+      // from every operational read of the collection, which is how the 39
+      // undelivered pushes stayed invisible for eleven weeks. Putting a
+      // number back in `createdAt` hides the whole type again.
+      writes.push(
+        notifRef
+          .create({
+            type: 'teamsGenerated',
+            recipientId: uid,
+            entityType: 'game',
+            entityId: gameId,
+            reason: TEAMS_READY_REASON,
+            dedupeKey,
+            payload: {
+              gameId,
+              teammates: joinHebrewNames(teammateNames),
+            },
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAtMs: now,
+            cooldownMs: TEAMS_READY_COOLDOWN_MS,
+            read: false,
+            delivered: false,
+            // System-originated fan-out: no caller uid is threaded down here,
+            // same convention createNotificationOnce uses for server callers.
+            createdByUid: '',
+            srv: true,
+            schemaVersion: NOTIFICATION_SCHEMA_VERSION,
+          })
+          .then(() => 'created' as const)
+          .catch((err) => {
+            const code = (err as { code?: number | string }).code;
+            if (code === 6 || code === 'already-exists') return 'duplicate';
+            throw err;
+          }),
+      );
     });
   });
-  batch.update(ref, { teamsNotifiedAt: Date.now() });
-  await batch.commit();
+  const results = await Promise.allSettled(writes);
+  let created = 0;
+  let duplicate = 0;
+  for (const r of results) {
+    if (r.status === 'rejected') {
+      console.error('[teamsReady] notification write failed', gameId, r.reason);
+      continue;
+    }
+    if (r.value === 'created') created++;
+    else duplicate++;
+  }
+  console.log('[teamsReady] fan-out', { gameId, created, duplicate });
+  // Stamped last, on its own, best-effort. It used to ride the same batch as
+  // the notifications; now that the pushes are already out, failing the whole
+  // call over the debounce stamp would show the admin an error for a fan-out
+  // that worked. Losing the stamp only costs the 30s double-tap guard, and the
+  // bucketed doc ids above still collapse a re-tap inside the same minute.
+  try {
+    await ref.update({ teamsNotifiedAt: now });
+  } catch (err) {
+    console.warn('[teamsReady] teamsNotifiedAt stamp failed', gameId, err);
+  }
+  return { created, duplicate };
 }
 
 /**
@@ -8546,20 +8951,25 @@ export const notifyTeamsReady = onCall(
     if (!authorized) {
       throw new HttpsError('permission-denied', 'admin only');
     }
-    // Debounce a double-tap: if we already fanned out within the last 30s,
-    // no-op. A deliberate re-notify after editing teams (later) still works.
+    // Debounce a double-tap. The window is TEAMS_READY_COOLDOWN_MS, not the
+    // 30s it used to be, so it matches the cooldown bucket the fan-out's doc
+    // ids are keyed on. With the two numbers apart, a re-notify at t=45s fell
+    // past the debounce but back onto the same bucket id, so it wrote nothing
+    // and pushed nobody while still answering {ok:true} — the same silent
+    // no-op the bucketing was introduced to end. Anything beyond the window is
+    // a deliberate re-notify and really does reach the roster again.
     if (
       typeof game.teamsNotifiedAt === 'number' &&
-      Date.now() - game.teamsNotifiedAt < 30_000
+      Date.now() - game.teamsNotifiedAt < TEAMS_READY_COOLDOWN_MS
     ) {
-      return { ok: true, skipped: 'debounce' };
+      return { ok: true, skipped: 'debounce', notified: 0 };
     }
     const teams = game.draftTeams?.teams ?? [];
     if (teams.length === 0) {
       throw new HttpsError('failed-precondition', 'no teams to notify');
     }
-    await fanOutTeamsReadyPush(gameSnap.ref, gameId, teams);
-    return { ok: true };
+    const { created } = await fanOutTeamsReadyPush(gameSnap.ref, gameId, teams);
+    return { ok: true, notified: created };
   },
 );
 
@@ -15160,43 +15570,17 @@ async function clubIsQuiet(
   return { ok: true };
 }
 
-/** Finished rounds credited to the club. From the sealed-evening counter, not
- *  a query over games: deleting a game decrements nothing, so a live count
- *  drifts below the rounds that were actually credited. */
-/** The club's ALL-TIME sealed evenings. Never resets. */
+/** The club's ALL-TIME sealed evenings. Never resets.
+ *
+ *  From the counter and not from a query over games: deleting a game
+ *  decrements nothing, so a live count drifts below the evenings that were
+ *  actually credited. */
 async function sealedEveningsOf(groupId: string): Promise<number> {
   const rec = await db.collection('clubRecords').doc(groupId).get();
   const n = (rec.data() as { eveningsSealed?: number } | undefined)?.eveningsSealed;
   return typeof n === 'number' && n > 0 ? n : 0;
 }
 
-/**
- * Rounds credited to THIS season.
- *
- * The counter behind it is all-time and never resets, so a season has to
- * remember where it started. `roundsAtStart` is stamped when the season opens:
- * 0 when the season continues the club's history (season 1 of an existing club
- * owns everything played so far — that is what "continue" means), and the
- * all-time count at that moment for every season opened after a close.
- *
- * Without the offset a rounds target is broken for every season after the
- * first: season 2 of a club with 200 sealed evenings would be measured against
- * 200 and be "due" the instant it opened, over and over.
- */
-/**
- * How many evenings a club has actually played, counted from the GAMES.
- *
- * `clubRecords.eveningsSealed` only began on 26.08.2026, when evening-sealing
- * shipped, so it cannot see a club's earlier history: a club with 19 finished
- * evenings had a counter of 7. That is fine for measuring a season FORWARD —
- * it increments on every seal — and useless for answering "what has this club
- * already played", which is exactly what season 1 is seeded with.
- *
- * So the history is counted where it actually lives. Bounded to the same 200
- * terminal documents the club-stats scan reads, and asked of the one module
- * that decides whether an evening happened, so this number can never disagree
- * with the "מפגשים שנערכו" the club screen has shown all along.
- */
 /**
  * How many evenings a season has actually held, counted from the GAMES that
  * carry its stamp.
@@ -15254,6 +15638,20 @@ async function playedEveningsOfSeason(
   }
 }
 
+/**
+ * How many evenings a club has actually played, counted from the GAMES.
+ *
+ * `clubRecords.eveningsSealed` only began on 26.08.2026, when evening-sealing
+ * shipped, so it cannot see a club's earlier history: a club with 19 finished
+ * evenings had a counter of 7. That is fine for measuring a season FORWARD —
+ * it increments on every seal — and useless for answering "what has this club
+ * already played", which is exactly what season 1 is seeded with.
+ *
+ * So the history is counted where it actually lives. Bounded to the same 200
+ * terminal documents the club-stats scan reads, and asked of the one module
+ * that decides whether an evening happened, so this number can never disagree
+ * with the "מפגשים שנערכו" the club screen has shown all along.
+ */
 async function playedEveningsFromGames(groupId: string): Promise<number> {
   try {
     const snap = await db
@@ -15283,6 +15681,16 @@ async function playedEveningsFromGames(groupId: string): Promise<number> {
  *
  * Falls back to the old derivation for a season opened before this shipped,
  * which has no seeded mirror to read.
+ *
+ * Either way the number is relative to where the season started. The counter
+ * behind the fallback is all-time and never resets, so a season has to
+ * remember its own zero: `roundsAtStart` is stamped when the season opens — 0
+ * when the season continues the club's history (season 1 of an existing club
+ * owns everything played so far, which is what "continue" means), and the
+ * all-time count at that moment for every season opened after a close. Without
+ * the offset a rounds target is broken for every season after the first:
+ * season 2 of a club with 200 sealed evenings would be measured against 200
+ * and be "due" the instant it opened, over and over.
  */
 async function completedRoundsOf(
   groupId: string,

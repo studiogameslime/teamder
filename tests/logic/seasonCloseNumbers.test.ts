@@ -29,6 +29,7 @@ import {
 import {
   ARCHIVED_PLAYER_ROWS,
   PLAYER_ROWS,
+  AWARDS_DENOMINATOR,
   SEALED_CARD,
 } from '../fixtures/realClub';
 
@@ -179,7 +180,7 @@ describe('the two numbers the card carries', () => {
   it('the awards denominator is the best attendance, not the season', () => {
     const attendances = Object.values(ARCHIVED_PLAYER_ROWS).map((r) => r.games);
     expect(awardsDenominatorOf(attendances, 22)).toBe(19);
-    expect(awardsDenominatorOf(attendances, 22)).toBe(SEALED_CARD.awardsDenominator);
+    expect(awardsDenominatorOf(attendances, 22)).toBe(AWARDS_DENOMINATOR);
   });
 
   it('falls back to what the caller knew when nobody played', () => {

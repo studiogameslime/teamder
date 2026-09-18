@@ -38,6 +38,7 @@ import {
   EVENINGS,
   EVENINGS_THAT_HAPPENED,
   PLAYER_ROWS,
+  AWARDS_DENOMINATOR,
   SEALED_CARD,
   SEASON_1,
   SEASON_2,
@@ -196,7 +197,7 @@ describe('the numbers that are deliberately NOT the same number', () => {
     const bestAttendance = Math.max(
       ...Object.values(ARCHIVED_PLAYER_ROWS).map((r) => r.games),
     );
-    expect(bestAttendance).toBe(SEALED_CARD.awardsDenominator);
+    expect(bestAttendance).toBe(AWARDS_DENOMINATOR);
     expect(SEALED_CARD.completedRounds).toBe(EVENINGS_THAT_HAPPENED);
     expect(bestAttendance).not.toBe(SEALED_CARD.completedRounds);
   });

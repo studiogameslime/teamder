@@ -37,10 +37,26 @@ export { eveningScore } from '@/utils/eveningScore';
 /** One club-table metric (goals / assists / wins) as of tonight. */
 export interface EveningMetric {
   key: 'goals' | 'assists' | 'wins';
+  /** The player's SEASON total after tonight (communityPlayerStats is zeroed
+   *  on every season close, so this is not a career figure). */
   value: number;
   rank: number;
   /** Places climbed tonight (+ = up). */
   delta: number;
+  /** What tonight alone contributed to `value`, so `value - tonight` is what
+   *  the player brought into the evening. The server sends the cumulative
+   *  figure only, and without the other half "first with a delta of 0" cannot
+   *  be told apart from "first because everyone is on zero and the tie fell to
+   *  my uid" — see the crown guard in eveningProgress.
+   *
+   *  It does NOT come from the standing doc; `readMetrics` fills it from this
+   *  game's own gamePlayerStats row, which the card has already read, so every
+   *  block the reader emits carries it. Optional only because `mockModel` and
+   *  any future caller build this type by hand — a `tonight == null` branch
+   *  downstream is a belt, not a live path, and the real way `before` comes
+   *  back null is the SERVER omitting the metric block entirely (`hadTable` in
+   *  onGameRosterChanged), which is a different condition. */
+  tonight?: number;
   /** Who you went past tonight — NAMES are capped, the count is the truth. */
   passed: string[];
   passedCount: number;
@@ -60,7 +76,7 @@ const METRIC_ORDER: EveningMetric['key'][] = ['goals', 'assists', 'wins'];
  * and names are filtered to real strings so a partial write can't put
  * "undefined" on the card.
  */
-function readMetrics(raw: unknown): EveningMetric[] {
+function readMetrics(raw: unknown, tonight: GameStatRow): EveningMetric[] {
   if (!raw || typeof raw !== 'object') return [];
   const src = raw as Record<string, unknown>;
   const strList = (v: unknown): string[] =>
@@ -79,6 +95,14 @@ function readMetrics(raw: unknown): EveningMetric[] {
       value: typeof d.value === 'number' ? d.value : 0,
       rank,
       delta: typeof d.delta === 'number' ? d.delta : 0,
+      // Tonight's half comes from THIS game's own stat row, not from the
+      // standing doc — same evening, same player, and it is already read.
+      tonight:
+        key === 'goals'
+          ? tonight.goals
+          : key === 'assists'
+            ? tonight.assists
+            : tonight.wins,
       passed: strList(d.passed),
       passedCount:
         typeof d.passedCount === 'number' ? d.passedCount : strList(d.passed).length,
@@ -212,20 +236,23 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     scoreRank: 3,
     scoreTotal: 15,
     metrics: [
+      // `tonight` matches the goals/assists/wins this mock player scored above,
+      // the way the real reader builds it — a mock whose halves disagree tests
+      // a shape the code cannot produce.
       {
-        key: 'goals', value: 31, rank: 4, delta: 3,
+        key: 'goals', value: 31, rank: 4, delta: 3, tonight: goals,
         passed: ['שלומי', 'יוסי', 'נדב'], passedCount: 3,
         passedBy: [], passedByCount: 0,
         aheadName: 'דניאל', aheadGap: 2,
       },
       {
-        key: 'assists', value: 23, rank: 6, delta: -1,
+        key: 'assists', value: 23, rank: 6, delta: -1, tonight: assists,
         passed: [], passedCount: 0,
         passedBy: ['אבי'], passedByCount: 1,
         aheadName: 'אבי', aheadGap: 2,
       },
       {
-        key: 'wins', value: 48, rank: 2, delta: 0,
+        key: 'wins', value: 48, rank: 2, delta: 0, tonight: wins,
         passed: [], passedCount: 0, passedBy: [], passedByCount: 0,
         aheadName: 'דניאל', aheadGap: 5,
       },
@@ -302,8 +329,8 @@ export const eveningSummaryService = {
 
       // Community benchmark: the "perfect 10" goals/assists targets are the
       // group's historical average of the top scorer's / top assister's evening
-      // total ("מלך השערים" per מחזור), maintained on communityStats by the
-      // evening-standings Cloud Function. Absent (new group / read failed) →
+      // total (the club's כתר השערים, per מחזור), maintained on communityStats
+      // by the evening-standings Cloud Function. Absent (new group / read failed) →
       // eveningScore falls back to its DEFAULT_*_FOR_10. Never blocks the card.
       const benchSnap = game?.groupId
         ? await getDoc(doc(db, 'communityStats', game.groupId)).catch(() => null)
@@ -374,6 +401,54 @@ export const eveningSummaryService = {
       // stats and tonight's own ranking below it are still real.
       const clubRanked = game?.isOrphanContext !== true;
 
+      const metrics = clubRanked ? readMetrics(stand?.metrics, row) : [];
+
+      // ── "▲3" needs a table to have climbed in ────────────────────────
+      // The club table is season-scoped: a season close zeroes goals, assists
+      // and wins on every communityPlayerStats row, so on the first evening of
+      // a season the server's "before" ordering is every player on 0 points,
+      // ordered by `a.uid.localeCompare(b.uid)`. rankDelta is then the distance
+      // between an alphabetical list and a real one — a green ▲ or a red ▼ of
+      // arbitrary size for movement in a table that did not exist. The only
+      // seasons club is sitting on exactly this: eveningsSealed 10 against
+      // roundsAtStart 10, so its next sealed evening is evening 1 of a season.
+      //
+      // The combined table ranks on goals*2 + assists, so the player's own
+      // "before" points are computable here from the two halves we now have.
+      // Zero means there was no place to climb from — after a rollover that is
+      // everybody, and for a first-ever evening it is the honest reading too:
+      // the player was in a block of zeros whose internal order was uids. The
+      // place itself ("מקום 4 מתוך 20") and the value-based overtake lines
+      // ("עקפת את X") are unaffected — those are true either way.
+      //
+      // Costs a genuine newcomer their first-night ▲. That is the side to err
+      // on: the chip is decoration, and a wrong one is a claim.
+      //
+      // A metric MISSING from the block is not the same as the block being
+      // missing, and reading the two the same way had this guard leaning on
+      // the server to do its job. The server omits a metric precisely when
+      // nobody in the club had anything in that column before tonight
+      // (`hadTable` in onGameRosterChanged) — the very condition this is
+      // written for — so treating that as "unknown" let the arrow through and
+      // left it standing only because `hadPointsTable` had already nulled
+      // `rankDelta` on the same evidence. Belt and braces, and the braces are
+      // in another file. An absent `metrics` map IS unknown: that is a standing
+      // doc written before the server sent one, and its delta is all there is.
+      const hasMetricsBlock = !!stand?.metrics && typeof stand.metrics === 'object';
+      const before = (key: EveningMetric['key']) => {
+        const m = metrics.find((x) => x.key === key);
+        if (!m) return hasMetricsBlock ? 0 : null;
+        if (m.tonight == null) return null;
+        return m.value - m.tonight;
+      };
+      const beforeGoals = before('goals');
+      const beforeAssists = before('assists');
+      const beforePoints =
+        beforeGoals == null || beforeAssists == null
+          ? null // no metrics map at all (an old standing doc) — nothing to judge on
+          : beforeGoals * 2 + beforeAssists;
+      const movementReal = beforePoints == null || beforePoints > 0;
+
       return {
         gameId,
         uid,
@@ -395,10 +470,10 @@ export const eveningSummaryService = {
         scoreDelta: numOrNull(stand?.scoreDelta),
         rank: clubRanked ? numOrNull(stand?.rank) : null,
         rankTotal: clubRanked ? numOrNull(stand?.rankTotal) : null,
-        rankDelta: clubRanked ? numOrNull(stand?.rankDelta) : null,
+        rankDelta: clubRanked && movementReal ? numOrNull(stand?.rankDelta) : null,
         scoreRank: numOrNull(stand?.scoreRank),
         scoreTotal: numOrNull(stand?.scoreTotal),
-        metrics: clubRanked ? readMetrics(stand?.metrics) : [],
+        metrics,
         heldPitch: rs.heldPitch,
         teamGoalsFor,
         teamGoalsAgainst,

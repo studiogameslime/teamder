@@ -10,6 +10,39 @@
 const count = (n: number, one: string, many: string) =>
   n === 1 ? one : `${n} ${many}`;
 
+// The nine season titles. Names, not descriptions — they are worn.
+//
+// Seven of them were "מלך", and "שחקן העונה" is no better. On the only club
+// that has closed a season a woman holds four of the eight awarded, so the
+// medal cabinet, the poster, the summary row, the share PNG and the profile
+// shelf all called her a king, four times over on one card. There is no
+// gender field in the app and there will not be one, so the names themselves
+// have to fit anybody: כתר is the thing won, not the person who won it, and
+// it is the word Israeli football already uses for exactly this.
+//
+// They stay short on purpose — the medal caption is a single 60pt line and
+// the longest of these is shorter than the two titles it replaces.
+//
+// They live OUT here, above `he`, because an object literal cannot read its
+// own keys while it is being built — which is precisely how the rename shipped
+// half-done. Six of the names were also hardcoded further down the file (the
+// club stats leaders card, the round summary, the assistant) and those copies
+// kept saying "מלך" after this list stopped: הלן צברי was 'כתר השערים' on her
+// hall-of-fame card and 'מלך השערים' four times over in the same season's club
+// stats, one tap apart. Anything that names a title points at THIS object; a
+// literal anywhere else is the bug coming back.
+const TITLE = {
+  topScorer: 'כתר השערים',
+  topAssister: 'כתר הבישולים',
+  mvp: 'כתר העונה',
+  topWinner: 'כתר הניצחונות',
+  mostLoyal: 'כתר ההתמדה',
+  cleanSheetKing: 'כתר השער הנקי',
+  penaltyKing: 'כתר הפנדלים',
+  penaltyKeeper: 'כתר העצירות',
+  deadlyDuo: 'הצמד הקטלני',
+} as const;
+
 export const he = {
   // Common
   back: 'חזור',
@@ -996,11 +1029,17 @@ export const he = {
   roundSummaryStatAssists: (n: number) => `${n} בישולים`,
   roundSummaryStatShootouts: (n: number) =>
     n === 1 ? 'הכרעת פנדלים אחת' : `${n} הכרעות פנדלים`,
-  roundSummaryKingGoals: 'מלך השערים',
-  roundSummaryKingAssists: 'מלך הבישולים',
-  roundSummaryKingCleanSheets: 'מלך השערים הנקיים',
+  // Tonight's leaders, under the "כוכבי המחזור" heading — the heading is what
+  // scopes them to the evening, so they can safely wear the club's title names
+  // rather than a second set. They used to be their own hardcoded "מלך" copies
+  // and were left behind by the rename; see TITLE.
+  roundSummaryKingGoals: TITLE.topScorer,
+  roundSummaryKingAssists: TITLE.topAssister,
+  roundSummaryKingCleanSheets: TITLE.cleanSheetKing,
+  // No season awards "most involved in goals" (goals + assists together), so
+  // there is no title name to point at — it stays a description.
   roundSummaryKingInvolvement: 'הכי מעורב בשערים',
-  roundSummaryKingWins: 'מלך הניצחונות',
+  roundSummaryKingWins: TITLE.topWinner,
   /** `team` is the full name ("האדומים"); `teamAfterL` arrives without its
    *  leading ה so the ל reads "לאדומים". */
   roundSummaryTeamBest: (team: string, wins: number) =>
@@ -1305,17 +1344,31 @@ export const he = {
   communityStatsMiniGames: 'משחקים',
   communityStatsEvenings: 'מחזורים',
   communityStatsGoalsPerMini: 'גולים למשחק',
-  // leaders
-  communityStatsTopScorer: 'מלך השערים',
+  // leaders — the same titles the hall of fame awards, because the scope picker
+  // on this screen can point at a CLOSED season, and then these rows and that
+  // season's medal cabinet describe one person's one set of numbers. Two
+  // vocabularies for that is the bug; see TITLE.
+  communityStatsTopScorer: TITLE.topScorer,
+  // Not a title: the ribbon on the hero card. It says "this is the standout of
+  // the screen", and the category line under it is the actual title. The
+  // season's own MVP (TITLE.mvp) is a different award with a different rule
+  // (best average evening score), so pointing this at it would name the wrong
+  // person.
   communityStatsMvp: 'המצטיין',
   communityStatsMvpShare: (pct: number) => `${pct}% מכל השערים במועדון`,
-  communityStatsTopAssister: 'מלך הבישולים',
-  communityStatsTopWinner: 'מלך הניצחונות',
-  communityStatsMostLoyal: 'הכי מתמיד',
-  communityStatsPenaltyKing: 'מלך הפנדלים',
-  communityStatsPenaltyKeeperKing: 'מלך שוערי הפנדלים',
-  communityStatsOwnGoalKing: 'מלך השערים העצמיים',
-  communityStatsCleanSheetKing: 'מלך שערים נקיים',
+  communityStatsTopAssister: TITLE.topAssister,
+  communityStatsTopWinner: TITLE.topWinner,
+  // Was 'הכי מתמיד' — a masculine adjective for a row that is very often a
+  // woman, and the one club that runs seasons prints it beside 'כתר ההתמדה'
+  // for the same attendance.
+  communityStatsMostLoyal: TITLE.mostLoyal,
+  communityStatsPenaltyKing: TITLE.penaltyKing,
+  communityStatsPenaltyKeeperKing: TITLE.penaltyKeeper,
+  // The dubious crown. No season awards it, so it has no TITLE entry — but it
+  // was 'מלך השערים העצמיים' and carries the same problem the rename was for,
+  // so it wears the same word.
+  communityStatsOwnGoalKing: 'כתר השערים העצמיים',
+  communityStatsCleanSheetKing: TITLE.cleanSheetKing,
   communityStatsGoalsUnit: (n: number) => `${n} גולים`,
   communityStatsAssistsUnit: (n: number) => `${n} בישולים`,
   communityStatsWinsUnit: (n: number) => `${n} ניצחונות`,
@@ -2200,29 +2253,9 @@ export const he = {
   seasonBlockedOff: 'העונות כבויות במועדון הזה.',
   seasonBlockedNotAdmin: 'רק מנהל המועדון יכול לסיים עונה.',
   seasonActionFailed: 'משהו השתבש. נסו שוב עוד רגע.',
-  // The nine season titles. Names, not descriptions — they are worn.
-  //
-  // Seven of them were "מלך", and "שחקן העונה" is no better. On the only club
-  // that has closed a season a woman holds four of the eight awarded, so the
-  // medal cabinet, the poster, the summary row, the share PNG and the profile
-  // shelf all called her a king, four times over on one card. There is no
-  // gender field in the app and there will not be one, so the names themselves
-  // have to fit anybody: כתר is the thing won, not the person who won it, and
-  // it is the word Israeli football already uses for exactly this.
-  //
-  // They stay short on purpose — the medal caption is a single 60pt line and
-  // the longest of these is shorter than the two titles it replaces.
-  seasonTitleNames: {
-    topScorer: 'כתר השערים',
-    topAssister: 'כתר הבישולים',
-    mvp: 'כתר העונה',
-    topWinner: 'כתר הניצחונות',
-    mostLoyal: 'כתר ההתמדה',
-    cleanSheetKing: 'כתר השער הנקי',
-    penaltyKing: 'כתר הפנדלים',
-    penaltyKeeper: 'כתר העצירות',
-    deadlyDuo: 'הצמד הקטלני',
-  } as const,
+  /** The nine titles. Defined above the object — see TITLE for why, and for
+   *  why כתר. Every surface that prints one reads it from here. */
+  seasonTitleNames: TITLE,
   communityStatsSeasonFresh: (no: number) =>
     `עונה ${no} רק התחילה, אז הטבלה עוד ריקה. שום דבר לא נמחק — כל מה ששיחקתם שמור בעונה הקודמת, והסטטיסטיקה המצטברת בפרופיל לא השתנתה.`,
   communityStatsSeasonFreshCta: 'לראות את העונה הקודמת ואת התארים שחולקו',
@@ -2486,8 +2519,22 @@ export const he = {
   seasonTitlesNone:
     'לא לקחת תואר בעונה הזאת. תארים ניתנים רק למי שהגיע לפחות לחצי מערבי המשחק של העונה.',
   seasonSummaryTitle: 'סיכום העונה',
+  /** ⚠️ This says the season's START IS UNKNOWN — it is for season 1 of a club
+   *  that sealed its history with no startsAt, and for nothing else. It was
+   *  borrowed as the answer to "both ends format to the same month", which is
+   *  a different question with a different answer (seasonRangeDays): a club's
+   *  fifth season, with a perfectly good startsAt, got captioned "מתחילת
+   *  המועדון עד ספט׳ 2026" on a card that is written once and never rewritten.
+   *  A 1- or 2-month season is an offered chip and a rounds-cadence season can
+   *  finish inside one month, so this is not a corner. */
   seasonRangeUntil: (to: string) => `מתחילת המועדון עד ${to}`,
   seasonRangeUnknown: 'כל ההיסטוריה של המועדון',
+  /** Both ends of the season land in the same calendar month, so the month is
+   *  not a range — "ספט׳ 2026 – ספט׳ 2026" over 22 מחזורים reads as a bug, and
+   *  the sentence above it is a lie. Day precision is the range that is
+   *  actually in the data: "3 בספט׳ – 17 בספט׳ 2026". The year rides on the
+   *  second half only, once. */
+  seasonRangeDays: (from: string, to: string) => `${from} – ${to}`,
   seasonNow: 'עכשיו',
   seasonNumberLabel: (no: number) => `עונה ${no}`,
   seasonClosedBadge: 'העונה הסתיימה',
@@ -3059,10 +3106,13 @@ export const he = {
     left === 1
       ? `גול אחד היום ואתה מגיע ל-${target} 🔥`
       : `${left} גולים היום ואתה מגיע ל-${target} 🔥`,
+  // "ואתה מלך השערים" does not survive the rename as a substitution — nobody
+  // IS a crown — so the sentence turns into taking one, which is also what the
+  // evening card says for the same event ("לקחת את התואר").
   assistantGameDayCrown: (left: number, club: string) =>
     left === 1
-      ? `עוד גול אחד ואתה מלך השערים של ${club} 👑`
-      : `עוד ${left} גולים ואתה מלך השערים של ${club} 👑`,
+      ? `עוד גול אחד ואתה לוקח את ${TITLE.topScorer} של ${club} 👑`
+      : `עוד ${left} גולים ואתה לוקח את ${TITLE.topScorer} של ${club} 👑`,
   assistantGameDayRival: (name: string, gap: number) =>
     gap === 1
       ? `עוד גול אחד היום ואתה עוקף את ${name} 👀`
@@ -3095,18 +3145,21 @@ export const he = {
     `זה כבר ${n} הגעות רצופות ב${club}. ברזל 🧱`,
 
   // ── club crowns ──
+  // Same rename, same reshape: held = מחזיק ב־, chase = לוקח את. The club's
+  // leader is the club's leader whatever screen says so, so these read the
+  // names from TITLE instead of keeping a third copy of them.
   assistantCrownGoalsHeld: (goals: number, club: string) =>
-    `אתה מלך השערים של ${club} עם ${goals} שערים. תשמור על הכתר 👑`,
+    `אתה מחזיק ב${TITLE.topScorer} של ${club} עם ${goals} שערים. תשמור עליו 👑`,
   assistantCrownGoalsChase: (left: number, club: string) =>
     left === 1
-      ? `עוד גול אחד ואתה מלך השערים של ${club} 👑`
-      : `עוד ${left} גולים ואתה מלך השערים של ${club} 👑`,
+      ? `עוד גול אחד ואתה לוקח את ${TITLE.topScorer} של ${club} 👑`
+      : `עוד ${left} גולים ואתה לוקח את ${TITLE.topScorer} של ${club} 👑`,
   assistantCrownAssistsHeld: (assists: number, club: string) =>
-    `אתה מלך הבישולים של ${club} עם ${assists} בישולים. הקבוצה מודה לך 🎯`,
+    `אתה מחזיק ב${TITLE.topAssister} של ${club} עם ${assists} בישולים. הקבוצה מודה לך 🎯`,
   assistantCrownAssistsChase: (left: number, club: string) =>
     left === 1
-      ? `עוד בישול אחד ואתה מלך הבישולים של ${club} 🎯`
-      : `עוד ${left} בישולים ואתה מלך הבישולים של ${club} 🎯`,
+      ? `עוד בישול אחד ואתה לוקח את ${TITLE.topAssister} של ${club} 🎯`
+      : `עוד ${left} בישולים ואתה לוקח את ${TITLE.topAssister} של ${club} 🎯`,
 
   // ── standing + rivalry ──
   assistantRivalry: (name: string, gap: number) =>
@@ -3551,13 +3604,24 @@ export const he = {
   communityStatsTotalFinished: 'מחזורים שיצאו לפועל',
   communityStatsThisMonth: 'מחזורים החודש',
   communityStatsOrgRate: 'אחוז הצלחה בארגון',
+  /** ⚠️ "הגעות" is everyone who stood on the pitch that night — members AND
+   *  guests. The number behind this label is not that: getCommunityStats sums
+   *  `g.players` only, and guests live in a separate `g.guests` array whose ids
+   *  never appear in it. Counted off the 23 sealed evenings of the only club
+   *  that runs seasons: 142 member slots against 95 active guest slots, so the
+   *  screen prints 6.2 for nights that averaged 10.3 — one of them was 7
+   *  members and 11 guests. That is the number to fix, not the label: a club
+   *  that fills a short week with guests is a case the product is built around,
+   *  the value reads "N שחקנים", and relabelling this "חברי מועדון" would tell
+   *  exactly those clubs that the people they brought do not count as having
+   *  come. */
   communityStatsAvgAttendance: 'ממוצע הגעות למחזור',
   communityStatsTopPlayers: 'המגיעים הקבועים',
   communityStatsActiveMonth: 'פעילים החודש',
   communityStatsActiveYear: 'פעילים השנה',
   communityStatsVitalityTitle: 'מד חיים של המועדון',
   // Fun-facts (נתונים מעניינים) — refreshed set.
-  communityStatsKingShare: 'נתח מלך השערים',
+  communityStatsKingShare: `נתח ${TITLE.topScorer}`,
   // Values kept short (number/percent only) so the value column stays a tidy,
   // aligned strip and the label never gets squeezed/truncated — the label
   // already carries the unit meaning (user report: "not organized").

@@ -272,7 +272,12 @@ export function CommunityStatsScreen() {
           ids.add(r.uid);
       });
       if (d) { ids.add(d.uidA); ids.add(d.uidB); }
+      // BOTH, because the row renders the LIFETIME holder and the prefetch
+      // only ever asked for the season-scoped one — so on exactly the clubs
+      // the lifetime switch was written for, the club's own record rendered
+      // "— הגיע 22 מחזורים ברצף", with no name on it.
       if (s?.longestStreakUid) ids.add(s.longestStreakUid);
+      if (s?.lifetime?.longestStreakUid) ids.add(s.lifetime.longestStreakUid);
       if (s?.topPlayers?.[0]?.uid) ids.add(s.topPlayers[0].uid);
       const fetched = await Promise.all(
         Array.from(ids).map((id) => userService.getUserById(id).catch(() => null)),
@@ -905,7 +910,7 @@ export function CommunityStatsScreen() {
               (stats?.lifetime?.totalCancelled ?? 0) >
               0 ? (
               <FunDonutRow index={5} pct={Math.round((stats?.lifetime?.organizationRate ?? 0) * 100)}
-                tint={colors.success} text="מהמחזורים המתוכננים יצאו לפועל" />
+                tint={colors.success} text="מכל המחזורים שתוכננו במועדון אי פעם יצאו לפועל" />
             ) : null}
             {/* עובדות טקסט (בלי אחוז) */}
             {viewDuo && viewDuo.assists > 0 ? (
@@ -922,11 +927,19 @@ export function CommunityStatsScreen() {
                 ]}
               />
             ) : null}
-            {/* The club's longest-ever run. The tooltip under the scope picker
-                tells the reader in so many words that the streaks are measured
-                over the club's whole life — and this read the season-scoped
-                figure, so a club's 22-night record vanished from the app
-                entirely the morning after a close. */}
+            {/* Three of these are LIFETIME figures sitting under a season
+                banner — the organisation rate, the streak and "פעילים השנה" —
+                because they are records and rates about the club, not about a
+                season, and the tooltip under the scope picker says so. Each one
+                now declares its own scope in its own words, so the card is not
+                silently mixing two. The tiles above it stay season-scoped, which
+                is what the banner is about.
+
+                This one is the club's longest-ever run. The tooltip under the
+                scope picker tells the reader in so many words that the streaks
+                are measured over the club's whole life — and this read the
+                season-scoped figure, so a club's 22-night record vanished from
+                the app entirely the morning after a close. */}
             {scope.k === 'current' && stats && (stats.lifetime?.longestStreak ?? stats.longestStreak) >= 2 ? (
               <FunRow
                 icon="flame-outline"
@@ -935,7 +948,7 @@ export function CommunityStatsScreen() {
                   { t: name(stats.lifetime?.longestStreakUid ?? stats.longestStreakUid ?? undefined), em: 'name' },
                   { t: ' הגיע ' },
                   { t: `${stats.lifetime?.longestStreak ?? stats.longestStreak} מחזורים`, em: 'num' },
-                  { t: ' ברצף — הרצף הארוך במועדון' },
+                  { t: ' ברצף — הרצף הארוך של המועדון אי פעם' },
                 ]}
               />
             ) : null}

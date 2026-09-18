@@ -2144,10 +2144,23 @@ service cloud.firestore {
       // club, so an ex-member's zeroed row used to be archived into every
       // later season. The close no longer archives empty rows, and this
       // refuses to trust that it never will again.
+      //
+      // "Played" is `games` OR `rounds`, in that order, and it has to be both
+      // or the clause is dead on most clubs. `rounds` counts משחקונים, which
+      // only the advanced live screen writes; a club running the plain timer
+      // archives rounds:0 for every player of every season it will ever play.
+      // This clause read `rounds > 0` alone while both server sides — the
+      // close's own "is this a participant" filter and the push fan-out —
+      // had already been corrected to `rounds || games`. The result was the
+      // worst of the three: the summary push went out to every ex-member of a
+      // timer-only club and the deep link landed on permission-denied, which
+      // is precisely the promise the clause was written to keep. `games` is
+      // evenings attended and every club records it.
       allow get: if isGroupMemberSafe(resource.data.get('groupId', '')) ||
         (request.auth != null &&
          request.auth.uid in resource.data.get('players', {}) &&
-         resource.data.players[request.auth.uid].get('rounds', 0) > 0);
+         (resource.data.players[request.auth.uid].get('games', 0) > 0 ||
+          resource.data.players[request.auth.uid].get('rounds', 0) > 0));
       allow write: if false;
     }
     // ── /gamePlayerStats/{gameId__uid} — per-GAME rows ──────────────────

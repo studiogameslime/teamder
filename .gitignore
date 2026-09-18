@@ -42,6 +42,20 @@ public/downloads/
 # out of source control so the function-side copy never drifts from
 # public/c/index.html — the predeploy script regenerates it.
 functions/templates/
+
+# tsc's output for the Cloud Functions, and nothing else — `outDir: "lib"`,
+# `rootDir: "src"`. It was tracked, and a tracked build artefact is a build
+# artefact that goes stale: HEAD carried the compilation of an earlier commit,
+# the newest module (seasonCounters.js) was never added at all, and
+# functions/package.json points `main` at lib/index.js — so a clean checkout, a
+# `require('../functions/lib/...')` from scripts/, or an emulator run that skips
+# the build all exercised code two commits behind src/ while reporting green.
+# Production was never at risk (firebase.json's predeploy runs `npm run build`),
+# which is exactly why nobody noticed for as long as they didn't.
+#
+# The source of truth is functions/src/. Build before you run anything out of
+# lib/: npm --prefix functions run build
+functions/lib/
 credentials.json
 credentials/
 qa_emulator_run/

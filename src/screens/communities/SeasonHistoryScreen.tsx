@@ -142,16 +142,21 @@ function Cabinet({
           {row.map((key) => {
             const w = byKey.get(key);
             const streak = w ? titleStreak(all, index, key) : 1;
-            // Against what the title was DECIDED on, not against the season's
-            // length. Those are two counters over two eras, and grading
-            // 19-of-19 attendance as 19-of-22 put gold on the one record in the
-            // app that is unarguably perfect.
+            // The SEASON's length.
+            //
+            // For half a day this divided by an `awardsDenominator` on the
+            // card instead, on a finding that said 19-of-19 attendance was
+            // drawing gold where platinum was due. Both the finding and the fix
+            // were wrong: 19 is `max(games)` — the best attendance IN a season
+            // of 22 evenings — so 19 of 22 is gold, and that is the right
+            // answer. And the denominator was, by construction, the loyalty
+            // winner's own value: the maximum of the very array the title takes
+            // its maximum from. Dividing a number by itself crowned perfect
+            // attendance on every future season regardless of who turned up,
+            // and made silver and gold on this scale unreachable code. The
+            // field and the code that wrote it are both gone now.
             const tier: MedalTier = w
-              ? medalTier(
-                  key,
-                  w.value,
-                  season.awardsDenominator ?? season.completedRounds,
-                )
+              ? medalTier(key, w.value, season.completedRounds)
               : 'bronze';
             const names = w ? w.names.slice(0, 2).join(' · ') : '';
             const shared = w && w.names.length > 2 ? w.names.length - 2 : 0;

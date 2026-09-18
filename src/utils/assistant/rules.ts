@@ -41,6 +41,18 @@ const COMEBACK_DAYS = 21;
 const POSTGAME_FRESH_MS = 10 * 60 * 60 * 1000;
 /** A streak is only worth mentioning once it's actually a streak. */
 const STREAK_MIN = 3;
+/** A crown needs something to have happened first — the long version of why is
+ *  in the crown block of statsCandidates. Module-level because the game-day
+ *  stake offers the SAME crown, in the same words, off the same club table,
+ *  and was gated by nothing at all; two copies of this number would have
+ *  drifted the first time one of them moved. */
+const CROWN_MIN = 3;
+/** What the crown holder actually has: mine when I hold it, mine + the gap
+ *  when I'm the one chasing. */
+const leaderTotal = (
+  mine: number | null | undefined,
+  gap: number | null | undefined,
+) => (mine ?? 0) + (gap ?? 0);
 /** Attendance-rate bragging needs a real sample behind it. */
 const LOYALTY_MIN_NIGHTS = 10;
 const ATTENDANCE_RATE_MIN = 80;
@@ -106,8 +118,17 @@ const gameDayRule: AssistantRule = (ctx) => {
 
   const stakes: Array<() => string | null> = [
     // Within touching distance of the club's golden boot.
+    //
+    // Gated on the CROWN, exactly like the stats-band version below and for
+    // the same reason: this is the same sentence off the same table, and the
+    // table is the running SEASON once a club runs seasons. Ungated, the
+    // first game day after a close sent "עוד גול אחד ואתה מלך השערים" to
+    // everyone sitting one goal behind a leader who had scored precisely once.
     () =>
-      club && ins?.goalsToCrown && ins.goalsToCrown <= MILESTONE_WINDOW
+      club &&
+      ins?.goalsToCrown &&
+      ins.goalsToCrown <= MILESTONE_WINDOW &&
+      leaderTotal(ins.goals, ins.goalsToCrown) >= CROWN_MIN
         ? he.assistantGameDayCrown(ins.goalsToCrown, club)
         : null,
     // A round number on the lifetime tally.
@@ -312,11 +333,6 @@ function statsCandidates(ctx: AssistantContext): Candidate[] {
   // standing line — so a club whose top scorer happened to be on two goals lost
   // every club insight it had. That is a regression for every club in the app,
   // not just one running seasons.
-  const CROWN_MIN = 3;
-  /** What the leader actually has: mine when I hold it, mine + the gap when I
-   *  am chasing. */
-  const leaderTotal = (mine: number | null | undefined, gap: number | null | undefined) =>
-    (mine ?? 0) + (gap ?? 0);
   const goalCrownWorthIt =
     !!ins &&
     (ins.isTopScorer ? (ins.goals ?? 0) : leaderTotal(ins.goals, ins.goalsToCrown)) >=
@@ -367,8 +383,13 @@ function statsCandidates(ctx: AssistantContext): Candidate[] {
       });
     }
     // "One off the top 5" only means something in a table deep enough to have
-    // a top 5 at all.
-    if (ins.scorerPlace === 6 && ins.scorerTotal >= 8) {
+    // a top 5 at all — and in a table somebody has actually SCORED in. Place 6
+    // in a club where nobody has scored is the `a.uid.localeCompare(b.uid)`
+    // tie-break talking, the same alphabet that used to hand out the wins
+    // podium below; a player on no goals is not one place off the top 5, he is
+    // nowhere in a chart that doesn't exist yet. Same gate as the standing
+    // line directly beneath, which is the same claim with a number on it.
+    if (ins.goals > 0 && ins.scorerPlace === 6 && ins.scorerTotal >= 8) {
       out.push({
         id: 'topFive',
         scenario: 'standing',
@@ -382,6 +403,16 @@ function statsCandidates(ctx: AssistantContext): Candidate[] {
         text: he.assistantStanding(ins.scorerPlace, ins.scorerTotal, club),
       });
     }
+    // The wins podium. This was the only standing rule here with no value gate
+    // at all, and `wins` is written only by the mini-game commit path — so in
+    // a timer-only club, which is the common club, the whole column is 0 for
+    // ever, `byWins` decides the podium on its uid tie-break, and three
+    // alphabetically-lucky members of each of the seven winless clubs were
+    // told they lead the club in ניצחונות. The gate now lives in
+    // assistantInsightsService, with the numbers: `winsPlace` is null unless
+    // the player has wins of his own, the leader clears CROWN_MIN and place 1
+    // is a sole lead. It cannot live here — the context carries a place and no
+    // wins, so this rule has nothing to check.
     if (ins.winsPlace && ins.winsPlace <= 3) {
       out.push({
         id: 'winsPlace',

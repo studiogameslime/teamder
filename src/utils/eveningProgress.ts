@@ -12,6 +12,7 @@
 // place, so a "▲3 מקומות" chip next to "עקפת את שלומי, יוסי ונדב" would say the
 // same thing twice — the names win, the chip goes.
 
+import { he } from '@/i18n/he';
 import type { EveningMetric } from '@/services/eveningSummaryService';
 
 export type ProgressTone = 'crown' | 'good' | 'bad' | 'snark';
@@ -51,11 +52,14 @@ const IN_METRIC: Record<EveningMetric['key'], string> = {
   wins: 'בניצחונות',
 };
 
-/** The club title that comes with topping a column. */
+/** The club title that comes with topping a column. The names are the season
+ *  titles — there is one set of them (he.seasonTitleNames) and this card used
+ *  to hold a private copy, which stayed on "מלך" when the titles were renamed
+ *  to "כתר" and put two names on one person one screen apart. */
 const CROWN_TITLE: Record<EveningMetric['key'], string> = {
-  goals: 'מלך השערים',
-  assists: 'מלך הבישולים',
-  wins: 'מלך הניצחונות',
+  goals: he.seasonTitleNames.topScorer,
+  assists: he.seasonTitleNames.topAssister,
+  wins: he.seasonTitleNames.topWinner,
 };
 
 const METRIC_ICON: Record<EveningMetric['key'], string> = {
@@ -147,9 +151,38 @@ export function progressLines(
   // KEEPING it is its own event: a player who was first last week and is
   // first again didn't overtake anyone, so without this the card would have
   // nothing to say to the best player in the club.
+  //
+  // Both halves need guarding, because rank 1 is not always a title and
+  // delta === 0 is not always "nothing changed".
+  //
+  // A season close zeroes goals/assists/wins on every communityPlayerStats row
+  // (PLAYER_SEASON_FIELDS), so on the first evening of a season the server
+  // ranks a table in which every "before" value is 0 and every tie falls to
+  // `a.localeCompare(b)` — the order is the uids, alphabetically. The club
+  // that runs seasons is timer-only and its seven rows are {0,0,0} outright,
+  // permanently. What the card then did with that:
+  //
+  //   • rank 1 on a column of zeros → "שמרת על התואר כתר השערים" to whoever's
+  //     uid sorts first, for a title that was wiped the day before and that he
+  //     never held. Nobody is the top scorer on no goals, so a crown now needs
+  //     a value behind it.
+  //   • delta === 0 was read as "was first, still first". After a rollover it
+  //     means "was nowhere, is nowhere" just as often. `value - tonight` is
+  //     what the player actually had before this evening, so "kept" now
+  //     requires that to be positive: first with something behind you is
+  //     holding a title, first with everything earned tonight is taking one —
+  //     which is the true sentence for a genuine first-night leader too.
+  //
+  // `tonight` missing leaves the old delta-only reading, and the value gate
+  // above still applies. It is NOT the "old standing doc" case, whatever the
+  // field's optionality suggests: `readMetrics` fills `tonight` from this
+  // game's own gamePlayerStats row, so every block that reaches here carries
+  // it. The branch is for a caller that builds an EveningMetric by hand —
+  // `mockModel`, a test — and nothing else.
   for (const m of metrics) {
-    if (m.rank !== 1) continue;
-    const held = m.delta === 0;
+    if (m.rank !== 1 || m.value <= 0) continue;
+    const before = m.tonight == null ? null : m.value - m.tonight;
+    const held = m.delta === 0 && (before == null || before > 0);
     out.push({
       id: `crown-${m.key}`,
       tone: 'crown',

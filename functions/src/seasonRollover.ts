@@ -110,7 +110,7 @@ export function seasonPairKey(
 }
 
 /**
- * The number the TITLES are decided against.
+ * The number the ELIGIBILITY GATE is set from. Nothing else.
  *
  * The most evenings any ONE player attended — deliberately not the season's
  * length. Per-player `games` has been counted since 22.06 and the season's
@@ -120,6 +120,15 @@ export function seasonPairKey(
  * meant to admit 13, including seven who turned up twice.
  *
  * A season with no players at all falls back to whatever the caller knew.
+ *
+ * NOT a share denominator, and it must never be published as one again. The
+ * gate compares `games >= ceil(D/2)`, where a maximum on both sides is exactly
+ * the point: whoever came most always clears it. But `mostLoyal` is the
+ * maximum of the SAME array, so `winner.value / D` is 1.0 identically — which
+ * is what made the loyalty medal platinum for every season of every club the
+ * day this number reached the hall of fame. The share denominator for "how
+ * much of the season did you attend" is the season's length, which the card
+ * and the archive both carry as `completedRounds`.
  */
 export function awardsDenominatorOf(
   attendances: readonly number[],
@@ -132,10 +141,16 @@ export function awardsDenominatorOf(
 /**
  * The "N מחזורים" the hall of fame prints for a sealed season.
  *
- * The season's LENGTH, which is not the awards denominator: the card carries
- * both and they differ by three on the one real club. A resume reads it back
- * off the archive the first pass already wrote — the protected record — rather
- * than re-deriving it from rows that pass may have half-wiped.
+ * The season's LENGTH — and now the ONLY evenings figure the card carries. It
+ * briefly sat beside `awardsDenominator`, the eligibility gate's own
+ * denominator, and the two differ by three on the one real club; that field is
+ * gone because the medal that read it was dividing the loyalty winner's value
+ * by itself (see `awardsDenominatorOf`). The gate's denominator survives here
+ * only as the last fallback, for a season whose length nobody recorded.
+ *
+ * A resume reads the length back off the archive the first pass already wrote
+ * — the protected record — rather than re-deriving it from rows that pass may
+ * have half-wiped.
  */
 export function sealedCardEvenings(
   fromArchive: unknown,
@@ -543,6 +558,18 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     args.completedRounds,
   );
   const awards = computeSeasonAwards(awardLines, awardPairs, seasonEvenings);
+  /**
+   * True only when the archive already existed and the wipe never finished —
+   * i.e. this invocation is picking up after a pass that died.
+   *
+   * It is what makes `seasonWoundBack` readable as evidence. On a FIRST pass
+   * nothing in this close has written a stamp yet, so a row already carrying
+   * one naming this season was stamped by something else — and the only thing
+   * that can leave such a stamp behind is a reopen of that same season, which
+   * hands the numbers back live while the stamp keeps saying they were taken
+   * away. See the two skip checks below.
+   */
+  let resuming = false;
   /** Set when we are resuming a close that died before it finished. */
   let resumedAwards: typeof awards | null = null;
   let resumedPlayers: typeof players | null = null;
@@ -576,14 +603,29 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       // "22 מתוך 22" all season found 19 in its archive, and an admin who
       // pressed undo watched 23 evenings come back as 1.
       //
-      // The denominator is kept beside it, so the hall of fame can still say
-      // what a title was decided on without the two being the same field.
-      // Falls back to the denominator only when the caller knew nothing.
+      // Falls back to the gate's denominator only when the caller knew nothing.
+      //
+      // That denominator is no longer PUBLISHED, here or on the card. It was,
+      // under the name `awardsDenominator`, and the number it carried is
+      // `max(players.games)` — which is by construction the same number
+      // `mostLoyal` wins with, since the award is the maximum of the very
+      // array the denominator takes its maximum from. Publishing it invited
+      // exactly one use, and that use was made: the medal graded the loyalty
+      // title as value / awardsDenominator, got 1.0 for every season of every
+      // club forever, and drew platinum unconditionally — silver and gold on
+      // that scale became unreachable code the day the field reached the card.
+      // (Prod proves the identity: s1's archived `games` are
+      // {19,18,18,18,18,18,17} and `awards.mostLoyal.value` is 19.)
+      //
+      // It is not re-added under a better name either. The honest denominator
+      // for "what share of the season did you attend" is the season's LENGTH,
+      // which is the `completedRounds` written right here; and the gate's own
+      // denominator stays re-derivable from this archive at any time, because
+      // every player's `games` is sealed into it one field below.
       completedRounds:
         typeof args.completedRounds === 'number' && args.completedRounds > 0
           ? args.completedRounds
           : seasonEvenings,
-      awardsDenominator: seasonEvenings,
       roundsAtStartOfSeason: args.roundsAtStart ?? 0,
       ...(args.endedEarly ? { endedEarly: true } : {}),
       ...(args.closedBy ? { closedBy: args.closedBy } : {}),
@@ -631,6 +673,7 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       groupId,
       seasonId,
     );
+    resuming = true;
     // Decided titles come from the ARCHIVE on this path, never recomputed: the
     // live rows may be half-zeroed by the pass that died, and a title decided
     // from those would be a different title from the one already sealed.
@@ -740,18 +783,24 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
           // that actually happened. `rounds` stays in the test as a safety net
           // for a row credited a mini-game without an evening.
           players: countSeasonParticipants(cardPlayers),
-          // The number the TITLES were decided against.
+          // No `awardsDenominator`. The card carries `completedRounds` and
+          // that is the only evenings figure on it, on purpose.
           //
-          // It is not `completedRounds`, and it is not meant to be: the gate
-          // is measured in per-player `games`, which is a different counter
-          // over a different era from the season's length (see the long note
-          // above `seasonEvenings`). It was written to the archive for exactly
-          // this reason — "so the hall of fame can still say what a title was
-          // decided on" — and then never put on the card, which is the only
-          // document the hall of fame reads. So the medal graded מלך ההתמדה's
-          // 19 against a season of 22 and drew gold for perfect attendance,
-          // making platinum structurally unreachable.
-          awardsDenominator: seasonEvenings,
+          // The field lived here for a day. It was put on the card so the
+          // medal could grade כתר ההתמדה against "what the title was actually
+          // decided on" rather than against the season's length — 19 of 19
+          // instead of 19 of 22. But the number it carried is
+          // `awardsDenominatorOf(players.games)` = `max(games)`, and the title
+          // it was grading is `max(games)` over the same array, so the two are
+          // the same number by construction, for every distribution, always.
+          // value / denominator was 1.0 and the medal was platinum for every
+          // season the app would ever close — the previous state of this line
+          // made platinum unreachable, this one made it guaranteed, and both
+          // read as a tier axis that says nothing.
+          //
+          // `completedRounds` is the season's length, it is the denominator
+          // the phrase "share of the season" actually means, and the hall of
+          // fame already has it. See the matching note on the archive write.
           ...(args.endedEarly ? { endedEarly: true } : {}),
           ...(args.partialData ? { partialData: true } : {}),
           winners: cardWinners,
@@ -833,7 +882,8 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       const fresh = await tx.get(d.ref);
       if (!fresh.exists) return;
       const data = fresh.data() as Record<string, unknown>;
-      if (data.seasonWoundBack === seasonId) return; // already done
+      // Already done — but only a RESUME may believe that. See `resuming`.
+      if (resuming && data.seasonWoundBack === seasonId) return;
       const patch: Record<string, unknown> = {
         seasonWoundBack: seasonId,
         // Cleared so a LATER reopen can stamp its own restore.
@@ -897,7 +947,7 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       if (++ops >= 400) await flush();
       continue;
     }
-    // Already wound back for this season — skip.
+    // Already wound back for this season — skip, but only on a RESUME.
     //
     // The player rows carry this stamp and the pair rows did not, so the two
     // halves of one operation behaved differently on a resume: the player kept
@@ -907,7 +957,20 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     // taken at the top of this function, which on a retry already reflects the
     // first pass — no transaction needed, since the quiet check and the
     // create() latch serialise the close.
-    if (x.seasonWoundBack === seasonId) continue;
+    //
+    // `resuming` is the half that was missing, and without it the stamp was
+    // being read as evidence of something it does not prove. A REOPEN of this
+    // same season leaves the stamp on every row the close touched but the
+    // restore does not reach — every guest pair and every pair the archive
+    // dropped for being empty — and reopenSeason only started sweeping those
+    // up today. The one club that has run seasons has 21 real pair rows
+    // stamped 's2' with s2 running: on a first pass those rows would be
+    // archived and then skipped, sealing their chemistry into s2's write-once
+    // archive while leaving it standing live for s3 to inherit, double
+    // counted, unreconcilable. A stamp naming the season being closed is not
+    // evidence that season was already wound back; only this pass having
+    // written it is, and on a first pass this pass has written nothing.
+    if (resuming && x.seasonWoundBack === seasonId) continue;
     const { key } = seasonPairKey(String(x.a ?? ''), String(x.b ?? ''));
     // A pair with no archived row — one past the cap — is zeroed rather than
     // subtracted: it belongs to no season, and leaving it standing would carry

@@ -118,6 +118,48 @@ describe('and so does somebody who PLAYED it and has since left', () => {
       getDoc(doc(asDeparted(), 'seasonSummary', `${GID}__s7`)));
   });
 
+  // The TIMER-ONLY club, which is most of them.
+  //
+  // `rounds` counts משחקונים and only the advanced live screen writes them, so
+  // a club whose live screen is a plain clock archives rounds:0 for every
+  // player of every season it will ever play. This clause was `rounds > 0`
+  // alone while both server sides already said `rounds || games`, so the close
+  // pushed a summary to every ex-member of such a club and the deep link
+  // landed on permission-denied. Every other fixture here sets rounds and no
+  // games at all, which is why nothing caught it: this one is the opposite,
+  // and it is the common case.
+  test('and a timer-only season, where nobody has a single משחקון', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'seasonSummary', `${GID}__s4`), {
+        groupId: GID, seasonId: 's4', no: 4, totals: { games: 18 },
+        players: {
+          // No `rounds` key at all — the archive writes what the club counts.
+          [MEMBER]: { games: 10, goals: 0, displayName: 'דני' },
+          [LEFT]: { games: 8, goals: 0, displayName: 'עזב' },
+        },
+      });
+    });
+    const s = await getDoc(doc(asDeparted(), 'seasonSummary', `${GID}__s4`));
+    assert.equal(s.exists(), true);
+    assert.equal(s.data().no, 4);
+  });
+
+  test('but still not one they only have a zeroed row in', async () => {
+    // Both counters at zero is the dead-stat-row case, and widening to `games`
+    // must not reopen it.
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'seasonSummary', `${GID}__s5`), {
+        groupId: GID, seasonId: 's5', no: 5, totals: { games: 12 },
+        players: {
+          [MEMBER]: { games: 12, rounds: 0, displayName: 'דני' },
+          [LEFT]: { games: 0, rounds: 0, displayName: 'מודח' },
+        },
+      });
+    });
+    await assert.rejects(() =>
+      getDoc(doc(asDeparted(), 'seasonSummary', `${GID}__s5`)));
+  });
+
   test('but not a season they never played', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'seasonSummary', `${GID}__s0`), {
