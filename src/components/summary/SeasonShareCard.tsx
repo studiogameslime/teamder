@@ -12,7 +12,10 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Ionicons } from '@expo/vector-icons';
+
 import type { SeasonSummaryModel } from '@/services/seasonSummaryService';
+import { seasonTitleIcon, seasonTitleTint } from '@/utils/seasonTitleIcon';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -52,13 +55,44 @@ export function SeasonShareCard({
       (r): r is { rank: number; what: string } => typeof r.rank === 'number',
     )
     .sort((a, b) => a.rank - b.rank)[0];
+  /** A placing is only worth sending if it IS one.
+   *
+   *  bestRank took the numerically lowest of three ranks with no threshold at
+   *  all, so a player ranked 27th of 30 in everything had "מקום 27 מתוך 30"
+   *  printed in bold on a card they were about to send to the group. Top three,
+   *  or the top third of a club big enough for that to mean something. */
+  const worthShowing =
+    !!bestRank &&
+    me.ranks.of > 1 &&
+    (bestRank.rank <= 3 || bestRank.rank / me.ranks.of <= 0.34);
 
   return (
     <View style={styles.card}>
-      <Text style={styles.club} numberOfLines={1}>
-        {playerName ? `${playerName} · ${model.groupName}` : model.groupName}
+      {/* A brand row, like both sibling share cards. This card is the one
+          artefact of the feature that leaves the app and is seen by people who
+          are not users, and its only branding was a 10px muted wordmark at the
+          bottom. */}
+      <View style={styles.brandRow}>
+        <View style={styles.mark}>
+          <Ionicons name="football" size={13} color="#FFFFFF" />
+        </View>
+        <Text style={styles.brandName}>Teamder</Text>
+        <Text style={styles.seasonPill}>
+          {he.seasonNumberLabel(model.seasonNo)}
+        </Text>
+      </View>
+
+      {/* Two lines, not one. A normal Hebrew name plus a club name did not fit
+          308pt at 18px, so one of the two was always cut — the same bug already
+          fixed on EveningSummaryCard. */}
+      {playerName ? (
+        <Text style={styles.club} numberOfLines={1}>
+          {playerName}
+        </Text>
+      ) : null}
+      <Text style={styles.season} numberOfLines={1}>
+        {model.groupName}
       </Text>
-      <Text style={styles.season}>{he.seasonNumberLabel(model.seasonNo)}</Text>
 
       <View style={styles.row}>
         <Big value={String(me.goals)} label={he.statGoals} />
@@ -77,7 +111,7 @@ export function SeasonShareCard({
         <Big value={String(me.cleanSheets)} label={he.seasonStatCleanSheets} />
       </View>
 
-      {bestRank ? (
+      {worthShowing && bestRank ? (
         <Text style={styles.rank} numberOfLines={1}>
           {he.seasonShareRank(bestRank.rank, me.ranks.of, bestRank.what)}
         </Text>
@@ -88,10 +122,27 @@ export function SeasonShareCard({
       {model.myTitles.length > 0 ? (
         <View style={styles.titles}>
           {model.myTitles.map((t) => (
-            <Text key={t.key} style={styles.title} numberOfLines={1}>
-              🏆 {he.seasonTitleNames[t.key]} ·{' '}
-              {he.seasonTitleValue(t.key, t.value)}
-            </Text>
+            <View key={t.key} style={styles.titleRow}>
+              {/* Its own mark, the same one every in-app surface draws for this
+                  title — and an icon rather than an emoji, because this image
+                  lands on strangers' phones where 🏆 is a different shape. */}
+              <View
+                style={[
+                  styles.titleDisc,
+                  { backgroundColor: seasonTitleTint(t.key) + '22' },
+                ]}
+              >
+                <Ionicons
+                  name={seasonTitleIcon(t.key)}
+                  size={12}
+                  color={seasonTitleTint(t.key)}
+                />
+              </View>
+              <Text style={styles.title} numberOfLines={1}>
+                {he.seasonTitleNames[t.key]} ·{' '}
+                {he.seasonTitleValue(t.key, t.value)}
+              </Text>
+            </View>
           ))}
         </View>
       ) : null}
@@ -115,7 +166,6 @@ export function SeasonShareCard({
         </Text>
       ) : null}
 
-      <Text style={styles.brand}>Teamder</Text>
     </View>
   );
 }
@@ -125,8 +175,55 @@ const styles = StyleSheet.create({
     width: SHARE_CARD_WIDTH,
     backgroundColor: colors.surface,
     borderRadius: 20,
+    // An edge. Both sibling share cards have one, and a borderless white
+    // rectangle on a white chat background has no shape at all.
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: spacing.lg,
     gap: spacing.xs,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: spacing.xs,
+  },
+  mark: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandName: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '800',
+    flex: 1,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  seasonPill: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '800',
+    backgroundColor: colors.primary + '14',
+    borderRadius: 99,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    overflow: 'hidden',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  titleDisc: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   club: {
     ...typography.h3,
@@ -171,6 +268,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,
+    flex: 1,
   },
   brand: {
     ...typography.caption,
