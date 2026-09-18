@@ -126,7 +126,9 @@ describe('the season title values count in Hebrew too', () => {
 
   it('rates and averages are not counted things', () => {
     expect(he.seasonTitleValue('penaltyKing', 0.625)).toBe('63%');
-    expect(he.seasonTitleValue('mvp', 8.37)).toBe('8.4');
+    // Named, not bare. A lone "8.4" says nothing about its scale, and it is
+    // printed on three separate screens.
+    expect(he.seasonTitleValue('mvp', 8.37)).toBe('ציון 8.4');
   });
 
   it('no title value can ever print "1 <plural>"', () => {

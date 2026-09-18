@@ -2244,7 +2244,7 @@ export const he = {
   seasonHistoryPartial:
     'חלק מהנתונים לא נאספו לאורך כל העונה, אז המספרים חלקיים',
   seasonHistoryNoTitles:
-    'לא חולקו תארים בעונה הזאת — אף שחקן לא שיחק מספיק מחזורים.',
+    'לא חולקו תארים בעונה הזאת — תואר ניתן רק למי שהגיע לפחות לחצי מערבי המשחק של העונה, ואף אחד לא הגיע לסף.',
   seasonTitlesShelfTitle: 'תארי עונה',
   seasonTitlesShelfCount: (n: number) =>
     n === 1 ? 'תואר אחד' : `${n} תארים`,
@@ -2264,7 +2264,10 @@ export const he = {
       case 'penaltyKeeper':
         return `${Math.round(value * 100)}%`;
       case 'mvp':
-        return value.toFixed(1);
+        // With its unit. A bare "7.3" appears on three screens and names no
+        // scale — nobody can tell whether it is out of 10, out of 100, or a
+        // count of something. It is the mean of the player's evening scores.
+        return `ציון ${value.toFixed(1)}`;
       case 'topScorer':
         return count('שער אחד', 'שערים');
       case 'topAssister':
@@ -2286,7 +2289,8 @@ export const he = {
   // Renders only for a CLOSED season, so it must not talk about the next one —
   // it is shown just as often while browsing season 1 of a club that has since
   // played three more.
-  seasonTitlesNone: 'לא נלקח תואר בעונה הזאת.',
+  seasonTitlesNone:
+    'לא נלקח תואר בעונה הזאת. תארים ניתנים רק למי שהגיע לפחות לחצי מערבי המשחק של העונה.',
   seasonSummaryTitle: 'סיכום העונה',
   seasonRangeUntil: (to: string) => `מתחילת המועדון עד ${to}`,
   seasonRangeUnknown: 'כל ההיסטוריה של המועדון',
@@ -2309,8 +2313,12 @@ export const he = {
   seasonSectionStanding: 'המיקום במועדון',
   seasonSectionPeople: 'האנשים של העונה',
   seasonStatContributions: 'שערים + בישולים',
-  seasonStatEvenings: 'מחזורים',
-  seasonStatRounds: 'משחקים',
+  // The pair people confuse, and they sit side by side in the same grid: a
+  // מחזור is a whole evening, a משחקון is one of the ~six games inside it.
+  // Labelled "מחזורים" and "משחקים" they were two identical grey tiles for two
+  // completely different quantities.
+  seasonStatEvenings: 'ערבי משחק',
+  seasonStatRounds: 'משחקונים',
   seasonStatWins: 'ניצחונות',
   seasonStatLosses: 'הפסדים',
   seasonStatTies: 'תיקו',
