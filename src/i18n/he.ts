@@ -1002,7 +1002,7 @@ export const he = {
   chemistryEmpty: 'עוד קצת משחקים ונגלה מי הכימיה של המועדון',
   // כרטיס הזוג
   pairCardTogether: 'ביחד',
-  pairCardGames: 'משחקים',
+  pairCardGames: 'משחקונים',
   pairCardWins: 'ניצחונות',
   pairCardLosses: 'הפסדים',
   pairCardCleanSheets: 'שערים נקיים',
@@ -1061,7 +1061,7 @@ export const he = {
   summaryMetricInvolvement: 'מעורבויות בשער',
   summaryMetricCleanSheets: 'שערים נקיים',
   summaryMetricWins: 'ניצחונות',
-  summaryMetricRounds: 'משחקים',
+  summaryMetricRounds: 'משחקונים',
   summaryMetricEvenings: 'מחזורים',
   summaryMetricShootouts: 'הכרעות פנדלים',
   summaryMetricTies: 'תיקו',
@@ -1341,9 +1341,14 @@ export const he = {
   // hero tiles
   communityStatsGoals: 'גולים',
   communityStatsAssists: 'בישולים',
-  communityStatsMiniGames: 'משחקים',
+  // משחקונים, not "משחקים" — this tile sits directly beside "מחזורים", and the
+  // two are the pair this app has shipped bugs from confusing. The whole copy
+  // pass renamed them everywhere else and these three were missed, so the club
+  // stats screen still printed "37 משחקים" next to "22 מחזורים" while the hall
+  // of fame, one tap away, called the same 37 "משחקונים".
+  communityStatsMiniGames: 'משחקונים',
   communityStatsEvenings: 'מחזורים',
-  communityStatsGoalsPerMini: 'גולים למשחק',
+  communityStatsGoalsPerMini: 'גולים למשחקון',
   // leaders — the same titles the hall of fame awards, because the scope picker
   // on this screen can point at a CLOSED season, and then these rows and that
   // season's medal cabinet describe one person's one set of numbers. Two
@@ -3639,7 +3644,7 @@ export const he = {
   communityChampInfoBody:
     'הטבלה ממוינת לפי מספר הניצחונות. אם מספר הניצחונות שווה, השוויון נשבר לפי מספר הגולים; ואם גם הגולים שווים — לפי מספר הבישולים.',
   communityChampTotalGoals: 'סך הגולים',
-  communityChampTotalRounds: 'משחקים',
+  communityChampTotalRounds: 'משחקונים',
   // Per-game championship (shown once the game is finished).
   gameChampTitle: 'אלופי המחזור',
   gameChampNote: 'ניקוד = (גול×2 + בישול) חלקי מספר המשחקים',
@@ -3648,7 +3653,7 @@ export const he = {
   champColGoals: 'גולים',
   champColAssists: 'בישולים',
   champColGames: 'מחזורים',
-  champColMiniGames: 'משחקים',
+  champColMiniGames: 'משחקונים',
   champColAppearances: 'הופעות',
   champColWins: 'ניצחונות',
   champColTies: 'תיקו',
@@ -3668,7 +3673,7 @@ export const he = {
   effColAssistsPerGame: 'בישולים/משחק',
   effColGaPerGame: 'G+A/משחק',
   effColCleanSheetPct: '% שער נקי',
-  effColRounds: 'משחקים',
+  effColRounds: 'משחקונים',
   /** Shown under the efficiency table when any row's window is shorter than
    *  its history — clean sheets have only been recorded since 17.08. */
   /** Shown under the efficiency table when the minimum-sample bar actually
