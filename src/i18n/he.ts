@@ -2049,6 +2049,10 @@ export const he = {
     'עונה היא תחרות עם התחלה וסוף. כשהיא נגמרת הטבלה של המועדון מתאפסת, מחולקים תארים, והעונה נשמרת בארכיון. הסטטיסטיקה האישית המצטברת בפרופיל, ההישגים והרצפים לא מושפעים — תארי המועדון נספרים מהעונה הנוכחית.',
   seasonsEnableCta: 'הפעל עונות',
   seasonsEndCta: 'סיים עונה עכשיו',
+  onboardingNeedClubName: 'צריך שם למועדון',
+  onboardingNeedCode: 'צריך להזין קוד הצטרפות',
+  onboardingBadCode: 'לא מצאנו מועדון עם הקוד הזה',
+  onboardingShareHint: 'שתף את הקישור והחבר׳ה נכנסים ישר למועדון',
   seasonsMySummaryCta: 'סיכום העונה שלי',
   // Named, because the season it opens is the one that ENDED — the club is
   // already playing the next. "סיכום העונה שלי" beside a running season 5
@@ -2112,6 +2116,11 @@ export const he = {
     'אין עונה סגורה לפתוח מחדש.',
   seasonBlockedTargetBehind:
     'היעד הזה כבר מאחורי המועדון, אז שמירה שלו הייתה סוגרת את העונה מיד. בחר יעד גדול יותר, או השתמש ב"סיים עונה עכשיו".',
+  // With the number, when the server named one. "כבר מאחורי המועדון" is not
+  // something an admin can act on without knowing what it is behind — and this
+  // screen never shows the season's progress anywhere else.
+  seasonBlockedTargetBehindAt: (played: number) =>
+    `המועדון כבר שיחק ${played} מחזורים בעונה הזו, אז יעד נמוך יותר היה סוגר אותה מיד. בחר יעד גדול מ-${played}, או השתמש ב"סיים עונה עכשיו".`,
   seasonBlockedOff: 'העונות כבויות במועדון הזה.',
   seasonBlockedNotAdmin: 'רק מנהל המועדון יכול לסיים עונה.',
   seasonActionFailed: 'משהו השתבש. נסה שוב עוד רגע.',

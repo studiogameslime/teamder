@@ -305,7 +305,12 @@ export function buildPersonalSeason({
   const w = rankOf(players, me, (r) => num(r.wins));
 
   return {
-    hasData: rounds > 0,
+    // Evenings OR mini-games. `rounds` counts משחקונים, which only a club
+    // running the advanced live screen ever records — so a club that plays on
+    // the plain timer produced a season where every single player was told
+    // "you played nothing", titles included. Attendance is the one thing every
+    // club has.
+    hasData: rounds > 0 || num(mine?.games) > 0,
     goals,
     assists,
     contributions: goals + assists,

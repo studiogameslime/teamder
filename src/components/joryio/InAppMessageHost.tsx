@@ -22,12 +22,19 @@ import {
   Linking,
   Modal,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { joryio } from '@/services/joryio';
 import { HtmlMessageView } from '@/components/joryio/HtmlMessageView';
+import { onboardingService } from '@/services/onboardingService';
+import { useUserStore } from '@/store/userStore';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
+import { toast } from '@/components/Toast';
+import { he } from '@/i18n/he';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Btn = { id: string; text: string; action: 'dismiss' | 'url' | 'deep_link'; url?: string };
@@ -77,6 +84,14 @@ type Msg = NativeMsg | HtmlMsg;
 export function InAppMessageHost(): React.ReactElement | null {
   const [msg, setMsg] = useState<Msg | null>(null);
   const fade = useRef(new Animated.Value(0)).current;
+  const me = useUserStore((st) => st.currentUser);
+  /** Values the document cannot know and cannot fetch: the signed-in person's
+   *  own invite link, and their name. Written into the markup by the shim. */
+  const [vars, setVars] = useState<Record<string, string>>({});
+  /** Set once a submit has actually succeeded — the wizard reaches its finish
+   *  screen because something finished, not because a button was pressed. */
+  const [advanceTo, setAdvanceTo] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     const off = joryio.onInAppMessage((raw) => {
@@ -118,9 +133,73 @@ export function InAppMessageHost(): React.ReactElement | null {
     (reason: 'dismissed' | 'clicked') => {
       if (msg) joryio.trackInAppImpression(msg.id, reason);
       setMsg(null);
+      setVars({});
+      setAdvanceTo(null);
+      submittingRef.current = false;
     },
     [msg],
   );
+
+  /**
+   * A `data-action="submit"` tap: the wizard has collected what it needs and
+   * the app does the part a document cannot.
+   *
+   * Guarded against a double tap, because the work is a club that would
+   * otherwise be created twice. The message is NOT closed either way — on
+   * success the shim moves to the finish screen, on failure the person stays
+   * on the form with their answers still in it.
+   */
+  const onSubmit = useCallback(
+    async (fields: Record<string, unknown>) => {
+      if (submittingRef.current) return;
+      submittingRef.current = true;
+      try {
+        const res = await onboardingService.submit(fields);
+        if (res.ok) {
+          logEvent(AnalyticsEvent.OnboardingCompleted, {
+            role: String(fields.role ?? 'organiser'),
+            createdClub: !!res.groupId,
+          });
+          // The link lands BEFORE the step that shows it, so the slot is never
+          // seen empty: injecting vars and advancing are two renders, and this
+          // one goes first.
+          if (res.inviteUrl) {
+            setVars({ inviteUrl: res.inviteUrl, userName: me?.name ?? '' });
+          }
+          setAdvanceTo(res.advanceTo);
+          // Cleared so a second submit on the same message can advance again;
+          // the prop only fires the injection when it CHANGES.
+          submittingRef.current = false;
+        } else {
+          toast.error(res.message ?? he.error);
+          submittingRef.current = false;
+        }
+      } catch (err) {
+        logError('inAppOnboardingSubmit', err, {});
+        toast.error(he.error);
+        submittingRef.current = false;
+      }
+    },
+    [me?.name],
+  );
+
+  /** A `data-action="share"` tap. The sheet comes back and the person is still
+   *  mid-flow, so nothing closes. */
+  const onShare = useCallback(async () => {
+    const url = vars.inviteUrl;
+    if (!url) return;
+    try {
+      const r = await Share.share({
+        title: he.inviteShareSubject,
+        message: he.profileInviteShareBody(url),
+      });
+      if (r.action !== 'dismissedAction') {
+        logEvent(AnalyticsEvent.InviteShared, { source: 'onboarding' });
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('[inapp] share failed', err);
+    }
+  }, [vars.inviteUrl]);
 
   const onButton = useCallback(
     (b: Btn) => {
@@ -168,6 +247,10 @@ export function InAppMessageHost(): React.ReactElement | null {
                 close('dismissed');
               }}
               onClose={() => close('dismissed')}
+              onSubmit={onSubmit}
+              onShare={onShare}
+              vars={vars}
+              advanceTo={advanceTo}
             />
             {/* Always ours, never the document's. An html message that forgot a
                 close control would otherwise trap the user behind a modal, and

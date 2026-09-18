@@ -907,7 +907,24 @@ export const gameService = {
    *   • thisMonthFinished  — games finished in the last 30 days
    *   • topPlayers         — uid + attended count, sorted desc, top 5
    */
-  async getCommunityStats(groupId: GroupId): Promise<{
+  async getCommunityStats(
+    groupId: GroupId,
+    /**
+     * Scope the scan to ONE season.
+     *
+     * Without it every figure below is the club's lifetime, and the stats
+     * screen showed them under a season heading: a club whose season 2 had
+     * not had a single evening still read "22 מחזורים", a 100% organisation
+     * rate and a 22-night streak, beside goals and mini-games that the close
+     * had correctly zeroed. Two sources, two scopes, one screen (owner
+     * report).
+     *
+     * A game with NO stamp belongs to season 1: the stamp only started being
+     * written when the feature landed, and a club that carried its history
+     * into season 1 played those nights in it.
+     */
+    season?: { currentId: string; currentNo: number },
+  ): Promise<{
     totalFinished: number;
     totalCancelled: number;
     organizationRate: number;
@@ -927,6 +944,19 @@ export const gameService = {
     longestStreakUid: UserId | null;
     /** Each player's CURRENT run of consecutive attended nights. */
     currentStreakByUser: Record<UserId, number>;
+    /** The SAME scan, unscoped.
+     *
+     *  Club badges and the club level are permanent things the club did, and
+     *  the all-time scope means all time — neither may shrink because a season
+     *  closed. Season-scoping the figures above put both on the season, so a
+     *  club un-earned its gold badge and dropped a level the morning after
+     *  every close. Counted in the same pass, so it costs no extra reads. */
+    lifetime: {
+      totalFinished: number;
+      totalCancelled: number;
+      organizationRate: number;
+      activeThisMonth: number;
+    };
   }> {
     const empty = {
       totalFinished: 0,
@@ -941,6 +971,12 @@ export const gameService = {
       longestStreak: 0,
       longestStreakUid: null as UserId | null,
       currentStreakByUser: {} as Record<UserId, number>,
+      lifetime: {
+        totalFinished: 0,
+        totalCancelled: 0,
+        organizationRate: 0,
+        activeThisMonth: 0,
+      },
     };
     if (!groupId) return empty;
     if (USE_MOCK_DATA) {
@@ -964,6 +1000,12 @@ export const gameService = {
         currentStreakByUser: Object.fromEntries(
           mockPlayers.slice(0, 8).map((p, i) => [p.id, Math.max(0, 7 - i)]),
         ),
+        lifetime: {
+          totalFinished: 42,
+          totalCancelled: 3,
+          organizationRate: 0.93,
+          activeThisMonth: 14,
+        },
       };
     }
     const q = query(
@@ -998,8 +1040,36 @@ export const gameService = {
     // Per finished night, the set of attendees — collected so we can compute
     // the longest consecutive-attendance streak (the club's "most loyal" run).
     const nights: Array<{ startsAt: number; attended: Set<UserId> }> = [];
+    /** A game with NO stamp belongs to season 1: the stamp only began being
+     *  written when the feature landed, and a club that carried its history
+     *  into season 1 played those nights inside it. */
+    const inSeason = (g: { seasonId?: string }): boolean => {
+      if (!season) return true;
+      const stamp = typeof g.seasonId === 'string' ? g.seasonId : '';
+      return stamp ? stamp === season.currentId : season.currentNo === 1;
+    };
+    let lifeFinished = 0;
+    let lifeCancelled = 0;
+    const lifeActiveMonth = new Set<UserId>();
     for (const doc of snap.docs) {
       const g = doc.data();
+      // Lifetime first, BEFORE the season gate — one pass, two tallies. The
+      // club's badges and its level are permanent, and the all-time scope
+      // means all time; neither may shrink because a season closed.
+      {
+        const st = eveningPlayState(g as PlayableEvening);
+        if (g.status === 'cancelled' || st === 'notHappened') lifeCancelled += 1;
+        else if (st !== 'unverified') {
+          lifeFinished += 1;
+          if (typeof g.startsAt === 'number' && g.startsAt >= monthAgo) {
+            const arr = (g.arrivals ?? {}) as Record<UserId, ArrivalStatus>;
+            for (const uid of (g.players ?? []) as UserId[]) {
+              if (arr[uid] !== 'no_show') lifeActiveMonth.add(uid);
+            }
+          }
+        }
+      }
+      if (!inSeason(g as { seasonId?: string })) continue;
       // ONE question, asked of the one module that answers it.
       //
       // This scan used to count every `finished` document as an evening the
@@ -1075,7 +1145,14 @@ export const gameService = {
       .map(([uid, attended]) => ({ uid, attended }))
       .sort((a, b) => b.attended - a.attended)
       .slice(0, 5);
+    const lifetimeAttempts = lifeFinished + lifeCancelled;
     return {
+      lifetime: {
+        totalFinished: lifeFinished,
+        totalCancelled: lifeCancelled,
+        organizationRate: lifetimeAttempts ? lifeFinished / lifetimeAttempts : 0,
+        activeThisMonth: lifeActiveMonth.size,
+      },
       totalFinished,
       totalCancelled,
       organizationRate,

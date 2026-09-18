@@ -403,9 +403,24 @@ async function closeSeason(args) {
             startsAt: args.startsAt,
             endsAt: now,
             closedAt: now,
-            // The number the titles were actually decided on, so the hall of fame
-            // cannot print "3 מחזורים" over a title won on "12 מחזורים".
-            completedRounds: seasonEvenings,
+            // How long the season WAS — the figure the club watched all season and
+            // approved the close on.
+            //
+            // This used to store `seasonEvenings`, which is the awards DENOMINATOR:
+            // the most evenings any one player attended. That is the right number to
+            // judge a title against (see the long note above) and the wrong one to
+            // publish as the season's length — yet the history screen prints it as
+            // "N מחזורים", and the reopen restores the season from it. A club shown
+            // "22 מתוך 22" all season found 19 in its archive, and an admin who
+            // pressed undo watched 23 evenings come back as 1.
+            //
+            // The denominator is kept beside it, so the hall of fame can still say
+            // what a title was decided on without the two being the same field.
+            // Falls back to the denominator only when the caller knew nothing.
+            completedRounds: typeof args.completedRounds === 'number' && args.completedRounds > 0
+                ? args.completedRounds
+                : seasonEvenings,
+            awardsDenominator: seasonEvenings,
             roundsAtStartOfSeason: args.roundsAtStart ?? 0,
             ...(args.endedEarly ? { endedEarly: true } : {}),
             ...(args.closedBy ? { closedBy: args.closedBy } : {}),
@@ -505,7 +520,15 @@ async function closeSeason(args) {
     {
         const cardPlayers = resumedPlayers ?? players;
         const cardTotals = resumedTotals ?? totals;
-        const cardEvenings = typeof resumedEvenings === 'number' ? resumedEvenings : seasonEvenings;
+        // The same figure the archive stores, for the same reason: the card is
+        // what the hall of fame prints as "N מחזורים", and that has to be the
+        // season's length rather than its best single attendance record. On a
+        // resume it comes from the archive the first pass already wrote.
+        const cardEvenings = typeof resumedEvenings === 'number'
+            ? resumedEvenings
+            : typeof args.completedRounds === 'number' && args.completedRounds > 0
+                ? args.completedRounds
+                : seasonEvenings;
         await db
             .collection('seasonCards')
             .doc(`${groupId}__${seasonId}`)

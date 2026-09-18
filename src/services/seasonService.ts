@@ -26,16 +26,26 @@ export type SeasonRefusal =
 
 export class SeasonRefusedError extends Error {
   reason: SeasonRefusal;
-  constructor(reason: SeasonRefusal) {
+  /** The number the server refused against, when it named one. Carried because
+   *  "the target is already behind the club" is unanswerable without it — and
+   *  the screen it appears on does not show the season's progress anywhere
+   *  else, so the admin had nothing at all to go on. */
+  played?: number;
+  constructor(reason: SeasonRefusal, played?: number) {
     super(reason);
     this.name = 'SeasonRefusedError';
     this.reason = reason;
+    if (typeof played === 'number') this.played = played;
   }
 }
 
 /** The refusals worth wording carefully — a club mid-evening must not be told
  *  "something went wrong" when the answer is "finish tonight first". */
-export function seasonRefusalText(reason: SeasonRefusal): string {
+export function seasonRefusalText(
+  reason: SeasonRefusal,
+  /** The figure the server refused against, when it named one. */
+  played?: number,
+): string {
   switch (reason) {
     case 'openGame':
       return he.seasonBlockedOpenGame;
@@ -44,7 +54,9 @@ export function seasonRefusalText(reason: SeasonRefusal): string {
     case 'seasonsOff':
       return he.seasonBlockedOff;
     case 'targetBehind':
-      return he.seasonBlockedTargetBehind;
+      return typeof played === 'number'
+        ? he.seasonBlockedTargetBehindAt(played)
+        : he.seasonBlockedTargetBehind;
     case 'nothingToReopen':
       return he.seasonBlockedNothingToReopen;
     case 'closedSeasonGame':
@@ -79,6 +91,14 @@ function refusalOf(err: unknown): SeasonRefusal | null {
   return 'unknown';
 }
 
+/** `target 10 is not above the 14 rounds already played` → 14. The server has
+ *  always computed this and put it in the message; nothing read it back. */
+export function playedFromError(err: unknown): number | undefined {
+  const msg = String((err as { message?: string })?.message ?? '');
+  const m = /is not above the (\d+)/.exec(msg);
+  return m ? Number(m[1]) : undefined;
+}
+
 async function call<T>(name: string, payload: Record<string, unknown>): Promise<T> {
   const { functions } = getFirebase();
   const fn = httpsCallable(functions, name);
@@ -88,7 +108,7 @@ async function call<T>(name: string, payload: Record<string, unknown>): Promise<
     return res.data as T;
   } catch (err) {
     const refusal = refusalOf(err);
-    if (refusal) throw new SeasonRefusedError(refusal);
+    if (refusal) throw new SeasonRefusedError(refusal, playedFromError(err));
     logError(name, err, { groupId: String(payload.groupId ?? '') });
     throw err;
   }

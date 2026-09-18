@@ -274,7 +274,17 @@ export function SeasonsSettings({
   const firstTime = (seasons?.count ?? 0) === 0 && !live;
 
   useEffect(() => {
-    if (!open || !firstTime) return;
+    if (!open) return;
+    // A club that has closed a season before carries NO loose history: those
+    // evenings are sealed inside an archive, and the season about to open
+    // starts at zero. Asking the server for the figure would get the same
+    // answer it now gives itself — see the playedHistory comment in
+    // enableClubSeasons — and a non-null value here is what lets the plan be
+    // computed and its refusal explained at all.
+    if (!firstTime) {
+      setHistory(0);
+      return;
+    }
     let alive = true;
     void gameService
       .getCommunityStats(groupId)
@@ -288,7 +298,7 @@ export function SeasonsSettings({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, groupId]);
+  }, [open, groupId, firstTime]);
   /** Does the club's current target correspond to one of the chips below? */
   const offeredTarget =
     seasons?.cadence?.type === 'rounds'
@@ -307,7 +317,7 @@ export function SeasonsSettings({
         appAlert(
           he.error,
           err instanceof SeasonRefusedError
-            ? seasonRefusalText(err.reason)
+            ? seasonRefusalText(err.reason, err.played)
             : he.seasonActionFailed,
         );
       } finally {
@@ -713,7 +723,11 @@ export function SeasonsSettings({
           ) : null}
 
           {/* The refusal, in red, beside the thing that caused it. */}
-          {firstTime && !plan.ok && history !== null ? (
+          {/* The reason, to EVERYONE. It used to be shown only on a club's
+              first activation, so a club re-enabling seasons got a refusal
+              from the server and a generic "משהו השתבש" — while the sentence
+              that explains it was sitting right here, unrendered. */}
+          {!plan.ok && history !== null ? (
             <Text style={styles.errorLine}>{planErrorText(plan, rounds)}</Text>
           ) : null}
 
@@ -739,7 +753,9 @@ export function SeasonsSettings({
             disabled={
               busy ||
               (live && !targetChanged) ||
-              (firstTime && (history === null || !plan.ok))
+              // Same rule for the same reason: a button that cannot succeed
+              // must not be pressable, whether or not this is the first time.
+              (history === null || !plan.ok)
             }
             // Enabling never acts on the press. It opens a sheet that spells
             // out, in this club's own numbers, exactly what is about to happen
@@ -763,8 +779,14 @@ export function SeasonsSettings({
             />
           ) : null}
           {/* The way back from "I pressed it a week early". Offered only when
-              there is actually a closed season to reopen. */}
-          {(seasons?.count ?? 0) > 0 ? (
+              there is actually a closed season to reopen — AND while seasons
+              are still running.
+              With `live` missing, this sat beside "הפעל עונות" on the screen of
+              a club whose seasons were OFF: two taps from there deleted an
+              archived season and switched the feature back on without anybody
+              pressing enable. The undo belongs to a club that is mid-season and
+              closed one by mistake, not to the setup screen. */}
+          {live && (seasons?.count ?? 0) > 0 ? (
             <Button
               title={he.seasonsReopenCta}
               variant="outline"

@@ -656,6 +656,14 @@ export function readGroupSeasons(v: unknown): GroupSeasons | undefined {
     ...(typeof d.playedRounds === 'number'
       ? { playedRounds: d.playedRounds }
       : {}),
+    // Every change to the season's target, which the type documents as "kept
+    // and shown… never quietly". It was written by the server on every change
+    // and dropped right here — this reader rebuilds the block field by field,
+    // so a field it does not name does not exist on any client. The feature's
+    // only stated safeguard had no implementation on any screen.
+    ...(Array.isArray(d.targetHistory)
+      ? { targetHistory: d.targetHistory as GroupSeasons['targetHistory'] }
+      : {}),
     cadence: {
       type: c.type === 'rounds' ? 'rounds' : 'date',
       ...(typeof c.months === 'number' ? { months: c.months } : {}),

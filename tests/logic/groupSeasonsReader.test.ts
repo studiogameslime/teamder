@@ -37,8 +37,25 @@ describe('the season block a club reads', () => {
       roundsAtStart: 212,
       playedRounds: 7,
       cadence: { type: 'date', months: 6, endsAt: 1_805_000_000_000 },
+      targetHistory: [],
       count: 3,
     });
+  });
+
+  // This file exists to catch a field the reader drops — and it did not catch
+  // this one, because the expectation above omitted it too. `targetHistory` is
+  // written by updateSeasonTarget on every change and typed as "kept and
+  // shown… never quietly"; the reader never named it, so it was undefined on
+  // every client and no screen could ever show it.
+  it('keeps targetHistory, the only record that a target was moved', () => {
+    const s = readGroupSeasons({
+      ...serverBlock(),
+      targetHistory: [
+        { at: 1_790_000_100_000, by: 'u1', byName: 'מתן', from: { type: 'rounds', targetRounds: 24 }, to: { type: 'rounds', targetRounds: 30 } },
+      ],
+    });
+    expect(s?.targetHistory).toHaveLength(1);
+    expect(s?.targetHistory?.[0]).toMatchObject({ byName: 'מתן' });
   });
 
   it('keeps playedRounds, which is the whole progress line', () => {

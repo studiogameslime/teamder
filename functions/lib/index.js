@@ -4379,6 +4379,16 @@ async function sealRoundSummary(args) {
     await batch.commit();
     console.log(`[roundSummary] sealed ${gameId}: ${summary.stats.rounds} mini-games, ` +
         `${summary.stats.goals} goals, ${summary.events.length} event(s)`);
+    // The evening that meets the season's target ENDS the season — here, not at
+    // the top of the next hour. `playedRounds` went up in the batch above, so
+    // this is the first moment the answer can be yes, and the club is as quiet
+    // as it will ever be: the evening finished a line ago. Owner: "ברגע שאני
+    // מסיים את המחזור האחרון של עונה — ישר לסיים אותה, בלי שעה".
+    //
+    // After the commit and never inside it. The seal is the record of the
+    // evening and must stand whatever happens next; the hourly sweep still
+    // catches every season this does not.
+    await closeSeasonIfRoundsTargetMet(groupId, gameId);
 }
 exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}', async (event) => {
     const before = event.data?.before?.data();
@@ -12223,8 +12233,15 @@ async function announceSeasonClosed(args) {
         const players = (snap.data()?.players ?? {});
         const ops = [];
         for (const [uid, row] of Object.entries(players)) {
+            // Turned up, or played a mini-game. `rounds` counts משחקונים and is
+            // written only by the advanced live screen, so filtering on it alone
+            // meant a club running the plain timer closed its season and told
+            // NOBODY — the one push the whole feature builds towards, reaching zero
+            // people, on exactly the clubs the archive already documents as having
+            // no mini-games. `games` is evenings attended, which every club records.
             const rounds = typeof row?.rounds === 'number' ? row.rounds : 0;
-            if (rounds <= 0)
+            const evenings = typeof row?.games === 'number' ? row.games : 0;
+            if (rounds <= 0 && evenings <= 0)
                 continue;
             ops.push(createNotificationOnce({
                 type: 'seasonSummary',
@@ -12249,23 +12266,34 @@ function rebaseCadence(cadence, seasonStartedAt, now) {
     if (!cadence || cadence.type !== 'date') {
         return (cadence ?? { type: 'date', months: 6 });
     }
-    let months = MONTH_CHOICES.includes(Number(cadence.months))
+    let months = (0, seasonDates_1.isValidSeasonMonths)(Number(cadence.months))
         ? Number(cadence.months)
         : 0;
     if (!months && seasonStartedAt > 0 && typeof cadence.endsAt === 'number') {
         const ranMs = cadence.endsAt - seasonStartedAt;
         const ranMonths = Math.round(ranMs / (30 * 24 * 60 * 60 * 1000));
-        months = MONTH_CHOICES.includes(ranMonths) ? ranMonths : 0;
+        months = (0, seasonDates_1.isValidSeasonMonths)(ranMonths) ? ranMonths : 0;
     }
     if (!months)
         months = 6;
     // targetRounds cleared for the same reason the enable path clears it: this
     // is written into a merge:true map, so an omitted field keeps whatever the
     // club's previous cadence left there.
+    //
+    // And `endsOn` for exactly that reason — it was the one field this function
+    // never returned. The sweep asks `endsOn` FIRST when deciding whether a
+    // season is over, so the new season inherited the date the old one died on,
+    // was due the moment it opened, and closed again on the next pass. Every
+    // hour, forever, archiving an empty season each time. Six independent
+    // reviewers found it; the club I tested it on had already produced one junk
+    // archive entry this way.
+    const startsOn = (0, seasonDates_1.todayIn)(undefined, now);
     return {
         type: 'date',
         months,
         endsAt: addMonthsClampedServer(now, months),
+        startsOn,
+        endsOn: (0, seasonDates_1.seasonEndDate)(startsOn, months),
         targetRounds: null,
     };
 }
@@ -12278,7 +12306,14 @@ const REOPEN_GRACE_MS = 48 * 60 * 60 * 1000;
 /** How far ahead still counts as "about to be played". A game can be started
  *  before its scheduled kickoff, so a window that ends at `now` misses it. */
 const STARTING_SOON_MS = 3 * 60 * 60 * 1000;
-async function clubIsQuiet(groupId) {
+async function clubIsQuiet(groupId, 
+/** `afterSeal` is the moment an evening has just been sealed. The evening the
+ *  season would be split across is the one that ended a second ago, so the
+ *  only thing that may still block is another evening genuinely mid-play —
+ *  not next week's clone, and not tonight's second game sitting unstarted.
+ *  The hourly sweep keeps the wider guard, where "is anything about to
+ *  happen" is the only question it can ask. */
+opts) {
     // What must not happen is closing ACROSS an evening: each mini-game commits
     // separately, so rounds 1-3 would land in the old season and 4-6 in the new,
     // while the player's career total — written in the same batch — keeps the
@@ -12294,20 +12329,22 @@ async function clubIsQuiet(groupId) {
     // cleanup sweep owns those) and must not hold a club's season hostage
     // forever.
     const now = Date.now();
+    const afterSeal = opts?.mode === 'afterSeal';
     const open = await db
         .collection('games')
         .where('groupId', '==', groupId)
-        .where('status', 'in', ['scheduled', 'open', 'locked', 'active'])
+        .where('status', 'in', afterSeal ? ['active'] : ['scheduled', 'open', 'locked', 'active'])
         // Forward as well as back. An evening that kicked off early — the teams
         // turned up at 19:40 for a 20:00 game and pressed start — has a startsAt in
         // the future while the rotation is already running, and an upper bound of
         // `now` walked straight past it. The window is the evening, not the clock.
         .where('startsAt', '<=', now + STARTING_SOON_MS)
         .where('startsAt', '>=', now - TONIGHT_MS)
-        .limit(1)
+        .limit(2)
         .get();
-    if (!open.empty)
+    if (open.docs.some((d) => d.id !== opts?.exceptGameId)) {
         return { ok: false, blocker: 'openGame' };
+    }
     // Finished but not yet sealed. Closing in that gap makes sealRoundSummary
     // compare tonight against a table with no history, so every stat reads as a
     // brand-new club record — and the summary is written once, so the wrong
@@ -12423,6 +12460,12 @@ async function requireClubAdmin(groupId, uid) {
     }
     return { ref: snap.ref, group: g };
 }
+/** The chips the settings screen offers. NOT the range the server accepts —
+ *  that is isValidSeasonMonths (1–24), the same rule the client validates a
+ *  custom length against. These three were used as an acceptance list, and
+ *  anything outside them was silently rewritten to 6: an admin who chose an
+ *  8-month winter league got a 6-month one, approved a sheet that said 8, and
+ *  was never told. Seven independent reviewers found this. */
 const MONTH_CHOICES = [1, 3, 6, 12];
 /** Add months, clamped to the last valid day. Mirrors src/utils/seasonLifecycle
  *  so both sides agree; there is no month arithmetic anywhere else here. */
@@ -12471,6 +12514,116 @@ function addMonthsClampedServer(from, months) {
  *   others. `closeSeason` is idempotent on its own (the archive is a create()),
  *   so a retry after a partial failure cannot double-archive.
  */
+/**
+ * Close one season and open the next: archive, re-base, announce.
+ *
+ * Extracted because there are now TWO ways in. The hourly sweep is the
+ * backstop — it catches date cadences and anything the other path missed — and
+ * the seal of an evening is the fast one: the moment a club finishes the round
+ * that meets its target, the season is over, and waiting up to an hour to say
+ * so made the app look like it had not noticed. One implementation, because a
+ * second way to close a season is a second set of bugs on the only unattended
+ * path that destroys production data.
+ */
+async function performSeasonClose(args) {
+    const { groupId, groupName, seasonId, seasonNo, cadence, now } = args;
+    const result = await (0, seasonRollover_1.closeSeason)({
+        db,
+        groupId,
+        groupName,
+        seasonId,
+        seasonNo,
+        startsAt: args.startedAt,
+        completedRounds: args.played,
+        roundsAtStart: args.roundsAtStart,
+        originalTarget: cadence,
+        now,
+    });
+    const nextNo = seasonNo + 1;
+    await db.collection('groups').doc(groupId).set({
+        seasons: {
+            currentNo: nextNo,
+            currentId: `s${nextNo}`,
+            startedAt: now,
+            roundsAtStart: await sealedEveningsOf(groupId),
+            playedRounds: 0,
+            reopenedAt: 0,
+            // The whole reason the sweep is safe to run hourly: without a re-based
+            // end date it would close this club again next hour, and the hour
+            // after that, forever.
+            cadence: rebaseCadence(cadence, args.startedAt, now),
+            targetHistory: [],
+            count: args.count + 1,
+        },
+    }, { merge: true });
+    if (result.archived) {
+        await announceSeasonClosed({ groupId, groupName, seasonId, seasonNo });
+    }
+}
+/**
+ * The evening just sealed was the one the season was waiting for — so end it
+ * now, not at the top of the next hour.
+ *
+ * Only a ROUNDS cadence can be finished by an evening; a date cadence is
+ * finished by a date, and that is the sweep's job. Best-effort throughout: the
+ * seal has already committed, and a season that fails to close here is closed
+ * by the sweep within the hour exactly as before.
+ */
+async function closeSeasonIfRoundsTargetMet(groupId, sealedGameId) {
+    try {
+        const gSnap = await db.collection('groups').doc(groupId).get();
+        const g = gSnap.data();
+        const seasons = g?.seasons;
+        if (!seasons?.enabled || !seasons.currentId)
+            return;
+        const cadence = seasons.cadence ?? {};
+        if (cadence.type !== 'rounds')
+            return;
+        const target = cadence.targetRounds;
+        if (typeof target !== 'number' || target <= 0)
+            return;
+        const played = await completedRoundsOf(groupId, seasons.roundsAtStart, seasons.playedRounds);
+        if (played < target)
+            return;
+        // An admin who has just pulled the season back open gets their grace here
+        // too, for the same reason: they reopened it because it met its target,
+        // and closing it again on the next evening's seal would be the app
+        // arguing.
+        const reopenedAt = archNum(seasons.reopenedAt);
+        const now = Date.now();
+        if (reopenedAt > 0 && now - reopenedAt < REOPEN_GRACE_MS)
+            return;
+        const quiet = await clubIsQuiet(groupId, {
+            mode: 'afterSeal',
+            exceptGameId: sealedGameId,
+        });
+        if (!quiet.ok) {
+            console.log('[season] target met but club busy — sweep will close', groupId, quiet.blocker);
+            return;
+        }
+        await performSeasonClose({
+            groupId,
+            groupName: g?.name ?? '',
+            seasonId: seasons.currentId,
+            seasonNo: seasons.currentNo ?? 1,
+            startedAt: seasons.startedAt ?? 0,
+            played,
+            roundsAtStart: seasons.roundsAtStart ?? 0,
+            cadence,
+            count: seasons.count ?? 0,
+            now,
+        });
+        console.log(`[season] closed on seal: ${groupId} ${seasons.currentId} at ${played}/${target}`);
+    }
+    catch (err) {
+        console.error('[season] close-on-seal failed', groupId, err);
+        await reportServerError({
+            operation: 'closeSeasonOnSeal',
+            err,
+            context: { groupId, gameId: sealedGameId },
+        });
+    }
+}
 async function runSeasonRollovers() {
     const now = Date.now();
     const clubs = await db
@@ -12535,43 +12688,18 @@ async function runSeasonRollovers() {
             }
             const seasonId = seasons.currentId;
             const seasonNo = seasons.currentNo ?? 1;
-            const result = await (0, seasonRollover_1.closeSeason)({
-                db,
+            await performSeasonClose({
                 groupId: doc.id,
                 groupName: g.name ?? '',
                 seasonId,
                 seasonNo,
-                startsAt: seasons.startedAt ?? 0,
-                completedRounds: played,
+                startedAt: seasons.startedAt ?? 0,
+                played,
                 roundsAtStart: seasons.roundsAtStart ?? 0,
-                originalTarget: cadence,
+                cadence,
+                count: seasons.count ?? 0,
                 now,
             });
-            const nextNo = seasonNo + 1;
-            await doc.ref.set({
-                seasons: {
-                    currentNo: nextNo,
-                    currentId: `s${nextNo}`,
-                    startedAt: now,
-                    roundsAtStart: await sealedEveningsOf(doc.id),
-                    playedRounds: 0,
-                    reopenedAt: 0,
-                    // The whole reason this sweep is safe to run hourly: without a
-                    // re-based end date it would close this club again next hour, and
-                    // the hour after that, forever.
-                    cadence: rebaseCadence(cadence, seasons.startedAt ?? 0, now),
-                    targetHistory: [],
-                    count: (seasons.count ?? 0) + 1,
-                },
-            }, { merge: true });
-            if (result.archived) {
-                await announceSeasonClosed({
-                    groupId: doc.id,
-                    groupName: g.name ?? '',
-                    seasonId,
-                    seasonNo,
-                });
-            }
             closed += 1;
         }
         catch (err) {
@@ -12656,9 +12784,11 @@ exports.enableClubSeasons = (0, https_1.onCall)({
         };
     }
     else {
-        const months = MONTH_CHOICES.includes(Number(data.months))
-            ? Number(data.months)
-            : 6;
+        // Any length the CLIENT would accept, because the client is where the
+        // admin chose it. Refusing here would be honest; rewriting silently is
+        // not, and 6 was neither what they picked nor what they confirmed.
+        const askedM = Number(data.months);
+        const months = (0, seasonDates_1.isValidSeasonMonths)(askedM) ? askedM : 6;
         // `months` is stored beside the date, not just the date. Without it a
         // season that rolls over has no way to compute its OWN end date, and
         // inherits a deadline that has already passed — see rebaseCadence.
@@ -12713,7 +12843,20 @@ exports.enableClubSeasons = (0, https_1.onCall)({
         months: askedMonths,
         targetRounds: type === 'rounds' ? Math.round(Number(data.targetRounds)) : undefined,
         choice,
-        playedHistory: await playedEveningsFromGames(groupId),
+        // ZERO once the club has closed a season before.
+        //
+        // `playedEveningsFromGames` counts every evening the club has ever
+        // played, and on a first activation that is exactly right: season 1 is
+        // being asked to own that history. On a RE-activation it is wrong twice
+        // over — those evenings are already sealed inside an archived season,
+        // and counting them again refuses any target smaller than the club's
+        // whole life. A club with 22 evenings behind it could not ask for a
+        // 2-round season: the server answered failed-precondition and the app
+        // showed "משהו השתבש" (owner report, reproduced on a real club).
+        //
+        // A season opened after a close starts at zero, which is what the close
+        // itself already writes.
+        playedHistory: closedSoFar > 0 ? 0 : await playedEveningsFromGames(groupId),
         today,
         season1EndsOn,
     });
@@ -12780,7 +12923,14 @@ exports.enableClubSeasons = (0, https_1.onCall)({
     }
     // Carry season 1 on. If the cadence counts rounds, the target has to be
     // ahead of what has already been played or "continue" ends it on save.
-    if (cadence.type === 'rounds') {
+    //
+    // ONLY for a club whose first season really is carrying its history. A
+    // re-activation starts at zero (see the seasonSeed call below), so `played`
+    // — which keeps growing while seasons are switched OFF — is not a floor for
+    // anything: an admin who confirmed a 2-round season got one as long as
+    // "every evening since the last close, plus one", silently, against a sheet
+    // that promised 2.
+    if (cadence.type === 'rounds' && closedSoFar === 0) {
         cadence.targetRounds = Math.max(cadence.targetRounds ?? 0, played + 1);
     }
     const no = closedSoFar + 1;
@@ -12814,7 +12964,15 @@ exports.enableClubSeasons = (0, https_1.onCall)({
             // The club's real history, counted from its games. See seasonSeed:
             // the counter cannot see evenings older than 26.08.2026, and season 1
             // is supposed to own them.
-            ...(0, seasonSeed_1.seasonSeed)(await sealedEveningsOf(groupId), await playedEveningsFromGames(groupId)),
+            // Season 1 owns the club's history; season 5 does not.
+            //
+            // The seed exists because a club turning seasons on for the FIRST
+            // time is asking its first season to hold everything played so far.
+            // A club that has closed seasons before is asking for a NEW one, and
+            // those evenings are already sealed in an archive — seeding them
+            // again opened a 2-round season at 22 of 2, declared over before a
+            // ball was kicked (owner report, reproduced on a real club).
+            ...(0, seasonSeed_1.seasonSeed)(await sealedEveningsOf(groupId), closedSoFar > 0 ? 0 : await playedEveningsFromGames(groupId)),
             cadence,
             targetHistory: [],
             count: closedSoFar,
@@ -12871,7 +13029,12 @@ exports.updateSeasonTarget = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
         throw new https_1.HttpsError('failed-precondition', 'seasons are off');
     }
     const now = Date.now();
-    const played = await completedRoundsOf(groupId, seasons.roundsAtStart);
+    // `playedRounds`, not a fresh derivation from `eveningsSealed`. Without it
+    // this refused — or allowed — a new target against a number the club has
+    // never been shown, so "the target is already behind you" could be said
+    // about a season the card says has three evenings left. Four independent
+    // reviewers found it; the sweep and the card already agree on this figure.
+    const played = await completedRoundsOf(groupId, seasons.roundsAtStart, seasons.playedRounds);
     const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
     // `null` on the unused half, for the same reason enableClubSeasons does it:
     // the seasons block is written with merge:true, and a merge into a nested
@@ -12902,9 +13065,11 @@ exports.updateSeasonTarget = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
         };
     }
     else {
-        const months = MONTH_CHOICES.includes(Number(data.months))
-            ? Number(data.months)
-            : 6;
+        // Any length the CLIENT would accept, because the client is where the
+        // admin chose it. Refusing here would be honest; rewriting silently is
+        // not, and 6 was neither what they picked nor what they confirmed.
+        const askedM = Number(data.months);
+        const months = (0, seasonDates_1.isValidSeasonMonths)(askedM) ? askedM : 6;
         const endsAt = addMonthsClampedServer(now, months);
         if (endsAt <= now) {
             throw new https_1.HttpsError('failed-precondition', 'end date is in the past');
@@ -13002,7 +13167,18 @@ exports.reopenLastSeason = (0, https_1.onCall)({
             startedAt: archNum(archive.get('startsAt')),
             roundsAtStart: reopenedRoundsAtStart,
             reopenedAt: Date.now(),
-            playedRounds: Math.max(0, (await sealedEveningsOf(groupId)) - reopenedRoundsAtStart),
+            // What the season HELD, taken from its own archive.
+            //
+            // This used to be recomputed as `eveningsSealed - roundsAtStart`, a
+            // subtraction of two counters that drift for different reasons — so
+            // a season closed at 23 evenings came back as 1, and the admin who
+            // pressed undo watched the club's season shrink to nothing. The
+            // archive is the record of what the season was; restoring is reading
+            // it, not deriving it. Falls back to the old arithmetic only when the
+            // archive has no figure at all.
+            playedRounds: typeof archive.get('completedRounds') === 'number'
+                ? archNum(archive.get('completedRounds'))
+                : Math.max(0, (await sealedEveningsOf(groupId)) - reopenedRoundsAtStart),
             // The target it was closed against, so it is not immediately due
             // again on a date cadence.
             cadence: rebaseCadence((archive.get('originalTarget') ?? seasons?.cadence), archNum(archive.get('startsAt')), Date.now()),

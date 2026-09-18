@@ -1,0 +1,167 @@
+<div class="wz">
+
+  <!-- Step. Six now: the format, when/where, features and plan screens are
+       gone — they asked for settings before anyone had a reason to care, and
+       every one of them has a home in the app already. -->
+  <input class="nav" type="radio" name="wz" id="w1" checked>
+  <input class="nav" type="radio" name="wz" id="w2">
+  <input class="nav" type="radio" name="wz" id="w3">
+  <input class="nav" type="radio" name="wz" id="w4">
+  <input class="nav" type="radio" name="wz" id="w5">
+  <input class="nav" type="radio" name="wz" id="w6">
+
+  <!-- Answers, hoisted to the top so ANY element below can be gated on them.
+       A sibling selector only reaches forward, and the buttons that branch sit
+       in a different part of the tree from the tiles that were tapped. -->
+  <input class="nav" type="radio" name="role" id="rOrg" value="organiser" checked>
+  <input class="nav" type="radio" name="role" id="rPlay" value="player">
+  <input class="nav" type="radio" name="clubMode" id="mNew" value="create" checked>
+  <input class="nav" type="radio" name="clubMode" id="mJoin" value="join">
+
+  <div class="scr">
+
+    <!-- 1 ─────────────────────────────────────────── מסך פתיחה -->
+    <section class="st s1">
+      <i class="shot" aria-hidden="true"></i>
+      <i class="veil" aria-hidden="true"></i>
+      <div class="body mid">
+        <i class="hero-logo"></i>
+        <p class="wordmark">Teamder</p>
+        <h1 class="h1">ברוך הבא ל-Teamder</h1>
+        <p class="sub">הדרך הפשוטה לארגן משחקי כדורגל<br>עם החברים שלך</p>
+      </div>
+      <div class="foot">
+        <span class="cta" data-action="go" data-go="w2">בואו נתחיל <i class="gl i-arrow"></i></span>
+        <div class="dots"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </section>
+
+    <!-- 2 ─────────────────────────────────── בחירת סוג משתמש -->
+    <section class="st s2">
+      <div class="top"><span class="skip" data-action="go" data-go="w6">דלג</span>
+        <span class="brand"><i class="mark"></i><b>Teamder</b></span></div>
+      <div class="bar"><i style="width:20%"></i></div>
+      <div class="body">
+        <h2 class="h2">איך אתה רוצה להשתמש באפליקציה?</h2>
+        <span class="tile" data-action="pick" data-name="role" data-value="organiser">
+          <span class="tile-ico"><i class="gl i-users lg"></i></span>
+          <b>אני מארגן משחקים</b>
+          <small>יוצר מועדון, מנהל מחזורים<br>ומזמין שחקנים</small>
+        </span>
+        <span class="tile" data-action="pick" data-name="role" data-value="player">
+          <span class="tile-ico"><i class="gl i-ball lg"></i></span>
+          <b>אני רוצה לשחק</b>
+          <small>מחפש משחקים פתוחים<br>להצטרפות</small>
+        </span>
+      </div>
+      <div class="foot">
+        <!-- An organiser carries on; a player is done here. The player button
+             is a link, and a link ENDS an in-app message — it closes the
+             wizard, records the answer through ?role= and lands them on the
+             open games. There is no club for them to fill in. -->
+        <span class="cta only-org" data-action="go" data-go="w3">המשך <i class="gl i-arrow"></i></span>
+        <span class="cta only-play" data-action="open" data-url="footy://open/games?role=player">קח אותי למשחקים <i class="gl i-arrow"></i></span>
+        <div class="dots"><i></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </section>
+
+    <!-- 3 ──────────────────────── יצירת מועדון או הצטרפות -->
+    <section class="st s3">
+      <div class="top"><span class="skip" data-action="go" data-go="w6">דלג</span>
+        <span class="brand"><i class="mark"></i><b>Teamder</b></span></div>
+      <div class="bar"><i style="width:40%"></i></div>
+      <div class="body">
+        <h2 class="h2">מצוין! בוא נקים את המועדון שלך</h2>
+        <p class="hint">מועדון הוא קבוצת החברים הקבועה שלך, שבה תראה מחזורים ותנהל סטטיסטיקה.</p>
+        <span class="pick" data-action="pick" data-name="clubMode" data-value="create">
+          <span class="ico solid"><i class="gl i-plus"></i></span>
+          <span class="txt"><b>יצירת מועדון חדש</b><small>הקם מועדון משלך והזמן חברים</small></span>
+        </span>
+        <span class="pick" data-action="pick" data-name="clubMode" data-value="join">
+          <span class="ico"><i class="gl i-users"></i></span>
+          <span class="txt"><b>הצטרפות למועדון קיים</b><small>יש לך קוד הצטרפות? הצטרף למועדון קיים</small></span>
+        </span>
+      </div>
+      <div class="foot"><span class="cta" data-action="go" data-go="w4">המשך <i class="gl i-arrow"></i></span>
+        <div class="dots"><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div></div>
+    </section>
+
+    <!-- 4 ───────────────────── פרטי מועדון / קוד הצטרפות -->
+    <section class="st s4">
+      <div class="top"><span class="skip" data-action="go" data-go="w6">דלג</span>
+        <span class="brand"><i class="mark"></i><b>Teamder</b></span></div>
+      <div class="bar"><i style="width:60%"></i></div>
+      <div class="body">
+        <div class="only-new">
+          <h2 class="h2">פרטי המועדון</h2>
+          <p class="hint">ספר לנו קצת על המועדון שלך</p>
+          <div class="photo"><i class="gl i-camera xl"></i></div>
+          <p class="photo-cap">אפשר להוסיף תמונה אחר כך מתוך המועדון</p>
+          <label class="fld"><span class="lbl">שם המועדון <i class="req">*</i></span>
+            <input type="text" name="clubName" placeholder="כדורגל אנשים טובים"></label>
+          <label class="fld"><span class="lbl">תיאור (אופציונלי)</span>
+            <input type="text" name="clubDesc" placeholder="קבוצה של חברים שאוהבים כדורגל"></label>
+          <label class="fld"><span class="lbl">עיר / אזור</span>
+            <span class="inwrap"><i class="gl i-pin sm mute"></i><input type="text" name="city" placeholder="תל אביב"></span></label>
+        </div>
+        <div class="only-join">
+          <h2 class="h2">קוד הצטרפות</h2>
+          <p class="hint">בקש מהמארגן את קוד המועדון, או את קישור ההזמנה שלו.</p>
+          <label class="fld"><span class="lbl">הקוד</span>
+            <input type="text" name="joinCode" placeholder="AB12CD"></label>
+        </div>
+      </div>
+      <div class="foot">
+        <!-- The step that ACTS. Not a label: the club is created here, and the
+             next screen shows a link into it — so the wizard moves on only
+             when there is a club to link to. A join goes straight to the end,
+             where the invite screen has nothing to offer. -->
+        <span class="cta" data-action="submit">המשך <i class="gl i-arrow"></i></span>
+        <div class="dots"><i></i><i></i><i></i><i class="on"></i><i></i><i></i></div>
+      </div>
+    </section>
+
+    <!-- 5 ────────────────────────────────────── הזמנת חברים -->
+    <section class="st s5">
+      <div class="top"><span class="skip" data-action="go" data-go="w6">דלג</span>
+        <span class="brand"><i class="mark"></i><b>Teamder</b></span></div>
+      <div class="bar"><i style="width:80%"></i></div>
+      <div class="body">
+        <h2 class="h2">המועדון מוכן — הזמן את החבר'ה</h2>
+        <p class="hint">זה קישור ההזמנה של המועדון שלך. מי שלוחץ עליו מצטרף ישר פנימה.</p>
+        <!-- The whole card is the share button. `data-action` is a DECLARATION:
+             the document cannot run code, and the shim in HtmlMessageView reads
+             the attribute and opens the native sheet. -->
+        <div class="link" data-action="share">
+          <span class="link-ico"><i class="gl i-link"></i></span>
+          <span class="link-txt"><b>קישור הזמנה למועדון</b><small class="url" data-var="inviteUrl">מכין קישור…</small></span>
+          <span class="copy"><i class="gl i-copy sm"></i></span>
+        </div>
+        <span class="cta share-cta" data-action="share">שתף את הקישור <i class="gl i-arrow"></i></span>
+        <p class="hint mt">אפשר גם לדלג ולהזמין אחר כך מתוך המועדון.</p>
+      </div>
+      <div class="foot">
+        <span class="cta" data-action="go" data-go="w6">סיום <i class="gl i-arrow"></i></span>
+        <div class="dots"><i></i><i></i><i></i><i></i><i class="on"></i><i></i></div>
+      </div>
+    </section>
+
+    <!-- 6 ──────────────────────────────────────────────── סיום -->
+    <section class="st s6">
+      <div class="top"><span class="brand"><i class="mark"></i><b>Teamder</b></span></div>
+      <div class="bar"><i style="width:100%"></i></div>
+      <div class="body mid">
+        <div class="confetti" aria-hidden="true">
+          <i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i>
+          <i class="c5"></i><i class="c6"></i><i class="c7"></i><i class="c8"></i>
+        </div>
+        <div class="done"><i class="gl i-check xl"></i></div>
+        <h1 class="h1">הכל מוכן!</h1>
+        <p class="sub only-new">המועדון שלך נוצר בהצלחה.<br>אפשר להתחיל לארגן מחזורים<br>ולשחק עם החברים!</p>
+        <p class="sub only-join">קיבלנו. אפשר להתחיל<br>ולמצוא את המועדון שלך.</p>
+      </div>
+      <div class="foot"><span class="cta" data-action="open" data-url="footy://open/communities">לעמוד הבית <i class="gl i-arrow"></i></span></div>
+    </section>
+
+  </div>
+</div>

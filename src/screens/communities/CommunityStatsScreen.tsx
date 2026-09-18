@@ -84,6 +84,14 @@ interface StatsData {
   // exact same attendance events, unlike the communityPlayerStats rollup which
   // can lag). topPlayers[0] = the player who attended the most nights.
   topPlayers: Array<{ uid: string; attended: number }>;
+  /** The same scan, unscoped — what the club has done in its whole life.
+   *  Badges, the club level and the "כל הזמנים" scope read from here. */
+  lifetime: {
+    totalFinished: number;
+    totalCancelled: number;
+    organizationRate: number;
+    activeThisMonth: number;
+  };
 }
 interface DeadlyDuo {
   uidA: string;
@@ -166,10 +174,21 @@ export function CommunityStatsScreen() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [c, s, g, d] = await Promise.all([
+      // The club FIRST, because the evening scan has to know which season it
+      // is counting. Everything else on this screen is already season-scoped
+      // (the close zeroes communityStats and communityPlayerStats), and the
+      // scan was not — so a brand-new season showed zero goals beside a
+      // lifetime count of evenings, a lifetime organisation rate and a
+      // lifetime streak. One extra document read is the price of the four
+      // tiles agreeing with each other.
+      const g = await groupService.get(groupId).catch(() => null);
+      const scope =
+        g?.seasons?.enabled && g.seasons.currentId
+          ? { currentId: g.seasons.currentId, currentNo: g.seasons.currentNo ?? 1 }
+          : undefined;
+      const [c, s, d] = await Promise.all([
         gameService.getCommunityChampionship(groupId).catch(() => null),
-        gameService.getCommunityStats(groupId).catch(() => null),
-        groupService.get(groupId).catch(() => null),
+        gameService.getCommunityStats(groupId, scope).catch(() => null),
         gameService.getCommunityDeadlyDuo(groupId).catch(() => null),
       ]);
       if (!alive) return;
@@ -213,6 +232,12 @@ export function CommunityStatsScreen() {
       );
       setStats(
         s ?? {
+          lifetime: {
+            totalFinished: 0,
+            totalCancelled: 0,
+            organizationRate: 0,
+            activeThisMonth: 0,
+          },
           totalFinished: 0,
           organizationRate: 0,
           avgAttendance: 0,
@@ -452,7 +477,11 @@ export function CommunityStatsScreen() {
   // Club achievements + level — derived from the same aggregates, client-side.
   const club = useMemo(() => {
     const metrics: ClubMetrics = {
-      gameNights: stats?.totalFinished ?? 0,
+      // LIFETIME, like clubGoals beside it. Season-scoping the scan put these
+      // three on the running season, so a club's badges and level collapsed
+      // the morning after every close — the same bug the note below describes,
+      // arriving through the other three metrics.
+      gameNights: stats?.lifetime?.totalFinished ?? 0,
       // Lifetime goals, not this season's.
       //
       // `champ.totalGoals` is summed from communityPlayerStats, which a season
@@ -465,8 +494,8 @@ export function CommunityStatsScreen() {
       ageYears: clubMeta
         ? Math.floor((Date.now() - clubMeta.createdAt) / (365.25 * 24 * 3600 * 1000))
         : 0,
-      activeThisMonth: stats?.activeThisMonth ?? 0,
-      organizationRatePct: Math.round((stats?.organizationRate ?? 0) * 100),
+      activeThisMonth: stats?.lifetime?.activeThisMonth ?? 0,
+      organizationRatePct: Math.round((stats?.lifetime?.organizationRate ?? 0) * 100),
     };
     return { badges: computeClubBadges(metrics), level: computeClubLevel(metrics) };
   }, [stats, champ, clubMeta, archivedGoals]);
@@ -502,6 +531,13 @@ export function CommunityStatsScreen() {
     // archive is still loading, or whose chosen season really was empty, would
     // land on a dead end with no way back to the running season.
     scope.k === 'current' &&
+    // NOR while the club has seasons in its archive. Scoping the evening scan
+    // to the running season made this state reachable for the first time: a
+    // club whose new season has not had an evening yet now genuinely counts
+    // zero, and the empty view swallowed the very picker that leads to the
+    // seasons it DOES have. "עדיין אין נתונים" is true of tonight and false of
+    // the club.
+    (seasons?.count ?? 0) === 0 &&
     derived.totalGoals === 0 &&
     (stats?.totalFinished ?? 0) === 0 &&
     derived.players.length === 0;
@@ -567,7 +603,13 @@ export function CommunityStatsScreen() {
           {/* בורר התצוגה. מופיע לכל מועדון שמנהל עונות — גם לפני שנסגרה
               עונה ראשונה, כי בלעדיו אי אפשר לדעת שהמספרים על המסך הם של
               העונה ולא של כל הזמנים. זו בדיוק השאלה שנשאלה. */}
-          {seasons?.enabled ? (
+          {/* Shown whenever there is more than one thing to look at — a running
+              season, or an archive. Gating it on `enabled` alone meant a club
+              that turned seasons OFF after a close saw a table of zeros (the
+              close had emptied it) with no route to "כל הזמנים" and no route
+              to its own archived seasons. It read as though the club had been
+              wiped. */}
+          {seasons?.enabled || (seasons?.count ?? 0) > 0 ? (
             <>
               <View style={styles.scopeRow}>
                 <Text style={styles.scopeLabel}>{he.communityStatsScopeLabel}</Text>
@@ -579,7 +621,7 @@ export function CommunityStatsScreen() {
                   {/* העונה הרצה ראשונה — היא ברירת המחדל, וב-RTL היא נופלת
                       הכי ימינה, שם העין מתחילה. */}
                   <ScopeChip
-                    text={he.communityStatsScopeCurrent(seasons.currentNo ?? 1)}
+                    text={he.communityStatsScopeCurrent(seasons?.currentNo ?? 1)}
                     active={scope.k === 'current'}
                     onPress={() => setScope({ k: 'current' })}
                   />
@@ -681,7 +723,7 @@ export function CommunityStatsScreen() {
             <HeroTile icon={<MaterialCommunityIcons name="soccer" size={24} color={colors.primary} />} tint={colors.primary} value={derived.totalGoals} label={he.communityStatsGoals} />
             <HeroTile icon={<MaterialCommunityIcons name="shoe-cleat" size={24} color="#7C3AED" />} tint="#7C3AED" value={derived.totalAssists} label={he.communityStatsAssists} />
             <HeroTile icon={<MaterialCommunityIcons name="soccer-field" size={24} color="#0EA5E9" />} tint="#0EA5E9" value={derived.totalRounds} label={he.communityStatsMiniGames} />
-            <HeroTile icon={<MaterialCommunityIcons name="calendar-month" size={24} color={colors.success} />} tint={colors.success} value={scopedCard ? scopedCard.completedRounds : (stats?.totalFinished ?? 0)} label={he.communityStatsEvenings} />
+            <HeroTile icon={<MaterialCommunityIcons name="calendar-month" size={24} color={colors.success} />} tint={colors.success} value={scopedCard ? scopedCard.completedRounds : scope.k === 'all' ? (stats?.lifetime?.totalFinished ?? 0) : (stats?.totalFinished ?? 0)} label={he.communityStatsEvenings} />
           </View>
 
           {/* ── מובילי המועדון ── (only once goals exist; else all "—") */}
