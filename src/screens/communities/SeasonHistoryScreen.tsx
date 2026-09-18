@@ -7,23 +7,39 @@
 // It is the answer to the question a season creates — "so who actually won?" —
 // and without it the whole competition would end in a push notification and
 // then vanish.
+//
+// It used to answer that question the way a settings screen answers anything:
+// a white card, two grey lines, and nine identical rows in which the club's
+// champion was row three. A season is a ceremony and this is the only place it
+// is ever held, so it is staged as one now — a floodlit plate per season, the
+// champion as the headline, and the nine titles as a cabinet of medals with an
+// engraved socket where a title went unclaimed.
 
 import { Ionicons } from '@expo/vector-icons';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 
+import { ScreenEntrance } from '@/components/anim/ScreenEntrance';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { seasonTitleIcon, seasonTitleTint } from '@/utils/seasonTitleIcon';
+import { SeasonMedal } from '@/components/community/SeasonMedal';
+import { SeasonPoster } from '@/components/community/SeasonPoster';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { SEASON_TITLE_KEYS, type SeasonTitleKey } from '@/utils/seasonAwards';
+import { medalTier, titleStreak } from '@/utils/seasonMedalTier';
+import {
+  heroSeasonId,
+  heroWinner,
+  seasonCardVariant,
+} from '@/utils/seasonCardVariant';
 import {
   seasonHistoryService,
   type FinishedSeason,
 } from '@/services/seasonHistoryService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
@@ -42,65 +58,140 @@ function formatRange(startsAt: number, endsAt: number): string {
   return to ? `${from} – ${to}` : from;
 }
 
-function SeasonCard({ season }: { season: FinishedSeason }) {
+/** A one-day season needs a day, not a month — otherwise a season that lasted
+ *  a minute prints the same string as one that lasted five weeks. */
+function formatDay(ms: number): string {
+  return ms > 0
+    ? new Date(ms).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })
+    : '';
+}
+
+/** The seeding-bug season: a line between two real ones, not a card. */
+function VoidRibbon({ season }: { season: FinishedSeason }) {
   return (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>{he.seasonNumberLabel(season.no)}</Text>
-      <Text style={styles.cardMeta}>{formatRange(season.startsAt, season.endsAt)}</Text>
-      <Text style={styles.cardMeta}>
-        {he.seasonHistoryLine(
-          season.completedRounds,
-          season.totals.rounds,
-          season.players,
+    <View style={styles.ribbon}>
+      <Text style={styles.ribbonNo} allowFontScaling={false}>
+        {he.seasonNumberLabel(season.no)}
+      </Text>
+      <Text style={styles.ribbonText} numberOfLines={2}>
+        {he.seasonVoidLine(season.no, formatDay(season.endsAt)).replace(
+          `${he.seasonNumberLabel(season.no)} · `,
+          '',
         )}
       </Text>
-      {season.endedEarly ? (
-        <Text style={styles.flag}>{he.seasonHistoryEndedEarly}</Text>
-      ) : null}
-      {season.partialData ? (
-        <Text style={styles.flag}>{he.seasonHistoryPartial}</Text>
-      ) : null}
+    </View>
+  );
+}
 
-      {season.winners.length === 0 ? (
-        // A season can genuinely end with nothing awarded — a club that played
-        // four rounds has nobody past the half-season gate. Say so.
-        <Text style={styles.cardMeta}>{he.seasonHistoryNoTitles}</Text>
-      ) : (
-        <View style={styles.winners}>
-          {season.winners.map((w) => (
-            <View key={w.key} style={styles.winnerRow}>
-              {/* Its own mark. Nine titles shared one 🏆 here, so the hall of
-                  fame could only be read line by line — and 🏆 already means
-                  "wins" everywhere else in the app. */}
-              <View
-                style={[
-                  styles.medalDisc,
-                  { backgroundColor: seasonTitleTint(w.key) + '1A' },
-                ]}
-              >
-                <Ionicons
-                  name={seasonTitleIcon(w.key)}
-                  size={16}
-                  color={seasonTitleTint(w.key)}
+function Cabinet({
+  season,
+  all,
+  index,
+}: {
+  season: FinishedSeason;
+  all: readonly FinishedSeason[];
+  index: number;
+}) {
+  const byKey = useMemo(() => {
+    const m = new Map<string, FinishedSeason['winners'][number]>();
+    season.winners.forEach((w) => m.set(w.key, w));
+    return m;
+  }, [season.winners]);
+
+  // Nine fixed places in the canonical order, every season. That is what makes
+  // a column of seasons scannable — the same title sits in the same spot — and
+  // it is why a title nobody won is drawn as an empty socket rather than
+  // closing the gap.
+  const rows: SeasonTitleKey[][] = [];
+  for (let i = 0; i < SEASON_TITLE_KEYS.length; i += 3) {
+    rows.push(SEASON_TITLE_KEYS.slice(i, i + 3) as SeasonTitleKey[]);
+  }
+
+  return (
+    <View style={styles.cabinet}>
+      {rows.map((row, r) => (
+        <View
+          key={r}
+          style={[styles.shelf, r === rows.length - 1 && styles.shelfLast]}
+        >
+          {row.map((key) => {
+            const w = byKey.get(key);
+            const streak = w ? titleStreak(all, index, key) : 1;
+            return (
+              <View key={key} style={styles.slot}>
+                <SeasonMedal
+                  titleKey={key}
+                  tier={
+                    w
+                      ? medalTier(key, w.value, season.completedRounds)
+                      : 'bronze'
+                  }
+                  streak={streak}
+                  empty={!w}
                 />
-              </View>
-              <View style={styles.winnerText}>
-                <Text style={styles.winnerTitle}>{he.seasonTitleNames[w.key]}</Text>
-                <Text style={styles.winnerName} numberOfLines={1}>
-                  {w.names.join(' · ')}
+                <Text style={styles.slotTitle} numberOfLines={2}>
+                  {he.seasonTitleNames[key]}
                 </Text>
+                {w ? (
+                  <>
+                    <Text style={styles.slotName} numberOfLines={2}>
+                      {w.names.length > 2
+                        ? he.seasonTitleSharedWith(w.names.length - 1)
+                        : w.names.join(' · ')}
+                    </Text>
+                    <Text style={styles.slotValue} numberOfLines={1}>
+                      {he.seasonTitleValue(key, w.value)}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.slotEmpty}>{he.seasonTitleNotAwarded}</Text>
+                )}
               </View>
-              {/* The number it was won on, in its own column. Nested after two
-                  literal spaces it trailed whatever length the names happened
-                  to be, so nine values never formed a column — and a value
-                  like "62%" sat in a bidi-neutral run inside a Hebrew line. */}
-              <Text style={styles.winnerValue}>
-                {he.seasonTitleValue(w.key, w.value)}
-              </Text>
-            </View>
-          ))}
+            );
+          })}
+          {/* Keep the last shelf on a 3-column grid when the row is short. */}
+          {row.length < 3
+            ? Array.from({ length: 3 - row.length }, (_, i) => (
+                <View key={`pad${i}`} style={styles.slot} />
+              ))
+            : null}
         </View>
+      ))}
+    </View>
+  );
+}
+
+function SeasonCard({
+  season,
+  all,
+  index,
+  celebrate,
+}: {
+  season: FinishedSeason;
+  all: readonly FinishedSeason[];
+  index: number;
+  celebrate: boolean;
+}) {
+  const hero = heroWinner(season);
+  return (
+    <View style={styles.card}>
+      <SeasonPoster season={season} hero={hero} celebrate={celebrate} />
+      {season.winners.length === 0 ? (
+        // A club that played four evenings has nobody past the half-season
+        // gate. The season happened; say so, and keep the card.
+        <Text style={styles.noTitles}>{he.seasonHistoryNoTitles}</Text>
+      ) : (
+        <Cabinet season={season} all={all} index={index} />
       )}
+      <View style={styles.foot}>
+        <Text style={styles.range}>{formatRange(season.startsAt, season.endsAt)}</Text>
+        {season.endedEarly ? (
+          <Text style={styles.chip}>{he.seasonHistoryEndedEarlyChip}</Text>
+        ) : null}
+        {season.partialData ? (
+          <Text style={styles.chip}>{he.seasonHistoryPartialChip}</Text>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -112,35 +203,52 @@ export function SeasonHistoryScreen() {
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-    const r = await seasonHistoryService.list(groupId);
+  // A failed load must never overwrite a good list.
+  //
+  // It used to do exactly that — `setSeasons(r === 'error' ? [] : r)` — so one
+  // dropped connection on a pull-to-refresh replaced a club's whole history
+  // with the empty state, which reads as "the seasons are gone". The list is
+  // kept and the failure is said above it.
+  const apply = useCallback((r: FinishedSeason[] | 'error') => {
     setFailed(r === 'error');
-    setSeasons(r === 'error' ? [] : r);
-    if (r !== 'error') {
-      logEvent(AnalyticsEvent.SeasonHistoryViewed, { groupId, seasons: r.length });
-    }
+    if (r === 'error') return;
+    setSeasons(r);
+    logEvent(AnalyticsEvent.SeasonHistoryViewed, { groupId, seasons: r.length });
   }, [groupId]);
+
+  const load = useCallback(async () => {
+    apply(await seasonHistoryService.list(groupId));
+  }, [apply, groupId]);
 
   useEffect(() => {
     let alive = true;
     void seasonHistoryService.list(groupId).then((r) => {
       if (!alive) return;
-      setFailed(r === 'error');
-      setSeasons(r === 'error' ? [] : r);
-      if (r !== 'error') {
-        logEvent(AnalyticsEvent.SeasonHistoryViewed, { groupId, seasons: r.length });
-      }
+      apply(r);
+      // Only the FIRST load is allowed to end with nothing on screen.
+      if (r === 'error') setSeasons([]);
     });
     return () => {
       alive = false;
     };
-  }, [groupId]);
+  }, [apply, groupId]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await load();
     setRefreshing(false);
   }, [load]);
+
+  const heroId = useMemo(() => heroSeasonId(seasons ?? []), [seasons]);
+
+  const totals = useMemo(() => {
+    const list = seasons ?? [];
+    return {
+      rounds: list.reduce((n, s) => n + s.completedRounds, 0),
+      mini: list.reduce((n, s) => n + s.totals.rounds, 0),
+      players: list.reduce((n, s) => Math.max(n, s.players), 0),
+    };
+  }, [seasons]);
 
   if (!seasons) {
     return (
@@ -158,6 +266,7 @@ export function SeasonHistoryScreen() {
       <ScreenHeader title={he.seasonHistoryTitle} />
       <ScrollView
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -166,66 +275,261 @@ export function SeasonHistoryScreen() {
           />
         }
       >
+        {failed && seasons.length > 0 ? (
+          <Text style={styles.refreshFailed}>{he.seasonHistoryRefreshFailed}</Text>
+        ) : null}
+
         {seasons.length === 0 ? (
           <Text style={styles.empty}>
             {failed ? he.seasonHistoryLoadFailed : he.seasonHistoryEmpty}
           </Text>
         ) : (
-          seasons.map((s) => <SeasonCard key={s.seasonId} season={s} />)
+          <>
+            <ScreenEntrance hero>
+              <View style={styles.crest}>
+                <View style={styles.crestBadge}>
+                  <Ionicons name="trophy" size={20} color="#FFFFFF" />
+                </View>
+                <View style={styles.crestText}>
+                  <Text style={styles.crestTitle}>{he.seasonHallTitle}</Text>
+                  <Text style={styles.crestMeta} numberOfLines={1}>
+                    {he.seasonHallClosed(seasons.length)}
+                  </Text>
+                </View>
+                <View style={styles.crestNums}>
+                  <CrestNum n={totals.rounds} label={he.seasonStatRoundsShort} />
+                  {totals.mini > 0 ? (
+                    <CrestNum n={totals.mini} label={he.seasonStatMiniShort} />
+                  ) : null}
+                  <CrestNum n={totals.players} label={he.seasonStatPlayersShort} />
+                </View>
+              </View>
+            </ScreenEntrance>
+
+            {seasons.map((s, i) =>
+              seasonCardVariant(s) === 'void' ? (
+                <ScreenEntrance key={s.seasonId} index={i + 1}>
+                  <VoidRibbon season={s} />
+                </ScreenEntrance>
+              ) : (
+                <ScreenEntrance key={s.seasonId} index={i + 1}>
+                  <SeasonCard
+                    season={s}
+                    all={seasons}
+                    index={i}
+                    celebrate={s.seasonId === heroId}
+                  />
+                </ScreenEntrance>
+              ),
+            )}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+function CrestNum({ n, label }: { n: number; label: string }) {
+  return (
+    <View style={styles.crestNum}>
+      <Text style={styles.crestNumValue} allowFontScaling={false}>
+        {n}
+      </Text>
+      <Text style={styles.crestNumLabel} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xl },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: spacing.lg,
-    gap: spacing.xs,
-  },
-  cardTitle: { ...typography.h3, color: colors.text, textAlign: RTL_LABEL_ALIGN },
-  cardMeta: {
+  content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxxl },
+
+  refreshFailed: {
     ...typography.caption,
-    color: colors.textMuted,
+    color: colors.warning,
+    backgroundColor: '#FEF3C7',
+    borderRadius: radius.md,
+    padding: spacing.sm,
     textAlign: RTL_LABEL_ALIGN,
   },
-  flag: { ...typography.caption, color: colors.primary, textAlign: RTL_LABEL_ALIGN },
-  winners: { gap: spacing.sm, paddingTop: spacing.sm },
-  // Medal first in source order → rightmost under forceRTL.
-  winnerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  medalDisc: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+
+  // ── crest ────────────────────────────────────────────────────────────────
+  crest: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    ...shadows.card,
+  },
+  crestBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  winnerText: { flex: 1, gap: 1 },
-  winnerTitle: {
+  crestText: { flexShrink: 1 },
+  crestTitle: {
     ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  winnerName: {
-    ...typography.body,
+    fontWeight: '800',
     color: colors.text,
-    fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,
   },
-  winnerValue: {
+  crestMeta: {
+    ...typography.caption,
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  crestNums: { marginStart: 'auto', flexDirection: 'row', gap: spacing.md },
+  crestNum: { alignItems: 'center' },
+  crestNumValue: {
+    fontSize: 17,
+    lineHeight: 21,
+    fontWeight: '900',
+    color: colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  crestNumLabel: {
+    ...typography.caption,
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+
+  // ── void ribbon ──────────────────────────────────────────────────────────
+  ribbon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#D6DAE2',
+    borderStyle: 'dashed',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  ribbonNo: {
+    ...typography.caption,
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#9AA3B2',
+    backgroundColor: '#E7EAF0',
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    overflow: 'hidden',
+  },
+  ribbonText: {
+    ...typography.caption,
+    fontSize: 12,
+    color: '#8A93A3',
+    flex: 1,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+
+  // ── card ─────────────────────────────────────────────────────────────────
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+    ...shadows.card,
+  },
+  noTitles: {
     ...typography.caption,
     color: colors.textMuted,
+    padding: spacing.lg,
+    textAlign: RTL_LABEL_ALIGN,
+    lineHeight: 20,
+  },
+
+  // ── cabinet ──────────────────────────────────────────────────────────────
+  cabinet: { padding: spacing.lg },
+  shelf: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingBottom: spacing.md,
+    marginBottom: spacing.md,
+    // The shelf itself: a hairline and the shadow it casts. Cheaper and
+    // steadier than an image, and it survives any card width.
+    borderBottomWidth: 2,
+    borderBottomColor: '#ECEFF4',
+  },
+  shelfLast: { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 },
+  slot: { flex: 1, alignItems: 'center', paddingTop: spacing.xs },
+  slotTitle: {
+    ...typography.caption,
+    fontSize: 9,
+    lineHeight: 12,
     fontWeight: '700',
+    color: '#9AA3B2',
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  slotName: {
+    ...typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  slotValue: {
+    ...typography.caption,
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '700',
+    color: colors.textMuted,
     fontVariant: ['tabular-nums'],
-    // Its own column, so the nine values line up and each one is isolated
-    // from the Hebrew run beside it.
-    minWidth: 52,
     textAlign: 'center',
   },
+  slotEmpty: {
+    ...typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
+    color: '#B3BAC6',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+
+  // ── footer ───────────────────────────────────────────────────────────────
+  foot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  range: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  chip: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#92400E',
+    backgroundColor: '#FEF3C7',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    overflow: 'hidden',
+  },
+
   empty: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
 });

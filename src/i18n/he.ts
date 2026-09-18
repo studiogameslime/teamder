@@ -2299,6 +2299,58 @@ export const he = {
         return String(value);
     }
   },
+  // The hero line on a season poster: the number alone, big, and its unit
+  // beside it. `seasonTitleValue` glues the two together, which is right in a
+  // row and wrong at 45pt — the unit must not be set in the same size as the
+  // number it qualifies.
+  seasonHeroValue: (key: string, value: number): { big: string; unit: string } => {
+    switch (key) {
+      case 'penaltyKing':
+        return { big: `${Math.round(value * 100)}%`, unit: 'מהפנדלים שבעט' };
+      case 'penaltyKeeper':
+        return { big: `${Math.round(value * 100)}%`, unit: 'מהפנדלים שעצר' };
+      case 'mvp':
+        return { big: value.toFixed(1), unit: 'ציון העונה' };
+      case 'topScorer':
+        return { big: String(value), unit: value === 1 ? 'שער' : 'שערים' };
+      case 'topAssister':
+      case 'deadlyDuo':
+        return { big: String(value), unit: value === 1 ? 'בישול' : 'בישולים' };
+      case 'topWinner':
+        return { big: String(value), unit: value === 1 ? 'ניצחון' : 'ניצחונות' };
+      case 'mostLoyal':
+        return { big: String(value), unit: value === 1 ? 'מחזור' : 'מחזורים' };
+      case 'cleanSheetKing':
+        return { big: String(value), unit: 'שערים נקיים' };
+      default:
+        return { big: String(value), unit: '' };
+    }
+  },
+  // What share of the club's own season that number was. Ten goals means
+  // nothing on its own; ten goals out of twenty-seven means everything.
+  seasonHeroShare: (pct: number) => `${pct}% מכל שערי המועדון`,
+  seasonHallTitle: 'היכל התהילה',
+  seasonHallClosed: (closed: number) =>
+    closed === 1 ? 'עונה סגורה אחת' : `${closed} עונות סגורות`,
+  seasonStatRoundsShort: 'מחזורים',
+  seasonStatMiniShort: 'משחקונים',
+  seasonStatPlayersShort: 'שחקנים',
+  seasonTitleNotAwarded: 'לא חולק',
+  seasonFullTableCta: 'הטבלה המלאה',
+  // The seeding-bug season: opened and closed the same day with nobody in it.
+  // It is kept — it is a record, and the numbering depends on it — but it is a
+  // line, not a card, and it must not repeat the half-season explanation:
+  // nobody failed that gate, nobody played at all.
+  seasonVoidLine: (no: number, when: string) =>
+    `עונה ${no} · ${when} — נסגרה בלי שנרשם בה משחק`,
+  seasonVoidDetail:
+    'העונה נפתחה ונסגרה באותו יום ולא נרשם בה אף מחזור. היא נשמרת כאן רק כדי שמספור העונות יישאר רצוף.',
+  seasonHistoryEndedEarlyChip: 'נסגרה ידנית',
+  seasonHistoryPartialChip: 'נתונים חלקיים',
+  // Shown INSTEAD of the list when a refresh fails but we already have seasons
+  // on screen — the list stays, because throwing it away reads as "the club
+  // lost its history".
+  seasonHistoryRefreshFailed: 'לא הצלחנו לרענן. מוצגות העונות שנטענו קודם.',
   seasonSectionTitles: 'תארים בעונה',
   seasonTitleSharedWith: (n: number) =>
     n === 1 ? 'במשותף עם עוד שחקן' : `במשותף עם עוד ${n} שחקנים`,
