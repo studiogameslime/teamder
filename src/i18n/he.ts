@@ -639,6 +639,8 @@ export const he = {
   officialAccountName: 'Teamder',
   officialNameTaken:
     'השם הזה שמור לחשבון הרשמי של Teamder. בחרו שם אחר.',
+  emailNameNotAllowed:
+    'כתובת אימייל היא לא שם. איך קוראים לכם?',
   shUndoLast: 'בטל את הבעיטה האחרונה',
   shUndoTitle: 'לבטל את הבעיטה?',
   shUndoBody: (kicker: string) =>

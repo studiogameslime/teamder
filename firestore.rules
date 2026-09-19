@@ -147,9 +147,51 @@ service cloud.firestore {
     // impersonation vector this guards.
     function nameNotReserved(data) {
       return !('name' in data) || data.name == null ||
-        data.name.matches('.*@.*') ||
         !(data.name.lower().replace('[\\s._-]', '')
           .matches('.*(teamder|טימדר|טיאמדר|תימדר).*'));
+    }
+
+    // A display name may not BE an email address.
+    //
+    // This is correct product behaviour on its own — a player shown to a
+    // Hebrew club as `someone@gmail.com` is a broken profile, and nobody has
+    // ever chosen one: of 676 accounts on 19.09.2026, 47 carried an '@' in
+    // `name` and all 47 were the same machine (below). Zero real users.
+    //
+    // It is also the fix for a concrete, recurring production problem. Google
+    // Play's **pre-launch report** runs a Firebase Test Lab robot against
+    // every release we upload. The robot is handed the demo credentials from
+    // Play Console's "App access" page and types them into EVERY text input it
+    // meets — including our onboarding "what's your name?" field. So it signs
+    // up as `appstore.review@teamder.app`, and then taps onward: joining public
+    // clubs and registering for real games. 47 such accounts accumulated
+    // between 22.06 and 19.09.2026, clustering on release days (6 on 08.09,
+    // 4 on 16.09, 3 on 18.09). Two of them PLAYED in a finished game of a real
+    // seven-player club (רבעי כדורגל בנחלים) and are inside its statistics; a
+    // third was sitting in that club's pending queue 75 seconds after signing
+    // up. Real organisers were approving robots.
+    //
+    // Note what let it through before: `nameNotReserved` used to treat a name
+    // containing '@' as exempt from the brand check. `appstore.review@teamder.app`
+    // contains "teamder" and would otherwise have been refused from the start —
+    // the '@' escape hatch was the hole. It is removed above.
+    //
+    // This does not make the robot go away; only unticking the pre-launch
+    // report in Play Console does that. It stops the robot from completing a
+    // profile, which is what turns it into a club member.
+    function nameNotEmail(data) {
+      return !('name' in data) || data.name == null ||
+        !(data.name.lower().matches('.*[^@\\s]@[^@\\s]+[.][a-z]{2,}.*'));
+    }
+
+    // Update variant, same reasoning as nameNotNewlyReserved: police the name
+    // only when it actually CHANGES, so an account that already carries such a
+    // name is not locked out of every unrelated write (fcm token, availability)
+    // for ever.
+    function nameNotNewlyEmail() {
+      return !('name' in request.resource.data) ||
+        request.resource.data.name == resource.data.get('name', null) ||
+        nameNotEmail(request.resource.data);
     }
 
     // Update variant: only police a name that is actually CHANGING. The point
@@ -229,12 +271,14 @@ service cloud.firestore {
         // can't seed the doc with garbage that we then have to clean up.
         isOptionalShortString(request.resource.data, 'name', 60) &&
         nameNotReserved(request.resource.data) &&
+        nameNotEmail(request.resource.data) &&
         isOptionalShortString(request.resource.data, 'email', 200) &&
         isOptionalShortString(request.resource.data, 'photoUrl', 2048) &&
         isOptionalShortString(request.resource.data, 'avatarId', 80);
 
       allow update: if isSelf(uid) &&
         nameNotNewlyReserved() &&
+        nameNotNewlyEmail() &&
         // Attribution is first-set-only: once a real inviter is locked in
         // (a non-null invitedBy), every subsequent write must keep it
         // identical. A null placeholder does NOT lock — it's "no inviter

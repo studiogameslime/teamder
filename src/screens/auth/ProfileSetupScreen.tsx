@@ -45,7 +45,9 @@ export function ProfileSetupScreen() {
         he.error,
         (err as Error)?.message === 'RESERVED_NAME'
           ? he.officialNameTaken
-          : he.profileSaveError,
+          : (err as Error)?.message === 'EMAIL_NAME'
+            ? he.emailNameNotAllowed
+            : he.profileSaveError,
       );
     } finally {
       setBusy(false);

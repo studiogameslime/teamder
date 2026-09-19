@@ -34,16 +34,56 @@ export const RESERVED_NAME_RE = /teamder|טימדר|טיאמדר|תימדר/i;
 /**
  * True when a display name impersonates the brand.
  *
- * An email-shaped name is exempt: signup seeds `name` from the address when
- * there is nothing better, which is how every App Store review account ends up
- * called "appstore.review@teamder.app". An address on screen reads as an
- * address, not as our brand. The residual — someone deliberately picking
- * "teamder@x" — still renders as an address and is not the vector this guards.
+ * Email-shaped names USED to be exempt here, on the stated grounds that signup
+ * seeds `name` from the address when there is nothing better. That was simply
+ * not true: every signup path in `userService` seeds `name: fbUser.displayName
+ * ?? ''` — the Auth profile name, never the address. Nothing in this codebase
+ * has ever put an email into `name`.
+ *
+ * What the exemption did instead was wave through the one name we would most
+ * obviously have wanted to refuse. See `isEmailLikeName` below for who was
+ * typing it and what it cost.
  */
 export function isReservedName(name: string): boolean {
   const raw = name || '';
-  if (raw.includes('@')) return false;
   // Strip whitespace, dots and hyphens so "T e a m d e r" and "team-der" are
   // caught by the same pattern.
   return RESERVED_NAME_RE.test(raw.replace(/[\s._-]/g, ''));
+}
+
+// An address embedded anywhere in the string, lower-cased first. Deliberately
+// not an RFC-grade validator — the job is to recognise "this is an email
+// address, not a person's name", and a bare '@' ("עידן @ נחלים", "DJ @Khaled")
+// is not that.
+//
+// ⚠️ MIRRORED in firestore.rules as `nameNotEmail` — the rule is the
+// enforcement, this is the friendly error. Change both, and keep the pattern
+// identical; `tests/rules/displayName.test.mjs` pins the shared cases.
+const EMAIL_NAME_RE = /[^@\s]@[^@\s]+\.[a-z]{2,}/i;
+
+/**
+ * True when a display name IS (or contains) an email address.
+ *
+ * Correct on its own terms — a player shown to a Hebrew club as
+ * `someone@gmail.com` is a broken profile, and of 676 accounts live on
+ * 19.09.2026 not one real person had chosen such a name.
+ *
+ * It is also the fix for a machine. Google Play runs a **pre-launch report**
+ * robot (Firebase Test Lab) against every release we upload; Play Console
+ * hands it the demo credentials from the "App access" page, and it types them
+ * into every text input it meets — including the name field on
+ * `ProfileSetupScreen`. It then taps onward, joining public clubs and
+ * registering for real games. Forty-seven such accounts accumulated between
+ * 22.06 and 19.09.2026, all named "appstore.review@teamder.app", all Android,
+ * clustering on release days. Two of them PLAYED in a finished game of a real
+ * seven-player club and are inside its statistics; a third sat in that club's
+ * pending queue 75 seconds after signing up. Real organisers were approving
+ * robots.
+ *
+ * This does not stop the robot running — only unticking the pre-launch report
+ * in Play Console does that. It stops the robot completing a profile, which is
+ * what turned it into a club member.
+ */
+export function isEmailLikeName(name: string): boolean {
+  return EMAIL_NAME_RE.test(name || '');
 }

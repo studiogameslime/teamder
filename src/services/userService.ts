@@ -18,7 +18,7 @@ import { Platform } from 'react-native';
 import { User } from '@/types';
 import { haversineKm } from '@/utils/geo';
 import { sanitizeDisplayString } from '@/utils/validate';
-import { isReservedName } from '@/utils/officialAccount';
+import { isEmailLikeName, isReservedName } from '@/utils/officialAccount';
 import { mockCurrentUser } from '@/data/mockUsers';
 import { pickRandomAvatarId } from '@/data/avatars';
 import { storage } from './storage';
@@ -366,6 +366,11 @@ export const userService = {
     // enforcement, since a client check is bypassable; this exists so the user
     // gets a sentence they can act on instead of a permission error.
     if (isReservedName(trimmedName)) throw new Error('RESERVED_NAME');
+    // And an address is not a name. Same split of duties: firestore.rules
+    // `nameNotEmail` is the enforcement, this is the sentence. This is the
+    // exact field the Play pre-launch robot fills with our demo credentials —
+    // see isEmailLikeName for the count and the damage.
+    if (isEmailLikeName(trimmedName)) throw new Error('EMAIL_NAME');
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();
       if (!cur) throw new Error('completeOnboarding: no current user');
@@ -724,6 +729,7 @@ export const userService = {
     if (typeof patch.name === 'string') {
       const clean = sanitizeDisplayString(patch.name);
       if (isReservedName(clean)) throw new Error('RESERVED_NAME');
+      if (isEmailLikeName(clean)) throw new Error('EMAIL_NAME');
       patch = { ...patch, name: clean };
     }
     if (USE_MOCK_DATA) {

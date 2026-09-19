@@ -226,9 +226,11 @@ export function ProfileEditScreen() {
       // copy (the failure may be the NAME write, not the photo).
       appAlert(
         he.error,
-        (err as Error)?.message === 'RESERVED_NAME'
+                (err as Error)?.message === 'RESERVED_NAME'
           ? he.officialNameTaken
-          : he.profileSaveFailed,
+          : (err as Error)?.message === 'EMAIL_NAME'
+            ? he.emailNameNotAllowed
+            : he.profileSaveFailed,
       );
       logEvent(AnalyticsEvent.ProfileSaveFailed, {
         source: 'profile_edit',

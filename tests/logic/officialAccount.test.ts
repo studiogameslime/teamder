@@ -56,12 +56,37 @@ describe('isReservedName', () => {
     expect(isReservedName('')).toBe(false);
   });
 
-  it('exempts email-shaped names', () => {
-    // Signup seeds `name` from the address when there is nothing better, which
-    // is how all 27 App Store review accounts are called this. Blocking it
-    // would deny every /users write for them — FCM token included — and an
-    // Apple reviewer would meet a broken app.
-    expect(isReservedName('appstore.review@teamder.app')).toBe(false);
-    expect(isReservedName('qa.teamder.test1@gmail.com')).toBe(false);
+  // This case used to assert the OPPOSITE — that an email-shaped name is
+  // exempt from the brand check — on two grounds. One was false and one was
+  // real, and they are worth separating because the real one still binds.
+  //
+  // FALSE: "signup seeds `name` from the address when there is nothing
+  // better". It does not, and never did. All five signup paths in
+  // `userService` seed `name: fbUser.displayName ?? ''` — the Auth profile
+  // name. Nothing in this codebase has ever written an address into `name`.
+  // The 47 accounts that carry one (verified live on 19.09.2026; every single
+  // one is the Google Play pre-launch robot) got it by having the string TYPED
+  // into the name field on ProfileSetupScreen.
+  //
+  // REAL, and still honoured: blocking the name must not deny every /users
+  // write for an account that already carries one — FCM token included — or
+  // an Apple reviewer meets a broken app. That is why firestore.rules polices
+  // the name only when it CHANGES (`nameNotNewlyReserved` /
+  // `nameNotNewlyEmail`), and why the client check below sits inside
+  // `if (typeof patch.name === 'string')` in `updateProfile` rather than
+  // running on every write. Both properties are pinned in
+  // tests/rules/displayName.test.mjs against the rules themselves.
+  it('no longer exempts email-shaped names — that was the hole', () => {
+    // The robot's name contains "teamder". The exemption is the only reason
+    // the brand check did not refuse it at the very first signup.
+    expect(isReservedName('appstore.review@teamder.app')).toBe(true);
+    expect(isReservedName('qa.teamder.test1@gmail.com')).toBe(true);
+  });
+
+  it('and an address with no brand in it is still not a RESERVED name', () => {
+    // isReservedName answers "does this impersonate us". isEmailLikeName is
+    // the separate check that answers "is this an address at all"; they are
+    // deliberately two functions with two error messages.
+    expect(isReservedName('hazelblake.54551@gmail.com')).toBe(false);
   });
 });
