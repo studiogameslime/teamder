@@ -16884,7 +16884,16 @@ export const enableClubSeasons = onCall(
  * season 4, never season 1 again.
  */
 export const disableClubSeasons = onCall(
-  { enforceAppCheck: ENFORCE_APP_CHECK },
+  {
+    enforceAppCheck: ENFORCE_APP_CHECK,
+    // Same budget as `endSeasonNow`, and for the same reason: since §9 this
+    // path runs a real close — a transaction per player, one per pair, and a
+    // batch of titles. The onCall default is 60 seconds and a sixty-player
+    // club is comfortably past it; being killed halfway leaves exactly the
+    // half-closed state the resume path exists to recover from.
+    timeoutSeconds: 300,
+    memory: '512MiB',
+  },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
@@ -16905,6 +16914,48 @@ export const disableClubSeasons = onCall(
     const quiet = await clubIsQuiet(data.groupId as string);
     if (!quiet.ok) {
       throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
+    }
+
+    // §9 — switching the feature off ENDS the running season; it does not
+    // abandon it.
+    //
+    // This used to flip `enabled` and nothing else, which left the season's
+    // numbers stranded: no archive, no titles, and the counters silently
+    // absorbed into all-time with nothing recording that a season had been
+    // played at all. §9 says the disable "מסיימת מיידית את העונה הפעילה", and
+    // the sentence beside it — that disabling does NOT require the 24-hour
+    // wait — only means anything if disabling closes. A close that skips the
+    // window is still a close.
+    //
+    // So it runs the ordinary close: same archive, same titles, same
+    // announcement, via the same `performSeasonClose` the sweep uses. There is
+    // no second closing path and therefore no second set of bugs.
+    //
+    // It opens the next season as every close does. That season sits inert
+    // while the feature is off, and on re-enable `enableClubSeasons` starts a
+    // fresh one at zero from `count + 1` — so the period the feature was off
+    // belongs to all-time only and is never back-dated into the new season,
+    // which is exactly what §9 asks for.
+    const groupId = data.groupId as string;
+    const live = group.seasons as LiveSeasonsBlock | undefined;
+    if (live?.currentId) {
+      const played = await completedRoundsOf(
+        groupId,
+        live.roundsAtStart,
+        live.playedRounds,
+      );
+      await performSeasonClose({
+        groupId,
+        groupName: (group as { name?: string }).name ?? '',
+        seasonId: live.currentId,
+        seasonNo: live.currentNo ?? 1,
+        startedAt: live.startedAt ?? 0,
+        played,
+        roundsAtStart: live.roundsAtStart ?? 0,
+        cadence: live.cadence ?? {},
+        count: live.count ?? 0,
+        now: Date.now(),
+      });
     }
 
     // ⚠️ The correction window MUST be cleared here, and this is not tidiness.
