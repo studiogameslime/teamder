@@ -76,3 +76,4 @@ vendor/joryio/android/.gradle/
 vendor/joryio/android/build/
 vendor/joryio/**/build/
 vendor/joryio/react-native-sdk/node_modules/
+backups/
