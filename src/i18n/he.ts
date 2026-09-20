@@ -2416,6 +2416,13 @@ export const he = {
   // fault of the people who showed up to it.
   seasonHistoryNoTitles:
     'לא חולקו תארים בעונה הזאת. תואר ניתן רק למי שהגיע לפחות לחצי מערבי המשחק של העונה, ואם לא נספרו בעונה מחזורים כלל — אין על מה לחלק.',
+  // §22 — the in-app message that a season has ended. There is no
+  // notifications feed in the app (the bell opens the REQUESTS inbox), so this
+  // is the card that carries it, on the home screen, once.
+  homeSeasonClosedTitle: (no: number) => `עונה ${no} הסתיימה 🏆`,
+  homeSeasonClosedBodyOf: (club: string) =>
+    club ? `התארים של ${club} חולקו. בוא לראות איך סיימת.` : 'התארים חולקו. בוא לראות איך סיימת.',
+  homeSeasonClosedCta: 'לסיכום העונה',
   seasonTitlesShelfTitle: 'תארי עונה',
   // The line under the cabinet. It has to work for a player holding nine
   // titles and for one holding none, because the shelf above it draws nothing

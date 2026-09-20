@@ -30,6 +30,7 @@ import {
   getDoc,
   getDocs,
   limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -361,6 +362,69 @@ export const notificationsService = {
    * suppressed for the full cooldown window even after the user has
    * already engaged.
    */
+  /**
+   * The newest unread "a season closed" notification for this user, if any.
+   *
+   * §22 asks for an in-app message when a season ends, with a way through to
+   * the summary, and explicitly asks NOT to add a push for it. The message was
+   * already being created — `announceSeasonClosed` writes one per participant
+   * and `createNotificationOnce` dedupes it on `season-{seasonId}` — but
+   * nothing in the app ever showed it. There is no notifications feed: the
+   * header bell opens the REQUESTS inbox (friends, join requests), so the only
+   * delivery channel these docs ever had was push, and push for this type was
+   * never implemented. Seven of them have been sitting unread in production.
+   *
+   * So the card on the home screen reads them directly. The notification doc
+   * is the source and its own `read` flag is the dedupe — which is what "in
+   * line with the existing notification mechanisms" means here; nothing new is
+   * invented to remember that a person has seen it.
+   */
+  async getUnreadSeasonClose(
+    uid: UserId,
+  ): Promise<{
+    id: string;
+    groupId: GroupId;
+    seasonId: string;
+    seasonNo: number;
+    groupName: string;
+  } | null> {
+    if (USE_MOCK_DATA || !uid) return null;
+    try {
+      const { db: firestoreDb } = getFirebase();
+      const snap = await getDocs(
+        query(
+          collection(firestoreDb, 'notifications'),
+          where('recipientId', '==', uid),
+          where('type', '==', 'seasonSummary'),
+          where('read', '==', false),
+          orderBy('createdAtMs', 'desc'),
+          limit(1),
+        ),
+      );
+      const d = snap.docs[0];
+      if (!d) return null;
+      const p = (d.data()?.payload ?? {}) as Record<string, unknown>;
+      const groupId = typeof p.groupId === 'string' ? p.groupId : '';
+      const seasonId = typeof p.seasonId === 'string' ? p.seasonId : '';
+      // A payload missing either id cannot be opened, and a card that cannot
+      // be opened is worse than no card. Treated as "nothing to show" rather
+      // than rendered dead.
+      if (!groupId || !seasonId) return null;
+      return {
+        id: d.id,
+        groupId,
+        seasonId,
+        seasonNo: typeof p.seasonNo === 'number' ? p.seasonNo : 0,
+        groupName: typeof p.groupName === 'string' ? p.groupName : '',
+      };
+    } catch (err) {
+      // A missing composite index surfaces here as failed-precondition. The
+      // home screen simply shows no card; it must never block on this.
+      logError('unreadSeasonCloseQuery', err, { uid });
+      return null;
+    }
+  },
+
   async markRead(notificationId: string): Promise<void> {
     if (USE_MOCK_DATA || !notificationId) return;
     try {

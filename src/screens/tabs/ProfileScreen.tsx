@@ -53,6 +53,7 @@ import {
 } from '@/components/home/HomeDashboardParts';
 import { HomeNextGameCard } from '@/components/home/HomeNextGameCard';
 import { AssistantCard } from '@/components/home/AssistantCard';
+import { notificationsService } from '@/services/notificationsService';
 import { ScreenEntrance } from '@/components/anim/ScreenEntrance';
 import { PressableScale } from '@/components/PressableScale';
 import { newAssistantNonce, resolveAssistantMessage } from '@/utils/assistant/resolve';
@@ -196,6 +197,17 @@ export function ProfileScreen() {
   // drives the "איך היה אתמול?" card under the coach message. Null the rest of
   // the time, which is most of the week.
   const [justPlayed, setJustPlayed] = useState<Game | null>(null);
+  // §22 — the unread "a season closed" notification, if this player has one.
+  // Read once per focus, from the notification doc itself; see
+  // notificationsService.getUnreadSeasonClose for why the doc is both the
+  // source and the dedupe.
+  const [seasonClosed, setSeasonClosed] = useState<{
+    id: string;
+    groupId: string;
+    seasonId: string;
+    seasonNo: number;
+    groupName: string;
+  } | null>(null);
   // Live "games played" count — games the user was placed in the teams for
   // and that have passed. Replaces the dead user.stats.totalGames (never
   // incremented by any flow). null = not loaded yet.
@@ -291,6 +303,38 @@ export function ProfileScreen() {
         alive = false;
       };
     }, [user?.id]),
+  );
+
+  // §22 — has a season this player took part in just closed?
+  //
+  // On focus rather than on mount: a season closes on the hourly sweep, so the
+  // app can be open when it happens, and the card should appear on the next
+  // return to home rather than on the next cold start.
+  //
+  // Guests are skipped for the same reason as the block above — an anonymous
+  // uid has no notifications and the query would only produce noise. A failure
+  // leaves the card hidden; this is a nice-to-have on a screen that must
+  // render regardless.
+  useFocusEffect(
+    React.useCallback(() => {
+      const uid = localUser?.id;
+      if (!uid || localUser?.isGuest) {
+        setSeasonClosed(null);
+        return;
+      }
+      let alive = true;
+      notificationsService
+        .getUnreadSeasonClose(uid)
+        .then((n) => {
+          if (alive) setSeasonClosed(n);
+        })
+        .catch(() => {
+          /* handled inside the service; the card stays hidden */
+        });
+      return () => {
+        alive = false;
+      };
+    }, [localUser?.id, localUser?.isGuest]),
   );
 
   // Load the user's soonest upcoming game. Refreshes on focus so a
@@ -1229,6 +1273,66 @@ export function ProfileScreen() {
             </ScreenEntrance>
           ) : null}
 
+          {/* §22 — "your season ended". The one in-app place this is ever said.
+              `announceSeasonClosed` has been writing a notification per
+              participant since the feature shipped, deduped on the season id,
+              and the app never showed a single one: there is no notifications
+              feed (the header bell opens the REQUESTS inbox), so the only
+              channel these docs had was push, and push for this type was never
+              implemented. Seven sat unread in production.
+              The notification doc is the source AND the dedupe — opening or
+              dismissing marks it read, and a read one never comes back. */}
+          {seasonClosed ? (
+            <ScreenEntrance index={1}>
+            <PressableScale
+              style={styles.seasonClosedCard}
+              pressedScale={motion.press.cardScale}
+              haptic={false}
+              onPress={() => {
+                // Marked read BEFORE navigating, not after: the summary screen
+                // is a destination the user may never come back from in this
+                // session, and a card that survives being opened is the exact
+                // thing §22 asks to prevent.
+                void notificationsService.markRead(seasonClosed.id);
+                setSeasonClosed(null);
+                nav.navigate('SeasonSummary', {
+                  groupId: seasonClosed.groupId,
+                  seasonId: seasonClosed.seasonId,
+                });
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={he.homeSeasonClosedCta}
+            >
+              <View style={styles.justPlayedText}>
+                <Text style={styles.seasonClosedTitle}>
+                  {he.homeSeasonClosedTitle(seasonClosed.seasonNo)}
+                </Text>
+                <Text style={styles.seasonClosedBody}>
+                  {he.homeSeasonClosedBodyOf(seasonClosed.groupName)}
+                </Text>
+                <View style={styles.justPlayedCtaRow}>
+                  <Text style={styles.seasonClosedCta}>{he.homeSeasonClosedCta}</Text>
+                  <Text style={styles.justPlayedCtaEmoji}>🏆</Text>
+                </View>
+              </View>
+              {/* Dismiss without opening. The message is still "seen", which is
+                  what read means here — a player who does not want the summary
+                  should not be asked twice. */}
+              <Pressable
+                hitSlop={10}
+                onPress={() => {
+                  void notificationsService.markRead(seasonClosed.id);
+                  setSeasonClosed(null);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={he.close}
+              >
+                <Ionicons name="close" size={18} color="#92400E" />
+              </Pressable>
+            </PressableScale>
+            </ScreenEntrance>
+          ) : null}
+
           {/* ③ Hero — exactly ONE card, in priority order (see pickHomeHero):
               1. a game I'm registered to / created (always wins, even if it's
                  further than a week out — a registered game beats everything);
@@ -1617,6 +1721,33 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   justPlayedCtaEmoji: { fontSize: 16 },
+  // The season-close card. Amber rather than the green of "you just played":
+  // one is about a night that happened, the other about a competition that
+  // ended, and two identical cards stacked would read as one repeated.
+  seasonClosedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  seasonClosedTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#92400E',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  seasonClosedBody: { fontSize: 13, color: '#B45309', textAlign: RTL_LABEL_ALIGN },
+  seasonClosedCta: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#B45309',
+    textAlign: RTL_LABEL_ALIGN,
+  },
   // Amber "pending join requests" banner (admins only).
   pendingBanner: {
     flexDirection: 'row',
