@@ -164,6 +164,83 @@ service cloud.firestore {
         (request.auth.uid in groupDoc(gid).playerIds ||
          request.auth.uid in groupDoc(gid).adminIds);
     }
+    // Non-throwing admin check, same reasoning as isGroupMemberSafe above: a
+    // blank id or a deleted club makes plain isGroupAdmin RAISE, and a raised
+    // error denies the whole request rather than just its branch.
+    function isGroupAdminSafe(gid) {
+      return isSignedIn() && gid is string && gid.size() > 0 &&
+        exists(/databases/$(database)/documents/groups/$(gid)) &&
+        request.auth.uid in groupDoc(gid).adminIds;
+    }
+
+    // ── Who is allowed to SEND a client-originated notification ─────────
+    //
+    // `clientNotifTypeAllowed` says which TYPES a client may write. It never
+    // said anything about whether this particular client has any standing to
+    // write them, and a probe against these rules confirmed the consequence:
+    // a complete stranger could send any victim `approved`, `rejected`,
+    // `groupDeleted`, `spotOpened`, `spotOffered`, `newGameInCommunity`,
+    // `gameCanceledOrUpdated` or `playerCancelled`, naming a club and a game
+    // they had nothing to do with. "התקבלת למועדון" from nobody.
+    //
+    // (The suite's `cannot fake an "approved" push` case has been failing on
+    // this for a long time, but not for the reason its name suggests — it
+    // asserts a denial for `spotOpened`, which the whitelist deliberately
+    // permits, and the comment three lines under it says so. The test was
+    // self-contradictory; the hole underneath it was real.)
+    //
+    // Authority is checked against the thing the notification CLAIMS, which is
+    // the payload's own groupId/gameId — the same ids the recipient's app uses
+    // to open it.
+    //
+    // Two types cannot use that rule and are handled on their own terms:
+    //
+    //   • `playerCancelled` is sent BY an ordinary player to the organiser,
+    //     so requiring admin rights would break the one flow where the sender
+    //     is deliberately not an admin. A participant of the game may send it.
+    //
+    //   • `groupDeleted` is dispatched AFTER the club document is gone
+    //     (groupService step 5, the delete is step 3), so there is nothing
+    //     left to check authority against. Requiring the club to be ABSENT is
+    //     what is left: it keeps every legitimate delete working and reduces
+    //     the forgery to naming a club that does not exist, which renders as a
+    //     notification about nothing. Closing it properly means moving the
+    //     dispatch server-side, which is a change to make deliberately and not
+    //     inside a rules patch.
+    function notifPayload() {
+      return request.resource.data.get('payload', {});
+    }
+    function notifClaimsGroup() {
+      return notifPayload().get('groupId', '');
+    }
+    function notifClaimsGame() {
+      return notifPayload().get('gameId', '');
+    }
+    function notifSenderHasStanding() {
+      return request.resource.data.type == 'playerCancelled'
+        ? (
+            notifClaimsGame() is string && notifClaimsGame().size() > 0 &&
+            exists(/databases/$(database)/documents/games/$(notifClaimsGame())) &&
+            request.auth.uid in gameDoc(notifClaimsGame()).get('participantIds', [])
+          )
+        : request.resource.data.type == 'groupDeleted'
+        ? (
+            notifClaimsGroup() is string && notifClaimsGroup().size() > 0 &&
+            !exists(/databases/$(database)/documents/groups/$(notifClaimsGroup()))
+          )
+        : (
+            isGroupAdminSafe(notifClaimsGroup()) ||
+            (
+              notifClaimsGame() is string && notifClaimsGame().size() > 0 &&
+              exists(/databases/$(database)/documents/games/$(notifClaimsGame())) &&
+              (
+                gameDoc(notifClaimsGame()).get('createdBy', '') == request.auth.uid ||
+                isGroupAdminSafe(gameDoc(notifClaimsGame()).get('groupId', ''))
+              )
+            )
+          );
+    }
+
     function isGroupMember(gid) {
       return isSignedIn() && (
         request.auth.uid in groupDoc(gid).playerIds ||
@@ -966,6 +1043,27 @@ service cloud.firestore {
         // unrelated UIDs into waitlist/pending while satisfying the
         // participantIds invariant.
         (
+          // ⚡ CHEAPEST TEST FIRST, and it is here for cost, not for style.
+          //
+          // Firestore stops evaluating after 1000 expressions and DENIES, and
+          // this `allow update` is a long OR chain over game documents with 82
+          // fields. Every write that is NOT a self-join used to pay for three
+          // dozen lines of status, liveMatch-phase and rejected-list checks in
+          // this branch before reaching the one test that could have ruled it
+          // out in two — and the branches AFTER this one, the organiser/admin
+          // branch among them, paid the difference out of the same budget.
+          //
+          // Moving the key whitelist to the front changes no truth value: it
+          // is the same conjunct in the same AND chain, so nothing new is
+          // permitted and nothing that was permitted is refused. It only
+          // changes the order the engine spends its budget in.
+          affectedKeys().hasOnly([
+            'players', 'waitlist', 'pending', 'participantIds',
+            'cancellations', 'pendingPromotion', 'updatedAt',
+            // map uid→ms of when each player joined (powers accurate
+            // "joined X ago" in the admin panel; client-written, best-effort).
+            'joinedAt'
+          ]) &&
           // Self join/cancel is allowed while 'open'. On a 'locked' game only
           // WITHDRAWAL is allowed — a registered/pending player may still pull
           // out until the match is actually live (matches canCancelRegistration)
@@ -1001,13 +1099,6 @@ service cloud.firestore {
               resource.data.liveMatch.phase != 'roundRunning'
             )
           ) &&
-          affectedKeys().hasOnly([
-            'players', 'waitlist', 'pending', 'participantIds',
-            'cancellations', 'pendingPromotion', 'updatedAt',
-            // map uid→ms of when each player joined (powers accurate
-            // "joined X ago" in the admin panel; client-written, best-effort).
-            'joinedAt'
-          ]) &&
           // pendingPromotion is SERVER-managed. A client may only CLEAR its own
           // offer (null) or leave it unchanged — never SET it. Otherwise a
           // client could forge pendingPromotion.uid=self and then self-add to
@@ -1725,6 +1816,11 @@ service cloud.firestore {
         request.resource.data.recipientId.size() <= 128 &&
         request.resource.data.type is string &&
         clientNotifTypeAllowed(request.resource.data.type) &&
+        // …and the sender must have some standing over what the notification
+        // claims. The type whitelist alone let a stranger send "התקבלת
+        // למועדון" about a club they had never joined. See the note on
+        // notifSenderHasStanding.
+        notifSenderHasStanding() &&
         // Trustworthy sender identity. When present it MUST equal the caller's
         // uid; the fan-out Cloud Function then verifies this uid is actually a
         // community admin / organiser before mass-pushing (blocks forged
