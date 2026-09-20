@@ -7968,9 +7968,21 @@ async function generateDraftTeamsForGame(
 //
 // Gated to a single hard-coded admin uid so only the project owner can
 // call it — App Check + auth are layered on top in production.
+/**
+ * The project owner, and the only account that may run a maintenance hook.
+ *
+ * Not a club admin and not a role — one person, hard-coded, because the
+ * operations gated on it are ones that a club admin must never be able to
+ * reach from the app: bumping the force-update floor for every install, and
+ * (since 20.09.2026) pulling a closed season back open.
+ *
+ * Extracted from `updateAppConfig`, which has always carried this uid inline,
+ * so the two cannot drift apart.
+ */
+const OPERATOR_UID = '1IdtNEjbEXfiRSqvLrJVn99NsfI2'; // matan
+
 export const updateAppConfig = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
-  const ALLOWED_UID = '1IdtNEjbEXfiRSqvLrJVn99NsfI2'; // matan
-  if (request.auth?.uid !== ALLOWED_UID) {
+  if (request.auth?.uid !== OPERATOR_UID) {
     throw new HttpsError('permission-denied', 'admin only');
   }
   const data = (request.data ?? {}) as {
@@ -13764,6 +13776,16 @@ export const setEveningPlayed = onCall(
     if (!admins.includes(uid)) {
       throw new HttpsError('permission-denied', 'community admin only');
     }
+    // §12 — a closed season is closed to this too.
+    //
+    // Answering "did this evening happen" is the single most consequential
+    // correction in the app: a "yes" credits the whole night's stats and adds
+    // one to the season's round count, a "no" removes it from the club's
+    // history. Doing either to an evening from a season that has already been
+    // archived changes the RUNNING season's counters while the sealed archive
+    // stays as it was — the two then disagree permanently, and the round count
+    // that decides when the current season ends is off by one for ever.
+    assertSeasonOpenForGame(grp.data(), game);
 
     // Read and write in ONE transaction.
     //
@@ -13884,13 +13906,32 @@ export const commitRoundStats = onCall(
     if (!snap.exists) throw new HttpsError('not-found', 'game not found');
     const game = snap.data() as Record<string, unknown>;
     // Authorize: only the game creator or a community admin may commit stats.
+    //
+    // The club document is read ONCE and used twice — for the admin list and
+    // for the closed-season guard below. It used to be fetched only when the
+    // caller was not the creator; the guard needs it on every call, and
+    // fetching it once here is cheaper than the alternative of reading it
+    // again a few lines down.
     const groupId = game.groupId as string | undefined;
-    let isAdmin = game.createdBy === uid;
-    if (!isAdmin && groupId) {
-      const grp = await db.collection('groups').doc(groupId).get();
-      isAdmin = ((grp.data()?.adminIds as string[] | undefined) ?? []).includes(uid);
-    }
+    const grpSnap = groupId
+      ? await db.collection('groups').doc(groupId).get()
+      : null;
+    const grpData = grpSnap?.data();
+    const isAdmin =
+      game.createdBy === uid ||
+      ((grpData?.adminIds as string[] | undefined) ?? []).includes(uid);
     if (!isAdmin) throw new HttpsError('permission-denied', 'admin only');
+
+    // §12 — results cannot be written into a season that has been archived.
+    //
+    // The realistic route here is not an admin editing history; it is a RETRY.
+    // A commit that failed on a phone with no signal sits in the client's
+    // queue and goes out when the phone reconnects, which can be hours later
+    // and on the far side of a season close. The archive is sealed by then, so
+    // the mini-game's goals, wins and pair stats would land on the season that
+    // opened after it — credited to players for a night played in a season
+    // they are no longer in.
+    if (grpData) assertSeasonOpenForGame(grpData, game);
 
     // Bind the credited sides to the game's ACTUAL registered roster. Without
     // this an admin of a throwaway game could name ANY uid on a side and
@@ -14946,29 +14987,55 @@ async function loadRetroGameContext(
   //
   // The season stamp has been on every game since the feature landed; nothing
   // read it until now.
-  const gameSeason = typeof game.seasonId === 'string' ? game.seasonId : '';
-  const seasons = grp.seasons as
+  assertSeasonOpenForGame(grp, game);
+  return { game, groupId };
+}
+
+/**
+ * Refuse a statistical correction to an evening whose season has closed (§12).
+ *
+ * ⚠️ Every path that changes a recorded result must call this. It began life
+ * inside the retro-goal loader, guarding one callable; §12 makes it the rule
+ * for all of them, so it lives here and is applied at each write path rather
+ * than being re-derived — a second copy of this rule is a second place for it
+ * to be subtly different.
+ *
+ * Why it matters, in the retro-goal case that produced it: those writes go
+ * straight into `communityPlayerStats` and `communityStats`, which are the
+ * SEASON's counters. Correcting a goal from a season that has since closed
+ * lands in the wrong season twice over — the sealed archive stays wrong, and
+ * the running season is credited with a goal nobody scored in it. Removing one
+ * is worse: the counter it decrements may already be at zero, and Firestore's
+ * increment goes negative without complaint, so a club table starts showing
+ * −1 goals.
+ *
+ * An UNSTAMPED evening belongs to season 1. The stamp only began being written
+ * when seasons shipped, so every evening a club played before that has none —
+ * on the one club that has run seasons, 19 of 22. Treating "no stamp" as
+ * "current season" let a correction to an evening from June be credited to
+ * season 2.
+ *
+ * A season that is merely WAITING to close is still open to corrections, and
+ * that is the whole point of the window (§13): during `pendingClose` the
+ * season is still `currentId`, so this guard admits the write.
+ */
+function assertSeasonOpenForGame(
+  grp: Record<string, unknown> | undefined,
+  game: Record<string, unknown>,
+): void {
+  const seasons = grp?.seasons as
     | { enabled?: boolean; currentId?: string; currentNo?: number }
     | undefined;
-  // An UNSTAMPED evening belongs to season 1, not to whatever is running.
-  //
-  // The guard required a stamp to be present, and the stamp only began being
-  // written when seasons shipped — so every evening a club played before that
-  // walked straight through it. On the one club that has ever run seasons that
-  // is 19 of 22 evenings: an admin completing a goal missed in June would have
-  // credited it to season 2, inflating its totals and its מלך השערים, while
-  // season 1's sealed archive stayed wrong with no way to correct it. Which is
-  // precisely the outcome the comment above this guard describes preventing.
-  if (seasons?.enabled) {
-    const belongsTo = gameSeason || (seasons.currentNo === 1 ? seasons.currentId ?? '' : 's1');
-    if (belongsTo !== seasons.currentId) {
-      throw new HttpsError(
-        'failed-precondition',
-        'closedSeasonGame: this evening belongs to a season that has already closed',
-      );
-    }
+  if (!seasons?.enabled) return;
+  const gameSeason = typeof game.seasonId === 'string' ? game.seasonId : '';
+  const belongsTo =
+    gameSeason || (seasons.currentNo === 1 ? seasons.currentId ?? '' : 's1');
+  if (belongsTo !== seasons.currentId) {
+    throw new HttpsError(
+      'failed-precondition',
+      'closedSeasonGame: this evening belongs to a season that has already closed',
+    );
   }
-  return { game, groupId };
 }
 
 const isAlreadyExists = (err: unknown): boolean => {
@@ -17077,6 +17144,29 @@ export const reopenLastSeason = onCall(
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
+
+    // §12 — OPERATOR ONLY. A club admin cannot reopen a closed season.
+    //
+    // The product rule is that a closed season is final: locked to corrections
+    // (`assertSeasonOpenForGame`), with no reopen offered anywhere in the app.
+    // This callable stays, because it is the only way to recover a season that
+    // closed on bad data, and deleting the one repair tool would mean the next
+    // such club could not be repaired at all. It is a maintenance hook now,
+    // reached from `firebase functions:shell`, not a feature.
+    //
+    // Note what this does NOT do: it does not make the operation safe. Reopen
+    // destroys things it cannot restore — guest pair chemistry is minted per
+    // season and the mint is gone, `chemistry.since` does not come back, and
+    // the season-summary pushes sent at close point at an archive that will no
+    // longer exist. Those are known and documented; the gate is what stops a
+    // club admin meeting them by accident.
+    if (uid !== OPERATOR_UID) {
+      throw new HttpsError(
+        'permission-denied',
+        'a closed season is final — reopening is a maintenance operation',
+      );
+    }
+
     const data = (request.data ?? {}) as { groupId?: unknown };
     const { ref, group } = await requireClubAdmin(data.groupId, uid);
     const groupId = data.groupId as string;
@@ -17183,6 +17273,33 @@ export const reopenLastSeason = onCall(
       },
       { merge: true },
     );
+    // An audit row for every reopen (§12).
+    //
+    // This is the one operation in the seasons system that destroys sealed
+    // data, and until now it left no trace beyond a log line that ages out of
+    // Cloud Logging in thirty days. If a club's numbers are ever disputed, the
+    // first question is whether a season was pulled back open and when — and
+    // there was no way to answer it. Written after the reopen has succeeded,
+    // so a failed attempt does not leave a record claiming otherwise.
+    //
+    // Best-effort: the reopen has already committed and must not be reported
+    // as failed because its audit row could not be written.
+    try {
+      await db.collection('seasonReopens').add({
+        groupId,
+        groupName: (group as { name?: string }).name ?? '',
+        seasonId: lastId,
+        seasonNo: lastNo,
+        by: uid,
+        at: Date.now(),
+        // What the operation actually restored, straight from its own result,
+        // so the row says what happened rather than what was asked for.
+        result,
+      });
+    } catch (err) {
+      console.error('[season] reopen audit row failed', groupId, lastId, err);
+    }
+
     return { ok: true, ...result, reopenedNo: lastNo };
   },
 );

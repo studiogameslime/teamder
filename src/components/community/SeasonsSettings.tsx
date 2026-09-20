@@ -522,70 +522,17 @@ export function SeasonsSettings({
     });
   }, [groupId, targetArgs, run]);
 
-  const reopenLast = useCallback(() => {
-    // The season the server will actually reopen: the last one it closed.
-    const closedNo = seasons?.count ?? 0;
-    const target =
-      seasons?.cadence?.type === 'rounds'
-        ? seasons.cadence.targetRounds
-        : undefined;
-
-    const ask = (last: FinishedSeason | null) => {
-      // Will it simply close again?
-      //
-      // The old body said "כבר הגיעה ליעד שלה" as flat prose, which is false
-      // in exactly the case the undo exists for — a season an admin ended a
-      // week early never reached anything. A season that closed on the sweep
-      // DID reach its target, and comes back still holding it; so does one
-      // ended early whose count had already passed the target. Only then is
-      // there a warning to give, and when the card cannot be read there is no
-      // warning to give at all, which is the safe half of the sentence.
-      const willRecloseNow =
-        last !== null &&
-        (!last.endedEarly ||
-          (typeof target === 'number' && last.completedRounds >= target));
-      appAlert(
-        he.seasonsReopenConfirmTitle,
-        he.seasonsReopenConfirmBodyOf(last?.no ?? closedNo, willRecloseNow),
-        [
-          {
-            text: he.seasonsReopenConfirmCta,
-            style: 'destructive',
-            onPress: () =>
-              run(async () => {
-                const res = await seasonService.reopenLast(groupId);
-                logEvent(AnalyticsEvent.SeasonReopened, {
-                  groupId,
-                  seasonNo: res.reopenedNo,
-                });
-                toast.success(he.seasonsReopenedToast(res.reopenedNo));
-              }),
-          },
-          { text: he.cancel, style: 'cancel' },
-        ],
-      );
-    };
-
-    // The facts come from the season's own card, not from prose about what
-    // usually happens. It is one small document and it is read BEFORE the
-    // dialog, because a dialog that fills itself in afterwards is a dialog
-    // whose first sentence the admin has already read.
-    setBusy(true);
-    void seasonHistoryService.list(groupId).then(
-      (list) => {
-        setBusy(false);
-        ask(
-          list === 'error'
-            ? null
-            : (list.find((season) => season.no === closedNo) ?? null),
-        );
-      },
-      () => {
-        setBusy(false);
-        ask(null);
-      },
-    );
-  }, [groupId, seasons?.count, seasons?.cadence, run]);
+  // ⚠️ The `reopenLast` handler lived here and is gone with its button (§12).
+  //
+  // It read the season's own card first so the confirmation could say whether
+  // the season would simply close again, then ran the reopen through
+  // `seasonService.reopenLast`. All of that was correct; none of it is
+  // reachable, because a club admin may no longer reopen a closed season —
+  // the callable refuses anyone but the project owner. Dead UI code that still
+  // compiles is how a removed feature comes back by accident.
+  //
+  // `seasonService.reopenLast` is kept as the client-side wrapper for the
+  // maintenance hook; nothing in the app calls it.
 
   const endNow = useCallback(() => {
     // Which season, and how much of it there is.
@@ -968,23 +915,31 @@ export function SeasonsSettings({
               onPress={endNow}
             />
           ) : null}
-          {/* The way back from "I pressed it a week early". Offered only when
-              there is actually a closed season to reopen — AND while seasons
-              are still running.
-              With `live` missing, this sat beside "הפעל עונות" on the screen of
-              a club whose seasons were OFF: two taps from there deleted an
-              archived season and switched the feature back on without anybody
-              pressing enable. The undo belongs to a club that is mid-season and
-              closed one by mistake, not to the setup screen. */}
-          {live && (seasons?.count ?? 0) > 0 ? (
-            <Button
-              title={he.seasonsReopenCta}
-              variant="outline"
-              fullWidth
-              disabled={busy}
-              onPress={reopenLast}
-            />
-          ) : null}
+          {/* ⚠️ The reopen button was here and is deliberately gone (§12).
+
+              A closed season is final. It is locked to corrections on the
+              server — `assertSeasonOpenForGame` refuses a retro goal, an
+              attendance change or a late round commit against an archived
+              season — and offering a club admin a button that undoes the
+              archive contradicted the lock the rest of the feature enforces.
+
+              The reason it is not merely hidden is that reopening destroys
+              things it cannot put back. Guest pair chemistry is minted per
+              season and the mint is gone; `chemistry.since` does not return;
+              the season-summary pushes sent at close point at an archive that
+              will no longer exist. An admin pressing "undo" has no way to know
+              any of that.
+
+              `reopenLastSeason` still exists as an OPERATOR maintenance hook —
+              a season that closed on bad data has to be repairable — and the
+              callable now refuses anyone but the project owner and writes an
+              audit row to /seasonReopens. It is reached from
+              `firebase functions:shell`, not from this screen.
+
+              The copy it used (seasonsReopenCta, seasonsReopenConfirm*) is
+              left in he.ts: the strings are correct, and if the product ever
+              wants a supervised reopen back they should not be rewritten from
+              memory. */}
         </View>
       )}
 

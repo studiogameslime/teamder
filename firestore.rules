@@ -1905,6 +1905,22 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── /seasonReopens/{id} — the audit trail for a destructive repair ──
+    //
+    // One row per reopen of a closed season. Reopening is an operator-only
+    // maintenance hook (§12): it is the only operation in the seasons system
+    // that destroys sealed data, and it used to leave nothing behind but a log
+    // line that ages out of Cloud Logging in thirty days. If a club's numbers
+    // are ever disputed, "was a season pulled back open, and when" needs an
+    // answer that outlives the logs.
+    //
+    // Server-only in both directions. Not readable by clients either: the row
+    // names the operator and carries the restore's own result, neither of
+    // which belongs on a member's screen.
+    match /seasonReopens/{id} {
+      allow read, write: if false;
+    }
+
     // ── /tasks/{taskId} — the Pulse work list. NO client access ────────
     // Written two ways, both privileged: the `onFeedbackCreated` trigger
     // (Admin SDK) when a tester files a report, and the Pulse dashboard

@@ -49,7 +49,11 @@ export const AnalyticsEvent = {
   SeasonsDisabled: 'seasons_disabled',
   SeasonTargetChanged: 'season_target_changed',
   SeasonEndedEarly: 'season_ended_early',
-  SeasonReopened: 'season_reopened',
+  // SeasonReopened was here. Removed 20.09.2026 with the button that fired it:
+  // a club admin can no longer reopen a closed season (§12), and the operator
+  // maintenance hook runs from `firebase functions:shell`, which emits no
+  // client analytics. The event can never fire again, and analyticsWiring's
+  // allowlist says in as many words not to park new dead constants in it.
   SeasonSummaryViewed: 'season_summary_viewed',
   SeasonSummaryShared: 'season_summary_shared',
   SeasonHistoryViewed: 'season_history_viewed',
