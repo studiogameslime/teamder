@@ -218,11 +218,22 @@ service cloud.firestore {
     }
     function notifSenderHasStanding() {
       return request.resource.data.type == 'playerCancelled'
-        ? (
-            notifClaimsGame() is string && notifClaimsGame().size() > 0 &&
-            exists(/databases/$(database)/documents/games/$(notifClaimsGame())) &&
-            request.auth.uid in gameDoc(notifClaimsGame()).get('participantIds', [])
-          )
+        // SELF-ATTESTATION, not game membership — and the difference is not
+        // academic. Both places the app sends this from are the consolidated
+        // "a player has left your games" push raised during ACCOUNT DELETION,
+        // and their payload is `{ cancellingUserId, gameTitles, reason }`:
+        // there is no gameId at all, because it covers several games at once,
+        // and the sender is on their way out of every one of them.
+        //
+        // A membership rule would have denied every one of those — on the
+        // build in the stores today as well as on HEAD. Checked against the
+        // shipped source, not against a payload I imagined; the first version
+        // of the regression test invented a gameId and passed while the real
+        // flow would have broken.
+        //
+        // What can honestly be required is that a sender only announces their
+        // OWN departure. That is the whole claim the notification makes.
+        ? notifPayload().get('cancellingUserId', '') == request.auth.uid
         : request.resource.data.type == 'groupDeleted'
         ? (
             notifClaimsGroup() is string && notifClaimsGroup().size() > 0 &&
