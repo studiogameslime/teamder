@@ -93,6 +93,47 @@ service cloud.firestore {
     function isGroupAdmin(gid) {
       return isSignedIn() && request.auth.uid in groupDoc(gid).adminIds;
     }
+
+    // ── The season's 24-hour correction window (spec §4, §5) ────────────
+    //
+    // A season that has met its finish line does not close on the whistle. It
+    // opens a window in which admins fix what the evening got wrong — a score,
+    // a missed goal, an attendance — and during which NO evening may be
+    // started anywhere in the club. Titles are decided from the numbers as
+    // they stand when the window shuts, so a correction made inside it counts
+    // and one made after it cannot; starting a fresh evening inside the window
+    // would add results to a season that is already being totted up.
+    //
+    // Enforced HERE and not only in the app, because the start is a direct
+    // client write to `games/{id}` and a client-side check is a suggestion.
+    //
+    // Costs no extra read on the branch that uses it: the organiser/admin
+    // branch has already called `isGroupAdmin`, which reads the same club
+    // document, and rules serve a repeated `get()` of one path from the
+    // request's own cache.
+    //
+    // ⚠️ `pendingClose` is DELETED when a window is cancelled, never set to
+    // null — `.get(k, default)` in rules substitutes the default only for an
+    // ABSENT key, so a present-null would come back as null-the-value and make
+    // this read `!= null` false in a way that looks the same and is not. The
+    // server side uses FieldValue.delete() for exactly this reason.
+    function clubIsInSeasonCloseWindow(gid) {
+      return groupDoc(gid).get('seasons', {}).get('pendingClose', null) != null;
+    }
+
+    // Is THIS write the moment an evening begins?
+    //
+    // `liveMatch.startedAt` is the app's single source of truth for "this game
+    // happened" — the cleanup job, the stats pipeline and the season counter
+    // all read it — and `markGameStarted` stamps it once, on the first tap of
+    // the timer. Absent before and present after is therefore exactly the
+    // transition to block, and nothing else on the game is affected: an admin
+    // inside the window may still edit the roster, fix a score, publish teams
+    // and finish an evening that was already running.
+    function isStartingTheEvening() {
+      return resource.data.get('liveMatch', {}).get('startedAt', null) == null
+        && request.resource.data.get('liveMatch', {}).get('startedAt', null) != null;
+    }
     // Non-throwing variant of isGroupMember. Plain isGroupMember() ERRORS on a
     // blank/absent gid or a deleted group (get() returns null, then `.playerIds`
     // raises) — and a raised error denies the whole request, even a branch that
@@ -1226,6 +1267,12 @@ service cloud.firestore {
           ) &&
           resource.data.status != 'finished' &&
           resource.data.status != 'cancelled' &&
+          // The season's correction window blocks the START of an evening and
+          // nothing else. Ordered so the cheap half runs first: on every write
+          // that is not a start — which is almost all of them — the second
+          // operand short-circuits away and the club document is never
+          // consulted for this rule at all.
+          !(isStartingTheEvening() && clubIsInSeasonCloseWindow(resource.data.groupId)) &&
           (
             !('createdBy' in resource.data) ||
             (

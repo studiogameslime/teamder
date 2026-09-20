@@ -4817,6 +4817,8 @@ type LiveSeasonsBlock = {
     targetRounds?: number;
   };
   count?: number;
+  /** Set while the season is due and waiting out its correction window. */
+  pendingClose?: PendingClose;
 };
 
 /**
@@ -15487,6 +15489,104 @@ const TONIGHT_MS = 12 * 60 * 60 * 1000;
  *  target that closed it before the sweep closes it again. */
 const REOPEN_GRACE_MS = 48 * 60 * 60 * 1000;
 
+/**
+ * How long a season sits between meeting its finish line and actually closing.
+ *
+ * The spec's correction window (§4, §5). A season that comes due does NOT
+ * close: it enters `seasons.pendingClose` and waits a day, during which admins
+ * can fix a wrong score, a missed goal or a mis-recorded attendance, and no
+ * evening may be STARTED anywhere in the club. Titles are decided from the
+ * numbers as they stand when the window shuts, so anything corrected inside it
+ * counts and anything corrected after it does not — which is the whole point
+ * of having a window rather than closing on the final whistle.
+ */
+const PENDING_CLOSE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The season is due and waiting out its correction window.
+ *
+ * ⚠️ There is deliberately NO scheduled task behind this. The spec (§24) asks
+ * that an old close must not be able to fire after the season has been
+ * extended, and the usual answer — enqueue a task, remember its name, cancel
+ * it on extend — has a failure mode that cannot be tested away: a cancel that
+ * does not land leaves a live task holding a decision that is no longer true.
+ *
+ * So the decision is not held anywhere. It is DERIVED, every hour, from this
+ * field: the sweep closes a season when `pendingClose.closeAt` has passed and
+ * `pendingClose.seasonId` is still the current season. Extending the season
+ * deletes the field, and with it the close — there is nothing left to fire.
+ * Re-entering the window writes a fresh `closeAt`, so an extension that is
+ * later met again gets a fresh day, not the remains of the old one.
+ *
+ * The cost is that the close lands within an hour of the deadline rather than
+ * on it, because `cronEvery60Min` is what notices. On a 24-hour window that is
+ * the right trade.
+ */
+type PendingClose = {
+  /** The season this window belongs to. A window never outlives its season. */
+  seasonId: string;
+  /** When the finish line was met. */
+  dueAt: number;
+  /** When the window shuts and the close may run. */
+  closeAt: number;
+  /** What ended it — for the message the admin reads. */
+  reason: 'rounds' | 'date';
+};
+
+/** The window that belongs to THIS season, or null. A stamp left behind by a
+ *  previous season is not a window — it is litter, and reading it as one would
+ *  close a fresh season the moment it opened. */
+function currentPendingClose(
+  seasons: { currentId?: string; pendingClose?: PendingClose } | undefined,
+): PendingClose | null {
+  const p = seasons?.pendingClose;
+  if (!p || !seasons?.currentId) return null;
+  if (p.seasonId !== seasons.currentId) return null;
+  if (!Number.isFinite(p.closeAt)) return null;
+  return p;
+}
+
+/** Open the correction window. Idempotent: an existing window for this season
+ *  is left exactly as it is, so a season that is due for the twentieth hourly
+ *  sweep in a row does not get its deadline pushed back twenty times. */
+async function openPendingClose(
+  groupId: string,
+  seasonId: string,
+  reason: PendingClose['reason'],
+  now: number,
+): Promise<PendingClose> {
+  const pending: PendingClose = {
+    seasonId,
+    dueAt: now,
+    closeAt: now + PENDING_CLOSE_MS,
+    reason,
+  };
+  await db
+    .collection('groups')
+    .doc(groupId)
+    .set({ seasons: { pendingClose: pending } }, { merge: true });
+  console.log(
+    '[season] correction window opened',
+    groupId,
+    seasonId,
+    reason,
+    new Date(pending.closeAt).toISOString(),
+  );
+  return pending;
+}
+
+/** Shut the window without closing the season — an extension, an early manual
+ *  close, or the season ceasing to be due because its target moved. */
+async function clearPendingClose(groupId: string): Promise<void> {
+  await db
+    .collection('groups')
+    .doc(groupId)
+    .set(
+      { seasons: { pendingClose: admin.firestore.FieldValue.delete() } },
+      { merge: true },
+    );
+}
+
 /** An evening this old is not waiting for its seal any more. Generous: the seal
  *  fires on the roster trigger within seconds, so a day is already three orders
  *  of magnitude of slack. */
@@ -15948,6 +16048,13 @@ async function performSeasonClose(args: {
           // fresh season as stuck the moment it opened.
           targetMovedToClose: admin.firestore.FieldValue.delete(),
           dueBlockedSince: admin.firestore.FieldValue.delete(),
+          // The window closed with the season it belonged to. Left behind it
+          // would name a season that no longer exists, and `currentPendingClose`
+          // would refuse it — but the sweep would then open a fresh window on
+          // the NEW season the first hour it came due, on top of litter. Delete
+          // it in the same write that advances the lifecycle, so the two can
+          // never disagree.
+          pendingClose: admin.firestore.FieldValue.delete(),
           count: closedSoFar + 1,
         },
       },
@@ -16011,33 +16118,24 @@ async function closeSeasonIfRoundsTargetMet(
     const now = Date.now();
     if (reopenedAt > 0 && now - reopenedAt < REOPEN_GRACE_MS) return;
 
-    const quiet = await clubIsQuiet(groupId, {
-      mode: 'afterSeal',
-      exceptGameId: sealedGameId,
-    });
-    if (!quiet.ok) {
-      console.log('[season] target met but club busy — sweep will close', groupId, quiet.blocker);
-      return;
-    }
-
-    const didClose = await performSeasonClose({
-      groupId,
-      groupName: g.name,
-      seasonId: seasons.currentId,
-      seasonNo: seasons.currentNo ?? 1,
-      startedAt: seasons.startedAt ?? 0,
-      played,
-      roundsAtStart: seasons.roundsAtStart ?? 0,
-      cadence,
-      count: seasons.count ?? 0,
-      now,
-    });
-    // Only when it really closed. `performSeasonClose` now abandons a close
-    // whose club moved underneath it — seasons switched off, or the sweep got
-    // there first — and this line claimed the close either way.
-    if (didClose) {
-      console.log(`[season] closed on seal: ${groupId} ${seasons.currentId} at ${played}/${target}`);
-    }
+    // ⚠️ Meeting the target no longer CLOSES the season — it opens the 24-hour
+    // correction window (§4). The close used to run right here, seconds after
+    // the final whistle, which left an admin who spotted a wrong score with no
+    // way to fix it: the archive was sealed and the titles handed out before
+    // anyone had looked at the sheet.
+    //
+    // The seal is still the right moment to notice. It is no longer the moment
+    // to decide. The sweep runs the close a day later, from state — see the
+    // note on `PendingClose` for why there is no scheduled task to cancel.
+    //
+    // No quiet check here: the window is allowed to open mid-evening. What the
+    // quiet check guards is the CLOSE, and that is an hour of sweep away.
+    if (currentPendingClose(seasons)) return;
+    await openPendingClose(groupId, seasons.currentId, 'rounds', now);
+    console.log(
+      `[season] correction window opened on seal: ${groupId} ${seasons.currentId} at ${played}/${target}`,
+    );
+    void sealedGameId;
   } catch (err) {
     console.error('[season] close-on-seal failed', groupId, err);
     await reportServerError({
@@ -16091,6 +16189,10 @@ async function runSeasonRollovers(): Promise<void> {
   let closed = 0;
   let waiting = 0;
   let noFinishLine = 0;
+  /** Seasons that met their finish line this hour and began their window. */
+  let pendingOpened = 0;
+  /** Seasons sitting inside a window that has not shut yet. */
+  let pendingWaiting = 0;
   let scanned = 0;
   let deferred = 0;
   let cursor: admin.firestore.QueryDocumentSnapshot | null = null;
@@ -16134,6 +16236,8 @@ async function runSeasonRollovers(): Promise<void> {
           count?: number;
           /** When this season first came due and could not be closed. */
           dueBlockedSince?: number;
+          /** Set while the season is waiting out its 24-hour correction window. */
+          pendingClose?: PendingClose;
         };
       };
       const seasons = g.seasons;
@@ -16211,6 +16315,49 @@ async function runSeasonRollovers(): Promise<void> {
         const reopenedAt = archNum(seasons.reopenedAt);
         if (reopenedAt > 0 && now - reopenedAt < REOPEN_GRACE_MS) {
           console.log('[season] due but just reopened — holding', doc.id);
+          continue;
+        }
+
+        // ── The correction window (§4, §5) ────────────────────────────────
+        //
+        // Due does not mean closing. A season that has just met its finish
+        // line opens a 24-hour window in which admins fix what the evening got
+        // wrong and nobody may start a new one; only when that window has shut
+        // does this sweep go on to the quiet check and the close.
+        //
+        // Everything is decided from `pendingClose` on the club document, so
+        // an extension that deletes the field deletes the close with it. There
+        // is no task in flight to outlive the decision that created it.
+        const pending = currentPendingClose(seasons);
+        if (!pending) {
+          // A DATE season that is due while an evening is still running waits
+          // for the whistle before its window starts (§5): the evening belongs
+          // to this season and the admin cannot correct it until it is over.
+          // A ROUNDS season cannot be in this position — the thing that made
+          // it due was an evening ending.
+          if (line.kind === 'date') {
+            const clear = await clubIsQuiet(doc.id);
+            if (!clear.ok) {
+              console.log(
+                '[season] date reached but an evening is still running — window waits',
+                doc.id,
+                clear.blocker,
+              );
+              continue;
+            }
+          }
+          await openPendingClose(
+            doc.id,
+            seasons.currentId,
+            line.kind === 'date' ? 'date' : 'rounds',
+            now,
+          );
+          pendingOpened += 1;
+          continue;
+        }
+        if (now < pending.closeAt) {
+          // Still inside the window. Nothing to do and nothing wrong.
+          pendingWaiting += 1;
           continue;
         }
 
@@ -16307,9 +16454,10 @@ async function runSeasonRollovers(): Promise<void> {
     if (page.size < SEASON_SCAN_PAGE) break;
   }
 
-  if (closed || waiting || noFinishLine || deferred) {
+  if (closed || waiting || noFinishLine || deferred || pendingOpened || pendingWaiting) {
     console.log(
-      `[season] rollovers: ${closed} closed, ${waiting} waiting, ` +
+      `[season] rollovers: ${closed} closed, ${pendingOpened} entered the ` +
+        `correction window, ${pendingWaiting} inside it, ${waiting} waiting, ` +
         `${deferred} deferred, ${noFinishLine} with no finish line, ` +
         `${scanned} scanned`,
     );
@@ -16714,6 +16862,26 @@ export const updateSeasonTarget = onCall(
       seasons.playedRounds,
     );
     const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
+
+    // §8 — the KIND of season is frozen once the season has played an evening.
+    //
+    // Not a style rule. The two cadences are measured in different units, and
+    // every number already recorded against this season was recorded under one
+    // of them: a rounds season that becomes a date season has a `playedRounds`
+    // count that no longer decides anything, and a date season that becomes a
+    // rounds season has evenings behind it that were never counted towards a
+    // target. Either way the season's own history stops describing it, and the
+    // archive it eventually writes is measured in a unit it did not run in.
+    //
+    // Before the first evening there is nothing to contradict, so an admin who
+    // picked the wrong kind on Monday can still fix it on Monday.
+    const currentType = seasons.cadence?.type === 'rounds' ? 'rounds' : 'date';
+    if (type !== currentType && played > 0) {
+      throw new HttpsError(
+        'failed-precondition',
+        `cannot change a ${currentType} season to ${type} after ${played} rounds`,
+      );
+    }
     const askedRounds =
       typeof data.targetRounds === 'number' ? Math.round(data.targetRounds) : null;
     if (type === 'rounds' && askedRounds !== null && askedRounds <= played) {
@@ -16849,6 +17017,24 @@ export const updateSeasonTarget = onCall(
           targetMovedToClose: endsTheSeason
             ? { at: now, by: uid, byName }
             : admin.firestore.FieldValue.delete(),
+          // §8 — extending a season cancels the close that was waiting for it.
+          //
+          // This is the admin's escape from the correction window: the season
+          // met its target, the 24-hour window opened, and the admin decides
+          // the season should run longer after all. Moving the finish line
+          // beyond where the club stands deletes the window, and with it the
+          // close — there is no queued task holding a stale decision, because
+          // `currentPendingClose` is the only thing the sweep consults and it
+          // is now gone. Evenings may be started again the moment this write
+          // lands.
+          //
+          // Left ALONE when the new target still ends the season: an admin who
+          // moves the line to a number the club has already passed has not
+          // extended anything, and clearing the window there would hand them a
+          // fresh 24 hours they did not ask for.
+          ...(endsTheSeason
+            ? {}
+            : { pendingClose: admin.firestore.FieldValue.delete() }),
         },
       },
       { merge: true },
