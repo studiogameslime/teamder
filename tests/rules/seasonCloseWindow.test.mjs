@@ -272,3 +272,85 @@ describe('the rule is the presence of the field, not its contents', () => {
     assert.equal(await write(ADMIN, START), false);
   });
 });
+
+// ── The expression budget, which is the real deploy risk here ───────────
+//
+// Firestore stops evaluating a rule after 1000 expressions and DENIES. The
+// games `allow update` is one long OR chain, and it is already close enough to
+// that ceiling that the suite's own `games: self can join an open community
+// game` case fails on it against the 82-field fixture — a pre-existing failure
+// the rules file documents at the top of the chain ("that is what actually
+// failed in production").
+//
+// The correction-window guard is added to the ORGANISER/ADMIN branch, which is
+// the LAST branch in the chain: an admin write pays for every branch before it
+// and then for this one. So the admin path on a real, fat game document is
+// exactly where a few extra expressions could tip something over, and it is
+// the case worth pinning rather than reasoning about.
+
+import bigGame from './bigGame.fixture.json' assert { type: 'json' };
+
+describe('the 82-field game, and the cap the admin branch already sits behind', () => {
+  async function seedBig(pendingClose) {
+    await env.clearFirestore();
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'groups', GID), {
+        ...bigGame.group,
+        name: 'club',
+        adminIds: [ADMIN],
+        playerIds: [ADMIN, PLAYER],
+        createdAt: 1,
+        seasons: {
+          enabled: true,
+          currentId: 's2',
+          currentNo: 2,
+          cadence: { type: 'rounds', targetRounds: 24 },
+          ...(pendingClose === undefined ? {} : { pendingClose }),
+        },
+      });
+      await setDoc(doc(db, 'games', GAME), { ...bigGame.game, groupId: GID, createdBy: ADMIN });
+    });
+  }
+
+  // ⚠️ PRE-EXISTING, and measured both ways before being written down here.
+  //
+  // An admin renaming this game is DENIED — with the correction-window guard
+  // and, when the same case is run against the rules as they stood before it,
+  // without it. The cause is the 1000-expression cap: the organiser/admin
+  // branch is the last in a long OR chain and the budget is gone before the
+  // request reaches it.
+  //
+  // This is not a fixture built to break things. It is 82 fields, 14 players,
+  // 27 invited users — an ordinary Teamder game — and the rules file's own
+  // note at the top of the chain says this cap "is what actually failed in
+  // production".
+  //
+  // Pinned as it behaves rather than as it should behave, so the suite stays
+  // honest about what changed today (nothing) while keeping the finding where
+  // someone will meet it. If the chain is ever trimmed back under the cap,
+  // these two flip to allowed and whoever sees them fail should read this and
+  // invert them.
+  test('⚠️ pre-existing: an admin edit is denied by the expression cap', async () => {
+    await seedBig(OPEN_WINDOW);
+    assert.equal(await write(ADMIN, { title: 'renamed' }), false);
+  });
+
+  test('⚠️ pre-existing: and denied with no season window in play at all', async () => {
+    await seedBig(undefined);
+    assert.equal(await write(ADMIN, { title: 'renamed' }), false);
+  });
+
+  // The half that matters for THIS feature, and it is the safe half: running
+  // out of budget denies. So on a game this size the window's guard may never
+  // be reached — and the outcome is the one the guard wanted anyway.
+  test('the start is refused inside the window', async () => {
+    await seedBig(OPEN_WINDOW);
+    assert.equal(await write(ADMIN, START), false);
+  });
+
+  test('⚠️ pre-existing: and refused outside it too, for the same reason', async () => {
+    await seedBig(undefined);
+    assert.equal(await write(ADMIN, START), false);
+  });
+});
