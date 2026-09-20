@@ -16362,12 +16362,25 @@ async function runSeasonRollovers(): Promise<void> {
           // Whatever was blocking it is moot now — the finish line moved, or the
           // count was corrected. Clearing costs a write only on the rare club
           // that actually carries the stamp.
-          if (archNum(seasons.dueBlockedSince) > 0) {
+          // The same clean-up for the correction window, and for a sharper
+          // reason: a window on a season that is no longer due is a club that
+          // cannot START an evening, because the rules block on the stamp's
+          // presence. The finish line moved, or the count was corrected, and
+          // the window has to go with it — otherwise the admin who lengthened
+          // the season to keep playing has stopped the club playing.
+          const stale =
+            archNum(seasons.dueBlockedSince) > 0 || seasons.pendingClose != null;
+          if (stale) {
             await db
               .collection('groups')
               .doc(doc.id)
               .set(
-                { seasons: { dueBlockedSince: admin.firestore.FieldValue.delete() } },
+                {
+                  seasons: {
+                    dueBlockedSince: admin.firestore.FieldValue.delete(),
+                    pendingClose: admin.firestore.FieldValue.delete(),
+                  },
+                },
                 { merge: true },
               );
           }
@@ -16735,6 +16748,12 @@ export const enableClubSeasons = onCall(
         {
           seasons: {
             enabled: true,
+            // Defence in depth: a stale correction window from before the feature
+            // was switched off would stop this club starting an evening the moment
+            // it came back on, because the rules block on the stamp's PRESENCE.
+            // `disableClubSeasons` clears it and so does this, so no ordering of
+            // enable/disable can leave one standing.
+            pendingClose: admin.firestore.FieldValue.delete(),
             currentNo: firstNo + 1,
             currentId: `s${firstNo + 1}`,
             startedAt: now,
@@ -16783,6 +16802,12 @@ export const enableClubSeasons = onCall(
       {
         seasons: {
           enabled: true,
+          // Defence in depth: a stale correction window from before the feature
+          // was switched off would stop this club starting an evening the moment
+          // it came back on, because the rules block on the stamp's PRESENCE.
+          // `disableClubSeasons` clears it and so does this, so no ordering of
+          // enable/disable can leave one standing.
+          pendingClose: admin.firestore.FieldValue.delete(),
           currentNo: no,
           currentId: `s${no}`,
           startedAt: now,
@@ -16865,9 +16890,44 @@ export const disableClubSeasons = onCall(
     if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
     const data = (request.data ?? {}) as { groupId?: unknown };
     const { ref, group } = await requireClubAdmin(data.groupId, uid);
-    const seasons = group.seasons as { enabled?: boolean } | undefined;
+    const seasons = group.seasons as
+      | { enabled?: boolean; currentId?: string; pendingClose?: PendingClose }
+      | undefined;
     if (!seasons?.enabled) return { ok: true, alreadyOff: true };
-    await ref.set({ seasons: { enabled: false } }, { merge: true });
+
+    // §9 — the same quiet rule every other way out of a season carries.
+    //
+    // Switching the feature off ends the running season, and ending a season
+    // across a live evening splits it: each mini-game commits separately, so
+    // the first משחקון lands one side of the boundary and the rest land the
+    // other. `endSeasonNow` and `updateSeasonTarget` both refuse mid-evening;
+    // this path did not, which made it the one way to do exactly that.
+    const quiet = await clubIsQuiet(data.groupId as string);
+    if (!quiet.ok) {
+      throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
+    }
+
+    // ⚠️ The correction window MUST be cleared here, and this is not tidiness.
+    //
+    // `firestore.rules` blocks the start of an evening whenever `pendingClose`
+    // is present on the club — deliberately, since a stamp naming a dead
+    // season should not exist. The sweep is what deletes it, and the sweep
+    // skips a club whose seasons are off (`!seasons?.enabled` → continue).
+    //
+    // So a club that met its target, entered the window, and then switched
+    // seasons off would keep the stamp with nothing left to remove it, and
+    // could never start another evening — permanently, and with no message
+    // anywhere saying why. Turning a feature off must not be able to brick the
+    // club that turned it off.
+    await ref.set(
+      {
+        seasons: {
+          enabled: false,
+          pendingClose: admin.firestore.FieldValue.delete(),
+        },
+      },
+      { merge: true },
+    );
     return { ok: true };
   },
 );
@@ -17212,6 +17272,12 @@ export const reopenLastSeason = onCall(
           startedAt: archNum(archive.get('startsAt')),
           roundsAtStart: reopenedRoundsAtStart,
           reopenedAt: Date.now(),
+          // The window belonged to a season that is no longer the current one.
+          // The server ignores a mismatched stamp (`currentPendingClose`
+          // checks the id), but firestore.rules blocks the start of an evening
+          // on the stamp's PRESENCE — so leaving it here would silently stop
+          // the club playing. Cleared with the rest of the lifecycle.
+          pendingClose: admin.firestore.FieldValue.delete(),
           // What the season HELD — counted from its own games, not from a
           // counter and not from its archive.
           //
@@ -17398,6 +17464,16 @@ export const endSeasonNow = onCall(
           targetHistory: [],
           // Both belonged to the season just sealed. See performSeasonClose.
           targetMovedToClose: admin.firestore.FieldValue.delete(),
+          // …and so did the correction window, if one was open.
+          //
+          // This is the SECOND lifecycle-advance path — `performSeasonClose`
+          // is the other — and it was missed on the first pass. An admin who
+          // closed early while the window was open would have advanced the
+          // season and left the stamp behind, and the rules block the start of
+          // an evening on that stamp's presence: the club would have been
+          // unable to play again, from the button whose whole purpose is to
+          // let them play again.
+          pendingClose: admin.firestore.FieldValue.delete(),
           dueBlockedSince: admin.firestore.FieldValue.delete(),
           count: (seasons.count ?? 0) + 1,
         },
