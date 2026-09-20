@@ -121,6 +121,25 @@ service cloud.firestore {
       return groupDoc(gid).get('seasons', {}).get('pendingClose', null) != null;
     }
 
+    // ⚠️ NULL-SAFE, and it has to be spelled out this way.
+    //
+    // The obvious form — `d.get('liveMatch', {}).get('startedAt', null)` —
+    // is broken, and the rules test proves it. `.get(k, default)` substitutes
+    // the default only for an ABSENT key; a key that is PRESENT and null comes
+    // back as null, and calling `.get()` on null RAISES. A raised error denies
+    // the whole request, not just the clause it happened in — so on a game
+    // whose `liveMatch` is present and null, that form denied an ordinary
+    // title edit by an admin, inside the window, for no reason a reader could
+    // see. `liveMatch == null` is a shape this database really holds; the
+    // rules test it explicitly two hundred lines further down.
+    //
+    // Same family as the `.get(k, default)` trap that broke guest-add in July.
+    function startedAtOf(d) {
+      return d.get('liveMatch', null) == null
+        ? null
+        : d.liveMatch.get('startedAt', null);
+    }
+
     // Is THIS write the moment an evening begins?
     //
     // `liveMatch.startedAt` is the app's single source of truth for "this game
@@ -131,8 +150,8 @@ service cloud.firestore {
     // inside the window may still edit the roster, fix a score, publish teams
     // and finish an evening that was already running.
     function isStartingTheEvening() {
-      return resource.data.get('liveMatch', {}).get('startedAt', null) == null
-        && request.resource.data.get('liveMatch', {}).get('startedAt', null) != null;
+      return startedAtOf(resource.data) == null
+        && startedAtOf(request.resource.data) != null;
     }
     // Non-throwing variant of isGroupMember. Plain isGroupMember() ERRORS on a
     // blank/absent gid or a deleted group (get() returns null, then `.playerIds`

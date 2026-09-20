@@ -176,6 +176,40 @@ describe('with no window open', () => {
 // should not exist. This pins what the rule actually does, so that if the
 // server ever leaves litter behind, the consequence is documented rather than
 // discovered.
+// ⚠️ The null trap, which has bitten this file's rules before.
+//
+// `.get(k, default)` in Firestore rules substitutes the default only for an
+// ABSENT key. A key that is PRESENT and null comes back as null, and calling
+// `.get()` on null RAISES — and a raised error denies the whole request, not
+// just the branch it happened in. The rules elsewhere test
+// `resource.data.liveMatch == null` explicitly, so a null liveMatch is a shape
+// this database really holds.
+//
+// If `isStartingTheEvening()` had that bug, every admin edit to such a game
+// would be denied — not only starts, and not only during a window. These are
+// the cases that would catch it.
+describe('a game whose liveMatch is present and NULL', () => {
+  test('can still be edited by the admin, window or not', async () => {
+    await seed(OPEN_WINDOW, { liveMatch: null });
+    assert.equal(await write(ADMIN, { title: 'renamed' }), true);
+  });
+
+  test('and with no window either', async () => {
+    await seed(undefined, { liveMatch: null });
+    assert.equal(await write(ADMIN, { title: 'renamed' }), true);
+  });
+
+  test('and starting it is still blocked inside a window', async () => {
+    await seed(OPEN_WINDOW, { liveMatch: null });
+    assert.equal(await write(ADMIN, START), false);
+  });
+
+  test('and still allowed outside one', async () => {
+    await seed(undefined, { liveMatch: null });
+    assert.equal(await write(ADMIN, START), true);
+  });
+});
+
 describe('the rule is the presence of the field, not its contents', () => {
   test('a stamp naming an older season still blocks', async () => {
     await seed({ ...OPEN_WINDOW, seasonId: 's1' });
