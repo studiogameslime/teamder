@@ -21,6 +21,7 @@ import { AvailabilityWeekScreen } from '@/screens/home/AvailabilityWeekScreen';
 import { NotificationsSettingsScreen } from '@/screens/profile/NotificationsSettingsScreen';
 import { BlockedUsersScreen } from '@/screens/profile/BlockedUsersScreen';
 import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
+import { SeasonTitlesScreen } from '@/screens/profile/SeasonTitlesScreen';
 import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
 import { FriendsScreen } from '@/screens/profile/FriendsScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
@@ -66,6 +67,7 @@ export type ProfileStackParamList = {
   AdminApproval: undefined;
   History: undefined;
   Achievements: undefined;
+  SeasonTitles: undefined;
   Statistics: undefined;
   Friends: undefined;
   Referrals: undefined;
@@ -148,6 +150,7 @@ export function ProfileStack() {
       <Stack.Screen name="AdminApproval" component={AdminApprovalScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="Achievements" component={AchievementsScreen} />
+      <Stack.Screen name="SeasonTitles" component={SeasonTitlesScreen} />
       <Stack.Screen name="Statistics" component={StatisticsScreen} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen name="Referrals" component={ReferralsListScreen} />

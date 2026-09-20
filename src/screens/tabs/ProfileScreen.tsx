@@ -961,6 +961,18 @@ export function ProfileScreen() {
           onPress: () => nav.navigate('Achievements'),
         },
         {
+          // ארון התארים (§21). Separate from the achievements entry above it
+          // because the two are different things: an achievement is granted
+          // for a milestone, a title was WON off other people, once, in a
+          // competition with an end. The cabinet has existed all along as
+          // `SeasonTitlesShelf` — it just had no way in except scrolling past
+          // it on a screen named after badges.
+          id: 'seasonTitles',
+          label: he.seasonTitlesShelfTitle,
+          icon: 'medal-outline',
+          onPress: () => nav.navigate('SeasonTitles'),
+        },
+        {
           id: 'statistics',
           label: he.statsMenuLabel,
           icon: 'stats-chart-outline',

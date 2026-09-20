@@ -1,0 +1,1231 @@
+{
+ "groupId": "HhzIwmjMl1i5HSOGHt3p",
+ "seasonId": "s1",
+ "archive": {
+  "groupName": "מועדון שכחת שושי",
+  "endsAt": 1789661526768,
+  "roundsAtStartOfSeason": 7,
+  "closedAt": 1789661526768,
+  "pairs": {
+   "B5KpYO4ILhQD0YVmMng997matof1__K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+    "winsB": 3,
+    "assistsAToB": 1,
+    "against": 6,
+    "winsA": 3,
+    "sameTeam": 7,
+    "lossesTogether": 2,
+    "b": "K5rSGB4JFTe6n3pm63iVPzexEQr2",
+    "winsTogether": 2,
+    "assistsBToA": 0,
+    "cleanSheetsTogether": 6,
+    "assists": 1,
+    "a": "B5KpYO4ILhQD0YVmMng997matof1"
+   },
+   "JoLFRxFr0tTaYfVAXBPwkvT0et62__YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+    "against": 4,
+    "winsB": 2,
+    "sameTeam": 5,
+    "winsTogether": 3,
+    "a": "JoLFRxFr0tTaYfVAXBPwkvT0et62",
+    "assistsAToB": 0,
+    "winsA": 0,
+    "b": "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+    "cleanSheetsTogether": 2,
+    "assists": 0,
+    "lossesTogether": 2,
+    "assistsBToA": 0
+   },
+   "K5rSGB4JFTe6n3pm63iVPzexEQr2__alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+    "a": "K5rSGB4JFTe6n3pm63iVPzexEQr2",
+    "cleanSheetsTogether": 1,
+    "b": "alsobLSAFMRXzBDwQCDDlmNJw5R2",
+    "assists": 1,
+    "assistsBToA": 0,
+    "winsTogether": 1,
+    "lossesTogether": 1,
+    "sameTeam": 2,
+    "winsA": 4,
+    "assistsAToB": 0,
+    "winsB": 5,
+    "against": 11
+   },
+   "CEkRfDs20xSuiW6xmPKlMcx3NoV2__YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+    "winsA": 2,
+    "assistsAToB": 0,
+    "lossesTogether": 1,
+    "against": 6,
+    "winsB": 2,
+    "winsTogether": 1,
+    "sameTeam": 2,
+    "a": "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+    "b": "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+    "cleanSheetsTogether": 1,
+    "assistsBToA": 0,
+    "assists": 0
+   },
+   "1IdtNEjbEXfiRSqvLrJVn99NsfI2__K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+    "winsTogether": 3,
+    "b": "K5rSGB4JFTe6n3pm63iVPzexEQr2",
+    "assistsAToB": 0,
+    "winsB": 3,
+    "lossesTogether": 1,
+    "a": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+    "sameTeam": 5,
+    "winsA": 2,
+    "assists": 0,
+    "assistsBToA": 0,
+    "against": 6,
+    "cleanSheetsTogether": 5
+   },
+   "B5KpYO4ILhQD0YVmMng997matof1__CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+    "assists": 0,
+    "assistsAToB": 0,
+    "cleanSheetsTogether": 1,
+    "winsTogether": 2,
+    "sameTeam": 3,
+    "winsB": 2,
+    "lossesTogether": 1,
+    "b": "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+    "against": 7,
+    "assistsBToA": 0,
+    "a": "B5KpYO4ILhQD0YVmMng997matof1",
+    "winsA": 4
+   },
+   "1IdtNEjbEXfiRSqvLrJVn99NsfI2__B5KpYO4ILhQD0YVmMng997matof1": {
+    "b": "B5KpYO4ILhQD0YVmMng997matof1",
+    "sameTeam": 10,
+    "assistsAToB": 0,
+    "lossesTogether": 3,
+    "cleanSheetsTogether": 5,
+    "a": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+    "against": 1,
+    "assistsBToA": 0,
+    "winsA": 0,
+    "winsTogether": 7,
+    "winsB": 0,
+    "assists": 0
+   },
+   "1IdtNEjbEXfiRSqvLrJVn99NsfI2__JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+    "assistsAToB": 0,
+    "winsTogether": 1,
+    "b": "JoLFRxFr0tTaYfVAXBPwkvT0et62",
+    "assists": 0,
+    "winsB": 3,
+    "cleanSheetsTogether": 0,
+    "winsA": 5,
+    "a": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+    "lossesTogether": 1,
+    "against": 10,
+    "assistsBToA": 0,
+    "sameTeam": 2
+   },
+   "CEkRfDs20xSuiW6xmPKlMcx3NoV2__JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+    "against": 6,
+    "cleanSheetsTogether": 4,
+    "assistsBToA": 0,
+    "assists": 0,
+    "winsB": 2,
+    "b": "JoLFRxFr0tTaYfVAXBPwkvT0et62",
+    "lossesTogether": 2,
+    "winsTogether": 1,
+    "sameTeam": 6,
+    "assistsAToB": 0,
+    "a": "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+    "winsA": 4
+   },
+   "B5KpYO4ILhQD0YVmMng997matof1__JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+    "assists": 0,
+    "b": "JoLFRxFr0tTaYfVAXBPwkvT0et62",
+    "assistsAToB": 0,
+    "a": "B5KpYO4ILhQD0YVmMng997matof1",
+    "lossesTogether": 0,
+    "winsTogether": 1,
+    "winsA": 5,
+    "cleanSheetsTogether": 0,
+    "against": 8,
+    "winsB": 2,
+    "assistsBToA": 0,
+    "sameTeam": 1
+   },
+   "1IdtNEjbEXfiRSqvLrJVn99NsfI2__YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+    "against": 8,
+    "assistsAToB": 0,
+    "assists": 0,
+    "winsB": 3,
+    "winsTogether": 1,
+    "sameTeam": 6,
+    "b": "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+    "lossesTogether": 0,
+    "cleanSheetsTogether": 4,
+    "winsA": 4,
+    "a": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+    "assistsBToA": 0
+   },
+   "1IdtNEjbEXfiRSqvLrJVn99NsfI2__CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+    "assistsAToB": 0,
+    "cleanSheetsTogether": 2,
+    "b": "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+    "winsB": 2,
+    "lossesTogether": 2,
+    "against": 6,
+    "winsA": 2,
+    "a": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+    "sameTeam": 4,
+    "assistsBToA": 0,
+    "winsTogether": 2,
+    "assists": 0
+   },
+   "JoLFRxFr0tTaYfVAXBPwkvT0et62__alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+    "winsB": 4,
+    "against": 7,
+    "winsA": 3,
+    "lossesTogether": 3,
+    "assistsBToA": 0,
+    "sameTeam": 6,
+    "a": "JoLFRxFr0tTaYfVAXBPwkvT0et62",
+    "cleanSheetsTogether": 4,
+    "assistsAToB": 0,
+    "b": "alsobLSAFMRXzBDwQCDDlmNJw5R2",
+    "assists": 0,
+    "winsTogether": 3
+   },
+   "CEkRfDs20xSuiW6xmPKlMcx3NoV2__K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+    "assistsAToB": 1,
+    "assists": 1,
+    "winsTogether": 3,
+    "sameTeam": 5,
+    "lossesTogether": 2,
+    "a": "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+    "against": 6,
+    "winsA": 3,
+    "assistsBToA": 0,
+    "winsB": 2,
+    "b": "K5rSGB4JFTe6n3pm63iVPzexEQr2",
+    "cleanSheetsTogether": 2
+   },
+   "CEkRfDs20xSuiW6xmPKlMcx3NoV2__alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+    "assists": 1,
+    "a": "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+    "cleanSheetsTogether": 0,
+    "b": "alsobLSAFMRXzBDwQCDDlmNJw5R2",
+    "assistsBToA": 1,
+    "sameTeam": 2,
+    "winsTogether": 1,
+    "winsB": 3,
+    "against": 7,
+    "assistsAToB": 0,
+    "lossesTogether": 1,
+    "winsA": 4
+   },
+   "B5KpYO4ILhQD0YVmMng997matof1__YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+    "against": 6,
+    "b": "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+    "winsB": 2,
+    "assistsBToA": 0,
+    "lossesTogether": 1,
+    "winsA": 3,
+    "winsTogether": 2,
+    "a": "B5KpYO4ILhQD0YVmMng997matof1",
+    "cleanSheetsTogether": 2,
+    "assistsAToB": 0,
+    "assists": 0,
+    "sameTeam": 3
+   },
+   "YIZlKWBvvjae3oqgIoAMr9nzQEi1__alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+    "winsA": 3,
+    "b": "alsobLSAFMRXzBDwQCDDlmNJw5R2",
+    "assistsAToB": 0,
+    "sameTeam": 2,
+    "lossesTogether": 1,
+    "a": "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+    "winsB": 2,
+    "assists": 0,
+    "assistsBToA": 0,
+    "cleanSheetsTogether": 2,
+    "winsTogether": 1,
+    "against": 7
+   },
+   "B5KpYO4ILhQD0YVmMng997matof1__alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+    "against": 6,
+    "sameTeam": 9,
+    "winsA": 2,
+    "winsB": 2,
+    "assistsBToA": 0,
+    "a": "B5KpYO4ILhQD0YVmMng997matof1",
+    "lossesTogether": 3,
+    "cleanSheetsTogether": 5,
+    "assists": 2,
+    "assistsAToB": 2,
+    "winsTogether": 5,
+    "b": "alsobLSAFMRXzBDwQCDDlmNJw5R2"
+   },
+   "JoLFRxFr0tTaYfVAXBPwkvT0et62__K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+    "winsA": 3,
+    "sameTeam": 4,
+    "winsTogether": 1,
+    "lossesTogether": 3,
+    "against": 7,
+    "winsB": 3,
+    "assistsBToA": 2,
+    "a": "JoLFRxFr0tTaYfVAXBPwkvT0et62",
+    "cleanSheetsTogether": 1,
+    "b": "K5rSGB4JFTe6n3pm63iVPzexEQr2",
+    "assistsAToB": 0,
+    "assists": 2
+   },
+   "1IdtNEjbEXfiRSqvLrJVn99NsfI2__alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+    "a": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+    "winsB": 2,
+    "assistsAToB": 0,
+    "assists": 0,
+    "b": "alsobLSAFMRXzBDwQCDDlmNJw5R2",
+    "cleanSheetsTogether": 3,
+    "lossesTogether": 4,
+    "winsA": 3,
+    "against": 7,
+    "assistsBToA": 0,
+    "winsTogether": 4,
+    "sameTeam": 8
+   },
+   "K5rSGB4JFTe6n3pm63iVPzexEQr2__YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+    "assistsBToA": 0,
+    "lossesTogether": 1,
+    "against": 8,
+    "sameTeam": 2,
+    "cleanSheetsTogether": 0,
+    "assists": 0,
+    "winsB": 3,
+    "a": "K5rSGB4JFTe6n3pm63iVPzexEQr2",
+    "assistsAToB": 0,
+    "winsTogether": 1,
+    "b": "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+    "winsA": 3
+   }
+  },
+  "originalTarget": {
+   "months": null,
+   "targetRounds": 22,
+   "endsAt": null,
+   "endsOn": null,
+   "type": "rounds",
+   "startsOn": null
+  },
+  "awards": {
+   "mostLoyal": {
+    "winners": [
+     "1IdtNEjbEXfiRSqvLrJVn99NsfI2"
+    ],
+    "value": 19
+   },
+   "mvp": {
+    "value": 6,
+    "winners": [
+     "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+     "B5KpYO4ILhQD0YVmMng997matof1",
+     "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+     "JoLFRxFr0tTaYfVAXBPwkvT0et62",
+     "K5rSGB4JFTe6n3pm63iVPzexEQr2",
+     "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+     "alsobLSAFMRXzBDwQCDDlmNJw5R2"
+    ]
+   },
+   "topScorer": {
+    "value": 10,
+    "winners": [
+     "alsobLSAFMRXzBDwQCDDlmNJw5R2"
+    ]
+   },
+   "cleanSheetKing": {
+    "winners": [
+     "alsobLSAFMRXzBDwQCDDlmNJw5R2"
+    ],
+    "value": 13
+   },
+   "penaltyKeeper": {
+    "value": 1,
+    "winners": [
+     "alsobLSAFMRXzBDwQCDDlmNJw5R2"
+    ]
+   },
+   "deadlyDuo": null,
+   "topWinner": {
+    "value": 13,
+    "winners": [
+     "B5KpYO4ILhQD0YVmMng997matof1"
+    ]
+   },
+   "penaltyKing": {
+    "winners": [
+     "alsobLSAFMRXzBDwQCDDlmNJw5R2"
+    ],
+    "value": 1
+   },
+   "topAssister": {
+    "value": 5,
+    "winners": [
+     "K5rSGB4JFTe6n3pm63iVPzexEQr2"
+    ]
+   }
+  },
+  "players": {
+   "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+    "goals": 3,
+    "ownGoals": 0,
+    "displayName": "Linoy Levi",
+    "penTaken": 1,
+    "games": 18,
+    "penFaced": 1,
+    "eveningScoreCount": 3,
+    "cleanSheets": 8,
+    "penSaved": 0,
+    "penConceded": 1,
+    "rounds": 21,
+    "assists": 2,
+    "losses": 10,
+    "penScored": 1,
+    "ties": 3,
+    "asRounds": 19,
+    "penMissed": 0,
+    "wins": 8,
+    "eveningScoreSum": 18,
+    "csRounds": 11
+   },
+   "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+    "wins": 11,
+    "losses": 10,
+    "ties": 3,
+    "rounds": 24,
+    "penMissed": 0,
+    "displayName": "איציק לוי",
+    "ownGoals": 0,
+    "penScored": 0,
+    "penTaken": 0,
+    "eveningScoreCount": 2,
+    "penFaced": 0,
+    "assists": 1,
+    "asRounds": 22,
+    "csRounds": 14,
+    "penSaved": 0,
+    "games": 17,
+    "cleanSheets": 10,
+    "eveningScoreSum": 12,
+    "penConceded": 0,
+    "goals": 2
+   },
+   "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+    "penSaved": 1,
+    "displayName": "מתן לוי",
+    "rounds": 26,
+    "assists": 1,
+    "losses": 9,
+    "asRounds": 24,
+    "csRounds": 15,
+    "penConceded": 0,
+    "games": 19,
+    "ownGoals": 0,
+    "cleanSheets": 12,
+    "wins": 11,
+    "ties": 6,
+    "penScored": 0,
+    "penTaken": 1,
+    "eveningScoreSum": 18,
+    "penFaced": 1,
+    "goals": 2,
+    "eveningScoreCount": 3,
+    "penMissed": 1
+   },
+   "B5KpYO4ILhQD0YVmMng997matof1": {
+    "losses": 7,
+    "ties": 4,
+    "goals": 4,
+    "penFaced": 1,
+    "eveningScoreSum": 18,
+    "penTaken": 1,
+    "eveningScoreCount": 3,
+    "penConceded": 1,
+    "games": 18,
+    "ownGoals": 0,
+    "cleanSheets": 10,
+    "assists": 3,
+    "rounds": 24,
+    "wins": 13,
+    "csRounds": 13,
+    "asRounds": 22,
+    "penScored": 1,
+    "penMissed": 0,
+    "displayName": "Lioz Madar",
+    "penSaved": 0
+   },
+   "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+    "penFaced": 3,
+    "penTaken": 1,
+    "eveningScoreSum": 12,
+    "penScored": 1,
+    "ownGoals": 0,
+    "goals": 2,
+    "games": 18,
+    "cleanSheets": 11,
+    "penMissed": 0,
+    "penConceded": 1,
+    "eveningScoreCount": 2,
+    "penSaved": 2,
+    "csRounds": 13,
+    "losses": 7,
+    "wins": 11,
+    "asRounds": 22,
+    "ties": 6,
+    "displayName": "Eliran Tzabari",
+    "assists": 0,
+    "rounds": 24
+   },
+   "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+    "eveningScoreSum": 18,
+    "assists": 5,
+    "cleanSheets": 11,
+    "penConceded": 3,
+    "penMissed": 1,
+    "penScored": 2,
+    "ownGoals": 0,
+    "penTaken": 3,
+    "penFaced": 4,
+    "goals": 4,
+    "asRounds": 24,
+    "rounds": 26,
+    "games": 18,
+    "losses": 12,
+    "csRounds": 15,
+    "displayName": "Nofar Tzabari",
+    "ties": 5,
+    "penSaved": 1,
+    "eveningScoreCount": 3,
+    "wins": 9
+   },
+   "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+    "cleanSheets": 13,
+    "assists": 1,
+    "losses": 11,
+    "penConceded": 0,
+    "eveningScoreSum": 18,
+    "rounds": 27,
+    "wins": 12,
+    "ownGoals": 0,
+    "goals": 10,
+    "penTaken": 2,
+    "ties": 4,
+    "games": 18,
+    "penFaced": 3,
+    "penScored": 2,
+    "asRounds": 25,
+    "displayName": "הלן צברי",
+    "csRounds": 17,
+    "penSaved": 3,
+    "eveningScoreCount": 3,
+    "penMissed": 0
+   }
+  },
+  "completedRounds": 22,
+  "groupId": "HhzIwmjMl1i5HSOGHt3p",
+  "zeroedAt": 1789661533425,
+  "seasonId": "s1",
+  "no": 1,
+  "startsAt": 1789547794676,
+  "totals": {
+   "guestGoals": 4,
+   "tiedRounds": 9,
+   "rounds": 37,
+   "shootoutRounds": 6,
+   "assists": 13,
+   "goals": 27,
+   "ownGoals": 0,
+   "scorelessRounds": 16,
+   "cleanSheets": 75
+  }
+ },
+ "realRatings": {
+  "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+   "sum": 66.4,
+   "count": 10
+  },
+  "B5KpYO4ILhQD0YVmMng997matof1": {
+   "sum": 58.7,
+   "count": 8
+  },
+  "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+   "sum": 68.7,
+   "count": 10
+  },
+  "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+   "sum": 71.4,
+   "count": 10
+  },
+  "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+   "sum": 68.9,
+   "count": 9
+  },
+  "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+   "sum": 49.8,
+   "count": 7
+  },
+  "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+   "sum": 54.0,
+   "count": 8
+  }
+ },
+ "sentinelEvenings": {
+  "1IdtNEjbEXfiRSqvLrJVn99NsfI2": 6,
+  "B5KpYO4ILhQD0YVmMng997matof1": 8,
+  "CEkRfDs20xSuiW6xmPKlMcx3NoV2": 9,
+  "JoLFRxFr0tTaYfVAXBPwkvT0et62": 5,
+  "K5rSGB4JFTe6n3pm63iVPzexEQr2": 6,
+  "YIZlKWBvvjae3oqgIoAMr9nzQEi1": 7,
+  "alsobLSAFMRXzBDwQCDDlmNJw5R2": 7
+ },
+ "evidence": [
+  {
+   "gameId": "6HMQeD17G8zjGZaffYQJ",
+   "miniGames": 0,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    }
+   }
+  },
+  {
+   "gameId": "79QqBt2YN0egLsW5hKi1",
+   "miniGames": 1,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 8,
+     "miniGames": 1,
+     "real": true
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 8,
+     "miniGames": 1,
+     "real": true
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 6,
+     "miniGames": 1,
+     "real": true
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 8,
+     "miniGames": 1,
+     "real": true
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 8,
+     "miniGames": 1,
+     "real": true
+    }
+   }
+  },
+  {
+   "gameId": "9l51Te5dFqxL72H0lm19",
+   "miniGames": 2,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 6,
+     "miniGames": 1,
+     "real": true
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 6,
+     "miniGames": 1,
+     "real": true
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6.1,
+     "miniGames": 1,
+     "real": true
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 8,
+     "miniGames": 2,
+     "real": true
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 6,
+     "miniGames": 1,
+     "real": true
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 8,
+     "miniGames": 2,
+     "real": true
+    }
+   }
+  },
+  {
+   "gameId": "Kea1X9HYgDS6PxLMt72f",
+   "miniGames": 7,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 6,
+     "miniGames": 3,
+     "real": true
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 6,
+     "miniGames": 4,
+     "real": true
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6,
+     "miniGames": 3,
+     "real": true
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 6,
+     "miniGames": 3,
+     "real": true
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 6,
+     "miniGames": 4,
+     "real": true
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 6,
+     "miniGames": 3,
+     "real": true
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 7.7,
+     "miniGames": 4,
+     "real": true
+    }
+   }
+  },
+  {
+   "gameId": "P7caI9Z8T4Qo9i7TkdsQ",
+   "miniGames": 2,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 8.2,
+     "miniGames": 2,
+     "real": true
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 8.2,
+     "miniGames": 2,
+     "real": true
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 8.2,
+     "miniGames": 2,
+     "real": true
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 9,
+     "miniGames": 2,
+     "real": true
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 7.8,
+     "miniGames": 2,
+     "real": true
+    }
+   }
+  },
+  {
+   "gameId": "T7qRTLR03I19saGuvAi2",
+   "miniGames": 4,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 6,
+     "miniGames": 2,
+     "real": true
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 7.9,
+     "miniGames": 2,
+     "real": true
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 6,
+     "miniGames": 2,
+     "real": true
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 6,
+     "miniGames": 2,
+     "real": true
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 7.9,
+     "miniGames": 3,
+     "real": true
+    }
+   }
+  },
+  {
+   "gameId": "TZ7IWEJWVww2itvIKCd8",
+   "miniGames": 0,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    }
+   }
+  },
+  {
+   "gameId": "VK9w206yPgpdpMyge9dt",
+   "miniGames": 2,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 6,
+     "miniGames": 1,
+     "real": true
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 6,
+     "miniGames": 1,
+     "real": true
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 6,
+     "miniGames": 1,
+     "real": true
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    }
+   }
+  },
+  {
+   "gameId": "Wy5yCNMsxeYqy5huv7Fs",
+   "miniGames": 3,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 7.2,
+     "miniGames": 3,
+     "real": true
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 8,
+     "miniGames": 3,
+     "real": true
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6.7,
+     "miniGames": 1,
+     "real": true
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 6.7,
+     "miniGames": 1,
+     "real": true
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 6.7,
+     "miniGames": 1,
+     "real": true
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 8.2,
+     "miniGames": 3,
+     "real": true
+    }
+   }
+  },
+  {
+   "gameId": "ZMj4mA7rXZEJduLVNdAh",
+   "miniGames": 2,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    }
+   }
+  },
+  {
+   "gameId": "hdirRxLgEXhjdxyHtetA",
+   "miniGames": 4,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 7.2,
+     "miniGames": 3,
+     "real": true
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 8,
+     "miniGames": 3,
+     "real": true
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 7.3,
+     "miniGames": 4,
+     "real": true
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 7.8,
+     "miniGames": 2,
+     "real": true
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 8.9,
+     "miniGames": 3,
+     "real": true
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 7.8,
+     "miniGames": 2,
+     "real": true
+    }
+   }
+  },
+  {
+   "gameId": "kcgHMaHeVLtX3rvKKvKK",
+   "miniGames": 0,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    }
+   }
+  },
+  {
+   "gameId": "nRHEgxVt3jYJksWxervC",
+   "miniGames": 0,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    }
+   }
+  },
+  {
+   "gameId": "qVfvNY9mJijZbk8wNpfx",
+   "miniGames": 0,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    }
+   }
+  },
+  {
+   "gameId": "weK0fe0dMpbw6hlAbDvF",
+   "miniGames": 3,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 6,
+     "miniGames": 1,
+     "real": true
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 7.5,
+     "miniGames": 2,
+     "real": true
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 7.6,
+     "miniGames": 3,
+     "real": true
+    },
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": {
+     "score": 6,
+     "miniGames": 1,
+     "real": true
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 7.8,
+     "miniGames": 3,
+     "real": true
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 7,
+     "miniGames": 2,
+     "real": true
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 6.5,
+     "miniGames": 1,
+     "real": true
+    }
+   }
+  },
+  {
+   "gameId": "yA48XsyCEPCjsvvQgzjJ",
+   "miniGames": 0,
+   "players": {
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "B5KpYO4ILhQD0YVmMng997matof1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    },
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2": {
+     "score": 6,
+     "miniGames": 0,
+     "real": false
+    }
+   }
+  }
+ ]
+}

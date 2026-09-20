@@ -2417,6 +2417,11 @@ export const he = {
   seasonHistoryNoTitles:
     'לא חולקו תארים בעונה הזאת. תואר ניתן רק למי שהגיע לפחות לחצי מערבי המשחק של העונה, ואם לא נספרו בעונה מחזורים כלל — אין על מה לחלק.',
   seasonTitlesShelfTitle: 'תארי עונה',
+  // The line under the cabinet. It has to work for a player holding nine
+  // titles and for one holding none, because the shelf above it draws nothing
+  // in the second case and a bare header over empty space reads as a bug.
+  seasonTitlesCabinetNote:
+    'תארים נצברים כאן בסיום כל עונה, לכל מועדון בנפרד. שם המועדון נשמר כפי שהיה ביום הזכייה.',
   seasonTitlesShelfCount: (n: number) =>
     n === 1 ? 'תואר אחד' : `${n} תארים`,
   seasonTitleWhere: (club: string, no: number) =>
