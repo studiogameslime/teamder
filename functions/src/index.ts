@@ -33,6 +33,7 @@ import { commitRoundInOrder } from './commitProtocol';
 import { eveningScoreServer } from './eveningScoreCore';
 import { occupancyOf, inFillerQuietHours } from './fillerRules';
 import { closeSeason, reopenSeason } from './seasonRollover';
+import { assertSeasonOpenForGame } from './seasonLock';
 import { buildRoundSides } from './roundSides';
 import { seasonSeed } from './seasonSeed';
 import {
@@ -14991,52 +14992,9 @@ async function loadRetroGameContext(
   return { game, groupId };
 }
 
-/**
- * Refuse a statistical correction to an evening whose season has closed (§12).
- *
- * ⚠️ Every path that changes a recorded result must call this. It began life
- * inside the retro-goal loader, guarding one callable; §12 makes it the rule
- * for all of them, so it lives here and is applied at each write path rather
- * than being re-derived — a second copy of this rule is a second place for it
- * to be subtly different.
- *
- * Why it matters, in the retro-goal case that produced it: those writes go
- * straight into `communityPlayerStats` and `communityStats`, which are the
- * SEASON's counters. Correcting a goal from a season that has since closed
- * lands in the wrong season twice over — the sealed archive stays wrong, and
- * the running season is credited with a goal nobody scored in it. Removing one
- * is worse: the counter it decrements may already be at zero, and Firestore's
- * increment goes negative without complaint, so a club table starts showing
- * −1 goals.
- *
- * An UNSTAMPED evening belongs to season 1. The stamp only began being written
- * when seasons shipped, so every evening a club played before that has none —
- * on the one club that has run seasons, 19 of 22. Treating "no stamp" as
- * "current season" let a correction to an evening from June be credited to
- * season 2.
- *
- * A season that is merely WAITING to close is still open to corrections, and
- * that is the whole point of the window (§13): during `pendingClose` the
- * season is still `currentId`, so this guard admits the write.
- */
-function assertSeasonOpenForGame(
-  grp: Record<string, unknown> | undefined,
-  game: Record<string, unknown>,
-): void {
-  const seasons = grp?.seasons as
-    | { enabled?: boolean; currentId?: string; currentNo?: number }
-    | undefined;
-  if (!seasons?.enabled) return;
-  const gameSeason = typeof game.seasonId === 'string' ? game.seasonId : '';
-  const belongsTo =
-    gameSeason || (seasons.currentNo === 1 ? seasons.currentId ?? '' : 's1');
-  if (belongsTo !== seasons.currentId) {
-    throw new HttpsError(
-      'failed-precondition',
-      'closedSeasonGame: this evening belongs to a season that has already closed',
-    );
-  }
-}
+// `assertSeasonOpenForGame` now lives in ./seasonLock, so it can be tested
+// against the code that runs rather than a copy of it.
+
 
 const isAlreadyExists = (err: unknown): boolean => {
   const e = err as { code?: number | string; message?: string };
