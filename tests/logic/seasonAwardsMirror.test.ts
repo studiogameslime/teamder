@@ -70,7 +70,11 @@ describe('and both copies decide the same season', () => {
   });
 
   it('and over the denominators either side of the title it moved', async () => {
-    // 19 versus 22 is not a rounding difference: minPenaltyAttempts(19) is 2
+    // 19 versus 22 is not a rounding difference. It used to move a title via
+    // minPenaltyAttempts (2 against 19, 3 against 22); that gate no longer
+    // applies to anything, and the difference now lands on the MVP gate. The
+    // original note follows, kept because the archives were written under it:
+    // minPenaltyAttempts(19) is 2
     // and (22) is 3, which is the whole of how מלך הפנדלים went to a player
     // with two kicks. Both copies have to move the title together or the app
     // explains a title the server did not award.

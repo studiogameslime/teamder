@@ -98,15 +98,16 @@ describe('the penalty attempt gate', () => {
     expect(minPenaltyAttempts(0)).toBe(2);
   });
 
-  it('a perfect record off one kick wins nothing', () => {
-    const a = computeSeasonAwards(
-      [player('sniper', { games: 10, penTaken: 1, penScored: 1 })],
-      [], 20,
-    );
-    expect(a.penaltyKing).toBeNull();
-  });
-
-  it('but a real sample does win, on rate not volume', () => {
+  // ⚠️ RULE CHANGE, 20.09.2026. These two titles were decided on RATE with a
+  // minimum-attempts gate; they are decided on COUNT with no gate at all.
+  //
+  // The old pair of cases below this one is what the rate rule produced, and
+  // it is worth keeping in view because it is what every archive written
+  // before the change contains: a player who took four penalties and scored
+  // four of them beat a player who took twenty and scored fifteen, because
+  // 100% beats 75%. `minPenaltyAttempts` existed to stop that being decided
+  // off a single kick, which is a prop a count does not need.
+  it('the most penalties scored wins it, not the best percentage', () => {
     const a = computeSeasonAwards(
       [
         player('accurate', { games: 10, penTaken: 4, penScored: 4 }),
@@ -114,18 +115,71 @@ describe('the penalty attempt gate', () => {
       ],
       [], 20,
     );
-    expect(a.penaltyKing?.winners).toEqual(['accurate']);
+    expect(a.penaltyKing?.winners).toEqual(['busy']);
+    expect(a.penaltyKing?.value).toBe(15);
+  });
+
+  it('one scored penalty takes it if nobody scored two', () => {
+    // No minimum sample any more. The thing a minimum protected against — a
+    // perfect rate off one attempt — cannot arise from a count.
+    const a = computeSeasonAwards(
+      [
+        player('sniper', { games: 10, penTaken: 1, penScored: 1 }),
+        player('misser', { games: 10, penTaken: 9, penScored: 0 }),
+      ],
+      [], 20,
+    );
+    expect(a.penaltyKing?.winners).toEqual(['sniper']);
     expect(a.penaltyKing?.value).toBe(1);
+  });
+
+  it('and nobody scoring one means no penalty king at all', () => {
+    const a = computeSeasonAwards(
+      [player('misser', { games: 10, penTaken: 9, penScored: 0 })],
+      [], 20,
+    );
+    expect(a.penaltyKing).toBeNull();
+  });
+
+  it('the keeper title counts SAVES, on the same terms', () => {
+    const a = computeSeasonAwards(
+      [
+        player('shotstopper', { games: 10, penFaced: 3, penSaved: 3 }),
+        player('busy-keeper', { games: 10, penFaced: 30, penSaved: 8 }),
+      ],
+      [], 20,
+    );
+    expect(a.penaltyKeeper?.winners).toEqual(['busy-keeper']);
+    expect(a.penaltyKeeper?.value).toBe(8);
+  });
+
+  it('and attendance is not a condition for either of them', () => {
+    // Two evenings out of twenty, and the season's penalty record.
+    const a = computeSeasonAwards(
+      [
+        player('visitor', { games: 2, penTaken: 6, penScored: 5 }),
+        player('regular', { games: 18, penTaken: 6, penScored: 2 }),
+      ],
+      [], 20,
+    );
+    expect(a.penaltyKing?.winners).toEqual(['visitor']);
   });
 });
 
 describe('a title nobody deserves is not awarded', () => {
-  it('nobody eligible → every title null', () => {
+  // ⚠️ RULE CHANGE, 20.09.2026. Failing the attendance gate used to mean
+  // winning nothing; it now means winning everything except שחקן העונה.
+  it('a player below the attendance gate still wins what he leads', () => {
     const a = computeSeasonAwards(
-      [player('ghost', { games: 2, goals: 9 })],
+      [player('ghost', { games: 2, goals: 9, mvpAvg: 9.5 })],
       [], 20,
     );
-    for (const key of SEASON_TITLE_KEYS) expect(a[key]).toBeNull();
+    expect(a.topScorer?.winners).toEqual(['ghost']);
+    expect(a.topScorer?.value).toBe(9);
+    expect(a.mostLoyal?.winners).toEqual(['ghost']);
+    // …except the one title that is an average, where two evenings out of
+    // twenty is not a season however good they were.
+    expect(a.mvp).toBeNull();
   });
 
   it('everyone on zero → null, not a winner on zero', () => {
@@ -150,16 +204,31 @@ describe('a title nobody deserves is not awarded', () => {
 });
 
 describe('two lucky evenings do not buy a crown', () => {
-  it('the fringe scorer loses to the eligible one', () => {
+  // ⚠️ RULE CHANGE, 20.09.2026, and this is the case the change exists for.
+  // Nine goals in two evenings used to lose מלך השערים to four goals in
+  // twelve, because the fringe player was filtered out before any counting
+  // happened. Leading a count now wins the count.
+  it('the fringe scorer wins it — he scored more', () => {
     const a = computeSeasonAwards(
       [
-        player('fringe', { games: 2, goals: 9 }),   // below the gate
+        player('fringe', { games: 2, goals: 9 }),
         player('regular', { games: 12, goals: 4 }),
       ],
       [], 20,
     );
-    expect(a.topScorer?.winners).toEqual(['regular']);
-    expect(a.topScorer?.value).toBe(4);
+    expect(a.topScorer?.winners).toEqual(['fringe']);
+    expect(a.topScorer?.value).toBe(9);
+  });
+
+  it('but שחקן העונה still goes to the one who turned up', () => {
+    const a = computeSeasonAwards(
+      [
+        player('fringe', { games: 2, mvpAvg: 9.8 }),
+        player('regular', { games: 12, mvpAvg: 7.1 }),
+      ],
+      [], 20,
+    );
+    expect(a.mvp?.winners).toEqual(['regular']);
   });
 });
 
@@ -210,10 +279,24 @@ describe('a player who left the club still wins', () => {
 });
 
 describe('the deadly duo needs two eligible players', () => {
-  it('a regular plus a drop-in does not take it', () => {
+  // ⚠️ RULE CHANGE, 20.09.2026. The pair gate is gone with every other
+  // attendance gate; the THREE-goal floor stays, because the club's chemistry
+  // card shows a הצמד הקטלני under the same name and the same threshold all
+  // year and a season title naming a different pair would read as a mistake.
+  it('a regular plus a drop-in takes it if they combined for the most', () => {
     const a = computeSeasonAwards(
       [player('regular', { games: 12 }), player('dropin', { games: 2 })],
       [pair('regular', 'dropin', { score: 9, together: 2 })],
+      20,
+    );
+    expect(a.deadlyDuo?.winners).toEqual(['regular__dropin']);
+    expect(a.deadlyDuo?.value).toBe(9);
+  });
+
+  it('and the three-goal floor still holds for them', () => {
+    const a = computeSeasonAwards(
+      [player('regular', { games: 12 }), player('dropin', { games: 2 })],
+      [pair('regular', 'dropin', { score: 2, together: 2 })],
       20,
     );
     expect(a.deadlyDuo).toBeNull();

@@ -6375,8 +6375,41 @@ export const onGameRosterChanged = onDocumentWritten(
                 ...(prevIsOlder
                   ? { lastEveningScore: score, lastEveningAt: eveningAt }
                   : {}),
-                eveningScoreSum: admin.firestore.FieldValue.increment(score),
-                eveningScoreCount: admin.firestore.FieldValue.increment(1),
+                // ⚠️ Only a REAL rating is folded into the season mean.
+                //
+                // `eveningScoreServer` opens with `if (gamesPlayed <= 0)
+                // return 6.0` — a sentinel meaning "this player played no
+                // mini-game tonight, there is nothing to rate", not a score of
+                // six. Both increments used to fire unconditionally, so that
+                // sentinel entered the average as though it were a result, and
+                // `eveningScoreCount` counted attendances rather than ratings.
+                //
+                // The effect was not subtle. On the one club that has closed a
+                // season, 109 of its 267 stored evening standings are exactly
+                // 6.0, six of its sixteen evenings ran with no rotation at all
+                // and produced nothing but sentinels, and שחקן העונה ended up
+                // shared by all seven members at 6.0 — the value that means
+                // nothing was recorded.
+                //
+                // The test is `e.rounds > 0`, the same input that decides the
+                // sentinel inside the formula — NOT `score > 6`. A genuine 6.0
+                // is possible (the formula floors at 6 and a bad night with
+                // conceded penalties can reach it), and the product rule is
+                // explicit that a real 6.0 must keep counting. Only the
+                // sentinel is excluded, and it is excluded by its cause rather
+                // than by its value.
+                //
+                // Historical sums cannot be repaired from these two fields —
+                // they are merged increments. They CAN be rebuilt per player
+                // per evening from `games/{id}/roundHistory`, whose `teamA`
+                // and `teamB` arrays say who played each mini-game. That is a
+                // migration, and it is not run from here.
+                ...(e.rounds > 0
+                  ? {
+                      eveningScoreSum: admin.firestore.FieldValue.increment(score),
+                      eveningScoreCount: admin.firestore.FieldValue.increment(1),
+                    }
+                  : {}),
               },
               { merge: true },
             );

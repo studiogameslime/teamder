@@ -191,9 +191,12 @@ describe('the numbers that are deliberately NOT the same number', () => {
   it('the awards denominator is attendance, the season length is the season', () => {
     // Both are on the card and they differ by three on the real club: the
     // archive's `games` are short by the three evenings that ran with no timer
-    // and no rotation. Substituting one for the other is not cosmetic —
-    // minPenaltyAttempts(19) is 2 and (22) is 3, which moved מלך הפנדלים to a
-    // different player, permanently.
+    // and no rotation. Substituting one for the other is not cosmetic. It used
+    // to move מלך הפנדלים, because minPenaltyAttempts(19) is 2 and (22) is 3;
+    // since 20.09.2026 the penalty titles are counts and that gate is gone, so
+    // the consequence now lands on שחקן העונה instead — eligibilityThreshold
+    // is ceil(n/2), which is 10 against 19 and 11 against 22, and that is a
+    // different set of eligible players.
     const bestAttendance = Math.max(
       ...Object.values(ARCHIVED_PLAYER_ROWS).map((r) => r.games),
     );

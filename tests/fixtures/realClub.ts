@@ -181,7 +181,10 @@ export const PLAYER_ROWS: Record<
  * increment for them. So the archive's best attendance is 19 while the season
  * it belongs to is 22 — which is why the awards denominator and the season's
  * length are two separate numbers on the card, and why substituting either for
- * the other moves a real title (minPenaltyAttempts(19) is 2, (22) is 3).
+ * the other moves a real title. Under the pre-20.09.2026 rules that was
+ * מלך הפנדלים (minPenaltyAttempts(19) is 2, (22) is 3); the penalty titles
+ * are counts now, and the denominator instead decides who is eligible for
+ * שחקן העונה (ceil(19/2) = 10 against ceil(22/2) = 11).
  */
 export const ARCHIVED_PLAYER_ROWS: Record<string, { games: number }> = {
   matan: { games: 19 },
