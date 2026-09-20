@@ -2463,12 +2463,33 @@ export const he = {
   seasonSectionChampions: 'אלופי העונה',
   // The number a title was won on. A percentage for the two rate titles, a
   // count for the rest — "62%" and "31 שערים" are both the answer to "on what?"
+  // How much of the season a RATING was really built from.
+  //
+  // שחקן העונה is an average, and an average is only as honest as the nights
+  // it covers. On the one closed season the club has, the rating exists for
+  // nine of twenty-two evenings — the accumulator that feeds it shipped two
+  // days before the season ended — so "ציון 7.7" read as a whole-season figure
+  // and is not one.
+  //
+  // Deliberately NOT the season-level `partialData` chip. That says the season
+  // is partial, and this season's goals, assists, wins and attendance are
+  // complete; only the rating is short, so only the rating says so, and it
+  // says so right next to itself.
+  seasonTitleCoverage: (rated: number, of: number) =>
+    `מבוסס על ${rated} מתוך ${of} ערבי העונה שבהם נאספו דירוגים`,
+
   seasonTitleValue: (key: string, value: number) => {
     const c = (one: string, many: string) => count(value, one, many);
     switch (key) {
+      // ⚠️ COUNTS since 20.09.2026, not rates (§16). These two were decided
+      // on a percentage behind a minimum-attempts gate and are now decided on
+      // how many were scored and how many were saved. The formatter was left
+      // behind by that change for a day: a winner on 2 penalties rendered as
+      // "200%".
       case 'penaltyKing':
+        return c('פנדל אחד', 'פנדלים');
       case 'penaltyKeeper':
-        return `${Math.round(value * 100)}%`;
+        return c('עצירה אחת', 'עצירות');
       case 'mvp':
         // With its unit. A bare "7.3" appears on three screens and names no
         // scale — nobody can tell whether it is out of 10, out of 100, or a
@@ -2498,10 +2519,11 @@ export const he = {
       // Not 'מהפנדלים שבעט' / 'שעצר': the poster's subject is whoever won the
       // title, and on the one closed season that is a woman. The rate says the
       // same thing with no verb to gender.
+      // Counts now, same as seasonTitleValue — see the note there.
       case 'penaltyKing':
-        return { big: `${Math.round(value * 100)}%`, unit: 'הצלחה בפנדלים' };
+        return { big: String(value), unit: value === 1 ? 'פנדל' : 'פנדלים' };
       case 'penaltyKeeper':
-        return { big: `${Math.round(value * 100)}%`, unit: 'עצירה בפנדלים' };
+        return { big: String(value), unit: value === 1 ? 'עצירה' : 'עצירות' };
       case 'mvp':
         return { big: value.toFixed(1), unit: 'ציון העונה' };
       case 'topScorer':

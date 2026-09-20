@@ -18,11 +18,21 @@ import { parseSeasonTable, type FinishedSeasonTable } from '@/utils/seasonArchiv
 
 import type { ChampionshipRow } from '@/utils/championship';
 import { mockPlayers } from '@/data/mockData';
+import { readSeasonCoverage } from '@/utils/seasonCoverage';
 
 export { parseSeasonTable, type FinishedSeasonTable };
 
 export interface SeasonWinner {
   key: SeasonTitleKey;
+  /**
+   * How much of the season a RATING was really built from — present only on
+   * titles whose value is an average, and only when the archive recorded it.
+   *
+   * ⚠️ OPTIONAL by design. Every season closed before 20.09.2026 has winners
+   * with no such field, and they must keep rendering exactly as they do now.
+   * Absent means "no claim either way", never "zero of zero".
+   */
+  coverage?: { rated: number; of: number };
   /** Every holder — ties are shared, never broken. */
   names: string[];
   value: number;
@@ -72,7 +82,13 @@ function fromCard(d: Record<string, unknown>): FinishedSeason | null {
       ? x.names.filter((n): n is string => typeof n === 'string')
       : [];
     if (names.length === 0) continue;
-    winners.push({ key: key as SeasonTitleKey, names, value: num(x.value) });
+    const coverage = readSeasonCoverage(x);
+    winners.push({
+      key: key as SeasonTitleKey,
+      names,
+      value: num(x.value),
+      ...(coverage ? { coverage } : {}),
+    });
   }
   return {
     seasonId,
@@ -232,3 +248,4 @@ function mockTable(): FinishedSeasonTable {
     },
   };
 }
+

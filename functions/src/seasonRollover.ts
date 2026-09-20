@@ -558,6 +558,37 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     args.completedRounds,
   );
   const awards = computeSeasonAwards(awardLines, awardPairs, seasonEvenings);
+
+  /**
+   * How much of the season שחקן העונה's average is really built from.
+   *
+   * The title is a MEAN of evening scores, and a mean is only as honest as the
+   * nights it covers. `eveningScoreCount` counts the evenings a player was
+   * actually rated — since 20.09.2026 it excludes the "no mini-game tonight"
+   * sentinel — and it can sit well below the season's length: on the one club
+   * that has closed a season, nine of twenty-two, because the accumulator
+   * feeding it shipped two days before the season ended.
+   *
+   * Recorded on the title itself, not as the season-level `partialData` flag.
+   * That flag says the SEASON is partial, and a season whose goals, assists,
+   * wins and attendance were all collected in full is not — only its rating is
+   * short, so only its rating carries the note.
+   *
+   * Undefined when the two numbers would make no claim worth printing: no
+   * winner, no season length, or a rating that already covers every evening.
+   */
+  const mvpCoverage = ((): { rated: number; of: number } | undefined => {
+    const winners = awards.mvp?.winners ?? [];
+    if (!winners.length || args.completedRounds <= 0) return undefined;
+    // The holders share a value, so any of them answers "how many nights is
+    // this built on"; the largest is the least alarming true answer.
+    const rated = Math.max(
+      0,
+      ...winners.map((uid) => num(players[uid]?.eveningScoreCount)),
+    );
+    if (rated <= 0 || rated >= args.completedRounds) return undefined;
+    return { rated, of: args.completedRounds };
+  })();
   /**
    * True only when the archive already existed and the wipe never finished —
    * i.e. this invocation is picking up after a pass that died.
@@ -640,7 +671,14 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       totals,
       players,
       pairs,
-      awards,
+      // The awards, plus the rating's coverage on the one title that is an
+      // average. Written here as well as on the card because the two are read
+      // by different screens: the hall of fame reads `seasonCards.winners`,
+      // the personal summary reads `seasonSummary.awards`, and a note that
+      // appears on one and not the other is worse than none.
+      awards: mvpCoverage && awards.mvp
+        ? { ...awards, mvp: { ...awards.mvp, coverage: mvpCoverage } }
+        : awards,
     });
   } catch (err) {
     const code = (err as { code?: number | string }).code;
@@ -712,8 +750,12 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   // half-wiped, so rewriting the card from them would replace a correct sealed
   // record with a wrong one — the archive is protected by create(), the card
   // was not.
-  const cardWinners: Array<{ key: string; names: string[]; value: number }> =
-    [];
+  const cardWinners: Array<{
+    key: string;
+    names: string[];
+    value: number;
+    coverage?: { rated: number; of: number };
+  }> = [];
   for (const [key, award] of Object.entries(resumedAwards ?? awards)) {
     if (!award || !award.winners.length) continue;
     cardWinners.push({
@@ -729,6 +771,8 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
           .join(' + '),
       ),
       value: award.value,
+      // Only on the title whose value is an average.
+      ...(key === 'mvp' && mvpCoverage ? { coverage: mvpCoverage } : {}),
     });
   }
   // Written on BOTH paths now.

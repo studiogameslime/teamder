@@ -24,14 +24,18 @@ import {
 } from '@/utils/seasonPersonal';
 import type { GroupSeasons, SeasonTitleKey, UserId } from '@/types';
 import { SEASON_TITLE_KEYS } from '@/utils/seasonAwards';
+import { readSeasonCoverage } from '@/utils/seasonCoverage';
 
 /** A title this player holds in the season being shown. */
 export interface SeasonTitleWon {
   key: SeasonTitleKey;
-  /** The number it was won on: 31 goals, 8.37 average, 62% saved. */
+  /** The number it was won on: 31 goals, 8.37 average, 5 penalties saved.
+   *  (Not "62% saved" — the penalty titles became counts on 20.09.2026.) */
   value: number;
   /** Other holders — ties are shared, never broken. */
   sharedWith: number;
+  /** See SeasonTitleAwarded.coverage. Optional for the same reason. */
+  coverage?: { rated: number; of: number };
 }
 
 /** A title the season awarded, with the names of everyone holding it. */
@@ -41,6 +45,15 @@ export interface SeasonTitleAwarded {
   value: number;
   /** Whether the reader is one of the holders — the row is highlighted. */
   mine: boolean;
+  /**
+   * How much of the season a RATING was really built from. Present only on
+   * titles whose value is an average, and only when the archive recorded it.
+   *
+   * ⚠️ OPTIONAL. Every season closed before 20.09.2026 has awards with no such
+   * field and must keep rendering exactly as it does now. Absent means "no
+   * claim either way", never "zero of zero".
+   */
+  coverage?: { rated: number; of: number };
 }
 
 /** Ceiling on the season picker. A club playing weekly for twenty years on
@@ -204,7 +217,12 @@ function titlesFor(
     const holders = a.winners.filter((w): w is string => typeof w === 'string');
     const mine = holders.some((w) => w === me || w.split('__').includes(me));
     if (!mine) continue;
-    out.push({ key, value: num(a.value), sharedWith: Math.max(0, holders.length - 1) });
+    out.push({
+      key,
+      value: num(a.value),
+      sharedWith: Math.max(0, holders.length - 1),
+      ...(readSeasonCoverage(a) ? { coverage: readSeasonCoverage(a) } : {}),
+    });
   }
   return out;
 }
@@ -237,6 +255,7 @@ function allTitlesOf(
       ),
       value: num(a.value),
       mine: holders.some((w) => w === me || w.split('__').includes(me)),
+      ...(readSeasonCoverage(a) ? { coverage: readSeasonCoverage(a) } : {}),
     });
   }
   return out;

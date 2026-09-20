@@ -124,18 +124,59 @@ describe('the season title values count in Hebrew too', () => {
     expect(he.seasonTitleValue('mostLoyal', 24)).toBe('24 מחזורים');
   });
 
-  it('rates and averages are not counted things', () => {
-    expect(he.seasonTitleValue('penaltyKing', 0.625)).toBe('63%');
+  // ⚠️ The penalty titles left this group on 20.09.2026 (§16). They were
+  // decided on a percentage behind a minimum-attempts gate; they are decided
+  // on how many were scored and how many were saved. The formatter was left
+  // behind by that change for a day, so a winner on two penalties rendered as
+  // "200%" — the number was right and the unit was a leftover.
+  it('the averages are not counted things', () => {
     // Named, not bare. A lone "8.4" says nothing about its scale, and it is
     // printed on three separate screens.
     expect(he.seasonTitleValue('mvp', 8.37)).toBe('ציון 8.4');
   });
 
+  it('but the penalty titles are counts now, with their own units', () => {
+    expect(he.seasonTitleValue('penaltyKing', 2)).toBe('2 פנדלים');
+    expect(he.seasonTitleValue('penaltyKeeper', 3)).toBe('3 עצירות');
+    // Not "שערים": a scored penalty is a penalty, and the title sits beside
+    // מלך השערים on the same shelf.
+    expect(he.seasonTitleValue('penaltyKing', 2)).not.toMatch(/שערים/);
+  });
+
   it('no title value can ever print "1 <plural>"', () => {
     for (const k of ['topScorer', 'topAssister', 'topWinner', 'mostLoyal',
-                     'cleanSheetKing', 'deadlyDuo']) {
+                     'cleanSheetKing', 'deadlyDuo', 'penaltyKing', 'penaltyKeeper']) {
       expect(he.seasonTitleValue(k, 1)).not.toMatch(/^1 /);
     }
+    expect(he.seasonTitleValue('penaltyKing', 1)).toBe('פנדל אחד');
+    expect(he.seasonTitleValue('penaltyKeeper', 1)).toBe('עצירה אחת');
+  });
+
+  // ── The coverage note (§ partial ratings) ────────────────────────────
+  //
+  // שחקן העונה is an average, and an average is only as honest as the nights
+  // it covers. On the one season this club has closed, the rating exists for
+  // nine of twenty-two evenings, so "ציון 7.7" reads as a whole-season figure
+  // and is not one.
+  it('says which evenings the rating is built from', () => {
+    expect(he.seasonTitleCoverage(9, 22)).toBe(
+      'מבוסס על 9 מתוך 22 ערבי העונה שבהם נאספו דירוגים',
+    );
+  });
+
+  it('names the numerator and the denominator the right way round', () => {
+    const t = he.seasonTitleCoverage(9, 22);
+    // The trap this guards is the one that makes the sentence a lie: 22 of 9.
+    expect(t.indexOf('9')).toBeLessThan(t.indexOf('22'));
+    expect(t).not.toContain('22 מתוך 9');
+  });
+
+  it('and never claims the rating is the season', () => {
+    // The whole point: the note must not read as "the average of the season's
+    // 22 evenings". It says which nights were measured, not how long the
+    // season was.
+    expect(he.seasonTitleCoverage(9, 22)).toContain('מתוך 22');
+    expect(he.seasonTitleCoverage(9, 22)).toContain('שבהם נאספו דירוגים');
   });
 
   it('the peer lines too', () => {

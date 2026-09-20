@@ -223,6 +223,23 @@ function Cabinet({
                     <Text style={styles.slotValue} numberOfLines={1}>
                       {he.seasonTitleValue(key, w.value)}
                     </Text>
+                    {/* What the rating actually covers, directly beneath it.
+                        שחקן העונה is an average, and on this club's only
+                        closed season the rating exists for nine of its
+                        twenty-two evenings — the accumulator shipped two days
+                        before it ended. "ציון 7.7" reads as a whole-season
+                        figure and is not one.
+                        Under the number rather than in the season's chip row:
+                        a chip beside "נתונים חלקיים" would say the season is
+                        partial, and its goals, assists, wins and attendance
+                        are complete. Absent on every title that carries no
+                        coverage, which is all of them until a season is closed
+                        under the new rules. */}
+                    {w.coverage ? (
+                      <Text style={styles.slotCoverage} numberOfLines={3}>
+                        {he.seasonTitleCoverage(w.coverage.rated, w.coverage.of)}
+                      </Text>
+                    ) : null}
                     {/* The metal, in words. TIER_NAME has existed since the
                         medal was built and nothing ever rendered it, which left
                         ארד and פלטינה distinguishable only by hue — on a 54pt
@@ -647,6 +664,18 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontVariant: ['tabular-nums'],
     textAlign: 'center',
+  },
+  // The coverage note under a rating. Quieter than the value it qualifies and
+  // allowed to wrap — it is a sentence, not a figure.
+  slotCoverage: {
+    ...typography.caption,
+    fontSize: 9,
+    lineHeight: 12,
+    color: colors.textMuted,
+    textAlign: 'center',
+    writingDirection: 'rtl',
+    marginTop: 2,
+    paddingHorizontal: 2,
   },
   slotTier: {
     ...typography.caption,

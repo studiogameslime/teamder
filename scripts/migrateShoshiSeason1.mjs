@@ -293,10 +293,18 @@ for (const f of ratingFixes) {
     eveningScoreCount: f.to.count,
   };
 }
+// The coverage note rides on the MVP award as well as on the card: the hall of
+// fame reads `seasonCards.winners` and the personal summary reads
+// `seasonSummary.awards`, and a note on one and not the other is worse than
+// none. Same shape `closeSeason` now writes for future seasons.
+const freshWithCoverage =
+  mvpCoverage && fresh.mvp
+    ? { ...fresh, mvp: { ...fresh.mvp, coverage: mvpCoverage } }
+    : fresh;
 writes.push({
   update: {
     name: docPath(`seasonSummary/${GID}__${SID}`),
-    fields: { awards: F(fresh), players: F(nextPlayers) },
+    fields: { awards: F(freshWithCoverage), players: F(nextPlayers) },
   },
   updateMask: { fieldPaths: ['awards', 'players'] },
 });

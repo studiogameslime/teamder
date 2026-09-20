@@ -239,6 +239,15 @@ function TitleRow({ title }: { title: SeasonTitleWon }) {
             {he.seasonTitleSharedWith(title.sharedWith)}
           </Text>
         ) : null}
+        {/* What the rating covers, on the reader's own title. The number is
+            the loudest claim this row makes and it is an average; on this
+            club's only closed season it is an average of nine evenings out of
+            twenty-two. Absent on every title that carries no coverage. */}
+        {title.coverage ? (
+          <Text style={styles.titleShared}>
+            {he.seasonTitleCoverage(title.coverage.rated, title.coverage.of)}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -261,9 +270,16 @@ function ChampionRow({ title }: { title: SeasonTitleAwarded }) {
       </Text>
       {/* The number it was won on. Fetched all along and thrown away — and it
           is what makes a title an argument rather than a label. */}
-      <Text style={styles.championValue}>
-        {he.seasonTitleValue(title.key, title.value)}
-      </Text>
+      <View>
+        <Text style={styles.championValue}>
+          {he.seasonTitleValue(title.key, title.value)}
+        </Text>
+        {title.coverage ? (
+          <Text style={styles.championCoverage} numberOfLines={2}>
+            {he.seasonTitleCoverage(title.coverage.rated, title.coverage.of)}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -875,6 +891,18 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontVariant: ['tabular-nums'],
     flexShrink: 0,
+  },
+  // The coverage note beside a champion's number. Quieter than the value, and
+  // allowed to wrap — it is a sentence, not a figure.
+  championCoverage: {
+    ...typography.caption,
+    fontSize: 9,
+    lineHeight: 12,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+    maxWidth: 120,
+    marginTop: 2,
   },
   titleShared: {
     ...typography.caption,
