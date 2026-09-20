@@ -469,7 +469,14 @@ export function SeasonsSettings({
         setOpen(false);
         return;
       }
-      appAlert(he.seasonsDisableTitle, he.seasonsDisableBody, [
+      // Named season + evening count, same as the end-now dialog. Since §9
+      // this button closes the season, so it is the last thing an admin reads
+      // before nine titles are handed out for good.
+      const playedNow = Math.max(0, seasons?.playedRounds ?? 0);
+      appAlert(
+        he.seasonsDisableTitle,
+        he.seasonsDisableBodyOf(thisSeasonNo, playedNow),
+        [
         {
           text: he.seasonsDisableConfirm,
           style: 'destructive',
@@ -482,9 +489,10 @@ export function SeasonsSettings({
             }),
         },
         { text: he.cancel, style: 'cancel' },
-      ]);
+        ],
+      );
     },
-    [live, groupId, run],
+    [live, groupId, run, seasons?.playedRounds, thisSeasonNo],
   );
 
   const enable = useCallback(() => {

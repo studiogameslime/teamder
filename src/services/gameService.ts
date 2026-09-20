@@ -7289,6 +7289,32 @@ export const gameService = {
       if (!snap.exists()) return;
       const data = snap.data();
       if (data.status === 'finished' || data.status === 'cancelled') return;
+
+      // §4 — the season's 24-hour correction window blocks the START of an
+      // evening, club-wide.
+      //
+      // The enforcement is in firestore.rules and stays there; this check
+      // exists so the admin gets a sentence instead of nothing at all. The
+      // three callers of this function all swallow their errors into the log,
+      // so without it the timer's play button would simply do nothing, twice,
+      // and then the admin would put the phone down.
+      //
+      // One extra read, on a tap that happens once per evening.
+      const gid = typeof data.groupId === 'string' ? data.groupId : '';
+      if (gid) {
+        try {
+          const grp = await getDoc(docs.group(gid));
+          const seasons = grp.data()?.seasons as
+            | { pendingClose?: { closeAt?: number } | null }
+            | undefined;
+          if (seasons?.pendingClose) throw new Error('SEASON_CLOSING');
+        } catch (err) {
+          // Only OUR signal propagates. A failed club read must not stop an
+          // evening starting — the rules are the enforcement, and a network
+          // blip here would otherwise block a game the server would allow.
+          if ((err as Error)?.message === 'SEASON_CLOSING') throw err;
+        }
+      }
       const hasLive =
         data.liveMatch && typeof data.liveMatch === 'object';
       if (!hasLive) {

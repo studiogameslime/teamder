@@ -2116,9 +2116,31 @@ export const he = {
     'היעד הנוכחי של המועדון לא אחת מהאפשרויות כאן. בחירה תחליף אותו.',
   seasonsSaveTargetCta: 'עדכן את יעד העונה',
   seasonsTargetSavedToast: 'יעד העונה עודכן',
+  // ⚠️ This copy said the OPPOSITE until 20.09.2026: "העונה שרצה עכשיו לא
+  // תיסגר ולא יחולקו עליה תארים". Since §9 the disable ENDS the running season
+  // — archive, titles and all — so the old sentence would have had an admin
+  // hand out nine titles believing they had done nothing of the kind.
+  //
+  // Four things have to be said, because each is irreversible in its own way:
+  // the season ends, the titles are awarded, the season's data locks, and the
+  // history survives. The season and its evening count are named too, the way
+  // the end-now dialog names them: the paragraph alone reads identically for a
+  // season holding nothing and one holding thirty evenings.
+  // §4 — why the timer's play button refused. The admin is not being told off;
+  // they are being told the season is mid-close and given the way forward,
+  // because there is one.
+  seasonClosingBlockTitle: 'העונה בדרך להיסגר',
+  seasonClosingBlockBody:
+    'העונה הגיעה ליעד שלה ונמצאת בחלון של 24 שעות לתיקונים. אפשר לתקן תוצאות, שערים והשתתפות של מחזורים קיימים — אבל אי אפשר להתחיל מחזור חדש עד שהעונה תיסגר.\n\nרוצים להתחיל כבר עכשיו? סגרו את העונה מיד ממסך הגדרות העונות, ואז אפשר להתחיל את המחזור הבא.\n\nאם העונה עוד לא נגמרה מבחינתכם — האריכו אותה מאותו מסך, והחסימה תוסר.',
   seasonsDisableTitle: 'לכבות עונות?',
-  seasonsDisableBody:
-    'המועדון יחזור לטבלה אחת שלא מתאפסת. העונה שרצה עכשיו לא תיסגר ולא יחולקו עליה תארים — אם רציתם לסגור אותה, יש לזה כפתור נפרד.\n\nעונות שכבר הסתיימו נשארות בארכיון, ואם תפעילו עונות שוב הספירה תמשיך מהמקום שבו עצרה.',
+  seasonsDisableBodyOf: (no: number, played: number) =>
+    `${count(played, 'מחזור אחד', 'מחזורים')} בעונה ${no}.\n\n` +
+    'כיבוי העונות מסיים את העונה הפעילה עכשיו:\n' +
+    '• התארים של העונה מחולקים לפי הנתונים שנצברו עד הרגע הזה\n' +
+    '• נתוני העונה ננעלים — אחריה אי אפשר לתקן תוצאות, שערים או השתתפות\n' +
+    '• העונה נשמרת בארכיון ותמיד אפשר לחזור ולראות אותה\n' +
+    '• כל העונות הקודמות, התארים והסטטיסטיקה המצטברת בפרופיל נשמרים\n\n' +
+    'המועדון יחזור לטבלה אחת שלא מתאפסת. אם תפעילו עונות שוב תיפתח עונה חדשה במספר הבא, והתקופה שבה העונות היו כבויות תישאר בנתוני כל הזמנים בלבד.',
   seasonsDisableConfirm: 'כבה עונות',
   seasonsDisabledToast: 'העונות כובו במועדון',
   seasonsOffButArchived:
@@ -2188,8 +2210,13 @@ export const he = {
     'כל מה שהמועדון שיחק עד היום ייסגר כעונה שהסתיימה: יחולקו עליה תארים, והטבלה תתחיל מאפס.\n\nהעונה תישמר בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאם טעיתם אפשר לבטל את הסגירה מאותו מסך, כל עוד לא נסגרה עונה נוספת אחריה.',
   seasonsSealConfirmCta: 'סגור והתחל מאפס',
   seasonsEndConfirmTitle: 'לסיים את העונה?',
+  // ⚠️ The last paragraph used to promise "אם טעיתם אפשר לבטל את הסגירה מאותו
+  // מסך". That button is gone (§12): a closed season is final, and the reopen
+  // is an operator maintenance hook now. A confirmation that offers an undo
+  // which does not exist is worse than one that offers none — it is the
+  // sentence that makes someone press the button.
   seasonsEndConfirmBody:
-    'העונה תיסגר עכשיו: הטבלה של המועדון מתאפסת והתארים מחולקים.\n\nהעונה נשמרת בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאם טעיתם אפשר לבטל את הסגירה מאותו מסך, כל עוד לא נסגרה עונה נוספת אחריה.',
+    'העונה תיסגר עכשיו: הטבלה של המועדון מתאפסת והתארים מחולקים.\n\nהעונה נשמרת בארכיון ותמיד אפשר לחזור אליה ולראות אותה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\n⚠️ הסגירה סופית. אחריה אי אפשר לתקן תוצאות, שערים או השתתפות של העונה הזו.',
   seasonsCadenceDate: 'אחרי פרק זמן',
   seasonsCadenceRounds: 'אחרי מספר מחזורים',
   seasonsMonthsLabel: (n: number) => count(n, 'חודש אחד', 'חודשים'),

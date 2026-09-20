@@ -210,6 +210,54 @@ describe('a game whose liveMatch is present and NULL', () => {
   });
 });
 
+// The end state of "disable while a window is open", which is the shape that
+// bricked the club before `disableClubSeasons` learned to clear the stamp.
+//
+// After the fix the server writes `enabled:false` AND deletes `pendingClose`
+// in the same call, so the club must be able to play again immediately. These
+// cases pin the two halves of that end state as the rules see them.
+describe('after seasons are switched off mid-window', () => {
+  test('a club left with enabled:false and NO stamp can start', async () => {
+    await env.clearFirestore();
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'groups', GID), {
+        name: 'club', adminIds: [ADMIN], playerIds: [ADMIN], createdAt: 1,
+        seasons: { enabled: false, currentId: 's3', currentNo: 3, count: 2 },
+      });
+      await setDoc(doc(db, 'games', GAME), {
+        groupId: GID, createdBy: ADMIN, status: 'open', title: 'e',
+        visibility: 'community', players: [ADMIN], participantIds: [ADMIN],
+        waitlist: [], pending: [], maxPlayers: 12, startsAt: 2, createdAt: 1,
+      });
+    });
+    assert.equal(await write(ADMIN, START), true);
+  });
+
+  test('and one left with the stamp still on it cannot — the bug, pinned', async () => {
+    // Kept as a test rather than deleted with the bug: the rules block on the
+    // stamp regardless of `enabled`, and that is deliberate. It is why every
+    // path that turns seasons off, advances a season or reopens one has to
+    // delete the field, and why the sweep cleans a stale one. If a future
+    // change leaves a stamp behind, this is what the club experiences.
+    await env.clearFirestore();
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'groups', GID), {
+        name: 'club', adminIds: [ADMIN], playerIds: [ADMIN], createdAt: 1,
+        seasons: { enabled: false, currentId: 's3', currentNo: 3, count: 2,
+                   pendingClose: OPEN_WINDOW },
+      });
+      await setDoc(doc(db, 'games', GAME), {
+        groupId: GID, createdBy: ADMIN, status: 'open', title: 'e',
+        visibility: 'community', players: [ADMIN], participantIds: [ADMIN],
+        waitlist: [], pending: [], maxPlayers: 12, startsAt: 2, createdAt: 1,
+      });
+    });
+    assert.equal(await write(ADMIN, START), false);
+  });
+});
+
 describe('the rule is the presence of the field, not its contents', () => {
   test('a stamp naming an older season still blocks', async () => {
     await seed({ ...OPEN_WINDOW, seasonId: 's1' });

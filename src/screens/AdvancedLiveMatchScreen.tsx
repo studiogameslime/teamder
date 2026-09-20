@@ -925,6 +925,11 @@ export function AdvancedLiveMatchScreen() {
       });
       beginFillFlow(prep.skeleton, prep.draft, prep.baseTeams);
     } catch (err) {
+      // §4 — the season is mid-close and the club may not start an evening.
+      if ((err as Error)?.message === 'SEASON_CLOSING') {
+        appAlert(he.seasonClosingBlockTitle, he.seasonClosingBlockBody);
+        return;
+      }
       logError('liveStartRound', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] startRound failed', err);
     } finally {
@@ -1032,6 +1037,11 @@ export function AdvancedLiveMatchScreen() {
         isAdmin,
       });
     } catch (err) {
+      // §4 — the season is mid-close and the club may not start an evening.
+      if ((err as Error)?.message === 'SEASON_CLOSING') {
+        appAlert(he.seasonClosingBlockTitle, he.seasonClosingBlockBody);
+        return;
+      }
       logError('liveTimerStart', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] startTimer failed', err);
     } finally {

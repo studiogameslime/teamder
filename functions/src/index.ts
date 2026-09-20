@@ -17499,14 +17499,42 @@ export const endSeasonNow = onCall(
     });
 
     // The next season inherits the same rules; the admin may change them.
-    const nextNo = (seasons.currentNo ?? 1) + 1;
-    await ref.set(
+    //
+    // ⚠️ TRANSACTIONAL, with the same pre-flight `performSeasonClose` carries,
+    // and this is not symmetry for its own sake.
+    //
+    // This used to be a plain `set` deriving `count` and `currentNo` from the
+    // snapshot taken at the top of the callable. The hourly sweep can advance
+    // the same club between that snapshot and this write — it is the exact
+    // race of an admin pressing "סיים עונה עכשיו" in the minute the sweep runs
+    // — and the plain set would then land with the OLD numbers and overwrite
+    // the sweep's advance, rewinding the club by a season.
+    //
+    // The damage does not stop there. The rewound season's archive already
+    // exists, and `closeSeason` latches on `create()`, so the next close would
+    // find it and abandon: a club stuck on a season that can never close
+    // again. The archive and the titles themselves are safe from doubling —
+    // that same latch sees to it — so this is purely about the lifecycle.
+    //
+    // Re-reading inside the transaction fixes both halves: if the club has
+    // already moved on, this writes nothing and the admin's close is simply
+    // the one that lost the race, which is the correct outcome.
+    const roundsAtStartNext = await sealedEveningsOf(groupId);
+    const advanced = await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(ref);
+      const sea = (fresh.data() as { seasons?: LiveSeasonsBlock } | undefined)?.seasons;
+      // Someone else closed it first — or the club vanished. Their advance
+      // stands; ours writes nothing.
+      if (!sea || sea.currentId !== seasons.currentId) return false;
+      const nextNo = (sea.currentNo ?? 1) + 1;
+      tx.set(
+      ref,
       {
         seasons: {
           currentNo: nextNo,
           currentId: `s${nextNo}`,
           startedAt: now,
-          roundsAtStart: await sealedEveningsOf(groupId),
+          roundsAtStart: roundsAtStartNext,
           playedRounds: 0,
           reopenedAt: 0,
           // Same length, measured from now — an inherited end date is already
@@ -17526,11 +17554,22 @@ export const endSeasonNow = onCall(
           // let them play again.
           pendingClose: admin.firestore.FieldValue.delete(),
           dueBlockedSince: admin.firestore.FieldValue.delete(),
-          count: (seasons.count ?? 0) + 1,
+          // From the FRESH read, not the caller's snapshot — the whole point
+          // of the transaction.
+          count: (sea.count ?? 0) + 1,
         },
       },
       { merge: true },
-    );
+      );
+      return true;
+    });
+    if (!advanced) {
+      console.log(
+        '[season] endSeasonNow: club already advanced by another path',
+        groupId,
+        seasons.currentId,
+      );
+    }
     if (result.archived) {
       await announceSeasonClosed({
         groupId,
