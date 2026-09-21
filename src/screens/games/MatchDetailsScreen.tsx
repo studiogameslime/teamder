@@ -1588,11 +1588,28 @@ export function MatchDetailsScreen() {
             `https://www.google.com/maps/search/?api=1&query=${fLat},${fLng}`,
           ),
         )
+        // A third rung, and the one that actually catches this in the wild.
+        //
+        // Reported from production (Pulse vxyx0r): "Unable to open URL:
+        // https://www.google.com/maps/search/?api=1&query=32.05,34.91". Waze
+        // was not installed AND nothing claimed the https link — which is an
+        // ordinary state on a device with no browser set as default, not a
+        // bug. `geo:` is the Android intent every maps app registers for, so
+        // it succeeds where a web URL has nobody to hand it to.
+        .catch(() =>
+          Linking.openURL(`geo:${fLat},${fLng}?q=${fLat},${fLng}`),
+        )
         .catch((err) => {
           logError('matchOpenNavigation', err, {
             screen: 'MatchDetailsScreen',
             gameId: game.id,
           });
+          // …and TELL them. This path logged and returned, so the button did
+          // nothing at all and said nothing about it — while the text-query
+          // fallback thirty lines below has shown a toast all along. Same
+          // failure, two behaviours, and the silent one was on the path most
+          // games take.
+          toast.error(he.matchDetailsCannotOpenNavigation);
         });
       return;
     }
@@ -1625,6 +1642,9 @@ export function MatchDetailsScreen() {
           `https://www.google.com/maps/search/?api=1&query=${q}`,
         ),
       )
+      // Same third rung as the precise path above — a text query works as a
+      // `geo:` intent too, via its `q` parameter.
+      .catch(() => Linking.openURL(`geo:0,0?q=${q}`))
       .catch((err) => {
         logError('matchOpenNavigation', err, {
           screen: 'MatchDetailsScreen',

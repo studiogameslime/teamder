@@ -266,6 +266,18 @@ export function useGameEvents(
             : '';
         if (code === 'permission-denied') {
           onAccessBlockedRef.current?.();
+          // …and do NOT report it. This is a state the code two lines above
+          // handles on purpose — the viewer lost read access mid-view, an
+          // admin removed them from the game — and the screen pivots to the
+          // blocked view for it. Reporting a handled state as an error put
+          // four entries in the production inbox for something working
+          // exactly as designed, and every one of them cost a triage.
+          //
+          // A permission denial that is NOT this — a real rules gap — still
+          // surfaces, because it arrives on a path that has no
+          // onAccessBlocked handler to pivot to.
+          if (__DEV__) console.warn('[useGameEvents] access lost mid-view', gameId);
+          return;
         }
         logError('useGameEventsSnapshot', err, { gameId });
         if (__DEV__) console.warn('[useGameEvents] snapshot error', err);

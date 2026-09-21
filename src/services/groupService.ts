@@ -622,7 +622,18 @@ export const groupService = {
       return mockPublicGroups.find((g) => g.id === groupId) ?? null;
     }
     try {
-      const snap = await getDoc(docs.groupPublic(groupId));
+      // ⚠️ Through the auth-race retry, and the reason is worth stating: the
+      // rule on /groupsPublic is `allow read: if isSignedIn()` and nothing
+      // else, so a permission-denied here cannot be a rules decision about
+      // this club. It can only mean the request went out before the session
+      // attached to the Firestore channel — the cold-start race
+      // src/firebase/authRace exists for.
+      //
+      // Production showed exactly that: three errors eight seconds apart on
+      // one club (getPublicGroup, communityPublicReload,
+      // getUpcomingPublicGamesForGroup), which is one person opening one
+      // public page while the token was still in flight.
+      const snap = await withAuthRaceRetry(() => getDoc(docs.groupPublic(groupId)));
       return snap.exists() ? snap.data() : null;
     } catch (err) {
       logError('getPublicGroup', err, { groupId });

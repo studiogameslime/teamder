@@ -22,6 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { updateDoc } from 'firebase/firestore';
+import { withAuthRaceRetry } from '@/firebase/authRace';
 
 import { appAlert } from '@/components/AppDialog';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -701,25 +702,37 @@ async function persistAvailability(
       slots[String(n)] = buckets.filter((b) => typeof b === 'string').slice(0, 8);
     }
   }
-  await updateDoc(docs.user(uid), {
-    availability: {
-      preferredDays: availability.preferredDays,
-      preferredTimes: availability.preferredTimes ?? [],
-      availabilitySlots: slots,
-      preferredCity: availability.preferredCity ?? null,
-      cities: Array.isArray(availability.cities) ? availability.cities : [],
-      homeCity: availability.homeCity ?? null,
-      homeCityLat: coords?.lat ?? null,
-      homeCityLng: coords?.lng ?? null,
-      availabilityRadiusKm:
-        typeof availability.availabilityRadiusKm === 'number'
-          ? availability.availabilityRadiusKm
-          : 15,
-      isAvailableForInvites: availability.isAvailableForInvites !== false,
-      acceptsFillerPush: availability.acceptsFillerPush === true,
-    },
-    updatedAt: Date.now(),
-  });
+  // Through the auth-race retry. "שמירת זמינות נכשלה" arrived four times from
+  // one user with permission-denied, and the /users update rule admits this
+  // exact payload — proved against both the current ruleset and the one that
+  // was live at the moment it failed (tests/rules/availabilitySave.test.mjs,
+  // nine shapes, all allowed). A denial the rules do not explain is the token
+  // not having landed, which is what this wrapper is for.
+  //
+  // It matters more here than on a read: a read that loses the race shows an
+  // empty list for a moment, and this one throws away a grid the user has just
+  // spent a minute filling in.
+  await withAuthRaceRetry(() =>
+    updateDoc(docs.user(uid), {
+      availability: {
+        preferredDays: availability.preferredDays,
+        preferredTimes: availability.preferredTimes ?? [],
+        availabilitySlots: slots,
+        preferredCity: availability.preferredCity ?? null,
+        cities: Array.isArray(availability.cities) ? availability.cities : [],
+        homeCity: availability.homeCity ?? null,
+        homeCityLat: coords?.lat ?? null,
+        homeCityLng: coords?.lng ?? null,
+        availabilityRadiusKm:
+          typeof availability.availabilityRadiusKm === 'number'
+            ? availability.availabilityRadiusKm
+            : 15,
+        isAvailableForInvites: availability.isAvailableForInvites !== false,
+        acceptsFillerPush: availability.acceptsFillerPush === true,
+      },
+      updatedAt: Date.now(),
+    }),
+  );
 }
 
 const styles = StyleSheet.create({
