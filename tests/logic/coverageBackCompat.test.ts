@@ -9,10 +9,17 @@ import { readSeasonCoverage } from '@/utils/seasonCoverage';
 // else. Nothing in 1.1.10 validates an archive strictly, whitelists the keys a
 // winner may carry, or rejects a document with a field it does not know.
 //
-// This file re-implements those two shipped readers EXACTLY as
-// `git show 4de80d0:src/services/...` has them, and runs winners with and
-// without coverage through them. If a future change to the field's shape would
-// break the build that is in the stores, it breaks here first.
+// This file re-implements those two shipped readers EXACTLY as the build in
+// the stores has them, and runs winners with and without coverage through
+// them. If a future change to the field's shape would break that build, it
+// breaks here first.
+//
+// ⚠️ The build in the stores is 1.1.10 = commit `e89b926`, NOT `4de80d0` —
+// that was 1.1.9. I checked the earlier commit first and had to redo it; the
+// two readers turn out to be byte-identical between them, so the conclusion
+// held, but the check that matters is against the commit EAS actually built:
+// `eas build:list` reports the gitCommitHash per binary, and that is the
+// authority, not the version string.
 
 const num = (v: unknown): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : 0;
@@ -21,7 +28,7 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const KEYS = ['topScorer','topAssister','mvp','topWinner','mostLoyal',
               'cleanSheetKing','penaltyKing','penaltyKeeper','deadlyDuo'];
 
-/** seasonHistoryService.fromCard's winner loop, as shipped in 1.1.10. */
+/** seasonHistoryService.fromCard's winner loop, as shipped in 1.1.10 (e89b926). */
 function shippedCardReader(rawWinners: unknown) {
   const raw = Array.isArray(rawWinners) ? rawWinners : [];
   const known = new Set<string>(KEYS);
@@ -40,7 +47,7 @@ function shippedCardReader(rawWinners: unknown) {
   return out;
 }
 
-/** seasonSummaryService's awards loop, as shipped in 1.1.10. */
+/** seasonSummaryService's awards loop, as shipped in 1.1.10 (e89b926). */
 function shippedAwardsReader(awards: Record<string, unknown>) {
   const out: { key: string; value: number; holders: number }[] = [];
   for (const key of KEYS) {
@@ -61,7 +68,7 @@ const WITH = [
   { key: 'mvp', names: ['הלן צברי'], value: 7.656, coverage: { rated: 9, of: 22 } },
 ];
 
-describe('the card reader shipped in 1.1.10', () => {
+describe('the card reader shipped in 1.1.10 (e89b926)', () => {
   it('reads a winner that carries coverage exactly as one that does not', () => {
     expect(shippedCardReader(WITH)).toEqual(shippedCardReader(WITHOUT));
   });
@@ -82,7 +89,7 @@ describe('the card reader shipped in 1.1.10', () => {
   });
 });
 
-describe('the awards reader shipped in 1.1.10', () => {
+describe('the awards reader shipped in 1.1.10 (e89b926)', () => {
   const plain = { mvp: { winners: ['u1'], value: 7.656 } };
   const withCov = { mvp: { winners: ['u1'], value: 7.656, coverage: { rated: 9, of: 22 } } };
 
