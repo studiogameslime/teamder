@@ -14,6 +14,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Keyboard,
   ScrollView,
   StyleSheet,
   Text,
@@ -109,8 +110,16 @@ export function CommunityDetailsPublicScreen() {
 
   // Single load path — useFocusEffect handles both initial focus and return;
   // a separate useEffect(reload) double-loaded on open.
+  //
+  // The dismiss is the second half of the dead-taps fix on the ScrollView
+  // below, and it is here for the same reason it is on the members' screen:
+  // this page is the OTHER destination of the very same feed row (a club the
+  // user is not in opens here instead), so it is reached the same way — by
+  // tapping a search result while the search box still holds focus — and its
+  // taps are the join/request buttons, the ones it costs the most to eat.
   useFocusEffect(
     useCallback(() => {
+      Keyboard.dismiss();
       reload();
     }, [reload])
   );
@@ -298,7 +307,22 @@ export function CommunityDetailsPublicScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={group.name} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        // "I press buttons and nothing is pressed; I scroll a little and then
+        // the presses work" (1.1.8 report, fixed the same way on
+        // CommunityDetailsScreen). Scrolling still working while taps do
+        // nothing points at ScrollView's onStartShouldSetResponderCapture: it
+        // takes the touch away from whatever is under the finger whenever
+        // keyboardShouldPersistTaps is the default 'never' AND RN still has a
+        // focused TextInput on record. This page owns none, but the public
+        // feed it is opened from does, and that focus survives the navigation
+        // (the native stack keeps the feed mounted), so the first tap after
+        // arrival goes to dismissing a keyboard instead of to the button.
+        // "handled" opts out of the capture, so the touch reaches the button
+        // and only an unclaimed tap falls through.
+        keyboardShouldPersistTaps="handled"
+      >
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>{he.communityDetailsAbout}</Text>
           {group.description ? (

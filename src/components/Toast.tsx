@@ -196,6 +196,12 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     flex: 1,
+    // Every toast body in this app is Hebrew. textAlign alone right-aligns
+    // the block but leaves the ENGINE laying the line out LTR, so a message
+    // that mixes in a latin token or a number — a player name, "3/12", a
+    // club handle — reorders around it. writingDirection pins the base
+    // direction so it can't.
     textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
   },
 });

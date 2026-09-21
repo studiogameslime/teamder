@@ -54,6 +54,36 @@ describe('rounds cadence, carrying season 1 on', () => {
     expect(p.error).toBe('historyFillsTarget');
   });
 
+  it('24 played against 24 CLOSES it, once the caller says equality may', () => {
+    // The live "עדכן את יעד העונה" path. A running season has no "seal now"
+    // chip to point at, so an admin who moves the finish line onto the number
+    // the club is standing on is saying the season ends here — which is what
+    // the server records as `endsTheSeason`. Reported by an admin who could
+    // see 20/24 on the card and could not set 20.
+    const p = rounds({ playedHistory: 24, equalTargetCloses: true });
+    expect(p.ok).toBe(true);
+    expect(p.error).toBeUndefined();
+    expect(p.closesSeasonNow).toBe(true);
+    expect(p.roundsRemaining).toBe(0);
+    expect(p.startsAtRounds).toBe(24);
+  });
+
+  it('and 30 played against 24 is still refused, flag or no flag', () => {
+    // A target UNDER the count is not a close, it is a number the season can
+    // never play its way to. The server refuses it as well.
+    const p = rounds({ playedHistory: 30, equalTargetCloses: true });
+    expect(p.ok).toBe(false);
+    expect(p.error).toBe('historyExceedsTarget');
+    expect(p.closesSeasonNow).toBeUndefined();
+  });
+
+  it('a target with room left never claims to close anything', () => {
+    const p = rounds({ playedHistory: 20, equalTargetCloses: true });
+    expect(p.ok).toBe(true);
+    expect(p.roundsRemaining).toBe(4);
+    expect(p.closesSeasonNow).toBeUndefined();
+  });
+
   it('23 played against 24 → allowed, exactly one evening left', () => {
     const p = rounds({ playedHistory: 23 });
     expect(p.ok).toBe(true);

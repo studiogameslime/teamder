@@ -1290,7 +1290,20 @@ export const gameService = {
     if (!groupId) return empty;
     if (USE_MOCK_DATA) {
       const players: ChampionshipRow[] = mockPlayers.slice(0, 8).map((p, i) => {
-        const games = 38 - i;
+        // Mini-game outcomes are spread off this one; it is NOT an evening
+        // count.
+        const played = 38 - i;
+        // Evenings (מחזורים) attended, and ONLY evenings.
+        //
+        // The mock club runs seasons (mockGroup.seasons.enabled), so these
+        // rows are the RUNNING season's — a close zeroes this counter with
+        // the rest — and `getCommunityStats` reports that season as holding
+        // 12 evenings. A player cannot have attended 38 of 12: the club
+        // table's "% הגעה למחזור" column divides one by the other and read
+        // 100% for every row in mock mode, which is the one place these
+        // screens get screenshotted. The spread below is the same shape the
+        // scan's own mock tally uses (12 down, with a floor).
+        const games = Math.max(5, 12 - i);
         const wins = Math.max(0, 22 - i * 2);
         // Demo penalty stats — a non-monotonic spread so the kicker king and
         // keeper king aren't just "player 0" (exercises the tie-break/derivation).
@@ -1307,7 +1320,7 @@ export const gameService = {
           // Demo draws — deliberately spread, and ZERO for two players, so the
           // emulator exercises both the column appearing and a player with none.
           ties: [6, 3, 9, 0, 4, 2, 0, 5][i] ?? 0,
-          losses: Math.max(0, games - wins),
+          losses: Math.max(0, played - wins),
           games,
           penTaken,
           penScored: Math.min(penScored, penTaken),
@@ -2434,11 +2447,21 @@ export const gameService = {
     }
     let snap;
     try {
-      snap = await getDocs(
-        query(
-          col.games(),
-          where('groupId', '==', groupId),
-          where('visibility', '==', 'public'),
+      // ⚠️ Through the auth-race retry, for the same reason groupService.getPublic
+      // is: firestore.rules allows EVERY public game in a club to any signed-in
+      // user, so a permission-denied here cannot be a decision about these
+      // documents — it can only mean the read went out before the ID token
+      // attached to the Firestore channel. This fires from
+      // CommunityDetailsPublicScreen's useFocusEffect on mount, which is exactly
+      // that window; production showed it denied alongside getPublicGroup on the
+      // same club, seconds apart — one person opening one public page.
+      snap = await withAuthRaceRetry(() =>
+        getDocs(
+          query(
+            col.games(),
+            where('groupId', '==', groupId),
+            where('visibility', '==', 'public'),
+          ),
         ),
       );
     } catch (err) {

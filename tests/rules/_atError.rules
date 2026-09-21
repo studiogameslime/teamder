@@ -93,66 +93,6 @@ service cloud.firestore {
     function isGroupAdmin(gid) {
       return isSignedIn() && request.auth.uid in groupDoc(gid).adminIds;
     }
-
-    // ── The season's 24-hour correction window (spec §4, §5) ────────────
-    //
-    // A season that has met its finish line does not close on the whistle. It
-    // opens a window in which admins fix what the evening got wrong — a score,
-    // a missed goal, an attendance — and during which NO evening may be
-    // started anywhere in the club. Titles are decided from the numbers as
-    // they stand when the window shuts, so a correction made inside it counts
-    // and one made after it cannot; starting a fresh evening inside the window
-    // would add results to a season that is already being totted up.
-    //
-    // Enforced HERE and not only in the app, because the start is a direct
-    // client write to `games/{id}` and a client-side check is a suggestion.
-    //
-    // Costs no extra read on the branch that uses it: the organiser/admin
-    // branch has already called `isGroupAdmin`, which reads the same club
-    // document, and rules serve a repeated `get()` of one path from the
-    // request's own cache.
-    //
-    // ⚠️ `pendingClose` is DELETED when a window is cancelled, never set to
-    // null — `.get(k, default)` in rules substitutes the default only for an
-    // ABSENT key, so a present-null would come back as null-the-value and make
-    // this read `!= null` false in a way that looks the same and is not. The
-    // server side uses FieldValue.delete() for exactly this reason.
-    function clubIsInSeasonCloseWindow(gid) {
-      return groupDoc(gid).get('seasons', {}).get('pendingClose', null) != null;
-    }
-
-    // ⚠️ NULL-SAFE, and it has to be spelled out this way.
-    //
-    // The obvious form — `d.get('liveMatch', {}).get('startedAt', null)` —
-    // is broken, and the rules test proves it. `.get(k, default)` substitutes
-    // the default only for an ABSENT key; a key that is PRESENT and null comes
-    // back as null, and calling `.get()` on null RAISES. A raised error denies
-    // the whole request, not just the clause it happened in — so on a game
-    // whose `liveMatch` is present and null, that form denied an ordinary
-    // title edit by an admin, inside the window, for no reason a reader could
-    // see. `liveMatch == null` is a shape this database really holds; the
-    // rules test it explicitly two hundred lines further down.
-    //
-    // Same family as the `.get(k, default)` trap that broke guest-add in July.
-    function startedAtOf(d) {
-      return d.get('liveMatch', null) == null
-        ? null
-        : d.liveMatch.get('startedAt', null);
-    }
-
-    // Is THIS write the moment an evening begins?
-    //
-    // `liveMatch.startedAt` is the app's single source of truth for "this game
-    // happened" — the cleanup job, the stats pipeline and the season counter
-    // all read it — and `markGameStarted` stamps it once, on the first tap of
-    // the timer. Absent before and present after is therefore exactly the
-    // transition to block, and nothing else on the game is affected: an admin
-    // inside the window may still edit the roster, fix a score, publish teams
-    // and finish an evening that was already running.
-    function isStartingTheEvening() {
-      return startedAtOf(resource.data) == null
-        && startedAtOf(request.resource.data) != null;
-    }
     // Non-throwing variant of isGroupMember. Plain isGroupMember() ERRORS on a
     // blank/absent gid or a deleted group (get() returns null, then `.playerIds`
     // raises) — and a raised error denies the whole request, even a branch that
@@ -164,94 +104,6 @@ service cloud.firestore {
         (request.auth.uid in groupDoc(gid).playerIds ||
          request.auth.uid in groupDoc(gid).adminIds);
     }
-    // Non-throwing admin check, same reasoning as isGroupMemberSafe above: a
-    // blank id or a deleted club makes plain isGroupAdmin RAISE, and a raised
-    // error denies the whole request rather than just its branch.
-    function isGroupAdminSafe(gid) {
-      return isSignedIn() && gid is string && gid.size() > 0 &&
-        exists(/databases/$(database)/documents/groups/$(gid)) &&
-        request.auth.uid in groupDoc(gid).adminIds;
-    }
-
-    // ── Who is allowed to SEND a client-originated notification ─────────
-    //
-    // `clientNotifTypeAllowed` says which TYPES a client may write. It never
-    // said anything about whether this particular client has any standing to
-    // write them, and a probe against these rules confirmed the consequence:
-    // a complete stranger could send any victim `approved`, `rejected`,
-    // `groupDeleted`, `spotOpened`, `spotOffered`, `newGameInCommunity`,
-    // `gameCanceledOrUpdated` or `playerCancelled`, naming a club and a game
-    // they had nothing to do with. "התקבלת למועדון" from nobody.
-    //
-    // (The suite's `cannot fake an "approved" push` case has been failing on
-    // this for a long time, but not for the reason its name suggests — it
-    // asserts a denial for `spotOpened`, which the whitelist deliberately
-    // permits, and the comment three lines under it says so. The test was
-    // self-contradictory; the hole underneath it was real.)
-    //
-    // Authority is checked against the thing the notification CLAIMS, which is
-    // the payload's own groupId/gameId — the same ids the recipient's app uses
-    // to open it.
-    //
-    // Two types cannot use that rule and are handled on their own terms:
-    //
-    //   • `playerCancelled` is sent BY an ordinary player to the organiser,
-    //     so requiring admin rights would break the one flow where the sender
-    //     is deliberately not an admin. A participant of the game may send it.
-    //
-    //   • `groupDeleted` is dispatched AFTER the club document is gone
-    //     (groupService step 5, the delete is step 3), so there is nothing
-    //     left to check authority against. Requiring the club to be ABSENT is
-    //     what is left: it keeps every legitimate delete working and reduces
-    //     the forgery to naming a club that does not exist, which renders as a
-    //     notification about nothing. Closing it properly means moving the
-    //     dispatch server-side, which is a change to make deliberately and not
-    //     inside a rules patch.
-    function notifPayload() {
-      return request.resource.data.get('payload', {});
-    }
-    function notifClaimsGroup() {
-      return notifPayload().get('groupId', '');
-    }
-    function notifClaimsGame() {
-      return notifPayload().get('gameId', '');
-    }
-    function notifSenderHasStanding() {
-      return request.resource.data.type == 'playerCancelled'
-        // SELF-ATTESTATION, not game membership — and the difference is not
-        // academic. Both places the app sends this from are the consolidated
-        // "a player has left your games" push raised during ACCOUNT DELETION,
-        // and their payload is `{ cancellingUserId, gameTitles, reason }`:
-        // there is no gameId at all, because it covers several games at once,
-        // and the sender is on their way out of every one of them.
-        //
-        // A membership rule would have denied every one of those — on the
-        // build in the stores today as well as on HEAD. Checked against the
-        // shipped source, not against a payload I imagined; the first version
-        // of the regression test invented a gameId and passed while the real
-        // flow would have broken.
-        //
-        // What can honestly be required is that a sender only announces their
-        // OWN departure. That is the whole claim the notification makes.
-        ? notifPayload().get('cancellingUserId', '') == request.auth.uid
-        : request.resource.data.type == 'groupDeleted'
-        ? (
-            notifClaimsGroup() is string && notifClaimsGroup().size() > 0 &&
-            !exists(/databases/$(database)/documents/groups/$(notifClaimsGroup()))
-          )
-        : (
-            isGroupAdminSafe(notifClaimsGroup()) ||
-            (
-              notifClaimsGame() is string && notifClaimsGame().size() > 0 &&
-              exists(/databases/$(database)/documents/games/$(notifClaimsGame())) &&
-              (
-                gameDoc(notifClaimsGame()).get('createdBy', '') == request.auth.uid ||
-                isGroupAdminSafe(gameDoc(notifClaimsGame()).get('groupId', ''))
-              )
-            )
-          );
-    }
-
     function isGroupMember(gid) {
       return isSignedIn() && (
         request.auth.uid in groupDoc(gid).playerIds ||
@@ -295,51 +147,9 @@ service cloud.firestore {
     // impersonation vector this guards.
     function nameNotReserved(data) {
       return !('name' in data) || data.name == null ||
+        data.name.matches('.*@.*') ||
         !(data.name.lower().replace('[\\s._-]', '')
           .matches('.*(teamder|טימדר|טיאמדר|תימדר).*'));
-    }
-
-    // A display name may not BE an email address.
-    //
-    // This is correct product behaviour on its own — a player shown to a
-    // Hebrew club as `someone@gmail.com` is a broken profile, and nobody has
-    // ever chosen one: of 676 accounts on 19.09.2026, 47 carried an '@' in
-    // `name` and all 47 were the same machine (below). Zero real users.
-    //
-    // It is also the fix for a concrete, recurring production problem. Google
-    // Play's **pre-launch report** runs a Firebase Test Lab robot against
-    // every release we upload. The robot is handed the demo credentials from
-    // Play Console's "App access" page and types them into EVERY text input it
-    // meets — including our onboarding "what's your name?" field. So it signs
-    // up as `appstore.review@teamder.app`, and then taps onward: joining public
-    // clubs and registering for real games. 47 such accounts accumulated
-    // between 22.06 and 19.09.2026, clustering on release days (6 on 08.09,
-    // 4 on 16.09, 3 on 18.09). Two of them PLAYED in a finished game of a real
-    // seven-player club (רבעי כדורגל בנחלים) and are inside its statistics; a
-    // third was sitting in that club's pending queue 75 seconds after signing
-    // up. Real organisers were approving robots.
-    //
-    // Note what let it through before: `nameNotReserved` used to treat a name
-    // containing '@' as exempt from the brand check. `appstore.review@teamder.app`
-    // contains "teamder" and would otherwise have been refused from the start —
-    // the '@' escape hatch was the hole. It is removed above.
-    //
-    // This does not make the robot go away; only unticking the pre-launch
-    // report in Play Console does that. It stops the robot from completing a
-    // profile, which is what turns it into a club member.
-    function nameNotEmail(data) {
-      return !('name' in data) || data.name == null ||
-        !(data.name.lower().matches('.*[^@\\s]@[^@\\s]+[.][a-z]{2,}.*'));
-    }
-
-    // Update variant, same reasoning as nameNotNewlyReserved: police the name
-    // only when it actually CHANGES, so an account that already carries such a
-    // name is not locked out of every unrelated write (fcm token, availability)
-    // for ever.
-    function nameNotNewlyEmail() {
-      return !('name' in request.resource.data) ||
-        request.resource.data.name == resource.data.get('name', null) ||
-        nameNotEmail(request.resource.data);
     }
 
     // Update variant: only police a name that is actually CHANGING. The point
@@ -419,14 +229,12 @@ service cloud.firestore {
         // can't seed the doc with garbage that we then have to clean up.
         isOptionalShortString(request.resource.data, 'name', 60) &&
         nameNotReserved(request.resource.data) &&
-        nameNotEmail(request.resource.data) &&
         isOptionalShortString(request.resource.data, 'email', 200) &&
         isOptionalShortString(request.resource.data, 'photoUrl', 2048) &&
         isOptionalShortString(request.resource.data, 'avatarId', 80);
 
       allow update: if isSelf(uid) &&
         nameNotNewlyReserved() &&
-        nameNotNewlyEmail() &&
         // Attribution is first-set-only: once a real inviter is locked in
         // (a non-null invitedBy), every subsequent write must keep it
         // identical. A null placeholder does NOT lock — it's "no inviter
@@ -955,36 +763,20 @@ service cloud.firestore {
     }
 
     match /games/{id} {
-      // `resource == null` FIRST: the document does not exist (a deleted
-      // game, a stale push, an old deep link). Every `resource.data.…` term
-      // below would error on a null resource, and the client receives that
-      // error as `permission-denied` — so a DELETED game was shown to the
-      // user as a permissions wall instead of "the game is gone". Allowing
-      // the read resolves it as a normal not-found snapshot (exists == false).
-      // Still behind isSignedIn(), so existence is not probeable anonymously.
-      //
-      // The rest mirrors canReadGame() above: every field read goes through
-      // .get() with a default so ONE missing field can no longer deny the
-      // whole query, and the CLUB lookup is LAST because it is the only term
-      // that can throw — isGroupMemberSafe() also survives a groupId that is
-      // absent/empty or points at a deleted club doc, which isGroupMember()
-      // did not.
       allow read: if isSignedIn() && (
-        resource == null ||
-        resource.data.get('visibility', '') == 'public' ||
+        resource.data.visibility == 'public' ||
+        isGroupMember(resource.data.groupId) ||
+        request.auth.uid in resource.data.participantIds ||
         // Creator can always read their own game — closes the
         // `where('createdBy', '==', uid)` query path used by
         // getMyGames so an admin who created a game without
         // registering still sees it in "המשחקים שלי".
-        request.auth.uid == resource.data.get('createdBy', '') ||
-        (resource.data.get('participantIds', []) is list &&
-         request.auth.uid in resource.data.get('participantIds', [])) ||
+        request.auth.uid == resource.data.createdBy ||
         // An INVITED player can read (and then join) a community-only
         // game even if they're not a member — `sendGameInvite` adds them
         // to `invitedUserIds`. Without this an invitee tapping the push
         // hit the "members only" wall (user report).
-        (resource.data.get('invitedUserIds', []) is list &&
-         request.auth.uid in resource.data.get('invitedUserIds', [])) ||
+        request.auth.uid in resource.data.get('invitedUserIds', []) ||
         // A FILLER CANDIDATE can read a community game that opted into
         // outside fillers (`acceptsFillers`) — the organiser explicitly
         // chose to advertise it to nearby non-members, who get a
@@ -995,9 +787,8 @@ service cloud.firestore {
         // stay hidden.
         (
           resource.data.get('acceptsFillers', false) == true &&
-          resource.data.get('visibility', '') != 'private'
-        ) ||
-        isGroupMemberSafe(resource.data.get('groupId', ''))
+          resource.data.visibility != 'private'
+        )
       );
 
       allow create: if isSignedIn() &&
@@ -1071,27 +862,6 @@ service cloud.firestore {
         // unrelated UIDs into waitlist/pending while satisfying the
         // participantIds invariant.
         (
-          // ⚡ CHEAPEST TEST FIRST, and it is here for cost, not for style.
-          //
-          // Firestore stops evaluating after 1000 expressions and DENIES, and
-          // this `allow update` is a long OR chain over game documents with 82
-          // fields. Every write that is NOT a self-join used to pay for three
-          // dozen lines of status, liveMatch-phase and rejected-list checks in
-          // this branch before reaching the one test that could have ruled it
-          // out in two — and the branches AFTER this one, the organiser/admin
-          // branch among them, paid the difference out of the same budget.
-          //
-          // Moving the key whitelist to the front changes no truth value: it
-          // is the same conjunct in the same AND chain, so nothing new is
-          // permitted and nothing that was permitted is refused. It only
-          // changes the order the engine spends its budget in.
-          affectedKeys().hasOnly([
-            'players', 'waitlist', 'pending', 'participantIds',
-            'cancellations', 'pendingPromotion', 'updatedAt',
-            // map uid→ms of when each player joined (powers accurate
-            // "joined X ago" in the admin panel; client-written, best-effort).
-            'joinedAt'
-          ]) &&
           // Self join/cancel is allowed while 'open'. On a 'locked' game only
           // WITHDRAWAL is allowed — a registered/pending player may still pull
           // out until the match is actually live (matches canCancelRegistration)
@@ -1127,6 +897,13 @@ service cloud.firestore {
               resource.data.liveMatch.phase != 'roundRunning'
             )
           ) &&
+          affectedKeys().hasOnly([
+            'players', 'waitlist', 'pending', 'participantIds',
+            'cancellations', 'pendingPromotion', 'updatedAt',
+            // map uid→ms of when each player joined (powers accurate
+            // "joined X ago" in the admin panel; client-written, best-effort).
+            'joinedAt'
+          ]) &&
           // pendingPromotion is SERVER-managed. A client may only CLEAR its own
           // offer (null) or leave it unchanged — never SET it. Otherwise a
           // client could forge pendingPromotion.uid=self and then self-add to
@@ -1405,12 +1182,6 @@ service cloud.firestore {
           ) &&
           resource.data.status != 'finished' &&
           resource.data.status != 'cancelled' &&
-          // The season's correction window blocks the START of an evening and
-          // nothing else. Ordered so the cheap half runs first: on every write
-          // that is not a start — which is almost all of them — the second
-          // operand short-circuits away and the club document is never
-          // consulted for this rule at all.
-          !(isStartingTheEvening() && clubIsInSeasonCloseWindow(resource.data.groupId)) &&
           (
             !('createdBy' in resource.data) ||
             (
@@ -1844,11 +1615,6 @@ service cloud.firestore {
         request.resource.data.recipientId.size() <= 128 &&
         request.resource.data.type is string &&
         clientNotifTypeAllowed(request.resource.data.type) &&
-        // …and the sender must have some standing over what the notification
-        // claims. The type whitelist alone let a stranger send "התקבלת
-        // למועדון" about a club they had never joined. See the note on
-        // notifSenderHasStanding.
-        notifSenderHasStanding() &&
         // Trustworthy sender identity. When present it MUST equal the caller's
         // uid; the fan-out Cloud Function then verifies this uid is actually a
         // community admin / organiser before mass-pushing (blocks forged
@@ -2045,22 +1811,6 @@ service cloud.firestore {
     // announced them, and a readable copy would only invite a second, drifting
     // source of truth for "the best evening ever".
     match /clubRecords/{groupId} {
-      allow read, write: if false;
-    }
-
-    // ── /seasonReopens/{id} — the audit trail for a destructive repair ──
-    //
-    // One row per reopen of a closed season. Reopening is an operator-only
-    // maintenance hook (§12): it is the only operation in the seasons system
-    // that destroys sealed data, and it used to leave nothing behind but a log
-    // line that ages out of Cloud Logging in thirty days. If a club's numbers
-    // are ever disputed, "was a season pulled back open, and when" needs an
-    // answer that outlives the logs.
-    //
-    // Server-only in both directions. Not readable by clients either: the row
-    // names the operator and carries the restore's own result, neither of
-    // which belongs on a member's screen.
-    match /seasonReopens/{id} {
       allow read, write: if false;
     }
 

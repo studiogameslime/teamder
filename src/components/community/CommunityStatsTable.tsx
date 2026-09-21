@@ -74,6 +74,13 @@ export function CommunityStatsTable({
   /** The club's own mini-game total, used ONLY by the efficiency tab to drop
    *  players with too small a sample to rate. Omit to rate everyone. */
   clubRounds,
+  /** Evenings (מחזורים) the club HELD in the scope these rows belong to — the
+   *  denominator of the efficiency tab's attendance column, and nothing else.
+   *  It must come from the same scope as the rows: a season's rows over a
+   *  lifetime evening count turns every regular into an occasional visitor.
+   *  Omit it and the column is not shown at all, rather than shown as a
+   *  column of dashes. */
+  clubEvenings,
   /** 'cumulative' is the table as it has always been — totals, ranked by wins.
    *  'efficiency' shows per-game rates over the SAME rows and the same
    *  chrome: identical name column, medals, row heights and header-tap
@@ -89,6 +96,7 @@ export function CommunityStatsTable({
   guestNames?: Record<string, string>;
   fallbackNames?: Record<string, string>;
   clubRounds?: number;
+  clubEvenings?: number;
   mode?: 'cumulative' | 'efficiency';
 }) {
   const nav = useNavigation<{ navigate: (s: string, p: object) => void }>();
@@ -122,9 +130,16 @@ export function CommunityStatsTable({
    *  sort can run without re-deriving on every comparison. */
   const efficiency = React.useMemo(() => {
     const map: Record<string, EfficiencyRow> = {};
-    for (const p of effPlayers) map[p.uid] = toEfficiencyRow(p);
+    for (const p of effPlayers) map[p.uid] = toEfficiencyRow(p, clubEvenings);
     return map;
-  }, [effPlayers]);
+  }, [effPlayers, clubEvenings]);
+
+  // No evening count for the scope on screen → no attendance column. A column
+  // of dashes reads as data the club has lost, which is the opposite of true:
+  // it is this screen that has nothing to divide by. Declared up here because
+  // the SORT needs it too: the column can vanish under an active sort when the
+  // caller changes scope.
+  const showAttendance = typeof clubEvenings === 'number' && clubEvenings > 0;
 
   // The efficiency tab's entry bar — a tenth of the club's mini-games. The
   // reasoning, and the never-empty rule, live with the rates in
@@ -142,9 +157,18 @@ export function CommunityStatsTable({
       // Sorted on the efficiency rows — which put unrankable players last
       // rather than calling them zero — then mapped back, because the name
       // column still renders from the championship row.
+      // Sorting by a column that is no longer rendered orders the table by
+      // nothing (every value is null) and leaves no header highlighted. The
+      // attendance column is the one that can disappear under an active sort —
+      // the caller drops its evening count when the scope changes — so fall
+      // back to the tab's default rather than to a silent no-op.
+      const key: EfficiencySortKey =
+        sortKey === 'attendancePct' && !showAttendance
+          ? 'gaPerGame'
+          : (sortKey as EfficiencySortKey);
       const order = sortEfficiency(
         ranked.map((p) => efficiency[p.uid]),
-        sortKey as EfficiencySortKey,
+        key,
       );
       const byUid: Record<string, ChampionshipRow> = {};
       for (const p of ranked) byUid[p.uid] = p;
@@ -154,7 +178,7 @@ export function CommunityStatsTable({
       .sort((a, b) => Number(b[sortKey as keyof ChampionshipRow] ?? 0) -
                       Number(a[sortKey as keyof ChampionshipRow] ?? 0))
       .slice(0, limit);
-  }, [effPlayers, ranked, efficiency, sortKey, limit, mode]);
+  }, [effPlayers, ranked, efficiency, sortKey, limit, mode, showAttendance]);
 
   useEffect(() => {
     let alive = true;
@@ -239,9 +263,19 @@ export function CommunityStatsTable({
 
   // Right-to-left after the name column, in the order asked for. Under
   // forceRTL the first child lands rightmost, so array order IS reading order.
+  //
+  // Attendance sits second, right after the win rate: the owner asked for the
+  // two percentages together ("אחוז נצחונות / אחוז הגעה למחזור"), and it is
+  // the only column here counted in EVENINGS rather than mini-games — it
+  // belongs next to the other whole-club share, not lost among the per-משחקון
+  // averages.
   const efficiencyCols: Col[] = [
     { key: 'winPct', label: he.effColWinPct,
       cell: (r) => formatPct(efficiency[r.uid]?.winPct ?? null) },
+    // Shown only when the caller could give an evening count for this scope;
+    // see `clubEvenings`. Filtered out below rather than rendered as dashes.
+    { key: 'attendancePct', label: he.effColAttendancePct,
+      cell: (r) => formatPct(efficiency[r.uid]?.attendancePct ?? null) },
     { key: 'goalsPerGame', label: he.effColGoalsPerGame,
       cell: (r) => formatPerGame(efficiency[r.uid]?.goalsPerGame ?? null) },
     { key: 'assistsPerGame', label: he.effColAssistsPerGame,
@@ -263,7 +297,7 @@ export function CommunityStatsTable({
   const statW = mode === 'efficiency' ? STAT_W_EFF : STAT_W;
   const cols =
     mode === 'efficiency'
-      ? efficiencyCols
+      ? efficiencyCols.filter((c) => showAttendance || c.key !== 'attendancePct')
       : cumulativeCols.filter(
           (c) =>
             !(hideAppearances && c.key === 'games') &&

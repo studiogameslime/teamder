@@ -429,6 +429,11 @@ export function SeasonsSettings({
         // No season 1 to date when the club has already run one — and no
         // control on screen that could pick a date for it.
         hasHistory: !firstTime,
+        // A running season has no "לסגור ולהתחיל מאפס" chip to point at, so a
+        // target equal to what it has played is the admin saying it ends here
+        // — allowed, and announced below rather than refused. On a first
+        // activation that chip is right there, so the refusal stays.
+        equalTargetCloses: live,
       }),
     [
       cadence,
@@ -439,6 +444,7 @@ export function SeasonsSettings({
       today,
       season1EndsOn,
       firstTime,
+      live,
     ],
   );
 
@@ -519,16 +525,43 @@ export function SeasonsSettings({
   }, [groupId, targetArgs, sealHistory, season1EndsOn, run]);
 
   const saveTarget = useCallback(() => {
-    run(async () => {
-      await seasonService.updateTarget({ groupId, ...targetArgs });
-      logEvent(AnalyticsEvent.SeasonTargetChanged, {
-        groupId,
-        cadence,
-        target: cadence === 'rounds' ? rounds : months,
+    const go = () =>
+      run(async () => {
+        await seasonService.updateTarget({ groupId, ...targetArgs });
+        logEvent(AnalyticsEvent.SeasonTargetChanged, {
+          groupId,
+          cadence,
+          target: cadence === 'rounds' ? rounds : months,
+          // Whether this press moved a finish line or crossed it. The server
+          // records the same thing as `endsTheSeason`; this is the only place
+          // the product can see how often an admin ends a season THIS way
+          // rather than through the button that says so.
+          endsSeason: plan.closesSeasonNow === true,
+        });
+        toast.success(he.seasonsTargetSavedToast);
       });
-      toast.success(he.seasonsTargetSavedToast);
-    });
-  }, [groupId, targetArgs, run]);
+    // A target equal to what the club has already played is not a smaller edit
+    // than "סיים עונה עכשיו" — it is the same outcome reached through a number.
+    // The table is archived and zeroed and nine titles are handed out for good,
+    // so it gets the same question that button asks, with this season's own
+    // figures in it.
+    if (plan.closesSeasonNow) {
+      appAlert(
+        he.seasonsTargetClosesTitle,
+        he.seasonsTargetClosesBody(thisSeasonNo, plan.playedHistory),
+        [
+          {
+            text: he.seasonsTargetClosesCta,
+            style: 'destructive',
+            onPress: go,
+          },
+          { text: he.cancel, style: 'cancel' },
+        ],
+      );
+      return;
+    }
+    go();
+  }, [groupId, targetArgs, run, plan, thisSeasonNo, cadence, rounds, months]);
 
   // ⚠️ The `reopenLast` handler lived here and is gone with its button (§12).
   //
@@ -720,6 +753,39 @@ export function SeasonsSettings({
               step={ROUND_STEP}
               onChange={setRounds}
             />
+          ) : null}
+
+          {/* Where the season actually stands, measured against the number in
+              the picker directly above — and recomputed with it, so a chip or a
+              stepper tap answers itself while the admin is still deciding.
+              Everything it needs is already on screen: `history` is the same
+              `playedRounds` the season card shows, and `plan.roundsRemaining`
+              is what the chosen target leaves.
+
+              Only for a RUNNING season. Before one exists there is no "העונה
+              הנוכחית" to count, and the club's loose history becomes either the
+              opening season's progress or an archive depending on a chip below
+              — a question the confirmation sheet answers properly and a one-line
+              hint cannot. */}
+          {live && cadence === 'rounds' && history !== null && plan.ok ? (
+            <Text
+              style={[
+                styles.progressHint,
+                plan.closesSeasonNow && styles.progressHintClosing,
+              ]}
+            >
+              {!plan.closesSeasonNow
+                ? he.seasonsRoundsPlayedLeft(history, plan.roundsRemaining ?? 0)
+                : targetChanged
+                  ? he.seasonsTargetMeetsPlayed(history)
+                  : // Nothing has been touched and the club is already sitting
+                    // on its own target: the season is not about to be ended by
+                    // a press, it is waiting for the sweep. Saying "שמירה
+                    // תסיים את העונה" beside a button that cannot be pressed
+                    // would blame the admin for something already in motion —
+                    // so this is the card's own sentence about the same state.
+                    he.seasonsCardRemaining(0)}
+            </Text>
           ) : null}
 
           {/* The dates, live. They answer "what am I actually choosing?" while
@@ -1044,6 +1110,18 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
   },
+  // The season's own progress, under the picker it is measured against. Reads
+  // as an answer rather than a warning — it is the usual state of this screen —
+  // and turns amber only on the one target that ends the season.
+  progressHint: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '600',
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+    lineHeight: 18,
+  },
+  progressHintClosing: { color: colors.warning, fontWeight: '700' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   stepper: { gap: spacing.xs, paddingVertical: spacing.xs },
   stepperLabel: {

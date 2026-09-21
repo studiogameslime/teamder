@@ -17020,7 +17020,13 @@ export const updateSeasonTarget = onCall(
     }
     const askedRounds =
       typeof data.targetRounds === 'number' ? Math.round(data.targetRounds) : null;
-    if (type === 'rounds' && askedRounds !== null && askedRounds <= played) {
+    // `=== played`, not `<= played`. A target UNDER the count is refused a few
+    // lines down and closes nothing, so gating it on quiet answered the wrong
+    // question: an admin who picked 12 on a 22-evening season was told "יש
+    // מחזור פתוח במועדון, סיימו או בטלו אותו קודם" and sent to end an evening
+    // that had nothing to do with the refusal waiting for them. Only the
+    // equal target reaches the close path, so only it needs the quiet rule.
+    if (type === 'rounds' && askedRounds !== null && askedRounds === played) {
       const quiet = await clubIsQuiet(groupId);
       if (!quiet.ok) {
         throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
@@ -17063,7 +17069,22 @@ export const updateSeasonTarget = onCall(
           `target ${asked} is below the ${MIN_SEASON_ROUNDS}-round floor`,
         );
       }
-      if (asked <= played) {
+      // `<`, not `<=`. A target BELOW the count is unreachable — the season can
+      // never play its way back down to it — and that stays refused.
+      //
+      // The equal one is a different sentence, and it used to be swallowed by
+      // the same throw: an admin setting the target to the evenings the club
+      // has already played is saying "tonight was the last one". Everything
+      // downstream was built for exactly that and none of it could run —
+      // `endsTheSeason`, `targetMovedToClose` and the `targetHistory` flag were
+      // unreachable from the moment they were written, because this line
+      // refused the only input that produces them. Reported by an admin who
+      // could see the number on the card and not set it.
+      //
+      // The English text keeps its "is not above the N" shape: the client reads
+      // the played count back out of it with a regex, and wording it prettier
+      // here would quietly take the number out of the refusal the admin reads.
+      if (asked < played) {
         throw new HttpsError(
           'failed-precondition',
           `target ${asked} is not above the ${played} rounds already played`,

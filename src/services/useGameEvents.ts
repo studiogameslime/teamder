@@ -175,7 +175,32 @@ export function useGameEvents(
       docs.game(gameId),
       (snap) => {
         if (!snap.exists()) {
+          // The game is GONE, not blocked. Until the /games read rule was
+          // hardened this never arrived: the rule dereferenced resource.data
+          // directly, so a deleted doc errored and the client received
+          // `permission-denied` — which the handler below reads as "you lost
+          // access", and the user got a permissions wall for a game that had
+          // simply been deleted. Now a missing doc resolves as an ordinary
+          // exists()==false snapshot, and it is reported as deletion.
+          //
+          // Only once we've already seen the game: a first snapshot that
+          // doesn't exist is a stale link, and the screen's own load already
+          // renders the dedicated "המחזור כבר לא קיים" fallback for that —
+          // a toast on top of it would just say the same thing twice.
+          //
+          // …and NOT for a deletion this device just made. Firestore applies
+          // a local mutation before the server acks it, so `deleteDoc` inside
+          // MatchDetailsScreen's own "מחק מחזור" flow raises this very
+          // snapshot while the admin is still awaiting their own delete —
+          // they'd see "המחזור כבר לא קיים" flash as if something had gone
+          // wrong, a beat before their "המחזור נמחק" confirmation. That
+          // pending local write is exactly what `hasPendingWrites` marks; a
+          // deletion by SOMEBODY ELSE arrives with it false and still toasts.
+          if (seenFirstRef.current && !snap.metadata.hasPendingWrites) {
+            toast.info(he.matchDetailsDeletedTitle);
+          }
           prevRef.current = null;
+          seenFirstRef.current = false;
           return;
         }
         const curr = snap.data();
@@ -276,6 +301,9 @@ export function useGameEvents(
           // A permission denial that is NOT this — a real rules gap — still
           // surfaces, because it arrives on a path that has no
           // onAccessBlocked handler to pivot to.
+          //
+          // A DELETED game no longer lands here at all (see the
+          // !snap.exists() branch above), so this really is "lost access".
           if (__DEV__) console.warn('[useGameEvents] access lost mid-view', gameId);
           return;
         }

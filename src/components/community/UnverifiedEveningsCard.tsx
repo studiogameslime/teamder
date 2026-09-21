@@ -42,12 +42,28 @@ function dayLabel(ms: number): string {
   });
 }
 
+/** A new evening is created with the club's own name as its title, so on THIS
+ *  screen the title is usually the club heading repeated a second time — and
+ *  the row is one line, so the repeat squeezes out the date, the only thing
+ *  that tells two rows apart. Drop it when it says nothing new; keep a title
+ *  an admin actually typed. */
+function rowLabel(startsAt: number, title: string, groupName?: string): string {
+  const t = title.trim();
+  const g = (groupName ?? '').trim();
+  if (!t || t === g) return dayLabel(startsAt);
+  return `${dayLabel(startsAt)} · ${t}`;
+}
+
 export function UnverifiedEveningsCard({
   groupId,
+  groupName,
   isAdmin,
   onResolved,
 }: {
   groupId: GroupId;
+  /** The club this card is shown inside. Used only to suppress an evening
+   *  title that merely repeats it — see `rowLabel`. */
+  groupName?: string;
   isAdmin: boolean;
   /** Fired after a verdict lands, so the screen can refresh the numbers it
    *  just changed — confirming an evening adds it to the club's count. */
@@ -98,9 +114,7 @@ export function UnverifiedEveningsCard({
       {items.map((it) => (
         <View key={it.id} style={styles.row}>
           <Text style={styles.when} numberOfLines={1}>
-            {it.title
-              ? `${dayLabel(it.startsAt)} · ${it.title}`
-              : dayLabel(it.startsAt)}
+            {rowLabel(it.startsAt, it.title, groupName)}
           </Text>
           {busyId === it.id ? (
             <ActivityIndicator size="small" color={colors.primary} />

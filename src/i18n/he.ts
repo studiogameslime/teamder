@@ -230,6 +230,7 @@ export const he = {
   toastJoinSuccess: 'הצטרפת למועדון',
   toastGameJoined: 'הצטרפת למחזור',
   lastSpotTaken: 'תפסת את המקום האחרון',
+  lastSpotTakenSub: 'ההרכב הושלם — נתראה במגרש',
   promotedToRoster: 'נכנסת להרכב! ⚽',
   toastGameJoinedWaitlist: 'נוספת לרשימת המתנה',
   toastGameJoinedPending: 'בקשת ההצטרפות נשלחה',
@@ -2276,8 +2277,13 @@ export const he = {
   // With the number, when the server named one. "כבר מאחורי המועדון" is not
   // something an admin can act on without knowing what it is behind — and this
   // screen never shows the season's progress anywhere else.
+  // ⚠️ "גדול מ-N" was right only while an equal target was refused too. It is
+  // allowed now — it is how an admin says "tonight was the last evening" — and
+  // this refusal is left for the targets a season can never reach, the ones
+  // strictly UNDER the count. Sending them to "סיים עונה עכשיו" for the very
+  // number the screen now offers them would be the app arguing with itself.
   seasonBlockedTargetBehindAt: (played: number) =>
-    `המועדון כבר שיחק ${count(played, 'מחזור אחד', 'מחזורים')} בעונה הזו, אז יעד נמוך יותר היה סוגר אותה מיד. בחרו יעד גדול מ-${played}, או השתמשו ב"סיים עונה עכשיו".`,
+    `המועדון כבר שיחק ${count(played, 'מחזור אחד', 'מחזורים')} בעונה הזו, ואי אפשר להחזיר את העונה אחורה. בחרו יעד של ${played} לפחות — יעד של ${played} בדיוק מסיים את העונה.`,
   // Reachable only from a screen whose club document is behind the server. It
   // used to reuse `seasonsEnabledToast` — a SUCCESS line — inside a dialog
   // titled "שגיאה", so an admin whose destructive press had just been refused
@@ -2309,7 +2315,18 @@ export const he = {
       ? 'כל המספרים כאן הם סכום של העונה הרצה ושל העונה שנסגרה לפניה.'
       : `כל המספרים כאן הם סכום של העונה הרצה ושל ${seasons} עונות שנסגרו לפניה.`,
   communityStatsScopeCurrent: (no: number) => `עונה ${no} · עכשיו`,
+  // אותו שבב, למועדון שכיבה את העונות אחרי שכבר סגר אחת. כיבוי סוגר את
+  // העונה הרצה ומאפס את הטבלה, ולכן השורות החיות הן לא "עונה" — הן כל מה
+  // ששוחק מאז אותה סגירה. "עונה 4 · עכשיו" על מועדון שלא מנהל עונות הוא
+  // פשוט לא נכון.
+  communityStatsScopeSinceOff: (no: number) => `מאז שעונה ${no} הסתיימה`,
   communityStatsScopePast: (no: number) => `עונה ${no}`,
+  // אותה הערה, למועדון שכיבה את העונות: אין "עונה רצה" לסכום איתה, יש את
+  // העונות שנסגרו ואת מה ששוחק מאז.
+  communityStatsScopeAllTimeNoteOff: (seasons: number) =>
+    seasons === 1
+      ? 'כל המספרים כאן הם סכום של העונה שנסגרה ושל כל מה ששוחק מאז.'
+      : `כל המספרים כאן הם סכום של ${seasons} עונות שנסגרו ושל כל מה ששוחק מאז.`,
   // מה כן ומה לא נשמר לעונה שהסתיימה. נאמר במפורש, כי מספר שנעלם בלי הסבר
   // נקרא כתקלה — וכל מה שהוסתר כאן הוא נתון של המועדון כולו, לא של העונה.
   // One line on screen. The long version was four lines pinned permanently
@@ -2330,6 +2347,53 @@ export const he = {
   unverifiedEveningNo: 'לא התקיים',
   // ── הגדרת עונות ──
   seasonsTargetUnchanged: 'זה היעד שמוגדר כרגע במועדון. שנו אותו כדי לעדכן.',
+  // Under the rounds picker, on a club whose season is running: where the
+  // season actually stands, against the number the admin is touching right now.
+  //
+  // The picker used to be three chips and a stepper floating over nothing. An
+  // admin choosing "24 מחזורים" had no way to know the club was already 20
+  // evenings in, so the choice that ends the season and the choice that leaves
+  // it four evenings to run looked exactly alike — and the only feedback either
+  // gave was a red line, after the press, if it happened to be refused.
+  // Reported as "I want to see how many were played and how many are left".
+  // ⚠️ `count()` cannot be used on the played half: the verb is part of the
+  // sentence, so "שוחקו מחזור אחד" disagrees with itself, and a club one
+  // evening into a season is exactly when this line is most worth reading.
+  // Zero is its own sentence too — "שוחקו 0 מחזורים" is how a season that has
+  // just opened reads for the first week of every season the club ever runs.
+  seasonsRoundsPlayedLeft: (played: number, left: number) =>
+    `${
+      played === 0
+        ? 'עדיין לא שוחקו מחזורים בעונה הנוכחית'
+        : played === 1
+          ? 'שוחק מחזור אחד בעונה הנוכחית'
+          : `שוחקו ${played} מחזורים בעונה הנוכחית`
+    } ${left === 1 ? 'ונשאר מחזור אחד' : `ונשארו ${left} מחזורים`} לסיום העונה.`,
+  // The same line when the chosen target IS the count. Not a refusal — this is
+  // an admin saying the season ends here — so it says what saving does, in the
+  // order it happens: the window first, the close after it. Promising "העונה
+  // תיסגר עכשיו" would be a lie by one day; a season that meets its target
+  // enters the 24-hour correction window and closes at the end of it.
+  seasonsTargetMeetsPlayed: (played: number) =>
+    `${count(played, 'מחזור אחד', 'מחזורים')} כבר שוחקו בעונה הנוכחית — בדיוק היעד שבחרתם. שמירה תביא את העונה ליעד והיא תיסגר.`,
+  // …and the confirmation before it happens. The same press on any other
+  // target moves a line; this one archives the club's table and hands out nine
+  // titles for good, which is what "סיים עונה עכשיו" asks about in its own
+  // dialog. The same outcome gets the same question.
+  seasonsTargetClosesTitle: 'היעד הזה מסיים את העונה',
+  seasonsTargetClosesBody: (no: number, played: number) =>
+    `עונה ${no} שיחקה כבר ${count(played, 'מחזור אחד', 'מחזורים')}, והיעד שבחרתם שווה בדיוק למספר הזה — אז שמירה מסיימת אותה.\n\n` +
+    'העונה תיכנס לחלון של 24 שעות לתיקונים: אפשר לתקן תוצאות, שערים והשתתפות של מחזורים קיימים, ואי אפשר להתחיל מחזור חדש.\n\n' +
+    'בסוף החלון העונה נסגרת: מחולקים תארים, הטבלה של המועדון מתחילה מאפס והעונה נשמרת בארכיון. הסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\n' +
+    // ⚠️ The half "סיים עונה עכשיו" does NOT do, and the reason this dialog
+    // cannot simply say "the same thing". That button closes the season and
+    // leaves the club's target where it was; this one closes it by MOVING the
+    // target, and `rebaseCadence` carries a rounds cadence into the next
+    // season unchanged — so the club that ran 24-evening seasons quietly
+    // becomes a club that runs 20-evening ones, for ever, on a press whose
+    // dialog only talked about titles and the table.
+    `שימו לב: היעד החדש נשמר למועדון, אז גם עונה ${no + 1} תסתיים אחרי ${count(played, 'מחזור אחד', 'מחזורים')}. אפשר לשנות את היעד כאן אחרי שהעונה תיסגר.`,
+  seasonsTargetClosesCta: 'שמור וסיים את העונה',
   seasonsLengthLabel: 'משך עונה',
   seasonsCustom: 'מותאם אישית',
   seasonsCustomMonths: 'כמות חודשים',
@@ -2847,6 +2911,14 @@ export const he = {
   // Half of a two-up row, so it has to fit on one line next to its icon at 13pt.
   availabilityUseCurrent: 'המיקום הנוכחי שלי',
   availabilityHomeAreaLabel: (city: string) => `אזור הבית: ${city}`,
+  // Shown while the map is still on its opening view: until the user actually
+  // picks a spot there is NO home area, and we must not invent one from the
+  // default map center (that is how everyone ended up marked "בני ברק").
+  availabilityAreaNotSetTitle: 'עדיין לא נבחר אזור בית',
+  availabilityAreaNotSetHint:
+    'סמן על המפה, חפש עיר או השתמש במיקום הנוכחי. עד שתבחר, לא נשמור לך אזור — כדי לא לרשום עיר שגויה.',
+  availabilityAreaMissingBody:
+    'כדי לשמור זמינות עם מיקום, בחר קודם את אזור הבית: סמן על המפה, חפש עיר או לחץ על "המיקום הנוכחי שלי".',
   availabilityRangeTitle: 'טווח חיפוש',
   availabilityRangeValue: (km: number) => `${km} ק"מ`,
   availabilityNotifTitle: 'קבל התראות',
@@ -3548,6 +3620,7 @@ export const he = {
   matchDetailsNavigateWaze: 'נווט עם Waze',
   matchDetailsNoLocation: 'אין מיקום למחזור',
   matchDetailsCannotOpenNavigation: 'לא ניתן לפתוח ניווט',
+  matchDetailsNavigationCopied: 'לא ניתן לפתוח ניווט · היעד הועתק',
   // ── Match details redesign ───────────────────────────────────────────
   matchHeroNoLocation: 'אין מיקום',
   matchHeroTitle: 'פרטי מחזור',
@@ -3742,6 +3815,10 @@ export const he = {
   effColAssistsPerGame: 'בישולים/משחק',
   effColGaPerGame: 'G+A/משחק',
   effColCleanSheetPct: '% שער נקי',
+  // Evenings, not mini-games — the only column in this table counted in
+  // מחזורים, so it says so in the label. "% הגעה" alone under a grid of
+  // per-משחקון rates reads as "showed up to what?".
+  effColAttendancePct: '% הגעה למחזור',
   effColRounds: 'משחקונים',
   /** Shown under the efficiency table when any row's window is shorter than
    *  its history — clean sheets have only been recorded since 17.08. */

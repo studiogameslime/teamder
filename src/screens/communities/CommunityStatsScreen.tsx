@@ -24,19 +24,11 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { InfoTip } from '@/components/InfoTip';
 import { UserAvatar } from '@/components/UserAvatar';
-import { AchievementBadge } from '@/components/AchievementBadge';
-import { appAlert } from '@/components/AppDialog';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { CountUp } from '@/components/anim/CountUp';
 import { AppearItem } from '@/components/anim/AppearItem';
 import { StatDonut } from '@/components/community/StatDonut';
 import { CommunityChampionship } from '@/components/community/CommunityChampionship';
-import {
-  computeClubBadges,
-  type ClubMetrics,
-  type ClubBadge,
-} from '@/data/clubAchievements';
-import { computeClubLevel } from '@/utils/clubLevel';
 import { gameService } from '@/services/gameService';
 import { userService } from '@/services';
 import { groupService } from '@/services';
@@ -141,9 +133,6 @@ export function CommunityStatsScreen() {
   // season closed. The numbers on this screen are the running season's — that
   // is what a season IS — so the screen has to say so.
   const [seasons, setSeasons] = useState<GroupSeasons | undefined>(undefined);
-  // Goals the club scored in seasons it has already closed. Zero for a club
-  // that runs no seasons, which is every club today.
-  const [archivedGoals, setArchivedGoals] = useState(0);
   // The seasons this club has already finished, and which one the screen is
   // currently showing.
   //
@@ -154,6 +143,19 @@ export function CommunityStatsScreen() {
   // the member who wants to know how many goals they finished on has to take
   // the trophy's word for it.
   const [pastSeasons, setPastSeasons] = useState<FinishedSeason[]>([]);
+  // Whether the archive list has come back — successfully or not.
+  //
+  // An empty `pastSeasons` is a real answer for a club that has closed
+  // nothing, and an unfinished fetch for a club that has. All-time cannot
+  // tell the two apart without this flag, and summing it too early prints
+  // the live rows alone as the club's lifetime — the exact number the
+  // all-time scope exists to correct.
+  const [pastLoaded, setPastLoaded] = useState(false);
+  // The screen opened straight on all-time (a club that switched seasons
+  // off). That slice needs one more round-trip than the live rows, and
+  // until it lands every tile would read 0 — the exact number this default
+  // exists to stop showing. So the loader stays up for it.
+  const [openedOnAllTime, setOpenedOnAllTime] = useState(false);
   // Which slice of the club's history the whole screen is showing.
   //
   // A union, not a nullable id with a magic string for "all": a sentinel leaks
@@ -172,11 +174,6 @@ export function CommunityStatsScreen() {
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [attended, setAttended] = useState<Record<string, number>>({});
   const [subtitle, setSubtitle] = useState<string>('');
-  // Members + founding date for the club achievements/level (the rest of the
-  // club metrics come from champ/stats already fetched).
-  const [clubMeta, setClubMeta] = useState<{ members: number; createdAt: number } | null>(
-    null,
-  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -204,27 +201,46 @@ export function CommunityStatsScreen() {
       if (g) {
         setSubtitle(g.name);
         setSeasons(g.seasons);
+        // Seasons switched OFF after the club had already closed one.
+        //
+        // Turning the feature off CLOSES the running season, and a close
+        // zeroes communityStats/communityPlayerStats. So "the running season"
+        // — the live rows this screen starts on — is no longer a season at
+        // all: it is whatever has been played since the club stopped running
+        // them, and on the morning it was switched off it is zero. Beside it
+        // the evening scan is lifetime (it is season-scoped only while
+        // `enabled`), so the screen opened on 22 מחזורים next to 0 גולים,
+        // 0 בישולים and 0 משחקים.
+        //
+        // For a club that no longer runs seasons the club's record IS the
+        // all-time slice, so that is where the screen opens. The other scopes
+        // stay in the picker; nothing is hidden.
+        if (g.seasons && !g.seasons.enabled && (g.seasons.count ?? 0) > 0) {
+          setScope({ k: 'all' });
+          setOpenedOnAllTime(true);
+        }
         // Only for a club that has actually closed a season; everyone else
         // pays nothing.
         if ((g.seasons?.count ?? 0) > 0) {
-          // One read of the cards answers both: the lifetime goal total the
-          // badges need, and the list the season picker offers.
+          // One read of the cards feeds the season picker. (It used to also
+          // answer the badges' lifetime goal total; the badges now live on
+          // CommunityDetails and read their own copy.)
           seasonHistoryService
             .list(groupId)
             .then((list) => {
-              if (!alive || list === 'error') return;
-              setPastSeasons(list);
-              setArchivedGoals(
-                list.reduce((a, x) => a + x.totals.goals, 0),
-              );
+              if (!alive) return;
+              // 'error' is NOT an empty archive — leave the list alone and let
+              // the all-time slice refuse to sum a history it cannot see.
+              if (list !== 'error') setPastSeasons(list);
+              setPastLoaded(true);
             })
-            .catch(() => undefined);
+            .catch(() => {
+              if (alive) setPastLoaded(true);
+            });
+        } else {
+          setPastLoaded(true);
         }
         setMemberIds(g.playerIds ?? []);
-        setClubMeta({
-          members: g.playerIds?.length ?? 0,
-          createdAt: g.createdAt ?? Date.now(),
-        });
       }
       setChamp(
         c ?? {
@@ -305,6 +321,17 @@ export function CommunityStatsScreen() {
     let alive = true;
     setArchiveBusy(true);
 
+    // All-time cannot be summed before the list of closed seasons is in. This
+    // matters now that all-time is where a seasons-off club OPENS: the list is
+    // still in flight on that first paint, and summing an empty archive would
+    // show the live rows — the post-close remainder — labelled "כל הזמנים".
+    // Stay on the loading line; the effect re-runs when the list lands.
+    if (scope.k === 'all' && !pastLoaded) {
+      return () => {
+        alive = false;
+      };
+    }
+
     // All-time is the live rows PLUS every archive. Nothing recomputes: the
     // archives are the sealed record of the seasons they closed, so this is
     // addition over numbers that were already agreed.
@@ -314,6 +341,10 @@ export function CommunityStatsScreen() {
             pastSeasons.map((ps) => seasonHistoryService.table(groupId, ps.seasonId)),
           ).then((archives) => {
             if (archives.some((a) => !a)) return null; // a gap would understate
+            // The list itself failed to load (it returns 'error', never []),
+            // so the club's closed seasons are missing from the sum. Same
+            // answer as a missing archive: refuse, do not understate.
+            if ((seasons?.count ?? 0) > 0 && pastSeasons.length === 0) return null;
             const live: TableSlice = {
               totalGoals: champ?.totalGoals ?? 0,
               totalRounds: champ?.totalRounds ?? 0,
@@ -351,7 +382,7 @@ export function CommunityStatsScreen() {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, scope, pastSeasons, champ]);
+  }, [groupId, scope, pastSeasons, pastLoaded, seasons, champ]);
 
   /** The card of the season on screen, for its evening count and its dates. */
   const scopedCard = useMemo(
@@ -490,40 +521,15 @@ export function CommunityStatsScreen() {
     return top && top.attended > 0 ? { uid: top.uid, nights: top.attended } : null;
   }, [stats, slice, scope]);
 
-  // Club achievements + level — derived from the same aggregates, client-side.
-  const club = useMemo(() => {
-    const metrics: ClubMetrics = {
-      // LIFETIME, like clubGoals beside it. Season-scoping the scan put these
-      // three on the running season, so a club's badges and level collapsed
-      // the morning after every close — the same bug the note below describes,
-      // arriving through the other three metrics.
-      gameNights: stats?.lifetime?.totalFinished ?? 0,
-      // Lifetime goals, not this season's.
-      //
-      // `champ.totalGoals` is summed from communityPlayerStats, which a season
-      // close zeroes — so the morning after, a club that had earned its gold
-      // "שערי המועדון" badge un-earned it and dropped a level. A badge is a
-      // permanent thing the club did; it cannot be taken away by the calendar.
-      // The sealed seasons hold what the live rows no longer do.
-      clubGoals: (champ?.totalGoals ?? 0) + archivedGoals,
-      members: clubMeta?.members ?? 0,
-      ageYears: clubMeta
-        ? Math.floor((Date.now() - clubMeta.createdAt) / (365.25 * 24 * 3600 * 1000))
-        : 0,
-      activeThisMonth: stats?.lifetime?.activeThisMonth ?? 0,
-      organizationRatePct: Math.round((stats?.lifetime?.organizationRate ?? 0) * 100),
-    };
-    return { badges: computeClubBadges(metrics), level: computeClubLevel(metrics) };
-  }, [stats, champ, clubMeta, archivedGoals]);
-
-  const onBadgePress = (b: ClubBadge) => {
-    const target = b.next?.threshold ?? b.def.tiers[b.def.tiers.length - 1].threshold;
-    const progress =
-      b.tier && !b.next
-        ? he.clubAchievementGold
-        : he.clubAchievementProgress(b.value, target);
-    appAlert(b.def.titleHe, `${b.def.howHe}\n\n${progress}`);
-  };
+  // The club's BADGES used to be derived here and rendered at the bottom of
+  // this screen. They now live on CommunityDetails, under "נתוני מועדון"
+  // (owner request via Eliran, 1.1.9) — see ClubAchievementsCard.
+  //
+  // The club LEVEL did not move with them: it was computed here and never
+  // rendered anywhere, on this screen or any other, so `computeClubLevel`
+  // (src/utils/clubLevel.ts) now has no caller at all. Left in place rather
+  // than deleted — reviving it is a product decision, not a cleanup — but do
+  // not read the line above as "the level is on the club page now".
 
   // Names, with the season's frozen copy as the fallback.
   //
@@ -539,6 +545,11 @@ export function CommunityStatsScreen() {
   };
   const resolved = (uid: string): Resolved =>
     people[uid] ?? { id: uid, name: slice?.names?.[uid] ?? '' };
+
+  // The first paint is not finished until the slice the screen OPENED on is
+  // in hand. Resolves either way: the all-time load that fails puts the scope
+  // back on the live rows, and the condition falls with it.
+  const bootLoading = loading || (openedOnAllTime && scope.k === 'all' && !allTime);
 
   const isEmpty =
     !loading &&
@@ -558,6 +569,27 @@ export function CommunityStatsScreen() {
     (stats?.totalFinished ?? 0) === 0 &&
     derived.players.length === 0;
 
+  /**
+   * Evenings (מחזורים) the club HELD in the scope on screen.
+   *
+   * The same number the "מחזורים" tile prints, and now also the denominator of
+   * the club table's attendance column — one expression, so the column can
+   * never disagree with the tile directly above it. Each scope keeps its own
+   * source: a sealed season's length off its card, all-time off the UNSCOPED
+   * evening scan, and the running season off the scoped one.
+   *
+   * Undefined, not 0, while the scan has not landed: the table treats a
+   * missing denominator as "nothing to divide by" and hides the column,
+   * whereas a 0 would look like a club that has never played.
+   */
+  const eveningsInScope = useMemo((): number | undefined => {
+    if (scopedCard) return scopedCard.completedRounds;
+    if (!stats) return undefined;
+    return scope.k === 'all'
+      ? (stats.lifetime?.totalFinished ?? 0)
+      : stats.totalFinished;
+  }, [scopedCard, scope, stats]);
+
   // Leaders/goal-based tiles only make sense once goals have been recorded —
   // otherwise every card is a "—". A club with finished evenings but no scoring
   // still shows the attendance/evenings tiles + achievements, just not leaders.
@@ -567,7 +599,7 @@ export function CommunityStatsScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.communityStatsScreenTitle} subtitle={subtitle || undefined} />
 
-      {loading ? (
+      {bootLoading ? (
         <View style={styles.center}>
           <SoccerBallLoader />
           <Text style={styles.loadingText}>{he.communityStatsLoading}</Text>
@@ -611,8 +643,16 @@ export function CommunityStatsScreen() {
                 >
                   {/* העונה הרצה ראשונה — היא ברירת המחדל, וב-RTL היא נופלת
                       הכי ימינה, שם העין מתחילה. */}
+                  {/* למועדון שכיבה את העונות זו כבר לא עונה: הכיבוי סגר את
+                      הרצה, ומה שנשאר בשורות החיות הוא כל מה ששוחק מאז אותה
+                      סגירה. השבב אומר בדיוק את זה, במקום "עונה 4 · עכשיו"
+                      על עונה שמעולם לא רצה. */}
                   <ScopeChip
-                    text={he.communityStatsScopeCurrent(seasons?.currentNo ?? 1)}
+                    text={
+                      seasons && !seasons.enabled && (seasons.count ?? 0) > 0
+                        ? he.communityStatsScopeSinceOff(seasons.count ?? 1)
+                        : he.communityStatsScopeCurrent(seasons?.currentNo ?? 1)
+                    }
                     active={scope.k === 'current'}
                     onPress={() => setScope({ k: 'current' })}
                   />
@@ -683,7 +723,9 @@ export function CommunityStatsScreen() {
                 <Text style={styles.scopeNote}>
                   {archiveBusy
                     ? he.communityStatsScopeLoading
-                    : he.communityStatsScopeAllTimeNote(pastSeasons.length)}
+                    : seasons && !seasons.enabled
+                      ? he.communityStatsScopeAllTimeNoteOff(pastSeasons.length)
+                      : he.communityStatsScopeAllTimeNote(pastSeasons.length)}
                 </Text>
               ) : null}
               {scopedCard ? (
@@ -766,7 +808,7 @@ export function CommunityStatsScreen() {
             <HeroTile icon={<MaterialCommunityIcons name="soccer" size={24} color={colors.primary} />} tint={colors.primary} value={derived.totalGoals} label={he.communityStatsGoals} />
             <HeroTile icon={<MaterialCommunityIcons name="shoe-cleat" size={24} color="#7C3AED" />} tint="#7C3AED" value={derived.totalAssists} label={he.communityStatsAssists} />
             <HeroTile icon={<MaterialCommunityIcons name="soccer-field" size={24} color="#0EA5E9" />} tint="#0EA5E9" value={derived.totalRounds} label={he.communityStatsMiniGames} />
-            <HeroTile icon={<MaterialCommunityIcons name="calendar-month" size={24} color={colors.success} />} tint={colors.success} value={scopedCard ? scopedCard.completedRounds : scope.k === 'all' ? (stats?.lifetime?.totalFinished ?? 0) : (stats?.totalFinished ?? 0)} label={he.communityStatsEvenings} />
+            <HeroTile icon={<MaterialCommunityIcons name="calendar-month" size={24} color={colors.success} />} tint={colors.success} value={eveningsInScope ?? 0} label={he.communityStatsEvenings} />
           </View>
 
           {/* ── מובילי המועדון ── (only once goals exist; else all "—") */}
@@ -905,7 +947,12 @@ export function CommunityStatsScreen() {
                 96%, sitting unused in `lifetime` ten lines away. "No attempts
                 yet" and "every attempt failed" are the same number, and this
                 was rendering the second meaning. */}
-            {scope.k === 'current' &&
+            {/* Shown on all-time too. The number is `stats.lifetime` — the
+                club's whole life — and it was gated on the scope only so it
+                would not sit under a season heading. "כל הזמנים" is that
+                heading. It also stops the seasons-off club, which now OPENS
+                on all-time, from losing its organisation rate entirely. */}
+            {scope.k !== 'season' &&
             (stats?.lifetime?.totalFinished ?? 0) +
               (stats?.lifetime?.totalCancelled ?? 0) >
               0 ? (
@@ -940,7 +987,7 @@ export function CommunityStatsScreen() {
                 are measured over the club's whole life — and this read the
                 season-scoped figure, so a club's 22-night record vanished from
                 the app entirely the morning after a close. */}
-            {scope.k === 'current' && stats && (stats.lifetime?.longestStreak ?? stats.longestStreak) >= 2 ? (
+            {scope.k !== 'season' && stats && (stats.lifetime?.longestStreak ?? stats.longestStreak) >= 2 ? (
               <FunRow
                 icon="flame-outline"
                 tint={colors.danger}
@@ -961,7 +1008,7 @@ export function CommunityStatsScreen() {
                 tint={colors.primary}
                 parts={[
                   { t: `${derived.players.length} שחקנים`, em: 'num' },
-                  { t: ' שיחקו בעונה' },
+                  { t: scope.k === 'all' ? ' שיחקו במועדון' : ' שיחקו בעונה' },
                 ]}
                 last={!(derived.guestGoals > 0) && !(derived.totalOwnGoals > 0)}
               />
@@ -1026,32 +1073,15 @@ export function CommunityStatsScreen() {
             }
             seasonId={scope.k === 'season' ? scope.id : undefined}
             rows={scope.k === 'all' ? allTime : undefined}
+            // The denominator of the efficiency tab's attendance column, in
+            // the SAME scope as the rows above — the tile two sections up
+            // prints this exact number as "מחזורים".
+            clubEvenings={eveningsInScope}
           />
 
-          {/* ── הישגי המועדון (תארים) — הכי למטה ── */}
-          {/* התארים הם של המועדון לכל אורכו, לא של עונה אחת — הם נצברים מכל
-              העונות יחד ואינם מתאפסים. תחת עונה שנסגרה זו לא כותרת נכונה,
-              אז מי שרוצה לראות אותם חוזר לעונה הרצה. */}
-          {scope.k === 'current' ? (
-          <>
-          <SectionTitle icon="medal" text={he.communityStatsSectionAchievements} />
-          <Card style={styles.badgeCard}>
-            <View style={styles.badgeGrid}>
-              {club.badges.map((b) => (
-                <AchievementBadge
-                  key={b.def.id}
-                  def={b.def}
-                  tier={b.tier}
-                  size={64}
-                  showTierLabel
-                  onPress={() => onBadgePress(b)}
-                  style={styles.badgeItem}
-                />
-              ))}
-            </View>
-          </Card>
-          </>
-          ) : null}
+          {/* "הישגי המועדון" moved to CommunityDetails, under the club's
+              numbers — the owner asked for it on the club page, not buried at
+              the bottom of the stats screen. */}
 
           <View style={{ height: spacing.xl }} />
         </ScrollView>
@@ -1271,7 +1301,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   scopeChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  scopeChipText: { ...typography.caption, color: colors.textMuted, fontWeight: '600' },
+  // ⚠️ writingDirection, not just an alignment: the chip now carries
+  // "מאז שעונה 2 הסתיימה" beside "עונה 2 · עכשיו", and a Hebrew label that
+  // mixes in a digit and a "·" is exactly the shape that renders its
+  // punctuation on the wrong end when the base direction is left to autodetect.
+  scopeChipText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '600',
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+  },
   scopeChipTextOn: { color: '#fff' },
   scopeNoteRow: {
     flexDirection: 'row',
@@ -1282,6 +1322,10 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
+    // The note opens with a number on the seasons-off club ("סכום של 2 עונות
+    // שנסגרו…"), and a right-aligned paragraph whose base direction is still
+    // being guessed puts that number and the full stop on the wrong side.
+    writingDirection: 'rtl',
     lineHeight: 18,
     paddingHorizontal: spacing.xs,
   },
@@ -1428,12 +1472,4 @@ const styles = StyleSheet.create({
   levelBarTrack: { height: 10, borderRadius: 999, backgroundColor: colors.surfaceMuted, overflow: 'hidden' },
   levelBarFill: { height: '100%', borderRadius: 999, backgroundColor: colors.primary },
   levelHint: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
-  badgeCard: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
-  badgeGrid: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    rowGap: spacing.md,
-  },
-  badgeItem: { width: '33.3%' },
 });

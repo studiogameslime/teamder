@@ -36,6 +36,10 @@ export interface EfficiencyRow {
   /** Goals + assists per mini-game — the headline, and the default sort. */
   gaPerGame: number | null;
   cleanSheetPct: number | null;
+  /** Evenings (מחזורים) attended as a share of the evenings the club held in
+   *  the scope on screen. 0–100, or null when there is nothing to divide by.
+   *  The ONLY rate here counted in evenings rather than mini-games. */
+  attendancePct: number | null;
   /** Mini-games played. The sample the rest of the row rests on. */
   rounds: number;
   /** True when this player's history predates one of the metrics, so at least
@@ -61,7 +65,48 @@ function coverage(counter: number | undefined, rounds: number): number {
   return typeof counter === 'number' ? counter : rounds;
 }
 
-export function toEfficiencyRow(row: ChampionshipRow): EfficiencyRow {
+/**
+ * Attendance — the one rate on this row measured in EVENINGS, not mini-games.
+ *
+ * `games` is evenings the player turned up for; `clubEvenings` is how many the
+ * club held in the scope the table is showing (the running season, one sealed
+ * season, or all time). Mixing the two scopes is the whole risk here: a
+ * season-scoped numerator over a lifetime denominator reads as a player who
+ * shows up a third of the time, so the caller must hand over the evening count
+ * that belongs to the rows it is passing, or none at all.
+ *
+ * Null, in both of the cases where the number would be a claim rather than a
+ * measurement:
+ *   • No denominator — the caller has no evening count for this scope. Nothing
+ *     to divide by, and the column hides itself rather than print a dash per
+ *     row.
+ *   • The player attended none of them. A zero cannot tell "was in the club
+ *     all season and never came" from "joined last week", and this table
+ *     lists every member from the day they join — including the whole roster
+ *     on the morning a new season starts, when the club has held no evenings
+ *     yet and every `games` is 0.
+ *
+ * Capped at 100. A player cannot attend more evenings than the club held, so
+ * anything above it is drift between the attendance scan and the evening
+ * count, and "117%" reads as a broken table rather than as a caveat.
+ */
+export function attendanceShare(
+  games: number | undefined,
+  clubEvenings: number | undefined,
+): number | null {
+  const attended = typeof games === 'number' && games > 0 ? games : 0;
+  const held =
+    typeof clubEvenings === 'number' && clubEvenings > 0 ? clubEvenings : 0;
+  if (attended <= 0 || held <= 0) return null;
+  return Math.min(100, (attended / held) * 100);
+}
+
+export function toEfficiencyRow(
+  row: ChampionshipRow,
+  /** Evenings the club held in the scope these rows belong to. Omit and the
+   *  attendance rate is null — see `attendanceShare`. */
+  clubEvenings?: number,
+): EfficiencyRow {
   const rounds = row.rounds ?? 0;
   const csRounds = coverage(row.csRounds, rounds);
   const asRounds = coverage(row.asRounds, rounds);
@@ -81,6 +126,7 @@ export function toEfficiencyRow(row: ChampionshipRow): EfficiencyRow {
       rate(row.cleanSheets ?? 0, csRounds) === null
         ? null
         : (row.cleanSheets / csRounds) * 100,
+    attendancePct: attendanceShare(row.games, clubEvenings),
     rounds,
     partial: rounds > 0 && (csRounds < rounds || asRounds < rounds),
   };
@@ -103,6 +149,7 @@ export type EfficiencySortKey =
   | 'assistsPerGame'
   | 'gaPerGame'
   | 'cleanSheetPct'
+  | 'attendancePct'
   | 'rounds';
 
 /**

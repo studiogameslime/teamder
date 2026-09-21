@@ -14,6 +14,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Keyboard,
   Modal,
   Pressable,
   RefreshControl,
@@ -53,6 +54,7 @@ import { CommunityStadiumHero } from '@/components/community/CommunityStadiumHer
 import { CoverImagePicker } from '@/components/community/CoverImagePicker';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { CommunityStatsGrid } from '@/components/community/CommunityStatsGrid';
+import { ClubAchievementsCard } from '@/components/community/ClubAchievementsCard';
 import { CommunityChampionship } from '@/components/community/CommunityChampionship';
 import { canEnterLive } from '@/services/gameLifecycle';
 import { SeasonsCard } from '@/components/community/SeasonsCard';
@@ -68,6 +70,7 @@ import { groupService } from '@/services';
 import { logError } from '@/services/errorLog';
 import { pickAndUploadGroupCover } from '@/services/photoService';
 import { gameService } from '@/services/gameService';
+import { seasonHistoryService } from '@/services/seasonHistoryService';
 import { deepLinkService } from '@/services/deepLinkService';
 import { createShortInviteUrl } from '@/services/inviteLinkService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -83,6 +86,7 @@ import {
   User,
   WeekdayIndex,
 } from '@/types';
+import type { ClubMetrics } from '@/data/clubAchievements';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -126,6 +130,23 @@ export function CommunityDetailsScreen() {
   const [communityStats, setCommunityStats] = useState<CommunityStatsData | null>(
     null,
   );
+  // Goals for the club badges ("הישגי המועדון"), which moved onto this screen.
+  //
+  // Five of the six club metrics are already on this screen for free —
+  // `communityStats.lifetime` carries three of them and the group doc the
+  // other two. Goals are the one thing nothing here holds, so they are
+  // fetched separately, and split in two because they come from two places:
+  //   • `liveGoals` — summed from communityPlayerStats, which a season close
+  //     ZEROES.
+  //   • `archivedGoals` — what the sealed season cards remember.
+  // A badge is a permanent thing the club did; without the archived half, a
+  // club un-earned its gold "שערי המועדון" the morning after every close.
+  //
+  // Deliberately NOT part of `reload()`: that runs on every focus, and this
+  // pair only changes when an evening is played. Keyed on the club instead,
+  // so returning to the screen costs nothing.
+  const [liveGoals, setLiveGoals] = useState<number | null>(null);
+  const [archivedGoals, setArchivedGoals] = useState(0);
   const [loading, setLoading] = useState(true);
   // Pull-to-refresh has its own state so the native RefreshControl
   // spinner doesn't fire at the same time as our SoccerBallLoader.
@@ -209,8 +230,18 @@ export function CommunityDetailsScreen() {
 
   // Single load path — useFocusEffect covers the initial focus AND refresh on
   // return; a separate useEffect(reload) double-loaded the whole page on open.
+  //
+  // The dismiss is the other half of the dead-taps fix below, and it is the
+  // half that actually removes the wasted tap. This screen owns no TextInput,
+  // but the screen people arrive FROM does: the communities feed has a search
+  // box, and the native stack keeps that screen mounted, so tapping a result
+  // while the box still holds focus lands here with RN's TextInputState still
+  // naming it. The ScrollView below then spends the next tap "dismissing the
+  // keyboard" instead of pressing what was under the finger. Clearing the
+  // focus on arrival means there is no stale input for it to key off.
   useFocusEffect(
     useCallback(() => {
+      Keyboard.dismiss();
       reload();
     }, [reload]),
   );
@@ -267,6 +298,94 @@ export function CommunityDetailsScreen() {
     () => !!group && !!me && (group.adminIds ?? []).includes(me.id),
     [group, me],
   );
+  // The club's own people — the rules' definition of a member (playerIds OR
+  // adminIds), which is what decides whether the club-badge aggregates below
+  // are readable at all.
+  const belongs = isMember || isAdmin;
+  // Has this club any record at all — an evening held, or one called off.
+  //
+  // The badges hang off "נתוני מועדון", and that block hides ITSELF at zero
+  // (CommunityStatsSection, below). Without the same gate a club created five
+  // minutes ago got six locked medals floating under no heading — the one
+  // state the badges were never shown in before the move, because the stats
+  // screen replaced its whole body with an empty state. It also keeps that
+  // club from paying a communityPlayerStats query for a card nobody sees.
+  //
+  // `communityStats` is never reset to null once loaded, so this cannot flip
+  // back to false on a re-focus.
+  const clubHasRecord =
+    !!communityStats &&
+    (communityStats.totalFinished > 0 || communityStats.totalCancelled > 0);
+
+  // The live half of the club's goal total (see the state above).
+  //
+  // Members only — and not for politeness: `communityPlayerStats` is
+  // readable only by the club's own members, so for a stranger browsing a
+  // public club this query comes back denied and the total reads 0. A club's
+  // gold "שערי המועדון" would then show LOCKED to the one person who has
+  // never seen it — a wrong statement about the club, paid for with a
+  // round-trip that was always going to fail.
+  useEffect(() => {
+    if (!groupId || !belongs || !clubHasRecord) return;
+    let alive = true;
+    gameService
+      .getCommunityChampionship(groupId)
+      .then((c) => {
+        if (alive) setLiveGoals(c?.totalGoals ?? 0);
+      })
+      // A failure must not hide the other five badges — treat it as "no goals
+      // known yet" rather than as "no achievements".
+      .catch(() => {
+        if (alive) setLiveGoals(0);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [groupId, belongs, clubHasRecord]);
+
+  // The archived half. Only a club that has actually CLOSED a season has one,
+  // and everyone else pays no read for it.
+  const closedSeasons = group?.seasons?.count ?? 0;
+  useEffect(() => {
+    if (!groupId || !belongs || !clubHasRecord || closedSeasons <= 0) {
+      setArchivedGoals(0);
+      return;
+    }
+    let alive = true;
+    seasonHistoryService
+      .list(groupId)
+      .then((list) => {
+        // 'error' is NOT an empty list: a club with five sealed seasons told
+        // that on a dropped connection would read as having lost them.
+        if (!alive || list === 'error') return;
+        setArchivedGoals(list.reduce((a, x) => a + x.totals.goals, 0));
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [groupId, belongs, clubHasRecord, closedSeasons]);
+
+  // Everything the club badges are scored on — all of it LIFETIME. Season
+  // scoping any of these made a club's badges collapse the morning after a
+  // close, which is exactly what a badge must never do.
+  const clubMetrics: ClubMetrics | null = useMemo(() => {
+    if (!belongs || !group || !communityStats || !clubHasRecord) return null;
+    if (liveGoals === null) return null;
+    return {
+      gameNights: communityStats.lifetime?.totalFinished ?? 0,
+      clubGoals: liveGoals + archivedGoals,
+      members: group.playerIds?.length ?? 0,
+      ageYears: group.createdAt
+        ? Math.floor((Date.now() - group.createdAt) / (365.25 * 24 * 3600 * 1000))
+        : 0,
+      activeThisMonth: communityStats.lifetime?.activeThisMonth ?? 0,
+      organizationRatePct: Math.round(
+        (communityStats.lifetime?.organizationRate ?? 0) * 100,
+      ),
+    };
+  }, [belongs, group, communityStats, clubHasRecord, liveGoals, archivedGoals]);
+
   // Only the CREATOR may delete the whole community — promoted admins
   // can manage it but not destroy it. Falls back to the first admin for
   // legacy docs that predate creatorId.
@@ -779,6 +898,30 @@ export function CommunityDetailsScreen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        // "I press buttons and nothing is pressed, and after I scroll the
+        // screen a little the presses work" — reported from 1.1.8.
+        //
+        // Scrolling still working while taps do nothing narrows the cause to
+        // exactly one place: ScrollView's onStartShouldSetResponderCapture. An
+        // overlay would swallow the scroll too; a hit-test dead zone would kill
+        // one region, not the page. The capture returns true — taking the touch
+        // away from whatever was under the finger — when RN believes a keyboard
+        // is dismissible, i.e. TextInputState still names a focused input.
+        // Nothing on this page has one, but the feed we arrive from does (its
+        // search box), and that focus survives the navigation.
+        //
+        // The release handler then blurs it, so strictly it is the FIRST tap
+        // after each arrival that is eaten, not all of them — which is how a
+        // page reads as dead until you poke it twice, and why the report's
+        // "scroll a little and it works" is the same story.
+        //
+        // "handled" opts out of that capture entirely: the touch goes to the
+        // button, and only an unclaimed tap falls through. It is what the
+        // app's other tap-heavy scroll surfaces already pass — both wizards,
+        // post-sign-in onboarding and both filter sheets. (Most screens here
+        // still take the default; this is the fix for the ones a focused
+        // search box upstream can reach, not a house rule.)
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -891,6 +1034,9 @@ export function CommunityDetailsScreen() {
               second would be explaining a total before correcting it. */}
           <UnverifiedEveningsCard
             groupId={group.id}
+            // So a row does not repeat the club name already in the header
+            // above it and push the date out of a one-line row.
+            groupName={group.name}
             isAdmin={isAdmin}
             // Confirming an evening adds it to the very numbers on this
             // screen, so re-read them rather than leave a stale total under
@@ -1109,6 +1255,12 @@ export function CommunityDetailsScreen() {
               (read cost bounded to ~200 finished/cancelled game docs) and
               passed down so the count here AGREES with "מפגשים שנערכו". */}
           <CommunityStatsSection stats={communityStats} />
+
+          {/* ── הישגי המועדון (תארים) ──
+              ישירות מתחת ל"נתוני מועדון", לבקשת הבעלים (דיווח של אלירן,
+              1.1.9). התארים הם של המועדון לכל אורכו — הם נצברים מכל העונות
+              יחד ואינם מתאפסים בסגירת עונה. */}
+          <ClubAchievementsCard metrics={clubMetrics} />
 
           {/* The stats-table button that used to sit here (below "נתוני
               מועדון") was moved UP to the top of the body — it duplicated the

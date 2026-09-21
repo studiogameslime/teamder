@@ -117,6 +117,52 @@ describe('saving availability', () => {
   });
 });
 
+// ⚠️ THE ACTUAL CAUSE, and the one shape every test above was missing.
+//
+// I diagnosed this as the cold-start auth race and proved the payload allowed
+// against both the current rules and the ones live at the minute it failed.
+// That proof was sound and the conclusion was wrong, because every case above
+// SEEDS a user document first. Production says otherwise: both reporters —
+// E7vjdAjEp8VGJca4LFukTw8K0Kl1 here, SvMMv5ouNub9gvN9wMmn8inUqAJ2 on
+// getMyLiveOrUpcomingGames — have no /users document at all. 404, both.
+//
+// A Firebase-authenticated account with no /users doc is a real state: the doc
+// write at signup can fail (denied, offline, quota) and leave an Auth user
+// behind with nothing under it. `updateDoc` against that document makes the
+// rule evaluate `resource.data`, which is null, and reading a field off null
+// RAISES — and a raised rule denies. Hence permission-denied for a user whose
+// permissions are perfectly in order.
+//
+// This is why the fix is `userService.ensureUserDoc`, which recreates the
+// document, and not the auth-race retry, which would have retried a state that
+// never resolves.
+describe('the account with NO user document — what actually failed', () => {
+  test('updateDoc against a document that does not exist is denied', async () => {
+    await env.clearFirestore();
+    const db = env.authenticatedContext(ME).firestore();
+    let denied = false;
+    try {
+      await updateDoc(doc(db, 'users', ME), { availability: payload(), updatedAt: 2 });
+    } catch (e) {
+      denied = String(e).includes('permission-denied') || String(e).includes('PERMISSION_DENIED');
+    }
+    assert.equal(denied, true);
+  });
+
+  test('and CREATING it first is allowed, which is the recovery', async () => {
+    await env.clearFirestore();
+    const db = env.authenticatedContext(ME).firestore();
+    let ok = true;
+    try {
+      await setDoc(doc(db, 'users', ME), { name: 'מתן', email: 'm@example.com', createdAt: 1 });
+      await updateDoc(doc(db, 'users', ME), { availability: payload(), updatedAt: 2 });
+    } catch {
+      ok = false;
+    }
+    assert.equal(ok, true);
+  });
+});
+
 describe('and it is still somebody else who cannot', () => {
   test('a different user may not write my availability', async () => {
     await env.clearFirestore();

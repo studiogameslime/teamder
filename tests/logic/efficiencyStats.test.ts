@@ -89,6 +89,7 @@ describe('a player who has not played', () => {
     expect(e.assistsPerGame).toBeNull();
     expect(e.gaPerGame).toBeNull();
     expect(e.cleanSheetPct).toBeNull();
+    expect(e.attendancePct).toBeNull();
     expect(e.rounds).toBe(0);
   });
 
@@ -105,6 +106,57 @@ describe('win percentage', () => {
   it('winning everything is 100, winning nothing is 0 — not null', () => {
     expect(toEfficiencyRow(row({ rounds: 5, wins: 5 })).winPct).toBe(100);
     expect(toEfficiencyRow(row({ rounds: 5, wins: 0 })).winPct).toBe(0);
+  });
+});
+
+// The one rate here counted in EVENINGS (מחזורים), not mini-games — and the
+// only one whose denominator comes from outside the row, which is exactly what
+// makes it easy to get wrong.
+describe('attendance rate', () => {
+  it('9 evenings of the club\'s 12 is 75%', () => {
+    expect(toEfficiencyRow(row({ games: 9 }), 12).attendancePct).toBe(75);
+  });
+
+  it('counts evenings, never mini-games', () => {
+    // A club night is ~6 mini-games. Dividing the 54 mini-games this player
+    // played by the club's 12 EVENINGS is the מחזור/משחקון mix-up, and it
+    // would print 450%.
+    const e = toEfficiencyRow(row({ games: 9, rounds: 54 }), 12);
+    expect(e.attendancePct).toBe(75);
+  });
+
+  it('turning up to everything is 100%', () => {
+    expect(toEfficiencyRow(row({ games: 12 }), 12).attendancePct).toBe(100);
+  });
+
+  it('is null with no club evening count — there is nothing to divide by', () => {
+    expect(toEfficiencyRow(row({ games: 9 })).attendancePct).toBeNull();
+    expect(toEfficiencyRow(row({ games: 9 }), 0).attendancePct).toBeNull();
+  });
+
+  it('is null, not 0%, for a member who has attended nothing', () => {
+    // The club table lists every member from the day they join, and on the
+    // morning a season starts that is the whole roster. A 0% there cannot tell
+    // "was here all season and never came" from "joined last week", so it
+    // claims something the data does not know.
+    expect(toEfficiencyRow(row({ games: 0 }), 12).attendancePct).toBeNull();
+  });
+
+  it('never exceeds 100%, however the two counts drift', () => {
+    // The numerator is a per-player scan and the denominator a club-wide one;
+    // when they disagree, "117%" reads as a broken table.
+    expect(toEfficiencyRow(row({ games: 14 }), 12).attendancePct).toBe(100);
+  });
+
+  it('sorts like every other column — best first, unknowable last', () => {
+    const rows = [
+      toEfficiencyRow(row({ uid: 'never', games: 0, rounds: 30 }), 20),
+      toEfficiencyRow(row({ uid: 'half', games: 10, rounds: 60 }), 20),
+      toEfficiencyRow(row({ uid: 'always', games: 20, rounds: 120 }), 20),
+    ];
+    expect(sortEfficiency(rows, 'attendancePct').map((r) => r.uid)).toEqual([
+      'always', 'half', 'never',
+    ]);
   });
 });
 
@@ -131,7 +183,7 @@ describe('display', () => {
 describe('sorting', () => {
   const mk = (uid: string, gaPerGame: number | null, rounds: number): EfficiencyRow => ({
     uid, winPct: 0, goalsPerGame: 0, assistsPerGame: 0, gaPerGame,
-    cleanSheetPct: 0, rounds, partial: false,
+    cleanSheetPct: 0, attendancePct: null, rounds, partial: false,
   });
 
   it('ranks by the column, highest first', () => {

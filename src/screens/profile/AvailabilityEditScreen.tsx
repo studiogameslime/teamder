@@ -52,8 +52,32 @@ const ALL_DAYS: WeekdayIndex[] = [0, 1, 2, 3, 4, 5, 6];
 const RADIUS_MIN = 5;
 const RADIUS_MAX = 50;
 const ACCENT = '#2563EB';
-/** Gush Dan — sensible default focus when the user has no saved location. */
+/**
+ * Gush Dan — where the map OPENS when the user has no saved location.
+ *
+ * It is a viewport default and nothing more. It must never be persisted or
+ * reverse-geocoded as if the user had chosen it: this exact point resolves to
+ * {"suburb":"הר שלום","town":"בני ברק"}, so every user who flipped the location
+ * toggle on and saved without moving the pin, searching a city or tapping GPS
+ * was stamped homeCity/preferredCity/cities = 'בני ברק'. A location is only
+ * written once `locationPicked` is true (see below).
+ */
 const DEFAULT_CENTER = { lat: 32.0719, lng: 34.8417 };
+
+/**
+ * Saved coords that sit exactly on the opening view are the fingerprint of
+ * that bug — a real pin-drop, city search or GPS fix never lands on the
+ * default to six decimals. Such a user is treated as having no home area yet,
+ * so the screen asks for a real one instead of silently re-saving בני ברק.
+ */
+function isDefaultCenter(lat?: number | null, lng?: number | null): boolean {
+  return (
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    Math.abs(lat - DEFAULT_CENTER.lat) < 1e-6 &&
+    Math.abs(lng - DEFAULT_CENTER.lng) < 1e-6
+  );
+}
 
 const TIME_BUCKETS: {
   key: TimeBucket;
@@ -144,6 +168,12 @@ export function AvailabilityEditScreen() {
   // are respected while everyone else (undefined) defaults in.
   const [notify, setNotify] = useState<boolean>(initial.acceptsFillerPush !== false);
   const [locationEnabled, setLocationEnabled] = useState(initialLocationEnabled);
+  // Has the user ever actually chosen the home area (map pick, city search or
+  // the explicit GPS button)? While this is false the pin on screen is only
+  // the map's opening view, and NOTHING location-shaped may be persisted.
+  const [locationPicked, setLocationPicked] = useState(
+    initialLocationEnabled && !isDefaultCenter(initial.homeCityLat, initial.homeCityLng),
+  );
   // Whether the OS already granted foreground location. When it has, the
   // "אשרו שיתוף מיקום" framing is misleading (nothing to grant) — the copy
   // drops to a plain "flip the toggle above" instruction. Read non-prompting.
@@ -213,7 +243,10 @@ export function AvailabilityEditScreen() {
         canAskAgain: r.canAskAgain,
       });
       if (r.granted) {
-        if (r.latLng) setPin(r.latLng);
+        if (r.latLng) {
+          setPin(r.latLng);
+          setLocationPicked(true);
+        }
         if (r.city) setCityLabel(r.city);
       } else {
         promptLocationDenied(r.canAskAgain);
@@ -226,9 +259,21 @@ export function AvailabilityEditScreen() {
   // City/area search result → move the fixed home pin there.
   const handleCityPicked = (res: LocationResult) => {
     setPin({ lat: res.lat, lng: res.lng });
+    setLocationPicked(true);
     if (res.label) setCityLabel(res.label);
     setSearchOpen(false);
   };
+
+  // Map tap / pin drag (small map and the full-screen one) — the other two
+  // ways of deliberately choosing the home area.
+  const handlePinPicked = useCallback((lat: number, lng: number) => {
+    setPin({ lat, lng });
+    setLocationPicked(true);
+    // The previous label belongs to the previous spot, and the new one is only
+    // named on save (a reverse-geocode per drag frame would hammer Nominatim).
+    // Showing nothing beats showing the city the user just moved away from.
+    setCityLabel('');
+  }, []);
 
   const toggleSlot = useCallback((d: WeekdayIndex, b: TimeBucket) => {
     setSlots((prev) => {
@@ -264,6 +309,14 @@ export function AvailabilityEditScreen() {
   if (!user) return null;
 
   const save = async () => {
+    // A location that the user never chose is not a location. Saving here used
+    // to reverse-geocode whatever the map happened to be showing, which for
+    // anyone who hadn't touched it was the default view — and wrote 'בני ברק'
+    // as their home city. Ask for a real area instead of inventing one.
+    if (locationEnabled && !locationPicked) {
+      appAlert(he.availabilityAreaNotSetTitle, he.availabilityAreaMissingBody);
+      return;
+    }
     // The grid is the source of truth; derive the legacy arrays from it so
     // older clients + the server matcher's fallback path keep working exactly
     // as before (never wiping anyone's saved availability).
@@ -282,9 +335,20 @@ export function AvailabilityEditScreen() {
       // since the matcher requires a city.
       let cityName = '';
       let coords: { lat: number; lng: number } | null = null;
-      if (locationEnabled) {
+      // `locationPicked` is re-checked (not just guarded above) so no future
+      // caller of this block can write a city derived from the default view.
+      if (locationEnabled && locationPicked) {
         coords = { lat: pin.lat, lng: pin.lng };
-        cityName = initial.homeCity ?? '';
+        // The pre-geocode fallback holds ONLY while the pin has not moved.
+        // `initial.homeCity` names the OLD spot, so inheriting it for a pin the
+        // user has just dragged somewhere else writes the same wrong city this
+        // whole change exists to stop — and it needs no exotic failure to
+        // happen, only a reverse-geocode that doesn't answer (Nominatim rate
+        // limits, no signal), after which homeCity/preferredCity/cities would
+        // have been re-stamped 'בני ברק' beside coordinates in חיפה.
+        // No city at all is recoverable; a confidently wrong one is not.
+        const pinMoved = pin.lat !== initialPin.lat || pin.lng !== initialPin.lng;
+        cityName = pinMoved ? '' : (initial.homeCity ?? '');
         try {
           const { reverseGeocodeCity } = await import('@/services/geocodeService');
           const c = await reverseGeocodeCity(pin.lat, pin.lng);
@@ -534,13 +598,24 @@ export function AvailabilityEditScreen() {
         <AvailabilityRadiusMap
           center={pin}
           radiusKm={radiusKm}
-          onPick={(lat, lng) => setPin({ lat, lng })}
+          onPick={handlePinPicked}
           onExpand={() => setMapExpanded(true)}
         />
-        {cityLabel ? (
+        {locationPicked && cityLabel ? (
           <Text style={styles.areaCityLabel}>
             {he.availabilityHomeAreaLabel(cityLabel)}
           </Text>
+        ) : null}
+        {!locationPicked ? (
+          <View style={styles.areaWarnCard}>
+            <View style={styles.sectionHeaderInner}>
+              <Text style={styles.areaWarnTitle}>
+                {he.availabilityAreaNotSetTitle}
+              </Text>
+              <Ionicons name="alert-circle-outline" size={16} color={colors.warning} />
+            </View>
+            <Text style={styles.areaWarnHint}>{he.availabilityAreaNotSetHint}</Text>
+          </View>
         ) : null}
 
         {/* Range slider */}
@@ -614,9 +689,15 @@ export function AvailabilityEditScreen() {
         radiusKm={radiusKm}
         minKm={RADIUS_MIN}
         maxKm={RADIUS_MAX}
-        cityName={initial.homeCity}
+        // Same rule as the inline label below the small map, and for the same
+        // reason: `initial.homeCity` is exactly the wrong fallback here. A pin
+        // drop clears `cityLabel` (the old name no longer describes the new
+        // spot), so falling back to the saved city made the big map's header
+        // announce 'בני ברק' over a pin the user had just dropped in חיפה —
+        // the stale label this change set out to remove, on the bigger screen.
+        cityName={locationPicked && cityLabel ? cityLabel : undefined}
         onClose={() => setMapExpanded(false)}
-        onPick={(lat, lng) => setPin({ lat, lng })}
+        onPick={handlePinPicked}
         onRadiusChange={setRadiusKm}
       />
 
@@ -712,33 +793,61 @@ async function persistAvailability(
   // one user with permission-denied, and the /users update rule admits this
   // exact payload — proved against both the current ruleset and the one that
   // was live at the moment it failed (tests/rules/availabilitySave.test.mjs,
-  // nine shapes, all allowed). A denial the rules do not explain is the token
-  // not having landed, which is what this wrapper is for.
+  // nine shapes, all allowed).
   //
-  // It matters more here than on a read: a read that loses the race shows an
-  // empty list for a moment, and this one throws away a grid the user has just
-  // spent a minute filling in.
-  await withAuthRaceRetry(() =>
-    updateDoc(docs.user(uid), {
-      availability: {
-        preferredDays: availability.preferredDays,
-        preferredTimes: availability.preferredTimes ?? [],
-        availabilitySlots: slots,
-        preferredCity: availability.preferredCity ?? null,
-        cities: Array.isArray(availability.cities) ? availability.cities : [],
-        homeCity: availability.homeCity ?? null,
-        homeCityLat: coords?.lat ?? null,
-        homeCityLng: coords?.lng ?? null,
-        availabilityRadiusKm:
-          typeof availability.availabilityRadiusKm === 'number'
-            ? availability.availabilityRadiusKm
-            : 15,
-        isAvailableForInvites: availability.isAvailableForInvites !== false,
-        acceptsFillerPush: availability.acceptsFillerPush === true,
-      },
-      updatedAt: Date.now(),
-    }),
-  );
+  // That left two candidates for a denial the rules do not explain: the token
+  // not having landed, which this wrapper covers, and the document not being
+  // there at all, which it cannot — see the catch below, which is what the
+  // reporting account turned out to need.
+  //
+  // The retry matters more here than on a read: a read that loses the race
+  // shows an empty list for a moment, and this one throws away a grid the user
+  // has just spent a minute filling in.
+  const write = () =>
+    withAuthRaceRetry(() =>
+      updateDoc(docs.user(uid), {
+        availability: {
+          preferredDays: availability.preferredDays,
+          preferredTimes: availability.preferredTimes ?? [],
+          availabilitySlots: slots,
+          preferredCity: availability.preferredCity ?? null,
+          cities: Array.isArray(availability.cities) ? availability.cities : [],
+          homeCity: availability.homeCity ?? null,
+          homeCityLat: coords?.lat ?? null,
+          homeCityLng: coords?.lng ?? null,
+          availabilityRadiusKm:
+            typeof availability.availabilityRadiusKm === 'number'
+              ? availability.availabilityRadiusKm
+              : 15,
+          isAvailableForInvites: availability.isAvailableForInvites !== false,
+          acceptsFillerPush: availability.acceptsFillerPush === true,
+        },
+        updatedAt: Date.now(),
+      }),
+    );
+
+  try {
+    await write();
+  } catch (err) {
+    // The denial that is not a denial.
+    //
+    // The four production reports came from ONE account, and that account has
+    // no /users document at all — verified against production. The update rule
+    // reads `resource.data`, so with no document there is nothing for any
+    // payload to satisfy and Firestore answers permission-denied. No number of
+    // auth-race retries can fix that: the token was never the problem, and the
+    // user just watched a grid they spent a minute filling in fail four times.
+    //
+    // So on a denial we ask once whether the document is actually there.
+    // `ensureUserDoc` rebuilds it through the documented lazy-create path and
+    // says so; if it is there, or it could not tell, nothing was recovered and
+    // the original error surfaces untouched — a real rules denial must never
+    // be swallowed by a retry.
+    if ((err as { code?: string })?.code !== 'permission-denied') throw err;
+    const restored = await userService.ensureUserDoc();
+    if (!restored) throw err;
+    await write();
+  }
 }
 
 const styles = StyleSheet.create({
@@ -828,6 +937,31 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: RTL_LABEL_ALIGN,
     marginTop: spacing.sm,
+  },
+  // "No home area chosen yet" notice — sits under the map until the user
+  // picks a real spot, so nobody saves the default view by accident.
+  areaWarnCard: {
+    gap: 4,
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#FCD9A0',
+    backgroundColor: '#FFF7E8',
+  },
+  areaWarnTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+  },
+  areaWarnHint: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
   },
 
   // Day chips — 7 equal cells in one row

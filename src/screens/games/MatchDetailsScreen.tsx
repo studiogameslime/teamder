@@ -65,6 +65,7 @@ import { usePreviousValue } from '@/hooks/animations';
 import { resolveSplitTeams, isSplitStale } from '@/utils/draftTeamsView';
 import { successHaptic } from '@/utils/haptics';
 import { toast } from '@/components/Toast';
+import * as Clipboard from 'expo-clipboard';
 import {
   HamburgerMenu,
   type HamburgerSection,
@@ -321,9 +322,15 @@ function buildStatusCardProps(args: {
   }
 
   // Subtitle for waiting state — always reflects "how many to go".
+  //
+  // Suppressed once the מחזור is actually running: "חסרים עוד 3 שחקנים" is
+  // simply false about an evening already being played, and non-registered
+  // club members now reach this card (they get the "עבור ללייב" CTA), so the
+  // stale recruiting line sat right under a live button.
+  const live = isActiveGame(game);
   const missing = Math.max(0, minPlayers - totalParticipants);
   const waitingSubtitle =
-    missing > 0 ? he.matchStatusCardWaitingHelper(missing) : undefined;
+    !live && missing > 0 ? he.matchStatusCardWaitingHelper(missing) : undefined;
 
   // Title selection — registered users see the personal "אתה רשום
   // למשחק" copy regardless of whether the game is still waiting or
@@ -334,6 +341,14 @@ function buildStatusCardProps(args: {
   let title: string;
   if (userIsIn) {
     title = he.matchStatusCardYouRegistered;
+  } else if (live) {
+    // A live מחזור states that it is live. `sessionStatus` only reports
+    // 'active' when team placements exist, and team-building was removed from
+    // the flow — so for a modern game the chain below fell through to
+    // "מוכנים להרכיב קבוצות" / "מחכים לשחקנים" while the evening was being
+    // played. Harmless while only roster members saw this card; wrong now
+    // that a club member off the roster sees it with a live CTA.
+    title = he.matchStatusCardLive;
   } else if (sessionStatus === 'ready_to_create_teams') {
     title = he.matchStatusCardReadyTeams;
   } else if (sessionStatus === 'teams_ready') {
@@ -1544,6 +1559,27 @@ export function MatchDetailsScreen() {
     nav.navigate('LiveMatch', { gameId: game.id });
   };
 
+  // Who this viewer is, as far as entering the live evening is concerned.
+  // Built once and handed to `canEnterLive` by BOTH entry points (the sticky
+  // CTA and the hamburger item) so they can never disagree about who is
+  // allowed in — they did, and a club member off a full roster was offered
+  // the waitlist instead of the live screen.
+  const liveEntryActor = {
+    isOrganizerOrAdmin: isAdmin,
+    isParticipant:
+      !!user &&
+      (game.players.includes(user.id) || game.waitlist.includes(user.id)),
+    // Any member of the club may WATCH, roster or not — the evening is a
+    // club event, and a member left off this week's roster could not open
+    // the live screen at all (owner report). Controls remain admin-only, so
+    // a member gets the read-only view.
+    isClubMember:
+      !!user && !!game.groupId && myCommunities.some((c) => c.id === game.groupId),
+  };
+  // Answered once — the sticky CTA, the conflict gate and the ☰ item all read
+  // the same boolean, so they cannot disagree about who may enter.
+  const canEnterLiveNow = canEnterLive(game, liveEntryActor);
+
   // ─── Render ───────────────────────────────────────────────────────────
 
   // Resolve the admin set for the game's parent group — used by
@@ -1567,6 +1603,37 @@ export function MatchDetailsScreen() {
         return acc;
       }, [])
       .join(' · ') || undefined;
+
+  // Last resort, when nothing on the device can open a map at all.
+  //
+  // Showing a toast (below) stopped the button being silent, but it still
+  // left the tap with nothing to show for it. Copy the destination first —
+  // the coords for a govmap pin, the address text for a legacy game — so
+  // the user can paste it into whatever maps app they do have, and say so
+  // in the toast. If even the clipboard refuses, fall back to the plain
+  // "couldn't open navigation" message rather than promising a copy that
+  // never happened.
+  const failNavigation = async (err: unknown, destination: string) => {
+    logError('matchOpenNavigation', err, {
+      screen: 'MatchDetailsScreen',
+      gameId: game.id,
+    });
+    // ⚠️ `setStringAsync` RESOLVES `false` when the copy fails — it does not
+    // throw — so a try/catch alone would announce "היעד הועתק" over an empty
+    // clipboard. Only an explicit `false` counts as a failure — the native
+    // modules resolve with nothing at all on success.
+    let copied = false;
+    try {
+      copied = (await Clipboard.setStringAsync(destination)) !== false;
+    } catch {
+      copied = false;
+    }
+    toast.error(
+      copied
+        ? he.matchDetailsNavigationCopied
+        : he.matchDetailsCannotOpenNavigation,
+    );
+  };
 
   // Waze handler. Earlier versions sent only `fieldName` (or whichever
   // string came first) as the query — Waze then searched its global
@@ -1599,18 +1666,12 @@ export function MatchDetailsScreen() {
         .catch(() =>
           Linking.openURL(`geo:${fLat},${fLng}?q=${fLat},${fLng}`),
         )
-        .catch((err) => {
-          logError('matchOpenNavigation', err, {
-            screen: 'MatchDetailsScreen',
-            gameId: game.id,
-          });
-          // …and TELL them. This path logged and returned, so the button did
-          // nothing at all and said nothing about it — while the text-query
-          // fallback thirty lines below has shown a toast all along. Same
-          // failure, two behaviours, and the silent one was on the path most
-          // games take.
-          toast.error(he.matchDetailsCannotOpenNavigation);
-        });
+        // …and TELL them. This path logged and returned, so the button did
+        // nothing at all and said nothing about it — while the text-query
+        // fallback thirty lines below has shown a toast all along. Same
+        // failure, two behaviours, and the silent one was on the path most
+        // games take.
+        .catch((err) => failNavigation(err, `${fLat},${fLng}`));
       return;
     }
 
@@ -1645,13 +1706,7 @@ export function MatchDetailsScreen() {
       // Same third rung as the precise path above — a text query works as a
       // `geo:` intent too, via its `q` parameter.
       .catch(() => Linking.openURL(`geo:0,0?q=${q}`))
-      .catch((err) => {
-        logError('matchOpenNavigation', err, {
-          screen: 'MatchDetailsScreen',
-          gameId: game.id,
-        });
-        toast.error(he.matchDetailsCannotOpenNavigation);
-      });
+      .catch((err) => failNavigation(err, dest));
   };
 
   // The right invite link for THIS game: ALWAYS a direct session link to
@@ -2002,23 +2057,25 @@ export function MatchDetailsScreen() {
         icon: 'play-circle-outline' as const,
       };
     }
-    // Regular user — when the match is already active and they ARE
-    // registered, surface a prominent "היכנס למשחק" CTA. Previously
-    // this lived only as a buried menu entry, so participants had to
-    // hunt for it. Only registered (players/waitlist) can enter
-    // because the LiveMatchScreen now gates non-participants too.
+    // Regular user — when the evening is already live and this viewer is
+    // allowed in, surface a prominent "עבור ללייב" CTA. Previously it lived
+    // only as a buried menu entry, so participants had to hunt for it.
+    //
+    // The gate is `canEnterLive`, the SAME predicate the hamburger entry
+    // below uses — not a hand-rolled roster check. A club member left off a
+    // full roster may watch the evening (gameLifecycle.canEnterLive), but
+    // the sticky CTA kept offering "הצטרף לרשימת המתנה" and only flipped to
+    // the live button once they had actually joined the waitlist (owner
+    // report). Sharing one predicate keeps the two entry points from
+    // drifting apart again.
+    //
     // NOTE: do NOT gate this on `!primaryDestructive`. A registered
-    // participant is always `primaryDestructive` (status==='joined'),
-    // so requiring `!primaryDestructive` here made the branch dead
-    // code — participants got no "enter live" button at all once the
-    // game went active (and cancel is closed by then, so the sticky
-    // fell through to null). The players/waitlist check below is the
-    // real "is registered" gate.
-    if (
-      sessionStatus === 'active' &&
-      user &&
-      (game.players.includes(user.id) || game.waitlist.includes(user.id))
-    ) {
+    // participant is always `primaryDestructive` (status==='joined'), so
+    // requiring `!primaryDestructive` here made the branch dead code —
+    // participants got no "enter live" button at all once the game went
+    // active (and cancel is closed by then, so the sticky fell through to
+    // null). `canEnterLive` is the real gate.
+    if (canEnterLiveNow) {
       return {
         title: he.sessionActionGoLive,
         onPress: handleGoLive,
@@ -2042,8 +2099,16 @@ export function MatchDetailsScreen() {
   })();
 
   // Conflict gate — only when the user is about to JOIN.
+  //
+  // `canEnterLiveNow` excludes the watch path on purpose. The pre-check runs
+  // for anyone who is NOT in this game's roster (see the effect above), so a
+  // club member who is registered to a DIFFERENT game at the same hour still
+  // carries a `preCheckConflict` — and once the sticky CTA started offering
+  // "עבור ללייב" to that member, the gate turned their live button into the
+  // locked "יש לך משחק אחר" tile. A clash is a reason not to REGISTER for two
+  // evenings at once; it is no reason to stop someone watching one of them.
   const blockedByConflict =
-    !!preCheckConflict && !!primary && status === 'none';
+    !!preCheckConflict && !!primary && status === 'none' && !canEnterLiveNow;
 
   // Single-section hamburger — no titles, ordered by frequency of
   // use. Destructive items sit at the bottom in the danger tone.
@@ -2081,21 +2146,7 @@ export function MatchDetailsScreen() {
               },
             ]
           : []),
-        ...(canEnterLive(game, {
-          isOrganizerOrAdmin: isAdmin,
-          isParticipant:
-            !!user &&
-            (game.players.includes(user.id) ||
-              game.waitlist.includes(user.id)),
-          // Any member of the club may WATCH, roster or not — the evening is
-          // a club event, and a member left off this week's roster could not
-          // open the live screen at all (owner report). Controls remain
-          // admin-only, so a member gets the read-only view.
-          isClubMember:
-            !!user &&
-            !!game.groupId &&
-            myCommunities.some((c) => c.id === game.groupId),
-        })
+        ...(canEnterLiveNow
           ? [
               {
                 id: 'manage',

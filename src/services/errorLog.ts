@@ -106,6 +106,28 @@ const TRANSIENT_CODES: ReadonlySet<string> = new Set([
   'auth/timeout',
 ]);
 
+// ── signed-out denial filter ───────────────────────────────────────
+// EVERY rule in firestore.rules begins with isSignedIn(). So a
+// `permission-denied` / `unauthenticated` raised while NO session exists is
+// the expected outcome of a read fired by a signed-out session — not a bug,
+// and nothing in the app can be fixed for it. withAuthRaceRetry already
+// distinguishes the two cases: it retries the cold-start race and rethrows
+// early on `if (!user) throw err; // genuinely signed out`, which is the only
+// path that reaches here with no uid.
+//
+// Deliberately conditional on there being NO uid: when a session DOES exist,
+// a denial still gets logged, so a real rules regression keeps surfacing.
+const DENIED_CODES: ReadonlySet<string> = new Set([
+  'permission-denied',
+  'unauthenticated',
+  'functions/permission-denied',
+  'functions/unauthenticated',
+]);
+
+function isSignedOutDenial(code: string | undefined, uid: string | undefined): boolean {
+  return !uid && !!code && DENIED_CODES.has(code);
+}
+
 function isTransientEnvError(code?: string, message?: string): boolean {
   if (code && TRANSIENT_CODES.has(code)) return true;
   // Fallback for errors that arrive without a `code` (raw FirebaseError):
@@ -242,6 +264,9 @@ export function logError(
     // Drop transient network/offline/timeout blips — not actionable bugs,
     // just dead-zone noise in the dev inbox (see isTransientEnvError).
     if (isTransientEnvError(code, message)) return;
+    const uid = currentUid();
+    // A denial with no session at all is an expected outcome, not a bug.
+    if (isSignedOutDenial(code, uid)) return;
     const fp = djb2(`${operation}|${normalize(message)}`);
     // Runaway guard: once this signature has been written SESSION_WRITE_CAP
     // times this session, stop buffering it (protects a single hot doc).
@@ -254,7 +279,7 @@ export function logError(
       existing.code = code;
       existing.stack = stack;
       existing.context = safeContext(context);
-      existing.userId = currentUid();
+      existing.userId = uid;
       existing.screen = screen;
     } else {
       buffer.set(fp, {
@@ -263,7 +288,7 @@ export function logError(
         code,
         stack,
         context: safeContext(context),
-        userId: currentUid(),
+        userId: uid,
         screen,
         pending: 1,
       });

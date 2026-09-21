@@ -40,6 +40,18 @@ export function CommunityChampionship({
    *  which is the live table plus every archive and therefore cannot be
    *  fetched as one document. When given, nothing is loaded here. */
   rows,
+  /** Evenings (מחזורים) the club HELD in the scope on screen — the running
+   *  season, one sealed season, or all time — and the denominator of the
+   *  efficiency tab's attendance column.
+   *
+   *  Only the caller knows it: this component is handed rows, not a scope, and
+   *  the evening count comes from a different source for each one (the
+   *  finished-games scan for the running season, the sealed card for a past
+   *  one, the unscoped scan for all time). Handing over the WRONG scope's
+   *  count is worse than handing over none — a season's attendance over a
+   *  lifetime of evenings makes every regular look like a drop-in — so when in
+   *  doubt it is left out and the column hides itself. */
+  clubEvenings,
 }: {
   groupId: string;
   memberIds?: string[];
@@ -52,6 +64,7 @@ export function CommunityChampionship({
     players: ChampionshipRow[];
     names?: Record<string, string>;
   } | null;
+  clubEvenings?: number;
 }) {
   // Which view of the same rows. 'מצטבר' is the table exactly as it has
   // always been; 'יעילות' is per-game rates over those same players. Not
@@ -153,12 +166,10 @@ export function CommunityChampionship({
         value={tab}
         onChange={setTab}
         options={[
-          {
-            value: 'cumulative',
-            label: seasonNo
-              ? he.statsTabSeason(seasonNo)
-              : he.statsTabCumulative,
-          },
+          // Totals vs. per-game rates — the pair is about the axis, not the
+          // season. Which season is in view is already said by the scope chips
+          // above, so naming it here read as if the other tab were all-time.
+          { value: 'cumulative', label: he.statsTabCumulative },
           { value: 'efficiency', label: he.statsTabEfficiency },
         ]}
       />
@@ -182,6 +193,9 @@ export function CommunityChampionship({
         // efficiency tab's entry bar is a share of the season on screen — a
         // past season's bar is measured against that season, not against today.
         clubRounds={data.totalRounds}
+        // The evenings behind the "הופעות" column, for the same scope. Absent
+        // → the attendance column is not shown.
+        clubEvenings={clubEvenings}
         mode={tab}
       />
 
@@ -202,7 +216,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     gap: 6,
   },
-  title: { ...typography.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  title: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+  },
   coverageNote: {
     ...typography.caption,
     color: colors.textMuted,

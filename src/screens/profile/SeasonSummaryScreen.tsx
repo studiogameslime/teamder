@@ -688,13 +688,14 @@ export function SeasonSummaryScreen() {
             accessibilityRole="button"
             accessibilityLabel={he.seasonShareCta}
           >
-            {/* Icon first → rightmost under forceRTL, beside the label. */}
+            {/* Label first → rightmost under forceRTL, so the icon lands to
+                its LEFT, which is the side it reads on in an RTL row. */}
+            <Text style={styles.shareText}>{he.seasonShareCta}</Text>
             <Ionicons
               name={sharing ? 'hourglass-outline' : 'share-social'}
               size={18}
               color="#fff"
             />
-            <Text style={styles.shareText}>{he.seasonShareCta}</Text>
           </Pressable>
         ) : null}
 

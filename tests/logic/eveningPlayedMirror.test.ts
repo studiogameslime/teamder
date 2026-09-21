@@ -262,18 +262,26 @@ describe('seasonActivation answers the same on both sides', () => {
       for (const choice of ['continue', 'sealNow'] as const) {
         for (const playedHistory of [0, 19, 22, 24, 30]) {
           for (const hasHistory of [false, true]) {
-            inputs.push({
-              cadence,
-              choice,
-              playedHistory,
-              hasHistory,
-              months: 6,
-              targetRounds: 24,
-              today: '2026-09-18',
-              ...(cadence === 'date' && !hasHistory
-                ? { season1EndsOn: '2026-12-31' }
-                : {}),
-            });
+            // BOTH values of the opt-in, because it is the only input that
+            // makes `playedHistory === targetRounds` mean two different
+            // things: refused on a first activation, a season CLOSE on the
+            // live target-change path. A copy that drifts on this one flag
+            // would let the client announce a close the server refuses.
+            for (const equalTargetCloses of [false, true]) {
+              inputs.push({
+                cadence,
+                choice,
+                playedHistory,
+                hasHistory,
+                equalTargetCloses,
+                months: 6,
+                targetRounds: 24,
+                today: '2026-09-18',
+                ...(cadence === 'date' && !hasHistory
+                  ? { season1EndsOn: '2026-12-31' }
+                  : {}),
+              });
+            }
           }
         }
       }

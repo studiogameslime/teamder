@@ -109,15 +109,8 @@ export const userService = {
       ]);
     } catch (err) {
       if (__DEV__) console.warn('[auth] getCurrentUser read timed out', err);
-      const cachedJson = await storage.getAuthUserJson();
-      if (cachedJson) {
-        try {
-          const cached = JSON.parse(cachedJson) as User;
-          if (cached?.id === fbUser.uid) return cached;
-        } catch {
-          /* corrupt cache — fall through to null */
-        }
-      }
+      const cached = await readCachedAuthUser(fbUser.uid);
+      if (cached) return cached;
       return null;
     }
     if (snap.exists()) {
@@ -137,13 +130,36 @@ export const userService = {
     // try/catch so a transient write failure doesn't crash the app
     // — we surface `null` and the caller sees "not signed in" until
     // the next launch retries.
+    //
+    // Seeded from the offline snapshot when there is one for THIS uid. The
+    // re-create used to start from nothing but the Firebase Auth fields, so
+    // recovering a lost doc also wiped the name, the avatar, the join date and
+    // the onboarding flag — and the account, which had been a full member a
+    // minute earlier, came back as a blank profile pushed into onboarding. The
+    // snapshot is the only surviving copy of those; where it disagrees with
+    // Firestore, Firestore is gone, so it wins by default.
+    const cached = await readCachedAuthUser(fbUser.uid);
+    // The name goes through the same two guards the /users create rule
+    // applies (`nameNotReserved`, `nameNotEmail`). A cached name that trips
+    // either would make the recovery write itself be denied, which would turn
+    // "your profile came back without its name" into "your profile never
+    // comes back" — so an unusable cached name falls back to the Auth one.
+    const cachedName = sanitizeDisplayString(cached?.name ?? '').slice(0, 60);
+    const seedName =
+      cachedName && !isReservedName(cachedName) && !isEmailLikeName(cachedName)
+        ? cachedName
+        : '';
     const fresh: User = {
       id: fbUser.uid,
-      name: fbUser.displayName ?? '',
-      email: fbUser.email ?? undefined,
-      avatarId: pickRandomAvatarId(),
-      createdAt: Date.now(),
-      onboardingCompleted: false,
+      name: seedName || (fbUser.displayName ?? ''),
+      email: fbUser.email ?? cached?.email ?? undefined,
+      avatarId: cached?.avatarId ?? pickRandomAvatarId(),
+      createdAt: typeof cached?.createdAt === 'number' ? cached.createdAt : Date.now(),
+      // Only claim onboarding is done when a real name came back with it.
+      // `onboardingCompleted: true` with an empty name is the one combination
+      // the gates can't recover from: RootNavigator lets the user through and
+      // every screen renders a nameless player.
+      onboardingCompleted: seedName.length > 0 && cached?.onboardingCompleted === true,
     };
     try {
       await setDoc(ref, fresh);
@@ -156,6 +172,77 @@ export const userService = {
     await applyAcquisitionIfFresh(fresh.id);
     await cacheAuthUser(fresh);
     return fresh;
+  },
+
+  /**
+   * Recover a signed-in session whose /users doc is missing.
+   *
+   * Production had an account — a real, signed-in, non-anonymous account —
+   * with NO /users document, and every write it made was answered
+   * `permission-denied`. That is not a rules bug: `allow update` on /users
+   * dereferences `resource.data` (inviterLocked, nameNotNewlyEmail), and on an
+   * absent document there is no `resource`, so the condition cannot be
+   * satisfied by any payload. Firestore reports that as a denial, and the
+   * screen that tried to write showed a permission error to a user who has
+   * every permission.
+   *
+   * The session survives doc-less because `getCurrentUser` falls back to the
+   * offline snapshot when the cold-start read times out — which skips the lazy
+   * re-create a few lines below it. Once that has happened the account stays
+   * broken for good: nothing re-reads the doc, so nothing ever notices it is
+   * gone.
+   *
+   * So: on a denial, look. If the document is really there the denial is a
+   * genuine rules answer and must surface untouched — we return false and the
+   * caller rethrows. If it is really absent we re-run the documented lazy
+   * re-create (`getCurrentUser`), which rebuilds it through the same validated
+   * path a first sign-in uses, and report that the caller may retry.
+   *
+   * Deliberately NOT a blind `setDoc(..., { merge: true })` from the write
+   * that failed: that would recreate a doc from whatever fields that one
+   * screen happens to hold, and it would also paper over a real denial.
+   *
+   * @returns true only when a document was genuinely missing and has now been
+   *          rebuilt — i.e. when retrying the failed write is worth it.
+   */
+  async ensureUserDoc(): Promise<boolean> {
+    if (USE_MOCK_DATA) return false;
+    const fbUser = getFirebase().auth.currentUser;
+    // No session, or a guest session — a guest has no /users doc by design and
+    // must never have one created for it.
+    if (!fbUser || fbUser.isAnonymous) return false;
+    try {
+      // Bounded, for the same reason `getCurrentUser` bounds its read: with no
+      // offline persistence an unreachable `getDoc` does not fail, it WAITS —
+      // and this one is awaited from inside a save handler that has already
+      // set its spinner. Unbounded, a signal drop between the denial and this
+      // probe would leave the user staring at a spinning save button with no
+      // alert and no `finally`, which is worse than the error it replaced.
+      const snap = await Promise.race([
+        getDoc(docs.user(fbUser.uid)),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('ensureUserDoc: read timeout')), 8000),
+        ),
+      ]);
+      // The doc exists: whatever was denied, this is not the reason.
+      if (snap.exists()) return false;
+    } catch (err) {
+      // Could not even read it (offline, timed out, or the read itself was
+      // denied) — we have no evidence the doc is missing, so we claim nothing
+      // and the caller rethrows the original denial.
+      if (__DEV__) console.warn('[auth] ensureUserDoc probe failed', err);
+      return false;
+    }
+    logError('userDocMissing', new Error('users doc absent for signed-in uid'), {
+      uid: fbUser.uid,
+      source: 'ensureUserDoc',
+    });
+    const restored = await userService.getCurrentUser();
+    // `getCurrentUser` returns the offline snapshot instead of creating when
+    // ITS read times out, so a non-null answer is not proof on its own; a
+    // guest answer never is. Both are rare, and the cost of being wrong is one
+    // retried write that fails exactly as the first did.
+    return restored != null && restored.isGuest !== true;
   },
 
   /**
@@ -861,6 +948,22 @@ export const userService = {
     }
   },
 };
+
+/**
+ * The offline snapshot of the signed-in user — but only when it belongs to
+ * `uid`. A snapshot from another account is worse than none, so the uid check
+ * is not optional, and a corrupt one reads as absent rather than throwing.
+ */
+async function readCachedAuthUser(uid: string): Promise<User | null> {
+  try {
+    const json = await storage.getAuthUserJson();
+    if (!json) return null;
+    const cached = JSON.parse(json) as User;
+    return cached?.id === uid ? cached : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Persist a snapshot of the signed-in REAL-mode user to AsyncStorage. This is

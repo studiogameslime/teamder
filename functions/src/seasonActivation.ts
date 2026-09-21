@@ -43,6 +43,19 @@ export interface ActivationInput {
   /** The club has already run at least one season — so there is no season 1 to
    *  give an end date to, and no control on screen that could pick one. */
   hasHistory?: boolean;
+  /**
+   * A target EQUAL to the evenings already played closes the season, instead of
+   * being refused.
+   *
+   * Only the live "עדכן את יעד העונה" path sets it. Switching seasons ON has a
+   * chip that says exactly this out loud — "לסגור ולהתחיל מאפס" — so a target
+   * its own history already fills is a mistake there, and stays refused. A club
+   * whose season is already running has no such chip and no other way to say
+   * "this evening was the last one": an admin who moves the line to the number
+   * the club is standing on means the season ends here, which is precisely what
+   * `updateSeasonTarget` records as `endsTheSeason` and closes on.
+   */
+  equalTargetCloses?: boolean;
 }
 
 export type ActivationError =
@@ -67,6 +80,11 @@ export interface ActivationPlan {
   targetRounds?: number;
   /** Evenings still to play before the running season closes. */
   roundsRemaining?: number;
+  /** Applying this CLOSES the running season on the spot — the target is the
+   *  count the club has already played, so there is nothing left for it to
+   *  play. Only reachable with `equalTargetCloses`, and the screen that sets
+   *  that flag says so before the admin presses anything. */
+  closesSeasonNow?: boolean;
   /** The running season's first and last day, for a date cadence. */
   startsOn?: CalendarDate;
   endsOn?: CalendarDate;
@@ -124,7 +142,21 @@ export function planActivation(input: ActivationInput): ActivationPlan {
       // Exactly full. Not an error in arithmetic, but there is no such thing as
       // a running season with nothing left to play — it would close on the
       // sweep's next pass, which is a confusing way to say "seal it now".
-      return { ...base, error: 'historyFillsTarget' };
+      //
+      // …unless closing is the answer the caller came for. On the live
+      // target-change path there is no "seal now" chip to point at, so this is
+      // the admin saying the season ends at the number the club has reached —
+      // allowed, and named as a close rather than disguised as a target.
+      if (!input.equalTargetCloses) {
+        return { ...base, error: 'historyFillsTarget' };
+      }
+      return {
+        ...base,
+        ok: true,
+        startsAtRounds: playedHistory,
+        roundsRemaining: 0,
+        closesSeasonNow: true,
+      };
     }
     return {
       ...base,

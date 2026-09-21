@@ -70,6 +70,7 @@ export function SeasonsCard({
           variant="outline"
           size="lg"
           fullWidth
+          style={styles.cta}
           onPress={openHistory}
         />
       </View>
@@ -178,7 +179,19 @@ export function SeasonsCard({
         <Button
           title={he.seasonHistoryCta}
           variant="outline"
+          // Same SIZE and same WIDTH as the stats button directly below this
+          // card on CommunityDetails ("טבלת המועדון והסטטיסטיקות"), which is
+          // what was asked for — twice, with the pair circled in red:
+          // "שיהיו באותו גודל ורוחב".
+          //
+          // `size="lg"` settles the height. The width needed `styles.cta`:
+          // this card is a sibling of that button inside the same padded
+          // body, so the two are the same width only once the button ignores
+          // the card's own spacing.lg gutters — otherwise it renders exactly
+          // 32px narrower, which is the step the report is pointing at.
+          size="lg"
           fullWidth
+          style={styles.cta}
           iconLeft="time-outline"
           onPress={openHistory}
         />
@@ -250,4 +263,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
   },
+  /** The season-history CTA, edge to edge across the card.
+   *
+   *  The card sits in CommunityDetails' body beside the stats button, both
+   *  direct children of the same `paddingHorizontal: spacing.lg` column — so
+   *  the CARD is exactly as wide as that button, and anything inside the
+   *  card's own spacing.lg padding is 32px narrower than it. Two stacked
+   *  outline CTAs off by 32px is what was reported. Cancelling the gutters for
+   *  this one row makes the pair identical.
+   *
+   *  Symmetric, so it is safe under RTL: `marginHorizontal` needs no
+   *  start/end, and the button keeps its own direction handling. */
+  cta: { marginHorizontal: -spacing.lg },
 });
