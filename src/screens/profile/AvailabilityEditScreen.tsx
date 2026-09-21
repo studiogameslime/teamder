@@ -335,7 +335,13 @@ export function AvailabilityEditScreen() {
         radiusKm,
       });
       if (__DEV__) console.warn('[availability] save failed', e);
-      appAlert(he.error, String((e as Error).message ?? e));
+      // A sentence, not `e.message`. The message this actually produced in
+      // production is Firebase's "Missing or insufficient permissions." — set
+      // in English, in front of a Hebrew-only audience, describing a
+      // permission the user has and a failure they cannot act on. The grid
+      // they filled in is still on screen, so the one useful instruction is
+      // "try again", and that is what it now says.
+      appAlert(he.error, he.availabilitySaveFailed);
     } finally {
       setBusy(false);
     }

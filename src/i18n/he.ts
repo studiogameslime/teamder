@@ -2450,6 +2450,13 @@ export const he = {
   homeSeasonClosedBodyOf: (club: string) =>
     club ? `התארים של ${club} חולקו. בוא לראות איך סיימת.` : 'התארים חולקו. בוא לראות איך סיימת.',
   homeSeasonClosedCta: 'לסיכום העונה',
+  // What a failed availability save actually says to the person in front of
+  // it. Until now it printed `e.message` — which for the case production
+  // recorded four times is the Firebase string "Missing or insufficient
+  // permissions.", in English, to a Hebrew-only audience, about a permission
+  // they have. Two sentences: what happened, and what to do.
+  availabilitySaveFailed:
+    'לא הצלחנו לשמור את הזמינות. בדקו את החיבור לאינטרנט ונסו שוב — מה שסימנתם נשמר במסך.',
   seasonTitlesShelfTitle: 'תארי עונה',
   // The line under the cabinet. It has to work for a player holding nine
   // titles and for one holding none, because the shelf above it draws nothing
@@ -3700,7 +3707,7 @@ export const he = {
   communityStatsStreak: 'רצף ההגעות הארוך ביותר',
   communityStatsStreakValue: (n: number) => `${n} מחזורים`,
   // Community goals championship (community-scoped goals only).
-  communityChampTitle: 'אלופי המועדון',
+  communityChampTitle: 'טבלת המועדון',
   communityChampNote: 'סיכום מצטבר של כל החברות במועדון · ממוין לפי ניצחונות, אז גולים, אז בישולים',
   // Tapping the (i) next to the title explains the scoring + tie-breaks.
   communityChampInfoTitle: 'איך מחושב הדירוג?',
@@ -3728,7 +3735,6 @@ export const he = {
   // Per-game rates, beside the cumulative table rather than instead of it.
   // The cumulative one answers "who has done the most here", which after two
   // years answers "who has been here longest".
-  statsTabSeason: (no: number) => `עונה ${no}`,
   statsTabCumulative: 'מצטבר',
   statsTabEfficiency: 'יעילות',
   effColWinPct: '% ניצחון',
