@@ -7,6 +7,12 @@
 // the summary is 1. This lived inside `seasonTitleValue` and nothing else could
 // reach it, so the neighbouring lines shipped "1 משחקים" and
 // "1 ניצחונות מול 1". Every interpolated count goes through here.
+// ⚠️ EVERY interpolated count goes through here — including the ones outside
+// the title values this was written for. Eleven strings were still building
+// their own `${n} מחזורים`, and the one that surfaced it was on screen:
+// "1 מחזורים יחד" under השותף הקבוע, for a pair who have played one evening
+// together. The same shape sat in the chemistry card, the round summary, the
+// club units and the assistant's weekly line.
 const count = (n: number, one: string, many: string) =>
   n === 1 ? one : `${n} ${many}`;
 
@@ -993,9 +999,10 @@ export const he = {
   chemistryRivalry: 'היריבות הגדולה',
   chemistryBalanced: 'היריבות הכי מאוזנת',
   chemistryWinsTogether: (n: number) => `${n} ניצחונות יחד`,
-  chemistryGamesTogether: (n: number) => `${n} משחקים יחד`,
-  chemistryAssistsBetween: (n: number) => `${n} בישולים אחד לשני`,
-  chemistryCleanSheetsTogether: (n: number) => `${n} שערים נקיים יחד`,
+  chemistryGamesTogether: (n: number) => `${count(n, 'משחק אחד', 'משחקים')} יחד`,
+  chemistryAssistsBetween: (n: number) => `${count(n, 'בישול אחד', 'בישולים')} אחד לשני`,
+  chemistryCleanSheetsTogether: (n: number) =>
+    `${count(n, 'שער נקי אחד', 'שערים נקיים')} יחד`,
   chemistryMeetings: (n: number) => `${n} מפגשים כיריבים`,
   chemistryBalancedLine: (a: number, b: number) => `${a}–${b}`,
   chemistryTied: 'שוויון',
@@ -1027,9 +1034,9 @@ export const he = {
   roundSummaryStars: 'כוכבי המחזור',
   roundSummaryTeams: 'הקבוצות',
   roundSummaryWhatHappened: 'מה קרה הערב',
-  roundSummaryStatRounds: (n: number) => `${n} משחקים`,
-  roundSummaryStatGoals: (n: number) => `${n} שערים`,
-  roundSummaryStatAssists: (n: number) => `${n} בישולים`,
+  roundSummaryStatRounds: (n: number) => count(n, 'משחק אחד', 'משחקים'),
+  roundSummaryStatGoals: (n: number) => count(n, 'שער אחד', 'שערים'),
+  roundSummaryStatAssists: (n: number) => count(n, 'בישול אחד', 'בישולים'),
   roundSummaryStatShootouts: (n: number) =>
     n === 1 ? 'הכרעת פנדלים אחת' : `${n} הכרעות פנדלים`,
   // Tonight's leaders, under the "כוכבי המחזור" heading — the heading is what
@@ -1378,9 +1385,9 @@ export const he = {
   communityStatsOwnGoalKing: 'כתר השערים העצמיים',
   communityStatsCleanSheetKing: TITLE.cleanSheetKing,
   communityStatsGoalsUnit: (n: number) => `${n} גולים`,
-  communityStatsAssistsUnit: (n: number) => `${n} בישולים`,
+  communityStatsAssistsUnit: (n: number) => count(n, 'בישול אחד', 'בישולים'),
   communityStatsWinsUnit: (n: number) => `${n} ניצחונות`,
-  communityStatsEveningsUnit: (n: number) => `${n} מחזורים`,
+  communityStatsEveningsUnit: (n: number) => count(n, 'מחזור אחד', 'מחזורים'),
   communityStatsPenScoredUnit: (n: number) => `${n} פנדלים`,
   communityStatsPenSavedUnit: (n: number) => `${n} עצירות`,
   // fun facts
@@ -2800,7 +2807,7 @@ export const he = {
   statGoalsPerEvening: 'גולים למחזור',
   statDistinctPlayers: 'שחקנים שונים',
   statMostPlayedWith: 'השותף הקבוע',
-  statMostPlayedWithSub: (n: number) => `${n} מחזורים יחד`,
+  statMostPlayedWithSub: (n: number) => `${count(n, 'מחזור אחד', 'מחזורים')} יחד`,
   statMostWinsWith: 'הצמד המנצח',
   statMostWinsWithSub: (n: number) => (n === 1 ? 'ניצחון אחד יחד' : `${n} נצחונות יחד`),
   statBiggestVictim: 'היריב שלך',
@@ -3287,7 +3294,8 @@ export const he = {
     'עוד מחזור מאחוריך. כל הכבוד 👏',
     'מחזור בכיס. תנוח, מגיע לך 💪🏼',
   ],
-  assistantPostGameWeek: (n: number) => `${n} מחזורים השבוע. אתה בכושר 🔥`,
+  assistantPostGameWeek: (n: number) =>
+    `${count(n, 'מחזור אחד', 'מחזורים')} השבוע. אתה בכושר 🔥`,
   assistantPostGameStreak: (n: number, club: string) =>
     `זה כבר ${n} הגעות רצופות ב${club}. ברזל 🧱`,
 
@@ -3360,7 +3368,8 @@ export const he = {
     d === 7
       ? 'שבוע בדיוק מאז המחזור האחרון שלך ⏳'
       : `${d} ימים מאז המחזור האחרון שלך ⏳`,
-  assistantWeekCount: (n: number) => `${n} מחזורים השבוע. אתה בכושר 🔥`,
+  assistantWeekCount: (n: number) =>
+    `${count(n, 'מחזור אחד', 'מחזורים')} השבוע. אתה בכושר 🔥`,
   assistantTotalGames: (n: number) => `${n} מחזורים על הדשא עד היום ⚽`,
 
   // ── more of the coach's material ──────────────────────────────────────

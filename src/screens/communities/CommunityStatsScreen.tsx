@@ -551,6 +551,30 @@ export function CommunityStatsScreen() {
   // back on the live rows, and the condition falls with it.
   const bootLoading = loading || (openedOnAllTime && scope.k === 'all' && !allTime);
 
+  /**
+   * Is the scope on screen the club's WHOLE LIFE?
+   *
+   * Two rows of "נתונים מעניינים" print a lifetime figure — the organisation
+   * rate ("מכל המחזורים שתוכננו במועדון אי פעם") and the longest attendance
+   * streak ("הרצף הארוך של המועדון אי פעם"). Reported, with the streak circled
+   * in red: "נתון של רצף הגעה למחזורים שהוא כללי אמור להיות בכל הזמנים ולא
+   * בעונה הספציפית" — on a screen headed עונה 2 that read 0 מחזורים, 0
+   * משחקים, and then "מתן לוי הגיע 22 מחזורים ברצף".
+   *
+   * `scope.k !== 'season'` does not answer that: the running season is the
+   * specific season he was looking at, and it is the only scope that screen
+   * had selected. Saying "אי פעם" inside the sentence is not enough either —
+   * that wording was already there.
+   *
+   * The live rows stop being the club's lifetime at the first CLOSE, because
+   * the close is what zeroes them — and that same close is what puts the
+   * "כל הזמנים" chip on screen to receive these rows. So: before it, the
+   * running season IS all of the club's history and the rows stay put (a club
+   * that never ran a season would otherwise lose them entirely, with no chip
+   * anywhere to find them under); after it, they belong to all-time alone.
+   */
+  const lifetimeScope = scope.k === 'all' || (seasons?.count ?? 0) === 0;
+
   const isEmpty =
     !loading &&
     // NEVER while a past season is selected. The empty state replaces the
@@ -947,12 +971,12 @@ export function CommunityStatsScreen() {
                 96%, sitting unused in `lifetime` ten lines away. "No attempts
                 yet" and "every attempt failed" are the same number, and this
                 was rendering the second meaning. */}
-            {/* Shown on all-time too. The number is `stats.lifetime` — the
-                club's whole life — and it was gated on the scope only so it
-                would not sit under a season heading. "כל הזמנים" is that
-                heading. It also stops the seasons-off club, which now OPENS
-                on all-time, from losing its organisation rate entirely. */}
-            {scope.k !== 'season' &&
+            {/* Shown under "כל הזמנים", which is where a lifetime number
+                belongs — and, before the club's first close, under the running
+                season as well, because until then the two are the same thing.
+                See `lifetimeScope`. It also stops the seasons-off club, which
+                now OPENS on all-time, from losing its organisation rate. */}
+            {lifetimeScope &&
             (stats?.lifetime?.totalFinished ?? 0) +
               (stats?.lifetime?.totalCancelled ?? 0) >
               0 ? (
@@ -974,20 +998,19 @@ export function CommunityStatsScreen() {
                 ]}
               />
             ) : null}
-            {/* Three of these are LIFETIME figures sitting under a season
-                banner — the organisation rate, the streak and "פעילים השנה" —
-                because they are records and rates about the club, not about a
-                season, and the tooltip under the scope picker says so. Each one
-                now declares its own scope in its own words, so the card is not
-                silently mixing two. The tiles above it stay season-scoped, which
-                is what the banner is about.
+            {/* The club's longest-ever run — a RECORD, so it is read from
+                `lifetime` and not from the season rollup; reading the scoped
+                figure made a club's 22-night record vanish from the app the
+                morning after every close.
 
-                This one is the club's longest-ever run. The tooltip under the
-                scope picker tells the reader in so many words that the streaks
-                are measured over the club's whole life — and this read the
-                season-scoped figure, so a club's 22-night record vanished from
-                the app entirely the morning after a close. */}
-            {scope.k !== 'season' && stats && (stats.lifetime?.longestStreak ?? stats.longestStreak) >= 2 ? (
+                Being a lifetime number is also why it is gated on
+                `lifetimeScope` rather than on the scope alone: a record
+                printed under a season that shows 0 מחזורים is the report this
+                gate comes from. ("פעילים השנה", below, is the one row here
+                still shown under a season — its scope is a 365-day window,
+                which is neither the season nor the club's life, and it says
+                "השנה" out loud.) */}
+            {lifetimeScope && stats && (stats.lifetime?.longestStreak ?? stats.longestStreak) >= 2 ? (
               <FunRow
                 icon="flame-outline"
                 tint={colors.danger}

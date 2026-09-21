@@ -152,6 +152,36 @@ describe('the season title values count in Hebrew too', () => {
     expect(he.seasonTitleValue('penaltyKeeper', 1)).toBe('עצירה אחת');
   });
 
+  // ── "1 <plural>" outside the title values ───────────────────────────
+  //
+  // The rule was stated for `seasonTitleValue` and enforced there, and eleven
+  // other strings went on building their own `${n} מחזורים`. The one that
+  // surfaced it was on screen during a device pass: "1 מחזורים יחד" under
+  // השותף הקבוע, for a pair who had played one evening together.
+  it('no count string anywhere prints "1 <plural>"', () => {
+    const at1: [string, string][] = [
+      ['chemistryGamesTogether', he.chemistryGamesTogether(1)],
+      ['chemistryAssistsBetween', he.chemistryAssistsBetween(1)],
+      ['chemistryCleanSheetsTogether', he.chemistryCleanSheetsTogether(1)],
+      ['roundSummaryStatRounds', he.roundSummaryStatRounds(1)],
+      ['roundSummaryStatGoals', he.roundSummaryStatGoals(1)],
+      ['roundSummaryStatAssists', he.roundSummaryStatAssists(1)],
+      ['communityStatsAssistsUnit', he.communityStatsAssistsUnit(1)],
+      ['communityStatsEveningsUnit', he.communityStatsEveningsUnit(1)],
+      ['statMostPlayedWithSub', he.statMostPlayedWithSub(1)],
+      ['assistantPostGameWeek', he.assistantPostGameWeek(1)],
+      ['assistantWeekCount', he.assistantWeekCount(1)],
+    ];
+    for (const [name, text] of at1) {
+      expect(`${name}: ${text}`).not.toMatch(/: 1 /);
+    }
+  });
+
+  it('and the reported one reads correctly at one and at many', () => {
+    expect(he.statMostPlayedWithSub(1)).toBe('מחזור אחד יחד');
+    expect(he.statMostPlayedWithSub(7)).toBe('7 מחזורים יחד');
+  });
+
   // ── The coverage note (§ partial ratings) ────────────────────────────
   //
   // שחקן העונה is an average, and an average is only as honest as the nights
