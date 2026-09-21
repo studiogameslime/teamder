@@ -171,6 +171,15 @@ describe('the season title values count in Hebrew too', () => {
       ['statMostPlayedWithSub', he.statMostPlayedWithSub(1)],
       ['assistantPostGameWeek', he.assistantPostGameWeek(1)],
       ['assistantWeekCount', he.assistantWeekCount(1)],
+      // Two more the sweep missed, and the only two of the remaining bare
+      // plurals a user can actually reach at one: the filter sheet's own
+      // button when a single evening matches, and a game-history row for an
+      // evening that ran one משחקון. (The rest of the `${n} <plural>` strings
+      // left in this file are either unreferenced or gated above 1 at their
+      // call site — chemistry picks need 5+, the trust caption 3+, the club
+      // streak 2+.)
+      ['gameFiltersShowN', he.gameFiltersShowN(1)],
+      ['historyMatches', he.historyMatches(1)],
     ];
     for (const [name, text] of at1) {
       expect(`${name}: ${text}`).not.toMatch(/: 1 /);

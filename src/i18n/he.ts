@@ -132,7 +132,10 @@ export const he = {
   gameFiltersQuickTitle: 'סינונים מהירים',
   gameFiltersOpenToAll: 'פתוח לכולם',
   gameFiltersHasSpots: 'יש מקומות פנויים',
-  gameFiltersShowN: (n: number) => `הצג ${n} מחזורים`,
+  // Through `count()`, like every other interpolated count: the sheet is
+  // pressed at exactly one match often enough — one club, one open evening —
+  // and the button then read "הצג 1 מחזורים".
+  gameFiltersShowN: (n: number) => `הצג ${count(n, 'מחזור אחד', 'מחזורים')}`,
   gameFiltersFormatTitle: 'פורמט מחזור',
   gameFiltersMyHome: 'הבית שלי',
   // Cost — most games are free; surfacing this avoids the surprise.
@@ -999,7 +1002,14 @@ export const he = {
   chemistryRivalry: 'היריבות הגדולה',
   chemistryBalanced: 'היריבות הכי מאוזנת',
   chemistryWinsTogether: (n: number) => `${n} ניצחונות יחד`,
-  chemistryGamesTogether: (n: number) => `${count(n, 'משחק אחד', 'משחקים')} יחד`,
+  // משחקונים, not "משחקים": `sameTeam` counts the MINI-GAMES the pair played
+  // on the same side, and this card sits a screen away from the profile's
+  // "השותף הקבוע · N מחזורים יחד", which counts EVENINGS. Two different units
+  // under near-identical headings is the one confusion the app names out loud
+  // ("מחזור הוא ערב משחק שלם, לא משחקון בודד בתוכו"), so this says which.
+  // The floor for this card is 10, so the 1-form is unreachable — kept only so
+  // a future change to CHEMISTRY_MIN cannot reintroduce "1 משחקונים".
+  chemistryGamesTogether: (n: number) => `${count(n, 'משחקון אחד', 'משחקונים')} יחד`,
   chemistryAssistsBetween: (n: number) => `${count(n, 'בישול אחד', 'בישולים')} אחד לשני`,
   chemistryCleanSheetsTogether: (n: number) =>
     `${count(n, 'שער נקי אחד', 'שערים נקיים')} יחד`,
@@ -2160,12 +2170,18 @@ export const he = {
   // so repeating "0 מתוך 2 מחזורים" underneath it says nothing twice.
   //
   // At the target it used to say "תיסגר בסיום הערב הבא", which made the
-  // close wait for an evening that nothing requires: the hourly sweep closes a
-  // season that met its target on its next run, and a club that plays once a
-  // week read a two-day-old card promising something that had already happened.
+  // close wait for an evening that nothing requires — and then, from 20.09, it
+  // promised the opposite lie: "תיסגר מעצמה בשעה הקרובה". Since §4 a season
+  // that meets its finish line does NOT close on the next sweep; the sweep
+  // opens a 24-hour correction window (`PENDING_CLOSE_MS`) and the close runs
+  // only when that window shuts. The hour is how long it takes to be NOTICED,
+  // which is not what an admin reads here. It matters twice over now that the
+  // same sentence is the target picker's own line for a season already sitting
+  // on its target — directly under a dialog (`seasonsTargetClosesBody`) that
+  // spells the window out, so the screen was contradicting itself.
   seasonsCardRemaining: (left: number) =>
     left <= 0
-      ? 'העונה הגיעה ליעד ותיסגר מעצמה בשעה הקרובה'
+      ? 'העונה הגיעה ליעד ונכנסת לחלון של 24 שעות לתיקונים, ובסופו תיסגר מעצמה'
       : left === 1
         ? 'נשאר מחזור אחד'
         : `נשארו ${left} מחזורים`,
@@ -2279,8 +2295,15 @@ export const he = {
     'המחזור הזה שייך לעונה שכבר נסגרה, ואי אפשר לשנות את הסטטיסטיקה שלו. עונה סגורה נשמרת כמו שהיא.',
   seasonBlockedNothingToReopen:
     'אין עונה סגורה לפתוח מחדש.',
+  // The same refusal without a number — reached when the server's message
+  // cannot be parsed, and for the date cadence's "end date is in the past".
+  // ⚠️ It carried BOTH halves of the claim its numbered twin below has just
+  // had corrected: a target under the count closes nothing (it is refused, as
+  // here), and "גדול יותר" is no longer the rule — an EQUAL target is accepted
+  // and is precisely what ends the season. Worded to stay true of a date
+  // target as well, which is the other thing that lands here.
   seasonBlockedTargetBehind:
-    'היעד הזה כבר מאחורי המועדון, אז שמירה שלו הייתה סוגרת את העונה מיד. בחרו יעד גדול יותר, או השתמשו ב"סיים עונה עכשיו".',
+    'היעד הזה כבר מאחורי המועדון, ואי אפשר להחזיר את העונה אחורה. בחרו יעד שהמועדון עוד לא עבר, או השתמשו ב"סיים עונה עכשיו" כדי לסגור אותה עכשיו.',
   // With the number, when the server named one. "כבר מאחורי המועדון" is not
   // something an admin can act on without knowing what it is behind — and this
   // screen never shows the season's progress anywhere else.
@@ -4097,7 +4120,9 @@ export const he = {
   // History tab
   historyTitle: 'היסטוריית מחזורים',
   historyEmpty: 'אין עדיין מחזורים קודמים',
-  historyMatches: (n: number) => `${n} משחקים`,
+  // An evening that ran a single משחקון is ordinary, and this row printed
+  // "1 משחקים" for every one of them.
+  historyMatches: (n: number) => count(n, 'משחק אחד', 'משחקים'),
   historyWin: 'ניצחון',
   historyLoss: 'הפסד',
 

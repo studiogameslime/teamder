@@ -136,9 +136,10 @@ export function CommunityDetailsScreen() {
   // `communityStats.lifetime` carries three of them and the group doc the
   // other two. Goals are the one thing nothing here holds, so they are
   // fetched separately, and split in two because they come from two places:
-  //   • `liveGoals` — summed from communityPlayerStats, which a season close
-  //     ZEROES.
-  //   • `archivedGoals` — what the sealed season cards remember.
+  //   • `liveGoals` — the club's running total (`communityStats.goals`),
+  //     which a season close ZEROES.
+  //   • `archivedGoals` — what the sealed season cards remember of the same
+  //     field, season by season.
   // A badge is a permanent thing the club did; without the archived half, a
   // club un-earned its gold "שערי המועדון" the morning after every close.
   //
@@ -319,19 +320,28 @@ export function CommunityDetailsScreen() {
 
   // The live half of the club's goal total (see the state above).
   //
-  // Members only — and not for politeness: `communityPlayerStats` is
-  // readable only by the club's own members, so for a stranger browsing a
-  // public club this query comes back denied and the total reads 0. A club's
-  // gold "שערי המועדון" would then show LOCKED to the one person who has
-  // never seen it — a wrong statement about the club, paid for with a
-  // round-trip that was always going to fail.
+  // ONE document — `communityStats/{groupId}`, via `getCommunityGoalTotal`.
+  // This first read `getCommunityChampionship`, which answers the same
+  // question by fetching every `communityPlayerStats` row in the club and
+  // summing the goals column: one read per person who has ever played for it,
+  // on every arrival at the club page, for a single number. The club doc
+  // carries that number already — the same batch writes both — and it is the
+  // very field the sealed seasons archived, so the two halves of the sum below
+  // now come from one source instead of two.
+  //
+  // Members only — and not for politeness: `communityStats` is readable only
+  // by the club's own members, so for a stranger browsing a public club this
+  // read comes back denied and the total reads 0. A club's gold
+  // "שערי המועדון" would then show LOCKED to the one person who has never
+  // seen it — a wrong statement about the club, paid for with a round-trip
+  // that was always going to fail.
   useEffect(() => {
     if (!groupId || !belongs || !clubHasRecord) return;
     let alive = true;
     gameService
-      .getCommunityChampionship(groupId)
-      .then((c) => {
-        if (alive) setLiveGoals(c?.totalGoals ?? 0);
+      .getCommunityGoalTotal(groupId)
+      .then((g) => {
+        if (alive) setLiveGoals(g);
       })
       // A failure must not hide the other five badges — treat it as "no goals
       // known yet" rather than as "no achievements".

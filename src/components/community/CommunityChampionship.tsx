@@ -83,11 +83,30 @@ export function CommunityChampionship({
     setData(null);
     // A past season comes from its archive; the running one from the live
     // rows, which ARE that season.
-    if (rows) {
+    // ⚠️ `null` is NOT `undefined` here, and the difference is the whole
+    // contract of this prop. `undefined` means "no caller-assembled rows
+    // exist — fetch the club's live table". `null` means "the caller owns
+    // these rows and has not finished assembling them yet", which is what
+    // CommunityStatsScreen passes for the whole round-trip it takes to read
+    // every season archive under "כל הזמנים".
+    //
+    // Treating the two alike (a plain `if (rows)`) fell through to the fetch
+    // and painted the RUNNING season's rows under an all-time heading until
+    // the merge landed — the same class of mistake the screen's own
+    // `scopeLoading` already prevents for every tile above this table, and
+    // one this table alone still made. It got worse the moment `clubEvenings`
+    // arrived: those season rows were then divided by the club's LIFETIME
+    // evening count, which is precisely the cross-scope division the
+    // attendance column is documented never to perform.
+    //
+    // So: hold at null and render nothing for that beat. The effect re-runs
+    // the moment the caller hands over real rows, and a slice that will not
+    // load moves the scope back to the running season anyway.
+    if (rows !== undefined) {
       // Already assembled by the caller; a fetch here would be a second,
       // narrower answer to a question that has one.
       setData(rows);
-      setFrozenNames(rows.names ?? {});
+      setFrozenNames(rows?.names ?? {});
       return () => {
         alive = false;
       };

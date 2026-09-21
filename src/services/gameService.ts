@@ -1405,6 +1405,52 @@ export const gameService = {
   },
 
   /**
+   * The club's LIVE goal total, and nothing else.
+   *
+   * `getCommunityChampionship` answers the same question by reading EVERY
+   * `communityPlayerStats` row in the club — one document per person who has
+   * ever played for it — and summing the `goals` column. That is the right
+   * shape when the table is what you want; it is N+1 reads when the only thing
+   * wanted is the total, and the club badges want only the total.
+   *
+   * `communityStats/{groupId}.goals` IS that total, by construction rather than
+   * by luck: `commitRoundStats` bumps it in the SAME idempotent batch as the
+   * per-player rows, `addRetroGoal`/`removeRetroGoal` move both together, and a
+   * season close zeroes both. The season archive already treats it as the
+   * club's authoritative goal count — `seasonSummary.totals.goals`, which is
+   * where the ARCHIVED half of the badge total comes from, is copied straight
+   * off this field — so reading it here also puts the two halves of that sum
+   * on one source instead of two.
+   *
+   * 1 read instead of N+1. Members only: the doc is member-readable, and a
+   * denial here is indistinguishable from a club that has scored nothing.
+   */
+  async getCommunityGoalTotal(groupId: GroupId): Promise<number> {
+    if (!groupId) return 0;
+    if (USE_MOCK_DATA) {
+      // The same number the mock championship rows add up to, so the emulator
+      // shows the badges at the tier it always did.
+      return mockPlayers
+        .slice(0, 8)
+        .reduce((a, _p, i) => a + Math.max(0, 58 - i * 7), 0);
+    }
+    try {
+      const db = getFirebase().db;
+      const snap = await getDoc(doc(db, 'communityStats', groupId));
+      const goals = snap.exists()
+        ? (snap.data() as { goals?: number }).goals
+        : 0;
+      return typeof goals === 'number' && Number.isFinite(goals)
+        ? Math.max(0, goals)
+        : 0;
+    } catch (err) {
+      logError('getCommunityGoalTotal', err, { groupId });
+      if (__DEV__) console.warn('[gameService] getCommunityGoalTotal failed', err);
+      return 0;
+    }
+  },
+
+  /**
    * The club's "deadly duo" — the assister→scorer pair with the most assists
    * between them, across this club's games (`communityPairStats/{groupId}__*`).
    * Direction is collapsed: we just surface the two players + their shared
