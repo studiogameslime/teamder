@@ -18,34 +18,38 @@ const count = (n: number, one: string, many: string) =>
 
 // The nine season titles. Names, not descriptions — they are worn.
 //
-// Seven of them were "מלך", and "שחקן העונה" is no better. On the only club
-// that has closed a season a woman holds four of the eight awarded, so the
-// medal cabinet, the poster, the summary row, the share PNG and the profile
-// shelf all called her a king, four times over on one card. There is no
-// gender field in the app and there will not be one, so the names themselves
-// have to fit anybody: כתר is the thing won, not the person who won it, and
-// it is the word Israeli football already uses for exactly this.
+// "מלך", by the owner's decision (22.09.2026), after a spell as "כתר".
 //
-// They stay short on purpose — the medal caption is a single 60pt line and
-// the longest of these is shorter than the two titles it replaces.
+// ⚠️ Know what this costs before changing it back or forward again. On שכחת
+// שושי — the only club that has closed a season — a WOMAN holds four of the
+// eight titles awarded. "מלך" calls her a king on the medal cabinet, the
+// poster, the summary row, the share PNG and the profile shelf: four times
+// over on one card. There is no gender field in the app and there will not be
+// one, so a name either fits everybody or it does not. "כתר" was the attempt
+// at one — the thing won rather than the person who won it — and the owner
+// prefers the familiar word. That is his call to make; this note exists so
+// nobody re-derives the trade-off from scratch a third time.
+//
+// They stay short on purpose — the medal caption is a single 60pt line, and
+// מלך and כתר are both three letters, so neither changes the layout.
 //
 // They live OUT here, above `he`, because an object literal cannot read its
 // own keys while it is being built — which is precisely how the rename shipped
 // half-done. Six of the names were also hardcoded further down the file (the
 // club stats leaders card, the round summary, the assistant) and those copies
-// kept saying "מלך" after this list stopped: הלן צברי was 'כתר השערים' on her
+// kept saying "מלך" after this list stopped: הלן צברי was 'מלך השערים' on her
 // hall-of-fame card and 'מלך השערים' four times over in the same season's club
 // stats, one tap apart. Anything that names a title points at THIS object; a
 // literal anywhere else is the bug coming back.
 const TITLE = {
-  topScorer: 'כתר השערים',
-  topAssister: 'כתר הבישולים',
-  mvp: 'כתר העונה',
-  topWinner: 'כתר הניצחונות',
-  mostLoyal: 'כתר ההתמדה',
-  cleanSheetKing: 'כתר השער הנקי',
-  penaltyKing: 'כתר הפנדלים',
-  penaltyKeeper: 'כתר העצירות',
+  topScorer: 'מלך השערים',
+  topAssister: 'מלך הבישולים',
+  mvp: 'מלך העונה',
+  topWinner: 'מלך הניצחונות',
+  mostLoyal: 'מלך ההתמדה',
+  cleanSheetKing: 'מלך השער הנקי',
+  penaltyKing: 'מלך הפנדלים',
+  penaltyKeeper: 'מלך העצירות',
   deadlyDuo: 'הצמד הקטלני',
 } as const;
 
@@ -1384,7 +1388,7 @@ export const he = {
   communityStatsTopAssister: TITLE.topAssister,
   communityStatsTopWinner: TITLE.topWinner,
   // Was 'הכי מתמיד' — a masculine adjective for a row that is very often a
-  // woman, and the one club that runs seasons prints it beside 'כתר ההתמדה'
+  // woman, and the one club that runs seasons prints it beside 'מלך ההתמדה'
   // for the same attendance.
   communityStatsMostLoyal: TITLE.mostLoyal,
   communityStatsPenaltyKing: TITLE.penaltyKing,
@@ -1392,7 +1396,7 @@ export const he = {
   // The dubious crown. No season awards it, so it has no TITLE entry — but it
   // was 'מלך השערים העצמיים' and carries the same problem the rename was for,
   // so it wears the same word.
-  communityStatsOwnGoalKing: 'כתר השערים העצמיים',
+  communityStatsOwnGoalKing: 'מלך השערים העצמיים',
   communityStatsCleanSheetKing: TITLE.cleanSheetKing,
   communityStatsGoalsUnit: (n: number) => `${n} גולים`,
   communityStatsAssistsUnit: (n: number) => count(n, 'בישול אחד', 'בישולים'),
@@ -2324,7 +2328,8 @@ export const he = {
   seasonBlockedNotAdmin: 'רק מנהל המועדון יכול לסיים עונה.',
   seasonActionFailed: 'משהו השתבש. נסו שוב עוד רגע.',
   /** The nine titles. Defined above the object — see TITLE for why, and for
-   *  why כתר. Every surface that prints one reads it from here. */
+   *  what naming them "מלך" costs. Every surface that prints one reads it
+   *  from here. */
   seasonTitleNames: TITLE,
   communityStatsSeasonFresh: (no: number) =>
     `עונה ${no} רק התחילה, אז הטבלה עוד ריקה. שום דבר לא נמחק — כל מה ששיחקתם שמור בעונה הקודמת, והסטטיסטיקה המצטברת בפרופיל לא השתנתה.`,

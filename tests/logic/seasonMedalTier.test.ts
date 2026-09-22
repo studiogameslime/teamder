@@ -132,7 +132,7 @@ describe('the cut-offs, pinned', () => {
     expect(medalTier('mostLoyal', 22, 19)).toBe('platinum');
   });
 
-  it('כתר העונה steps in quarters of the 6-10 range it really has', () => {
+  it('מלך העונה steps in quarters of the 6-10 range it really has', () => {
     expect(firstAt('mvp', 'silver', 20)).toBe(6.6);
     expect(firstAt('mvp', 'gold', 20)).toBe(7.6);
     expect(firstAt('mvp', 'platinum', 20)).toBe(8.8);

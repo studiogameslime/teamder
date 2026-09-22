@@ -214,7 +214,7 @@ export const ARCHIVED_PLAYER_ROWS: Record<string, { games: number }> = {
  * The most evenings any ONE player attended — the denominator the eligibility
  * gate is measured in. It is NOT on the card and never was: it lived there for
  * half a day and the write was removed, because it is by construction identical
- * to כתר ההתמדה's own winning value and anything dividing by it gets 1.0.
+ * to מלך ההתמדה's own winning value and anything dividing by it gets 1.0.
  * It stays here because the gate still uses it server-side.
  */
 export const AWARDS_DENOMINATOR = 19;

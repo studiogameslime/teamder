@@ -103,7 +103,7 @@ describe('naming the people you passed', () => {
     // has nothing to tell them — the one player it should be loudest for.
     const lines = progressLines([m({ key: 'assists', rank: 1, delta: 0 })], 7.5, 'x');
     expect(lines).toHaveLength(1);
-    expect(lines[0].text).toContain('שמרת על התואר כתר הבישולים');
+    expect(lines[0].text).toContain('שמרת על התואר מלך הבישולים');
     expect(lines[0].tone).toBe('crown');
   });
 
@@ -113,7 +113,7 @@ describe('naming the people you passed', () => {
       7.5,
       'x',
     );
-    expect(lines[0].text).toContain('לקחת את התואר כתר השערים');
+    expect(lines[0].text).toContain('לקחת את התואר מלך השערים');
     // …and the overtake still gets named underneath it.
     expect(lines[1].text).toContain('עקפת את');
   });

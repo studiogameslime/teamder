@@ -2,8 +2,8 @@
 //
 // The medal has two axes and they say different things: the RING is the tier
 // (how strong), the CORE is the title (which one). Without that separation nine
-// titles are nine equal discs, and a כתר ההתמדה who made 19 evenings out of 19
-// looks exactly like a כתר הבישולים who won it on five assists.
+// titles are nine equal discs, and a מלך ההתמדה who made 19 evenings out of 19
+// looks exactly like a מלך הבישולים who won it on five assists.
 //
 // Thresholds are per title because the units are not comparable — 40 goals and
 // 19 evenings and a 6.5 average are three different scales. They are tuned for
@@ -70,7 +70,7 @@ const SCALE: Record<SeasonTitleKey, Scale> = {
 const RATE_STEPS: Steps = [0.7, 0.85, 1];
 
 /**
- * כתר העונה is an average evening score, and eveningScore ends on
+ * מלך העונה is an average evening score, and eveningScore ends on
  * `Math.max(6, Math.min(10, score))` — so the only values that can ever reach
  * here are 6 to 10, not 1 to 10.
  *
@@ -97,7 +97,7 @@ function step(value: number, [s, g, p]: Steps): MedalTier {
 }
 
 /**
- * @param completedRounds the season's own length — כתר ההתמדה is the one title
+ * @param completedRounds the season's own length — מלך ההתמדה is the one title
  *        whose scale IS the season, so 19 of 19 must outrank 19 of 40.
  */
 export function medalTier(

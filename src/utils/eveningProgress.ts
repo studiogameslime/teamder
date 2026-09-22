@@ -54,8 +54,9 @@ const IN_METRIC: Record<EveningMetric['key'], string> = {
 
 /** The club title that comes with topping a column. The names are the season
  *  titles — there is one set of them (he.seasonTitleNames) and this card used
- *  to hold a private copy, which stayed on "מלך" when the titles were renamed
- *  to "כתר" and put two names on one person one screen apart. */
+ *  to hold a private copy, which drifted out of step with it and put two names
+ *  on one person one screen apart. Read them, never restate them: the set has
+ *  now been renamed twice. */
 const CROWN_TITLE: Record<EveningMetric['key'], string> = {
   goals: he.seasonTitleNames.topScorer,
   assists: he.seasonTitleNames.topAssister,
@@ -162,7 +163,7 @@ export function progressLines(
   // that runs seasons is timer-only and its seven rows are {0,0,0} outright,
   // permanently. What the card then did with that:
   //
-  //   • rank 1 on a column of zeros → "שמרת על התואר כתר השערים" to whoever's
+  //   • rank 1 on a column of zeros → "שמרת על התואר מלך השערים" to whoever's
   //     uid sorts first, for a title that was wiped the day before and that he
   //     never held. Nobody is the top scorer on no goals, so a crown now needs
   //     a value behind it.

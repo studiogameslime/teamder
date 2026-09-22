@@ -209,7 +209,7 @@ function Cabinet({
                     {/* A name, then how many shared it. It used to render the
                         suffix INSTEAD of the names — "במשותף עם עוד 6 שחקנים"
                         with "עוד" pointing at nobody — so on the one club that
-                        has closed a season, the כתר העונה medal named none of
+                        has closed a season, the מלך העונה medal named none of
                         its seven winners. The screen exists to answer "so who
                         actually won?". */}
                     <Text style={styles.slotName} numberOfLines={2}>

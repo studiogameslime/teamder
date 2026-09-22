@@ -329,7 +329,7 @@ export const eveningSummaryService = {
 
       // Community benchmark: the "perfect 10" goals/assists targets are the
       // group's historical average of the top scorer's / top assister's evening
-      // total (the club's כתר השערים, per מחזור), maintained on communityStats
+      // total (the club's מלך השערים, per מחזור), maintained on communityStats
       // by the evening-standings Cloud Function. Absent (new group / read failed) →
       // eveningScore falls back to its DEFAULT_*_FOR_10. Never blocks the card.
       const benchSnap = game?.groupId

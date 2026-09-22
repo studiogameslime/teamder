@@ -196,7 +196,7 @@ export function SeasonShareCard({
               </View>
               {/* Ties are shared and never broken, and `sharedWith` has been
                   computed all along and thrown away here — so all seven holders
-                  of one כתר העונה sent the same exclusive-looking claim into
+                  of one מלך העונה sent the same exclusive-looking claim into
                   the same group chat within a minute of each other. If the
                   title is shared, the card says so. */}
               <Text

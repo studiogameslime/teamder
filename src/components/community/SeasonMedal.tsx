@@ -7,8 +7,8 @@
 // The medal has two axes and they are deliberately separate:
 //   the RING says how strong  (the tier — bronze → platinum)
 //   the CORE says which title (the tint the rest of the app already uses)
-// So a כתר ההתמדה who made 19 of 19 evenings reads differently from a
-// כתר הבישולים who took it on five assists, without either of them changing
+// So a מלך ההתמדה who made 19 of 19 evenings reads differently from a
+// מלך הבישולים who took it on five assists, without either of them changing
 // colour and breaking the vocabulary shared with the profile shelf, the season
 // summary and the share card.
 //
