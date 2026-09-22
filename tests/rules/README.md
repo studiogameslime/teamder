@@ -1,95 +1,53 @@
-# Firestore Rules tests
+# Firestore rules tests
 
-Self-contained emulator suite that asserts the production rules
-deny the attack patterns the security audit surfaced.
+    npm run test:rules
 
-## Prerequisites
+## --test-concurrency=1 is not optional
 
-Firebase Emulator Suite requires **JDK 21 or higher**. If you see
-*"firebase-tools no longer supports Java version before 21"*:
+Every file calls `initializeTestEnvironment`, which loads a ruleset into the
+ONE emulator listening on 8080. Run the files in parallel and they overwrite
+each other's ruleset mid-run: assertions are then evaluated against whichever
+file loaded last.
 
-```sh
-brew install openjdk@21
-echo 'export PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-java -version  # verify
-```
+The failure is not a crash. It is a scatter of plausible-looking failures —
+18 of them on 22.09, including negative security assertions like "outsider
+still cannot read a community-only game". Read literally, that says the rules
+had been opened up. It was not true; the same suite run serially gave 3.
 
-## Run
+`npm run test:rules` pins the flag. Do not run `node --test *.test.mjs` by
+hand without it.
 
-```sh
-# Terminal 1 — start the emulator
-firebase emulators:start --only firestore --project demo-soccer
+## The three that fail
 
-# Terminal 2 — install deps + run tests
-cd tests/rules
-npm install
-npm test
-```
+`games: self can join an open community game`, `groupsPublic: admin of
+canonical group can create the public mirror`, and `OLD-CLIENT manual-offer
+cancel` fail, and they fail identically against older rulesets — check before
+assuming a change caused them:
 
-The suite uses Node's built-in `node:test` runner (no Jest). Each
-test boots a clean Firestore environment, seeds the docs the
-scenario needs, then asserts allow / deny.
+    git show <older-commit>:firestore.rules > /tmp/old.rules
+    RULES_FILE=/tmp/old.rules npm run test:rules
 
-`npm test` runs **every** `*.test.mjs` in this directory. It used to
-name `firestore.test.mjs` and nothing else, so the seven suites added
-after it — antiHijack, clubIsolation, joinRequest, oldClientCompat,
-publishTeams, roundHistoryAccess, seasonSummary — were never executed
-by anything: 38 of 146 assertions ran, and the other 108 were text.
-The seasonSummary pair covering the timer-only club (`rounds` absent,
-`games` set) was written against a rules change and had never once
-been run when it landed.
+The first and third are the 1000-expression cap on the `/games` update chain:
+the organiser/admin branch sits last and is never reached.
 
-`--test-concurrency=1` is load-bearing, not tidiness. Five of the
-eight suites share `projectId: 'demo-soccer'` and each calls
-`clearFirestore()` in its setup, so run in parallel — the runner's
-default is one process per core — they wipe each other's fixtures
-mid-flight. Measured on the same commit: 4 failures serially, 19 in
-parallel, the extra 15 being pure cross-talk. If you ever split the
-suites by projectId you can drop the flag; until then a parallel run
-reports failures that aren't real and hides the ones that are.
+## Isolating a rule: use the real file
 
-## What it covers
+Do not reproduce a rule in a cut-down file to test it in isolation. A minimal
+file needs a catch-all to let the seed data through, and a catch-all such as
 
-| Collection | Scenarios |
-|---|---|
-| `/users` | cross-user achievement / discipline write blocked, self update OK, stats blocked, name-length cap |
-| `/games` self-join | proxy join blocked, waitlist smuggling blocked, status flip blocked, past-start blocked |
-| `/games` admin | createdBy immutable, groupId immutable, community-only read gated |
-| `/groups` | non-creator admin can't rotate adminIds, creator can't self-demote, outsiders can't promote themselves |
-| `/groupsPublic` | can't create without canonical /groups, admin of canonical can |
-| `/notifications` | server-only types blocked, client-allowed types succeed, recipient-only read |
-| `/groups/{}/ratings/{}/votes` | self-rate blocked, range enforced, non-member blocked, voter privacy |
-| `/playerStats` | client write blocked |
-| `/gameUpdateLatches` | client read+write blocked |
+    match /{doc=**} { allow read, write: if true; }
 
-## What this DOESN'T cover
+answers the read before your rule is ever consulted. Five probes "passed" that
+way on 22.09 while testing nothing at all. Splice the expression under test
+into a copy of the real `firestore.rules` and point `RULES_FILE` at that.
 
-These tests assert the **rules layer**. They do not cover the
-behavior of callable Cloud Functions (e.g. `sendGameInvite`). Those
-require the Functions emulator and a separate test surface.
+## LIST queries need their own test
 
-The CF-side checks that aren't covered here include:
+A rule can be correct for `get` and refuse every `list`. `gameListRegression`
+exists because a type check — `resource.data.get('participantIds', []) is
+list` — on a field the query filters on makes Firestore deny the whole list:
+it cannot prove the rule holds for every matching document, so it does not try.
+The result is `false for 'list'`, never an error, and it reached production.
 
-- valid invite succeeds when sender is a community member
-- invite blocked when sender is not a community member
-- invite blocked when recipient is already in the game roster
-- invite blocked when game is `finished` / `cancelled`
-- self-invite blocked at the `invalid-argument` layer
-- server-side rate limit (30/hour) returns `resource-exhausted`
-- payload `inviterName` and `gameTitle` come from canonical state,
-  not from the caller's input
-
-These are checked manually during the deploy smoke test (login as
-two test users, send invite, observe notification doc fields). A
-follow-up should add a functions-emulator test suite covering them.
-
-## Adding tests
-
-Each test is independent — `beforeEach` clears Firestore. Use:
-- `db(uid)` — authenticated context (use this for the action under test)
-- `seed(fn)` — bypasses rules (use this for fixtures only)
-- `assertSucceeds(promise)` / `assertFails(promise)` — the assertions
-
-When extending the rules, add a paired test here so a future
-loosen-the-rule mistake breaks CI immediately.
+Any rule change on a collection the app queries needs a test that issues the
+real query, not only a document read.

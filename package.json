@@ -15,7 +15,8 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "postinstall": "find node_modules/@react-native-firebase -path '*/dist/module/package.json' -delete 2>/dev/null; patch-package",
-    "test": "jest"
+    "test": "jest",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-soccer \"cd tests/rules && node --test --test-concurrency=1 *.test.mjs\""
   },
   "dependencies": {
     "@bacons/apple-targets": "^4.0.7",
