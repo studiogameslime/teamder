@@ -12988,12 +12988,23 @@ export const onGameJoinedAlert = onDocumentUpdated('games/{id}', async (event) =
   if (!added.length) return;
   const who = await adminAlertUserName(added[0]);
   const extra = added.length > 1 ? ` +${added.length - 1}` : '';
-  // Name the game so the alert says WHICH game was joined. Titled (quick)
-  // games carry `title`; community games fall back to the field/location,
-  // then a generic "משחק".
+  // Name the game so the alert says WHICH game was joined, and say the word
+  // "משחק" out loud.
+  //
+  // It used to interpolate the bare label: a club game whose title IS the club
+  // name produced "Eliran Tzabari נרשם למועדון שכחת שושי" — which reads as a
+  // CLUB join, an entirely different event that has its own alert. Reported
+  // 22.09 with the notification attached.
+  //
+  // Title and field take different prepositions because they are different
+  // things: a title is whose game it is, a field is where it is played.
   const gameTitle = typeof after.title === 'string' ? after.title.trim() : '';
   const gameField = typeof after.fieldName === 'string' ? after.fieldName.trim() : '';
-  const gameLabel = gameTitle || gameField || 'משחק';
+  const gameLabel = gameTitle
+    ? `משחק של ${gameTitle}`
+    : gameField
+      ? `משחק ב-${gameField}`
+      : 'משחק';
   await pushToAdmins(
     'gameJoin',
     'Teamder',

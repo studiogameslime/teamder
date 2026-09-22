@@ -730,7 +730,7 @@ export const he = {
   summaryNotPlayedPlaceholder: 'לא שיחקת במחזור הזה, לא קיים סיכום מחזור אישי',
   // Home card, shown for 24h after an evening the player actually played.
   homeJustPlayedTitle: 'המחזור האחרון',
-  homeJustPlayedBody: 'המחזור הסתיים — הציון, הגולים והדירוג שלך מחכים בפנים.',
+  homeJustPlayedBody: 'המחזור הסתיים — הדירוג ונתונים מחכים בפנים.',
   // The card opens the match, not the personal summary — the label has to say
   // where it actually goes.
   homeJustPlayedCta: 'לפרטי המחזור',
@@ -1388,13 +1388,10 @@ export const he = {
   // season's medal cabinet describe one person's one set of numbers. Two
   // vocabularies for that is the bug; see TITLE.
   communityStatsTopScorer: TITLE.topScorer,
-  // Not a title: the ribbon on the hero card. It says "this is the standout of
-  // the screen", and the category line under it is the actual title. The
-  // season's own MVP (TITLE.mvp) is a different award with a different rule
-  // (best average evening score), so pointing this at it would name the wrong
-  // person.
-  communityStatsMvp: 'המצטיין',
-  communityStatsMvpShare: (pct: number) => `${pct}% מכל השערים במועדון`,
+  // communityStatsMvp / communityStatsMvpShare were the ribbon and subtitle of
+  // the מלך השערים hero card, removed 22.09 when that title joined the other
+  // seven in מובילי המועדון. Deleted rather than left: an unused string is a
+  // wording nobody maintains and the next reader cannot tell from a live one.
   communityStatsTopAssister: TITLE.topAssister,
   communityStatsTopWinner: TITLE.topWinner,
   // Was 'הכי מתמיד' — a masculine adjective for a row that is very often a
@@ -2350,15 +2347,18 @@ export const he = {
   // ברירת המחדל ושאפשר לחזור אליה, ולא סתם עוד עונה ברשימה.
   communityStatsScopeLabel: 'מציגים:',
   communityStatsScopeAllTime: 'כל הזמנים',
-  // מוצג כשבוחרים "כל הזמנים": המספרים כאן הם סכום של כל העונות, כולל אלה
-  // שנסגרו — וזו הסיבה שהם גדולים מאלה של העונה הרצה.
-  // "2 העונות שנסגרו" is a cardinal in front of a definite noun, which Hebrew
-  // does not do — it needs "שתי", and "3 העונות" needs "שלוש". Saying the
-  // number before an INDEFINITE noun sidesteps the whole series.
+  // מוצג כשבוחרים "כל הזמנים". הניסוח של הבעלים (22.09).
+  //
+  // The season COUNT is deliberately gone. It was there to be precise and it
+  // bought nothing a reader wanted: whether the sum covers two closed seasons
+  // or five changes no decision, and carrying the number dragged in Hebrew's
+  // cardinal-before-definite-noun problem ("2 העונות שנסגרו" needs "שתי",
+  // "3 העונות" needs "שלוש") for a figure nobody asked for. The parameter is
+  // kept in the signature so every caller keeps compiling, and so the OFF
+  // variant below — which still needs it — stays the same shape.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   communityStatsScopeAllTimeNote: (seasons: number) =>
-    seasons === 1
-      ? 'כל המספרים כאן הם סכום של העונה הרצה ושל העונה שנסגרה לפניה.'
-      : `כל המספרים כאן הם סכום של העונה הרצה ושל ${seasons} עונות שנסגרו לפניה.`,
+    'כאן מופיעים כל הנתונים מכל העונות, גם הפעילה וגם מעונות שנסגרו.',
   communityStatsScopeCurrent: (no: number) => `עונה ${no} · עכשיו`,
   // אותו שבב, למועדון שכיבה את העונות אחרי שכבר סגר אחת. כיבוי סוגר את
   // העונה הרצה ומאפס את הטבלה, ולכן השורות החיות הן לא "עונה" — הן כל מה
@@ -2366,12 +2366,13 @@ export const he = {
   // פשוט לא נכון.
   communityStatsScopeSinceOff: (no: number) => `מאז שעונה ${no} הסתיימה`,
   communityStatsScopePast: (no: number) => `עונה ${no}`,
-  // אותה הערה, למועדון שכיבה את העונות: אין "עונה רצה" לסכום איתה, יש את
-  // העונות שנסגרו ואת מה ששוחק מאז.
+  // אותה הערה, למועדון שכיבה את העונות — ובכוונה לא אותו נוסח: אין "עונה
+  // פעילה" לדבר עליה, כי הכיבוי סגר אותה. מה שיש זה העונות שנסגרו ומה ששוחק
+  // מאז, וזה בדיוק מה שהשורה אומרת.
   communityStatsScopeAllTimeNoteOff: (seasons: number) =>
     seasons === 1
-      ? 'כל המספרים כאן הם סכום של העונה שנסגרה ושל כל מה ששוחק מאז.'
-      : `כל המספרים כאן הם סכום של ${seasons} עונות שנסגרו ושל כל מה ששוחק מאז.`,
+      ? 'כאן מופיעים כל הנתונים — מהעונה שנסגרה ומכל מה ששוחק מאז.'
+      : `כאן מופיעים כל הנתונים — מ-${seasons} עונות שנסגרו ומכל מה ששוחק מאז.`,
   // מה כן ומה לא נשמר לעונה שהסתיימה. נאמר במפורש, כי מספר שנעלם בלי הסבר
   // נקרא כתקלה — וכל מה שהוסתר כאן הוא נתון של המועדון כולו, לא של העונה.
   // One line on screen. The long version was four lines pinned permanently
@@ -2689,7 +2690,9 @@ export const he = {
   // on screen — the list stays, because throwing it away reads as "the club
   // lost its history".
   seasonHistoryRefreshFailed: 'לא הצלחנו לרענן. מוצגות העונות שנטענו קודם.',
-  seasonSectionTitles: 'תארים בעונה',
+  // "שלי", because the card below it is the reader's own titles — the
+  // season's eight champions are a separate list further down.
+  seasonSectionTitles: 'תארי העונה שלי',
   seasonTitleSharedWith: (n: number) =>
     n === 1 ? 'במשותף עם עוד שחקן' : `במשותף עם עוד ${n} שחקנים`,
   // Renders only for a CLOSED season, so it must not talk about the next one —
@@ -2701,7 +2704,12 @@ export const he = {
   // בעונה הזאת" said the season crowned nobody while the next card named eight
   // people. It is my shelf that is empty.
   seasonTitlesNone:
-    'לא לקחת תואר בעונה הזאת. תארים ניתנים רק למי שהגיע לפחות לחצי מערבי המשחק של העונה.',
+    // ⚠️ This used to read "תארים ניתנים רק למי שהגיע לפחות לחצי מערבי המשחק
+    // של העונה", which stopped being true on 20.09.2026: the attendance gate
+    // now applies to מלך העונה ALONE — every other title goes to whoever leads
+    // it, however few evenings he played. The line was telling readers they
+    // had been filtered out by a rule that no longer filters anybody.
+    'לא לקחת תואר בעונה הזאת. תעבוד חזק יותר בעונה הבאה!',
   seasonSummaryTitle: 'סיכום העונה',
   /** ⚠️ This says the season's START IS UNKNOWN — it is for season 1 of a club
    *  that sealed its history with no startsAt, and for nothing else. It was
@@ -2743,10 +2751,14 @@ export const he = {
   seasonStatContributions: 'שערים + בישולים',
   // The pair people confuse, and they sit side by side in the same grid: a
   // מחזור is a whole evening, a משחקון is one of the ~six games inside it.
-  // Labelled "מחזורים" and "משחקים" they were two identical grey tiles for two
-  // completely different quantities.
-  seasonStatEvenings: 'ערבי משחק',
-  seasonStatRounds: 'משחקונים',
+  //
+  // They were once "מחזורים" and "משחקים" — two identical grey tiles for two
+  // completely different quantities — and were renamed apart. The owner's
+  // words for them (22.09) are "מחזורים" and "משחקים", asked for in the same
+  // breath, and that pair is unambiguous: the earlier collision came from
+  // "ערבי משחק" beside "משחקים", which shared a word. These do not.
+  seasonStatEvenings: 'מחזורים',
+  seasonStatRounds: 'משחקים',
   seasonStatWins: 'ניצחונות',
   seasonStatLosses: 'הפסדים',
   seasonStatTies: 'תיקו',

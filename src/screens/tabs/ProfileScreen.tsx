@@ -1004,18 +1004,13 @@ export function ProfileScreen() {
           // and detail popover, none of the rest of the player card.
           onPress: () => nav.navigate('Achievements'),
         },
-        {
-          // ארון התארים (§21). Separate from the achievements entry above it
-          // because the two are different things: an achievement is granted
-          // for a milestone, a title was WON off other people, once, in a
-          // competition with an end. The cabinet has existed all along as
-          // `SeasonTitlesShelf` — it just had no way in except scrolling past
-          // it on a screen named after badges.
-          id: 'seasonTitles',
-          label: he.seasonTitlesShelfTitle,
-          icon: 'medal-outline',
-          onPress: () => nav.navigate('SeasonTitles'),
-        },
+        // NO separate "תארי עונה" row. It shipped in 1.1.11 as its own way in
+        // to the cabinet, and it was one way in too many: `AchievementsScreen`
+        // ALREADY renders `SeasonTitlesShelf` (line 161 there), so the row
+        // above lands on a screen that shows the titles anyway, and the two
+        // entries sent people to overlapping places. Checked before removing,
+        // as asked. `SeasonTitlesScreen` stays registered and reachable — the
+        // shelf's own "הצג הכל" still opens it.
         {
           id: 'statistics',
           label: he.statsMenuLabel,
@@ -1315,20 +1310,11 @@ export function ProfileScreen() {
                   <Text style={styles.justPlayedCtaEmoji}>🏆</Text>
                 </View>
               </View>
-              {/* Dismiss without opening. The message is still "seen", which is
-                  what read means here — a player who does not want the summary
-                  should not be asked twice. */}
-              <Pressable
-                hitSlop={10}
-                onPress={() => {
-                  void notificationsService.markRead(seasonClosed.id);
-                  setSeasonClosed(null);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={he.close}
-              >
-                <Ionicons name="close" size={18} color="#92400E" />
-              </Pressable>
+              {/* NO dismiss X. It existed because the card otherwise stayed
+                  until it was opened; `getUnreadSeasonClose` now stops
+                  returning it 48 hours after the close, so the card retires
+                  itself and the X is one control fewer on a card whose whole
+                  body is already a button. (Owner, 22.09.) */}
             </PressableScale>
             </ScreenEntrance>
           ) : null}

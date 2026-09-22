@@ -162,6 +162,9 @@ async function getFcmToken(): Promise<string | null> {
   }
 }
 
+/** How long the "העונה הסתיימה" home card stays up after the close. */
+const SEASON_CLOSE_CARD_MS = 48 * 60 * 60 * 1000;
+
 export const notificationsService = {
   /**
    * Write a notification doc that a Cloud Function will pick up.
@@ -403,6 +406,23 @@ export const notificationsService = {
       );
       const d = snap.docs[0];
       if (!d) return null;
+      // The card lives 48 HOURS from the close, then stops showing itself.
+      //
+      // It used to stay until it was opened or dismissed, which is why it
+      // needed an X at all — without one, a player who did not want the
+      // summary had it on their home screen for ever. The window replaces the
+      // X (owner, 22.09): a season close is news, and news has a shelf life.
+      // Marking it read on open is kept, so opening it still ends it early.
+      //
+      // Read from `createdAtMs`, the field the query already sorts on, so the
+      // cutoff cannot disagree with the ordering that chose this document.
+      const createdAtMs = d.data()?.createdAtMs;
+      if (typeof createdAtMs !== 'number' || !Number.isFinite(createdAtMs)) {
+        // No timestamp: show it. An undated notice is old code's, not a
+        // reason to hide a season close from the one player it belongs to.
+      } else if (Date.now() - createdAtMs > SEASON_CLOSE_CARD_MS) {
+        return null;
+      }
       const p = (d.data()?.payload ?? {}) as Record<string, unknown>;
       const groupId = typeof p.groupId === 'string' ? p.groupId : '';
       const seasonId = typeof p.seasonId === 'string' ? p.seasonId : '';

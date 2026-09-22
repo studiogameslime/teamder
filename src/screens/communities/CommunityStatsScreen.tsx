@@ -499,8 +499,6 @@ export function CommunityStatsScreen() {
     const topScorer = players.length
       ? players.reduce((best, p) => (p.goals > best.goals ? p : best))
       : null;
-    const kingSharePct =
-      topScorer && totalGoals > 0 ? Math.round((topScorer.goals / totalGoals) * 100) : 0;
     // Share of goals that came off an assist — each assisted goal carries exactly
     // one assist, so assists ÷ goals is the assisted-goal rate. Capped at 100%
     // defensively. Uses the reliable per-player assist totals (not the partial
@@ -527,7 +525,6 @@ export function CommunityStatsScreen() {
       totalAssists,
       totalWins,
       goalsPerMini,
-      kingSharePct,
       assistedGoalsPct,
       topScorer,
       topAssister: leaderBy(players, (p) => p.assists),
@@ -836,39 +833,14 @@ export function CommunityStatsScreen() {
             </>
           ) : null}
 
-          {/* ── המצטיין (מלך השערים) — הגיבור בראש המסך ── */}
-          {derived.topScorer && derived.totalGoals > 0 ? (
-            <AppearItem index={0}>
-              <Card style={styles.mvpCard}>
-                <View style={styles.mvpRibbon}>
-                  <Ionicons name="star" size={11} color="#fff" />
-                  <Text style={styles.mvpRibbonText}>{he.communityStatsMvp}</Text>
-                </View>
-                <View style={styles.mvpRow}>
-                  <UserAvatar user={resolved(derived.topScorer.uid)} size={64} ring />
-                  <View style={styles.mvpMid}>
-                    <Text style={styles.mvpCat}>{he.communityStatsTopScorer}</Text>
-                    <Text style={styles.mvpName} numberOfLines={1}>
-                      {fullName(resolved(derived.topScorer.uid).name)}
-                    </Text>
-                    <Text style={styles.mvpSub} numberOfLines={1}>
-                      {he.communityStatsMvpShare(derived.kingSharePct)}
-                    </Text>
-                  </View>
-                  <View style={styles.mvpBig}>
-                    <CountUp
-                      from={0}
-                      to={derived.topScorer.goals}
-                      durationMs={1100}
-                      style={styles.mvpBigNum}
-                    />
-                    <Text style={styles.mvpBigLabel}>{he.communityStatsGoals}</Text>
-                  </View>
-                </View>
-              </Card>
-            </AppearItem>
-          ) : null}
-
+          {/* NO hero card for מלך השערים.
+              It sat above "המועדון במספרים" as a wide card with a star ribbon
+              and a 64px avatar, which made one of the eight club titles look
+              like a different KIND of thing from the seven listed below it.
+              It is not: it is the goals column's leader, exactly as מלך
+              הבישולים is the assists column's. It is now the first row of
+              מובילי המועדון, where it is compared with its peers instead of
+              being staged above them. (Owner, 22.09.) */}
           {/* ── המועדון במספרים (4) ── */}
           <SectionTitle icon="bar-chart" text={he.communityStatsSectionNumbers} />
           <View style={styles.heroGrid}>
@@ -882,11 +854,19 @@ export function CommunityStatsScreen() {
           {hasScoring ? (
           <>
           <SectionTitle icon="trophy" text={he.communityStatsSectionLeaders} />
-          {/* מלך השערים מוצג למעלה כ"מצטיין" — כאן רק שאר המובילים, כרשימה
-              מיושרת-לימין: אווטאר בימין, קטגוריה+שם, וערך מונפש בשמאל. */}
+          {/* All eight titles, one list, right-aligned: avatar on the right,
+              category + name, animated value on the left. מלך השערים leads it
+              — goals before assists, the order the club table itself sorts by. */}
           <Card style={styles.leadersCard}>
             {(
               [
+                derived.topScorer && {
+                  title: he.communityStatsTopScorer,
+                  uid: derived.topScorer.uid,
+                  value: derived.topScorer.goals,
+                  unit: 'שערים',
+                  tint: colors.primary,
+                },
                 derived.topAssister && {
                   title: he.communityStatsTopAssister,
                   uid: derived.topAssister.uid,
@@ -1420,48 +1400,8 @@ const styles = StyleSheet.create({
   sectionTitleText: { ...typography.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
 
   // MVP hero (top scorer) — the dominant element at the top.
-  mvpCard: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    overflow: 'hidden',
-  },
-  // Corner ribbon, top-right. paddingStart clears the card's rounded corner so
-  // the last Hebrew letter isn't clipped.
-  mvpRibbon: {
-    position: 'absolute',
-    top: 0,
-    // forceRTL swaps left/right, so `left:0` pins the ribbon to the visual
-    // RIGHT corner (matching the sketch). paddingStart clears the rounded corner.
-    left: 0,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.warning,
-    paddingStart: spacing.md,
-    paddingEnd: spacing.sm,
-    paddingVertical: 4,
-    borderBottomEndRadius: radius.md,
-    zIndex: 2,
-  },
-  mvpRibbonText: { ...typography.caption, color: '#fff', fontWeight: '900' },
-  // `row` (not row-reverse): under forceRTL first child (avatar) → visual RIGHT,
-  // text block to its left, and the big number pinned far LEFT (like the sketch).
-  // The ribbon is pinned to the card's top-right corner and is ~26px tall, so
-  // it landed across the top of the avatar that sits in that corner. The row
-  // starts below it instead of under it.
-  mvpRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginTop: spacing.md,
-  },
-  mvpMid: { flex: 1, minWidth: 0 },
-  mvpCat: { ...typography.caption, color: colors.warning, fontWeight: '900', textAlign: RTL_LABEL_ALIGN },
-  mvpName: { ...typography.h3, color: colors.text, fontWeight: '900', textAlign: RTL_LABEL_ALIGN },
-  mvpSub: { ...typography.caption, color: colors.textMuted, fontWeight: '700', textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
-  mvpBig: { alignItems: 'center' },
-  mvpBigNum: { ...typography.h1, color: colors.warning, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  mvpBigLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '800' },
+  // The mvp* styles that dressed the hero card are gone with it — a style
+  // nothing renders is the residue that makes a file look bigger than it is.
 
   // hero grid — 2×2, compact horizontal tiles (icon + number/label)
   //
