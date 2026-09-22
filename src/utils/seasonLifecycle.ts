@@ -34,7 +34,17 @@ export interface SeasonState {
    *  counter — a live query over games drifts, because deleting a game
    *  decrements nothing. */
   completedRounds: number;
-  /** Any game in this club not yet `finished`. */
+  /**
+   * An evening in this club is ACTIVE — being played right now.
+   *
+   * NOT "any game not yet finished". A game that is scheduled, open or locked
+   * has committed no mini-game and carries no `seasonId` (the stamp is written
+   * when it goes active), so it belongs to whichever season is open when
+   * someone presses start. Closing over it splits nothing. Treating it as a
+   * blocker deadlocked a real club: the live screen would not start the
+   * evening until the season closed, and the season would not close while the
+   * evening existed. 22.09.2026 — mirrors `clubIsQuiet` on the server.
+   */
   hasOpenGame: boolean;
   /** A game has finished but its stats have not been sealed yet. Closing
    *  across that gap makes the evening's summary compare tonight against a

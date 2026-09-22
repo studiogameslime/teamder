@@ -2281,8 +2281,12 @@ export const he = {
   // while every validation line on the same screen speaks in the plural
   // ("שנו", "בחרו"). They land a gesture apart, so the admin read two voices in
   // one screen. The plural is also the only one of the two that fits everyone.
+  // "משוחק עכשיו", not "פתוח". Only an evening actually in play blocks a close
+  // now, and the old wording sent admins to cancel next week's evening — which
+  // was never the blocker and, on the club that reported this, meant deleting
+  // one seven people had already joined.
   seasonBlockedOpenGame:
-    'יש מחזור פתוח במועדון. אפשר לסיים עונה רק כשאין מחזור בדרך — סיימו או בטלו אותו קודם.',
+    'יש מחזור שמשוחק עכשיו במועדון. אפשר לסיים את העונה ברגע שהוא נגמר — מחזור שעדיין לא התחיל לא מפריע.',
   seasonBlockedUnsealed:
     'יש מחזור שהסתיים אבל הנתונים שלו עדיין לא נסגרו. חכו שהעדכון יסתיים ונסו שוב.',
   seasonsReopenCta: 'בטל את סגירת העונה האחרונה',

@@ -15634,12 +15634,13 @@ const STARTING_SOON_MS = 3 * 60 * 60 * 1000;
 
 async function clubIsQuiet(
   groupId: string,
-  /** `afterSeal` is the moment an evening has just been sealed. The evening the
-   *  season would be split across is the one that ended a second ago, so the
-   *  only thing that may still block is another evening genuinely mid-play —
-   *  not next week's clone, and not tonight's second game sitting unstarted.
-   *  The hourly sweep keeps the wider guard, where "is anything about to
-   *  happen" is the only question it can ask. */
+  /** `afterSeal` is the moment an evening has just been sealed: the evening
+   *  the season would be split across is the one that ended a second ago, so
+   *  the only thing that may still block is another evening genuinely
+   *  mid-play. Since 22.09 that is true of EVERY path — the status list is
+   *  'active' on all of them — so this flag no longer changes the query. It
+   *  still says why the caller is asking, and `exceptGameId` beside it still
+   *  matters. */
   opts?: { mode?: 'sweep' | 'afterSeal'; exceptGameId?: string },
 ): Promise<{
   ok: boolean;
@@ -15648,27 +15649,41 @@ async function clubIsQuiet(
   // What must not happen is closing ACROSS an evening: each mini-game commits
   // separately, so rounds 1-3 would land in the old season and 4-6 in the new,
   // while the player's career total — written in the same batch — keeps the
-  // whole. That is a game already under way, not a game on the calendar.
+  // whole.
   //
-  // This used to block on any game in scheduled/open/locked/active, with no
-  // time bound. Nearly every real club runs a recurring fixture, so next
-  // week's clone always sits in `scheduled` or `open` — and the season could
-  // therefore never close, on any path, for any of them. The gap between two
-  // evenings is exactly when a season SHOULD close.
+  // 'active' AND NOTHING ELSE, on every path (22.09.2026).
   //
-  // Bounded below as well as above: a game left open days ago is stale (the
-  // cleanup sweep owns those) and must not hold a club's season hostage
-  // forever.
+  // The list used to be scheduled/open/locked/active, and that is strictly
+  // wider than the hazard it names. A game only commits a mini-game once it is
+  // being played, and a game only carries a `seasonId` from the moment it goes
+  // ACTIVE — the stamp is written on that transition (see `stampedSeasonId`),
+  // not at creation. So an evening still sitting in scheduled/open/locked has
+  // committed nothing, belongs to no season yet, and will be stamped with
+  // whichever season is open when someone finally presses start. Closing over
+  // it cannot split anything, because there is nothing to split.
+  //
+  // The cost of the wider list was a DEADLOCK, reported by a club standing in
+  // it: their season reached its target, they opened next week's evening, and
+  // seven people registered for it. The live screen then refused to start —
+  // correctly, the season must close first — and the close refused right back,
+  // because an evening was "open". The only way out was to delete an evening
+  // people had already joined, close the season, and rebuild it.
+  //
+  // What is still blocked is the real case: an evening that is ACTIVE, whose
+  // rounds are being committed as the admin watches. Closing there would put
+  // half its mini-games in one season and half in the next.
+  //
+  // Bounded in time as well: a game left active days ago is stale (the cleanup
+  // sweep owns those) and must not hold a club's season hostage forever.
+  // `opts.mode` no longer changes the status list — narrowing every path to
+  // 'active' made the afterSeal special case identical to the general one. It
+  // stays in the signature because callers pass it and it documents WHY they
+  // are asking; `exceptGameId` below still does real work.
   const now = Date.now();
-  const afterSeal = opts?.mode === 'afterSeal';
   const open = await db
     .collection('games')
     .where('groupId', '==', groupId)
-    .where(
-      'status',
-      'in',
-      afterSeal ? ['active'] : ['scheduled', 'open', 'locked', 'active'],
-    )
+    .where('status', 'in', ['active'])
     // Forward as well as back. An evening that kicked off early — the teams
     // turned up at 19:40 for a 20:00 game and pressed start — has a startsAt in
     // the future while the rotation is already running, and an upper bound of
