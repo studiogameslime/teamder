@@ -51,9 +51,22 @@ function headline(p: ChemistryPick): string {
 export function ChemistrySection({
   groupId,
   pairs,
+  seasonScoped = false,
 }: {
   groupId: string;
   pairs?: Record<string, PairTotals> | null;
+  /**
+   * The caller has already named the window on screen — the scope chip says
+   * "עונה 2 · עכשיו", and a season close is what zeroed these counters, so the
+   * two dates are the same fact said twice.
+   *
+   * Suppresses the "הנתונים מ-DD.MM ואילך" line, and ONLY that line. See where
+   * it renders for why it exists at all: it is not decoration, it is there so
+   * a pair card's directional breakdown cannot be read against the wider
+   * legacy total on the same documents. A club that runs no seasons has no
+   * chip naming the window and keeps the line.
+   */
+  seasonScoped?: boolean;
 }) {
   const [data, setData] = useState<ClubChemistry | null>(null);
   const [people, setPeople] = useState<Record<string, PairPerson>>({});
@@ -148,7 +161,13 @@ export function ChemistrySection({
           );
         })}
       </ScrollView>
-      {data.since ? (
+      {/* The window's start date. Hidden when the screen already names the
+          window: on a club running seasons the scope chip says which season
+          these numbers are, and the close that opened it is the very thing
+          that zeroed the pair counters — so the date underneath repeated the
+          chip, in wording that reads like a warning about missing data.
+          Kept for a club with no seasons, where nothing else says it. */}
+      {data.since && !seasonScoped ? (
         <Text style={styles.since}>{he.chemistrySince(formatDateShort(data.since))}</Text>
       ) : null}
 

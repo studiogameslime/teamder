@@ -967,7 +967,15 @@ export function CommunityStatsScreen() {
               {lifetimeScope && (seasons?.count ?? 0) > 0 ? (
                 <Text style={styles.chemistryNote}>{he.chemistryAllTimeNote}</Text>
               ) : null}
-              <ChemistrySection groupId={groupId} pairs={chemistryPairs} />
+              <ChemistrySection
+                groupId={groupId}
+                pairs={chemistryPairs}
+                // The chip above already names the window whenever the club
+                // runs seasons — and for the two non-current scopes the line
+                // would be wrong as well as redundant, since `since` is the
+                // LIVE counters' start and those scopes are not live.
+                seasonScoped={seasons?.enabled === true || (seasons?.count ?? 0) > 0}
+              />
             </>
           )}
 
