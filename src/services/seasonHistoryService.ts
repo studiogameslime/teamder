@@ -14,6 +14,7 @@ import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firesto
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 import { SEASON_TITLE_KEYS, type SeasonTitleKey } from '@/utils/seasonAwards';
+import { type PairTotals } from '@/utils/clubChemistry';
 import { parseSeasonTable, type FinishedSeasonTable } from '@/utils/seasonArchive';
 
 import type { ChampionshipRow } from '@/utils/championship';
@@ -232,6 +233,35 @@ function mockTable(): FinishedSeasonTable {
     guestGoals: 37,
     ownGoals: 11,
     duo: { uidA: p(6).id, uidB: p(2).id, assists: 14 },
+    // A closed season's chemistry, so the mock exercises the same section the
+    // running season draws. Deliberately uneven: one pair that plays together
+    // constantly, one that wins when it does, a wall, and a rivalry that is
+    // nearly even — one card each, rather than six views of one shape.
+    pairs: (() => {
+      const k = (x: string, y: string) => (x < y ? `${x}__${y}` : `${y}__${x}`);
+      const pair = (o: Partial<PairTotals>): PairTotals => ({
+        sameTeam: 0, winsTogether: 0, lossesTogether: 0, cleanSheetsTogether: 0,
+        against: 0, winsA: 0, winsB: 0, assistsAToB: 0, assistsBToA: 0, ...o,
+      });
+      return {
+        [k(p(6).id, p(2).id)]: pair({
+          sameTeam: 61, winsTogether: 38, lossesTogether: 15,
+          cleanSheetsTogether: 9, assistsAToB: 9, assistsBToA: 5,
+        }),
+        [k(p(4).id, p(9).id)]: pair({
+          sameTeam: 24, winsTogether: 19, lossesTogether: 3,
+          cleanSheetsTogether: 11, assistsAToB: 2, assistsBToA: 1,
+        }),
+        [k(p(6).id, p(4).id)]: pair({
+          against: 47,
+          ...(p(6).id < p(4).id ? { winsA: 25, winsB: 22 } : { winsA: 22, winsB: 25 }),
+        }),
+        [k(p(2).id, p(9).id)]: pair({
+          against: 31,
+          ...(p(2).id < p(9).id ? { winsA: 23, winsB: 8 } : { winsA: 8, winsB: 23 }),
+        }),
+      };
+    })(),
     players: [
       row(p(6).id, 41, 12, 24, 14, 8),
       row(p(2).id, 18, 28, 20, 11, 6),

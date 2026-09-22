@@ -1024,6 +1024,16 @@ export const he = {
   // נתונים מוקדמים יותר שאין להם אותה רזולוציה.
   chemistrySince: (date: string) => `הנתונים מ-${date} ואילך`,
   chemistryEmpty: 'עוד קצת משחקים ונגלה מי הכימיה של המועדון',
+  /**
+   * "כל הזמנים" on the chemistry section, and only there.
+   *
+   * The per-pair counters begin at the club's FIRST SEASON CLOSE: a closed
+   * season seals its pairs into its archive, and before any season existed
+   * nothing kept a per-pair record at all. Summing the archives therefore
+   * covers the seasons and not the years before them, and "כל הזמנים" would
+   * otherwise claim a history these numbers do not have.
+   */
+  chemistryAllTimeNote: 'הכימיה נספרת מהעונה הראשונה שנסגרה במועדון',
   // כרטיס הזוג
   pairCardTogether: 'ביחד',
   pairCardGames: 'משחקונים',

@@ -13,7 +13,12 @@ import {
 } from '@/components/chemistry/PairCard';
 import { clubChemistryService, type ClubChemistry } from '@/services/clubChemistryService';
 import { groupService } from '@/services/groupService';
-import { pairMembers, type ChemistryPick } from '@/utils/clubChemistry';
+import {
+  pairMembers,
+  pickChemistry,
+  type ChemistryPick,
+  type PairTotals,
+} from '@/utils/clubChemistry';
 import { formatDateShort } from '@/utils/format';
 import { logEvent, AnalyticsEvent } from '@/services/analyticsService';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -33,7 +38,23 @@ function headline(p: ChemistryPick): string {
   }
 }
 
-export function ChemistrySection({ groupId }: { groupId: string }) {
+/**
+ * `pairs` decides WHICH window this section describes.
+ *
+ * Omitted, it fetches the live `communityPairStats` — the RUNNING season,
+ * because a season close zeroes those documents. Supplied, it renders exactly
+ * what it is given: a closed season's archived pairs, or every season summed.
+ * The picking, the cards and the names are one code path either way; only the
+ * numbers that go in differ, which is the point — a closed season's chemistry
+ * must not be a second implementation that can disagree with the live one.
+ */
+export function ChemistrySection({
+  groupId,
+  pairs,
+}: {
+  groupId: string;
+  pairs?: Record<string, PairTotals> | null;
+}) {
   const [data, setData] = useState<ClubChemistry | null>(null);
   const [people, setPeople] = useState<Record<string, PairPerson>>({});
   const [open, setOpen] = useState<[string, string] | null>(null);
@@ -41,7 +62,15 @@ export function ChemistrySection({ groupId }: { groupId: string }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const c = await clubChemistryService.get(groupId);
+      // `pairs === undefined` means "fetch the live ones"; `null` means the
+      // caller has a scope selected whose pairs have not arrived yet, and it
+      // must NOT fall through to the live fetch — that would put the running
+      // season's chemistry under a closed season's heading, which is the
+      // failure this screen has already had once with its table.
+      const c =
+        pairs === undefined
+          ? await clubChemistryService.get(groupId)
+          : { picks: pickChemistry(pairs ?? {}), pairs: pairs ?? {}, since: null };
       if (!alive) return;
       setData(c);
       // Every name the section needs, in ONE batched read. Twelve players over
@@ -67,7 +96,7 @@ export function ChemistrySection({ groupId }: { groupId: string }) {
     return () => {
       alive = false;
     };
-  }, [groupId]);
+  }, [groupId, pairs]);
 
   const person = useCallback(
     (id: string): PairPerson | null => people[id] ?? null,

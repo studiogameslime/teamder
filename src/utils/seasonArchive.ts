@@ -5,6 +5,7 @@
 // testable without a Firestore or a React Native runtime around it.
 
 import type { ChampionshipRow } from '@/utils/championship';
+import { pairKey, type PairTotals } from '@/utils/clubChemistry';
 
 const num = (v: unknown): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : 0;
@@ -43,6 +44,18 @@ export interface FinishedSeasonTable {
   players: ChampionshipRow[];
   /** The pair with the most assists between them, as the live screen shows it. */
   duo: { uidA: string; uidB: string; assists: number } | null;
+  /**
+   * Every pair of the season, keyed "<lo>__<hi>" — the same shape the live
+   * `communityPairStats` documents reduce to, so "כימיה במועדון" renders a
+   * closed season through the very code that renders the running one.
+   *
+   * The archive has carried these since the first season closed. Nothing read
+   * them: this reader rebuilds its result field by field, so a field it does
+   * not name does not exist on the client however faithfully it was sealed.
+   * That is why a closed season showed no chemistry at all and why all-time
+   * could not be summed — not missing data, an unread field.
+   */
+  pairs: Record<string, PairTotals>;
   /** uid → the display name sealed at closing time. */
   names: Record<string, string>;
 }
@@ -113,8 +126,52 @@ export function parseSeasonTable(
     ownGoals: num(totals.ownGoals),
     players: players.sort((a, b) => a.uid.localeCompare(b.uid)),
     duo: topDuo(d.pairs, names),
+    pairs: parsePairs(d.pairs),
     names,
   };
+}
+
+/**
+ * The archived pairs, in the shape `pickChemistry` takes.
+ *
+ * Guests are kept here, unlike in `topDuo`: the chemistry cards hydrate names
+ * through `groupService.hydrateUsers` and skip what they cannot name, whereas
+ * the duo fun-fact has no such step and must not offer a half-anonymous pair.
+ * Dropping them here instead would quietly change what a pair "played
+ * together" means between the running season and a closed one.
+ */
+export function parsePairs(raw: unknown): Record<string, PairTotals> {
+  // MAP keyed "<lo>__<hi>" is what closeSeason writes; the array shape is
+  // accepted for the same reason topDuo accepts it — a reader should not
+  // depend on how the writer spells a collection.
+  const rows: Array<Record<string, unknown>> = Array.isArray(raw)
+    ? (raw as Array<Record<string, unknown>>)
+    : raw && typeof raw === 'object'
+      ? Object.values(raw as Record<string, Record<string, unknown>>)
+      : [];
+  const out: Record<string, PairTotals> = {};
+  for (const r of rows) {
+    if (!r || typeof r !== 'object') continue;
+    const a = str(r.a);
+    const b = str(r.b);
+    if (!a || !b) continue;
+    // Re-keyed from the members rather than trusted from the map key: `a` and
+    // `b` are already the sorted pair, and pairKey is the one place that
+    // decides what "sorted" means. A key built any other way would not merge
+    // with the live rows in mergePairs.
+    out[pairKey(a, b)] = {
+      sameTeam: num(r.sameTeam),
+      winsTogether: num(r.winsTogether),
+      lossesTogether: num(r.lossesTogether),
+      cleanSheetsTogether: num(r.cleanSheetsTogether),
+      against: num(r.against),
+      winsA: num(r.winsA),
+      winsB: num(r.winsB),
+      assistsAToB: num(r.assistsAToB),
+      assistsBToA: num(r.assistsBToA),
+    };
+  }
+  return out;
 }
 
 /**

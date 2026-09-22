@@ -39,11 +39,13 @@ import { ChemistrySection } from '@/components/chemistry/ChemistrySection';
 import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 import { mergeAllTime, type TableSlice } from '@/utils/allTimeTable';
+import { mergePairs, type PairTotals } from '@/utils/clubChemistry';
 import {
   seasonHistoryService,
   type FinishedSeason,
   type FinishedSeasonTable,
 } from '@/services/seasonHistoryService';
+import { clubChemistryService } from '@/services/clubChemistryService';
 import type { GroupSeasons, User } from '@/types';
 
 type Params = RouteProp<CommunitiesStackParamList, 'CommunityStats'>;
@@ -337,9 +339,20 @@ export function CommunityStatsScreen() {
     // addition over numbers that were already agreed.
     const load =
       scope.k === 'all'
-        ? Promise.all(
-            pastSeasons.map((ps) => seasonHistoryService.table(groupId, ps.seasonId)),
-          ).then((archives) => {
+        ? Promise.all([
+            ...pastSeasons.map((ps) => seasonHistoryService.table(groupId, ps.seasonId)),
+            // The live pair documents, for the chemistry sum only — the table
+            // above already has the live rows from `champ`. Fetched here rather
+            // than lifted to the screen so the running-season tab keeps letting
+            // ChemistrySection fetch its own, `chemistrySince` included: that
+            // tab prints "מאז <date>" and the sum has no single such date.
+            clubChemistryService
+              .get(groupId)
+              .then((c) => c.pairs)
+              .catch(() => ({}) as Record<string, PairTotals>),
+          ]).then((results) => {
+            const livePairs = results.pop() as Record<string, PairTotals>;
+            const archives = results as Array<FinishedSeasonTable | null>;
             if (archives.some((a) => !a)) return null; // a gap would understate
             // The list itself failed to load (it returns 'error', never []),
             // so the club's closed seasons are missing from the sum. Same
@@ -355,7 +368,18 @@ export function CommunityStatsScreen() {
               ownGoals: champ?.ownGoals ?? 0,
               players: champ?.players ?? [],
             };
-            return mergeAllTime([live, ...(archives as FinishedSeasonTable[])]);
+            const merged = mergeAllTime([live, ...(archives as FinishedSeasonTable[])]);
+            // Chemistry across every season, summed the same way the table is.
+            // The live rows hold the RUNNING season only — a close zeroes them
+            // — so all-time chemistry is the live window plus each sealed one,
+            // and it exists nowhere as a stored number.
+            return {
+              ...merged,
+              pairs: (archives as FinishedSeasonTable[]).reduce(
+                (acc, a) => mergePairs(acc, a.pairs ?? {}),
+                livePairs,
+              ),
+            };
           })
         : seasonHistoryService.table(groupId, scope.id);
 
@@ -422,11 +446,30 @@ export function CommunityStatsScreen() {
         : champ,
     [slice, champ, scopeLoading],
   );
-  // An all-time duo cannot be summed from the archives — a pair's assists are
-  // stored per season and the live rows hold only this one — so the fun fact
-  // is simply not offered outside a single season rather than guessed at.
+  // The all-time duo is left to "כימיה במועדון", which now covers every scope
+  // and names the same pair under הצמד הקטלני. Printing it here as well would
+  // put one fact on one screen twice — and the fun-facts row is the weaker of
+  // the two, having no card behind it.
   const viewDuo =
     scope.k === 'current' ? duo : scope.k === 'season' ? (archive?.duo ?? null) : null;
+
+  /**
+   * The pairs "כימיה במועדון" describes in the scope on screen.
+   *
+   *   current  undefined → the section fetches the live documents itself
+   *   season   the sealed pairs of that season
+   *   all      every season summed, live included
+   *
+   * `null` while a scope's data is in flight, never the live pairs: the table
+   * has already been caught showing the running season under a closed
+   * season's heading, and chemistry would do it with people's names on it.
+   */
+  const chemistryPairs: Record<string, PairTotals> | null | undefined =
+    scope.k === 'current'
+      ? undefined
+      : scope.k === 'season'
+        ? (archive?.pairs ?? null)
+        : ((allTime as TableSlice & { pairs?: Record<string, PairTotals> })?.pairs ?? null);
 
   const derived = useMemo(() => {
     const players = viewChamp?.players ?? [];
@@ -927,14 +970,26 @@ export function CommunityStatsScreen() {
           {/* After the leaders and before the fun facts: the leaders are about
               individuals, this is about who they play WITH, and the fun facts
               are club-wide. It reads in that order. */}
-          {/* כימיה נקראת מהזוגות החיים, שהם של העונה הרצה. לעונה שנסגרה
-              מוצג הצמד הקטלני שלה ב"נתונים מעניינים" — משם, מהארכיון. */}
-          {scope.k === 'current' ? (
+          {/* Every scope, not just the running season. The live pair documents
+              are zeroed by a season close, so they describe the RUNNING season
+              and nothing else — which is why a closed season showed no
+              chemistry and all-time had none to show. A closed season's pairs
+              were sealed into its archive all along and simply went unread;
+              all-time is those archives plus the live window, summed.
+
+              The all-time note is not decoration: these counters begin at the
+              club's FIRST SEASON CLOSE, because before seasons existed nothing
+              kept a per-pair record. Without the line, "כל הזמנים" claims a
+              history it does not have. */}
+          {scopeLoading ? null : (
             <>
               <SectionTitle icon="people" text={he.chemistrySection} />
-              <ChemistrySection groupId={groupId} />
+              {lifetimeScope && (seasons?.count ?? 0) > 0 ? (
+                <Text style={styles.chemistryNote}>{he.chemistryAllTimeNote}</Text>
+              ) : null}
+              <ChemistrySection groupId={groupId} pairs={chemistryPairs} />
             </>
-          ) : null}
+          )}
 
           {/* ── נתונים מעניינים (מעל הטבלה — בקשת אלירן) ── */}
           <SectionTitle icon="sparkles" text={he.communityStatsSectionFun} />
@@ -1494,5 +1549,16 @@ const styles = StyleSheet.create({
   levelTier: { ...typography.h3, color: colors.text, fontWeight: '900', textAlign: RTL_LABEL_ALIGN },
   levelBarTrack: { height: 10, borderRadius: 999, backgroundColor: colors.surfaceMuted, overflow: 'hidden' },
   levelBarFill: { height: '100%', borderRadius: 999, backgroundColor: colors.primary },
+  // The all-time chemistry caveat. Sits between the section title and the
+  // cards, so it is read before the numbers it qualifies rather than after.
+  chemistryNote: {
+    fontSize: 11,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+    marginTop: -4,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
   levelHint: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
 });
