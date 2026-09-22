@@ -970,6 +970,24 @@ service cloud.firestore {
       // absent/empty or points at a deleted club doc, which isGroupMember()
       // did not.
       allow read: if isSignedIn() && (
+        // `resource == null` FIRST: the document does not exist (a deleted
+        // game, a stale push, an old deep link). Every `resource.data.…` term
+        // below would error on a null resource, and the client receives that
+        // error as `permission-denied` — so a DELETED game was shown to the
+        // user as a permissions wall instead of "the game is gone".
+        //
+        // ⚠️ NO `is list` TYPE CHECKS HERE. A type check on a field that a
+        // query filters on makes Firestore refuse the whole LIST: it cannot
+        // prove the rule holds for every matching document, so it denies
+        // rather than evaluating per document. Measured, not guessed — with
+        // the guard this rule denies `participantIds array-contains uid` for
+        // every caller; without it the same query passes. It cost a rollback
+        // in production on 22.09.
+        //
+        // The guards are not needed anyway: `.get(k, default)` supplies a
+        // list when the field is absent, and Firestore's `||` is
+        // error-tolerant — a disjunct that raises beside one that is true
+        // still yields true.
         resource == null ||
         resource.data.get('visibility', '') == 'public' ||
         // Creator can always read their own game — closes the
@@ -977,26 +995,20 @@ service cloud.firestore {
         // getMyGames so an admin who created a game without
         // registering still sees it in "המשחקים שלי".
         request.auth.uid == resource.data.get('createdBy', '') ||
-        (resource.data.get('participantIds', []) is list &&
-         request.auth.uid in resource.data.get('participantIds', [])) ||
+        request.auth.uid in resource.data.get('participantIds', []) ||
         // An INVITED player can read (and then join) a community-only
         // game even if they're not a member — `sendGameInvite` adds them
-        // to `invitedUserIds`. Without this an invitee tapping the push
-        // hit the "members only" wall (user report).
-        (resource.data.get('invitedUserIds', []) is list &&
-         request.auth.uid in resource.data.get('invitedUserIds', [])) ||
+        // to `invitedUserIds`.
+        request.auth.uid in resource.data.get('invitedUserIds', []) ||
         // A FILLER CANDIDATE can read a community game that opted into
-        // outside fillers (`acceptsFillers`) — the organiser explicitly
-        // chose to advertise it to nearby non-members, who get a
-        // `fillerOpportunity` push. Without this, tapping the push body
-        // dead-ended on the "members only" wall (user report). They still
-        // can't JOIN directly — they express interest and the admin
-        // approves (the fillerInterests rule gates that). Private games
-        // stay hidden.
+        // outside fillers (`acceptsFillers`). They still can't JOIN
+        // directly — they express interest and the admin approves.
         (
           resource.data.get('acceptsFillers', false) == true &&
           resource.data.get('visibility', '') != 'private'
         ) ||
+        // The club lookup is LAST: it is the only term that can throw, and
+        // isGroupMemberSafe survives a blank groupId or a deleted club doc.
         isGroupMemberSafe(resource.data.get('groupId', ''))
       );
 
