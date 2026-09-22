@@ -1,0 +1,112 @@
+{
+ "note": "מועדון שכחת שושי, read from production 22.09.2026 — every game finished since season 2 opened. Only the fields the evening scan and eveningPlayState read.",
+ "groupId": "HhzIwmjMl1i5HSOGHt3p",
+ "season": {
+  "currentId": "s2",
+  "currentNo": 2
+ },
+ "games": [
+  {
+   "id": "UYwgXTICs07jiXOfxbAt",
+   "seasonId": "s2",
+   "status": "finished",
+   "endedBy": "admin",
+   "playVerified": null,
+   "startsAt": 1790075400000,
+   "players": [
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62",
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2",
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+    "B5KpYO4ILhQD0YVmMng997matof1",
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2"
+   ],
+   "arrivals": {}
+  },
+  {
+   "id": "t5MyKTKAkIYOf4bh1WUT",
+   "seasonId": "s2",
+   "status": "finished",
+   "endedBy": "admin",
+   "playVerified": null,
+   "startsAt": 1790074800000,
+   "players": [
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62",
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2",
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+    "B5KpYO4ILhQD0YVmMng997matof1",
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2",
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1"
+   ],
+   "arrivals": {}
+  },
+  {
+   "id": "yBWuwQaBuWmHEpXb5Jxu",
+   "seasonId": "s2",
+   "status": "finished",
+   "endedBy": "admin",
+   "playVerified": null,
+   "startsAt": 1790074500000,
+   "players": [
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62",
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2",
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+    "B5KpYO4ILhQD0YVmMng997matof1",
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2",
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1"
+   ],
+   "arrivals": {}
+  },
+  {
+   "id": "EqUIRFQvIkcoMwLSMLmv",
+   "seasonId": "s2",
+   "status": "finished",
+   "endedBy": "admin",
+   "playVerified": null,
+   "startsAt": 1790074200000,
+   "players": [
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2",
+    "B5KpYO4ILhQD0YVmMng997matof1",
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2",
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62"
+   ],
+   "arrivals": {}
+  },
+  {
+   "id": "XhWZb4mQccHILZhcE01s",
+   "seasonId": "s2",
+   "status": "finished",
+   "endedBy": "admin",
+   "playVerified": null,
+   "startsAt": 1790062500000,
+   "players": [
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62",
+    "alsobLSAFMRXzBDwQCDDlmNJw5R2",
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+    "CEkRfDs20xSuiW6xmPKlMcx3NoV2",
+    "B5KpYO4ILhQD0YVmMng997matof1",
+    "K5rSGB4JFTe6n3pm63iVPzexEQr2"
+   ],
+   "arrivals": {}
+  },
+  {
+   "id": "DTNscolRojYDf0ZmT0sF",
+   "seasonId": "s3",
+   "status": "finished",
+   "endedBy": "auto",
+   "playVerified": false,
+   "startsAt": 1789679982903,
+   "players": [
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2"
+   ],
+   "arrivals": {}
+  }
+ ]
+}

@@ -1580,6 +1580,15 @@ export interface Game {
    * whole change work with no migration and no historical number moving.
    */
   endedBy?: 'admin' | 'auto';
+  /**
+   * The season this evening belongs to, stamped by the server when the game is
+   * created and frozen for ever after — a game does not move between seasons
+   * when the next one opens.
+   *
+   * ⚠️ Absent on every game created before seasons shipped, and `inSeason`
+   * treats that absence as "season 1" for exactly that reason.
+   */
+  seasonId?: string;
   /** When the sweep closed it. Set alongside `endedBy: 'auto'`; used only to
    *  date the question put to the admin. */
   autoClosedAt?: number;

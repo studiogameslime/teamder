@@ -1252,6 +1252,18 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       groupId: g.groupId,
       title: g.title,
       startsAt: g.startsAt,
+      // The season stamp round-trips, and ONLY when we have one.
+      //
+      // The server writes it on creation; the client has none at `addDoc`
+      // time, so the key is simply absent there — which is what it must be.
+      // Spreading `seasonId: undefined` unconditionally is what would break
+      // this: on any future full write of a game read back from Firestore it
+      // would clear the stamp, and a game with no stamp is read as season 1
+      // by `inSeason`. Present-only keeps the read → write round trip
+      // lossless without ever clearing anything.
+      ...(typeof g.seasonId === 'string' && g.seasonId
+        ? { seasonId: g.seasonId }
+        : {}),
       fieldName: g.fieldName,
       fieldLat: g.fieldLat ?? null,
       fieldLng: g.fieldLng ?? null,
@@ -1511,6 +1523,14 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       endedAt: typeof d.endedAt === 'number' ? d.endedAt : undefined,
       endedBy:
         d.endedBy === 'admin' || d.endedBy === 'auto' ? d.endedBy : undefined,
+      // The season stamp. The server has been writing it since seasons
+      // shipped and this reader never named it, so `game.seasonId` was
+      // undefined on every client — and `inSeason` reads an absent stamp as
+      // "season 1". On a club past its first season that is false for EVERY
+      // game, so the evening scan counted none of them: שכחת שושי read
+      // "0 מחזורים" beside 12 משחקונים and 17 גולים, which come from
+      // server-maintained counters that never needed the stamp.
+      seasonId: typeof d.seasonId === 'string' ? d.seasonId : undefined,
       autoClosedAt:
         typeof d.autoClosedAt === 'number' ? d.autoClosedAt : undefined,
       // Absent stays absent: "nobody has been asked" is a third answer, and a
