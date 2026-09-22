@@ -683,6 +683,23 @@ export function readGroupSeasons(v: unknown): GroupSeasons | undefined {
     ...(typeof d.playedRounds === 'number'
       ? { playedRounds: d.playedRounds }
       : {}),
+    // The correction window. Absent stays absent — a season NOT inside one has
+    // no `pendingClose`, and that difference is the whole signal.
+    ...(d.pendingClose &&
+    typeof d.pendingClose === 'object' &&
+    typeof (d.pendingClose as { closeAt?: unknown }).closeAt === 'number'
+      ? {
+          pendingClose: {
+            seasonId: String(
+              (d.pendingClose as { seasonId?: unknown }).seasonId ?? '',
+            ),
+            closeAt: (d.pendingClose as { closeAt: number }).closeAt,
+            ...(typeof (d.pendingClose as { reason?: unknown }).reason === 'string'
+              ? { reason: (d.pendingClose as { reason: string }).reason }
+              : {}),
+          },
+        }
+      : {}),
     // Every change to the season's target, which the type documents as "kept
     // and shown… never quietly". It was written by the server on every change
     // and dropped right here — this reader rebuilds the block field by field,

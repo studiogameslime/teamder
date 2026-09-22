@@ -11,7 +11,7 @@
 // and by the time one has, the club is already playing the next. It lives in
 // the club's stats screen instead, under the finished season it describes.
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -22,6 +22,11 @@ import { InfoTip } from '@/components/InfoTip';
 import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { isCalendarDate, formatCalendarDate } from '@/utils/seasonDates';
 import { he } from '@/i18n/he';
+import {
+  isFinalRoundOfSeason,
+  msUntilSeasonCloses,
+  formatCloseCountdown,
+} from '@/utils/seasonFinalRound';
 import type { GroupSeasons } from '@/types';
 
 function formatDate(ms: number): string {
@@ -78,6 +83,18 @@ export function SeasonsCard({
   }
 
   const cadence = seasons.cadence;
+  const finalRound = isFinalRoundOfSeason(seasons);
+  // One tick a second, and ONLY while a window is actually open — an interval
+  // that runs on every club card in the app to render nothing is a battery
+  // cost with no reader.
+  const [now, setNow] = useState(() => Date.now());
+  const windowOpen = seasons.pendingClose?.closeAt != null;
+  useEffect(() => {
+    if (!windowOpen) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [windowOpen]);
+  const closesIn = msUntilSeasonCloses(seasons, now);
   // Where the season has GOT to, not just where it ends. A constant sentence
   // reads the same on the first evening and the last, which is a label; a
   // season is supposed to build.
@@ -168,7 +185,20 @@ export function SeasonsCard({
         </View>
       ) : null}
 
-      {line ? <Text style={styles.note}>{line}</Text> : null}
+      {/* The last evening is the one state on this card worth a colour. One
+          left and the sentence carries an exclamation mark (see
+          `seasonsCardRemaining`); anything else stays grey. */}
+      {line ? (
+        <Text style={[styles.note, finalRound && styles.noteUrgent]}>{line}</Text>
+      ) : null}
+      {/* Inside the 24-hour correction window: how long is LEFT, ticking.
+          Every other number on this card counts evenings, and once the target
+          is met there are none — what an admin wants then is the clock. */}
+      {closesIn !== null ? (
+        <Text style={[styles.note, styles.noteUrgent]}>
+          {he.seasonsClosesIn(formatCloseCountdown(closesIn))}
+        </Text>
+      ) : null}
       {daysLeft !== null ? (
         <Text style={styles.note}>{he.seasonsProgressDays(daysLeft)}</Text>
       ) : null}
@@ -262,6 +292,13 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
+  },
+  /** The last evening, and the closing countdown. Red and bold, because both
+   *  are states with a deadline — and both are rare, so the card does not cry
+   *  wolf. */
+  noteUrgent: {
+    color: colors.danger,
+    fontWeight: '800',
   },
   /** The season-history CTA, edge to edge across the card.
    *

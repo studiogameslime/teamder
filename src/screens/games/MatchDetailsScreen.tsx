@@ -82,6 +82,7 @@ import {
 } from '@/components/match/MatchParticipantsSection';
 import { FillerInterestsSection } from '@/components/match/FillerInterestsSection';
 import { PinnedAdminMessageCard } from '@/components/match/PinnedAdminMessageCard';
+import { isFinalRoundOfSeason } from '@/utils/seasonFinalRound';
 import { GameChampionship } from '@/components/match/GameChampionship';
 import { RetroGoalsSheet } from '@/components/match/RetroGoalsSheet';
 import { MatchFactsRow } from '@/components/match/MatchFactsRow';
@@ -436,6 +437,21 @@ export function MatchDetailsScreen() {
   );
 
   const [game, setGame] = useState<Game | null>(null);
+
+  /**
+   * Tonight is the season's last evening.
+   *
+   * Read from the club the game belongs to, and only for a member who has it
+   * — a guest or an outsider has no club document and gets no banner, which
+   * is right: the season is the club's, not the game's.
+   */
+  const finalRoundOfSeason = useMemo(
+    () =>
+      isFinalRoundOfSeason(
+        myCommunities.find((c) => c.id === game?.groupId)?.seasons,
+      ),
+    [myCommunities, game?.groupId],
+  );
   // Always-current mirror of `game`, for the post-join audit below. A React
   // state updater's side effects are NOT guaranteed to run at the call site
   // (see the audit comment), so the audit reads the COMMITTED state instead.
@@ -2846,6 +2862,19 @@ export function MatchDetailsScreen() {
 
         <View style={styles.body}>
 
+          {/* Tonight decides the season.
+              Above the pinned note on purpose: it is not the admin talking,
+              it is the state of the competition, and it should be the first
+              thing read under the header. Only while the evening is still to
+              come or under way — announcing a final round on a game that
+              already finished is a fact about last week. */}
+          {finalRoundOfSeason && !isTerminalGame(game) ? (
+            <View style={styles.finalRoundBanner}>
+              <Ionicons name="flame" size={16} color={colors.danger} />
+              <Text style={styles.finalRoundText}>{he.seasonFinalRoundBanner}</Text>
+            </View>
+          ) : null}
+
           {/* Admin-pinned announcement. Renders nothing for non-admins
               when there's no message; admins always see at least the
               empty "+ הוסף הודעה" tile. */}
@@ -4292,6 +4321,28 @@ const styles = StyleSheet.create({
   },
   // Body sits BELOW the floating stats. More vertical air between
   // sections to break "stacked white blocks" syndrome.
+  /** The season's last evening. Red, bold and right-aligned, with a flame —
+   *  it is the one banner on this screen that is about the competition rather
+   *  than about this game, so it is allowed to shout. */
+  finalRoundBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: spacing.xs,
+    backgroundColor: '#FEE2E2',
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  finalRoundText: {
+    ...typography.label,
+    color: colors.danger,
+    fontWeight: '900',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    flexShrink: 1,
+  },
   body: {
     paddingHorizontal: spacing.lg,
     gap: spacing.xl,

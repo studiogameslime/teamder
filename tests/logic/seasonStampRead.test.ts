@@ -74,3 +74,46 @@ describe('the evening scan on a club in its second season', () => {
     expect(asSeasonOne.length).toBeGreaterThan(0);
   });
 });
+
+describe('the correction window reaches the client', () => {
+  // Same reader, same trap, fourth instance: `pendingClose` is written by the
+  // sweep and `readGroupSeasons` rebuilds the block field by field. Without
+  // the field there is nothing on the client that can say how long is left —
+  // every other number counts evenings, and inside the window there are none.
+  it('readGroupSeasons carries pendingClose through', async () => {
+    const { readGroupSeasons } = await import('@/firebase/firestore');
+    const out = readGroupSeasons({
+      enabled: true,
+      currentNo: 2,
+      currentId: 's2',
+      startedAt: 1,
+      playedRounds: 5,
+      pendingClose: { seasonId: 's2', closeAt: 1790162190497, reason: 'rounds' },
+      cadence: { type: 'rounds', targetRounds: 5 },
+    });
+    expect(out?.pendingClose).toEqual({
+      seasonId: 's2',
+      closeAt: 1790162190497,
+      reason: 'rounds',
+    });
+  });
+
+  it('absent stays absent — no window is a state, not a zero', async () => {
+    const { readGroupSeasons } = await import('@/firebase/firestore');
+    const out = readGroupSeasons({
+      enabled: true, currentNo: 2, currentId: 's2', startedAt: 1,
+      cadence: { type: 'rounds', targetRounds: 5 },
+    });
+    expect(out).not.toHaveProperty('pendingClose');
+  });
+
+  it('a malformed window is dropped rather than rendered as a countdown', async () => {
+    const { readGroupSeasons } = await import('@/firebase/firestore');
+    const out = readGroupSeasons({
+      enabled: true, currentNo: 2, currentId: 's2', startedAt: 1,
+      pendingClose: { seasonId: 's2' },
+      cadence: { type: 'rounds', targetRounds: 5 },
+    });
+    expect(out).not.toHaveProperty('pendingClose');
+  });
+});

@@ -2194,8 +2194,15 @@ export const he = {
     left <= 0
       ? 'העונה הגיעה ליעד ונכנסת לחלון של 24 שעות לתיקונים, ובסופו תיסגר מעצמה'
       : left === 1
-        ? 'נשאר מחזור אחד'
+        // The exclamation mark is the point — one evening left is the only
+        // state on this card worth raising your voice about, and it is drawn
+        // in the danger colour beside it.
+        ? 'נשאר מחזור אחד לעונה!'
         : `נשארו ${left} מחזורים`,
+  /** Live countdown to the close, inside the correction window. */
+  seasonsClosesIn: (clock: string) => `העונה נסגרת בעוד ${clock}`,
+  /** The banner on the game screen when tonight decides the season. */
+  seasonFinalRoundBanner: 'מחזור אחרון לעונה! תתנו כל מה שיש לכם!',
   // The explanation the card never offered. It names the unit, because מחזור
   // and משחקון are the pair people confuse, and it says what the end does —
   // which is the part that worries an admin.
@@ -2381,8 +2388,10 @@ export const he = {
   // there for whoever asks.
   communityStatsScopeClosedNote: (no: number, when: string) =>
     `עונה ${no} הסתיימה ב-${when} — המספרים כאן הם שלה בלבד.`,
-  communityStatsScopeClosedInfo:
-    'אחוז ההתארגנות, הרצפים, הכימיה בין השחקנים ותארי המועדון נמדדים על המועדון לאורך כל הדרך, לא על עונה בודדת — ולכן הם מוצגים רק בעונה הרצה.',
+  // communityStatsScopeClosedInfo is gone. It claimed the chemistry and the
+  // club titles are shown only in the running season, which stopped being true
+  // on 22.09 when chemistry began rendering in every scope. A tooltip that
+  // contradicts the screen under it is worse than no tooltip.
   communityStatsScopeLoading: 'טוענים את העונה…',
   // המקרה היחיד שבו המערכת שואלת אם מחזור התקיים: היא סגרה אותו לבד ולא נשאר
   // בו שום סימן שמישהו שיחק. בכל מקרה אחר יש לה תשובה ואין מה לשאול.
@@ -2788,7 +2797,17 @@ export const he = {
     evenings === 1
       ? 'מחזור אחד שוחק במועדון בעונה הזאת. המיקום מחושב מול מי ששיחק בה.'
       : `${evenings} מחזורים שוחקו במועדון בעונה הזאת. המיקום מחושב מול מי ששיחק בה.`,
-  seasonPeerPartner: 'הכי הרבה יחד באותה קבוצה',
+  // ── Second person, by the owner's ask (22.09) — and gender-free by
+  // necessity.
+  //
+  // Hebrew's 2nd-person PAST is spelt identically for a man and a woman
+  // (שיחקת, ניצחת, בישלת, הפסדת, קיבלת), so addressing the reader costs
+  // nothing. A verb about the OTHER player does not have that property:
+  // "מי בישל לך" and "מי ניצח אותך" are masculine, and on the only club that
+  // has closed a season the other player is routinely a woman. Every label
+  // below therefore puts its verb on the READER and never on the person named
+  // under it. There is no gender field in this app and there will not be one.
+  seasonPeerPartner: 'עם מי שיחקת הכי הרבה',
   // The pair counters are written per משחקון by the advanced live screen, and
   // the first evening leaves them at 1 — which is how "1 משחקים באותה קבוצה"
   // reached the screen beside four neighbouring rows that all have a 1-form.
@@ -2805,7 +2824,7 @@ export const he = {
       : `${together} משחקונים באותה קבוצה${
           wins === 0 ? '' : `, ${wins === 1 ? 'אחד מהם' : `${wins} מהם`} בניצחון`
         }`,
-  seasonPeerNemesis: 'היריב הכי גדול',
+  seasonPeerNemesis: 'מול מי שיחקת הכי הרבה',
   seasonPeerNemesisDetail: (faced: number, mine: number, theirs: number) =>
     faced === 1
       ? mine === 1
@@ -2814,17 +2833,20 @@ export const he = {
       : `${faced} משחקונים זה מול זה — ${
           mine === 1 ? 'ניצחון אחד' : `${mine} ניצחונות`
         } מול ${theirs}`,
-  seasonPeerVictim: 'מי הובס הכי הרבה',
+  seasonPeerVictim: 'את מי ניצחת הכי הרבה',
   // No "מולו". It sits directly under the other player's name and avatar, and
   // on the only closed season that player is a woman; the rows around it say
   // the number and nothing else, which is the way out that needs no pronoun.
   seasonPeerVictimDetail: (wins: number) =>
     count(wins, 'ניצחון אחד', 'ניצחונות'),
-  seasonPeerTormentor: 'מי ניצח הכי הרבה',
+  // Not "מי ניצח אותך" — that verb is masculine and the person it describes
+  // need not be. The reader's own loss says the same thing.
+  seasonPeerTormentor: 'מול מי הפסדת הכי הרבה',
   seasonPeerTormentorDetail: (losses: number) =>
     count(losses, 'הפסד אחד', 'הפסדים'),
-  seasonPeerAssistedMost: 'למי הכי הרבה בישולים',
-  seasonPeerAssistedBy: 'ממי הכי הרבה בישולים',
+  seasonPeerAssistedMost: 'למי בישלת הכי הרבה',
+  // Not "מי בישל לך", same reason as above: "קיבלת" is the reader's verb.
+  seasonPeerAssistedBy: 'ממי קיבלת הכי הרבה בישולים',
   seasonPeerAssistsDetail: (n: number) => count(n, 'בישול אחד', 'בישולים'),
   // "זה יתמלא מעצמו" is a promise this card cannot keep: who played with whom
   // is counted only inside the advanced live screen's משחקונים, so a club that
@@ -3846,7 +3868,13 @@ export const he = {
   communityChampInfoBody:
     'הטבלה ממוינת לפי מספר הניצחונות. אם מספר הניצחונות שווה, השוויון נשבר לפי מספר הגולים; ואם גם הגולים שווים — לפי מספר הבישולים.',
   communityChampTotalGoals: 'סך הגולים',
-  communityChampTotalRounds: 'משחקונים',
+  // "משחקים", matching the season summary, which the owner renamed the same
+  // way on 22.09. The pair that must stay distinct on one screen is
+  // מחזורים / משחקים — a מחזור is a whole evening, a משחק is one of the ~six
+  // inside it — and those two words share nothing. The old "משחקונים" was
+  // there to avoid a collision with "ערבי משחק", a label that no longer
+  // exists.
+  communityChampTotalRounds: 'משחקים',
   // Per-game championship (shown once the game is finished).
   gameChampTitle: 'אלופי המחזור',
   gameChampNote: 'ניקוד = (גול×2 + בישול) חלקי מספר המשחקים',
@@ -3855,7 +3883,7 @@ export const he = {
   champColGoals: 'גולים',
   champColAssists: 'בישולים',
   champColGames: 'מחזורים',
-  champColMiniGames: 'משחקונים',
+  champColMiniGames: 'משחקים',
   champColAppearances: 'הופעות',
   champColWins: 'ניצחונות',
   champColTies: 'תיקו',
@@ -3878,7 +3906,7 @@ export const he = {
   // מחזורים, so it says so in the label. "% הגעה" alone under a grid of
   // per-משחקון rates reads as "showed up to what?".
   effColAttendancePct: '% הגעה למחזור',
-  effColRounds: 'משחקונים',
+  effColRounds: 'משחקים',
   /** Shown under the efficiency table when any row's window is shorter than
    *  its history — clean sheets have only been recorded since 17.08. */
   /** Shown under the efficiency table when the minimum-sample bar actually

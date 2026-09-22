@@ -22,7 +22,6 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { InfoTip } from '@/components/InfoTip';
 import { UserAvatar } from '@/components/UserAvatar';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { CountUp } from '@/components/anim/CountUp';
@@ -806,11 +805,14 @@ export function CommunityStatsScreen() {
                         }),
                       )}
                 </Text>
-                {/* The half that explains what is NOT here. It used to be
-                    three more lines of the same permanent paragraph. */}
-                {!archiveBusy ? (
-                  <InfoTip text={he.communityStatsScopeClosedInfo} />
-                ) : null}
+                {/* NO tooltip here any more.
+                    It said the organisation rate, the streaks, the chemistry
+                    and the club titles are measured over the club's whole life
+                    and so appear only in the running season. Two of those are
+                    no longer true — chemistry now renders in every scope, off
+                    the season's own archived pairs — and a tooltip that has to
+                    be re-read against the screen is worse than none. Removed
+                    at the owner's request, 22.09. */}
                 </View>
               ) : null}
               {/* The club's table for a finished season is right here, and the

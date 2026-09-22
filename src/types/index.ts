@@ -976,6 +976,20 @@ export interface GroupSeasons {
   /** Evenings this season has played, mirrored here because the counter it
    *  comes from is server-only. Lets the app show progress, not just a target. */
   playedRounds?: number;
+  /**
+   * The season met its finish line and is inside the 24-hour correction window.
+   *
+   * Written by the sweep, cleared by every path that opens or closes a season.
+   * `closeAt` is when the window shuts and the close runs — the only thing on
+   * the client that can say "how long is left", as distinct from "how many
+   * evenings are left", which is what every other number here counts.
+   */
+  pendingClose?: {
+    seasonId: string;
+    /** ms epoch — the window shuts, the season closes. */
+    closeAt: number;
+    reason?: string;
+  };
   cadence: {
     type: SeasonCadenceType;
     /** `date`: the LENGTH the admin chose, in months. Stored beside the date

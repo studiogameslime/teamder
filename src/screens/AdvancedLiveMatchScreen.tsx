@@ -197,6 +197,19 @@ export function AdvancedLiveMatchScreen() {
   const [endOpen, setEndOpen] = useState(false);
   const [ending, setEnding] = useState(false);
   // After ending a COMMUNITY evening, ask who took the ball / jerseys home.
+  /**
+   * The admin ended the evening from THIS screen, in this session.
+   *
+   * The effect below is an ENTRY gate, but it re-runs on every change of its
+   * dependencies — and `myCommunities` changes moments after an evening ends,
+   * because ending it writes to the club document (the season's progress, the
+   * equipment holders). The re-run re-fetched the game, found it `finished`,
+   * and popped the screen. That is correct for someone ARRIVING at a finished
+   * evening and wrong for the admin who just finished it: it closed the
+   * "מי לקח הביתה?" sheet out from under them about a second after it opened,
+   * before anyone could tick a name. Reported 22.09 with the sheet in shot.
+   */
+  const endedHereRef = useRef(false);
   const [handoff, setHandoff] = useState<{
     players: { id: string; name: string; avatarId?: string; photoUrl?: string }[];
     initial: EquipmentHolders;
@@ -301,9 +314,16 @@ export function AdvancedLiveMatchScreen() {
       // Controls stay admin-only. See canEnterLive.
       const isClubMember =
         !!me && !!g.groupId && myCommunities.some((c) => c.id === g.groupId);
-      if (terminal) {
+      // `endedHereRef` — not `handoff`, and not "is a modal open". The window
+      // between `endEvening` resolving and the sheet appearing is an await on
+      // `getLastTakenMap`, and a re-run landing inside it would pop the screen
+      // before the sheet it was meant to protect ever existed.
+      if (terminal && !endedHereRef.current) {
         toast.info(he.matchDetailsAlreadyFinished);
         if (nav.canGoBack()) nav.goBack();
+      } else if (terminal) {
+        // Nothing. The evening ended here; `onEndGame` owns what happens next
+        // — the handoff sheet, then `leaveLiveScreen`.
       } else if (
         !canEnterLive(g, {
           isOrganizerOrAdmin: adminHere,
@@ -1114,6 +1134,9 @@ export function AdvancedLiveMatchScreen() {
   const onEndGame = async () => {
     if (!gameId) return;
     setEnding(true);
+    // BEFORE the await: `endEvening` is what makes the game terminal, and the
+    // entry gate can re-run the moment the club document it touches changes.
+    endedHereRef.current = true;
     try {
       await gameService.endEvening(gameId);
       setEndOpen(false);

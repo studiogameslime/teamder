@@ -664,8 +664,8 @@ export function SeasonsSettings({
           )}
 
           <View style={styles.sectionHead}>
-            <Ionicons name="flag-outline" size={16} color={colors.primary} />
             <Text style={styles.sectionHeadText}>{he.seasonsCadenceQuestion}</Text>
+            <Ionicons name="flag-outline" size={16} color={colors.primary} />
           </View>
           <View style={styles.chipRow}>
             <Chip
@@ -816,8 +816,8 @@ export function SeasonsSettings({
           {firstTime ? (
             <>
               <View style={styles.sectionHead}>
-                <Ionicons name="archive-outline" size={16} color={colors.primary} />
                 <Text style={styles.sectionHeadText}>{he.seasonsCloseFirstTitle}</Text>
+                <Ionicons name="archive-outline" size={16} color={colors.primary} />
               </View>
               <Text style={styles.fieldHint}>{he.seasonsCloseFirstBody}</Text>
               <View style={styles.chipRow}>
@@ -1094,6 +1094,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   sectionHead: {
+    // TEXT FIRST, then the icon — the JSX order is what places them, not this
+    // style. `row` lays children out right-to-left under RTL, so a leading
+    // icon lands on the RIGHT of its label. Both heads that use this style put
+    // the label first so the icon sits to its LEFT (owner, 22.09); keep them
+    // in step, or one head grows a mirror image of the other.
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
