@@ -1013,7 +1013,7 @@ export const he = {
   // ("מחזור הוא ערב משחק שלם, לא משחקון בודד בתוכו"), so this says which.
   // The floor for this card is 10, so the 1-form is unreachable — kept only so
   // a future change to CHEMISTRY_MIN cannot reintroduce "1 משחקונים".
-  chemistryGamesTogether: (n: number) => `${count(n, 'משחקון אחד', 'משחקונים')} יחד`,
+  chemistryGamesTogether: (n: number) => `${count(n, 'משחק אחד', 'משחקים')} יחד`,
   chemistryAssistsBetween: (n: number) => `${count(n, 'בישול אחד', 'בישולים')} אחד לשני`,
   chemistryCleanSheetsTogether: (n: number) =>
     `${count(n, 'שער נקי אחד', 'שערים נקיים')} יחד`,
@@ -1036,7 +1036,7 @@ export const he = {
   chemistryAllTimeNote: 'הכימיה נספרת מהעונה הראשונה שנסגרה במועדון',
   // כרטיס הזוג
   pairCardTogether: 'ביחד',
-  pairCardGames: 'משחקונים',
+  pairCardGames: 'משחקים',
   pairCardWins: 'ניצחונות',
   pairCardLosses: 'הפסדים',
   pairCardCleanSheets: 'שערים נקיים',
@@ -1095,7 +1095,7 @@ export const he = {
   summaryMetricInvolvement: 'מעורבויות בשער',
   summaryMetricCleanSheets: 'שערים נקיים',
   summaryMetricWins: 'ניצחונות',
-  summaryMetricRounds: 'משחקונים',
+  summaryMetricRounds: 'משחקים',
   summaryMetricEvenings: 'מחזורים',
   summaryMetricShootouts: 'הכרעות פנדלים',
   summaryMetricTies: 'תיקו',
@@ -1380,9 +1380,9 @@ export const he = {
   // pass renamed them everywhere else and these three were missed, so the club
   // stats screen still printed "37 משחקים" next to "22 מחזורים" while the hall
   // of fame, one tap away, called the same 37 "משחקונים".
-  communityStatsMiniGames: 'משחקונים',
+  communityStatsMiniGames: 'משחקים',
   communityStatsEvenings: 'מחזורים',
-  communityStatsGoalsPerMini: 'גולים למשחקון',
+  communityStatsGoalsPerMini: 'גולים למשחק',
   // leaders — the same titles the hall of fame awards, because the scope picker
   // on this screen can point at a CLOSED season, and then these rows and that
   // season's medal cabinet describe one person's one set of numbers. Two
@@ -1541,7 +1541,10 @@ export const he = {
   guestRemovedToast: 'האורח הוסר מהמחזור',
   guestAddedByLine: (name: string, when: string) => `צורף ע״י ${name} · ${when}`,
   communityDetailsAdminBadge: 'מנהל',
-  communityEditTitle: 'עריכת מועדון',
+  // "הגדרות", not "עריכה". The screen is two tabs — details and an advanced
+  // tab holding seasons, cards, the internal rating — and only the first is
+  // editing a field. (Owner, 22.09.)
+  communityEditTitle: 'הגדרות מועדון',
   communityEditNoPermission: 'רק מנהל יכול לערוך את המועדון',
   communityEditRecurringEnabled: 'מחזור שבועי',
   communityEditRecurringHint:
@@ -2161,6 +2164,18 @@ export const he = {
   seasonClosingBlockTitle: 'העונה בדרך להיסגר',
   seasonClosingBlockBody:
     'העונה הגיעה ליעד שלה ונמצאת בחלון של 24 שעות לתיקונים. אפשר לתקן תוצאות, שערים והשתתפות של מחזורים קיימים — אבל אי אפשר להתחיל מחזור חדש עד שהעונה תיסגר.\n\nרוצים להתחיל כבר עכשיו? סגרו את העונה מיד ממסך הגדרות העונות, ואז אפשר להתחיל את המחזור הבא.\n\nאם העונה עוד לא נגמרה מבחינתכם — האריכו אותה מאותו מסך, והחסימה תוסר.',
+  /**
+   * Said BEFORE the press, on the game screen itself.
+   *
+   * The dialog above explains the refusal after an admin has already pressed
+   * "start" and been stopped. A club stood in exactly that: they opened the
+   * evening, people registered, and only at kickoff did they learn it could
+   * not start. The banner says it while the evening is still in the calendar,
+   * and disappears by itself the moment the season closes — because it is
+   * drawn from `pendingClose`, which the close deletes.
+   */
+  seasonClosingGameBanner:
+    'העונה בחלון סגירה — אי אפשר להתחיל את המחזור עד שהיא תיסגר',
   seasonsDisableTitle: 'לכבות עונות?',
   seasonsDisableBodyOf: (no: number, played: number) =>
     `${count(played, 'מחזור אחד', 'מחזורים')} בעונה ${no}.\n\n` +
@@ -2207,7 +2222,7 @@ export const he = {
   // and משחקון are the pair people confuse, and it says what the end does —
   // which is the part that worries an admin.
   seasonsCardInfo:
-    'מחזור הוא ערב משחק שלם, לא משחקון בודד בתוכו. הספירה עולה כשערב מסתיים ונחתם.\n\nכשהעונה מגיעה ליעד היא נסגרת מעצמה: מחולקים תארים, הטבלה של המועדון מתחילה מאפס, והעונה נשמרת בארכיון. הסטטיסטיקה המצטברת בפרופיל וההישגים לא מושפעים.',
+    'מחזור הוא ערב משחק שלם, לא משחק בודד בתוכו. הספירה עולה כשערב מסתיים ונחתם.\n\nכשהעונה מגיעה ליעד היא נסגרת מעצמה: מחולקים תארים, הטבלה של המועדון מתחילה מאפס, והעונה נשמרת בארכיון. הסטטיסטיקה המצטברת בפרופיל וההישגים לא מושפעים.',
   seasonsOffBody:
     'עונה היא תחרות עם התחלה וסוף. כשהיא נגמרת הטבלה של המועדון מתאפסת, מחולקים תארים, והעונה נשמרת בארכיון. הסטטיסטיקה האישית המצטברת בפרופיל, ההישגים והרצפים לא מושפעים — תארי המועדון נספרים מהעונה הנוכחית.',
   seasonsEnableCta: 'הפעל עונות',
@@ -2684,7 +2699,7 @@ export const he = {
   seasonHallClosed: (closed: number) =>
     closed === 1 ? 'עונה סגורה אחת' : `${closed} עונות סגורות`,
   seasonStatRoundsShort: 'מחזורים',
-  seasonStatMiniShort: 'משחקונים',
+  seasonStatMiniShort: 'משחקים',
   seasonStatPlayersShort: 'שחקנים',
   seasonTitleNotAwarded: 'לא חולק',
   seasonFullTableCta: 'הטבלה המלאה',
@@ -2786,8 +2801,8 @@ export const he = {
   // along prints, while assists divide by `asRounds` — the mini-games in which
   // assists were being collected at all, which is shorter for anyone who was
   // here before mid-June. That is why the coverage note sits under the grid.
-  seasonStatGoalsPerRound: 'שערים למשחקון',
-  seasonStatAssistsPerRound: 'בישולים למשחקון',
+  seasonStatGoalsPerRound: 'שערים למשחק',
+  seasonStatAssistsPerRound: 'בישולים למשחק',
   seasonStatPenalties: 'פנדלים שהובקעו',
   seasonStatPenSaves: 'פנדלים שנעצרו',
   seasonStatOwnGoals: 'שערים עצמיים',
@@ -2823,18 +2838,18 @@ export const he = {
   seasonPeerPartnerDetail: (together: number, wins: number) =>
     together === 1
       ? wins === 1
-        ? 'משחקון אחד באותה קבוצה, וניצחתם בו'
-        : 'משחקון אחד באותה קבוצה'
-      : `${together} משחקונים באותה קבוצה${
+        ? 'משחק אחד באותה קבוצה, וניצחתם בו'
+        : 'משחק אחד באותה קבוצה'
+      : `${together} משחקים באותה קבוצה${
           wins === 0 ? '' : `, ${wins === 1 ? 'אחד מהם' : `${wins} מהם`} בניצחון`
         }`,
   seasonPeerNemesis: 'מול מי שיחקת הכי הרבה',
   seasonPeerNemesisDetail: (faced: number, mine: number, theirs: number) =>
     faced === 1
       ? mine === 1
-        ? 'משחקון אחד זה מול זה, וניצחתם'
-        : 'משחקון אחד זה מול זה, והפסדתם'
-      : `${faced} משחקונים זה מול זה — ${
+        ? 'משחק אחד זה מול זה, וניצחתם'
+        : 'משחק אחד זה מול זה, והפסדתם'
+      : `${faced} משחקים זה מול זה — ${
           mine === 1 ? 'ניצחון אחד' : `${mine} ניצחונות`
         } מול ${theirs}`,
   seasonPeerVictim: 'את מי ניצחת הכי הרבה',
@@ -2869,9 +2884,9 @@ export const he = {
   // resolves the closing paren after a Latin name to RTL and mirrors it, so the
   // PNG that leaves the app read "(6 משחקונים(".
   seasonSharePartner: (name: string, together: number) =>
-    `הכי הרבה יחד: ${name} · ${count(together, 'משחקון אחד', 'משחקונים')}`,
+    `הכי הרבה יחד: ${name} · ${count(together, 'משחק אחד', 'משחקים')}`,
   seasonShareNemesis: (name: string, faced: number) =>
-    `היריב הגדול: ${name} · ${count(faced, 'משחקון אחד', 'משחקונים')}`,
+    `היריב הגדול: ${name} · ${count(faced, 'משחק אחד', 'משחקים')}`,
   seasonShareCta: 'שתף את סיכום העונה',
   seasonShareTitle: 'סיכום העונה',
   seasonSummaryFootnote:
@@ -3147,7 +3162,11 @@ export const he = {
   // Hamburger label for the achievements view. Distinct word from the
   // existing "תארים" (which is the in-screen section title) — the user
   // asked specifically for "הישגים" in the menu.
-  profileSectionMyAchievements: 'ההישגים שלי',
+  // "ארון התארים שלי". The screen holds BOTH the milestone badges and the
+  // season-title shelf, and since the duplicate "תארי עונה" menu row was
+  // removed it is the only way in to either — so it is named for the thing
+  // people come looking for. (Owner, 22.09.)
+  profileSectionMyAchievements: 'ארון התארים שלי',
   profileSectionNotifications: 'התראות',
   profileSectionBlocked: 'משתמשים חסומים',
   blockedTitle: 'משתמשים חסומים',
@@ -3925,7 +3944,7 @@ export const he = {
   // under a grid where the tile that does not divide can just as easily be
   // בישולים, and then explained nothing about it.
   seasonPartialCoverageNote:
-    'הבישולים נאספים מאמצע יוני והשערים הנקיים מאמצע אוגוסט. אצל ותיקים האחוזים מחושבים רק מהמשחקונים שבהם הנתון כבר נאסף.',
+    'הבישולים נאספים מאמצע יוני והשערים הנקיים מאמצע אוגוסט. אצל ותיקים האחוזים מחושבים רק מהמשחקים שבהם הנתון כבר נאסף.',
   effPartialNote:
     'שערים נקיים נאספים מאמצע אוגוסט. אצל ותיקים האחוז מחושב רק מהמשחקים שבהם הנתון נאסף בפועל.',
   pairStatsSharedCommunities: 'מועדונים משותפים',

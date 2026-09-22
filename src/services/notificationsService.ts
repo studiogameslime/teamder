@@ -408,6 +408,13 @@ export const notificationsService = {
       if (!d) return null;
       // The card lives 48 HOURS from the close, then stops showing itself.
       //
+      // This window is the ONLY thing that retires it. Nothing marks a
+      // seasonSummary notification read any more — opening the card used to,
+      // and that removed the way back to a summary a player will want to look
+      // at more than once in the two days after their season ends. The
+      // `read == false` filter above stays as a belt: if some other path ever
+      // marks one read, the card respects it.
+      //
       // It used to stay until it was opened or dismissed, which is why it
       // needed an X at all — without one, a player who did not want the
       // summary had it on their home screen for ever. The window replaces the

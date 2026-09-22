@@ -445,6 +445,27 @@ export function MatchDetailsScreen() {
    * — a guest or an outsider has no club document and gets no banner, which
    * is right: the season is the club's, not the game's.
    */
+  /** The club's season is in its correction window and cannot start evenings. */
+  const seasonClosing = useMemo(() => {
+    const sea = myCommunities.find((c) => c.id === game?.groupId)?.seasons;
+    return !!sea?.enabled && !!sea.pendingClose?.closeAt;
+  }, [myCommunities, game?.groupId]);
+
+  /** "עונה 2" for the header, or undefined when the club runs no seasons. */
+  const seasonLabelForGame = useMemo(() => {
+    const grp = myCommunities.find((c) => c.id === game?.groupId);
+    const sea = grp?.seasons;
+    if (!sea?.enabled) return undefined;
+    const stamped = (game as { seasonId?: string } | null)?.seasonId;
+    // A stamped evening keeps its own season for ever, including after the
+    // season closes — that is the whole point of the stamp. Only the number
+    // is known from the id when it is the running one; an older stamp can
+    // only be named by its id, so it falls back to the running label rather
+    // than printing "s1" at a reader.
+    if (stamped && stamped !== sea.currentId) return undefined;
+    return he.seasonNumberLabel(sea.currentNo ?? 1);
+  }, [myCommunities, game]);
+
   const finalRoundOfSeason = useMemo(
     () =>
       isFinalRoundOfSeason(
@@ -2780,6 +2801,11 @@ export function MatchDetailsScreen() {
         <MatchStadiumHero
           startsAt={game.startsAt}
           title={game.title}
+          // Which season this evening counts in. An evening already stamped
+          // shows its own stamp; one that has not kicked off shows the season
+          // it WILL land in, which is the club's running one — the stamp is
+          // written on the transition to active, not at creation.
+          seasonLabel={seasonLabelForGame}
           onMenuPress={hasMenuItems ? () => setMenuOpen(true) : undefined}
           onBackPress={goBackSafe}
           // Share lives in the header so the sticky CTA at the bottom
@@ -2868,6 +2894,22 @@ export function MatchDetailsScreen() {
               thing read under the header. Only while the evening is still to
               come or under way — announcing a final round on a game that
               already finished is a fact about last week. */}
+          {/* The season is inside its 24-hour correction window, so this
+              evening cannot start yet. Said HERE rather than only in the
+              dialog behind the start button: a club opened an evening, seven
+              people registered, and they found out at kickoff. It clears
+              itself — `pendingClose` is deleted by the close, so nothing has
+              to remember to take this down. Above the final-round banner,
+              because a blocker outranks encouragement. */}
+          {seasonClosing && !isTerminalGame(game) ? (
+            <View style={styles.seasonClosingBanner}>
+              <Ionicons name="time-outline" size={16} color="#92400E" />
+              <Text style={styles.seasonClosingText}>
+                {he.seasonClosingGameBanner}
+              </Text>
+            </View>
+          ) : null}
+
           {finalRoundOfSeason && !isTerminalGame(game) ? (
             <View style={styles.finalRoundBanner}>
               <Ionicons name="flame" size={16} color={colors.danger} />
@@ -4321,6 +4363,27 @@ const styles = StyleSheet.create({
   },
   // Body sits BELOW the floating stats. More vertical air between
   // sections to break "stacked white blocks" syndrome.
+  /** The close window. Amber, not red — it is a wait, not a problem, and the
+   *  final-round banner below it owns the red. */
+  seasonClosingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: spacing.xs,
+    backgroundColor: '#FEF3C7',
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  seasonClosingText: {
+    ...typography.label,
+    color: '#92400E',
+    fontWeight: '800',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    flexShrink: 1,
+  },
   /** The season's last evening. Red, bold and right-aligned, with a flame —
    *  it is the one banner on this screen that is about the competition rather
    *  than about this game, so it is allowed to shout. */

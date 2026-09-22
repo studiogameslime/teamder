@@ -197,10 +197,10 @@ export function ProfileScreen() {
   // drives the "איך היה אתמול?" card under the coach message. Null the rest of
   // the time, which is most of the week.
   const [justPlayed, setJustPlayed] = useState<Game | null>(null);
-  // §22 — the unread "a season closed" notification, if this player has one.
-  // Read once per focus, from the notification doc itself; see
-  // notificationsService.getUnreadSeasonClose for why the doc is both the
-  // source and the dedupe.
+  // §22 — the "a season closed" notification, if this player has one from the
+  // last 48 hours. Read once per focus from the notification doc itself. The
+  // WINDOW is the dedupe now, not a read flag: nothing marks this one read,
+  // so the card survives being opened and expires on its own.
   const [seasonClosed, setSeasonClosed] = useState<{
     id: string;
     groupId: string;
@@ -1284,12 +1284,15 @@ export function ProfileScreen() {
               pressedScale={motion.press.cardScale}
               haptic={false}
               onPress={() => {
-                // Marked read BEFORE navigating, not after: the summary screen
-                // is a destination the user may never come back from in this
-                // session, and a card that survives being opened is the exact
-                // thing §22 asks to prevent.
-                void notificationsService.markRead(seasonClosed.id);
-                setSeasonClosed(null);
+                // NOT marked read, and NOT cleared.
+                //
+                // It used to be both, so opening the summary once removed the
+                // way back to it: "הוא היה מפה מקודם, לחצתי עליו והוא נעלם".
+                // The 48-hour window is what retires this card now
+                // (`getUnreadSeasonClose`), and a window is a better rule than
+                // a one-shot latch for something a player will want to look at
+                // more than once in the two days after a season ends. §22 asked
+                // that the card not nag for ever; it does not — it expires.
                 nav.navigate('SeasonSummary', {
                   groupId: seasonClosed.groupId,
                   seasonId: seasonClosed.seasonId,

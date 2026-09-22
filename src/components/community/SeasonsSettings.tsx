@@ -968,6 +968,10 @@ export function SeasonsSettings({
               // must not be pressable, whether or not this is the first time.
               (history === null || !plan.ok)
             }
+            // Only while WE are the reason it is disabled. The other two
+            // conditions are permanent states of the form, and a spinner on
+            // those would promise work that is not happening.
+            loading={busy}
             // Enabling never acts on the press. It opens a sheet that spells
             // out, in this club's own numbers, exactly what is about to happen
             // to its history — and only the button in there does anything.
@@ -985,7 +989,14 @@ export function SeasonsSettings({
               title={he.seasonsEndCta}
               variant="danger"
               fullWidth
+              // `loading`, not just `disabled`. Closing a season is the
+              // slowest thing on this screen — it computes nine titles,
+              // archives the table, zeroes every player row and stamps the
+              // trophy cabinets — and `disabled` alone greys the button and
+              // says nothing else. An admin pressed it, saw a dead grey
+              // button, and reported the screen as frozen. It was working.
               disabled={busy}
+              loading={busy}
               onPress={endNow}
             />
           ) : null}

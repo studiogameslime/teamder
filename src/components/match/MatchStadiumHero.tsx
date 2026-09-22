@@ -35,6 +35,16 @@ interface Props {
   startsAt?: number;
   /** Game name — shown above the date/time inside the floating card. */
   title?: string;
+  /**
+   * Which season this evening belongs to — "עונה 2" — under the title.
+   *
+   * Absent for a club that runs no seasons, and for an evening that has not
+   * been stamped yet. The stamp is written when the game goes ACTIVE, so a
+   * game that has not kicked off shows the season it WILL be counted in,
+   * which is the running one: the header answers "which season is this",
+   * not "which season did this turn out to be".
+   */
+  seasonLabel?: string;
   /** Omit to hide the ⋯ button entirely — e.g. a viewer with no
    *  applicable menu actions (would otherwise open an empty sheet). */
   onMenuPress?: () => void;
@@ -62,6 +72,7 @@ const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.
 export function MatchStadiumHero({
   startsAt,
   title,
+  seasonLabel,
   onMenuPress,
   onBackPress,
   onSharePress,
@@ -177,6 +188,11 @@ export function MatchStadiumHero({
               {title ? (
                 <Text style={styles.floatingTitle} numberOfLines={1}>
                   {title}
+                </Text>
+              ) : null}
+              {seasonLabel ? (
+                <Text style={styles.floatingSeason} numberOfLines={1}>
+                  {seasonLabel}
                 </Text>
               ) : null}
               {startsAt ? (
@@ -323,6 +339,20 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
     textAlign: 'center',
+    marginBottom: 6,
+    maxWidth: 260,
+  },
+  /** The season, under the club's name. Quieter than the title and louder
+   *  than the date — it qualifies the title, it is not a detail of the
+   *  fixture. */
+  floatingSeason: {
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    // The title reserves 6pt below itself; the season sits inside that gap
+    // rather than adding to it, so the hero does not grow.
+    marginTop: -4,
     marginBottom: 6,
     maxWidth: 260,
   },

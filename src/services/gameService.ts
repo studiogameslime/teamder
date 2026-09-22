@@ -7417,8 +7417,16 @@ export const gameService = {
         });
       }
     } catch (err) {
-      logError('markGameStarted', err, { gameId });
-      if (__DEV__) console.warn('[gameService] markGameStarted failed', err);
+      // SEASON_CLOSING is not a failure. It is this function's own refusal,
+      // thrown twenty lines above, and every caller catches it and shows the
+      // dialog that explains it (§4). Reporting it put a product decision in
+      // the errors inbox — and it arrived on the very evening the club was
+      // stuck in the close deadlock, so the one signal that mattered was
+      // sitting next to a refusal working exactly as designed.
+      if ((err as Error)?.message !== 'SEASON_CLOSING') {
+        logError('markGameStarted', err, { gameId });
+        if (__DEV__) console.warn('[gameService] markGameStarted failed', err);
+      }
       throw err;
     }
   },
