@@ -2719,8 +2719,36 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
         waitlist.push(r.uid);
         bucket = 'waitlist';
       }
+      // Stamp when this receipt actually SEATS someone, not only when the
+      // map has no entry for them.
+      //
+      // `=== undefined` looks like the right guard and is not. Cancelling a
+      // registration does not delete the player's `joinedAt` entry, so a
+      // player who cancelled and registered again still had one — and kept
+      // the time of the registration they had already given up. Reported on
+      // כדורגל אנשים טובים, 23.09: two admins registered at 09:43 before the
+      // 10:00 opening, one of them cancelled around 10:00 and registered
+      // again, and the roster still showed him at 09:43. The give-away in the
+      // data is three lines below: his `cancellations` entry WAS deleted, so
+      // the trace of the cancellation was cleared while the stale join time
+      // it invalidated survived.
+      //
+      // `alreadySeated` is read BEFORE `inAny.add` below, which is what makes
+      // this safe: re-running the queue over a receipt that has already been
+      // assigned must not move the stamp (that is what the old guard was
+      // protecting, and it still is). A receipt that seats someone now is a
+      // new registration, whatever the map happens to hold.
+      //
+      // The client's own join path has stamped unconditionally since the same
+      // report came in against it (see gameService, "Always (re)stamp"). This
+      // is the second implementation of one rule, and it was the one the
+      // ordered-registration queue runs — which is every registration that
+      // arrives through the opening sweep.
+      const alreadySeated = inAny.has(r.uid);
       inAny.add(r.uid);
-      if (joinedAt[r.uid] === undefined) joinedAt[r.uid] = r.receipt;
+      if (!alreadySeated || joinedAt[r.uid] === undefined) {
+        joinedAt[r.uid] = r.receipt;
+      }
       if (cancellations[r.uid] !== undefined) {
         delete cancellations[r.uid];
         cancellationsChanged = true;
