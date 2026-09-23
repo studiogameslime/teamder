@@ -11,13 +11,12 @@
 // and by the time one has, the club is already playing the next. It lives in
 // the club's stats screen instead, under the finished season it describes.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import { Ionicons } from '@expo/vector-icons';
 
-import { Button } from '@/components/Button';
 import { InfoTip } from '@/components/InfoTip';
 import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { isCalendarDate, formatCalendarDate } from '@/utils/seasonDates';
@@ -51,10 +50,6 @@ export function SeasonsCard({
   isMember: boolean;
 }) {
   const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
-  const openHistory = useCallback(() => {
-    nav.navigate('SeasonHistory', { groupId });
-  }, [nav, groupId]);
-
   const closedSeasons = seasons?.count ?? 0;
 
   if (!isMember) return null;
@@ -69,15 +64,11 @@ export function SeasonsCard({
     return (
       <View style={styles.card}>
         <Text style={styles.title}>{he.seasonsCardTitle}</Text>
+        {/* The reassurance stays, the button does not. A club that switched
+            seasons off still needs to be told its archives survived — that is
+            what this note is for — and it reaches them the same way everyone
+            else does now, through the stats screen's season picker. */}
         <Text style={styles.note}>{he.seasonsOffButArchived}</Text>
-        <Button
-          title={he.seasonHistoryCta}
-          variant="outline"
-          size="lg"
-          fullWidth
-          style={styles.cta}
-          onPress={openHistory}
-        />
       </View>
     );
   }
@@ -203,29 +194,12 @@ export function SeasonsCard({
         <Text style={styles.note}>{he.seasonsProgressDays(daysLeft)}</Text>
       ) : null}
 
-      {/* Only once there is history to look at — a club in its first season
-          would otherwise be offered an empty room. */}
-      {closedSeasons > 0 ? (
-        <Button
-          title={he.seasonHistoryCta}
-          variant="outline"
-          // Same SIZE and same WIDTH as the stats button directly below this
-          // card on CommunityDetails ("טבלת המועדון והסטטיסטיקות"), which is
-          // what was asked for — twice, with the pair circled in red:
-          // "שיהיו באותו גודל ורוחב".
-          //
-          // `size="lg"` settles the height. The width needed `styles.cta`:
-          // this card is a sibling of that button inside the same padded
-          // body, so the two are the same width only once the button ignores
-          // the card's own spacing.lg gutters — otherwise it renders exactly
-          // 32px narrower, which is the step the report is pointing at.
-          size="lg"
-          fullWidth
-          style={styles.cta}
-          iconLeft="time-outline"
-          onPress={openHistory}
-        />
-      ) : null}
+      {/* NO "עונות קודמות ותארים" button, and no screen behind it (23.09).
+          Its medal cabinet now lives in the personal season summary, in place
+          of the nine text rows that were there — so the trophies sit on the
+          screen the whole club opens the day a season ends, instead of one
+          tap further on. The way to a past season is the stats screen's
+          season picker, which ends in "סיכום העונה שלי". */}
     </View>
   );
 }

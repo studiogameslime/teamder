@@ -2563,7 +2563,11 @@ export const he = {
   seasonsConfirmFromSeasonOn: (no: number) => `משך עונה ${no} והלאה`,
   seasonsConfirmCta: 'אישור והפעלה',
   seasonHistoryTitle: 'עונות קודמות',
-  seasonHistoryCta: 'עונות קודמות ותארים',
+  // seasonHistoryCta ('עונות קודמות ותארים') is gone with the screen it named
+  // (23.09). Its medal cabinet is now the champions section of the personal
+  // season summary, and a past season is reached through the stats screen's
+  // own chip row — the club's trophies sit on the screen everyone opens the
+  // day a season ends instead of one tap beyond it.
   seasonHistoryLoadFailed:
     'לא הצלחנו לטעון את העונות. משכו למטה כדי לנסות שוב.',
   seasonHistoryEmpty:

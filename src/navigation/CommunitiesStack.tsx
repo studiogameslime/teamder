@@ -36,7 +36,6 @@ import { DraftSetupScreen } from '@/screens/games/DraftSetupScreen';
 import { DraftBoardScreen } from '@/screens/games/DraftBoardScreen';
 import { EveningSummaryScreen } from '@/screens/games/EveningSummaryScreen';
 import { SeasonSummaryScreen } from '@/screens/profile/SeasonSummaryScreen';
-import { SeasonHistoryScreen } from '@/screens/communities/SeasonHistoryScreen';
 import { RoundSummaryScreen } from '@/screens/games/RoundSummaryScreen';
 import { MatchRoundsScreen } from '@/screens/games/MatchRoundsScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
@@ -81,7 +80,6 @@ export type CommunitiesStackParamList = {
   EveningSummary: { gameId: string };
   /** `seasonId` omitted = the season currently running. */
   SeasonSummary: { groupId: string; seasonId?: string };
-  SeasonHistory: { groupId: string };
   RoundSummary: { gameId: string };
   MatchRounds: { gameId: string };
   MatchPlayers: { gameId: string };
@@ -148,7 +146,6 @@ export function CommunitiesStack() {
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
       <Stack.Screen name="SeasonSummary" component={SeasonSummaryScreen} />
-      <Stack.Screen name="SeasonHistory" component={SeasonHistoryScreen} />
       <Stack.Screen name="RoundSummary" component={RoundSummaryScreen} />
       <Stack.Screen name="MatchRounds" component={MatchRoundsScreen} />
       <Stack.Screen name="AddMembers" component={AddMembersScreen} />

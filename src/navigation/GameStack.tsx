@@ -23,7 +23,6 @@ import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { EveningSummaryScreen } from '@/screens/games/EveningSummaryScreen';
 import { SeasonSummaryScreen } from '@/screens/profile/SeasonSummaryScreen';
-import { SeasonHistoryScreen } from '@/screens/communities/SeasonHistoryScreen';
 import { RoundSummaryScreen } from '@/screens/games/RoundSummaryScreen';
 import { MatchRoundsScreen } from '@/screens/games/MatchRoundsScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
@@ -91,7 +90,6 @@ export type GameStackParamList = {
   EveningSummary: { gameId: string };
   /** `seasonId` omitted = the season currently running. */
   SeasonSummary: { groupId: string; seasonId?: string };
-  SeasonHistory: { groupId: string };
   RoundSummary: { gameId: string };
   /** Per-game history of a finished round ("היסטוריית המשחקים"). Shared
    *  screen — registered in GameStack + ProfileStack + CommunitiesStack. */
@@ -170,7 +168,6 @@ export function GameStack() {
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
       <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
       <Stack.Screen name="SeasonSummary" component={SeasonSummaryScreen} />
-      <Stack.Screen name="SeasonHistory" component={SeasonHistoryScreen} />
       <Stack.Screen name="RoundSummary" component={RoundSummaryScreen} />
       <Stack.Screen name="MatchRounds" component={MatchRoundsScreen} />
       <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />

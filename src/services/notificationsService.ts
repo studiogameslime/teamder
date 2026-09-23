@@ -399,7 +399,19 @@ export const notificationsService = {
           collection(firestoreDb, 'notifications'),
           where('recipientId', '==', uid),
           where('type', '==', 'seasonSummary'),
-          where('read', '==', false),
+          // NO `read` filter. 48 hours from the close, whatever anyone tapped.
+          //
+          // Two builds marked this notification read — opening the card and
+          // the dismiss X — and both are gone, but the flag they set is not:
+          // a player who tapped once under 1.1.12 carries `read: true` for
+          // ever, and any query that filters on it hides their card for the
+          // rest of the window. Measured on the club that reported this: the
+          // reporter's row is `read: true`, the other six members' are false,
+          // which is exactly what "it works for everyone but me" looks like.
+          //
+          // Dropping the filter fixes those rows without touching production
+          // data, and makes the rule the owner actually asked for the only
+          // rule there is: 48 hours from the close, no exceptions.
           orderBy('createdAtMs', 'desc'),
           limit(1),
         ),
@@ -408,12 +420,9 @@ export const notificationsService = {
       if (!d) return null;
       // The card lives 48 HOURS from the close, then stops showing itself.
       //
-      // This window is the ONLY thing that retires it. Nothing marks a
-      // seasonSummary notification read any more — opening the card used to,
-      // and that removed the way back to a summary a player will want to look
-      // at more than once in the two days after their season ends. The
-      // `read == false` filter above stays as a belt: if some other path ever
-      // marks one read, the card respects it.
+      // This window is the ONLY thing that retires it — no read flag, no
+      // dismiss, no one-shot latch. A player will want to look at their
+      // season summary more than once in the two days after it ends.
       //
       // It used to stay until it was opened or dismissed, which is why it
       // needed an X at all — without one, a player who did not want the

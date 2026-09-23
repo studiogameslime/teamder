@@ -45,6 +45,7 @@ import { logError } from '@/services/errorLog';
 import { colors, radius, shadows, spacing, typography } from '@/theme';
 import { RTL_LABEL_ALIGN } from '@/theme/rtl';
 import { he } from '@/i18n/he';
+import { SeasonTitlesCabinet } from '@/components/community/SeasonTitlesCabinet';
 import type { ProfileStackParamList } from '@/navigation/ProfileStack';
 
 type Params = RouteProp<ProfileStackParamList, 'SeasonSummary'>;
@@ -253,36 +254,9 @@ function TitleRow({ title }: { title: SeasonTitleWon }) {
   );
 }
 
-function ChampionRow({ title }: { title: SeasonTitleAwarded }) {
-  return (
-    <View style={styles.championRow}>
-      <Text style={styles.championTitle} numberOfLines={1}>
-        {he.seasonTitleNames[title.key]}
-      </Text>
-      {/* The name is the variable-length part — a duo title is two names
-          joined — so it is the one that shrinks and wraps, not the label
-          beside it and not the number after it. */}
-      <Text
-        style={[styles.championName, title.mine && styles.championMine]}
-        numberOfLines={2}
-      >
-        {title.names.join(' · ')}
-      </Text>
-      {/* The number it was won on. Fetched all along and thrown away — and it
-          is what makes a title an argument rather than a label. */}
-      <View>
-        <Text style={styles.championValue}>
-          {he.seasonTitleValue(title.key, title.value)}
-        </Text>
-        {title.coverage ? (
-          <Text style={styles.championCoverage} numberOfLines={2}>
-            {he.seasonTitleCoverage(title.coverage.rated, title.coverage.of)}
-          </Text>
-        ) : null}
-      </View>
-    </View>
-  );
-}
+// ChampionRow is gone with the plain list it drew (23.09). The champions
+// section is the medal cabinet now — see SeasonTitlesCabinet, which was the
+// grid on the "עונות קודמות ותארים" screen that this replaced.
 
 export function SeasonSummaryScreen() {
   const params = useRoute<Params>().params;
@@ -517,13 +491,26 @@ export function SeasonSummaryScreen() {
         {/* Every title the season decided, and who took it. The push sends
             every player who played to this screen, so it is where the club
             gathers the day a season ends — nine champions were being crowned
-            in private, each told only about their own. */}
+            in private, each told only about their own.
+            
+            THE CABINET, not a list of rows. It used to be nine text lines
+            here and a medal grid on a separate "עונות קודמות ותארים" screen,
+            so the club's trophies lived one tap away from the only screen
+            everybody opens. That screen is gone (23.09) and its grid is this:
+            nine fixed slots in the canonical order, tiers, empty sockets for
+            titles nobody won.
+            
+            No streak badges. They need the club's other seasons to compare
+            against, and this screen shows one — "×3" with nothing on screen
+            to count is a number the reader cannot check. The history that
+            carried them was the screen that has just been removed. */}
         {model.closed && model.seasonTitles.length > 0 ? (
           <View style={styles.card}>
             <CardTitle icon="trophy" text={he.seasonSectionChampions} />
-            {model.seasonTitles.map((t) => (
-              <ChampionRow key={t.key} title={t} />
-            ))}
+            <SeasonTitlesCabinet
+              winners={model.seasonTitles}
+              completedRounds={model.completedRounds}
+            />
           </View>
         ) : null}
 
@@ -865,46 +852,8 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   // Label first in source order → rightmost under forceRTL, name beside it.
-  championRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.sm,
-    paddingVertical: 2,
-  },
-  championTitle: {
-    ...typography.caption,
-    color: colors.textMuted,
-    // Enough for the longest of the nine names, and no more: the label is
-    // fixed-length, the winner is not.
-    flexShrink: 0,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  championName: {
-    ...typography.caption,
-    color: colors.text,
-    fontWeight: '700',
-    flex: 1,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  championMine: { color: colors.primary },
-  championValue: {
-    ...typography.caption,
-    color: colors.textMuted,
-    fontVariant: ['tabular-nums'],
-    flexShrink: 0,
-  },
   // The coverage note beside a champion's number. Quieter than the value, and
   // allowed to wrap — it is a sentence, not a figure.
-  championCoverage: {
-    ...typography.caption,
-    fontSize: 9,
-    lineHeight: 12,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
-    maxWidth: 120,
-    marginTop: 2,
-  },
   titleShared: {
     ...typography.caption,
     color: colors.textMuted,

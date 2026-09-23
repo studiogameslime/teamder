@@ -56,7 +56,10 @@ export const AnalyticsEvent = {
   // allowlist says in as many words not to park new dead constants in it.
   SeasonSummaryViewed: 'season_summary_viewed',
   SeasonSummaryShared: 'season_summary_shared',
-  SeasonHistoryViewed: 'season_history_viewed',
+  // SeasonHistoryViewed is gone with the "עונות קודמות ותארים" screen it
+  // measured (23.09). Deleted rather than parked in the unwired allowlist:
+  // that list is for events whose call site has not been written YET, and
+  // this one's can never be written again. The wiring test caught it.
   GroupViewed: 'group_viewed',
   InviteShared: 'invite_shared',
   InviteCodeCopied: 'invite_code_copied',

@@ -751,16 +751,16 @@ export function CommunityStatsScreen() {
                   you were aiming at moved out from under your finger. Under
                   the picker every scope has exactly one explanatory line in
                   exactly one place. */}
+              {/* A banner, not a button any more. It used to open
+                  "עונות קודמות ותארים", and that screen is gone (23.09) — its
+                  medal cabinet moved into the personal season summary. The
+                  route it offered is now the chip row three lines above this
+                  banner: tap a past season and the whole screen becomes that
+                  season, with "סיכום העונה שלי" at the bottom of it. A link
+                  pointing at something already on screen is one control too
+                  many. */}
               {seasons?.enabled && scope.k === 'current' ? (
-                <Pressable
-                  style={styles.seasonBanner}
-                  onPress={() =>
-                    (seasons.count ?? 0) > 0
-                      ? nav.navigate('SeasonHistory', { groupId })
-                      : undefined
-                  }
-                  accessibilityRole={(seasons.count ?? 0) > 0 ? 'button' : 'text'}
-                >
+                <View style={styles.seasonBanner}>
                   <Text style={styles.seasonBannerText}>
                     {/* A club whose new season has no goals yet is not an empty
                         club — it is a club between seasons, and that is a very
@@ -773,14 +773,16 @@ export function CommunityStatsScreen() {
                       ? he.communityStatsSeasonFresh(seasons.currentNo ?? 1)
                       : he.communityStatsSeasonBanner(seasons.currentNo ?? 1)}
                   </Text>
-                  {(seasons.count ?? 0) > 0 ? (
+                  {/* Kept ONLY on the fresh-season line, where it names the
+                      chip to press. On the ordinary line it used to read
+                      "עונות קודמות ותארים", which was the name of the screen
+                      it opened and means nothing now. */}
+                  {(seasons.count ?? 0) > 0 && !hasScoring ? (
                     <Text style={styles.seasonBannerLink}>
-                      {!hasScoring
-                        ? he.communityStatsSeasonFreshCta
-                        : he.seasonHistoryCta}
+                      {he.communityStatsSeasonFreshCta}
                     </Text>
                   ) : null}
-                </Pressable>
+                </View>
               ) : null}
               {scope.k === 'all' ? (
                 <Text style={styles.scopeNote}>
