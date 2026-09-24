@@ -52,6 +52,10 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { groupService } from '@/services';
 import { GroupJoinRejectedError } from '@/services/groupService';
 import { ensureNotGuest } from '@/utils/guestGate';
+import {
+  useAuthenticatedAction,
+  useIsGuest,
+} from '@/hooks/useAuthenticatedAction';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { gameService } from '@/services/gameService';
 import { GroupPublic } from '@/types';
@@ -78,6 +82,8 @@ const DISCOVERY_PAGE = 8;
 export function PublicGroupsFeedScreen() {
   const nav = useNavigation<Nav>();
   const user = useUserStore((s) => s.currentUser);
+  const isGuest = useIsGuest();
+  const authAction = useAuthenticatedAction();
   const memberGroups = useGroupStore((s) => s.groups);
   const pendingGroups = useGroupStore((s) => s.pendingGroups);
   const requestJoinById = useGroupStore((s) => s.requestJoinById);
@@ -343,11 +349,26 @@ export function PublicGroupsFeedScreen() {
     : [];
 
   const handleRequest = async (item: GroupPublic) => {
-    // Come back to THIS club after signing up — see the note in guestGate.
-    if (!ensureNotGuest(he.guestRegisterJoinCommunity, { type: 'team', id: item.id })) {
+    // A guest may browse the feed; joining needs an identity. The sheet opens
+    // in place and the club is remembered, so they come back to this row rather
+    // than to wherever a sign-out would have dropped them.
+    if (isGuest) {
       logEvent(AnalyticsEvent.GuestGateBlocked, {
         action: 'join_community',
         groupId: item.id,
+        kind: 'join_club',
+      });
+      void authAction.request({
+        kind: 'join_club',
+        targetId: item.id,
+        origin: 'in_app',
+        // Never called: this branch only runs for a guest, and the coordinator
+        // parks rather than executing. The real work is the registered resumer,
+        // which asks the server fresh after authentication. Throwing makes a
+        // future mistake loud instead of silently reporting success.
+        execute: async () => {
+          throw new Error('unreachable: guest actions resume via their resumer');
+        },
       });
       return;
     }
@@ -425,10 +446,11 @@ export function PublicGroupsFeedScreen() {
     }
   };
 
-  // Creating a community is an account action — guests are prompted to
-  // register first.
+  // A guest may fill the whole club wizard. The auth boundary is at SAVE —
+  // see CreateGroupScreen — so what they typed is preserved across the sign-in
+  // and the club is created for them afterwards. Gating the ENTRY here was what
+  // made "browse, then decide" impossible.
   const handleCreate = (source: 'fab' | 'empty_state' | 'my_clubs_hint') => {
-    if (!ensureNotGuest(he.guestRegisterCreate)) return;
     logEvent(AnalyticsEvent.CommunityCreateStarted, { source });
     nav.navigate('CommunitiesCreate');
   };
@@ -538,6 +560,7 @@ export function PublicGroupsFeedScreen() {
 
   return (
     <View style={styles.root}>
+      {authAction.sheet}
       {/* Hero pinned at the top. The search/filter row below is
           ALSO pinned (outside the scroll) but uses a negative
           marginTop to float over the hero's bottom edge — z-order:

@@ -39,6 +39,10 @@ import { successHaptic } from '@/utils/haptics';
 import { groupService } from '@/services';
 import { GroupJoinRejectedError } from '@/services/groupService';
 import { ensureNotGuest } from '@/utils/guestGate';
+import {
+  useAuthenticatedAction,
+  useIsGuest,
+} from '@/hooks/useAuthenticatedAction';
 import { gameService } from '@/services/gameService';
 import { logError, logUnexpected } from '@/services/errorLog';
 import {
@@ -72,6 +76,8 @@ export function CommunityDetailsPublicScreen() {
   const nav = useNavigation<Nav>();
   const { groupId } = useRoute<Params>().params;
   const me = useUserStore((s) => s.currentUser);
+  const isGuest = useIsGuest();
+  const authAction = useAuthenticatedAction();
   const pendingGroups = useGroupStore((s) => s.pendingGroups);
   const memberGroups = useGroupStore((s) => s.groups);
   const requestJoinById = useGroupStore((s) => s.requestJoinById);
@@ -200,8 +206,25 @@ export function CommunityDetailsPublicScreen() {
 
   const handleJoin = async () => {
     // Come back to THIS club after signing up — see the note in guestGate.
-    if (!ensureNotGuest(he.guestRegisterJoinCommunity, { type: 'team', id: group.id }))
+    if (isGuest) {
+      // Same contract as joining a game: the intent is persisted and the
+      // sheet opens in place. The resumer re-asks the server afterwards, so
+      // an approval state that changed while they were authenticating is the
+      // one that counts.
+      void authAction.request({
+        kind: 'join_club',
+        targetId: group.id,
+        origin: 'in_app',
+        // Never called: this branch only runs for a guest, and the coordinator
+        // parks rather than executing. The real work is the registered resumer,
+        // which asks the server fresh after authentication. Throwing makes a
+        // future mistake loud instead of silently reporting success.
+        execute: async () => {
+          throw new Error('unreachable: guest actions resume via their resumer');
+        },
+      });
       return;
+    }
     if (!me || isPending) return;
     setBusyJoin(true);
     try {
@@ -306,6 +329,7 @@ export function CommunityDetailsPublicScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      {authAction.sheet}
       <ScreenHeader title={group.name} />
       <ScrollView
         contentContainerStyle={styles.content}

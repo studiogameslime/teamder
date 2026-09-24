@@ -25,6 +25,7 @@ import {
   clearPendingAction,
   isOpenKind,
 } from '@/services/pendingAction';
+import { resumePendingAction } from '@/services/actionCoordinator';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -218,6 +219,31 @@ export function RootNavigator() {
       if (__DEV__) console.warn('[invite] consume failed', err);
     });
   }, [currentUser, profileComplete, hasCompletedOnboarding]);
+
+  // ── Resuming what somebody asked for before they had an identity ────────
+  //
+  // Runs whenever there is a REAL account. That single condition covers all
+  // three ways a resume becomes possible, which is why it is an effect on
+  // `currentUser` rather than a callback at the auth site:
+  //
+  //   • the existing-account path replaced the session, so the navigator
+  //     remounted and this fires on the way back up;
+  //   • a brand-new account has just saved its name and avatar, which flips
+  //     `hasCompletedOnboarding` and re-runs this;
+  //   • the process died between authenticating and finishing, and this is the
+  //     next launch.
+  //
+  // Idempotency comes from two places, not from a ref here: the coordinator
+  // holds an in-flight lock keyed by action identity, and the stash is cleared
+  // only on a TERMINAL business outcome — so a half-finished attempt is still
+  // on disk to be tried again, and a finished one is gone.
+  useEffect(() => {
+    if (!currentUser || currentUser.isGuest === true) return;
+    if (!hasCompletedOnboarding) return; // the profile screen is up; wait for it
+    void resumePendingAction().catch((err) => {
+      if (__DEV__) console.warn('[coordinator] resume failed', err);
+    });
+  }, [currentUser?.id, currentUser?.isGuest, hasCompletedOnboarding]);
 
   // Reaching the app with nothing to consume — the organic arrival. Fires once
   // per launch, after the consumer has had its chance, so it counts people who

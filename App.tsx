@@ -225,6 +225,11 @@ import {
   parseInviteUrl,
   stashPendingInvite,
 } from '@/services/deepLinkService';
+// Imported for its side effects: registers what each pending action kind does
+// when it resumes. At boot rather than inside a screen — a resumer registered
+// by a screen that has not mounted is a resumer that does not exist, and the
+// coordinator's first resume pass can run before any screen appears.
+import '@/services/actionResumers';
 import { consumeInstallReferrerIfFresh } from '@/services/installReferrerService';
 import { consumeClipboardInviteIfFresh } from '@/services/clipboardInviteService';
 import { storage } from '@/services/storage';

@@ -5,7 +5,7 @@
 // app actually starts working. Now it's one screen: name + a
 // profile picture (photo upload OR built-in avatar), save → main app.
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -28,6 +28,7 @@ import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { pickAndUploadAvatar, deleteUserPhoto } from '@/services/photoService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { readPendingAction } from '@/services/pendingAction';
 
 const HERO_GRADIENT = ['#1E3A8A', '#1E40AF', '#3B82F6'] as const;
 const ACCENT = '#1E40AF';
@@ -38,6 +39,35 @@ export function PostSignInOnboardingScreen() {
   const complete = useUserStore((s) => s.completePostSignInOnboarding);
 
   const [name, setName] = useState(user?.name ?? '');
+  /** Whether the provider gave us a name to start from — the difference between
+   *  "confirm this" and "type this", which is worth knowing when reading the
+   *  drop-off on this screen. */
+  const prefilledRef = useRef(!!user?.name);
+  /** What the person was trying to do. Reported so this screen's drop-off can
+   *  be attributed to the intent that led here rather than read as generic
+   *  onboarding abandonment. */
+  const [pendingKind, setPendingKind] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void readPendingAction()
+      .then((a) => {
+        if (!alive) return;
+        setPendingKind(a?.kind ?? null);
+        logEvent(AnalyticsEvent.ProfileConfirmationViewed, {
+          action_kind: a?.kind ?? 'none',
+          had_prefill: prefilledRef.current,
+        });
+      })
+      .catch(() => {
+        if (alive) {
+          logEvent(AnalyticsEvent.ProfileConfirmationViewed, { action_kind: 'none' });
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -117,6 +147,14 @@ export function PostSignInOnboardingScreen() {
         name: name.trim(),
         avatarId: photoUrl ? undefined : avatarId,
         photoUrl,
+      });
+      // Closes the funnel leg that starts at auth_prompt_shown. `complete`
+      // flips `onboardingCompleted`, which is what lets RootNavigator's resume
+      // effect run — so the action the person originally asked for finishes
+      // immediately after this, without them tapping anything again.
+      logEvent(AnalyticsEvent.ProfileConfirmed, {
+        action_kind: pendingKind ?? 'none',
+        had_prefill: prefilledRef.current,
       });
     } catch (err) {
       if (__DEV__) console.warn('[onboarding] complete failed', err);

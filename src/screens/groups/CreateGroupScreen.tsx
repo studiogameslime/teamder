@@ -3,7 +3,7 @@
 // surface as CommunityEditScreen — only the initial values + submit
 // label differ.
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +16,12 @@ import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import {
+  useAuthenticatedAction,
+  useIsGuest,
+} from '@/hooks/useAuthenticatedAction';
+import { draftStore } from '@/services/draftStore';
+import { setCreateClubHandler } from '@/services/actionResumers';
+import {
   GroupWizardForm,
   EMPTY_GROUP_FORM_VALUES,
   type GroupFormValues,
@@ -25,14 +31,31 @@ import { seasonService } from '@/services/seasonService';
 import { newClubSeasonsArgs } from '@/utils/newClubSeasons';
 
 export function CreateGroupScreen() {
+  // One draft id per visit to this screen. Stable across re-renders so an
+  // overwrite of the same draft keeps its `createdAt` — which is what makes
+  // editing extend a draft's life rather than restart its age.
+  const draftIdRef = useRef(`club-${Date.now()}`);
+  const isGuest = useIsGuest();
+  const authAction = useAuthenticatedAction();
+  /** Restored values, or null while we look. `undefined` initial value would
+   *  make the wizard mount with empty fields and then swap them under the
+   *  person's hands; the screen waits instead. */
+  const [restored, setRestored] = useState<GroupFormValues | null>(null);
+  const [checkedDraft, setCheckedDraft] = useState(false);
   const nav = useNavigation<
     NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesCreate'>
   >();
   const user = useUserStore((s) => s.currentUser);
   const createGroup = useGroupStore((s) => s.createGroup);
 
-  const submit = async (v: GroupFormValues) => {
-    if (!user) return;
+  // The whole of `submit` below is what the resumer runs too — handed over by
+  // `setCreateClubHandler`, so a club created after signing in goes through the
+  // SAME geocoding, the same seasons call and the same celebrate navigation as
+  // one created by somebody already signed in. Re-implementing it in the
+  // resumer would give the product a second way to make a club.
+  const createFromValues = async (v: GroupFormValues) => {
+    const user = useUserStore.getState().currentUser;
+    if (!user || user.isGuest === true) return;
     const cityVal = v.city.trim();
     const phone = v.contactPhone.trim();
     const parsedMaxMembers = parseInt(v.maxMembers, 10);
@@ -162,11 +185,88 @@ export function CreateGroupScreen() {
     }
   };
 
+  // Hand the real creation path to the resumer while this screen is mounted,
+  // and take it back on unmount so a stale closure can never be called.
+  useEffect(() => {
+    setCreateClubHandler(async (values) => {
+      await createFromValues(values as unknown as GroupFormValues);
+    });
+    return () => setCreateClubHandler(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Look for a draft ONCE, on mount. Merged onto the CURRENT defaults rather
+  // than trusted whole, so a field the wizard no longer has cannot come back
+  // from a stale draft — see draftStore.mergeDraftValues.
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const d = await draftStore.read('club');
+        if (!alive) return;
+        if (d) {
+          draftIdRef.current = d.id;
+          setRestored(
+            draftStore.merge(
+              EMPTY_GROUP_FORM_VALUES as unknown as Record<string, unknown>,
+              d.values,
+            ) as unknown as GroupFormValues,
+          );
+          logEvent(AnalyticsEvent.DraftRestored, {
+            kind: 'club',
+            age_ms: Math.max(0, Date.now() - d.updatedAt),
+          });
+        }
+      } finally {
+        if (alive) setCheckedDraft(true);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // The save gate. Validation has already run inside the wizard by the time
+  // this is called, so what a guest loses by signing in here is nothing.
+  const submit = async (v: GroupFormValues) => {
+    if (isGuest) {
+      // The draft is written by the coordinator BEFORE the sheet opens, because
+      // the existing-account path replaces the session and unmounts this screen
+      // — an await after that races the teardown, and the thing being awaited is
+      // the only copy of what they typed.
+      await authAction.request({
+        kind: 'create_club',
+        origin: 'in_app',
+        draft: { kind: 'club', id: draftIdRef.current, values: v as unknown as Record<string, unknown> },
+        // Never called: this branch only runs for a guest, and the coordinator
+        // parks rather than executing. The real work is the registered resumer,
+        // which asks the server fresh after authentication. Throwing makes a
+        // future mistake loud instead of silently reporting success.
+        execute: async () => {
+          throw new Error('unreachable: guest actions resume via their resumer');
+        },
+      });
+      return;
+    }
+    await createFromValues(v);
+  };
+
+  // Wait for the draft check before mounting the wizard. Rendering empty fields
+  // and then swapping in restored values would have somebody typing into a form
+  // that changes under them.
+  if (!checkedDraft) return null;
+
   return (
+    <>
+    {authAction.sheet}
     <GroupWizardForm
       headerTitle={he.createGroupTitle}
       submitLabel={he.createGroupSubmit}
-      initial={EMPTY_GROUP_FORM_VALUES}
+      // `key` forces a remount when a restored draft lands, because
+      // GroupWizardForm seeds its state from `initial` on FIRST mount only —
+      // the same reason GameCreateScreen keys on `initialKey`.
+      key={restored ? draftIdRef.current : 'fresh'}
+      initial={restored ?? EMPTY_GROUP_FORM_VALUES}
       onSubmit={submit}
       // The seasons question belongs to creation. The edit screen has the full
       // settings block instead — it can also end a season and decide what to
@@ -176,5 +276,6 @@ export function CreateGroupScreen() {
       // them silently (Pulse #9).
       enableUnsavedGuard
     />
+    </>
   );
 }

@@ -77,34 +77,96 @@ export interface AuthUser {
   photoUrl?: string;
 }
 
-export async function signInWithGoogle(): Promise<FirebaseUser> {
-  if (USE_MOCK_DATA) {
-    throw new Error('signInWithGoogle: USE_MOCK_DATA is true');
-  }
+/**
+ * The Google half of signing in: native picker → id_token.
+ *
+ * Extracted so `upgradeAnonymous` can get a credential WITHOUT signing in with
+ * it — linking an anonymous user needs the credential in hand, and there was no
+ * way to obtain one without also completing a sign-in. One implementation, so
+ * the two paths cannot drift on which client ID or which cancellation shape
+ * they handle.
+ */
+export async function acquireGoogleCredential(): Promise<{ idToken: string }> {
+  if (USE_MOCK_DATA) throw new Error('acquireGoogleCredential: USE_MOCK_DATA is true');
   if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
-    throw new Error(
-      `Google Sign-In not yet wired for platform=${Platform.OS}.`
-    );
+    throw new Error(`Google Sign-In not yet wired for platform=${Platform.OS}.`);
   }
-  const { auth } = getFirebase();
-
   ensureGoogleConfigured();
-  // hasPlayServices is an Android-only gate. The SDK no-ops on iOS but
-  // the call still throws spurious warnings — skip it cleanly.
+  // hasPlayServices is an Android-only gate. The SDK no-ops on iOS but the call
+  // still throws spurious warnings — skip it cleanly.
   if (Platform.OS === 'android') {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
   }
-
   const result = await GoogleSignin.signIn();
   if (!isSuccessResponse(result)) {
     throw new Error('Sign-in cancelled');
   }
-
-  const data = result.data;
-
-  if (!data.idToken) {
+  const idToken = result.data?.idToken;
+  if (!idToken) {
     throw new Error('Google Sign-In succeeded but no idToken was returned');
   }
+  return { idToken };
+}
+
+/** The Apple half: system sheet → identityToken + the nonce that binds it.
+ *
+ *  `fullName` comes back ONLY on the very first authorisation for this Apple ID,
+ *  ever — so a caller that drops it has lost the person's name permanently. */
+export async function acquireAppleCredential(): Promise<{
+  identityToken: string;
+  rawNonce: string;
+  fullName?: string;
+}> {
+  if (USE_MOCK_DATA) throw new Error('acquireAppleCredential: USE_MOCK_DATA is true');
+  if (Platform.OS !== 'ios') {
+    throw new Error('Apple Sign-In is only available on iOS.');
+  }
+  const rawNonce = Array.from(Crypto.getRandomBytes(32))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  const hashedNonce = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    rawNonce,
+  );
+  const appleCred = await AppleAuthentication.signInAsync({
+    requestedScopes: [
+      AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+      AppleAuthentication.AppleAuthenticationScope.EMAIL,
+    ],
+    nonce: hashedNonce,
+  });
+  if (!appleCred.identityToken) {
+    throw new Error('Apple Sign-In succeeded but no identityToken was returned');
+  }
+  const fullName = appleCred.fullName
+    ? [appleCred.fullName.givenName, appleCred.fullName.familyName]
+        .filter(Boolean)
+        .join(' ')
+        .trim()
+    : '';
+  return { identityToken: appleCred.identityToken, rawNonce, fullName: fullName || undefined };
+}
+
+/** Public name for the native-session mirror. The widget and the Wear relay
+ *  read `FirebaseAuth.getInstance()` from Kotlin, which the JS SDK session does
+ *  not populate — so every path that establishes a session has to call this or
+ *  those surfaces stay signed out. */
+export function mirrorCredentialToNativeAuth(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  makeCredential: (rnAuth: any) => any,
+): void {
+  mirrorToNativeAuth(makeCredential);
+}
+
+export async function signInWithGoogle(): Promise<FirebaseUser> {
+  if (USE_MOCK_DATA) {
+    throw new Error('signInWithGoogle: USE_MOCK_DATA is true');
+  }
+  const { auth } = getFirebase();
+  // Platform gate, SDK config and the Play-services check all live in the
+  // extractor now, so there is exactly one copy of each.
+  const { idToken } = await acquireGoogleCredential();
+  const data = { idToken };
 
   const credential = GoogleAuthProvider.credential(data.idToken);
   try {
@@ -341,23 +403,16 @@ export async function signInWithApple(): Promise<{
   }
   const { auth } = getFirebase();
 
-  const rawNonce = Array.from(Crypto.getRandomBytes(32))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-  const hashedNonce = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    rawNonce,
-  );
-
-  let appleCred: AppleAuthentication.AppleAuthenticationCredential;
+  // Nonce generation, the system sheet and the name extraction all live in the
+  // extractor now — one implementation shared with `upgradeAnonymous`.
+  let identityToken: string;
+  let rawNonce: string;
+  let fullName: string | undefined;
   try {
-    appleCred = await AppleAuthentication.signInAsync({
-      requestedScopes: [
-        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-        AppleAuthentication.AppleAuthenticationScope.EMAIL,
-      ],
-      nonce: hashedNonce,
-    });
+    const acquired = await acquireAppleCredential();
+    identityToken = acquired.identityToken;
+    rawNonce = acquired.rawNonce;
+    fullName = acquired.fullName;
   } catch (err) {
     const code = (err as { code?: string })?.code ?? '';
     if (code === 'ERR_REQUEST_CANCELED' || code === 'ERR_CANCELED') {
@@ -366,27 +421,13 @@ export async function signInWithApple(): Promise<{
     throw err;
   }
 
-  if (!appleCred.identityToken) {
-    throw new Error('Apple Sign-In succeeded but no identityToken was returned');
-  }
-
   const provider = new OAuthProvider('apple.com');
-  const credential = provider.credential({
-    idToken: appleCred.identityToken,
-    rawNonce,
-  });
-
-  const fullName = appleCred.fullName
-    ? [appleCred.fullName.givenName, appleCred.fullName.familyName]
-        .filter(Boolean)
-        .join(' ')
-        .trim()
-    : '';
+  const credential = provider.credential({ idToken: identityToken, rawNonce });
 
   try {
     const cred = await signInWithCredential(auth, credential);
     mirrorToNativeAuth((rn) =>
-      rn.AppleAuthProvider.credential(appleCred.identityToken, rawNonce),
+      rn.AppleAuthProvider.credential(identityToken, rawNonce),
     );
     return { user: cred.user, fullName: fullName || undefined };
   } catch (err) {

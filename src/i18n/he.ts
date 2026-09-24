@@ -1838,6 +1838,35 @@ export const he = {
   guestRegisterCreate: 'כדי ליצור צריך חשבון. רוצה להירשם עכשיו?',
   guestRegisterChat: 'כדי להשתמש בצ׳אט צריך חשבון. רוצה להירשם עכשיו?',
   guestRegisterCta: 'הרשמה',
+
+  // ── Contextual auth ──────────────────────────────────────────────────
+  //
+  // One title + one line per action, because the sheet's whole job is to say
+  // WHY it appeared. The old copy was a single "נדרשת הרשמה / כדי להשתמש
+  // בתכונה הזו צריך חשבון" for everything — phrased as a refusal, and about
+  // the app rather than about what the person was doing.
+  //
+  // These are forward-looking: not "you may not", but "one more step and
+  // you're in". The action is already understood to be happening.
+  ctxAuthJoinGameTitle: 'עוד רגע אתה בהרכב',
+  ctxAuthJoinGameBody: 'מתחברים כדי לשמור את המקום שלך במשחק.',
+  ctxAuthJoinClubTitle: 'עוד רגע אתה בסגל',
+  ctxAuthJoinClubBody: 'מתחברים כדי להצטרף למועדון.',
+  ctxAuthCreateClubTitle: 'שומרים את המועדון',
+  ctxAuthCreateClubBody: 'מתחברים כדי ליצור את המועדון ולהזמין את החבר׳ה.',
+  ctxAuthCreateGameTitle: 'שומרים את המשחק',
+  ctxAuthCreateGameBody: 'מתחברים כדי ליצור את המשחק ולהזמין שחקנים.',
+  ctxAuthAvailabilityTitle: 'שומרים את הזמינות',
+  ctxAuthAvailabilityBody: 'מתחברים כדי שנוכל להתאים לך משחקים.',
+  /** Fallback — a kind with no copy of its own. Should never be reached; the
+   *  mapping is exhaustive over the union. */
+  ctxAuthGenericTitle: 'רגע אחד',
+  ctxAuthGenericBody: 'מתחברים כדי להמשיך.',
+  /** Under the provider buttons. Says the work is safe, which is the one
+   *  thing somebody mid-form needs to hear before leaving the screen. */
+  ctxAuthReassure: 'מה שמילאת נשמר.',
+  ctxAuthFailed: 'ההתחברות לא הושלמה. אפשר לנסות שוב.',
+  createGameDraftPickNewTime: 'המועד שבחרת עבר — בחר מועד חדש',
   guestProfileTitle: 'הפרופיל שלך מחכה',
   guestProfileBody:
     'אתה גולש כאורח. הירשם כדי לשמור מחזורים, להצטרף למועדונים ולבנות פרופיל שחקן.',

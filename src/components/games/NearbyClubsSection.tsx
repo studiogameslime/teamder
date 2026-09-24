@@ -24,7 +24,10 @@ import { nearbyClubsService } from '@/services/nearbyClubsService';
 import { GroupJoinRejectedError } from '@/services/groupService';
 import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { ensureNotGuest } from '@/utils/guestGate';
+import {
+  useAuthenticatedAction,
+  useIsGuest,
+} from '@/hooks/useAuthenticatedAction';
 import { useGroupStore } from '@/store/groupStore';
 import { useUserStore } from '@/store/userStore';
 import type { GroupPublic } from '@/types';
@@ -48,6 +51,8 @@ export function NearbyClubsSection({
   refreshTick?: number;
 }) {
   const user = useUserStore((s) => s.currentUser);
+  const isGuest = useIsGuest();
+  const authAction = useAuthenticatedAction();
   const myGroups = useGroupStore((s) => s.groups);
   const pendingGroups = useGroupStore((s) => s.pendingGroups);
   const requestJoinById = useGroupStore((s) => s.requestJoinById);
@@ -123,8 +128,25 @@ export function NearbyClubsSection({
 
   const handleJoin = async (club: GroupPublic) => {
     // Come back to THIS club after signing up — see the note in guestGate.
-    if (!ensureNotGuest(he.guestRegisterJoinCommunity, { type: 'team', id: club.id }))
+    if (isGuest) {
+      // Same contract as joining a game: the intent is persisted and the
+      // sheet opens in place. The resumer re-asks the server afterwards, so
+      // an approval state that changed while they were authenticating is the
+      // one that counts.
+      void authAction.request({
+        kind: 'join_club',
+        targetId: club.id,
+        origin: 'in_app',
+        // Never called: this branch only runs for a guest, and the coordinator
+        // parks rather than executing. The real work is the registered resumer,
+        // which asks the server fresh after authentication. Throwing makes a
+        // future mistake loud instead of silently reporting success.
+        execute: async () => {
+          throw new Error('unreachable: guest actions resume via their resumer');
+        },
+      });
       return;
+    }
     if (!user) return;
     setBusyId(club.id);
     try {
@@ -183,6 +205,7 @@ export function NearbyClubsSection({
 
   return (
     <View style={styles.wrap}>
+      {authAction.sheet}
       <View style={styles.titleRow}>
         <Text style={styles.title}>
           {scope === 'nearby' ? he.gamesClubsNearbyTitle : he.gamesClubsAnyTitle}

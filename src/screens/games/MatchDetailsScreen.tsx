@@ -110,6 +110,10 @@ import {
 import { deepLinkService } from '@/services/deepLinkService';
 import { createShortInviteUrl } from '@/services/inviteLinkService';
 import { ensureNotGuest } from '@/utils/guestGate';
+import {
+  useAuthenticatedAction,
+  useIsGuest,
+} from '@/hooks/useAuthenticatedAction';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   getForecastFor,
@@ -423,6 +427,8 @@ export function MatchDetailsScreen() {
   const celebrateOnArrival =
     (route.params as { celebrate?: boolean } | undefined)?.celebrate === true;
   const user = useUserStore((s) => s.currentUser);
+  const isGuest = useIsGuest();
+  const authAction = useAuthenticatedAction();
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
   const playersMap = useGameStore((s) => s.players);
@@ -952,12 +958,29 @@ export function MatchDetailsScreen() {
 
   const performPrimary = async () => {
     if (!user || !game) return;
-    // Guests can browse a game but must register to register/join it.
-    // Carry the game across the sign-up: registering signs the guest out and
-    // unmounts this screen, so without a return target they come back to the
-    // feed having lost the game they were trying to join.
-    if (!ensureNotGuest(he.guestRegisterJoinGame, { type: 'session', id: game.id }))
+    // A guest may browse this game; joining needs an identity. The coordinator
+    // persists the intent and the sheet opens IN PLACE — the person never leaves
+    // the game they were looking at, and when they come back the join runs
+    // itself. `performPrimary` is re-entered for a full account, which is why
+    // the whole body below is untouched.
+    if (isGuest) {
+      void authAction.request({
+        kind: 'join_game',
+        targetId: game.id,
+        origin: 'in_app',
+        // The resumer re-asks the server rather than replaying this closure:
+        // the last seat may be gone by the time they are back, and the answer
+        // has to be the current one. See src/services/actionResumers.ts.
+        // Never called: this branch only runs for a guest, and the coordinator
+        // parks rather than executing. The real work is the registered resumer,
+        // which asks the server fresh after authentication. Throwing makes a
+        // future mistake loud instead of silently reporting success.
+        execute: async () => {
+          throw new Error('unreachable: guest actions resume via their resumer');
+        },
+      });
       return;
+    }
     const status = statusForUser(game, user.id);
     // Lifecycle gate via the shared helper (mirrors the txn check
     // inside joinGameV2 and the firestore.rules clause). Cancel
@@ -2762,6 +2785,11 @@ export function MatchDetailsScreen() {
 
   return (
     <View style={styles.root}>
+      {/* The contextual auth sheet. Rendered here rather than over a modal so
+          it cannot stack on top of another one — and it unmounts itself the
+          moment the person cancels or authenticates, which is what keeps it
+          from sitting on screen after the flow has moved on. */}
+      {authAction.sheet}
       {/* Confetti host stays permanently mounted (pointerEvents:'none' → never
           hit-tested) and only its INNER overlay toggles. Mounting/unmounting a
           zIndex'd absoluteFill View over the ScrollView left a stale native

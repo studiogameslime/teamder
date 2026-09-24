@@ -357,6 +357,37 @@ export const AnalyticsEvent = {
   PendingActionResumed: 'pending_action_resumed',      // kind, origin, age_ms, is_guest
   PendingActionFailed: 'pending_action_failed',        // kind, reason
 
+  // ── Contextual auth ────────────────────────────────────────────────────
+  //
+  // Named `auth_*` rather than reusing `sign_in_*`: those describe the sign-in
+  // SCREEN and carry no action, and conflating the two would make the funnel
+  // unable to tell "opened the app and signed in" from "tried to join a game
+  // and had to". `action_kind` is on every one of them, which is what makes
+  // the funnel sliceable by intent.
+  //
+  // AuthPromptShown fires ONCE per appearance of the sheet, not per attempt —
+  // two cancelled tries at one intent are two attempts on one prompt, and
+  // counting them as two prompts would read as two different people.
+  AuthPromptShown: 'auth_prompt_shown',              // action_kind, has_draft
+  AuthMethodSelected: 'auth_method_selected',        // action_kind, auth_method
+  AuthCompleted: 'auth_completed',                   // action_kind, auth_method, is_existing_account
+  AuthCancelled: 'auth_cancelled',                   // action_kind, auth_method
+  AuthFailed: 'auth_failed',                         // action_kind, auth_method, code
+  ProfileConfirmationViewed: 'profile_confirmation_viewed', // action_kind
+  ProfileConfirmed: 'profile_confirmed',             // action_kind, had_prefill
+
+  // ── Drafts ─────────────────────────────────────────────────────────────
+  //
+  // Written by `draftStore`'s callers rather than the store itself: the store
+  // has no idea whether a write was the person saving or the coordinator
+  // parking, and those are different events.
+  DraftSaved: 'draft_saved',                         // kind
+  DraftRestored: 'draft_restored',                   // kind, age_ms
+  // draft_discarded is NOT defined yet: there is no discard action in the
+  // product. The wizards' unsaved-changes guard fires before a draft is ever
+  // written, so leaving early discards nothing persisted. It arrives with the
+  // UI that offers it.
+
   // ─── Onboarding & activation ───
   OnboardingChecklistStepTapped: 'onboarding_checklist_step_tapped',
   BootHydrateFailed: 'boot_hydrate_failed',

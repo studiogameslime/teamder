@@ -94,7 +94,6 @@ import { storage } from '@/services/storage';
 import { Game, type TimeBucket } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { ensureNotGuest } from '@/utils/guestGate';
 import { useUserStore } from '@/store/userStore';
 import { getInboxCount } from '@/services/requestsService';
 import { useGroupStore } from '@/store/groupStore';
@@ -313,8 +312,11 @@ export function GamesListScreen() {
   // visual language of the onboarding cards.
   const [createSheetVisible, setCreateSheetVisible] = useState(false);
   const handleCreate = () => {
-    // Guests browse games freely but must register to create one.
-    if (!ensureNotGuest(he.guestRegisterCreate)) return;
+    // A guest OPENS the wizard. The gate used to sit here, which meant somebody
+    // without an account never saw the form at all — and the draft work in
+    // GameCreateScreen would have been unreachable. The boundary belongs at
+    // SAVE, where the person has decided what they want and there is something
+    // worth preserving.
     logEvent(AnalyticsEvent.GameCreateStarted, {
       stage: 'chooser',
       source: 'games_list_fab',
@@ -590,7 +592,7 @@ export function GamesListScreen() {
     window: TimeBucket,
     city: string | null,
   ) => {
-    if (!ensureNotGuest(he.guestRegisterCreate)) return;
+    // Same reasoning as the FAB above: the wizard opens, the save gates.
     logEvent(AnalyticsEvent.GameCreateStarted, {
       stage: 'wizard',
       source: 'availability_slot',

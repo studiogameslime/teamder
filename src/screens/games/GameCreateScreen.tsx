@@ -2,7 +2,7 @@
 // community selection (when the user belongs to more than one) and
 // translates the wizard's GameFormValues into a `createGameV2` call.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -24,6 +24,12 @@ import { groupService } from '@/services/groupService';
 import { notificationsService } from '@/services/notificationsService';
 import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import {
+  useAuthenticatedAction,
+  useIsGuest,
+} from '@/hooks/useAuthenticatedAction';
+import { draftStore } from '@/services/draftStore';
+import { toast } from '@/components/Toast';
 import { DEFAULT_FORMAT, DEFAULT_TEAM_COUNT, Group, teamSizeFromFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { WINDOW_START_HOUR } from '@/utils/demandSlots';
@@ -165,6 +171,15 @@ export function GameCreateScreen() {
   // a non-null group), it just stays hidden until the post-game
   // promote prompt converts it into a real community.
   const [orphanGroup, setOrphanGroup] = useState<Group | null>(null);
+  const isGuest = useIsGuest();
+  const authAction = useAuthenticatedAction();
+  const draftIdRef = useRef(`game-${Date.now()}`);
+  /** Values recovered from a draft, plus any field the restore refused. */
+  const [restored, setRestored] = useState<{
+    values: GameFormValues;
+    needsAttention: string[];
+  } | null>(null);
+  const [checkedDraft, setCheckedDraft] = useState(false);
   const [orphanLoading, setOrphanLoading] = useState(false);
   // Provisioning threw. Without this the quick-entry spinner below would hold
   // forever on `!orphanGroup` — the user dismisses the error alert and is left
@@ -227,11 +242,17 @@ export function GameCreateScreen() {
   // personal group immediately so the wizard opens straight into quick
   // mode (no community picker). Runs once — params.quick is stable.
   useEffect(() => {
+    // NOT for a guest. `startOrphanFlow` calls the `ensurePersonalGroup`
+    // callable, which writes a real group document server-side — and doing that
+    // on mount, before anybody has typed a character, would leave a group
+    // belonging to an anonymous session that may be abandoned. A guest gets the
+    // wizard without it; the group is provisioned when they come back signed in.
+    if (isGuest) return;
     if (params.quick && !orphanGroup && !orphanLoading) {
       startOrphanFlow();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.quick]);
+  }, [params.quick, isGuest]);
 
   // Funnel entry: the create wizard mounted. `mode` says which of the three
   // entry points opened it (recurring clone / quick "+" / community create),
@@ -315,6 +336,47 @@ export function GameCreateScreen() {
           return d.getTime();
         })()
       : undefined;
+  // Recover a draft once, on mount. `restoreGameValues` is what refuses a
+  // kick-off that has already passed: it puts the field back to what a fresh
+  // form would show and NAMES it, rather than inventing a replacement date —
+  // scheduling a game for a day nobody chose is worse than asking again.
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const d = await draftStore.read('game');
+        if (!alive || !d) return;
+        draftIdRef.current = d.id;
+        const base = buildInitial(selectedGroup ?? myCommunities[0], {
+          recurring: isRecurring,
+        });
+        const r = draftStore.restoreGameValues(
+          base as unknown as Record<string, unknown>,
+          d.values,
+          Date.now(),
+        );
+        setRestored({
+          values: r.values as unknown as GameFormValues,
+          needsAttention: r.needsAttention,
+        });
+        logEvent(AnalyticsEvent.DraftRestored, {
+          kind: 'game',
+          age_ms: Math.max(0, Date.now() - d.updatedAt),
+          needs_attention: r.needsAttention.join(',') || undefined,
+        });
+        if (r.needsAttention.includes('startsAt')) {
+          toast.info(he.createGameDraftPickNewTime);
+        }
+      } finally {
+        if (alive) setCheckedDraft(true);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const initial = useMemo(
     () =>
       buildInitial(selectedGroup ?? myCommunities[0], {
@@ -395,6 +457,30 @@ export function GameCreateScreen() {
   }
 
   const submit = async (v: GameFormValues) => {
+    // The save gate for a guest. Everything they typed goes to the draft and
+    // the sheet opens in place; the automatic completion is deliberately NOT
+    // wired this round — see the note in src/services/actionResumers.ts. What
+    // they get is a form that is still full when they come back, which is the
+    // part that was being lost.
+    if (isGuest) {
+      await authAction.request({
+        kind: 'create_game',
+        origin: 'in_app',
+        draft: {
+          kind: 'game',
+          id: draftIdRef.current,
+          values: v as unknown as Record<string, unknown>,
+        },
+        // Never called: this branch only runs for a guest, and the coordinator
+        // parks rather than executing. The real work is the registered resumer,
+        // which asks the server fresh after authentication. Throwing makes a
+        // future mistake loud instead of silently reporting success.
+        execute: async () => {
+          throw new Error('unreachable: guest actions resume via their resumer');
+        },
+      });
+      return;
+    }
     if (!user || !selectedGroup) return;
     // Past-date guard: if kickoff is already behind us, confirm before
     // creating (the picker happily allows past times). Recurring games
@@ -629,6 +715,7 @@ export function GameCreateScreen() {
 
   return (
     <>
+      {authAction.sheet}
       <GameWizardForm
         // Force a remount whenever the user picks a different community
         // from the dropdown. Without this, GameWizardForm's internal
@@ -636,12 +723,12 @@ export function GameCreateScreen() {
         // syncs when `initial` changes — so the form fields kept showing
         // the FIRST community's pre-fill (title/fieldName/address) even
         // after the user picked a different community.
-        key={`${selectedGroup?.id ?? 'none'}-${initialKey}`}
+        key={`${selectedGroup?.id ?? 'none'}-${initialKey}-${restored ? draftIdRef.current : 'fresh'}`}
         headerTitle={
           isRecurring ? he.createGameRecurringTitle : he.createGameTitle
         }
         submitLabel={he.createGameSubmit}
-        initial={initial}
+        initial={restored?.values ?? initial}
         onSubmit={submit}
         extraTopSlot={extraTopSlot}
         quick={isOrphan}
