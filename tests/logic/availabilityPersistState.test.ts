@@ -20,6 +20,7 @@ const setAuthUserJson = jest.fn();
 const getAuthUserJson = jest.fn();
 const ensureUserDoc = jest.fn();
 const invalidate = jest.fn();
+const logEvent = jest.fn();
 const state: { currentUser: unknown } = { currentUser: null };
 const setState = jest.fn((patch: { currentUser: unknown }) => {
   state.currentUser = patch.currentUser;
@@ -43,6 +44,10 @@ jest.mock('@/services/userService', () => ({
 }));
 jest.mock('@/services/availabilityFeedService', () => ({
   availabilityFeedService: { invalidate: () => invalidate() },
+}));
+jest.mock('@/services/analyticsService', () => ({
+  AnalyticsEvent: new Proxy({}, { get: (_t, k) => String(k) }),
+  logEvent: (...a: unknown[]) => logEvent(...a),
 }));
 jest.mock('@/store/userStore', () => ({
   useUserStore: {
@@ -123,6 +128,30 @@ describe('after a save that succeeded', () => {
     expect(invalidate).toHaveBeenCalledTimes(1);
   });
 
+  // One save, one event — and from the values written, not from a screen's
+  // local state. It used to live in the screen, so the resumed save (the
+  // guest path) was measured as nothing at all.
+  it('reports the save exactly once, from what was written', async () => {
+    await persistAvailability('u1', AV, COORDS);
+    const calls = logEvent.mock.calls.filter((c) => c[0] === 'AvailabilitySet');
+    expect(calls).toHaveLength(1);
+    expect(calls[0][1]).toMatchObject({
+      days: '2,5',
+      radiusKm: 25,
+      locationEnabled: 'true',
+      acceptsFillerPush: 'true',
+    });
+  });
+
+  it('says the home area is off when no coords were written', async () => {
+    await persistAvailability('u1', { ...AV, acceptsFillerPush: false }, null);
+    const call = logEvent.mock.calls.find((c) => c[0] === 'AvailabilitySet');
+    expect(call?.[1]).toMatchObject({
+      locationEnabled: 'false',
+      acceptsFillerPush: 'false',
+    });
+  });
+
   // No `getCurrentUser`, no second document read. The write knows what it
   // wrote; paying a read to find out was both a cost and a read-after-write
   // window where the server could still answer with the previous value.
@@ -170,6 +199,7 @@ describe('a save that failed', () => {
     await expect(persistAvailability('u1', AV, COORDS)).rejects.toThrow();
     expect(setState).not.toHaveBeenCalled();
     expect(invalidate).not.toHaveBeenCalled();
+    expect(logEvent.mock.calls.filter((c) => c[0] === 'AvailabilitySet')).toHaveLength(0);
   });
 
   // The production recovery: one account had no /users document at all, so

@@ -17,6 +17,7 @@ import { withAuthRaceRetry } from '@/firebase/authRace';
 import { storage } from '@/services/storage';
 import { userService } from '@/services/userService';
 import { availabilityFeedService } from '@/services/availabilityFeedService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { useUserStore } from '@/store/userStore';
 import type { UserAvailability } from '@/types';
 
@@ -86,6 +87,24 @@ function buildSaved(
  * `reloadUser()` did exactly that on every save; it is gone now.
  */
 function applyLocally(uid: string, saved: UserAvailability): void {
+  try {
+    // One save, one event — from the values that were written rather than
+    // from a screen's local state. It lived in `AvailabilityEditScreen`, so
+    // the resumed save (the guest path) was measured as nothing at all: the
+    // availability funnel simply had no denominator for the people the whole
+    // guest refactor exists for. Every parameter below is derivable from what
+    // was saved, which is why this could move without inventing anything.
+    logEvent(AnalyticsEvent.AvailabilitySet, {
+      days: (saved.preferredDays ?? []).join(','),
+      times: (saved.preferredTimes ?? []).join(','),
+      radiusKm: saved.availabilityRadiusKm,
+      locationEnabled: String(typeof saved.homeCityLat === 'number'),
+      acceptsFillerPush: String(saved.acceptsFillerPush === true),
+      geocoded: !!saved.homeCity,
+    });
+  } catch {
+    // Telemetry never fails a save.
+  }
   try {
     const cur = useUserStore.getState().currentUser;
     // Only the account that was written to. A patch applied to somebody else's

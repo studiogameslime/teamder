@@ -43,6 +43,12 @@ import {
   useIsGuest,
 } from '@/hooks/useAuthenticatedAction';
 import { draftStore } from '@/services/draftStore';
+import {
+  restoreAvailabilityDraft,
+  isDefaultCenter,
+  DEFAULT_CENTER,
+  type RestoredAvailabilityDraft,
+} from '@/utils/availabilityDraft';
 import { logError } from '@/services/errorLog';
 import { storage } from '@/services/storage';
 import { docs } from '@/firebase/firestore';
@@ -66,23 +72,6 @@ const ACCENT = '#2563EB';
  * was stamped homeCity/preferredCity/cities = 'בני ברק'. A location is only
  * written once `locationPicked` is true (see below).
  */
-const DEFAULT_CENTER = { lat: 32.0719, lng: 34.8417 };
-
-/**
- * Saved coords that sit exactly on the opening view are the fingerprint of
- * that bug — a real pin-drop, city search or GPS fix never lands on the
- * default to six decimals. Such a user is treated as having no home area yet,
- * so the screen asks for a real one instead of silently re-saving בני ברק.
- */
-function isDefaultCenter(lat?: number | null, lng?: number | null): boolean {
-  return (
-    typeof lat === 'number' &&
-    typeof lng === 'number' &&
-    Math.abs(lat - DEFAULT_CENTER.lat) < 1e-6 &&
-    Math.abs(lng - DEFAULT_CENTER.lng) < 1e-6
-  );
-}
-
 const TIME_BUCKETS: {
   key: TimeBucket;
   label: string;
@@ -140,7 +129,8 @@ export function AvailabilityEditScreen() {
   const draftIdRef = useRef(`availability-${Date.now()}`);
   /** A parked availability draft, if the person filled this in as a guest and
    *  came back. Applied once, on mount, so the grid they drew is still there. */
-  const [restoredDraft, setRestoredDraft] = useState<UserAvailability | null>(null);
+  const [restoredDraft, setRestoredDraft] =
+    useState<RestoredAvailabilityDraft | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -149,12 +139,20 @@ export function AvailabilityEditScreen() {
       .then((d) => {
         if (!alive || !d) return;
         draftIdRef.current = d.id;
-        const v = d.values as unknown as { availability?: UserAvailability };
-        if (v?.availability) {
-          setRestoredDraft(v.availability);
+        // The WHOLE parked shape, through the one derivation that knows what
+        // to do with it. Reading only `values.availability` here is what lost
+        // the home area: the coords sit beside it, and the toggle is derived
+        // from them. See `availabilityDraft` for why nothing is inferred when
+        // they are missing or malformed.
+        const restored = restoreAvailabilityDraft(
+          d.values as unknown as Parameters<typeof restoreAvailabilityDraft>[0],
+        );
+        if (restored) {
+          setRestoredDraft(restored);
           logEvent(AnalyticsEvent.DraftRestored, {
             kind: 'availability',
             age_ms: Math.max(0, Date.now() - d.updatedAt),
+            has_home_area: restored.locationEnabled,
           });
         }
       })
@@ -171,7 +169,7 @@ export function AvailabilityEditScreen() {
   // person just drew, and the only reason it is not saved yet is that they had
   // no account when they drew it.
   const initial: UserAvailability =
-    restoredDraft ??
+    restoredDraft?.availability ??
     user?.availability ?? {
       preferredDays: [],
       isAvailableForInvites: true,
@@ -202,11 +200,6 @@ export function AvailabilityEditScreen() {
     [user?.availability, restoredDraft],
   );
   const [slots, setSlots] = useState<SlotGrid>(initialGrid);
-  // `useState` seeds once, so a draft that lands after mount has to be applied.
-  useEffect(() => {
-    if (restoredDraft) setSlots(initialGrid);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restoredDraft]);
   const [pin, setPin] = useState(initialPin);
   const [radiusKm, setRadiusKm] = useState<number>(initialRadius);
   // Default ON (user request): nearby-game invites are the point of setting
@@ -224,6 +217,35 @@ export function AvailabilityEditScreen() {
   // "אשרו שיתוף מיקום" framing is misleading (nothing to grant) — the copy
   // drops to a plain "flip the toggle above" instruction. Read non-prompting.
   const [locationGranted, setLocationGranted] = useState(false);
+
+  // ── Re-seed EVERYTHING the draft decides, once it lands ─────────────────
+  //
+  // `useState` seeds on the first render and the draft is read
+  // asynchronously, so every one of these was seeded from the ACCOUNT's
+  // availability a tick before the draft arrived — and then never corrected.
+  // Only the grid had an effect like this; the rest silently kept the
+  // account's values, which for a guest means the defaults.
+  //
+  // So what a person filled in before signing in was not partially lost, it
+  // was lost per field: the radius they dragged, the home area they pinned,
+  // and the toggle that depends on it. The grid survived only because
+  // somebody had already noticed this once and fixed that one case.
+  //
+  // Seeded from `initial`, which IS the draft when there is one — so this is
+  // the same derivation as the `useState` calls above, replayed at the moment
+  // the values actually exist.
+  useEffect(() => {
+    if (!restoredDraft) return;
+    setSlots(initialGrid);
+    setRadiusKm(initialRadius);
+    setNotify(restoredDraft.availability.acceptsFillerPush !== false);
+    setPin(initialPin);
+    // Both flags come from the derivation, not from re-deriving here — one
+    // place decides what a parked draft means.
+    setLocationEnabled(restoredDraft.locationEnabled);
+    setLocationPicked(restoredDraft.locationPicked);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoredDraft]);
   const [gpsBusy, setGpsBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [mapExpanded, setMapExpanded] = useState(false);
@@ -449,15 +471,10 @@ export function AvailabilityEditScreen() {
       // neither. The re-read that used to follow is gone with them: the write
       // knows what it wrote, so paying for a document read to find out was
       // both a cost and a read-after-write window.
+      // `AvailabilitySet` is fired by `persistAvailability` now, from the
+      // values it wrote — so a resumed save is measured exactly like this one
+      // instead of not at all, and neither path can double-count.
       await persistAvailability(user.id, next, coords);
-      logEvent(AnalyticsEvent.AvailabilitySet, {
-        days: derivedDays.join(','),
-        times: derivedTimes.join(','),
-        radiusKm,
-        locationEnabled: String(locationEnabled),
-        acceptsFillerPush: String(locationEnabled && notify),
-        geocoded: cityName.length > 0,
-      });
       savingRef.current = true;
       nav.goBack();
     } catch (e) {
