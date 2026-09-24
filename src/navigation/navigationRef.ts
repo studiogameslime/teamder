@@ -140,6 +140,42 @@ export function navigateInvite(args: {
 }
 
 /**
+ * Land on a thing that was just created, celebrating.
+ *
+ * Exists because a RESUMED creation has no screen to navigate from: the
+ * resumer runs after the session was replaced or the profile screen took over,
+ * so the component that would have called `nav.replace` is gone. This is the
+ * same arrival the create screens produce — `celebrate: true` is what both
+ * MatchDetails and CommunityDetails already read on mount.
+ *
+ * Returns false when the navigator is not ready. The caller does not retry: the
+ * thing was created, which is the outcome that mattered, and the person is
+ * looking at whatever screen they are on rather than at an error.
+ */
+export function navigateAfterCreate(args: {
+  type: 'game' | 'club';
+  id: string;
+}): boolean {
+  if (!navigationRef.isReady()) return false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
+  if (args.type === 'game') {
+    nav.navigate('GameTab', {
+      screen: 'MatchDetails',
+      initial: false,
+      params: { gameId: args.id, celebrate: true },
+    });
+    return true;
+  }
+  nav.navigate('CommunitiesTab', {
+    screen: 'CommunityDetails',
+    initial: false,
+    params: { groupId: args.id, celebrate: true },
+  });
+  return true;
+}
+
+/**
  * Route a `footy://open/<where>` campaign link — an in-app message's CTA or a
  * push's deep link — to the screen it names.
  *

@@ -20,15 +20,12 @@ import {
   useIsGuest,
 } from '@/hooks/useAuthenticatedAction';
 import { draftStore } from '@/services/draftStore';
-import { setCreateClubHandler } from '@/services/actionResumers';
 import {
   GroupWizardForm,
   EMPTY_GROUP_FORM_VALUES,
   type GroupFormValues,
 } from '@/screens/groups/GroupWizardForm';
-import { pickRandomCoverId } from '@/data/coverImages';
-import { seasonService } from '@/services/seasonService';
-import { newClubSeasonsArgs } from '@/utils/newClubSeasons';
+import { createClubFromValues } from '@/services/clubCreation';
 
 export function CreateGroupScreen() {
   // One draft id per visit to this screen. Stable across re-renders so an
@@ -53,114 +50,31 @@ export function CreateGroupScreen() {
   // SAME geocoding, the same seasons call and the same celebrate navigation as
   // one created by somebody already signed in. Re-implementing it in the
   // resumer would give the product a second way to make a club.
+  // The screen's save. The creation itself lives in `clubCreation.ts` so the
+  // resumer can run it when this screen is gone — see the note there. What
+  // stays here is the part that needs a UI: the error dialogs and the
+  // celebrate navigation.
   const createFromValues = async (v: GroupFormValues) => {
-    const user = useUserStore.getState().currentUser;
-    if (!user || user.isGuest === true) return;
-    const cityVal = v.city.trim();
-    const phone = v.contactPhone.trim();
-    const parsedMaxMembers = parseInt(v.maxMembers, 10);
-    // Geocode the city the moment the group is created so the new
-    // "nearby" radius filter sees this group with coords from day 1.
-    // Failure is non-fatal — the filter degrades to city-name match
-    // for any row that lacks lat/lng. We don't block submit on the
-    // network call; it's a quick one but a slow link shouldn't gate
-    // group creation.
-    let coords: { lat: number; lng: number } | null = null;
-    if (cityVal) {
-      try {
-        const { geocodeCity } = await import('@/services/geocodeService');
-        // 7s cap (was 3.5s) so the city reliably resolves to coords on a
-        // slow link — the group needs them for the "near me" radius filter.
-        coords = await Promise.race([
-          geocodeCity(cityVal),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 7000)),
-        ]);
-      } catch {
-        coords = null;
-      }
-    }
+    const me = useUserStore.getState().currentUser;
+    if (!me || me.isGuest === true) return;
     try {
-      const group = await createGroup({
-        name: v.name.trim(),
-        description: v.description.trim() || undefined,
-        isOpen: v.isOpen,
-        internalRating: v.internalRating,
-        hideInternalRating: v.internalRating ? v.hideInternalRating : undefined,
-        cardsEnabled: v.cardsEnabled,
-        // Persist validity regardless of the master switch — cardsEnabled gates
-        // enforcement, so keeping the days lets a later re-enable restore config
-        // instead of resurrecting/immortalizing cards via a nulled expiry.
-        yellowCardValidityDays: (() => {
-          const n = parseInt(v.yellowCardValidityDays, 10);
-          return Number.isFinite(n) && n > 0 ? n : null;
-        })(),
-        redCardValidityDays: (() => {
-          const n = parseInt(v.redCardValidityDays, 10);
-          return Number.isFinite(n) && n > 0 ? n : null;
-        })(),
-        rules: v.rules.trim() || undefined,
-        contactPhone: phone || undefined,
-        city: cityVal || undefined,
-        lat: coords?.lat,
-        lng: coords?.lng,
-        maxMembers:
-          Number.isFinite(parsedMaxMembers) && parsedMaxMembers > 0
-            ? parsedMaxMembers
-            : undefined,
-        // Random cover from the built-in gallery — the admin can switch
-        // to another gallery image or upload their own afterwards.
-        coverImageId: pickRandomCoverId(),
-        creator: user,
-      });
-      logEvent(AnalyticsEvent.GroupCreated, { groupId: group.id });
-      // Seasons, if the admin asked for them on step 2.
-      //
-      // AFTER the club exists and deliberately not blocking on it: a season is
-      // a server callable against a groupId, so there is nothing to call until
-      // this point. A failure here leaves a club that was created with seasons
-      // off — recoverable in one tap from the edit screen — whereas failing the
-      // whole creation over it would throw away a filled-in form.
-      //
-      // `historyChoice` is not passed and must not be: it decides what to do
-      // with evenings already played, and a club created a second ago has
-      // none. The server reads an absent history as zero and opens season 1
-      // clean, which is the only honest answer here.
-      if (v.seasons.enabled) {
-        try {
-          // Built by `newClubSeasonsArgs`, not inline — the shape is the
-          // contract, and tests/logic/newClubSeasons holds it to it.
-          await seasonService.enable(newClubSeasonsArgs(v.seasons, group.id)!);
-        } catch (seasonErr) {
-          logError('createGroupSeasons', seasonErr, { groupId: group.id });
-          appAlert(he.error, he.newClubSeasonsFailed);
-        }
-      }
+      const { groupId, seasonsFailed } = await createClubFromValues(v, me);
+      if (seasonsFailed) appAlert(he.error, he.newClubSeasonsFailed);
       (nav as { replace: (s: string, p: unknown) => void }).replace(
         'CommunityDetails',
-        { groupId: group.id, celebrate: true },
+        { groupId, celebrate: true },
       );
     } catch (e) {
-      // Surface a human-readable Hebrew message instead of dumping the
-      // raw error text. The two practical failure modes:
-      //   1. `unauthenticated` — the server-side App Check / Play
-      //      Integrity gate rejected the request. Common when running
-      //      on an emulator or before the production keystore's
-      //      SHA-256 has been registered in Firebase App Check.
-      //   2. `resource-exhausted` — daily rate limit (5/day) hit.
-      // Anything else falls back to a generic create-failed toast.
+      // Two practical failure modes, both worth their own message:
+      //   `unauthenticated`  — the App Check / Play Integrity gate rejected the
+      //                        callable. Common on an emulator, or before the
+      //                        production keystore's SHA-256 is registered.
+      //   `resource-exhausted` — the daily rate limit (5/day).
       const err = e as { code?: string; message?: string };
       const code = String(err.code ?? '').replace(/^functions\//, '');
-      // Log to the panel BEFORE branching the UI message. This catch used
-      // to only show an Alert, so App-Check-blocked creations (code
-      // 'unauthenticated' — e.g. iOS App Attest not attesting) never
-      // reached the errors collection. `unauthenticated` on iOS almost
-      // always means the App Check gate rejected the callable, NOT a
-      // missing auth session — capture platform + code so the panel can
-      // tell them apart.
-      // A VALIDATION_ERROR is the form telling the user they left the name
-      // empty — the guard working, not the app failing. It reached the
-      // production error panel as "יצירת מועדון נכשלה" and read like a defect;
-      // the user still sees the message, it just is not filed as a fault.
+      // A VALIDATION_ERROR is the form telling the person they left the name
+      // empty — the guard working, not the app failing. It used to reach the
+      // production error panel as "יצירת מועדון נכשלה" and read like a defect.
       if (code !== 'VALIDATION_ERROR') {
         logError('createGroup', e, {
           screen: 'CreateGroupScreen',
@@ -169,31 +83,14 @@ export function CreateGroupScreen() {
           appCheckSuspected: code === 'unauthenticated',
         });
       }
-      logEvent(AnalyticsEvent.GroupCreateFailed, {
-        code,
-        platform: Platform.OS,
-      });
+      logEvent(AnalyticsEvent.GroupCreateFailed, { code, platform: Platform.OS });
       let msg: string = he.createGroupGenericError;
-      if (code === 'unauthenticated') {
-        msg = he.createGroupAuthError;
-      } else if (code === 'resource-exhausted') {
-        msg = err.message || he.createGroupRateLimitError;
-      } else if (err.message) {
-        msg = err.message;
-      }
+      if (code === 'unauthenticated') msg = he.createGroupAuthError;
+      else if (code === 'resource-exhausted') msg = err.message || he.createGroupRateLimitError;
+      else if (err.message) msg = err.message;
       appAlert(he.error, msg);
     }
   };
-
-  // Hand the real creation path to the resumer while this screen is mounted,
-  // and take it back on unmount so a stale closure can never be called.
-  useEffect(() => {
-    setCreateClubHandler(async (values) => {
-      await createFromValues(values as unknown as GroupFormValues);
-    });
-    return () => setCreateClubHandler(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Look for a draft ONCE, on mount. Merged onto the CURRENT defaults rather
   // than trusted whole, so a field the wizard no longer has cannot come back

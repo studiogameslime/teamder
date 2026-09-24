@@ -50,7 +50,7 @@ jest.mock('@/services/groupService', () => ({
 }));
 
 let currentUser: { id: string; isGuest?: boolean } | null = { id: 'u1' };
-let myGroups: Array<{ id: string }> = [];
+let myGroups: Array<{ id: string; name?: string; adminIds?: string[] }> = [];
 jest.mock('@/store/userStore', () => ({
   useUserStore: { getState: () => ({ currentUser }) },
 }));
@@ -58,10 +58,29 @@ jest.mock('@/store/groupStore', () => ({
   useGroupStore: { getState: () => ({ groups: myGroups }) },
 }));
 
+const createClubFromValues = jest.fn();
+const createGameFromValues = jest.fn();
+const persistAvailability = jest.fn();
+const navigateAfterCreate = jest.fn();
+jest.mock('@/services/clubCreation', () => ({
+  createClubFromValues: (...a: unknown[]) => createClubFromValues(...a),
+}));
+jest.mock('@/services/gameCreation', () => ({
+  createGameFromValues: (...a: unknown[]) => createGameFromValues(...a),
+}));
+jest.mock('@/services/availabilitySave', () => ({
+  persistAvailability: (...a: unknown[]) => persistAvailability(...a),
+}));
+jest.mock('@/navigation/navigationRef', () => ({
+  navigateAfterCreate: (...a: unknown[]) => navigateAfterCreate(...a),
+}));
+jest.mock('@/screens/groups/GroupWizardForm', () => ({
+  EMPTY_GROUP_FORM_VALUES: { name: '', city: '', description: '' },
+}));
+
 (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
 import '@/services/actionResumers';
-import { setCreateClubHandler } from '@/services/actionResumers';
 import {
   resumePendingAction,
   __resetCoordinatorForTests,
@@ -93,7 +112,6 @@ beforeEach(() => {
   __resetCoordinatorForTests();
   currentUser = { id: 'u1' };
   myGroups = [];
-  setCreateClubHandler(null);
 });
 
 // ─── join_game ────────────────────────────────────────────────────────────
@@ -239,38 +257,37 @@ describe('resuming a club join', () => {
 // ─── create_club ──────────────────────────────────────────────────────────
 
 describe('resuming a club creation', () => {
-  it('runs the screen’s own creation path with the drafted values', async () => {
+  it('creates the club from the draft, with no screen involved', async () => {
     await draftStore.write('club', 'd1', { name: 'שכונת שושי', city: 'חולון' });
     park('create_club', undefined, 'd1');
-
-    const handler = jest.fn(async () => {});
-    setCreateClubHandler(handler);
+    createClubFromValues.mockResolvedValue({ groupId: 'newClub', seasonsFailed: false });
 
     const out = await resumePendingAction();
-    expect(handler).toHaveBeenCalledWith({ name: 'שכונת שושי', city: 'חולון' });
+    // The values reach it merged onto the CURRENT defaults, not raw.
+    expect(createClubFromValues).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'שכונת שושי', city: 'חולון' }),
+      expect.objectContaining({ id: 'u1' }),
+    );
     expect(out).toMatchObject({ result: { outcome: 'created', terminal: true } });
     expect(await readPendingAction()).toBeNull();
     expect(await draftStore.read('club')).toBeNull();
   });
 
-  // The screen has not mounted yet. HELD, not failed — the values are on disk
-  // and the next visit finds them. Clearing here would be silent data loss.
-  it('holds when no screen has offered a creation path', async () => {
+  // The whole reason the creation moved out of the screen. Both resume paths
+  // unmount it, so a screen-registered handler was null exactly when needed.
+  it('needs no mounted screen — it navigates through the ref', async () => {
     await draftStore.write('club', 'd1', { name: 'x' });
     park('create_club', undefined, 'd1');
+    createClubFromValues.mockResolvedValue({ groupId: 'c9', seasonsFailed: false });
 
-    const out = await resumePendingAction();
-    expect(out).toMatchObject({ result: { terminal: false } });
-    expect(await readPendingAction()).not.toBeNull();
-    expect(await draftStore.read('club')).not.toBeNull();
+    await resumePendingAction();
+    expect(navigateAfterCreate).toHaveBeenCalledWith({ type: 'club', id: 'c9' });
   });
 
-  it('a creation failure keeps the draft', async () => {
+  it('a creation failure keeps both the draft and the intent', async () => {
     await draftStore.write('club', 'd1', { name: 'x' });
     park('create_club', undefined, 'd1');
-    setCreateClubHandler(async () => {
-      throw err('unavailable');
-    });
+    createClubFromValues.mockRejectedValue(err('unavailable'));
 
     await resumePendingAction();
     expect(await draftStore.read('club')).not.toBeNull();
@@ -281,29 +298,193 @@ describe('resuming a club creation', () => {
   // keep offering a club nobody typed.
   it('an expired draft is terminal', async () => {
     park('create_club', undefined, 'd1');
-    setCreateClubHandler(jest.fn(async () => {}));
 
     const out = await resumePendingAction();
     expect(out).toMatchObject({ result: { terminal: true, reason: 'draft_expired' } });
     expect(await readPendingAction()).toBeNull();
+    expect(createClubFromValues).not.toHaveBeenCalled();
   });
 });
 
-// ─── create_game is deliberately unclaimed ────────────────────────────────
+// ─── create_game ──────────────────────────────────────────────────────────
 
-describe('a game creation', () => {
-  // No resumer is registered this round — the screen provisions a group on
-  // mount, and auto-completing against a group made under an abandoned
-  // anonymous uid would be worse than asking the person to press save again
-  // with their form already filled. See the note in actionResumers.ts.
-  it('is HELD with its draft intact, not auto-created', async () => {
-    await draftStore.write('game', 'd1', { title: 'ערב שלישי' });
+describe('resuming a game creation', () => {
+  const future = Date.now() + 7 * 24 * 3600_000;
+
+  it('creates a STANDALONE game with no group on the action', async () => {
+    await draftStore.write('game', 'd1', { title: 'ערב שלישי', startsAt: future });
+    park('create_game', undefined, 'd1');
+    createGameFromValues.mockResolvedValue({ gameId: 'g9', isOrphan: true });
+
+    const out = await resumePendingAction();
+    // groupId null is the signal to provision the personal group — and that
+    // provisioning now happens inside createGameFromValues, under THIS uid.
+    expect(createGameFromValues).toHaveBeenCalledWith(
+      expect.objectContaining({ uid: 'u1', groupId: null }),
+    );
+    expect(out).toMatchObject({ result: { outcome: 'created', terminal: true } });
+    expect(await readPendingAction()).toBeNull();
+    expect(await draftStore.read('game')).toBeNull();
+  });
+
+  it('creates a CLUB game with the group context the action carried', async () => {
+    myGroups = [{ id: 'c1', name: 'שכונה', adminIds: ['u1'] }];
+    await draftStore.write('game', 'd1', { title: '', startsAt: future });
+    park('create_game', 'c1', 'd1');
+    createGameFromValues.mockResolvedValue({ gameId: 'g9', isOrphan: false });
+
+    await resumePendingAction();
+    expect(createGameFromValues).toHaveBeenCalledWith(
+      expect.objectContaining({ uid: 'u1', groupId: 'c1', groupName: 'שכונה' }),
+    );
+  });
+
+  it('navigates to the new game through the ref, with no screen mounted', async () => {
+    await draftStore.write('game', 'd1', { startsAt: future });
+    park('create_game', undefined, 'd1');
+    createGameFromValues.mockResolvedValue({ gameId: 'g9', isOrphan: true });
+
+    await resumePendingAction();
+    expect(navigateAfterCreate).toHaveBeenCalledWith({ type: 'game', id: 'g9' });
+  });
+
+  // Authorisation can lapse while somebody is authenticating. Checked before
+  // creating rather than discovered as a rules denial.
+  it('refuses when the club is gone', async () => {
+    myGroups = [];
+    await draftStore.write('game', 'd1', { startsAt: future });
+    park('create_game', 'c1', 'd1');
+
+    const out = await resumePendingAction();
+    expect(createGameFromValues).not.toHaveBeenCalled();
+    expect(out).toMatchObject({ result: { terminal: true, reason: 'target_deleted' } });
+  });
+
+  it('refuses when this account does not administer the club', async () => {
+    myGroups = [{ id: 'c1', name: 'שכונה', adminIds: ['someoneElse'] }];
+    await draftStore.write('game', 'd1', { startsAt: future });
+    park('create_game', 'c1', 'd1');
+
+    const out = await resumePendingAction();
+    expect(createGameFromValues).not.toHaveBeenCalled();
+    expect(out).toMatchObject({ result: { terminal: true } });
+  });
+
+  // NEEDS CORRECTION, not failure. A game must never be created for a moment
+  // that has already passed, and a replacement date must never be invented —
+  // so the intent AND the draft both survive and the form reopens filled in.
+  it('refuses a kick-off that passed, and keeps everything', async () => {
+    await draftStore.write('game', 'd1', { startsAt: Date.now() - 60_000 });
     park('create_game', undefined, 'd1');
 
     const out = await resumePendingAction();
-    expect(out).toEqual({ status: 'held' });
+    expect(createGameFromValues).not.toHaveBeenCalled();
+    expect(out).toMatchObject({ result: { terminal: false } });
     expect(await readPendingAction()).not.toBeNull();
     expect(await draftStore.read('game')).not.toBeNull();
+  });
+
+  it('a network failure keeps both', async () => {
+    await draftStore.write('game', 'd1', { startsAt: future });
+    park('create_game', undefined, 'd1');
+    createGameFromValues.mockRejectedValue(err('unavailable'));
+
+    const out = await resumePendingAction();
+    expect(out).toMatchObject({ result: { terminal: false, reason: 'network_unavailable' } });
+    expect(await readPendingAction()).not.toBeNull();
+    expect(await draftStore.read('game')).not.toBeNull();
+  });
+
+  it('an overlap is a permanent answer — terminal', async () => {
+    await draftStore.write('game', 'd1', { startsAt: future });
+    park('create_game', undefined, 'd1');
+    createGameFromValues.mockRejectedValue(err('GAME_OVERLAP'));
+
+    const out = await resumePendingAction();
+    expect(out).toMatchObject({ result: { terminal: true, reason: 'game_overlap' } });
+  });
+
+  it('an expired draft is terminal', async () => {
+    park('create_game', undefined, 'd1');
+    const out = await resumePendingAction();
+    expect(out).toMatchObject({ result: { terminal: true, reason: 'draft_expired' } });
+  });
+});
+
+// ─── save_availability ────────────────────────────────────────────────────
+
+describe('resuming an availability save', () => {
+  const draftValues = {
+    availability: { preferredDays: [2, 5], preferredTimes: ['evening'] },
+    coords: { lat: 32.0, lng: 34.8 },
+  };
+
+  it('writes through the screen’s own persistence, after auth', async () => {
+    await draftStore.write('availability', 'd1', draftValues);
+    park('save_availability', undefined, 'd1');
+    persistAvailability.mockResolvedValue(undefined);
+
+    const out = await resumePendingAction();
+    expect(persistAvailability).toHaveBeenCalledWith(
+      'u1',
+      draftValues.availability,
+      draftValues.coords,
+    );
+    expect(out).toMatchObject({ result: { outcome: 'created', terminal: true } });
+    expect(await readPendingAction()).toBeNull();
+    expect(await draftStore.read('availability')).toBeNull();
+  });
+
+  // The whole reason this was the last one connected: there is no
+  // /users/{anonymousUid} to write onto, so a guest's availability is a local
+  // draft and nothing reaches Firestore until they are somebody.
+  it('never writes while the viewer is a guest', async () => {
+    await draftStore.write('availability', 'd1', draftValues);
+    park('save_availability', undefined, 'd1');
+    currentUser = { id: 'anon1', isGuest: true };
+
+    expect(await resumePendingAction()).toEqual({ status: 'held' });
+    expect(persistAvailability).not.toHaveBeenCalled();
+    expect(await draftStore.read('availability')).not.toBeNull();
+  });
+
+  it('a network failure keeps the draft for a retry', async () => {
+    await draftStore.write('availability', 'd1', draftValues);
+    park('save_availability', undefined, 'd1');
+    persistAvailability.mockRejectedValue(err('unavailable'));
+
+    const out = await resumePendingAction();
+    expect(out).toMatchObject({ result: { terminal: false } });
+    expect(await draftStore.read('availability')).not.toBeNull();
+  });
+
+  it('and the retry then succeeds and cleans up', async () => {
+    await draftStore.write('availability', 'd1', draftValues);
+    park('save_availability', undefined, 'd1');
+    persistAvailability.mockRejectedValueOnce(err('unavailable'));
+    persistAvailability.mockResolvedValue(undefined);
+
+    await resumePendingAction();
+    await resumePendingAction();
+    expect(persistAvailability).toHaveBeenCalledTimes(2);
+    expect(await readPendingAction()).toBeNull();
+    expect(await draftStore.read('availability')).toBeNull();
+  });
+
+  it('a permission denial is terminal — not retried forever', async () => {
+    await draftStore.write('availability', 'd1', draftValues);
+    park('save_availability', undefined, 'd1');
+    persistAvailability.mockRejectedValue(err('permission-denied'));
+
+    const out = await resumePendingAction();
+    expect(out).toMatchObject({ result: { terminal: true } });
+  });
+
+  it('an expired draft is terminal', async () => {
+    park('save_availability', undefined, 'd1');
+    const out = await resumePendingAction();
+    expect(out).toMatchObject({ result: { terminal: true, reason: 'draft_expired' } });
+    expect(persistAvailability).not.toHaveBeenCalled();
   });
 });
 

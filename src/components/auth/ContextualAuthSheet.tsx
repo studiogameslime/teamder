@@ -33,6 +33,7 @@ import type { PendingActionKind } from '@/services/pendingAction';
 import { upgradeAnonymous, type AuthMethod, type UpgradeOutcome } from '@/services/authUpgrade';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { isAppleSignInAvailable } from '@/firebase/auth';
+import { useUserStore } from '@/store/userStore';
 
 const ACCENT = '#3B82F6';
 
@@ -134,10 +135,17 @@ export function ContextualAuthSheet({
       return;
     }
 
+    // `required_profile` is read from the GATE, not inferred from
+    // `is_existing_account`. They are close but not the same: a linked account
+    // always owes a profile, while an existing one usually does not — unless it
+    // predates `onboardingCompleted`, in which case it does. Deriving one from
+    // the other would quietly mislabel exactly those accounts.
+    const requiredProfile = !useUserStore.getState().hasCompletedOnboarding();
     logEvent(AnalyticsEvent.AuthCompleted, {
       action_kind: kind,
       auth_method: method,
       is_existing_account: outcome.status === 'switched',
+      required_profile: requiredProfile,
     });
     onAuthenticated({ uid: outcome.uid, isNewAccount: outcome.isNewAccount });
   };

@@ -7,7 +7,7 @@
 // reverse-geocoded to a city name on save so the server-side matcher —
 // which keys off the home city + radius — keeps working.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -38,6 +38,12 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { userService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { persistAvailability } from '@/services/availabilitySave';
+import {
+  useAuthenticatedAction,
+  useIsGuest,
+} from '@/hooks/useAuthenticatedAction';
+import { draftStore } from '@/services/draftStore';
 import { logError } from '@/services/errorLog';
 import { availabilityFeedService } from '@/services/availabilityFeedService';
 import { storage } from '@/services/storage';
@@ -131,16 +137,51 @@ function buildInitialGrid(av: UserAvailability): SlotGrid {
 export function AvailabilityEditScreen() {
   const nav = useNavigation();
   const user = useUserStore((s) => s.currentUser);
+  const isGuest = useIsGuest();
+  const authAction = useAuthenticatedAction();
+  const draftIdRef = useRef(`availability-${Date.now()}`);
+  /** A parked availability draft, if the person filled this in as a guest and
+   *  came back. Applied once, on mount, so the grid they drew is still there. */
+  const [restoredDraft, setRestoredDraft] = useState<UserAvailability | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void draftStore
+      .read('availability')
+      .then((d) => {
+        if (!alive || !d) return;
+        draftIdRef.current = d.id;
+        const v = d.values as unknown as { availability?: UserAvailability };
+        if (v?.availability) {
+          setRestoredDraft(v.availability);
+          logEvent(AnalyticsEvent.DraftRestored, {
+            kind: 'availability',
+            age_ms: Math.max(0, Date.now() - d.updatedAt),
+          });
+        }
+      })
+      .catch(() => {
+        /* no draft to restore */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const reloadUser = async () => {
     const fresh = await userService.getCurrentUser();
     if (fresh) useUserStore.setState({ currentUser: fresh });
   };
 
-  const initial: UserAvailability = user?.availability ?? {
-    preferredDays: [],
-    isAvailableForInvites: true,
-  };
+  // A parked draft wins over the account's saved availability: it is what this
+  // person just drew, and the only reason it is not saved yet is that they had
+  // no account when they drew it.
+  const initial: UserAvailability =
+    restoredDraft ??
+    user?.availability ?? {
+      preferredDays: [],
+      isAvailableForInvites: true,
+    };
 
   const initialPin = useMemo(
     () =>
@@ -159,8 +200,19 @@ export function AvailabilityEditScreen() {
     typeof initial.homeCityLng === 'number';
 
   // Per-day availability grid (migrated from any legacy days×times on first open).
-  const initialGrid = useMemo(() => buildInitialGrid(initial), [user?.availability]);
+  const initialGrid = useMemo(
+    () => buildInitialGrid(initial),
+    // `restoredDraft` included: it arrives one tick after mount, and without it
+    // the grid would stay empty while `initial` said otherwise.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user?.availability, restoredDraft],
+  );
   const [slots, setSlots] = useState<SlotGrid>(initialGrid);
+  // `useState` seeds once, so a draft that lands after mount has to be applied.
+  useEffect(() => {
+    if (restoredDraft) setSlots(initialGrid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoredDraft]);
   const [pin, setPin] = useState(initialPin);
   const [radiusKm, setRadiusKm] = useState<number>(initialRadius);
   // Default ON (user request): nearby-game invites are the point of setting
@@ -370,6 +422,32 @@ export function AvailabilityEditScreen() {
         isAvailableForInvites: initial.isAvailableForInvites !== false,
         acceptsFillerPush: locationEnabled ? notify : false,
       };
+      // ── The save gate for a guest ────────────────────────────────────────
+      //
+      // Availability lives ON the user document, and a guest has none — the
+      // tightened rules refuse `/users/{anonymousUid}` outright, and writing one
+      // would be wrong even if they did not. So a guest's availability is a
+      // LOCAL DRAFT and nothing reaches Firestore until they are somebody.
+      //
+      // The coords ride in the draft because the reverse-geocode above happened
+      // while they were still on the screen; re-deriving them after a sign-in
+      // would mean asking for location again.
+      if (isGuest) {
+        await authAction.request({
+          kind: 'save_availability',
+          origin: 'in_app',
+          draft: {
+            kind: 'availability',
+            id: draftIdRef.current,
+            values: { availability: next, coords } as unknown as Record<string, unknown>,
+          },
+          execute: async () => {
+            throw new Error('unreachable: guest actions resume via their resumer');
+          },
+        });
+        savingRef.current = true;
+        return;
+      }
       await persistAvailability(user.id, next, coords);
       // The viewer's radius/location just changed → drop the home-calendar
       // cache so the "פנויים לשחק לידך" counts refresh on the next open.
@@ -413,6 +491,7 @@ export function AvailabilityEditScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
+      {authAction.sheet}
       <ScreenHeader title={he.availabilityHeaderTitle} />
       <ScrollView
         contentContainerStyle={styles.content}
@@ -742,113 +821,6 @@ function clampRadius(km: number): number {
   return Math.min(RADIUS_MAX, Math.max(RADIUS_MIN, Math.round(km)));
 }
 
-// ── Persistence ───────────────────────────────────────────────────────────
-async function persistAvailability(
-  uid: string,
-  availability: UserAvailability,
-  coords: { lat: number; lng: number } | null,
-): Promise<void> {
-  if (USE_MOCK_DATA) {
-    const json = await storage.getAuthUserJson();
-    if (!json) return;
-    try {
-      const cur = JSON.parse(json);
-      const merged: UserAvailability = {
-        ...availability,
-        homeCityLat: coords?.lat,
-        homeCityLng: coords?.lng,
-      };
-      const next = { ...cur, availability: merged, updatedAt: Date.now() };
-      await storage.setAuthUserJson(JSON.stringify(next));
-    } catch {
-      /* corrupt cache — leave alone */
-    }
-    return;
-  }
-  // The grid itself, not only what was derived from it.
-  //
-  // `availabilitySlots` is the precise per-day answer this screen collects —
-  // "Tuesday evenings and Friday mornings" — and the server has a whole
-  // matching branch for it (`availabilityCovers`, which prefers the grid and
-  // falls back to the coarse preferredDays × preferredTimes cross-product).
-  // It was built in the object above, passed in here, and never written, so
-  // that branch could not fire for anybody: every user matched on the
-  // cross-product, which says Friday EVENINGS too. And because the field was
-  // never written it was never read back either, so reopening the screen
-  // rebuilt the grid from the coarse values and quietly lost the distinction
-  // the user had just drawn.
-  //
-  // Bounded on the way out: seven days, and the buckets are a closed set, so a
-  // malformed local state cannot write an unbounded map into a document every
-  // availability query reads.
-  const slots: Record<string, string[]> = {};
-  for (const [day, buckets] of Object.entries(availability.availabilitySlots ?? {})) {
-    const n = Number(day);
-    if (!Number.isInteger(n) || n < 0 || n > 6) continue;
-    if (Array.isArray(buckets) && buckets.length > 0) {
-      slots[String(n)] = buckets.filter((b) => typeof b === 'string').slice(0, 8);
-    }
-  }
-  // Through the auth-race retry. "שמירת זמינות נכשלה" arrived four times from
-  // one user with permission-denied, and the /users update rule admits this
-  // exact payload — proved against both the current ruleset and the one that
-  // was live at the moment it failed (tests/rules/availabilitySave.test.mjs,
-  // nine shapes, all allowed).
-  //
-  // That left two candidates for a denial the rules do not explain: the token
-  // not having landed, which this wrapper covers, and the document not being
-  // there at all, which it cannot — see the catch below, which is what the
-  // reporting account turned out to need.
-  //
-  // The retry matters more here than on a read: a read that loses the race
-  // shows an empty list for a moment, and this one throws away a grid the user
-  // has just spent a minute filling in.
-  const write = () =>
-    withAuthRaceRetry(() =>
-      updateDoc(docs.user(uid), {
-        availability: {
-          preferredDays: availability.preferredDays,
-          preferredTimes: availability.preferredTimes ?? [],
-          availabilitySlots: slots,
-          preferredCity: availability.preferredCity ?? null,
-          cities: Array.isArray(availability.cities) ? availability.cities : [],
-          homeCity: availability.homeCity ?? null,
-          homeCityLat: coords?.lat ?? null,
-          homeCityLng: coords?.lng ?? null,
-          availabilityRadiusKm:
-            typeof availability.availabilityRadiusKm === 'number'
-              ? availability.availabilityRadiusKm
-              : 15,
-          isAvailableForInvites: availability.isAvailableForInvites !== false,
-          acceptsFillerPush: availability.acceptsFillerPush === true,
-        },
-        updatedAt: Date.now(),
-      }),
-    );
-
-  try {
-    await write();
-  } catch (err) {
-    // The denial that is not a denial.
-    //
-    // The four production reports came from ONE account, and that account has
-    // no /users document at all — verified against production. The update rule
-    // reads `resource.data`, so with no document there is nothing for any
-    // payload to satisfy and Firestore answers permission-denied. No number of
-    // auth-race retries can fix that: the token was never the problem, and the
-    // user just watched a grid they spent a minute filling in fail four times.
-    //
-    // So on a denial we ask once whether the document is actually there.
-    // `ensureUserDoc` rebuilds it through the documented lazy-create path and
-    // says so; if it is there, or it could not tell, nothing was recovered and
-    // the original error surfaces untouched — a real rules denial must never
-    // be swallowed by a retry.
-    if ((err as { code?: string })?.code !== 'permission-denied') throw err;
-    const restored = await userService.ensureUserDoc();
-    if (!restored) throw err;
-    await write();
-  }
-}
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },

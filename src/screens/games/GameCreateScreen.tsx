@@ -19,9 +19,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
-import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
-import { notificationsService } from '@/services/notificationsService';
 import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
@@ -29,8 +27,9 @@ import {
   useIsGuest,
 } from '@/hooks/useAuthenticatedAction';
 import { draftStore } from '@/services/draftStore';
+import { createGameFromValues } from '@/services/gameCreation';
 import { toast } from '@/components/Toast';
-import { DEFAULT_FORMAT, DEFAULT_TEAM_COUNT, Group, teamSizeFromFormat } from '@/types';
+import { DEFAULT_FORMAT, DEFAULT_TEAM_COUNT, Group } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { WINDOW_START_HOUR } from '@/utils/demandSlots';
 import { he } from '@/i18n/he';
@@ -291,7 +290,17 @@ export function GameCreateScreen() {
   // returns happen at the very end.
 
   const isRecurring = params.recurring === true;
-  const isOrphan = orphanGroup !== null;
+  // Quick mode is a UI STATE, not a group.
+  //
+  // A guest reaches the wizard in quick mode with NO group at all — the personal
+  // group is provisioned after they sign in, under their real uid, inside
+  // `createGameFromValues`. Deriving the mode from `orphanGroup !== null` alone
+  // meant a guest fell through every gate below into an infinite spinner: no
+  // allocation, so no group, so the quick-mode loader never resolved.
+  //
+  // A guest can only ever be in quick mode anyway: community mode needs a club
+  // they administer, and they have none.
+  const isOrphan = orphanGroup !== null || isGuest;
   // In recurring mode the route locks us to the originating community
   // (passed via params). In standard mode the user can pick from a
   // dropdown across the communities they admin. If the route asks for
@@ -421,7 +430,9 @@ export function GameCreateScreen() {
   // The manual CTA path is deliberately NOT covered here. There the gate is a
   // true answer the user has already read, and OrphanCta spins in place;
   // replacing the whole screen with a bare spinner would be a step backwards.
-  if (params.quick && !orphanGroup && !orphanFailed) {
+  // A guest needs no group to see the form, so the quick-mode loader must not
+  // wait for one that is never coming.
+  if (!isGuest && params.quick && !orphanGroup && !orphanFailed) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.createGameTitle} />
@@ -431,7 +442,7 @@ export function GameCreateScreen() {
       </SafeAreaView>
     );
   }
-  if (!orphanGroup && allMyCommunities.length === 0) {
+  if (!isGuest && !orphanGroup && allMyCommunities.length === 0) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.createGameTitle} />
@@ -443,7 +454,7 @@ export function GameCreateScreen() {
       </SafeAreaView>
     );
   }
-  if (!orphanGroup && myCommunities.length === 0) {
+  if (!isGuest && !orphanGroup && myCommunities.length === 0) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.createGameTitle} />
@@ -457,31 +468,7 @@ export function GameCreateScreen() {
   }
 
   const submit = async (v: GameFormValues) => {
-    // The save gate for a guest. Everything they typed goes to the draft and
-    // the sheet opens in place; the automatic completion is deliberately NOT
-    // wired this round — see the note in src/services/actionResumers.ts. What
-    // they get is a form that is still full when they come back, which is the
-    // part that was being lost.
-    if (isGuest) {
-      await authAction.request({
-        kind: 'create_game',
-        origin: 'in_app',
-        draft: {
-          kind: 'game',
-          id: draftIdRef.current,
-          values: v as unknown as Record<string, unknown>,
-        },
-        // Never called: this branch only runs for a guest, and the coordinator
-        // parks rather than executing. The real work is the registered resumer,
-        // which asks the server fresh after authentication. Throwing makes a
-        // future mistake loud instead of silently reporting success.
-        execute: async () => {
-          throw new Error('unreachable: guest actions resume via their resumer');
-        },
-      });
-      return;
-    }
-    if (!user || !selectedGroup) return;
+    if (!user) return;
     // Past-date guard: if kickoff is already behind us, confirm before
     // creating (the picker happily allows past times). Recurring games
     // legitimately open in the past, so skip the check for those.
@@ -529,109 +516,49 @@ export function GameCreateScreen() {
       });
       if (!proceed) return;
     }
-    const parsedDuration = parseInt(v.matchDurationMinutes, 10);
-    const playersPerTeam = teamSizeFromFormat(v.format);
-    // Recurring is now an in-form toggle (step 3). When enabled with
-    // a real timestamp, persist `registrationOpensAt`; otherwise omit
-    // and the game opens immediately. Past values are allowed and
-    // fall through to immediate-open behaviour server-side.
-    const regOpensAt =
-      v.scheduledRegEnabled && v.registrationOpensAt > 0
-        ? v.registrationOpensAt
-        : undefined;
-    // publicOpenAt / guestsOpenAt are community-game scheduling knobs —
-    // only meaningful for non-quick games. Pass through when set (>0).
-    const publicOpenAt =
-      !isOrphan && v.publicOpenAt > 0 ? v.publicOpenAt : undefined;
-    const guestsOpenAt = v.guestsOpenAt > 0 ? v.guestsOpenAt : undefined;
-    try {
-      const created = await gameService.createGameV2({
-        groupId: selectedGroup.id,
-        // Orphan flow: the synthesized group has no name, so don't
-        // fall back to it for the title.
-        title: v.title.trim() || (isOrphan ? 'מחזור חד־פעמי' : selectedGroup.name),
-        startsAt: v.startsAt,
-        fieldName: v.fieldName.trim(),
-        maxPlayers: playersPerTeam * v.numberOfTeams,
-        format: v.format,
-        numberOfTeams: v.numberOfTeams,
-        cancelDeadlineHours: v.cancelDeadlineHours,
-        fieldType: v.fieldType,
-        matchDurationMinutes:
-          Number.isFinite(parsedDuration) && parsedDuration > 0
-            ? parsedDuration
-            : undefined,
-        autoTeamGenerationMinutesBeforeStart: 60,
-        visibility: v.visibility,
-        requiresApproval: v.requiresApproval,
-        waitlistApprovalRequired: v.waitlistApprovalRequired,
-        waitlistApprovalTimeoutMinutes:
-          Math.max(2, Math.min(120, Number(v.waitlistApprovalTimeout) || 20)),
-        bringBall: v.bringBall,
-        bringShirts: v.bringShirts,
-        notes: v.notes.trim() || undefined,
-        city: v.city.trim() || undefined,
-        fieldAddress: v.fieldAddress.trim() || undefined,
-        // Exact coords from the location picker — guarantees a real pin
-        // (Waze nav + "near me" matcher) without depending on a flaky
-        // post-create re-geocode.
-        fieldLat: v.coords?.lat,
-        fieldLng: v.coords?.lng,
-        ruleTags: v.ruleTags,
-        registrationOpensAt: regOpensAt,
-        // Recurring weekly fixture (community games only) — the CF clones
-        // it ~3h after kickoff into next week with the same settings.
-        recurring: !isOrphan && v.recurringGameEnabled,
-        publicOpenAt,
-        guestsOpenAt,
-        autoTeamsAt: v.autoTeamsAt > 0 ? v.autoTeamsAt : undefined,
-        autoTeamsMethod: v.autoTeamsAt > 0 ? v.autoTeamsMethod : undefined,
-        acceptsFillers: v.acceptsFillers,
-        fillerMinTrust: v.acceptsFillers ? v.fillerMinTrust : undefined,
-        advancedMode: v.advancedMode,
-        advancedFillMode: v.advancedFillMode,
-        advancedTieMode: v.advancedTieMode,
-        createdBy: user.id,
-        isOrphanContext: isOrphan,
+    // ── The save gate for a guest ──────────────────────────────────────────
+    //
+    // Placed AFTER the two confirmation dialogs on purpose. Those are questions
+    // about the form — a date in the past, a game on Yom Kippur — and the right
+    // moment to ask them is while the person is looking at the form, not after
+    // they have signed in. So a parked draft is one they have already confirmed,
+    // which is what lets the resume be unconditional.
+    if (isGuest) {
+      await authAction.request({
+        kind: 'create_game',
+        origin: 'in_app',
+        // A club game carries its group; a standalone one deliberately does not
+        // — the resumer provisions the personal group under the REAL uid, and a
+        // group made for an anonymous session must never own a game.
+        targetId: isOrphan ? undefined : selectedGroup?.id,
+        draft: {
+          kind: 'game',
+          id: draftIdRef.current,
+          values: v as unknown as Record<string, unknown>,
+        },
+        // Never called: this branch only runs for a guest, and the coordinator
+        // parks rather than executing. The real work is the registered resumer.
+        execute: async () => {
+          throw new Error('unreachable: guest actions resume via their resumer');
+        },
       });
-      // Quick-game: fire off the friend invites the organizer picked in
-      // step 3. Best-effort — a failed invite never blocks landing on
-      // the match. Each goes through the trusted sendGameInvite path.
-      const inviteIds = v.inviteFriendIds ?? [];
-      if (inviteIds.length > 0) {
-        await Promise.all(
-          inviteIds.map((rid) =>
-            notificationsService
-              .inviteToGame({ recipientId: rid, gameId: created.id })
-              .catch(() => {
-                /* best-effort per-invite */
-              }),
-          ),
-        );
-        logEvent(AnalyticsEvent.FriendsInvitedToGame, {
-          gameId: created.id,
-          count: inviteIds.length,
-        });
-      }
-      // Distinguish quick (orphan) creates from regular community
-      // creates — adoption of the no-community path is one of the
-      // signals we want to chart.
-      if (isOrphan) {
-        logEvent(AnalyticsEvent.QuickGameCreated, { gameId: created.id });
-      }
-      // Auto-teams was armed at create time — track the method and how
-      // far ahead of kickoff the generation is scheduled.
-      if (v.autoTeamsAt > 0) {
-        logEvent(AnalyticsEvent.AutoTeamsScheduled, {
-          gameId: created.id,
-          method: v.autoTeamsMethod,
-          leadMinutes: Math.round((v.startsAt - v.autoTeamsAt) / 60000),
-          source: 'create',
-        });
-      }
+      return;
+    }
+    if (!selectedGroup) return;
+    try {
+      // The creation itself lives in `gameCreation.ts` so the resumer can run it
+      // when this screen is gone — both resume paths unmount it. What stays here
+      // is what needs a UI: the two confirmations above, the error dialogs
+      // below, and this navigation.
+      const { gameId } = await createGameFromValues({
+        values: v,
+        uid: user.id,
+        groupId: isOrphan ? null : selectedGroup.id,
+        groupName: selectedGroup.name,
+      });
       (nav as { replace: (s: string, p: unknown) => void }).replace(
         'MatchDetails',
-        { gameId: created.id, celebrate: true },
+        { gameId, celebrate: true },
       );
     } catch (err) {
       // Overlap guard hit — show the user the existing game's title +

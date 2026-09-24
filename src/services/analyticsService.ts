@@ -370,7 +370,13 @@ export const AnalyticsEvent = {
   // counting them as two prompts would read as two different people.
   AuthPromptShown: 'auth_prompt_shown',              // action_kind, has_draft
   AuthMethodSelected: 'auth_method_selected',        // action_kind, auth_method
-  AuthCompleted: 'auth_completed',                   // action_kind, auth_method, is_existing_account
+  /** `required_profile` is whether a profile confirmation was owed AFTER the
+   *  upgrade — read from `hasCompletedOnboarding()`, not inferred from
+   *  `is_existing_account`. A linked account always owes one; an existing
+   *  account usually does not, unless it predates the flag. Distinct from
+   *  `had_prefill` on the profile events, which says whether the PROVIDER gave
+   *  us a usable name to start from. */
+  AuthCompleted: 'auth_completed',                   // action_kind, auth_method, is_existing_account, required_profile
   AuthCancelled: 'auth_cancelled',                   // action_kind, auth_method
   AuthFailed: 'auth_failed',                         // action_kind, auth_method, code
   ProfileConfirmationViewed: 'profile_confirmation_viewed', // action_kind
