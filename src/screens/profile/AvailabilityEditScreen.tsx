@@ -36,7 +36,6 @@ import {
 import { resolveNearbyLocation, promptLocationDenied } from '@/utils/nearby';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
-import { userService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { persistAvailability } from '@/services/availabilitySave';
 import {
@@ -45,7 +44,6 @@ import {
 } from '@/hooks/useAuthenticatedAction';
 import { draftStore } from '@/services/draftStore';
 import { logError } from '@/services/errorLog';
-import { availabilityFeedService } from '@/services/availabilityFeedService';
 import { storage } from '@/services/storage';
 import { docs } from '@/firebase/firestore';
 import { USE_MOCK_DATA } from '@/firebase/config';
@@ -168,10 +166,6 @@ export function AvailabilityEditScreen() {
     };
   }, []);
 
-  const reloadUser = async () => {
-    const fresh = await userService.getCurrentUser();
-    if (fresh) useUserStore.setState({ currentUser: fresh });
-  };
 
   // A parked draft wins over the account's saved availability: it is what this
   // person just drew, and the only reason it is not saved yet is that they had
@@ -448,10 +442,14 @@ export function AvailabilityEditScreen() {
         savingRef.current = true;
         return;
       }
+      // `persistAvailability` now owns what has to be true after a successful
+      // save: the store patched with the values it wrote, and the home-calendar
+      // cache dropped. Both used to live here, which is exactly why the guest
+      // path — where this screen is gone by the time the resumer writes — got
+      // neither. The re-read that used to follow is gone with them: the write
+      // knows what it wrote, so paying for a document read to find out was
+      // both a cost and a read-after-write window.
       await persistAvailability(user.id, next, coords);
-      // The viewer's radius/location just changed → drop the home-calendar
-      // cache so the "פנויים לשחק לידך" counts refresh on the next open.
-      availabilityFeedService.invalidate();
       logEvent(AnalyticsEvent.AvailabilitySet, {
         days: derivedDays.join(','),
         times: derivedTimes.join(','),
@@ -460,7 +458,6 @@ export function AvailabilityEditScreen() {
         acceptsFillerPush: String(locationEnabled && notify),
         geocoded: cityName.length > 0,
       });
-      await reloadUser();
       savingRef.current = true;
       nav.goBack();
     } catch (e) {

@@ -16,46 +16,24 @@ import { docs } from '@/firebase/firestore';
 import { withAuthRaceRetry } from '@/firebase/authRace';
 import { storage } from '@/services/storage';
 import { userService } from '@/services/userService';
+import { availabilityFeedService } from '@/services/availabilityFeedService';
+import { useUserStore } from '@/store/userStore';
 import type { UserAvailability } from '@/types';
 
-export async function persistAvailability(
-  uid: string,
+/**
+ * Exactly what gets written, built once.
+ *
+ * Returned as well as written, because the local state this function is now
+ * responsible for updating must be patched with the SAME values rather than
+ * with a re-read — see `applyLocally`.
+ */
+function buildSaved(
   availability: UserAvailability,
   coords: { lat: number; lng: number } | null,
-): Promise<void> {
-  if (USE_MOCK_DATA) {
-    const json = await storage.getAuthUserJson();
-    if (!json) return;
-    try {
-      const cur = JSON.parse(json);
-      const merged: UserAvailability = {
-        ...availability,
-        homeCityLat: coords?.lat,
-        homeCityLng: coords?.lng,
-      };
-      const next = { ...cur, availability: merged, updatedAt: Date.now() };
-      await storage.setAuthUserJson(JSON.stringify(next));
-    } catch {
-      /* corrupt cache — leave alone */
-    }
-    return;
-  }
-  // The grid itself, not only what was derived from it.
-  //
-  // `availabilitySlots` is the precise per-day answer this screen collects —
-  // "Tuesday evenings and Friday mornings" — and the server has a whole
-  // matching branch for it (`availabilityCovers`, which prefers the grid and
-  // falls back to the coarse preferredDays × preferredTimes cross-product).
-  // It was built in the object above, passed in here, and never written, so
-  // that branch could not fire for anybody: every user matched on the
-  // cross-product, which says Friday EVENINGS too. And because the field was
-  // never written it was never read back either, so reopening the screen
-  // rebuilt the grid from the coarse values and quietly lost the distinction
-  // the user had just drawn.
-  //
-  // Bounded on the way out: seven days, and the buckets are a closed set, so a
-  // malformed local state cannot write an unbounded map into a document every
-  // availability query reads.
+): UserAvailability {
+  // The grid itself, not only what was derived from it. Bounded on the way
+  // out: seven days, closed bucket set — a malformed local state must not
+  // write an unbounded map into a document every availability query reads.
   const slots: Record<string, string[]> = {};
   for (const [day, buckets] of Object.entries(availability.availabilitySlots ?? {})) {
     const n = Number(day);
@@ -64,38 +42,118 @@ export async function persistAvailability(
       slots[String(n)] = buckets.filter((b) => typeof b === 'string').slice(0, 8);
     }
   }
-  // Through the auth-race retry. "שמירת זמינות נכשלה" arrived four times from
-  // one user with permission-denied, and the /users update rule admits this
-  // exact payload — proved against both the current ruleset and the one that
-  // was live at the moment it failed (tests/rules/availabilitySave.test.mjs,
-  // nine shapes, all allowed).
-  //
-  // That left two candidates for a denial the rules do not explain: the token
-  // not having landed, which this wrapper covers, and the document not being
-  // there at all, which it cannot — see the catch below, which is what the
-  // reporting account turned out to need.
-  //
-  // The retry matters more here than on a read: a read that loses the race
-  // shows an empty list for a moment, and this one throws away a grid the user
-  // has just spent a minute filling in.
+  return {
+    preferredDays: availability.preferredDays,
+    preferredTimes: availability.preferredTimes ?? [],
+    availabilitySlots: slots,
+    preferredCity: availability.preferredCity ?? undefined,
+    cities: Array.isArray(availability.cities) ? availability.cities : [],
+    homeCity: availability.homeCity ?? undefined,
+    homeCityLat: coords?.lat,
+    homeCityLng: coords?.lng,
+    availabilityRadiusKm:
+      typeof availability.availabilityRadiusKm === 'number'
+        ? availability.availabilityRadiusKm
+        : 15,
+    isAvailableForInvites: availability.isAvailableForInvites !== false,
+    acceptsFillerPush: availability.acceptsFillerPush === true,
+  };
+}
+
+/**
+ * Make the app's own state agree with what was just saved.
+ *
+ * ─── Why this lives HERE ─────────────────────────────────────────────────
+ *
+ * It used to live in `AvailabilityEditScreen`, which meant it happened only
+ * when a screen was on the stack. The guest path has no screen: a guest fills
+ * the grid, meets the auth sheet, signs in, and the RESUMER writes the
+ * document from a place where that component is long gone. So the write
+ * succeeded and `currentUser.availability` stayed whatever it was before —
+ * and the first consumer to ask, the notification-offer bridge reading
+ * `acceptsFillerPush`, got a stale answer and silently declined to offer.
+ *
+ * That bridge was the symptom. The defect is that a domain operation left its
+ * own invariant to a caller, so every future consumer of availability had the
+ * same trap waiting. Saving availability is what makes availability true;
+ * making the app agree is part of saving it.
+ *
+ * ─── Patch, not re-read ──────────────────────────────────────────────────
+ *
+ * With the exact map that was just written, a re-fetch would cost a document
+ * read to learn something we already know — and open a read-after-write window
+ * where it could answer with the previous value. The screen's own
+ * `reloadUser()` did exactly that on every save; it is gone now.
+ */
+function applyLocally(uid: string, saved: UserAvailability): void {
+  try {
+    const cur = useUserStore.getState().currentUser;
+    // Only the account that was written to. A patch applied to somebody else's
+    // session would be worse than the staleness it is fixing.
+    if (cur && cur.id === uid) {
+      useUserStore.setState({
+        currentUser: { ...cur, availability: saved, updatedAt: Date.now() },
+      });
+    }
+    // The viewer's radius/location just changed → drop the home-calendar cache
+    // so "פנויים לשחק לידך" recounts on the next open. Also a screen-side
+    // effect until now, and just as absent from the resume path.
+    availabilityFeedService.invalidate();
+  } catch {
+    // Local consistency is best-effort: the write succeeded, and the person's
+    // availability IS saved. Throwing here would report a failure that did not
+    // happen.
+  }
+}
+
+export async function persistAvailability(
+  uid: string,
+  availability: UserAvailability,
+  coords: { lat: number; lng: number } | null,
+): Promise<UserAvailability> {
+  const saved = buildSaved(availability, coords);
+
+  if (USE_MOCK_DATA) {
+    const json = await storage.getAuthUserJson();
+    if (json) {
+      try {
+        const cur = JSON.parse(json);
+        await storage.setAuthUserJson(
+          JSON.stringify({ ...cur, availability: saved, updatedAt: Date.now() }),
+        );
+      } catch {
+        /* corrupt cache — leave alone */
+      }
+    }
+    // Mock mode patches the store too. QA runs here, and a mock that behaves
+    // differently from production on the exact invariant under test is worse
+    // than no mock — this is the environment the staleness was found in.
+    applyLocally(uid, saved);
+    return saved;
+  }
+  // `availabilitySlots` — the precise per-day answer, "Tuesday evenings and
+  // Friday mornings" — is built by `buildSaved` above and written here. The
+  // server has a whole matching branch for it (`availabilityCovers`, which
+  // prefers the grid and falls back to the coarse preferredDays ×
+  // preferredTimes cross-product). It used to be built and never written, so
+  // that branch could not fire for anybody: every user matched on the
+  // cross-product, which says Friday EVENINGS too. And because it was never
+  // written it was never read back, so reopening the screen rebuilt the grid
+  // from the coarse values and quietly lost the distinction the user had just
+  // drawn.
   const write = () =>
     withAuthRaceRetry(() =>
       updateDoc(docs.user(uid), {
+        // Firestore wants explicit nulls where the local shape uses
+        // `undefined`; the VALUES are the same ones `applyLocally` patches in,
+        // which is what makes the patch a statement of fact rather than a
+        // guess about what the server now holds.
         availability: {
-          preferredDays: availability.preferredDays,
-          preferredTimes: availability.preferredTimes ?? [],
-          availabilitySlots: slots,
-          preferredCity: availability.preferredCity ?? null,
-          cities: Array.isArray(availability.cities) ? availability.cities : [],
-          homeCity: availability.homeCity ?? null,
-          homeCityLat: coords?.lat ?? null,
-          homeCityLng: coords?.lng ?? null,
-          availabilityRadiusKm:
-            typeof availability.availabilityRadiusKm === 'number'
-              ? availability.availabilityRadiusKm
-              : 15,
-          isAvailableForInvites: availability.isAvailableForInvites !== false,
-          acceptsFillerPush: availability.acceptsFillerPush === true,
+          ...saved,
+          preferredCity: saved.preferredCity ?? null,
+          homeCity: saved.homeCity ?? null,
+          homeCityLat: saved.homeCityLat ?? null,
+          homeCityLng: saved.homeCityLng ?? null,
         },
         updatedAt: Date.now(),
       }),
@@ -123,4 +181,9 @@ export async function persistAvailability(
     if (!restored) throw err;
     await write();
   }
+
+  // ONLY after a write that actually landed. Every path above that fails
+  // throws, so local state is never told about a save that did not happen.
+  applyLocally(uid, saved);
+  return saved;
 }

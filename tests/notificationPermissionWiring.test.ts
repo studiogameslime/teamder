@@ -158,6 +158,40 @@ describe('the education sheet', () => {
   });
 });
 
+// ─── the invariant lives in the domain, not in a screen ───────────────────
+
+describe('availability state after a save', () => {
+  const save = code(path.join('src', 'services', 'availabilitySave.ts'));
+  const screen = code(
+    path.join('src', 'screens', 'profile', 'AvailabilityEditScreen.tsx'),
+  );
+
+  // The fix had to be here and nowhere else — not in the bridge, not in the
+  // host, not behind a timeout. A screen that owns a domain invariant loses
+  // it on every path that has no screen.
+  it('is the persistence layer that patches the store', () => {
+    expect(save).toContain('useUserStore');
+    expect(save).toMatch(/setState/);
+  });
+
+  it('is not the eligibility layer', () => {
+    for (const f of [
+      path.join('src', 'services', 'actionOfferBridge.ts'),
+      path.join('src', 'services', 'notificationOffer.ts'),
+      path.join('src', 'components', 'notifications', 'NotificationOfferHost.tsx'),
+    ]) {
+      expect(code(f)).not.toMatch(/setState|persistAvailability|setTimeout/);
+    }
+  });
+
+  // Two refreshes would be two costs. The screen's re-read is gone because
+  // the write knows what it wrote.
+  it('leaves no second refresh in the screen', () => {
+    expect(screen).not.toMatch(/reloadUser|getCurrentUser\(\)/);
+    expect(screen).not.toMatch(/availabilityFeedService/);
+  });
+});
+
 // ─── one interruption at a time ───────────────────────────────────────────
 
 describe('two one-time sheets', () => {
