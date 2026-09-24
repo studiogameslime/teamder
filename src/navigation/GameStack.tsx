@@ -16,6 +16,7 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { EmailAuthScreen } from '@/screens/auth/EmailAuthScreen';
 import { GamesListScreen } from '@/screens/games/GamesListScreen';
 import { RequestsScreen } from '@/screens/RequestsScreen';
 import { GameCreateScreen } from '@/screens/games/GameCreateScreen';
@@ -139,6 +140,16 @@ export type GameStackParamList = {
   CommunityPlayers: { groupId: string };
   CommunityStats: { groupId: string };
   CommunityHistory: { groupId: string };
+  /**
+   * The contextual auth sheet's «המשך עם מייל» pushes this.
+   *
+   * It lives in AuthStack, which is only mounted when there is NO user — and
+   * the sheet is only ever shown to a guest, who has one. So the navigate
+   * resolved to nothing and the option was dead: "The action 'NAVIGATE' with
+   * payload {name:'EmailAuth'} was not handled". Same component, one instance
+   * per stack, exactly like MatchDetails and CommunityDetails above.
+   */
+  EmailAuth: undefined;
   AdminApproval: undefined;
   /** Reachable from MatchDetails' overflow menu. Pushed in-stack so
    *  back returns to the match. */
@@ -193,6 +204,7 @@ export function GameStack() {
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
       <Stack.Screen name="AdminApproval" component={AdminApprovalScreen} />
+      <Stack.Screen name="EmailAuth" component={EmailAuthScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="PromoteOrphan" component={PromoteOrphanScreen} />
     </Stack.Navigator>

@@ -357,6 +357,16 @@ export const AnalyticsEvent = {
    *  launch event a second time with richer params would have corrupted that
    *  denominator. */
   GuestHomeViewed: 'guest_home_viewed',                // is_guest, entry_source, has_open_games, availability_state
+  /** The personal-invite landing rendered. Reported once both the identity
+   *  and the activity have SETTLED, so `has_clubs`/`has_games` can tell
+   *  "nobody tapped" apart from "there was nothing to tap". `inviter_uid` is
+   *  a join key; the inviter's NAME never travels here. */
+  PersonalInviteViewed: 'personal_invite_viewed',      // is_guest, entry_source, inviter_uid, inviter_resolved, unresolved_reason, has_clubs, has_games, source
+  /** A club or a match opened FROM the landing — the number that says whether
+   *  showing the inviter's activity was worth the reads. */
+  PersonalInviteTargetOpened: 'personal_invite_target_opened', // target_type, target_id, inviter_uid
+  /** Left the landing for the organic Home instead. */
+  PersonalInviteExploreTapped: 'personal_invite_explore_tapped', // inviter_uid
   /** A deferred link finally resolved — Play Install Referrer or the iOS
    *  clipboard. Neither service emitted anything before this, so whether
    *  deferred attribution worked at all was unobservable. */

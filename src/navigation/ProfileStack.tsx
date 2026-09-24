@@ -17,6 +17,7 @@ import { useIsGuest } from '@/hooks/useAuthenticatedAction';
 import { homeRouteFor } from '@/navigation/homeRouting';
 import { ProfileScreen } from '@/screens/tabs/ProfileScreen';
 import { GuestHomeScreen } from '@/screens/home/GuestHomeScreen';
+import { PersonalInviteScreen } from '@/screens/invite/PersonalInviteScreen';
 import { CreateGroupScreen } from '@/screens/groups/CreateGroupScreen';
 import { CommunityDetailsPublicScreen } from '@/screens/communities/CommunityDetailsPublicScreen';
 import { EmailAuthScreen } from '@/screens/auth/EmailAuthScreen';
@@ -59,6 +60,12 @@ import { FeedbackScreen } from '@/screens/FeedbackScreen';
 export type ProfileStackParamList = {
   /** Option A Home — the guest's landing. See the note on the navigator. */
   GuestHome: undefined;
+  /**
+   * The personal-invite landing. Lives in THIS stack so its close/explore
+   * action lands on the Home beside it and the bottom tabs stay put — an
+   * invitation is an arrival inside Teamder, not a page in front of it.
+   */
+  PersonalInvite: { invitedBy?: string; source?: string } | undefined;
   Profile: undefined;
   Requests: undefined;
   ProfileEdit: undefined;
@@ -190,6 +197,7 @@ export function ProfileStack() {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="GuestHome" component={GuestHomeScreen} />
+      <Stack.Screen name="PersonalInvite" component={PersonalInviteScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="CommunitiesCreate" component={CreateGroupScreen} />
       <Stack.Screen

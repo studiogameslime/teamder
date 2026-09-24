@@ -3081,6 +3081,28 @@ export const he = {
   guestHomeResumeCta: 'המשך',
   guestHomeAccountA11y: 'החשבון שלי',
 
+  // ── Personal invite landing ────────────────────────────────────────────
+  // Somebody's friend sent them here. The screen says who, then shows what
+  // that person actually plays — and asks for nothing.
+  personalInviteVia: (name: string) => `הגעת דרך ${name} 👋`,
+  personalInviteViaBody: 'החבר שלך כבר משחק ב-Teamder.',
+  /** No inviter, no mirror, or a read that failed. Never an error message —
+   *  the invitation is still true, we just cannot name who sent it. */
+  personalInviteGenericTitle: 'הזמינו אותך ל-Teamder ⚽',
+  personalInviteGenericBody: 'מכאן מארגנים כדורגל: מועדון קבוע, מחזור חד־פעמי, או משחק פתוח להצטרף אליו.',
+  personalInviteClubsTitle: 'מועדונים שאפשר להצטרף אליהם',
+  personalInviteGamesTitle: 'מחזורים קרובים',
+  /** Only rendered where the data proves it — the inviter is in `players`. */
+  personalInviteInThis: (name: string) => `${name} בפנים`,
+  personalInviteClubMembers: (n: number) => `${n} חברים`,
+  personalInviteEmptyTitle: (name: string) => `${name} כבר כאן. עכשיו תורך להיכנס למשחק.`,
+  personalInviteEmptyBody: 'אין כרגע מחזור פתוח שאפשר להצטרף אליו דרכו — אבל יש עוד דברים לעשות.',
+  personalInviteExploreCta: 'גלה מה אפשר לעשות ב-Teamder',
+  personalInviteClubsError: 'לא הצלחנו לטעון מועדונים כרגע.',
+  personalInviteGamesError: 'לא הצלחנו לטעון מחזורים כרגע.',
+  personalInviteRetry: 'נסה שוב',
+  personalInviteCloseA11y: 'סגור',
+
   availabilityDaysTitle: 'בחר ימי פעילות',
   /** Single-letter day badges, same index as weekdayLong (Sun→Sat). */
   availabilityDayLetter: ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'],

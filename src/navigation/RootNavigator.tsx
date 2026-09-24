@@ -14,7 +14,7 @@ import { useGroupStore } from '@/store/groupStore';
 import { PostSignInOnboardingScreen } from '@/screens/onboarding/PostSignInOnboardingScreen';
 import { AuthStack } from './AuthStack';
 import { MainTabs } from './MainTabs';
-import { navigateInvite } from './navigationRef';
+import { navigateInvite, navigatePersonalInvite } from './navigationRef';
 import { colors } from '@/theme';
 import { adsService } from '@/services/adsService';
 import { initRemoteConfig } from '@/services/remoteConfigService';
@@ -25,6 +25,7 @@ import {
   clearPendingAction,
   isOpenKind,
 } from '@/services/pendingAction';
+import { wasLandingShown, markLandingShown } from '@/services/inviteLanding';
 import { resumePendingAction } from '@/services/actionCoordinator';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
@@ -108,13 +109,45 @@ export function RootNavigator() {
         return;
       }
 
-      // A personal invite names an inviter and no target. Attribution already
-      // landed at signup (applyInviteAttributionIfFresh), so there is nothing
-      // to navigate to — the dedicated screen is a later round. Clear it and
-      // leave the person on home rather than stranding a stash that no
-      // consumer will ever match.
+      // ── A personal invite ────────────────────────────────────────────
+      //
+      // An inviter and no target. It now has a destination — the landing that
+      // says who sent you — and, more importantly, it must NOT be cleared.
+      //
+      // The line that used to be here cleared the stash, on the reasoning that
+      // "attribution already landed at signup". That was true when a link sent
+      // you to a sign-in wall: stash → sign up → attribute → clear, all in one
+      // breath. The guest session reordered it. Now it is stash → anonymous
+      // session → THIS consumer → browse → maybe sign up much later, and the
+      // signup is what reads `footy.invite.pending`
+      // (applyInviteAttributionIfFresh / applyAcquisitionIfFresh, in
+      // userService). Clearing here meant every personal invite opened by
+      // somebody without an account — which is the whole audience — was
+      // credited to nobody.
+      //
+      // So the landing gets its own latch and the stash keeps its own
+      // lifetime; see `inviteLanding.ts`.
       if (action.kind === 'open_invite') {
-        await clearPendingAction();
+        const invitedBy = action.invitedBy;
+        // ── No inviter, no invitation ──────────────────────────────────
+        //
+        // `open_invite` covers more than a friend's link. The Play Install
+        // Referrer resolves to `{type:'app', source:'google-play'}` on an
+        // ORDINARY store install — an acquisition tag with nobody attached —
+        // and the emulator run showed it opening "הזמינו אותך ל-Teamder" for
+        // somebody who had simply downloaded the app. That is the app
+        // inventing a friend.
+        //
+        // The stash still matters: `applyAcquisitionIfFresh` reads that same
+        // `source` at signup. So this returns WITHOUT clearing and without
+        // latching — nothing was shown, and there is nothing to remember.
+        if (!invitedBy) return;
+        if (await wasLandingShown(invitedBy)) return;
+        const ok = navigatePersonalInvite({ invitedBy, source: action.origin });
+        // Latch only on a navigation that actually happened. A navigator that
+        // was not ready yet is a race to retry on the next mount, not an
+        // invitation this device has already seen.
+        if (ok) await markLandingShown(invitedBy);
         return;
       }
 

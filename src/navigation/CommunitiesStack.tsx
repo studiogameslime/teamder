@@ -19,6 +19,7 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { EmailAuthScreen } from '@/screens/auth/EmailAuthScreen';
 import { PublicGroupsFeedScreen } from '@/screens/communities/PublicGroupsFeedScreen';
 import { RequestsScreen } from '@/screens/RequestsScreen';
 import { CreateGroupScreen } from '@/screens/groups/CreateGroupScreen';
@@ -53,6 +54,16 @@ export type CommunitiesStackParamList = {
   Requests: undefined;
   /** Full-screen map of open public communities (mode: 'communities'). */
   CommunitiesMap: MapScreenParams;
+  /**
+   * The contextual auth sheet's «המשך עם מייל» pushes this.
+   *
+   * It lives in AuthStack, which is only mounted when there is NO user — and
+   * the sheet is only ever shown to a guest, who has one. So the navigate
+   * resolved to nothing and the option was dead: "The action 'NAVIGATE' with
+   * payload {name:'EmailAuth'} was not handled". Same component, one instance
+   * per stack, exactly like the match-detail chain below.
+   */
+  EmailAuth: undefined;
   CommunitiesCreate: undefined;
   CommunityDetails: { groupId: string };
   CommunityDetailsPublic: { groupId: string };
@@ -123,6 +134,7 @@ export function CommunitiesStack() {
       <Stack.Screen name="Requests" component={RequestsScreen} />
       <Stack.Screen name="CommunitiesMap" component={MapScreen} />
       <Stack.Screen name="CommunitiesCreate" component={CreateGroupScreen} />
+      <Stack.Screen name="EmailAuth" component={EmailAuthScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
       <Stack.Screen
         name="CommunityDetailsPublic"

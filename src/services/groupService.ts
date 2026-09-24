@@ -1902,7 +1902,20 @@ export const groupService = {
    * below the store in the import graph and must not reach back up into it.
    */
   async hydratePublicUsers(userIds: UserId[]): Promise<PublicUser[]> {
-    if (USE_MOCK_DATA || userIds.length === 0) return [];
+    if (userIds.length === 0) return [];
+    if (USE_MOCK_DATA) {
+      // Mock mode used to return nothing at all, which meant every surface
+      // built on the public mirror — the guest roster, and now the personal
+      // invite landing — rendered blank in exactly the environment QA runs
+      // in. There is no mirror collection to seed, so the mock answers from
+      // the same player list the games are built from, through the SAME
+      // four-field shape the converter enforces. Nothing private crosses,
+      // because nothing private exists on a mock player.
+      return userIds
+        .map((id) => mockPlayers.find((p) => p.id === id))
+        .filter((p): p is (typeof mockPlayers)[number] => !!p)
+        .map((p) => ({ id: p.id, name: p.displayName, photoUrl: p.avatarUrl }));
+    }
     const ids = Array.from(new Set(userIds.filter(Boolean)));
     if (ids.length === 0) return [];
 

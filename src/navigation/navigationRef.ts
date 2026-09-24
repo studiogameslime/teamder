@@ -140,6 +140,32 @@ export function navigateInvite(args: {
 }
 
 /**
+ * Open the personal-invite landing.
+ *
+ * Addressed at ProfileTab because that is where the Home lives, and the
+ * landing's close action goes there — an invitation is an arrival INSIDE
+ * Teamder, not a page in front of it. `initial: false` keeps Home underneath
+ * so closing is a back rather than a dead end.
+ *
+ * Returns false when the navigator is not ready, and the caller keeps its
+ * latch unset so the next mount tries again.
+ */
+export function navigatePersonalInvite(args: {
+  invitedBy?: string;
+  source?: string;
+}): boolean {
+  if (!navigationRef.isReady()) return false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
+  nav.navigate('ProfileTab', {
+    screen: 'PersonalInvite',
+    initial: false,
+    params: { invitedBy: args.invitedBy, source: args.source },
+  });
+  return true;
+}
+
+/**
  * Land on a thing that was just created, celebrating.
  *
  * Exists because a RESUMED creation has no screen to navigate from: the

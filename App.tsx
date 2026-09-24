@@ -382,6 +382,14 @@ export default function App() {
   const currentUserId = useUserStore((s) => s.currentUser?.id ?? null);
   const profileComplete = useUserStore((s) => s.isProfileComplete());
   const onboardingComplete = useUserStore((s) => s.hasCompletedOnboarding());
+  // A guest is NOT somebody "מה חדש" is written for. `buildGuestUser` stamps
+  // `onboardingCompleted: true` so an anonymous session skips the post-sign-in
+  // profile screen — which had the side effect of opening the What's New gate
+  // for them too, and the modal landed on top of the guest Home the first time
+  // anybody ever saw it. The sheet lists what changed since a version this
+  // person has never run; there is nothing in it for them, and it costs the
+  // first impression the Home exists to make.
+  const viewerIsGuest = useUserStore((s) => s.currentUser?.isGuest === true);
   // Hydration signals from the stores. When both flip true the splash
   // is allowed to fade out — that way the user never sees the small
   // "still loading" spinner that RootNavigator used to render under
@@ -1122,7 +1130,8 @@ export default function App() {
           splashDone &&
           updateKind === 'none' &&
           !!currentUserId &&
-          onboardingComplete
+          onboardingComplete &&
+          !viewerIsGuest
         }
       />
     </SafeAreaProvider>
