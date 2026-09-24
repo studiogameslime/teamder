@@ -21,6 +21,7 @@
 //     an error, just an empty result we ignore.
 
 import { Platform } from 'react-native';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { storage, type PendingInvite } from './storage';
 import { logError } from './errorLog';
 
@@ -199,6 +200,14 @@ export async function consumeInstallReferrerIfFresh(): Promise<void> {
             return finish();
           }
           await storage.setPendingInvite(invite);
+          // Nothing in this file emitted anything before, so whether deferred
+          // attribution worked at all was unobservable in production.
+          logEvent(AnalyticsEvent.DeferredDeepLinkResolved, {
+            channel: 'install_referrer',
+            target_type: invite.type,
+            target_id: invite.type === 'app' ? undefined : invite.id,
+            has_inviter: !!invite.invitedBy,
+          });
           if (__DEV__) {
             console.info('[installReferrer] stashed pending invite', invite);
           }

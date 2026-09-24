@@ -127,6 +127,17 @@ export function isDrafted(a: PendingAction): a is DraftedAction {
   return DRAFTED_KINDS.has(a.kind);
 }
 
+/**
+ * Kinds a GUEST may consume without an account: they only navigate.
+ *
+ * Everything else writes, and writing needs a person. Those stay stashed
+ * until the contextual auth that completes them exists — dropping them would
+ * silently discard what somebody asked for.
+ */
+export function isOpenKind(kind: PendingActionKind): boolean {
+  return kind === 'open_game' || kind === 'open_club' || kind === 'open_invite';
+}
+
 // ─── Pure conversion ──────────────────────────────────────────────────────
 
 /**
@@ -350,5 +361,6 @@ export const pendingAction = {
   parse: parsePendingAction,
   isTargeted,
   isDrafted,
+  isOpenKind,
   KEY,
 };

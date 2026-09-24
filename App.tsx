@@ -418,6 +418,45 @@ export default function App() {
   // triggers navigation only once. Without this, iOS sometimes
   // delivers the same URL via getInitialURL AND the listener on
   // the same launch, double-navigating into the target.
+  // Fires EXACTLY once per cold start, whatever happened. `entry_source` is a
+  // closed vocabulary so the funnel can be sliced on it; `is_guest` says who
+  // arrived, which is the number the whole guest refactor is judged on.
+  const entryReportedRef = useRef(false);
+  const reportEntrySource = (
+    how: 'deep_link' | 'stash' | 'deferred' | 'organic',
+    pending: { type: 'session' | 'team' | 'app'; id?: string; invitedBy?: string } | null,
+  ) => {
+    if (entryReportedRef.current) return;
+    entryReportedRef.current = true;
+    const source =
+      how === 'organic'
+        ? 'organic'
+        : pending?.type === 'session'
+          ? 'game_link'
+          : pending?.type === 'team'
+            ? 'club_link'
+            : pending?.type === 'app'
+              ? 'personal_invite'
+              : 'unknown';
+    const u = useUserStore.getState().currentUser;
+    logEvent(AnalyticsEvent.EntrySourceResolved, {
+      entry_source: source,
+      resolved_by: how,
+      is_guest: u?.isGuest === true,
+      target_type: pending?.type ?? 'none',
+      // The id of a PUBLIC game or club — not personal data, and the thing
+      // that makes a funnel row joinable to a real target. Never the inviter's
+      // uid, which would be somebody's identity.
+      target_id: pending?.id,
+      has_inviter: !!pending?.invitedBy,
+    });
+  };
+
+  // How an invite maps onto a PendingAction kind. One place, so the analytics
+  // and the consumer cannot drift on what a link "is".
+  const kindOfInvite = (p: { type: 'session' | 'team' | 'app' }) =>
+    p.type === 'session' ? 'open_game' : p.type === 'team' ? 'open_club' : 'open_invite';
+
   useEffect(() => {
     const DUP_WINDOW_MS = 3000;
     let lastUrl: string | null = null;
@@ -450,8 +489,22 @@ export default function App() {
       if (!parsed) return;
       // Opened via an invite link → suppress the next app-open ad.
       adsService.noteIntentfulOpen();
+      logEvent(AnalyticsEvent.InviteLinkOpened, {
+        type: parsed.type,
+        has_inviter: !!parsed.invitedBy,
+      });
       try {
+        // Still the legacy stash: `stashPendingInvite` is what the deferred
+        // services and the warm handler all funnel through, and it is where
+        // the don't-overwrite guard lives. The consumer reads it through
+        // `readPendingAction`, which derives from this key — so the new shape
+        // is the source of truth without the old one having to move yet.
         await stashPendingInvite(parsed);
+        logEvent(AnalyticsEvent.PendingActionSaved, {
+          kind: kindOfInvite(parsed),
+          origin: 'deep_link',
+          has_draft: false,
+        });
       } catch (err) {
         if (__DEV__) console.warn('[invite] stash failed', err);
       }
@@ -495,10 +548,15 @@ export default function App() {
       }
 
       const userState = useUserStore.getState();
+      // Same correction as the consumer in RootNavigator: a GUEST is ready.
+      // `isProfileComplete()` is "has a non-empty name", which a guest never
+      // has, so requiring it here meant a warm link opened by somebody
+      // without an account fell through to the stash and was never navigated.
+      const viewerIsGuest = userState.currentUser?.isGuest === true;
       const isAuthReady =
         !!userState.currentUser &&
-        userState.isProfileComplete() &&
-        userState.hasCompletedOnboarding();
+        (viewerIsGuest ||
+          (userState.isProfileComplete() && userState.hasCompletedOnboarding()));
 
       if (isAuthReady && navigationRef.isReady()) {
         const cachedGroups = useGroupStore.getState().groups;
@@ -542,9 +600,14 @@ export default function App() {
 
       // 2. Already-stashed invite? If so, skip the referrer call —
       //    we have a target, no need to re-derive one from the past.
+      //    This is ALSO the don't-overwrite guard: neither deferred source
+      //    may clobber a target a real link just produced.
       const existing = await storage.getPendingInvite();
       if (__DEV__) console.info('[invite] existing pending →', existing);
-      if (existing) return;
+      if (existing) {
+        reportEntrySource(initialUrl ? 'deep_link' : 'stash', existing);
+        return;
+      }
 
       // 3. Last resort (Android): Play Install Referrer. No-op on
       //    iOS / Expo Go / sideload. The service has its own internal
@@ -574,6 +637,14 @@ export default function App() {
       } catch (err) {
         if (__DEV__) console.warn('[invite] clipboard invite threw', err);
       }
+
+      // Every source has now been asked. Report what this launch turned out
+      // to be — INCLUDING `organic`, which is the whole value: without a
+      // positive event for "came from nothing" the organic share has to be
+      // inferred from the absence of other events, and absence is not a
+      // number you can trust.
+      const resolved = await storage.getPendingInvite();
+      reportEntrySource(resolved ? 'deferred' : 'organic', resolved);
     })();
 
     const sub = Linking.addEventListener('url', (e) => handleWarm(e.url));

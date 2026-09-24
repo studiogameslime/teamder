@@ -45,6 +45,7 @@ import {
   consumePendingAction,
   isTargeted,
   isDrafted,
+  isOpenKind,
   type PendingAction,
 } from '@/services/pendingAction';
 import type { PendingInvite } from '@/services/storage';
@@ -455,6 +456,39 @@ describe('consumePendingAction', () => {
   it('is a no-op on an empty device', async () => {
     expect(await consumePendingAction(NOW)).toBeNull();
     expect(await consumePendingAction(NOW)).toBeNull();
+  });
+});
+
+// ─── what a guest may consume ─────────────────────────────────────────────
+
+describe('isOpenKind', () => {
+  // The line between "navigate somewhere" and "write something". A guest may
+  // do the first without an account; the second waits for the contextual auth
+  // that completes it, and must NOT be dropped in the meantime.
+  it('admits exactly the three navigate-only kinds', () => {
+    for (const k of ['open_game', 'open_club', 'open_invite'] as const) {
+      expect(isOpenKind(k)).toBe(true);
+    }
+  });
+
+  it('refuses every kind that writes', () => {
+    for (const k of [
+      'join_game', 'join_club', 'create_club', 'create_game', 'save_availability',
+    ] as const) {
+      expect(isOpenKind(k)).toBe(false);
+    }
+  });
+
+  // A kind added later defaults to "not consumable by a guest", which is the
+  // safe direction: forgetting to list it costs a held action, not a write
+  // performed by somebody who never signed in.
+  it('partitions every kind exactly once', () => {
+    const all = [
+      'open_game', 'open_club', 'open_invite',
+      'join_game', 'join_club', 'create_club', 'create_game', 'save_availability',
+    ] as const;
+    expect(all.filter(isOpenKind)).toHaveLength(3);
+    expect(all.filter((k) => !isOpenKind(k))).toHaveLength(5);
   });
 });
 

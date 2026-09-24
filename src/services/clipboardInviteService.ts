@@ -24,6 +24,7 @@
 //     nice-to-have, never a blocker.
 
 import { Platform } from 'react-native';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import * as Clipboard from 'expo-clipboard';
 import { storage } from './storage';
 import { parseInviteUrl } from './deepLinkService';
@@ -65,6 +66,12 @@ export async function consumeClipboardInviteIfFresh(): Promise<void> {
       const invite = parseInviteUrl(raw);
       if (invite) {
         await storage.setPendingInvite(invite);
+        logEvent(AnalyticsEvent.DeferredDeepLinkResolved, {
+          channel: 'clipboard',
+          target_type: invite.type,
+          target_id: invite.type === 'app' ? undefined : invite.id,
+          has_inviter: !!invite.invitedBy,
+        });
         // Clear only OUR token (we matched it) so a later launch — or a
         // screenshot of the clipboard — can't resurface a stale invite.
         // A non-matching URL is left untouched: it's the user's own.

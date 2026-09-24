@@ -731,6 +731,56 @@ export const notificationsService = {
     }
   },
 
+  /**
+   * Register the push token ONLY if permission is already granted. Never
+   * prompts.
+   *
+   * The distinction this exists for: not asking for permission is not the same
+   * as not registering a token. Somebody who granted push six months ago must
+   * keep receiving their game notifications — their token still needs
+   * refreshing on every launch, because FCM rotates it. What must stop is the
+   * OS dialog appearing on first launch, before the person has any idea what
+   * Teamder would notify them about.
+   *
+   * `requestAndRegisterPushToken` below is unchanged and still the right call
+   * from a place where the person has just done something that earns a
+   * notification. This is the boot-time variant.
+   */
+  async registerPushTokenIfPermitted(uid: UserId): Promise<string | null> {
+    if (USE_MOCK_DATA) return null;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Constants = require('expo-constants').default;
+    if (
+      Constants?.appOwnership === 'expo' ||
+      Constants?.executionEnvironment === 'storeClient'
+    ) {
+      return null;
+    }
+    let Notifications: typeof import('expo-notifications') | null = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      Notifications = require('expo-notifications');
+    } catch {
+      return null;
+    }
+    if (!Notifications) return null;
+    try {
+      const existing = await Notifications.getPermissionsAsync();
+      // The ONLY difference from the function below: no `requestPermissions`.
+      if (!existing.granted) return null;
+      const token = await getFcmToken();
+      if (!token) return null;
+      await this.registerDeviceToken(uid, token);
+      return token;
+    } catch (err) {
+      logError('registerPushTokenIfPermitted', err, { uid });
+      if (__DEV__) {
+        console.warn('[notifications] registerPushTokenIfPermitted failed', err);
+      }
+      return null;
+    }
+  },
+
   async requestAndRegisterPushToken(uid: UserId): Promise<string | null> {
     if (USE_MOCK_DATA) return null;
     // Push tokens require a native module that is NOT bundled in Expo Go

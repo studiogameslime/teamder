@@ -336,6 +336,27 @@ export const AnalyticsEvent = {
    *  `enableDebug`, so in a store build a broken stitch is silent. */
   IdentityAliased: 'identity_aliased',   // provider
 
+  // ── Entry: how somebody arrived, and as whom ───────────────────────────
+  /** A silent anonymous session was started because there was none. The
+   *  denominator for every funnel below — one per fresh install. */
+  GuestSessionStarted: 'guest_session_started',        // origin
+  /** All three cold-start link sources were checked and this is what they
+   *  produced. Fires exactly once per launch, `organic` included, so the
+   *  split between "came from a link" and "just opened the app" is countable
+   *  rather than inferred from the absence of other events. */
+  EntrySourceResolved: 'entry_source_resolved',        // entry_source, is_guest, target_type, target_id
+  /** Reached the app with nothing to consume. */
+  OrganicEntryViewed: 'organic_entry_viewed',          // is_guest
+  /** A deferred link finally resolved — Play Install Referrer or the iOS
+   *  clipboard. Neither service emitted anything before this, so whether
+   *  deferred attribution worked at all was unobservable. */
+  DeferredDeepLinkResolved: 'deferred_deep_link_resolved', // channel, target_type, target_id
+
+  // ── The pending action ─────────────────────────────────────────────────
+  PendingActionSaved: 'pending_action_saved',          // kind, origin, has_draft
+  PendingActionResumed: 'pending_action_resumed',      // kind, origin, age_ms, is_guest
+  PendingActionFailed: 'pending_action_failed',        // kind, reason
+
   // ─── Onboarding & activation ───
   OnboardingChecklistStepTapped: 'onboarding_checklist_step_tapped',
   BootHydrateFailed: 'boot_hydrate_failed',

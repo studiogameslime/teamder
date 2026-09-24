@@ -71,6 +71,7 @@ export function MainTabs() {
   // App-wide unread subscriber: keeps the chat store fresh so the tab
   // badge + chats-list previews update no matter which tab is open.
   const uid = useUserStore((s) => s.currentUser?.id);
+  const isGuest = useUserStore((s) => s.currentUser?.isGuest === true);
   useEffect(() => {
     if (!uid) {
       useChatStore.getState().clear();
@@ -88,7 +89,19 @@ export function MainTabs() {
       // Land on the Home tab (the player-card-turned-dashboard): greeting,
       // next game, pending requests, setup checklist, tips + quick actions.
       // It's the leading (right under RTL) tab, where "home" conventionally sits.
-      initialRouteName="ProfileTab"
+      //
+      // EXCEPT for a guest, who has no greeting to read, no next game and no
+      // checklist — their home tab is an empty profile belonging to a person
+      // who does not exist, which is the worst possible first screen for
+      // somebody deciding whether this app is for them. They land on the
+      // games feed instead: it already carries a discovery list and already
+      // handles "you are in no clubs" with a one-line note rather than a
+      // wall, so it shows real games with no changes at all.
+      //
+      // Not a redesign — a different existing screen, chosen because it is
+      // the one that works. The organic entry experience proper is its own
+      // round.
+      initialRouteName={isGuest ? 'GameTab' : 'ProfileTab'}
       tabBar={(props) => <TabBarWithBanner {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,

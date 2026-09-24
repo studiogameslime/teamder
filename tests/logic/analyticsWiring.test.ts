@@ -64,7 +64,6 @@ const KNOWN_UNWIRED = new Set<string>([
   'GroupJoinDeclinedByAdmin',
   'GroupMemberRemoved',
   'InviteCodeCopied',
-  'InviteLinkOpened',
   'InviteShareCompleted',
   'LiveMatchPhaseTransition',
   'NetworkFailure',

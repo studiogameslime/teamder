@@ -11,7 +11,6 @@ import { View } from 'react-native';
 import { SplashVisual } from '@/screens/SplashScreen';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
-import { OnboardingScreen } from '@/screens/onboarding/OnboardingScreen';
 import { PostSignInOnboardingScreen } from '@/screens/onboarding/PostSignInOnboardingScreen';
 import { AuthStack } from './AuthStack';
 import { MainTabs } from './MainTabs';
@@ -21,6 +20,11 @@ import { adsService } from '@/services/adsService';
 import { initRemoteConfig } from '@/services/remoteConfigService';
 import { notificationsService } from '@/services/notificationsService';
 import { storage } from '@/services/storage';
+import {
+  readPendingAction,
+  clearPendingAction,
+  isOpenKind,
+} from '@/services/pendingAction';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -32,7 +36,7 @@ export type { GameStackParamList as RootStackParamList } from './GameStack';
 
 export function RootNavigator() {
   const userHydrated = useUserStore((s) => s.hydrated);
-  const onboardingDone = useUserStore((s) => s.onboardingDone);
+  const guestInitFailed = useUserStore((s) => s.guestInitFailed);
   const currentUser = useUserStore((s) => s.currentUser);
   const profileComplete = useUserStore((s) => s.isProfileComplete());
   const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding());
@@ -62,22 +66,68 @@ export function RootNavigator() {
   const consumedRef = useRef(false);
   useEffect(() => {
     if (consumedRef.current) return;
-    if (!currentUser || !profileComplete || !hasCompletedOnboarding) return;
+    // Readiness is "we know who is asking", and a GUEST counts. The old
+    // condition also required `profileComplete`, which is `name.trim().length
+    // > 0` — and a guest's name is empty by construction. So every deep link
+    // opened by somebody without an account was stashed, never consumed, and
+    // they landed on the games feed wondering where the game went. Viewing a
+    // public target needs no account; that is the whole point of the link.
+    if (!currentUser) return;
+    const viewerIsGuest = currentUser.isGuest === true;
+    if (!viewerIsGuest && (!profileComplete || !hasCompletedOnboarding)) return;
     consumedRef.current = true;
     (async () => {
-      const pending = await storage.getPendingInvite();
+      // PendingAction is the source of truth now. It reads the new key and
+      // falls back to deriving from the legacy one, so a target stashed by a
+      // previous build still resolves — and the legacy key is left in place
+      // for the seven other readers that have not moved.
+      const action = await readPendingAction();
       if (__DEV__) {
-        console.info('[invite] consumer — pending before consume', pending);
+        console.info('[invite] consumer — pending before consume', action);
       }
-      if (!pending) return;
+      if (!action) return;
 
-      // Generic app invite — no target to open. Attribution already
-      // landed at signup (applyInviteAttributionIfFresh); nothing to
-      // navigate to, so just clear the stash and leave the user on home.
-      if (pending.type === 'app') {
-        await storage.clearPendingInvite();
+      const ageMs = Math.max(0, Date.now() - action.createdAt);
+      logEvent(AnalyticsEvent.PendingActionResumed, {
+        kind: action.kind,
+        origin: action.origin,
+        age_ms: ageMs,
+        is_guest: viewerIsGuest,
+      });
+
+      // Actions that WRITE are not consumable yet — the contextual auth that
+      // completes them is the next round. Keeping them stashed is the correct
+      // behaviour, not a gap: the intent is still valid and the machinery to
+      // finish it arrives shortly. Clearing them here would silently discard
+      // what somebody asked for.
+      if (!isOpenKind(action.kind)) {
+        if (__DEV__) {
+          console.info('[invite] consumer — write action held for later', action.kind);
+        }
         return;
       }
+
+      // A personal invite names an inviter and no target. Attribution already
+      // landed at signup (applyInviteAttributionIfFresh), so there is nothing
+      // to navigate to — the dedicated screen is a later round. Clear it and
+      // leave the person on home rather than stranding a stash that no
+      // consumer will ever match.
+      if (action.kind === 'open_invite') {
+        await clearPendingAction();
+        return;
+      }
+
+      // Narrow on the discriminant itself rather than through `isOpenKind`,
+      // which is a boolean and cannot tell the compiler that `targetId` is
+      // present. Everything past here has a real target.
+      if (action.kind !== 'open_game' && action.kind !== 'open_club') return;
+
+      // Shaped like the legacy value the rest of this effect was written
+      // against, so the pre-flight and navigation below are untouched.
+      const pending =
+        action.kind === 'open_game'
+          ? ({ type: 'session', id: action.targetId } as const)
+          : ({ type: 'team', id: action.targetId } as const);
 
       // Pre-flight existence check. Three explicit outcomes:
       //   • exists=true  → navigate; the target screen renders the
@@ -121,8 +171,12 @@ export function RootNavigator() {
           type: pending.type,
           id: pending.id,
         });
+        logEvent(AnalyticsEvent.PendingActionFailed, {
+          kind: action.kind,
+          reason: 'target_deleted',
+        });
         toast.error('הקישור לא תקין או שהפריט כבר לא קיים');
-        await storage.clearPendingInvite();
+        await clearPendingAction();
         return;
       }
 
@@ -154,7 +208,7 @@ export function RootNavigator() {
       // against re-firing on the same mount.
       if (ok) {
         if (__DEV__) console.info('[invite] consumer — cleared after navigate');
-        await storage.clearPendingInvite();
+        await clearPendingAction();
       } else if (__DEV__) {
         console.info(
           '[invite] consumer — navigateInvite returned false, keeping stash',
@@ -164,6 +218,22 @@ export function RootNavigator() {
       if (__DEV__) console.warn('[invite] consume failed', err);
     });
   }, [currentUser, profileComplete, hasCompletedOnboarding]);
+
+  // Reaching the app with nothing to consume — the organic arrival. Fires once
+  // per launch, after the consumer has had its chance, so it counts people who
+  // opened Teamder rather than followed a link into it.
+  const organicRef = useRef(false);
+  useEffect(() => {
+    if (organicRef.current || !currentUser || !groupHydrated) return;
+    organicRef.current = true;
+    void (async () => {
+      const pending = await readPendingAction().catch(() => null);
+      if (pending) return;
+      logEvent(AnalyticsEvent.OrganicEntryViewed, {
+        is_guest: currentUser.isGuest === true,
+      });
+    })();
+  }, [currentUser, groupHydrated]);
 
   // Hydrate user store on mount + initialize side services.
   // Each side service is wrapped so a failure in one doesn't break boot.
@@ -238,22 +308,52 @@ export function RootNavigator() {
     // prompt (App Store 5.1.1 friction) and would only register an orphan token
     // under a throwaway uid. Real push starts after a real sign-up.
     if (currentUser.isGuest) return;
+    // REGISTER, never REQUEST. The OS permission dialog used to appear on the
+    // first launch after signing in — before the person had seen a single game
+    // — and a dialog asked at the wrong moment is usually answered "no" once,
+    // permanently. The contextual prompt that replaces it lands in the next
+    // round; until then we simply do not ask.
+    //
+    // Somebody who already granted push keeps everything: FCM rotates tokens,
+    // so the refresh below still has to run on every launch for their existing
+    // notifications to keep arriving.
     notificationsService
-      .requestAndRegisterPushToken(currentUser.id)
+      .registerPushTokenIfPermitted(currentUser.id)
       .catch((err) => {
         if (__DEV__) {
-          console.warn('[boot] requestAndRegisterPushToken threw', err);
+          console.warn('[boot] registerPushTokenIfPermitted threw', err);
         }
       });
   }, [currentUser?.id]);
 
+  // ── The decision tree ───────────────────────────────────────────────────
+  //
+  // What changed: arriving no longer costs an account. The old order was
+  // carousel → sign-in wall → app, so the first thing a new person met was a
+  // demand. Now `hydrate` starts an anonymous session when there is no
+  // session, and an anonymous session is a LEGAL state of the app — not an
+  // error, not a half-finished sign-up, and not something to be onboarded out
+  // of.
+  //
   // Splash while we figure out where to go.
   if (!userHydrated) return <Splash />;
 
-  if (!onboardingDone) return <OnboardingScreen />;
+  // No session AND the silent guest could not be started — realistically no
+  // network on a fresh install. Fall back to the sign-in screen, which is
+  // where this person landed before any of this existed. Without this branch
+  // the splash would never end.
+  if (!currentUser) {
+    if (guestInitFailed) return <AuthStack initialRoute="SignIn" />;
+    // Hydrate is still in flight (it flips `hydrated` only once the session
+    // is in hand), so this is a belt-and-braces frame, not a normal path.
+    return <Splash />;
+  }
 
-  if (!currentUser) return <AuthStack initialRoute="SignIn" />;
-
+  // The three-screen carousel is deliberately NOT here any more. It ran before
+  // anyone had seen the product, which is the worst moment to explain it. The
+  // screen, the `onboardingDone` flag and its storage all still exist — see
+  // the note on OnboardingScreen — they are simply no longer on the way in.
+  //
   // Guests (anonymous "browse" sessions) skip the registration gates and go
   // straight to the tabs — browsing public communities/games must not require
   // an account (App Store guideline 5.1.1(v)). Account actions prompt sign-in.

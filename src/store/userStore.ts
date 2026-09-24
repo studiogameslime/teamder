@@ -16,6 +16,16 @@ interface UserStore {
   // Bootstrap
   hydrated: boolean;        // true once we've read AsyncStorage on app launch
   hydrate: () => Promise<void>;
+  /**
+   * True when hydrate finished with NO session because the silent anonymous
+   * sign-in itself failed — almost always no network on a fresh install.
+   *
+   * Without this the app has no way to tell "still starting a guest session"
+   * from "there will never be one", and RootNavigator would sit on the splash
+   * forever. It is the fallback flag, not a normal state: on every successful
+   * boot it stays false.
+   */
+  guestInitFailed: boolean;
 
   // Onboarding
   onboardingDone: boolean;
@@ -99,6 +109,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
   hydrated: false,
   onboardingDone: false,
   currentUser: null,
+  guestInitFailed: false,
 
   hydrate: async () => {
     // Defensive: each branch wrapped so a single failure (transient
@@ -119,7 +130,48 @@ export const useUserStore = create<UserStore>((set, get) => ({
         return null;
       }),
     ]);
-    set({ hydrated: true, onboardingDone, currentUser: user });
+    if (user) {
+      set({ hydrated: true, onboardingDone, currentUser: user, guestInitFailed: false });
+      return;
+    }
+
+    // ── No session at all ────────────────────────────────────────────────
+    //
+    // A fresh install, or a device somebody signed out of. Give it an
+    // ANONYMOUS one rather than showing a sign-in wall: browsing Teamder does
+    // not need an account, and the wall was the first thing every new person
+    // met.
+    //
+    // Done here rather than in an effect so the boot stays atomic — `hydrated`
+    // flips once, with the session already in hand, and nothing renders the
+    // in-between state. An effect would paint the signed-out tree for a frame
+    // first.
+    //
+    // NOT in mock mode: there `getCurrentUser` reads a seeded AsyncStorage
+    // user, and manufacturing a guest when the seed is absent would change
+    // what screenshot runs and QA see.
+    if (USE_MOCK_DATA) {
+      set({ hydrated: true, onboardingDone, currentUser: null, guestInitFailed: false });
+      return;
+    }
+    let guest: User | null = null;
+    try {
+      guest = await userService.signInAsGuest();
+      logEvent(AnalyticsEvent.GuestSessionStarted, { origin: 'silent' });
+    } catch (err) {
+      // Offline on first launch is the realistic case. Report it and let
+      // RootNavigator fall back to the sign-in screen, which is where this
+      // person would have landed before any of this existed.
+      logError('userHydrateSilentGuest', err, {});
+      logEvent(AnalyticsEvent.BootHydrateFailed, { source: 'silent_guest' });
+      if (__DEV__) console.warn('[userStore.hydrate] silent guest failed', err);
+    }
+    set({
+      hydrated: true,
+      onboardingDone,
+      currentUser: guest,
+      guestInitFailed: guest === null,
+    });
   },
 
   completeOnboarding: async () => {
@@ -175,7 +227,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
       await removeDeviceTokenBeforeAuthTeardown(uid);
     }
     await userService.signOut();
-    set({ currentUser: null });
+    set({ currentUser: null, guestInitFailed: false });
     // Wipe per-user stores so the next account (incl. the common
     // guest→register flow) never sees the previous user's communities/roster.
     useGroupStore.getState().reset();
