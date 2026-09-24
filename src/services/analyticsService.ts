@@ -347,6 +347,16 @@ export const AnalyticsEvent = {
   EntrySourceResolved: 'entry_source_resolved',        // entry_source, is_guest, target_type, target_id
   /** Reached the app with nothing to consume. */
   OrganicEntryViewed: 'organic_entry_viewed',          // is_guest
+  /** The guest Home rendered.
+   *
+   *  NOT a duplicate of `OrganicEntryViewed`, which is a LAUNCH fact fired
+   *  once per cold start from RootNavigator and is the denominator of the
+   *  entry funnel. This is a SCREEN fact: it fires on each visit and carries
+   *  what the screen actually had to offer, which is the only way to tell
+   *  "nobody taps create" from "there were no open games to tap". Firing the
+   *  launch event a second time with richer params would have corrupted that
+   *  denominator. */
+  GuestHomeViewed: 'guest_home_viewed',                // is_guest, entry_source, has_open_games, availability_state
   /** A deferred link finally resolved — Play Install Referrer or the iOS
    *  clipboard. Neither service emitted anything before this, so whether
    *  deferred attribution worked at all was unobservable. */

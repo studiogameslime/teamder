@@ -18,6 +18,7 @@ import { AnimatedTabIcon } from '@/components/anim/AnimatedTabIcon';
 import { chatService } from '@/services/chatService';
 import { useChatStore, totalUnread } from '@/store/chatStore';
 import { useUserStore } from '@/store/userStore';
+import { tabRootFor } from '@/navigation/homeRouting';
 import { colors } from '@/theme';
 import { he } from '@/i18n/he';
 import { maybeInterceptTabLeave } from '@/navigation/tabLeaveGuard';
@@ -86,22 +87,12 @@ export function MainTabs() {
 
   return (
     <Tab.Navigator
-      // Land on the Home tab (the player-card-turned-dashboard): greeting,
-      // next game, pending requests, setup checklist, tips + quick actions.
-      // It's the leading (right under RTL) tab, where "home" conventionally sits.
-      //
-      // EXCEPT for a guest, who has no greeting to read, no next game and no
-      // checklist — their home tab is an empty profile belonging to a person
-      // who does not exist, which is the worst possible first screen for
-      // somebody deciding whether this app is for them. They land on the
-      // games feed instead: it already carries a discovery list and already
-      // handles "you are in no clubs" with a one-line note rather than a
-      // wall, so it shows real games with no changes at all.
-      //
-      // Not a redesign — a different existing screen, chosen because it is
-      // the one that works. The organic entry experience proper is its own
-      // round.
-      initialRouteName={isGuest ? 'GameTab' : 'ProfileTab'}
+      // Land on the Home tab. For a full account that is the dashboard —
+      // greeting, next match, pending requests, activation checklist. For a
+      // GUEST it is now the Option A Home (see ProfileStack), which is why
+      // this no longer diverts them to the games feed: the diversion existed
+      // because the Home tab had nothing to show a guest, and now it does.
+      initialRouteName="ProfileTab"
       tabBar={(props) => <TabBarWithBanner {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,
@@ -141,7 +132,7 @@ export function MainTabs() {
         component={ProfileStack}
         options={{ title: he.tabHome }}
         listeners={({ navigation, route }) => ({
-          tabPress: (e) => resetTabToRoot(e, navigation, route.name),
+          tabPress: (e) => resetTabToRoot(e, navigation, route.name, isGuest),
         })}
       />
       <Tab.Screen
@@ -154,7 +145,7 @@ export function MainTabs() {
           // screen. The intuitive behaviour is "tap tab = go home" —
           // pop the nested stack to its root when the user re-presses
           // the already-focused tab.
-          tabPress: (e) => resetTabToRoot(e, navigation, route.name),
+          tabPress: (e) => resetTabToRoot(e, navigation, route.name, isGuest),
         })}
       />
       <Tab.Screen
@@ -162,7 +153,7 @@ export function MainTabs() {
         component={GameStack}
         options={{ title: he.tabGame }}
         listeners={({ navigation, route }) => ({
-          tabPress: (e) => resetTabToRoot(e, navigation, route.name),
+          tabPress: (e) => resetTabToRoot(e, navigation, route.name, isGuest),
         })}
       />
       <Tab.Screen
@@ -175,7 +166,7 @@ export function MainTabs() {
         listeners={({ navigation, route }) => ({
           tabPress: (e) => {
             logEvent(AnalyticsEvent.ChatTabPressed, { badge: chatBadge });
-            resetTabToRoot(e, navigation, route.name);
+            resetTabToRoot(e, navigation, route.name, isGuest);
           },
         })}
       />
@@ -192,12 +183,11 @@ export function MainTabs() {
 // PERSISTED, so reading the live first route would make "tap tab → root"
 // keep landing on the wrong screen forever. Resetting to the known root
 // self-heals any such corrupted/persisted stack on the next tab tap.
-const TAB_ROOT: Record<string, string> = {
-  GameTab: 'GamesList',
-  CommunitiesTab: 'CommunitiesFeed',
-  ChatTab: 'ChatsList',
-  ProfileTab: 'Profile',
-};
+//
+// ProfileTab's root DEPENDS ON THE VIEWER, which is why the flat map this used
+// to be became `tabRootFor` — and why that lives in `homeRouting` rather than
+// here: the stack's `initialRouteName` has to give the same answer, and the two
+// files disagreeing would walk a guest off their Home on a single tab tap.
 
 // Every tab press — whether the tab is currently focused or not —
 // resets the nested stack so the user lands on that tab's root
@@ -220,6 +210,7 @@ function resetTabToRoot(
   e: { defaultPrevented: boolean; preventDefault: () => void },
   navigation: { isFocused: () => boolean; getState: () => unknown; dispatch: (a: unknown) => void },
   tabName: string,
+  isGuest: boolean,
 ) {
   const state = navigation.getState() as {
     index?: number;
@@ -232,7 +223,7 @@ function resetTabToRoot(
   const stack = tabRoute?.state;
   // Prefer the CONFIGURED root; fall back to the live first route only for
   // tabs not in the map (defensive — all four are mapped).
-  const rootName = TAB_ROOT[tabName] ?? stack?.routes?.[0]?.name;
+  const rootName = tabRootFor(tabName, isGuest) ?? stack?.routes?.[0]?.name;
   if (!rootName) return;
 
   const now = Date.now();

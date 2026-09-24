@@ -3049,6 +3049,38 @@ export const he = {
   availFeedPromptBody:
     'הגדר את האזור והזמנים שנוח לך — ונראה לך כמה שחקנים פנויים בכל חלון, כדי לפתוח מחזור בקלות.',
   availFeedPromptCta: 'הגדר זמינות',
+
+  // ── Guest / new-user Home ──────────────────────────────────────────────
+  // The screen IS the onboarding: four things somebody can do, in the order
+  // the product wants them done, with no account asked for until a write.
+  //
+  // Vocabulary note: the brief said "משחק", the app says "מחזור" — a game
+  // NIGHT, which is what gets created here. Using "משחק" on the first screen
+  // and "מחזור" on every screen after it would teach the wrong word on the
+  // way in. So the buttons say מחזור and the microcopy, where it reads
+  // naturally, says משחק חד־פעמי.
+  guestHomeTitle: 'יאללה, מתחילים לשחק ⚽',
+  guestHomeSubtitle: 'פותחים מועדון, יוצרים מחזור, או מוצאים איפה לשחק.',
+  guestHomeCreateClubCta: 'הקם מועדון',
+  guestHomeCreateClubHint: 'לקבוצה שמשחקת באופן קבוע',
+  guestHomeCreateGameCta: 'צור מחזור',
+  guestHomeCreateGameHint: 'למשחק חד־פעמי',
+  guestHomeDiscoveryTitle: 'מחפש איפה לשחק?',
+  guestHomeDiscoveryAll: 'לכל המחזורים',
+  guestHomeDiscoveryEmpty: 'אין כרגע מחזור פתוח שמתאים.',
+  guestHomeDiscoveryEmptyCta: 'צור מחזור משלך',
+  guestHomeDiscoveryError: 'לא הצלחנו לטעון מחזורים כרגע.',
+  guestHomeDiscoveryRetry: 'נסה שוב',
+  guestHomeAvailabilityTitle: 'מתי נוח לך לשחק?',
+  guestHomeAvailabilityBody:
+    'כשמארגנים באזור שלך מחפשים שחקנים, נוכל להזמין אותך למחזור שמתאים לך.',
+  guestHomeAvailabilityUpdateCta: 'עדכן זמינות',
+  /** Continuation strip — a draft survived, and nothing is mid-sign-in. */
+  guestHomeResumeClub: 'יש לך מועדון שלא סיימת',
+  guestHomeResumeGame: 'יש לך מחזור שלא סיימת',
+  guestHomeResumeCta: 'המשך',
+  guestHomeAccountA11y: 'החשבון שלי',
+
   availabilityDaysTitle: 'בחר ימי פעילות',
   /** Single-letter day badges, same index as weekdayLong (Sun→Sat). */
   availabilityDayLetter: ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'],

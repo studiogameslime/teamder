@@ -13,7 +13,13 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useIsGuest } from '@/hooks/useAuthenticatedAction';
+import { homeRouteFor } from '@/navigation/homeRouting';
 import { ProfileScreen } from '@/screens/tabs/ProfileScreen';
+import { GuestHomeScreen } from '@/screens/home/GuestHomeScreen';
+import { CreateGroupScreen } from '@/screens/groups/CreateGroupScreen';
+import { CommunityDetailsPublicScreen } from '@/screens/communities/CommunityDetailsPublicScreen';
+import { EmailAuthScreen } from '@/screens/auth/EmailAuthScreen';
 import { RequestsScreen } from '@/screens/RequestsScreen';
 import { ProfileEditScreen } from '@/screens/tabs/ProfileEditScreen';
 import { AvailabilityEditScreen } from '@/screens/profile/AvailabilityEditScreen';
@@ -51,6 +57,8 @@ import { ReferralsListScreen } from '@/screens/profile/ReferralsListScreen';
 import { FeedbackScreen } from '@/screens/FeedbackScreen';
 
 export type ProfileStackParamList = {
+  /** Option A Home — the guest's landing. See the note on the navigator. */
+  GuestHome: undefined;
   Profile: undefined;
   Requests: undefined;
   ProfileEdit: undefined;
@@ -100,6 +108,27 @@ export type ProfileStackParamList = {
   // makes navigate() silently no-op (the "רשימת השחקנים does nothing" bug
   // when the club is opened from the Profile tab).
   CommunityDetails: { groupId: string };
+  /** Reachable from GuestHome's «הקם מועדון». Registered HERE, not reached
+   *  cross-tab, so Back from the wizard returns to Home rather than dumping
+   *  the person on the clubs feed of a tab they never chose. */
+  CommunitiesCreate: undefined;
+  /** Reachable from a public club opened out of Home. */
+  CommunityDetailsPublic: { groupId: string };
+  /**
+   * The contextual auth sheet's «המשך עם מייל» pushes this.
+   *
+   * It lives in AuthStack, which is only mounted when there is NO user — and
+   * the sheet is only ever shown to a guest, who has one. So the navigate
+   * resolved to nothing and the option has been dead since it shipped:
+   * "The action 'NAVIGATE' with payload {name:'EmailAuth'} was not handled".
+   * Registered here because this is the stack Home funnels through. The same
+   * gap still exists from GameStack and CommunitiesStack — reported, not
+   * fixed here, because those are not this round's screens.
+   *
+   * Safe to host: EmailAuthScreen never navigates. It signs in, the store
+   * updates, and RootNavigator swaps the tree.
+   */
+  EmailAuth: undefined;
   CommunityEdit: { groupId: string };
   CommunityPlayers: { groupId: string };
   CommunityStats: { groupId: string };
@@ -123,13 +152,51 @@ export type ProfileStackParamList = {
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
+/**
+ * Who lands on which Home.
+ *
+ * A GUEST gets `GuestHome` — the Option A screen, which is the onboarding.
+ * `ProfileScreen` is a dashboard built around a person: a greeting with their
+ * name, their next match, their pending requests, their activation checklist.
+ * A guest has none of those, so it rendered as a wall with one button, and
+ * that button used to sign them out (round 7).
+ *
+ * A FULL ACCOUNT keeps `ProfileScreen`, whether they joined today or two years
+ * ago. That is a deliberate choice and not an omission: ProfileScreen already
+ * carries an activation checklist — photo, availability, club, match, invite —
+ * gated on `homeDataReady` so it only judges once the data has loaded. It IS
+ * the new-full-account experience, and replacing it with Option A would delete
+ * a working one to install a second.
+ *
+ * Which leaves "new vs established full account" undecided, on purpose. There
+ * is no clean signal for it: `groups.length === 0` means "in no club", which a
+ * two-year veteran who left theirs also satisfies, and inventing a score to
+ * separate them would be a guess applied to real people's home screens. The
+ * signal used here — `isGuest` — is the auth state itself and cannot be wrong.
+ */
 export function ProfileStack() {
+  const isGuest = useIsGuest();
   return (
     <Stack.Navigator
-      initialRouteName="Profile"
+      // Remount when the viewer stops being a guest. `initialRouteName` is
+      // read once, at mount, and the upgrade path that KEEPS the uid
+      // (`linkWithCredential` — see authUpgrade) does not replace the session,
+      // so without this a person who just registered would go on looking at
+      // the guest Home until they happened to tap the tab. Both flows the key
+      // covers are identity changes, which is the one moment a stack reset is
+      // what you want anyway.
+      key={isGuest ? 'guest' : 'member'}
+      initialRouteName={homeRouteFor(isGuest)}
       screenOptions={{ headerShown: false }}
     >
+      <Stack.Screen name="GuestHome" component={GuestHomeScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="CommunitiesCreate" component={CreateGroupScreen} />
+      <Stack.Screen
+        name="CommunityDetailsPublic"
+        component={CommunityDetailsPublicScreen}
+      />
+      <Stack.Screen name="EmailAuth" component={EmailAuthScreen} />
       <Stack.Screen name="AvailabilityWeek" component={AvailabilityWeekScreen} />
       <Stack.Screen name="Requests" component={RequestsScreen} />
       <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
