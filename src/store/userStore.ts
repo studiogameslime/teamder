@@ -151,7 +151,13 @@ export const useUserStore = create<UserStore>((set, get) => ({
     // user, and manufacturing a guest when the seed is absent would change
     // what screenshot runs and QA see.
     if (USE_MOCK_DATA) {
-      set({ hydrated: true, onboardingDone, currentUser: null, guestInitFailed: false });
+      // `guestInitFailed: true` because the flag is what the navigator reads to
+      // mean "there is no session and none is coming" — and in mock mode that
+      // is literally true: the attempt is skipped, so nothing will ever produce
+      // one. Setting it false left `currentUser` null with no fallback, and the
+      // navigator sat on the splash forever with no control to escape it. That
+      // broke every screenshot run and every mock QA pass, not just this round.
+      set({ hydrated: true, onboardingDone, currentUser: null, guestInitFailed: true });
       return;
     }
     let guest: User | null = null;

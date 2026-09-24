@@ -184,6 +184,57 @@ describe('a fresh install with no network', () => {
   });
 });
 
+// ─── mock mode ────────────────────────────────────────────────────────────
+
+describe('mock mode', () => {
+  // The regression this exists for: `hydrate` deliberately SKIPS the silent
+  // guest in mock mode, so `currentUser` stays null — and the navigator falls
+  // back to the sign-in screen only when `guestInitFailed` says a session is
+  // not coming. Leaving it false put the app on a splash with no control to
+  // escape it, forever, which broke every screenshot run and every mock QA
+  // pass. Caught on an emulator, not by a test, which is why this is here.
+  //
+  // Re-imported with USE_MOCK_DATA true because the flag is read at module
+  // load, and the rest of this file needs it false.
+  async function hydrateInMockMode() {
+    jest.resetModules();
+    jest.doMock('@/firebase/config', () => ({ USE_MOCK_DATA: true }));
+    const { useUserStore: store } = await import('@/store/userStore');
+    store.setState({ hydrated: false, currentUser: null, guestInitFailed: false });
+    await store.getState().hydrate();
+    return store.getState();
+  }
+
+  afterEach(() => {
+    jest.resetModules();
+    jest.dontMock('@/firebase/config');
+  });
+
+  it('does not attempt an anonymous sign-in', async () => {
+    getCurrentUser.mockResolvedValue(null);
+    await hydrateInMockMode();
+    expect(signInAsGuest).not.toHaveBeenCalled();
+  });
+
+  // The assertion that would have caught the blocker.
+  it('reports that no session is coming, so the navigator can move on', async () => {
+    getCurrentUser.mockResolvedValue(null);
+    const s = await hydrateInMockMode();
+
+    expect(s.hydrated).toBe(true);
+    expect(s.currentUser).toBeNull();
+    // false here is the infinite splash.
+    expect(s.guestInitFailed).toBe(true);
+  });
+
+  it('a seeded mock user is still used, and clears the flag', async () => {
+    getCurrentUser.mockResolvedValue(REAL);
+    const s = await hydrateInMockMode();
+    expect(s.currentUser).toEqual(REAL);
+    expect(s.guestInitFailed).toBe(false);
+  });
+});
+
 // ─── the read itself failing ──────────────────────────────────────────────
 
 describe('when the user read throws', () => {

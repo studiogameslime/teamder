@@ -5,6 +5,9 @@ npm-debug.*
 
 # Local QA run artifacts (screenshots, PDF reports) — not part of the app.
 qa_run_*/
+# Raw emulator captures from a visual-QA run. The finished PDF goes to docs/;
+# the PNGs behind it are megabytes of run-specific evidence and stay local.
+artifacts/
 *.jks
 *.keystore
 *.p8
