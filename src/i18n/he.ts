@@ -3126,6 +3126,17 @@ export const he = {
   notifOfferSettingsCta: 'פתח הגדרות',
   notifOfferBlockedBody: 'ההתראות כבויות בהגדרות המכשיר. אפשר להדליק אותן משם.',
 
+  // ── After a resumed action ─────────────────────────────────────────────
+  // A join that finished AFTER the sign-in needs to say what it actually got.
+  // The direct paths already toast, and these reuse their words wherever the
+  // meaning is identical — the two below differ because the person tapped
+  // Join some minutes ago and has to be told WHY the answer is not "you're
+  // in", rather than just what the answer is.
+  resumeJoinedWaitlist: 'המחזור התמלא — נוספת לרשימת ההמתנה',
+  resumeJoinedPending: 'הבקשה נשלחה — מנהל המחזור צריך לאשר',
+  /** The target stopped existing while they were signing in. */
+  resumeTargetGone: 'הפריט כבר לא קיים',
+
   availabilityDaysTitle: 'בחר ימי פעילות',
   /** Single-letter day badges, same index as weekdayLong (Sun→Sat). */
   availabilityDayLetter: ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'],

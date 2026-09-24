@@ -110,6 +110,7 @@ import {
 import { deepLinkService } from '@/services/deepLinkService';
 import { createShortInviteUrl } from '@/services/inviteLinkService';
 import { ensureNotGuest } from '@/utils/guestGate';
+import { guestJoinGameRequest } from '@/services/guestJoin';
 import {
   useAuthenticatedAction,
   useIsGuest,
@@ -964,21 +965,11 @@ export function MatchDetailsScreen() {
     // itself. `performPrimary` is re-entered for a full account, which is why
     // the whole body below is untouched.
     if (isGuest) {
-      void authAction.request({
-        kind: 'join_game',
-        targetId: game.id,
-        origin: 'in_app',
-        // The resumer re-asks the server rather than replaying this closure:
-        // the last seat may be gone by the time they are back, and the answer
-        // has to be the current one. See src/services/actionResumers.ts.
-        // Never called: this branch only runs for a guest, and the coordinator
-        // parks rather than executing. The real work is the registered resumer,
-        // which asks the server fresh after authentication. Throwing makes a
-        // future mistake loud instead of silently reporting success.
-        execute: async () => {
-          throw new Error('unreachable: guest actions resume via their resumer');
-        },
-      });
+      // Built by `guestJoinGameRequest` rather than inline, because the games
+      // feed offers the same action and the two had already drifted — see that
+      // file. The resumer re-asks the server afterwards; nothing about this
+      // match's current state is captured here.
+      void authAction.request(guestJoinGameRequest(game.id));
       return;
     }
     const status = statusForUser(game, user.id);

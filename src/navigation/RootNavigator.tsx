@@ -27,6 +27,7 @@ import {
 } from '@/services/pendingAction';
 import { wasLandingShown, markLandingShown } from '@/services/inviteLanding';
 import { resumePendingAction } from '@/services/actionCoordinator';
+import { reportResumeOutcome } from '@/services/resumeFeedback';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -273,9 +274,16 @@ export function RootNavigator() {
   useEffect(() => {
     if (!currentUser || currentUser.isGuest === true) return;
     if (!hasCompletedOnboarding) return; // the profile screen is up; wait for it
-    void resumePendingAction().catch((err) => {
-      if (__DEV__) console.warn('[coordinator] resume failed', err);
-    });
+    void resumePendingAction()
+      .then((out) => {
+        // The boot pass — a brand-new account arrives here after the profile
+        // confirmation, and it is the caller that finishes their join. It owes
+        // them the same sentence the in-place path gives.
+        if (out.status === 'ran') reportResumeOutcome(out.kind, out.result);
+      })
+      .catch((err) => {
+        if (__DEV__) console.warn('[coordinator] resume failed', err);
+      });
   }, [currentUser?.id, currentUser?.isGuest, hasCompletedOnboarding]);
 
   // Reaching the app with nothing to consume — the organic arrival. Fires once

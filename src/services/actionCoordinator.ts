@@ -196,7 +196,13 @@ export function registerResumer(kind: PendingActionKind, fn: Resumer): void {
 }
 
 export async function resumePendingAction(): Promise<
-  { status: 'none' } | { status: 'busy' } | { status: 'held' } | { status: 'ran'; result: ActionResult }
+  | { status: 'none' }
+  | { status: 'busy' }
+  | { status: 'held' }
+  /** `kind` rides along because the caller has to TELL somebody what
+   *  happened, and "you are on the waitlist" reads differently for a match
+   *  than for a club. The outcome alone cannot say which. */
+  | { status: 'ran'; kind: PendingActionKind; result: ActionResult }
 > {
   const action = await readPendingAction();
   if (!action) return { status: 'none' };
@@ -238,7 +244,7 @@ export async function resumePendingAction(): Promise<
         reason: result.reason ?? 'unknown',
       });
     }
-    return { status: 'ran', result };
+    return { status: 'ran', kind: action.kind, result };
   } finally {
     inFlight.delete(key);
   }

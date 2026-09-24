@@ -56,6 +56,11 @@ import { appAlert } from '@/components/AppDialog';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { RegistrationConflictModal } from '@/components/games/RegistrationConflictModal';
 import { AvailabilityNudgeModal } from '@/components/AvailabilityNudgeModal';
+import {
+  useAuthenticatedAction,
+  useIsGuest,
+} from '@/hooks/useAuthenticatedAction';
+import { guestJoinGameRequest } from '@/services/guestJoin';
 import type { RegistrationConflict } from '@/services/gameService';
 import {
   MatchListCard,
@@ -147,6 +152,9 @@ export function GamesListScreen() {
   // null-checks before calling .scrollTo(). Drops when React Navigation
   // updates its types for React 19.
   useScrollToTop(scrollRef as React.RefObject<ScrollView>);
+
+  const isGuest = useIsGuest();
+  const authAction = useAuthenticatedAction();
 
   const [myGames, setMyGames] = useState<Game[]>([]);
   const [communityGames, setCommunityGames] = useState<Game[]>([]);
@@ -382,6 +390,24 @@ export function GamesListScreen() {
           onPress: () => void runCancel(game),
         },
       ]);
+      return;
+    }
+    // ── The gate this screen never had ────────────────────────────────────
+    //
+    // A guest may browse this feed, and joining needs an identity. There was
+    // no `isGuest` check anywhere in this file, so the tap below went straight
+    // to `requestJoinGame` with an anonymous uid — the one join surface in the
+    // app that knew nothing about the contextual auth built for exactly this.
+    // And it is the commoner of the two: the matches tab is a root, and Home's
+    // "לכל המחזורים" lands here.
+    //
+    // Same request object as MatchDetails, so they cannot drift again. The
+    // coordinator parks the intent, the sheet opens in place, and the resumer
+    // asks the server fresh afterwards — which is what makes a game that
+    // filled up during the sign-in come back as a waitlist rather than a
+    // success that never happened.
+    if (isGuest && (cta === 'join' || cta === 'requestJoin' || cta === 'waitlist')) {
+      void authAction.request(guestJoinGameRequest(game.id));
       return;
     }
     setBusyGameId(game.id);
@@ -654,6 +680,10 @@ export function GamesListScreen() {
 
   return (
     <View style={styles.root}>
+      {/* The contextual auth sheet, for a guest who tapped Join on a card.
+          Rendered here so it opens OVER the feed — the person never leaves
+          the list they were reading. */}
+      {authAction.sheet}
       {/* Hero pinned at the top of the screen. The controls row
           below it is ALSO pinned (outside the scroll) but uses a
           negative marginTop to float over the hero's bottom edge —

@@ -32,6 +32,7 @@ import {
 } from '@/components/auth/ContextualAuthSheet';
 import { useUserStore } from '@/store/userStore';
 import { logError } from '@/services/errorLog';
+import { reportResumeOutcome } from '@/services/resumeFeedback';
 
 export interface UseAuthenticatedAction {
   /** Ask for the action. Resolves once it has either run or been parked. */
@@ -123,7 +124,11 @@ export function useAuthenticatedAction(): UseAuthenticatedAction {
       // contrast, asks the server again — which is also the only way to get the
       // CURRENT answer after time has passed inside a provider's sheet.
       try {
-        await resumePendingAction();
+        const out = await resumePendingAction();
+        // Say what it actually got them. Only one caller of
+        // `resumePendingAction` can win the lock for a given action, so this
+        // is the whole of the "exactly once" guarantee for the message too.
+        if (out.status === 'ran') reportResumeOutcome(out.kind, out.result);
       } catch (err) {
         logError('authenticatedActionResume', err, {});
       }
