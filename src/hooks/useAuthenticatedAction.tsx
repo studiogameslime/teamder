@@ -26,14 +26,33 @@ import {
   type ActionRequest,
   type ActionResult,
 } from '@/services/actionCoordinator';
-import { ContextualAuthSheet } from '@/components/auth/ContextualAuthSheet';
-import type { PendingActionKind } from '@/services/pendingAction';
+import {
+  ContextualAuthSheet,
+  type AuthPromptReason,
+} from '@/components/auth/ContextualAuthSheet';
 import { useUserStore } from '@/store/userStore';
 import { logError } from '@/services/errorLog';
 
 export interface UseAuthenticatedAction {
   /** Ask for the action. Resolves once it has either run or been parked. */
   request: (req: ActionRequest) => Promise<ActionResult | null>;
+  /**
+   * Ask for an ACCOUNT, with nothing waiting behind it.
+   *
+   * For the "register" buttons that are not gating anything — the guest
+   * profile, the guest player card. They used to call `signOut()`, on the
+   * theory that dropping the anonymous session would reveal the auth stack.
+   * It does not: `signOut` leaves `currentUser` null with `guestInitFailed`
+   * false, `hydrate` does not run again in the same session, and RootNavigator
+   * has no branch for that pair — so the app sat on the splash until it was
+   * force-closed. Opening the sheet keeps the session, keeps the screen, and
+   * keeps the person exactly where they were if they back out.
+   *
+   * Deliberately NOT routed through `requestAction`: there is no intent to
+   * persist and no resumer to run. A fake PendingAction would outlive the
+   * sheet and be resumed later by something that has nothing to do.
+   */
+  requestAuth: () => void;
   /** Render this somewhere in the screen's tree. */
   sheet: React.ReactNode;
   /** True while the action itself is running (not while authenticating). */
@@ -41,7 +60,7 @@ export interface UseAuthenticatedAction {
 }
 
 export function useAuthenticatedAction(): UseAuthenticatedAction {
-  const [pendingKind, setPendingKind] = useState<PendingActionKind | null>(null);
+  const [pendingKind, setPendingKind] = useState<AuthPromptReason | null>(null);
   const [hasDraft, setHasDraft] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -59,6 +78,11 @@ export function useAuthenticatedAction(): UseAuthenticatedAction {
     setHasDraft(!!req.draft);
     setPendingKind(req.kind);
     return null;
+  }, []);
+
+  const requestAuth = useCallback(() => {
+    setHasDraft(false);
+    setPendingKind('account_upgrade');
   }, []);
 
   // Backed out. The pending action and the draft stay on disk, the sheet
@@ -84,6 +108,12 @@ export function useAuthenticatedAction(): UseAuthenticatedAction {
 
       // An existing account is ready now — resume through the REGISTERED
       // RESUMER, never by replaying the request the screen handed in.
+      //
+      // Reached from `requestAuth` too, and correctly: there is usually
+      // nothing stashed, in which case this returns `none` and does nothing.
+      // When something IS stashed — the person hit a wall earlier, backed out,
+      // and has now registered from the profile — finishing it is exactly what
+      // they asked for the first time.
       //
       // That distinction is the whole correctness of this path. A screen's
       // executor is written for the case where the person is already signed in,
@@ -111,7 +141,7 @@ export function useAuthenticatedAction(): UseAuthenticatedAction {
     />
   ) : null;
 
-  return { request, sheet, busy };
+  return { request, requestAuth, sheet, busy };
 }
 
 /**

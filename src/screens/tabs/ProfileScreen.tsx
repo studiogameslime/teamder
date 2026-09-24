@@ -105,6 +105,7 @@ import { motion } from '@/theme/motion';
 import { he } from '@/i18n/he';
 import { pickHomeHero } from '@/utils/homeHero';
 import { useUserStore } from '@/store/userStore';
+import { useAuthenticatedAction } from '@/hooks/useAuthenticatedAction';
 import { useGroupStore, useIsAdmin } from '@/store/groupStore';
 import { type User } from '@/types';
 
@@ -118,6 +119,9 @@ export function ProfileScreen() {
   const localUser = useUserStore((s) => s.currentUser);
   const signOut = useUserStore((s) => s.signOut);
   const deleteOwnAccount = useUserStore((s) => s.deleteOwnAccount);
+  // For the guest card's register button only. Called unconditionally here
+  // because the guest branch returns further down, after every hook.
+  const authAction = useAuthenticatedAction();
   const isAdmin = useIsAdmin(localUser?.id);
   const myCommunities = useGroupStore((s) => s.groups);
 
@@ -1160,6 +1164,7 @@ export function ProfileScreen() {
   if (localUser?.isGuest) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        {authAction.sheet}
         <View style={styles.guestWrap}>
           <View style={styles.guestIcon}>
             <Ionicons name="person-circle-outline" size={72} color={colors.primary} />
@@ -1170,11 +1175,18 @@ export function ProfileScreen() {
             title={he.guestRegisterCta}
             variant="primary"
             size="lg"
+            // Opens the auth sheet over this card. It used to call `signOut()`,
+            // which is how the only control on the guest's own tab froze the
+            // app: the anonymous session went away, nothing replaced it, and
+            // RootNavigator had no branch for "no user, no failure" — so the
+            // splash stayed up until the app was force-closed. Nothing is
+            // gated here, so there is no pending action: `requestAuth` asks
+            // for an account and nothing else.
             onPress={() => {
               logEvent(AnalyticsEvent.GuestRegisterCtaTapped, {
                 source: 'profile_guest_card',
               });
-              void signOut();
+              authAction.requestAuth();
             }}
             fullWidth
             style={{ marginTop: spacing.lg }}

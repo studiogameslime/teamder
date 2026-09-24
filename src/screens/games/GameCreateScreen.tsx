@@ -3,14 +3,7 @@
 // translates the wizard's GameFormValues into a `createGameV2` call.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +12,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { shouldWaitForPersonalGroup } from '@/utils/quickGameGate';
 import { groupService } from '@/services/groupService';
 import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -430,14 +424,37 @@ export function GameCreateScreen() {
   // The manual CTA path is deliberately NOT covered here. There the gate is a
   // true answer the user has already read, and OrphanCta spins in place;
   // replacing the whole screen with a bare spinner would be a step backwards.
-  // A guest needs no group to see the form, so the quick-mode loader must not
-  // wait for one that is never coming.
-  if (!isGuest && params.quick && !orphanGroup && !orphanFailed) {
+  //
+  // This is now the ONLY quick-provisioning guard. A second copy used to sit
+  // further down, just before GameWizardForm, testing the bare
+  // `params.quick && !orphanGroup` — and because it ran last it decided the
+  // screen. Two live people it decided wrongly:
+  //
+  //   • a GUEST, who is never allocated a group (see the effect above) and so
+  //     sat on "מכינים מחזור מהיר…" forever with no way out but Back. Quick is
+  //     a UI state, not a group; a guest needs no group to fill the form, and
+  //     the personal one is provisioned after sign-in under the real uid.
+  //   • anyone whose provisioning THREW. `orphanFailed` exists to let that
+  //     case fall through to the retry CTA below, which is exactly what the
+  //     second copy undid for a user who happens to administer a club.
+  //
+  // Both are the same mistake: waiting for a group that is not coming. The
+  // predicate lives in `quickGameGate` so it can be asserted without a
+  // renderer — see the tests there for the full truth table.
+  if (
+    shouldWaitForPersonalGroup({
+      isGuest,
+      quick: params.quick === true,
+      hasPersonalGroup: orphanGroup !== null,
+      provisioningFailed: orphanFailed,
+    })
+  ) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.createGameTitle} />
         <View style={styles.emptyAll}>
-          <ActivityIndicator color={colors.primary} />
+          <SoccerBallLoader size={48} />
+          <Text style={styles.emptyText}>{he.createGameQuickLoading}</Text>
         </View>
       </SafeAreaView>
     );
@@ -621,24 +638,10 @@ export function GameCreateScreen() {
       </View>
     ) : null;
 
-  // Quick-game provisioning guard: while the hidden personal group is
-  // still being created (params.quick, ~1-2s), do NOT render the wizard.
-  // It would otherwise flash the community-mode form (picker + a
-  // community's pre-filled title/field) for that window before snapping
-  // into quick mode the instant `orphanGroup` lands. Render a centered
-  // loader instead. This sits AFTER every hook above, so the hook count
-  // never changes between renders.
-  if (params.quick && !orphanGroup) {
-    return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title={he.createGameTitle} />
-        <View style={styles.emptyAll}>
-          <SoccerBallLoader size={48} />
-          <Text style={styles.emptyText}>{he.createGameQuickLoading}</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // (The quick-game provisioning guard used to be repeated here. It is one
+  // gate now, above — see the note there for the two people the duplicate
+  // stranded. There are no hooks between that gate and this return, so moving
+  // it up cannot change the hook count.)
 
   return (
     <>

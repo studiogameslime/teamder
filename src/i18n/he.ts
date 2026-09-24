@@ -1858,6 +1858,10 @@ export const he = {
   ctxAuthCreateGameBody: 'מתחברים כדי ליצור את המשחק ולהזמין שחקנים.',
   ctxAuthAvailabilityTitle: 'שומרים את הזמינות',
   ctxAuthAvailabilityBody: 'מתחברים כדי שנוכל להתאים לך משחקים.',
+  /** The one reason that is not an action: the person asked to register, full
+   *  stop. Nothing is waiting to be finished, so the copy promises nothing. */
+  ctxAuthUpgradeTitle: 'פותחים לך חשבון',
+  ctxAuthUpgradeBody: 'מתחברים כדי לשמור מחזורים, להצטרף למועדונים ולבנות פרופיל שחקן.',
   /** Fallback — a kind with no copy of its own. Should never be reached; the
    *  mapping is exhaustive over the union. */
   ctxAuthGenericTitle: 'רגע אחד',

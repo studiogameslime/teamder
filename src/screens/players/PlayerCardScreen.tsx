@@ -63,6 +63,7 @@ import {
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
+import { useAuthenticatedAction } from '@/hooks/useAuthenticatedAction';
 
 type RouteParams = {
   PlayerCard: {
@@ -84,6 +85,8 @@ export function PlayerCardScreen() {
     groupId: undefined,
   };
   const me = useUserStore((s) => s.currentUser);
+  // For the guest card's register button only — see the note on its onPress.
+  const authAction = useAuthenticatedAction();
   // Fallback to the user's currently active community when the caller
   // didn't pass an explicit groupId. This makes the rating section
   // available from any entry point (home tab, search, live match jersey,
@@ -280,6 +283,7 @@ export function PlayerCardScreen() {
   if (isGuestViewer) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        {authAction.sheet}
         <ScreenHeader title={identity.name} />
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
@@ -298,15 +302,20 @@ export function PlayerCardScreen() {
             title={he.playerCardGuestCta}
             variant="secondary"
             fullWidth
-            // Optional and non-blocking, deliberately. It stashes nothing and
-            // opens nothing over the card — it ends the anonymous session the
-            // same way every other register prompt does, and a guest who
-            // ignores it keeps reading the card.
+            // Optional and non-blocking, deliberately: it stashes nothing,
+            // and a guest who ignores it keeps reading the card.
+            //
+            // It used to end the anonymous session, "the same way every other
+            // register prompt does" — and that turned out to be the bug, not
+            // the convention. `signOut` leaves no user and no failure flag, a
+            // pair RootNavigator cannot route, so the app hung on the splash
+            // until it was force-closed. Same fix as the profile card: open
+            // the sheet over this screen and keep the session.
             onPress={() => {
               logEvent(AnalyticsEvent.GuestRegisterCtaTapped, {
                 from: 'player_card',
               });
-              void useUserStore.getState().signOut();
+              authAction.requestAuth();
             }}
           />
         </ScrollView>

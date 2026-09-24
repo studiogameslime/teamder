@@ -25,9 +25,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SpringSheet } from '@/components/anim/SpringSheet';
 import { colors, radius, spacing, typography } from '@/theme';
+import { RTL_LABEL_ALIGN } from '@/theme/rtl';
 import { he } from '@/i18n/he';
 import type { PendingActionKind } from '@/services/pendingAction';
 import { upgradeAnonymous, type AuthMethod, type UpgradeOutcome } from '@/services/authUpgrade';
@@ -37,9 +39,21 @@ import { useUserStore } from '@/store/userStore';
 
 const ACCENT = '#3B82F6';
 
-/** Title + body per action. Exhaustive over the union so a new kind is a
+/**
+ * Why we are asking.
+ *
+ * Usually the action being gated. `account_upgrade` is the one reason that is
+ * NOT an action: the person tapped "register" with nothing waiting to be
+ * finished. It deliberately does not become a PendingActionKind — there is no
+ * pending action, and inventing one would mean a resumer with nothing to
+ * resume and a stash that outlives the sheet.
+ */
+export type AuthPromptReason = PendingActionKind | 'account_upgrade';
+
+/** Title + body per reason. Exhaustive over the union so a new kind is a
  *  compile error here rather than a sheet that says nothing useful. */
-const COPY: Record<PendingActionKind, { title: string; body: string }> = {
+const COPY: Record<AuthPromptReason, { title: string; body: string }> = {
+  account_upgrade: { title: he.ctxAuthUpgradeTitle, body: he.ctxAuthUpgradeBody },
   join_game: { title: he.ctxAuthJoinGameTitle, body: he.ctxAuthJoinGameBody },
   join_club: { title: he.ctxAuthJoinClubTitle, body: he.ctxAuthJoinClubBody },
   create_club: { title: he.ctxAuthCreateClubTitle, body: he.ctxAuthCreateClubBody },
@@ -56,7 +70,7 @@ const COPY: Record<PendingActionKind, { title: string; body: string }> = {
 
 interface Props {
   visible: boolean;
-  kind: PendingActionKind;
+  kind: AuthPromptReason;
   /** Whether to say "what you filled in is saved" — true for the form kinds,
    *  where leaving the screen is the thing somebody is afraid of. */
   hasDraft?: boolean;
@@ -75,6 +89,9 @@ export function ContextualAuthSheet({
   onAuthenticated,
 }: Props) {
   const nav = useNavigation<{ navigate: (s: string) => void }>();
+  // The app is edge-to-edge on Android, so a Modal draws UNDER the system
+  // navigation bar. Without this the cancel row sits behind the gesture pill.
+  const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState<AuthMethod | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [appleOk, setAppleOk] = useState(Platform.OS === 'ios');
@@ -154,8 +171,22 @@ export function ContextualAuthSheet({
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onCancel}>
-      <SpringSheet visible={visible} onBackdropPress={busy ? undefined : onCancel}>
-        <View style={styles.sheet}>
+      <SpringSheet
+        visible={visible}
+        onBackdropPress={busy ? undefined : onCancel}
+        // `panelBottom` is a BOX from 10% down to the bottom edge, not a
+        // bottom-anchored row — it sets `top:'10%'` so children with a
+        // percentage height have something to resolve against (the filter
+        // sheets rely on that). A card sized by its content therefore lands at
+        // the TOP of that box, which is why this sheet rendered over the header
+        // with the dim showing underneath it. `flex-end` pushes it back down.
+        //
+        // Done here rather than in SpringSheet because the same box is shared
+        // by every sheet in the app, and several of them have not been looked
+        // at in this round.
+        panelStyle={{ justifyContent: 'flex-end' }}
+      >
+        <View style={[styles.sheet, { paddingBottom: spacing.xl + insets.bottom }]}>
           <View style={styles.handle} />
 
           <Text style={styles.title}>{copy.title}</Text>
@@ -262,18 +293,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginBottom: spacing.md,
   },
+  // ── Alignment ───────────────────────────────────────────────────────────
+  //
+  // `RTL_LABEL_ALIGN`, not `'right'`. Under `I18nManager.forceRTL(true)` — set
+  // in App.tsx — RN reads `textAlign:'right'` as "end of paragraph", and the
+  // end of an RTL paragraph is the visual LEFT. This sheet was written with
+  // `'right'` plus `writingDirection:'rtl'`, which is the double-apply the
+  // helper's own comment warns about, and it rendered every line of Hebrew
+  // flush left while the 142 files that use the helper rendered right. Visual
+  // QA caught it; the styles looked correct the whole time.
   title: {
     ...typography.h2,
     color: colors.text,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
     marginBottom: spacing.xs,
   },
   body: {
     ...typography.body,
     color: colors.textMuted,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
     marginBottom: spacing.lg,
   },
   actions: { gap: spacing.sm },
@@ -288,25 +326,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  // The provider rows are centred by their container, so this one stays
+  // 'center' — it is a button label, not a paragraph.
   ctaText: {
     ...typography.body,
     fontWeight: '700',
     color: colors.text,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: 'center',
   },
   error: {
     ...typography.caption,
     color: colors.danger,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
     marginTop: spacing.md,
   },
   reassure: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
     marginTop: spacing.md,
   },
   cancel: { alignSelf: 'center', paddingVertical: spacing.md, marginTop: spacing.xs },
