@@ -697,10 +697,18 @@ export const notificationsService = {
     granted: boolean;
     canAskAgain: boolean;
     available: boolean;
+    /** The OS's own word for it. Added because `granted:false` alone cannot
+     *  tell "never asked" from "asked and declined", and the contextual offer
+     *  has to treat those completely differently — one is an invitation, the
+     *  other is a decision somebody already made. Absent when unavailable. */
+    status?: 'granted' | 'denied' | 'undetermined';
   }> {
-    if (USE_MOCK_DATA) {
-      return { granted: false, canAskAgain: true, available: false };
-    }
+    // NOT gated on USE_MOCK_DATA, deliberately. Mock mode fakes DATA — games,
+    // clubs, users. Whether this phone has granted notification permission is
+    // a fact about the DEVICE, and answering `available: false` for it made
+    // mock mode lie about the one thing QA came to check. Reading it costs
+    // nothing and prompts nobody; the Expo Go / missing-module path below is
+    // still the honest "we cannot tell".
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const Constants = require('expo-constants').default;
     if (
@@ -725,6 +733,7 @@ export const notificationsService = {
         granted: cur.granted,
         canAskAgain: cur.canAskAgain,
         available: true,
+        status: cur.status as 'granted' | 'denied' | 'undetermined',
       };
     } catch {
       return { granted: false, canAskAgain: true, available: false };
@@ -782,7 +791,6 @@ export const notificationsService = {
   },
 
   async requestAndRegisterPushToken(uid: UserId): Promise<string | null> {
-    if (USE_MOCK_DATA) return null;
     // Push tokens require a native module that is NOT bundled in Expo Go
     // (SDK 49+). Bail out early so we never trigger the throw — and so
     // Metro's LogBox doesn't surface the caught-but-noisy red overlay.
@@ -832,6 +840,10 @@ export const notificationsService = {
         if (__DEV__) console.log('[notifications] permission not granted');
         return null;
       }
+      // Mock mode stops HERE: the OS dialog is a device interaction and worth
+      // exercising, but there is no real account to hang a token on and
+      // nothing should be written. Asking and not storing is the honest half.
+      if (USE_MOCK_DATA) return null;
       const token = await getFcmToken();
       if (!token) return null;
       await this.registerDeviceToken(uid, token);

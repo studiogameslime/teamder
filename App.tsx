@@ -246,6 +246,7 @@ import { checkForUpdate, type UpdateKind } from '@/services/updateService';
 import { useWatchSync } from '@/services/watchSyncService';
 import { UpdateModal } from '@/components/UpdateModal';
 import { WhatsNewGate } from '@/components/WhatsNewGate';
+import { NotificationOfferHost } from '@/components/notifications/NotificationOfferHost';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
@@ -390,6 +391,11 @@ export default function App() {
   // person has never run; there is nothing in it for them, and it costs the
   // first impression the Home exists to make.
   const viewerIsGuest = useUserStore((s) => s.currentUser?.isGuest === true);
+  // Two one-time interruptions must not stack. The notification offer stands
+  // down while "מה חדש" owns the screen; its announcement stays queued and is
+  // delivered the moment the host registers again, so nothing is lost —
+  // caught on the emulator with both sheets on screen at once.
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   // Hydration signals from the stores. When both flip true the splash
   // is allowed to fade out — that way the user never sees the small
   // "still loading" spinner that RootNavigator used to render under
@@ -1125,7 +1131,21 @@ export default function App() {
 
       {/* One-time "מה חדש" highlights after a version update. Only once splash
           is done, signed in + onboarded, and no update modal is competing. */}
+      {/* The contextual notification offer. Active on the same terms as the
+          other global gates — past splash, no update modal, a real session —
+          and it presents only when a completed action announces a context it
+          recognises. Never at startup. */}
+      <NotificationOfferHost
+        active={
+          splashDone &&
+          updateKind === 'none' &&
+          !!currentUserId &&
+          !viewerIsGuest &&
+          !whatsNewOpen
+        }
+      />
       <WhatsNewGate
+        onVisibilityChange={setWhatsNewOpen}
         active={
           splashDone &&
           updateKind === 'none' &&

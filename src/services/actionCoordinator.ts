@@ -30,6 +30,7 @@ import {
 } from '@/services/pendingAction';
 import { draftStore, type DraftKind } from '@/services/draftStore';
 import { useUserStore } from '@/store/userStore';
+import { announceOfferFor } from '@/services/actionOfferBridge';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import {
@@ -119,6 +120,10 @@ export async function requestAction(req: ActionRequest): Promise<RequestOutcome>
     try {
       const result = await run(req.kind, req.execute);
       if (result.terminal) await clearAll(req);
+      // AFTER the outcome is terminal and the stash is cleaned. See
+      // `actionOfferBridge` — this announces, it does not present, it is not
+      // awaited, and it cannot make a completed join report failure.
+      announceOfferFor(req.kind, result);
       return { status: 'done', result };
     } finally {
       inFlight.delete(key);
@@ -224,6 +229,9 @@ export async function resumePendingAction(): Promise<
     const result = await fn(action);
     if (result.terminal) {
       await clearAll({ kind: action.kind, draft: draftRefOf(action) });
+      // Same ordering as the direct path above: the resumed join has already
+      // happened and its stash is gone before anybody is asked anything.
+      announceOfferFor(action.kind, result);
     } else {
       logEvent(AnalyticsEvent.PendingActionFailed, {
         kind: action.kind,

@@ -420,6 +420,14 @@ export const AnalyticsEvent = {
   InviteLinkDead: 'invite_link_dead',
 
   // ─── Notifications ───
+  /** The contextual education sheet appeared. `context` says which moment
+   *  earned it and `permission_before` what the OS said at that point, so the
+   *  funnel can be read per context rather than in aggregate. */
+  NotificationEducationShown: 'notification_education_shown',   // context, permission_before, platform
+  /** What the person did with it: allow / not_now / settings / dismiss. The
+   *  drop-off between this and the OS result is the number that says whether
+   *  the copy is doing its job. */
+  NotificationEducationAction: 'notification_education_action', // context, action, permission_before, platform
   PushPermissionResult: 'push_permission_result',
   NotificationPermissionSettingsOpened: 'notification_permission_settings_opened',
 

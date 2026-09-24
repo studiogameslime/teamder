@@ -3103,6 +3103,29 @@ export const he = {
   personalInviteRetry: 'נסה שוב',
   personalInviteCloseA11y: 'סגור',
 
+  // ── Contextual notification offer ──────────────────────────────────────
+  // Named to what the backend ACTUALLY sends. Each line below was checked
+  // against a dispatch in functions/src/index.ts before it was written.
+  /** After joining a match: gameReminder / gameCanceledOrUpdated /
+   *  spotOpened / gameFillingUp all go to participants. */
+  notifOfferGameTitle: 'נדאג שלא תפספס עדכון ⚽',
+  notifOfferGameBody: 'נעדכן אותך אם משהו משתנה במחזור — שינוי שעה, ביטול, או מקום שהתפנה.',
+  /** After joining a club: newGameInCommunity fans out to members. */
+  notifOfferClubTitle: 'נדאג שתדע כשנפתח מחזור חדש',
+  notifOfferClubBody: 'כשמישהו במועדון פותח מחזור, נעדכן אותך כדי שתספיק להירשם.',
+  /** After saving availability: fillerOpportunity matches declared days and
+   *  home city against matches that need players. Offered only when filler
+   *  push is actually on. */
+  notifOfferAvailabilityTitle: 'כשיתפנה מקום שמתאים לך',
+  notifOfferAvailabilityBody:
+    'כשמחזור באזור שלך מחפש שחקנים בזמן שסימנת, נוכל להזמין אותך.',
+  notifOfferAllowCta: 'אפשר התראות',
+  notifOfferLaterCta: 'לא עכשיו',
+  /** Only when the OS will not ask again — the sheet stops promising a
+   *  dialog it cannot raise. */
+  notifOfferSettingsCta: 'פתח הגדרות',
+  notifOfferBlockedBody: 'ההתראות כבויות בהגדרות המכשיר. אפשר להדליק אותן משם.',
+
   availabilityDaysTitle: 'בחר ימי פעילות',
   /** Single-letter day badges, same index as weekdayLong (Sun→Sat). */
   availabilityDayLetter: ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'],

@@ -15,7 +15,17 @@ import {
   type WhatsNewPayload,
 } from '@/services/whatsNewService';
 
-export function WhatsNewGate({ active }: { active: boolean }) {
+export function WhatsNewGate({
+  active,
+  onVisibilityChange,
+}: {
+  active: boolean;
+  /** Reports whether the sheet is on screen. Added so the contextual
+   *  notification offer can stand down while this owns the screen — two
+   *  one-time interruptions stacked is the modal-over-modal the offer's own
+   *  queue exists to avoid. Optional; nothing else uses it. */
+  onVisibilityChange?: (visible: boolean) => void;
+}) {
   const [payload, setPayload] = useState<WhatsNewPayload | null>(null);
   // One resolve per app session — the modal is one-time, and re-checking on
   // every foreground would be wasteful (and already blocked by seenVersion).
@@ -36,6 +46,10 @@ export function WhatsNewGate({ active }: { active: boolean }) {
       alive = false;
     };
   }, [active]);
+
+  useEffect(() => {
+    onVisibilityChange?.(!!payload);
+  }, [payload, onVisibilityChange]);
 
   if (!payload) return null;
   return (
