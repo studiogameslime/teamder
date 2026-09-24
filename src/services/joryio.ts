@@ -19,8 +19,31 @@ import Joryio from '@joryio/react-native-sdk';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { logUnexpected } from '@/services/errorLog';
 
+// PRODUCTION since 24.09. `https://hippomation-backend.fly.dev/api`
+// was Joryio's test environment and is what every build before this one
+// reported to.
+//
+// The literal matters more than the env var and that is not a style choice:
+// `.env` is gitignored and `eas build --local` copies the project BY GIT, so
+// an env-only value resolves to undefined in a store build and this fallback
+// is what ships. A change made only in `.env` would leave production silently
+// reporting to the test backend — the same shape of failure as the first
+// 1.0.94 AAB, which shipped with no SDK key at all.
+//
+// Verified against this host before switching: all three of our SDK keys
+// authenticate, a fabricated key is refused with 401, one real event came back
+// `processed: 1`, and the management API lists our three apps — same
+// workspaceId and same app ids as the test host, which is why no history is
+// left behind.
+//
+// ⚠️ It sits behind Cloudflare, which the test backend did not. A request with
+// an unrecognised User-Agent is refused with `403` and `error code: 1010`
+// BEFORE it reaches Joryio — Python's default `Python-urllib/3.x` is one of
+// them. That is a bot rule and not an auth failure, and it will mislead anyone
+// probing this host from a script. The SDK sets its own User-Agent and is
+// unaffected; curl's default is fine too.
 const API_HOST =
-  process.env.EXPO_PUBLIC_JORYIO_API_HOST ?? 'https://hippomation-backend.fly.dev/api';
+  process.env.EXPO_PUBLIC_JORYIO_API_HOST ?? 'https://api-eu1.joryio.com/api';
 
 /** One app per platform — each carries its own key and, later, its own push
  *  credentials (APNs for iOS, FCM for Android).

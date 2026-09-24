@@ -16,7 +16,10 @@
  * The event name goes in `type` — `name` is ignored by that endpoint.
  */
 (function () {
-  var BASE = 'https://hippomation-backend.fly.dev/api';
+  // PRODUCTION since 24.09. These pages have no bundler and no env, so this
+  // literal is the whole configuration — there is nothing to override it and
+  // nothing that would warn if it were left pointing at the test backend.
+  var BASE = 'https://api-eu1.joryio.com/api';
   var KEY = 'jry_sdk_web_32fb87e179b49a5b6312788d557b247de189c0d416f33a9f';
   var STORE = 'joryio_anonymous_id';
 
