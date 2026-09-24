@@ -12,6 +12,7 @@ import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 import { withAuthRaceRetry } from '@/firebase/authRace';
 import { he } from '@/i18n/he';
+import { MIN_SEASON_ROUNDS } from '@/utils/seasonActivation';
 
 /** Why the server said no. Anything else is a real failure.
  *
@@ -37,6 +38,7 @@ export type SeasonRefusal =
   | 'seasonEndPast'
   | 'nothingToReopen'
   | 'closedSeasonGame'
+  | 'tooFewRounds'
   | 'unknown';
 
 export class SeasonRefusedError extends Error {
@@ -82,6 +84,10 @@ export function seasonRefusalText(
   const played = ctx?.played;
   const target = ctx?.target;
   switch (reason) {
+    case 'tooFewRounds':
+      return typeof played === 'number'
+        ? he.seasonBlockedTooFewRoundsAt(played, MIN_SEASON_ROUNDS)
+        : he.seasonBlockedTooFewRounds(MIN_SEASON_ROUNDS);
     case 'openGame':
       return he.seasonBlockedOpenGame;
     case 'unsealedGame':
@@ -150,6 +156,10 @@ function refusalOf(err: unknown): SeasonRefusal | null {
   // reached the same verdict first — so a client one build behind, or one
   // measuring against a different history figure from the server's, got the
   // generic line for a refusal that is permanent.
+  // Sealing a season that has played fewer evenings than a season may be set
+  // to last. Carries the two numbers so the admin is told where they stand and
+  // what it takes, not merely refused.
+  if (msg.includes('season-close:tooFewRounds')) return 'tooFewRounds';
   if (msg.includes('season-plan:')) {
     if (msg.includes('monthsInvalid')) return 'lengthInvalid';
     if (msg.includes('roundsInvalid')) return 'targetInvalid';
@@ -186,6 +196,10 @@ function refusalOf(err: unknown): SeasonRefusal | null {
  *  always computed this and put it in the message; nothing read it back. */
 export function playedFromError(err: unknown): number | undefined {
   const msg = String((err as { message?: string })?.message ?? '');
+  // `season-close:tooFewRounds:<played>:<min>` — its own shape, because this
+  // refusal is not a sentence with a number in it, it is a code with two.
+  const few = /season-close:tooFewRounds:(\d+):(\d+)/.exec(msg);
+  if (few) return Number(few[1]);
   const m = /is not above the (\d+)/.exec(msg);
   return m ? Number(m[1]) : undefined;
 }

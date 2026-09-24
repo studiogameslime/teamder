@@ -2302,6 +2302,18 @@ export const he = {
   // one seven people had already joined.
   seasonBlockedOpenGame:
     'יש מחזור שמשוחק עכשיו במועדון. אפשר לסיים את העונה ברגע שהוא נגמר — מחזור שעדיין לא התחיל לא מפריע.',
+  /**
+   * Sealing a season that has played too few evenings.
+   *
+   * Two forms, because the server names the club's own figure and the screen
+   * should say it: "עוד אחד" is actionable, "לפחות 2" on its own is not.
+   */
+  seasonBlockedTooFewRounds: (min: number) =>
+    `אפשר לסיים עונה רק אחרי ${count(min, 'מחזור אחד', 'מחזורים')} לפחות.`,
+  seasonBlockedTooFewRoundsAt: (played: number, min: number) =>
+    played <= 0
+      ? `בעונה הזאת עוד לא שוחק אף מחזור, ואי אפשר לסיים עונה ריקה. שחקו ${count(min, 'מחזור אחד', 'מחזורים')} לפחות — או כבו את העונות, והעונה הריקה פשוט תימחק.`
+      : `בעונה הזאת שוחק ${count(played, 'מחזור אחד', 'מחזורים')}, ואפשר לסיים עונה רק אחרי ${min}. שחקו עוד ${count(min - played, 'מחזור אחד', 'מחזורים')} — או כבו את העונות, והעונה תימחק בלי להישמר.`,
   seasonBlockedUnsealed:
     'יש מחזור שהסתיים אבל הנתונים שלו עדיין לא נסגרו. חכו שהעדכון יסתיים ונסו שוב.',
   seasonsReopenCta: 'בטל את סגירת העונה האחרונה',

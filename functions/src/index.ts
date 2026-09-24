@@ -16956,6 +16956,30 @@ export const disableClubSeasons = onCall(
         live.roundsAtStart,
         live.playedRounds,
       );
+      // A season that held NOTHING is discarded, not archived.
+      //
+      // Switching the feature off is not the same act as ending a season, and
+      // it must not manufacture history. A club that turned seasons on, played
+      // no evening and changed its mind would otherwise be left with an
+      // archive of an empty season, nine `null` titles, and `count: 1` saying
+      // it has a closed season behind it — permanently, because an archive is
+      // written once and never recomputed.
+      //
+      // It also keeps `endSeasonNow`'s new floor from becoming a trap: that
+      // button refuses to seal a season under MIN_SEASON_ROUNDS, so without
+      // this branch an admin who enabled seasons by mistake could neither
+      // close the season nor switch the feature off and be rid of it.
+      //
+      // `count` is untouched, so the club's season numbering does not skip:
+      // the next season it opens is season 1 again, which is the truth.
+      if (played < MIN_SEASON_ROUNDS) {
+        console.log(
+          '[season] seasons switched off over an empty season — discarded, not archived',
+          groupId,
+          live.currentId,
+          played,
+        );
+      } else {
       await performSeasonClose({
         groupId,
         groupName: (group as { name?: string }).name ?? '',
@@ -16968,6 +16992,7 @@ export const disableClubSeasons = onCall(
         count: live.count ?? 0,
         now: Date.now(),
       });
+      }
     }
 
     // ⚠️ The correction window MUST be cleared here, and this is not tidiness.
@@ -17496,6 +17521,39 @@ export const endSeasonNow = onCall(
       throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
     }
 
+    // A season needs evenings in it before it can be sealed.
+    //
+    // Nothing checked this. A club created ten minutes ago, with no evening
+    // ever played, could switch seasons on in the edit screen and press
+    // "סיים עונה עכשיו" — and it would work: an archive written for a season
+    // that held nothing, nine titles decided over an empty table (every one
+    // `null`, because `leaders` refuses an empty field), `count` incremented,
+    // and a club that now says it has a closed season behind it. An archive
+    // is written ONCE and never recomputed, so that record is permanent.
+    //
+    // MIN_SEASON_ROUNDS is the same floor the target picker already enforces
+    // when a season is CREATED — a season may not be set to end after fewer
+    // than two evenings. Refusing to seal one that has played fewer closes the
+    // other half of the same rule; without it the floor was only a suggestion
+    // about the future, enforceable at one end of a season and not the other.
+    //
+    // This is the deliberate "end it now" button. Turning the feature OFF is a
+    // different intention and gets different treatment — see
+    // `disableClubSeasons`, which now DISCARDS an empty season instead of
+    // archiving it, so an admin who switched seasons on by mistake is never
+    // trapped by this guard.
+    const playedSoFar = await completedRoundsOf(
+      groupId,
+      seasons.roundsAtStart,
+      seasons.playedRounds,
+    );
+    if (playedSoFar < MIN_SEASON_ROUNDS) {
+      throw new HttpsError(
+        'failed-precondition',
+        `season-close:tooFewRounds:${playedSoFar}:${MIN_SEASON_ROUNDS}`,
+      );
+    }
+
     const now = Date.now();
     const who = await db.collection('users').doc(uid).get();
     const result = await closeSeason({
@@ -17513,11 +17571,8 @@ export const endSeasonNow = onCall(
       // seasons those are 10 and 7, so "סיים עונה עכשיו" would have sealed a
       // season of THREE that the club had watched reach twenty-two, into an
       // archive that is written once and never recomputed.
-      completedRounds: await completedRoundsOf(
-        groupId,
-        seasons.roundsAtStart,
-        seasons.playedRounds,
-      ),
+      // Already computed by the floor check above — one read, one answer.
+      completedRounds: playedSoFar,
       roundsAtStart: seasons.roundsAtStart ?? 0,
       endedEarly: true,
       closedBy: uid,

@@ -575,6 +575,16 @@ export function SeasonsSettings({
   // `seasonService.reopenLast` is kept as the client-side wrapper for the
   // maintenance hook; nothing in the app calls it.
 
+  /**
+   * Evenings this season has actually played, as the screen has them.
+   *
+   * The same mirror the card and the target picker read. It can lag the
+   * server's own counter by one evening; that is why the server enforces the
+   * floor as well, and this only decides whether to offer the button.
+   */
+  const playedThisSeason = Math.max(0, seasons?.playedRounds ?? 0);
+  const canEndSeason = playedThisSeason >= MIN_SEASON_ROUNDS;
+
   const endNow = useCallback(() => {
     // Which season, and how much of it there is.
     //
@@ -984,6 +994,14 @@ export function SeasonsSettings({
               they had turned seasons on. */}
           <Text style={styles.fieldHint}>{he.seasonsNotPartOfSave}</Text>
 
+          {/* Why the season cannot be ended yet, said BEFORE the press.
+              A disabled red button with no sentence beside it is the thing
+              this screen has already been reported for once. */}
+          {live && !canEndSeason ? (
+            <Text style={styles.fieldHint}>
+              {he.seasonBlockedTooFewRoundsAt(playedThisSeason, MIN_SEASON_ROUNDS)}
+            </Text>
+          ) : null}
           {live ? (
             <Button
               title={he.seasonsEndCta}
@@ -995,7 +1013,14 @@ export function SeasonsSettings({
               // trophy cabinets — and `disabled` alone greys the button and
               // says nothing else. An admin pressed it, saw a dead grey
               // button, and reported the screen as frozen. It was working.
-              disabled={busy}
+              // A season with nothing in it cannot be sealed — the server
+              // refuses it (`season-close:tooFewRounds`) and an archive is
+              // written once, so a season of zero evenings would be permanent
+              // history. The button that cannot succeed is not pressable, and
+              // the line above says why. Reported on a club created minutes
+              // earlier: seasons on, no evening ever played, "סיים עונה עכשיו"
+              // sealed it.
+              disabled={busy || !canEndSeason}
               loading={busy}
               onPress={endNow}
             />
