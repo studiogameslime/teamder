@@ -36,6 +36,7 @@ import { getFirebase, googleOAuth, USE_MOCK_DATA } from './config';
 import { logError } from '@/services/errorLog';
 import { Player } from '@/types';
 import { joryio } from '@/services/joryio';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 const EXPECTED_PROJECT_NUMBER = '559368532219';
 
@@ -442,41 +443,84 @@ export async function signOutFirebase(): Promise<void> {
 export function waitForAuthRestore(): Promise<FirebaseUser | null> {
   if (USE_MOCK_DATA) return Promise.resolve(null);
   const { auth } = getFirebase();
+  // The identity watch is PROCESS-WIDE and separate from the promise below.
+  // It must outlive any one caller, and there must be exactly one of it.
+  ensureIdentityWatch();
+
   return new Promise((resolve) => {
-    // `identified` guards the one-shot: the promise still resolves on the FIRST
-    // emission (that is what callers wait for), but the listener stays alive so
-    // a sign-in later in the same session still reaches Joryio.
+    // Per-call, one-shot: resolve on the first emission and detach.
     //
-    // On a fresh install the first emission is `null` — there is no session to
-    // restore — and `unsub()` used to run right there. So a day-one user spent
-    // their entire first session as an anonymous record with no email and no
-    // `push_permission`, which is precisely the attribute the onboarding
-    // journey branches on. The users the lifecycle messaging is FOR were the
-    // ones it could not see.
-    let identified = false;
+    // Detaching matters. This function has callers all over the app —
+    // `userService.getCurrentUser`, `chatService`, `gameService` (twice) and
+    // `notificationActionService` (three times, once per notification action) —
+    // so a listener that never came off would accumulate one per call for the
+    // life of the process.
     let settled = false;
-    const unsub = onAuthStateChanged(auth, (user) => {
+    let unsub: (() => void) | null = null;
+    const finish = (user: FirebaseUser | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(user);
+      // Next tick: when Firebase emits synchronously, `unsub` is not assigned
+      // yet at the moment the callback runs.
+      setTimeout(() => unsub?.(), 0);
+    };
+    unsub = onAuthStateChanged(auth, (user) => {
       // Existing users won't re-login on an app update, so the sign-in-time
       // native mirror never fires for them — re-establish it here on boot so
       // the home widget / Wear relay can control the timer. Fire-and-forget.
       if (user) ensureNativeAuthMirror();
-      // Bind this install's anonymous id to the person, so anything tracked
-      // before sign-in stitches onto their Joryio profile instead of stranding
-      // on a nameless anonymous record.
-      if (user && !identified) {
-        identified = true;
-        void joryio.identify(user.uid, {
-          email: user.email ?? undefined,
-          name: user.displayName ?? undefined,
-        });
-        // Nothing more to watch for once the person is bound.
-        unsub();
-      }
-      if (!settled) {
-        settled = true;
-        resolve(user);
-      }
+      finish(user);
     });
+  });
+}
+
+let _identityWatching = false;
+
+/**
+ * One long-lived subscription that keeps Joryio's idea of who is using the app
+ * in step with Firebase's.
+ *
+ * This used to live inside `waitForAuthRestore`'s listener, which called
+ * `unsub()` the moment it identified anybody — and that broke the guest journey
+ * outright. The first emission for a guest is their ANONYMOUS user, so Joryio
+ * was handed a Firebase anonymous uid as a person and the listener then shut
+ * down. When that same guest signed up ten seconds later there was nothing left
+ * listening, so the real account was never identified in that session; it got
+ * picked up on the NEXT launch as a second, unconnected profile. Two person
+ * records per sign-up, one of them a nameless throwaway, and no link between
+ * the browsing that led to the sign-up and the account it produced.
+ *
+ * Hence: never unsubscribed, exactly one, and `bindIdentity` owns the decision
+ * (identify / alias-then-identify / nothing) so this is safe to run on every
+ * emission including the repeats a token refresh produces.
+ */
+function ensureIdentityWatch(): void {
+  if (_identityWatching || USE_MOCK_DATA) return;
+  _identityWatching = true;
+  const { auth } = getFirebase();
+  onAuthStateChanged(auth, (user) => {
+    void joryio
+      .bindIdentity(
+        user
+          ? {
+              uid: user.uid,
+              isAnonymous: user.isAnonymous,
+              email: user.email ?? undefined,
+              name: user.displayName ?? undefined,
+            }
+          : null,
+      )
+      .then((what) => {
+        // Only the upgrade is worth an event: it is the one transition that is
+        // invisible otherwise, and the SDK reports a failed alias only to a
+        // logger gated behind `enableDebug`.
+        if (what === 'aliased') {
+          logEvent(AnalyticsEvent.IdentityAliased, {
+            provider: currentAuthProviderId() ?? 'unknown',
+          });
+        }
+      });
   });
 }
 

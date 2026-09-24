@@ -212,6 +212,130 @@ export function resetUser(): void {
 }
 
 /**
+ * Attribute this install's anonymous history to a person.
+ *
+ * We pass only the real uid — the SDK supplies its OWN `anonymousId` from
+ * `identityManager.getAnonymousId()` and posts the pair to `v1/alias`. That is
+ * the important distinction: the anonymous id here is Joryio's install id, NOT
+ * the Firebase anonymous uid, which must never be sent as an identity.
+ *
+ * WHY THIS IS NEEDED AT ALL, given `identify` exists: the two SDKs disagree.
+ * Android's `Joryio.identify` posts `IdentifyRequest(userId, anonymousId,
+ * attributes)`, so the backend can stitch the anonymous run on its own. iOS
+ * posts `IdentifyRequest(userId:attributes:)` — its request model has no
+ * `anonymousId` field at all, and the network client adds no header carrying
+ * one. So on iOS `identify` alone strands every pre-sign-in event on a separate
+ * record. `alias` is the only call that carries the pair on both platforms,
+ * which is what makes the behaviour consistent.
+ */
+export async function alias(userId: string): Promise<void> {
+  if (USE_MOCK_DATA || !userId) return;
+  if (!started) await initJoryio();
+  Joryio.alias(userId);
+}
+
+// ─── Identity binding ─────────────────────────────────────────────────────
+//
+// One place that decides what to tell Joryio about who is using the app, so
+// the four ways to get this wrong are each ruled out once instead of at every
+// call site:
+//
+//   • identifying a Firebase ANONYMOUS uid — that creates a person record for
+//     a throwaway session, and it was the live bug: `waitForAuthRestore` called
+//     identify on the first auth emission whatever it was, so a guest became a
+//     nameless "person" and the real account they signed up with later became a
+//     SECOND, unconnected one.
+//   • identifying the same uid twice — `onAuthStateChanged` fires again on
+//     token refresh, and each identify is a network call plus a `$identify`
+//     event.
+//   • aliasing on a plain cold-start restore — the install was already bound on
+//     the launch where they signed up; re-aliasing claims the current anonymous
+//     id for them again for no reason.
+//   • aliasing across a sign-out — if this install's anonymous history belonged
+//     to person A, aliasing it to person B MERGES TWO PEOPLE. That is what
+//     `resetIdentity` prevents: sign-out starts a fresh anonymous session, so
+//     there is never stale history to mis-attribute.
+
+/** Who the SDK currently believes is using the app, per process. */
+let identifiedUid: string | null = null;
+/** True when anonymous activity has happened that nobody has claimed yet. */
+let unclaimedAnonymousRun = false;
+
+export interface IdentitySubject {
+  uid: string;
+  isAnonymous: boolean;
+  email?: string;
+  name?: string;
+}
+
+/**
+ * Called on every auth emission. Decides between "do nothing", "identify" and
+ * "alias then identify".
+ *
+ * Returns what it did, for the caller to report. Never throws.
+ */
+export async function bindIdentity(
+  subject: IdentitySubject | null,
+): Promise<'none' | 'identified' | 'aliased'> {
+  try {
+    if (USE_MOCK_DATA || !subject?.uid) return 'none';
+
+    if (subject.isAnonymous) {
+      // Deliberately nothing. The SDK stays anonymous and keeps accumulating
+      // events against its own anonymous id, which is exactly what `alias`
+      // will later hand to the real account.
+      unclaimedAnonymousRun = true;
+      return 'none';
+    }
+
+    // Already bound to this person in this process.
+    if (identifiedUid === subject.uid) return 'none';
+
+    const shouldAlias = unclaimedAnonymousRun;
+    if (shouldAlias) {
+      // BEFORE identify: alias is the call that carries the anonymous id, and
+      // identify is what flips the SDK's local identity. Reversed, the alias
+      // would post an anonymous id the SDK has already moved on from.
+      await alias(subject.uid);
+    }
+    await identify(subject.uid, {
+      email: subject.email,
+      name: subject.name,
+    });
+    identifiedUid = subject.uid;
+    unclaimedAnonymousRun = false;
+    return shouldAlias ? 'aliased' : 'identified';
+  } catch (err) {
+    logUnexpected('joryioBindIdentity', {
+      message: err instanceof Error ? err.message : String(err),
+      isAnonymous: subject?.isAnonymous,
+    });
+    return 'none';
+  }
+}
+
+/**
+ * Sign-out. Forget the person AND start a new anonymous session.
+ *
+ * The new session is the point. Without it the next person to sign in on this
+ * device would be aliased onto the previous person's anonymous id — two humans
+ * collapsed into one profile, with the wrong one's behaviour driving the other's
+ * lifecycle messaging. `resetUser` was already exported for this and had no call
+ * site anywhere in the app.
+ */
+export function resetIdentity(): void {
+  identifiedUid = null;
+  unclaimedAnonymousRun = false;
+  resetUser();
+}
+
+/** Test seam: the module-level identity state is per-process by design. */
+export function __resetIdentityStateForTests(): void {
+  identifiedUid = null;
+  unclaimedAnonymousRun = false;
+}
+
+/**
  * How long to wait before asking the SDK whether the registration blew up.
  * `registerPushToken` is fire-and-forget on both platforms — it hands the token
  * to a coroutine and returns — so there is nothing to await. Four seconds is
@@ -426,6 +550,9 @@ export const joryio = {
   init: initJoryio,
   track,
   identify,
+  alias,
+  bindIdentity,
+  resetIdentity,
   setAttributes,
   resetUser,
   registerPushToken,

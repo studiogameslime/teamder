@@ -329,6 +329,12 @@ export const AnalyticsEvent = {
   SignInProviderConflict: 'sign_in_provider_conflict',
   AuthModeSwitched: 'auth_mode_switched',
   PasswordResetRequested: 'password_reset_requested',
+  /** This install's anonymous Joryio history was attributed to a real account
+   *  (alias → identify). Fires once per guest→account upgrade, and never for a
+   *  plain cold-start restore. The only signal that the stitch happened at all:
+   *  a rejected alias is reported by the SDK to a logger gated behind
+   *  `enableDebug`, so in a store build a broken stitch is silent. */
+  IdentityAliased: 'identity_aliased',   // provider
 
   // ─── Onboarding & activation ───
   OnboardingChecklistStepTapped: 'onboarding_checklist_step_tapped',

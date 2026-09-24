@@ -1895,6 +1895,12 @@ export const he = {
   playerCardInvite: 'הזמן למחזור',
   playerCardNotAvailable: 'לא זמין להזמנות',
   playerCardNotFound: 'לא הצלחנו לטעון את השחקן',
+  // The guest view of another player's card. Deliberately NOT phrased as a
+  // wall ("נדרשת הרשמה") — nothing was blocked here. The person tapped a name
+  // and got the name; this says what ELSE exists, which is an invitation
+  // rather than a refusal.
+  playerCardGuestNote: 'הסטטיסטיקות, ההישגים והמשחקים המשותפים מופיעים אחרי התחברות',
+  playerCardGuestCta: 'התחברות',
   playerCardEmail: 'אימייל',
   playerCardNoGameToInvite: 'אין לך מחזור פעיל להזמנה. צור מחזור קודם.',
   playerCardInviteSent: 'הזמנה נשלחה',

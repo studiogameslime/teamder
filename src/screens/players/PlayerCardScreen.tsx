@@ -42,6 +42,7 @@ import type { Group } from '@/types';
 import { userService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
+import type { PublicUser } from '@/firebase/firestore';
 import { notificationsService } from '@/services/notificationsService';
 import {
   achievementsService,
@@ -111,7 +112,14 @@ export function PlayerCardScreen() {
       : undefined
     : routeGroupId;
 
+  // A guest never has a /users document to read — that collection is gated on
+  // a full account so an anonymous session cannot reach anyone's email, phone,
+  // push tokens or referral attribution. They get the public mirror instead,
+  // which carries exactly what this screen needs to name a person.
+  const isGuestViewer = me?.isGuest === true;
+
   const [user, setUser] = useState<User | null>(null);
+  const [publicUser, setPublicUser] = useState<PublicUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyInvite, setBusyInvite] = useState(false);
   const [nextGame, setNextGame] = useState<Game | null>(null);
@@ -124,24 +132,41 @@ export function PlayerCardScreen() {
   const [referralCount, setReferralCount] = useState<number | null>(null);
 
   useEffect(() => {
-    if (userId) logEvent(AnalyticsEvent.PlayerCardOpened, { userId });
+    if (userId) logEvent(AnalyticsEvent.PlayerCardOpened, { userId, guest: isGuestViewer });
     let alive = true;
     setLoading(true);
-    userService
-      .getUserById(userId)
-      .then((u) => {
-        if (alive) setUser(u);
-      })
-      .catch(() => {
-        if (alive) setUser(null);
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
+    // Two sources, never both. A guest reading /users would be answered
+    // permission-denied by design, and firing that request just to catch it is
+    // deliberate traffic we would then have to filter out of the error panel.
+    if (isGuestViewer) {
+      groupService
+        .hydratePublicUsers([userId])
+        .then((list) => {
+          if (alive) setPublicUser(list[0] ?? null);
+        })
+        .catch(() => {
+          if (alive) setPublicUser(null);
+        })
+        .finally(() => {
+          if (alive) setLoading(false);
+        });
+    } else {
+      userService
+        .getUserById(userId)
+        .then((u) => {
+          if (alive) setUser(u);
+        })
+        .catch(() => {
+          if (alive) setUser(null);
+        })
+        .finally(() => {
+          if (alive) setLoading(false);
+        });
+    }
     return () => {
       alive = false;
     };
-  }, [userId]);
+  }, [userId, isGuestViewer]);
 
   // Referral count: re-fetched on every screen focus so a new
   // referral that lands while the user is elsewhere in the app
@@ -152,6 +177,9 @@ export function PlayerCardScreen() {
   // mount also serves as the initial load.
   useFocusEffect(
     React.useCallback(() => {
+      // `where('invitedBy','==',uid)` is a LIST on /users. Denied for a guest,
+      // and the number is a self-view stat they never see anyway.
+      if (isGuestViewer) return;
       let alive = true;
       userService
         .getInvitedUsersCount(userId)
@@ -171,14 +199,18 @@ export function PlayerCardScreen() {
       return () => {
         alive = false;
       };
-    }, [userId]),
+    }, [userId, isGuestViewer]),
   );
 
   // Pre-load the inviter's next admin-organized game so the CTA can
   // reflect the target's actual status (joined / waitlist / pending)
   // instead of a generic "Invite" that fires a duplicate notification.
   useEffect(() => {
-    if (!me) {
+    // `me` is truthy for a guest — an anonymous session is still a session —
+    // so the guard has to name the real condition. A guest organises no games
+    // and invites nobody, and getMyGames would query on their behalf for
+    // nothing.
+    if (!me || isGuestViewer) {
       setGamesLoading(false);
       return;
     }
@@ -218,7 +250,12 @@ export function PlayerCardScreen() {
     );
   }
 
-  if (!user) {
+  // Whichever source answered. Both satisfy PlayerIdentity's prop type, which
+  // is the same `Pick<User,'id'|'name'|'avatarId'|'photoUrl'>` that defines
+  // /usersPublic — so a public mirror drops in with no adaptation.
+  const identity = user ?? publicUser;
+
+  if (!identity) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.loading} />
@@ -228,6 +265,57 @@ export function PlayerCardScreen() {
       </SafeAreaView>
     );
   }
+
+  // ── The guest card ──────────────────────────────────────────────────────
+  //
+  // Returned BEFORE any of the `user.`-dependent computation below, which is
+  // what keeps the authenticated path byte-for-byte unchanged: a full account
+  // never reaches this branch, and every line after it still assumes the full
+  // document it has always had.
+  //
+  // What a guest sees is a real card, not a broken one — the person tapped a
+  // name and gets that person, with a line saying what else exists. Nothing
+  // was blocked, so nothing is phrased as a wall, and Back behaves exactly as
+  // it does anywhere else because nothing is layered over the screen.
+  if (isGuestViewer) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title={identity.name} />
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.header}>
+            <PlayerIdentity user={identity} size="xl" showShirtName />
+            <Text style={styles.name}>{identity.name}</Text>
+          </View>
+          <Card style={styles.guestNoteCard}>
+            <Ionicons
+              name="lock-closed-outline"
+              size={18}
+              color={colors.textMuted}
+            />
+            <Text style={styles.guestNoteText}>{he.playerCardGuestNote}</Text>
+          </Card>
+          <Button
+            title={he.playerCardGuestCta}
+            variant="secondary"
+            fullWidth
+            // Optional and non-blocking, deliberately. It stashes nothing and
+            // opens nothing over the card — it ends the anonymous session the
+            // same way every other register prompt does, and a guest who
+            // ignores it keeps reading the card.
+            onPress={() => {
+              logEvent(AnalyticsEvent.GuestRegisterCtaTapped, {
+                from: 'player_card',
+              });
+              void useUserStore.getState().signOut();
+            }}
+          />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Past this point the full document is guaranteed.
+  if (!user) return null;
 
   const inviteAvailable =
     user.availability?.isAvailableForInvites !== false;
@@ -1197,6 +1285,22 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.success,
     textAlign: 'center',
+  },
+  // Matches the existing card vocabulary — same radius, same padding scale,
+  // secondary text. Not a warning colour: nothing here went wrong.
+  guestNoteCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  guestNoteText: {
+    flex: 1,
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   empty: {
     flex: 1,

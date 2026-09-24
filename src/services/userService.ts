@@ -39,6 +39,7 @@ import { col, docs } from '@/firebase/firestore';
 import { logError, isExpectedDenial } from './errorLog';
 import { rcBool } from './remoteConfigService';
 import { gameService } from './gameService';
+import { joryio } from './joryio';
 
 /** A runtime-only User for an anonymous guest session (no /users doc). */
 function buildGuestUser(uid: string): User {
@@ -579,7 +580,12 @@ export const userService = {
       const snap = await getDoc(ref);
       return snap.exists() ? snap.data() : null;
     } catch (err) {
-      logError('getUserById', err, { uid });
+      // A rules denial here is now an EXPECTED outcome, not a fault: /users is
+      // gated on a full account, so an anonymous session reading somebody
+      // else's document is answered permission-denied by design. Filing that
+      // would put a steady drip into the production error panel every time a
+      // guest taps a player row. A real failure still surfaces.
+      if (!isExpectedDenial(err)) logError('getUserById', err, { uid });
       if (__DEV__) console.warn('[userService] getUserById failed', err);
       return null;
     }
@@ -800,6 +806,14 @@ export const userService = {
       return;
     }
     await signOutFirebase();
+    // Forget the person in Joryio too, and start a fresh anonymous session.
+    // The fresh session is the load-bearing half: this install's anonymous
+    // history belongs to whoever just left, and the next person to sign in here
+    // gets aliased onto the current anonymous id. Without the reset that alias
+    // MERGES TWO PEOPLE into one profile — and lifecycle messaging then branches
+    // on the wrong person's behaviour. `resetUser` has existed for this since
+    // the SDK was wired and had no call site anywhere in the app.
+    joryio.resetIdentity();
     // Clear the offline fallback snapshot so the NEXT user on this device can
     // never be restored as the previous account (cross-account leak guard).
     await storage.setAuthUserJson(null);

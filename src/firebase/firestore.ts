@@ -179,6 +179,45 @@ export function readStats(d: DocumentData): UserStats | undefined {
   };
 }
 
+/**
+ * The four fields a public surface may render about a person.
+ *
+ * This is `UserAvatar`'s own prop type — `Pick<User, 'id'|'name'|'avatarId'|
+ * 'photoUrl'>` — and it is the same allowlist the server trigger writes into
+ * /usersPublic. Keeping it a distinct TYPE rather than a `Partial<User>` is
+ * what stops a caller reaching for a fifth field and getting `undefined`
+ * instead of a compile error.
+ */
+export interface PublicUser {
+  id: UserId;
+  name: string;
+  avatarId?: string;
+  photoUrl?: string;
+}
+
+const publicUserConverter: FirestoreDataConverter<PublicUser> = {
+  toFirestore() {
+    // Client writes are denied by the rules; the trigger owns this collection.
+    throw new Error('usersPublic is server-written only');
+  },
+  fromFirestore(snap): PublicUser {
+    const d = snap.data() as Record<string, unknown>;
+    // Field-by-field, like every other reader here. A field added to the
+    // mirror does NOTHING on read until it is added below too — which is the
+    // behaviour we want for a public projection.
+    return {
+      id: snap.id,
+      name: typeof d.name === 'string' ? d.name : '',
+      ...(typeof d.avatarId === 'string' && d.avatarId
+        ? { avatarId: d.avatarId }
+        : {}),
+      ...(typeof d.photoUrl === 'string' && d.photoUrl
+        ? { photoUrl: d.photoUrl }
+        : {}),
+    };
+  },
+};
+
 const userConverter: FirestoreDataConverter<User> = {
   toFirestore(u: User) {
     return {
@@ -1947,6 +1986,20 @@ const friendRequestConverter: FirestoreDataConverter<FriendRequestDoc> = {
 export const col = {
   users(): CollectionReference<User> {
     return collection(getFirebase().db, 'users').withConverter(userConverter);
+  },
+  /**
+   * The PUBLIC face of a person — id, name, avatarId, photoUrl and nothing
+   * else, mirrored server-side by the `syncUserPublic` trigger.
+   *
+   * Deliberately NOT converted through `userConverter`: that reader rebuilds a
+   * full `User`, and running it over four fields would hand callers an object
+   * shaped like a user with everything else silently defaulted. A public
+   * surface should be holding a public type.
+   */
+  usersPublic(): CollectionReference<PublicUser> {
+    return collection(getFirebase().db, 'usersPublic').withConverter(
+      publicUserConverter,
+    );
   },
   groups(): CollectionReference<Group> {
     return collection(getFirebase().db, 'groups').withConverter(groupConverter);

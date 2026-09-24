@@ -41,7 +41,7 @@ import { enforceRateLimit } from '@/services/rateLimitService';
 import { achievementsService } from './achievementsService';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { withAuthRaceRetry } from '@/firebase/authRace';
-import { col, docs, GroupJoinRequestDoc } from '@/firebase/firestore';
+import { col, docs, GroupJoinRequestDoc, type PublicUser } from '@/firebase/firestore';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
 import { logError, logUnexpected } from '@/services/errorLog';
@@ -1874,6 +1874,65 @@ export const groupService = {
       throw err;
     }
     return fetched.filter((u): u is User => !!u);
+  },
+
+  /**
+   * Names and avatars for a public surface — from /usersPublic, not /users.
+   *
+   * `hydrateUsers` above reads the canonical user documents, which a Firebase
+   * ANONYMOUS session may no longer do: /users is gated on `isFullAccount()`
+   * so a guest cannot read anyone's email, phone, push tokens or referral
+   * attribution. The roster on a PUBLIC game screen still has to render, and
+   * it only ever needed four fields — so it reads the mirror instead.
+   *
+   * Two paths, on purpose:
+   *
+   *   • A full account issues the same batched `documentId() in` query as
+   *     hydrateUsers. That optimisation matters — a 200-member roster is ~7
+   *     queries rather than 200 billed reads — and a real account could
+   *     already enumerate /users anyway, so listing four public fields is
+   *     strictly less than what it has.
+   *   • A guest reads per document, because LIST on /usersPublic is denied to
+   *     anonymous sessions: resolving a name BY id is what a roster needs,
+   *     while a downloadable index of every name in the product is a different
+   *     thing to hand out. A guest is looking at one game, so the cost is a
+   *     couple of dozen gets, not two hundred.
+   *
+   * Reads the auth session directly rather than the user store: this sits
+   * below the store in the import graph and must not reach back up into it.
+   */
+  async hydratePublicUsers(userIds: UserId[]): Promise<PublicUser[]> {
+    if (USE_MOCK_DATA || userIds.length === 0) return [];
+    const ids = Array.from(new Set(userIds.filter(Boolean)));
+    if (ids.length === 0) return [];
+
+    const isAnon = getFirebase().auth.currentUser?.isAnonymous === true;
+
+    try {
+      if (isAnon) {
+        const snaps = await withAuthRaceRetry(() =>
+          Promise.all(ids.map((id) => getDoc(doc(col.usersPublic(), id)))),
+        );
+        return snaps.filter((s) => s.exists()).map((s) => s.data());
+      }
+      const chunks: UserId[][] = [];
+      for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
+      const results = await withAuthRaceRetry(() =>
+        Promise.all(
+          chunks.map((c) =>
+            getDocs(query(col.usersPublic(), where(documentId(), 'in', c))),
+          ),
+        ),
+      );
+      return results.flatMap((snap) => snap.docs.map((d) => d.data()));
+    } catch (err) {
+      // Never throw into a roster render. A missing name shows as the
+      // existing "…" placeholder, which is what happens today when the
+      // hydrate call fails for any other reason.
+      logError('hydratePublicUsers', err, { userCount: ids.length, isAnon });
+      if (__DEV__) console.warn('[groupService] hydratePublicUsers failed', err);
+      return [];
+    }
   },
 };
 

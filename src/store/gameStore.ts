@@ -103,7 +103,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     );
     if (missing.length === 0) return;
     try {
-      const users = await groupService.hydrateUsers(missing);
+      // /usersPublic, NOT /users. This is the roster on a game screen — a
+      // surface a guest reaches — and it renders exactly the four fields the
+      // public mirror carries. /users is now gated on a full account so that a
+      // Firebase anonymous session cannot read anyone's email, phone, push
+      // tokens or referral attribution; reading the mirror here is what keeps
+      // the public roster rendering for them.
+      const users = await groupService.hydratePublicUsers(missing);
       set((s) => {
         const next = { ...s.players };
         for (const u of users) {

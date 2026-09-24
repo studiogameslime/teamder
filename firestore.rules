@@ -31,6 +31,27 @@ service cloud.firestore {
     function isSelf(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
+    // A REAL account, as opposed to a Firebase Anonymous "browse as guest"
+    // session. Every fresh install is about to get one of those automatically,
+    // and until now nothing here could tell the two apart: isSignedIn() is
+    // `request.auth != null`, which an anonymous session satisfies exactly as
+    // well as a Google one. So every rule gated on isSignedIn() alone was, in
+    // effect, gated on "has opened the app".
+    //
+    // The `firebase` block is present on every emulator and production ID
+    // token, so this never errors — measured against the emulator for
+    // google.com / apple.com / password / anonymous / custom, see
+    // tests/rules/anonymousAccess.test.mjs. Note that the OTHER 249 rules
+    // tests use the plain `authenticatedContext(uid)`, whose provider is
+    // 'custom': they read as full accounts and are unaffected.
+    //
+    // Deliberately NOT written as `.get('firebase', {}).get(...)`: the extra
+    // terms cost expression budget, and /games already sits at the 1000-
+    // expression cap (see the two standing failures in tests/rules/README.md).
+    function isFullAccount() {
+      return isSignedIn()
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
     // App Check enforcement: when Firebase App Check is enabled in the
     // Console (Settings → App Check → enforcement) AND the client SDK
     // is properly initialised with Play Integrity / App Attest /
@@ -405,9 +426,31 @@ service cloud.firestore {
     // open clause let any signed-in user inflate / sabotage anyone
     // else's profile.
     match /users/{uid} {
-      allow read: if isSignedIn();
+      // GET and LIST are split because they answer different questions and a
+      // combined `allow read` would give the weaker one away with the stronger.
+      //
+      // A full account keeps exactly what it had: it reads any user doc, which
+      // the roster, friends, admin and chat surfaces all rely on. An anonymous
+      // session gets nothing but its own (non-existent) doc — public name and
+      // avatar now come from /usersPublic, which is all a public surface ever
+      // needed. Before this, "continue as guest" was enough to read anyone's
+      // email, phone, fcmTokens and referral attribution.
+      allow get: if isSelf(uid) || isFullAccount();
 
-      allow create: if isSelf(uid) &&
+      // LIST is a strictly bigger capability — it enumerates the user base.
+      // Three real queries need it, all authenticated-user functionality:
+      //   • groupService.ts:1866  where(documentId(), 'in', ids)   — roster hydrate
+      //   • userService.ts:886    where('invitedBy','==',uid)      — referral count
+      //   • userService.ts:921    same                              — referral list
+      allow list: if isFullAccount();
+
+      // Anonymous sessions never get a /users doc — `buildGuestUser` builds a
+      // runtime-only object and `getCurrentUser` returns before the lazy
+      // create. The rule allowed it anyway (an anonymous uid satisfies
+      // isSelf), so once every fresh install carries a session, every one of
+      // them could have written a junk user doc. Closed here rather than
+      // relying on the client to keep not doing it.
+      allow create: if isFullAccount() && isSelf(uid) &&
         // Brand-new doc: no inviter known yet, OR invitedBy is set to
         // someone OTHER than self (the URL/install-referrer flow on
         // first signup).
@@ -814,6 +857,43 @@ service cloud.firestore {
     // can't end-run the canonical rule by writing only the public doc:
     // they'd produce an orphan with memberCount 0/1, which the discovery
     // feed surfaces as an empty card and `getPublic` returns harmlessly.
+    // ── /usersPublic/{uid} — the public face of a person ────────────────
+    //
+    // Exactly what `UserAvatar` renders and nothing else: id, name, avatarId,
+    // photoUrl. The component's own `Pick<User, 'id'|'name'|'avatarId'|
+    // 'photoUrl'>` IS the allowlist — a public surface that needs more than
+    // those four fields is not a public surface.
+    //
+    // Deliberately an allowlist mirror rather than a loosened /users rule:
+    // adding a field to /users must not be able to publish it by accident.
+    // Same pattern as /communityShowcase, which already does this for clubs.
+    //
+    // READ IS OPEN TO EVERYONE, signed out included. It backs the public web
+    // pages (the game and personal-invite landing pages) as well as the
+    // in-app guest surfaces, and it holds only what those pages already show.
+    //
+    // GET is open to everyone; LIST is not open to a GUEST.
+    //
+    // Resolving a display name BY id is what a roster needs. A downloadable
+    // index of every name in the product is a different thing, and handing it
+    // to an anonymous session — which every fresh install will soon have — is
+    // handing it to anyone who installs the app.
+    //
+    // A FULL account may list, because the batched `documentId() in` query is
+    // what keeps a 200-member roster at ~7 queries instead of 200 billed reads
+    // (see groupService.hydratePublicUsers), and a real account can already
+    // enumerate /users itself — four public fields is strictly less than that.
+    // A guest reads per document instead; it is looking at one game.
+    match /usersPublic/{uid} {
+      allow get: if true;
+      allow list: if isFullAccount();
+      // Server-written only, via the onUserWritten trigger. A client that
+      // could write here could publish any name under any uid — and the
+      // owner writing their own mirror is exactly how the two documents
+      // drift apart.
+      allow write: if false;
+    }
+
     match /groupsPublic/{gid} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() &&
@@ -1638,7 +1718,10 @@ service cloud.firestore {
         return get(/databases/$(database)/documents/games/$(gid)).data.groupId;
       }
 
-      allow read: if isSignedIn();
+      // Authenticated-only: a round is the play-by-play of one club's evening.
+      // Nothing a guest browses renders it — the public game screen shows the
+      // roster and the time, not the mini-game log.
+      allow read: if isFullAccount();
       allow create: if isSignedIn() && (
         request.auth.uid == gameOrgId(request.resource.data.gameId) ||
         isGroupAdmin(gameGroupId(request.resource.data.gameId))
@@ -1660,7 +1743,9 @@ service cloud.firestore {
 
     // ── /playerStats/{uid} ──────────────────────────────────────────────
     match /playerStats/{uid} {
-      allow read: if isSignedIn();
+      // Authenticated-only. Lifetime per-player totals: the player card and
+      // the profile render them, and both sit behind an account.
+      allow read: if isFullAccount();
       allow write: if false;
     }
 
@@ -1814,7 +1899,9 @@ service cloud.firestore {
     // ONE vote per player (rater != rated, 1–5); votes are private to the
     // rater. Abuse is bounded by the 60-votes/hour rate limiter client-side.
     match /ratings/{ratedUid} {
-      allow read: if isSignedIn();
+      // Authenticated-only. An aggregate of how a person is rated is the
+      // single most sensitive derived number we hold about them.
+      allow read: if isFullAccount();
       allow write: if false;
 
       match /votes/{raterUid} {
@@ -2270,7 +2357,9 @@ service cloud.firestore {
     // numbers; a client that could write them could award itself the league.
     // The Admin SDK bypasses these rules, so denying outright costs nothing.
     match /users/{uid}/seasonTitles/{titleId} {
-      allow read: if isSignedIn();
+      // Authenticated-only, and consistent with the parent: the trophy
+      // cabinet hangs off a user document a guest can no longer read.
+      allow read: if isFullAccount();
       allow write: if false;
     }
 
@@ -2304,7 +2393,9 @@ service cloud.firestore {
     // written ONLY server-side by onGameRotationChanged. Any signed-in user
     // may read (the public player card shows "you & X").
     match /pairStats/{pair} {
-      allow read: if isSignedIn();
+      // Authenticated-only. "You and X" is a relationship between two named
+      // people; it belongs to the player card, which is behind an account.
+      allow read: if isFullAccount();
       allow write: if false;
     }
 

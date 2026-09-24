@@ -17669,3 +17669,105 @@ export const endSeasonNow = onCall(
     return { ok: true, ...result, closedNo: seasons.currentNo ?? 1 };
   },
 );
+
+// ─── /usersPublic — the public face of a person ─────────────────────────────
+//
+// WHY A TRIGGER AND NOT A CLIENT DUAL-WRITE.
+//
+// There is no single abstraction every profile write passes through. A /users
+// doc is written from seven client paths — the five sign-in branches in
+// `userService` (`setDoc(ref, fresh)` after Google / Apple / email sign-in /
+// sign-up / lazy re-create), `updateProfile`, and `recoverMissingUserDoc` —
+// and ALSO server-side by the Admin SDK, which bypasses rules entirely (name
+// moderation, the Play pre-launch robot ban, account deletion). A dual-write
+// would have to be remembered in every one of those places, forever, and the
+// one that forgot would leave a public name that silently disagrees with the
+// real one.
+//
+// It would also force `/usersPublic` to be client-writable, and a client that
+// can write the mirror can publish any name under any uid. Server-written is
+// what makes the mirror worth trusting.
+//
+// So: one trigger at the choke point, same shape as `updateShowcaseOnGroupChange`
+// which already does exactly this for clubs.
+
+/**
+ * THE ALLOWLIST. Not a copy of the user object with fields removed — an
+ * explicit list of what a public surface is allowed to render.
+ *
+ * It is `UserAvatar`'s own prop type: `Pick<User, 'id'|'name'|'avatarId'|
+ * 'photoUrl'>`. That component is the only thing that draws a person on a
+ * public surface, so its Pick IS the public contract. A surface that needs a
+ * fifth field is not a public surface.
+ *
+ * Adding a field to /users must never be able to publish it by accident, which
+ * is why this is a literal list and why the mirror is rebuilt from it rather
+ * than spread from the source document.
+ */
+const USERS_PUBLIC_FIELDS = ['name', 'avatarId', 'photoUrl'] as const;
+
+/** Build the mirror. Absent/blank optional fields are OMITTED rather than
+ *  written as null, so the doc stays the shape the client converter expects. */
+function buildUsersPublic(
+  uid: string,
+  user: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { id: uid };
+  const name = typeof user.name === 'string' ? user.name : '';
+  out.name = name;
+  for (const f of ['avatarId', 'photoUrl'] as const) {
+    const v = user[f];
+    if (typeof v === 'string' && v !== '') out[f] = v;
+  }
+  return out;
+}
+
+function usersPublicFieldsChanged(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): boolean {
+  return USERS_PUBLIC_FIELDS.some((f) => before[f] !== after[f]);
+}
+
+/**
+ * Keep `/usersPublic/{uid}` in step with `/users/{uid}`.
+ *
+ * Guarded like the showcase trigger: a /users doc is written on every
+ * availability edit, stat bump, token refresh and presence ping, and none of
+ * those touch a public field. Without the guard this would fire thousands of
+ * times a day to write a document that did not change.
+ *
+ * Delete mirrors delete: an account that is gone must not leave a public name
+ * behind.
+ */
+export const syncUserPublic = onDocumentWritten(
+  'users/{uid}',
+  async (event) => {
+    const uid = event.params.uid as string;
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+
+    if (!after) {
+      // Deleted. Best-effort — a missing mirror is not an error.
+      try {
+        await db.collection('usersPublic').doc(uid).delete();
+      } catch (err) {
+        console.warn('[syncUserPublic] delete failed', uid, err);
+      }
+      return;
+    }
+    if (before && !usersPublicFieldsChanged(before, after)) return;
+
+    try {
+      // `set` without merge: the mirror is REBUILT from the allowlist every
+      // time. Merging would let a field that was once written here survive
+      // after it stopped being part of the allowlist.
+      await db
+        .collection('usersPublic')
+        .doc(uid)
+        .set(buildUsersPublic(uid, after), { merge: false });
+    } catch (err) {
+      console.warn('[syncUserPublic] write failed', uid, err);
+    }
+  },
+);
