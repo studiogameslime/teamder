@@ -52,6 +52,10 @@ export function CommunityEditScreen() {
   const initial = useMemo<GroupFormValues>(() => {
     if (!original) return EMPTY_GROUP_FORM_VALUES;
     return {
+      // Never read and never rendered in the edit flow — this screen shows the
+      // full `SeasonsSettings` instead, which can do everything this cannot.
+      // Present because the type is shared with the creation wizard.
+      seasons: EMPTY_GROUP_FORM_VALUES.seasons,
       name: original.name ?? '',
       description: original.description ?? '',
       isOpen: original.isOpen ?? false,

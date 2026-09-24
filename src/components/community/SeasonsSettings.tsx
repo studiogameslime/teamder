@@ -94,7 +94,8 @@ function formatDate(ms: number): string {
  * deserves. Bounds are enforced here rather than announced: a button that
  * cannot take you out of range never has to tell you that you went.
  */
-function Stepper({
+/** Exported for the same reason as `Chip` above. */
+export function Stepper({
   label,
   value,
   unit,
@@ -197,7 +198,10 @@ function planErrorText(
   }
 }
 
-function Chip({
+/** Exported so the creation-time block draws the SAME chip. Two chips that
+ *  drift apart on two screens asking one question is how a setting starts
+ *  looking like two settings. */
+export function Chip({
   label,
   active,
   onPress,

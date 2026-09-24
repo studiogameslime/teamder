@@ -48,6 +48,12 @@ import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
 const ACCENT = '#3B82F6';
 
+import {
+  NewClubSeasons,
+  NEW_CLUB_SEASONS_DEFAULT,
+  type NewClubSeasonsValue,
+} from '@/components/community/NewClubSeasons';
+
 export interface GroupFormValues {
   // Identity
   name: string;
@@ -75,9 +81,21 @@ export interface GroupFormValues {
   city: string;
   /** Community-wide member cap. Stored as Group.maxMembers. */
   maxMembers: string;
+
+  /**
+   * Seasons, asked only when a club is being CREATED.
+   *
+   * Not a document write like everything else here: the create screen turns
+   * this into an `enableClubSeasons` call once the club exists. The edit flow
+   * leaves it at its default and never renders the block — it has the full
+   * `SeasonsSettings` instead, which can also close a season and decide what
+   * to do with a history this form's club does not have.
+   */
+  seasons: NewClubSeasonsValue;
 }
 
 export const EMPTY_GROUP_FORM_VALUES: GroupFormValues = {
+  seasons: NEW_CLUB_SEASONS_DEFAULT,
   name: '',
   description: '',
   isOpen: false,
@@ -124,6 +142,14 @@ interface Props {
    * reason: nothing here is saved by this form's Save.
    */
   extraAdvanced?: React.ReactNode;
+  /**
+   * Ask about seasons on step 2. CREATE ONLY.
+   *
+   * The edit screen renders the full `SeasonsSettings` through
+   * `extraAdvanced` instead — it can close a season and decide what to do
+   * with a history this block's club does not have yet.
+   */
+  askSeasons?: boolean;
 }
 
 export function GroupWizardForm({
@@ -136,6 +162,7 @@ export function GroupWizardForm({
   revertFields,
   enableUnsavedGuard = false,
   extraAdvanced,
+  askSeasons,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [values, setValues] = useState<GroupFormValues>(initial);
@@ -417,10 +444,22 @@ export function GroupWizardForm({
                     />
                   </View>
                 ) : null}
+                {/* Seasons, at CREATION. Part of this form's values, unlike
+                    the slot below: there is no club yet to run a callable
+                    against, so the answer travels out with the rest of the
+                    form and the create screen acts on it once the club
+                    exists. Only the two questions a club with no past can
+                    answer — see NewClubSeasons. */}
+                {askSeasons ? (
+                  <NewClubSeasons
+                    value={values.seasons}
+                    onChange={(seasons) => set('seasons', seasons)}
+                  />
+                ) : null}
                 {/* Slot for settings that are NOT part of this form's values:
-                    server-owned actions with their own confirm. The create flow
-                    passes nothing — a club has to exist before it can have a
-                    season. */}
+                    server-owned actions with their own confirm. The EDIT flow
+                    passes `SeasonsSettings` here; the create flow uses the
+                    block above instead. */}
                 {extraAdvanced}
               </>
             )}

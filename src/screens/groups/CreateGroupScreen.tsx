@@ -21,6 +21,8 @@ import {
   type GroupFormValues,
 } from '@/screens/groups/GroupWizardForm';
 import { pickRandomCoverId } from '@/data/coverImages';
+import { seasonService } from '@/services/seasonService';
+import { newClubSeasonsArgs } from '@/utils/newClubSeasons';
 
 export function CreateGroupScreen() {
   const nav = useNavigation<
@@ -88,6 +90,28 @@ export function CreateGroupScreen() {
         creator: user,
       });
       logEvent(AnalyticsEvent.GroupCreated, { groupId: group.id });
+      // Seasons, if the admin asked for them on step 2.
+      //
+      // AFTER the club exists and deliberately not blocking on it: a season is
+      // a server callable against a groupId, so there is nothing to call until
+      // this point. A failure here leaves a club that was created with seasons
+      // off — recoverable in one tap from the edit screen — whereas failing the
+      // whole creation over it would throw away a filled-in form.
+      //
+      // `historyChoice` is not passed and must not be: it decides what to do
+      // with evenings already played, and a club created a second ago has
+      // none. The server reads an absent history as zero and opens season 1
+      // clean, which is the only honest answer here.
+      if (v.seasons.enabled) {
+        try {
+          // Built by `newClubSeasonsArgs`, not inline — the shape is the
+          // contract, and tests/logic/newClubSeasons holds it to it.
+          await seasonService.enable(newClubSeasonsArgs(v.seasons, group.id)!);
+        } catch (seasonErr) {
+          logError('createGroupSeasons', seasonErr, { groupId: group.id });
+          appAlert(he.error, he.newClubSeasonsFailed);
+        }
+      }
       (nav as { replace: (s: string, p: unknown) => void }).replace(
         'CommunityDetails',
         { groupId: group.id, celebrate: true },
@@ -144,6 +168,10 @@ export function CreateGroupScreen() {
       submitLabel={he.createGroupSubmit}
       initial={EMPTY_GROUP_FORM_VALUES}
       onSubmit={submit}
+      // The seasons question belongs to creation. The edit screen has the full
+      // settings block instead — it can also end a season and decide what to
+      // do with a history, neither of which exists here.
+      askSeasons
       // Confirm before leaving with filled-in fields instead of discarding
       // them silently (Pulse #9).
       enableUnsavedGuard

@@ -2274,6 +2274,20 @@ export const he = {
   // sentence that makes someone press the button.
   seasonsEndConfirmBody:
     'העונה תיסגר עכשיו: הטבלה של המועדון מתאפסת והתארים מחולקים.\n\nהעונה נשמרת בארכיון ותמיד אפשר לחזור אליה ולראות אותה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\n⚠️ הסגירה סופית. אחריה אי אפשר לתקן תוצאות, שערים או השתתפות של העונה הזו.',
+  /**
+   * Seasons at club CREATION (24.09). Two strings, because the creation form
+   * asks only the two questions a club with no past can answer — on or off,
+   * and measured in evenings or in time. Everything else on the edit screen is
+   * about a history that does not exist yet.
+   */
+  newClubSeasonsHint:
+    'לחלק את המועדון לעונות עם התחלה וסוף. אפשר להחליט גם אחר כך, ותמיד אפשר לשנות.',
+  /** The club WAS created; only the seasons call failed. Says both, because
+   *  "משהו השתבש" after a successful creation reads as "the club is gone". */
+  newClubSeasonsFailed:
+    'המועדון נוצר, אבל לא הצלחנו להפעיל עונות. אפשר להפעיל אותן בהגדרות המועדון.',
+  newClubSeasonsWhatHappens:
+    'כשהעונה תגיע ליעד היא תיסגר מעצמה: יחולקו תארים למי שהוביל, טבלת המועדון תתחיל מאפס, והעונה תישמר בארכיון. הסטטיסטיקה המצטברת בפרופיל וההישגים לא מושפעים.',
   seasonsCadenceDate: 'אחרי פרק זמן',
   seasonsCadenceRounds: 'אחרי מספר מחזורים',
   seasonsMonthsLabel: (n: number) => count(n, 'חודש אחד', 'חודשים'),
