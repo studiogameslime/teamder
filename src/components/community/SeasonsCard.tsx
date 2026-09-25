@@ -52,6 +52,36 @@ export function SeasonsCard({
   const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
   const closedSeasons = seasons?.count ?? 0;
 
+  // ─── Hooks first, before any early return ──────────────────────────────
+  //
+  // These used to sit below the `isMember` and `seasons.enabled` guards, and
+  // that crashed the club screen in production ("Rendered more hooks than
+  // during the previous render", 1.1.14 Android, first seen 08.09).
+  //
+  // A guard that returns null still RENDERS: the fiber stays mounted with the
+  // hook count that render produced — zero. When the same instance later sees
+  // membership arrive or seasons switch on, it suddenly calls two, and React
+  // throws. The transition is ordinary, not exotic: a join request approved
+  // while the club screen is open is exactly the "guest joins a club" path.
+  //
+  // Moving them up changes nothing about what runs. The interval was already
+  // conditional on `windowOpen`, and `windowOpen` now simply carries the same
+  // conditions the guards below do, so it stays false in every case that used
+  // to return before reaching the effect.
+  const [now, setNow] = useState(() => Date.now());
+  // One tick a second, and ONLY while a window is actually open — an interval
+  // that runs on every club card in the app to render nothing is a battery
+  // cost with no reader.
+  const windowOpen =
+    isMember &&
+    seasons?.enabled === true &&
+    seasons.pendingClose?.closeAt != null;
+  useEffect(() => {
+    if (!windowOpen) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [windowOpen]);
+
   if (!isMember) return null;
 
   // Seasons off, but the club HAS closed some: the archives are untouched and
@@ -75,16 +105,6 @@ export function SeasonsCard({
 
   const cadence = seasons.cadence;
   const finalRound = isFinalRoundOfSeason(seasons);
-  // One tick a second, and ONLY while a window is actually open — an interval
-  // that runs on every club card in the app to render nothing is a battery
-  // cost with no reader.
-  const [now, setNow] = useState(() => Date.now());
-  const windowOpen = seasons.pendingClose?.closeAt != null;
-  useEffect(() => {
-    if (!windowOpen) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [windowOpen]);
   const closesIn = msUntilSeasonCloses(seasons, now);
   // Where the season has GOT to, not just where it ends. A constant sentence
   // reads the same on the first evening and the last, which is a label; a

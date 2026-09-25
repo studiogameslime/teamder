@@ -222,6 +222,14 @@ export function CommunityStatsTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [players, limit, sortKey]);
 
+  // Hoisted above the guard below. `rows` starts empty and is filled by the
+  // effect above, so the FIRST render returns null here and the second one
+  // reaches this `useMemo` — a different hook count on consecutive renders,
+  // which React answers by tearing the tree down. Same defect as SeasonsCard,
+  // same production signature: "Rendered more hooks than during the previous
+  // render". Nothing about the memo depends on the guard.
+  const anyTies = useMemo(() => players.some((p) => (p.ties ?? 0) > 0), [players]);
+
   if (rows.length === 0) return null;
 
   const openCard = (uid: string) => {
@@ -293,7 +301,6 @@ export function CommunityStatsTable({
   // itself only once somebody actually has a draw. (The rule is "anyone", not
   // "this player" — a column that appears and disappears as you scroll would
   // be worse than either.)
-  const anyTies = useMemo(() => players.some((p) => (p.ties ?? 0) > 0), [players]);
   const statW = mode === 'efficiency' ? STAT_W_EFF : STAT_W;
   const cols =
     mode === 'efficiency'

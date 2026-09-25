@@ -36,15 +36,28 @@ const ROOT = path.resolve(__dirname, '..');
  * Screens with no early return are skipped by `firstEarlyReturn` returning -1,
  * so this costs nothing on the ones it does not apply to.
  */
-function allScreens(dir: string, out: string[] = []): string[] {
+function allTsx(dir: string, out: string[] = []): string[] {
   for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
     const rel = `${dir}/${e.name}`;
-    if (e.isDirectory()) allScreens(rel, out);
+    if (e.isDirectory()) allTsx(rel, out);
     else if (e.name.endsWith('.tsx')) out.push(rel);
   }
   return out;
 }
-const SCREENS = allScreens('src/screens');
+/**
+ * COMPONENTS TOO, not just screens.
+ *
+ * The bug came back a third time and this file did not catch it, because it
+ * only ever looked at `src/screens`. `SeasonsCard` — `src/components/community`
+ * — put its `useState` and `useEffect` below three guard clauses, and a club
+ * screen that had rendered the card as a non-member (zero hooks) crashed the
+ * moment membership arrived and it called two. Production, 1.1.14 Android,
+ * first seen 08.09.2026: "Rendered more hooks than during the previous render".
+ *
+ * A guard that covers only the directory where the bug happened last time is a
+ * guard for last time. Components render under exactly the same rules.
+ */
+const SCREENS = [...allTsx('src/screens'), ...allTsx('src/components')];
 
 const HOOK_CALL = /(?:^|[^.\w])(?:React\.)?(use[A-Z]\w*)\s*\(/;
 
