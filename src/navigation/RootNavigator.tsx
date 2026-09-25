@@ -12,6 +12,7 @@ import { SplashVisual } from '@/screens/SplashScreen';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { PostSignInOnboardingScreen } from '@/screens/onboarding/PostSignInOnboardingScreen';
+import { QARouteLauncher } from '@/dev/QARouteLauncher';
 import { AuthStack } from './AuthStack';
 import { MainTabs } from './MainTabs';
 import { navigateInvite, navigatePersonalInvite } from './navigationRef';
@@ -443,7 +444,17 @@ export function RootNavigator() {
   // user without community". Both states fall through to MainTabs and
   // surface their context inline (toasts on submit + a "pending" tag
   // in the communities feed).
-  return <MainTabs />;
+  return (
+    <>
+      <MainTabs />
+      {/* Dev-only QA route launcher. Double-gated (`__DEV__` AND
+          EXPO_PUBLIC_QA_ROUTES==='1') and renders null otherwise, so it is
+          absent from every release build and from an ordinary dev build too.
+          It sits OVER the real navigator rather than replacing it, which is
+          what lets it open genuine screens instead of previews. */}
+      <QARouteLauncher />
+    </>
+  );
 }
 
 // Fallback splash for the rare case where RootNavigator re-renders
