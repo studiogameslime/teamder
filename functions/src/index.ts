@@ -10882,8 +10882,14 @@ export const serveInviteCode = onRequest(
             : 'משחק כדורגל ב־Teamder · ראה מי מגיע והצטרף בלחיצה אחת.',
         };
       } else if (invitedBy) {
+        // The PUBLIC mirror, not the canonical user document. This block runs
+        // for a page anybody can open, and it needs exactly one field — the
+        // inviter's display name. `/usersPublic` holds that and nothing else,
+        // so a future edit here cannot reach an email or a push token by
+        // accident. (Server code runs as admin and bypasses the rules, which
+        // is precisely why the narrower collection has to be chosen on purpose.)
         const u = await db
-          .collection('users')
+          .collection('usersPublic')
           .doc(invitedBy)
           .get()
           .catch(() => null);
@@ -13352,7 +13358,8 @@ export const getInvitePreview = onRequest(
       if ((link.type === 'app' || !link.type) && inviterId) {
         let inviterName: string | undefined;
         try {
-          const u = await db.collection('users').doc(inviterId).get();
+          // Public mirror — this response is served to an open web page.
+          const u = await db.collection('usersPublic').doc(inviterId).get();
           const un = u.exists ? (u.data() as { name?: string }).name : undefined;
           if (typeof un === 'string' && un.trim()) inviterName = un.trim();
         } catch {

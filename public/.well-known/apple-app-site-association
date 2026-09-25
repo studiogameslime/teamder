@@ -4,7 +4,12 @@
     "details": [
       {
         "appID": "M7R8M498Z9.com.studiogameslime.soccerapp",
-        "paths": ["/session/*", "/team/*", "/app"]
+        "paths": [
+          "/session/*",
+          "/team/*",
+          "/app",
+          "/go"
+        ]
       }
     ]
   }
