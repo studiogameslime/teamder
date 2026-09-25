@@ -135,6 +135,36 @@ setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 // for "verified" iOS requests).
 const ENFORCE_APP_CHECK = false;
 
+/**
+ * Require a REAL account — not a Firebase Anonymous "browse as guest" session.
+ *
+ * Deliberately a mirror of `isFullAccount()` in firestore.rules, down to the
+ * claim it reads, so the two cannot drift into disagreeing about who counts
+ * as a person. It has to exist separately because CLOUD FUNCTIONS RUN AS
+ * ADMIN AND BYPASS THE RULES ENTIRELY: a callable that checks only
+ * `auth.uid` accepts an anonymous session no matter what the rules say, which
+ * is exactly how a guest put a filler application in front of a real admin.
+ *
+ * `token.firebase.sign_in_provider` is present on every ID token Identity
+ * Platform issues — measured, not assumed, for google.com / apple.com /
+ * password / anonymous / custom. Note that a SERVER-MINTED custom token reads
+ * as 'custom' and therefore passes; we mint none for end users.
+ */
+function requireFullAccount(
+  auth: { uid?: string; token?: { firebase?: { sign_in_provider?: string } } } | undefined,
+): string {
+  if (!auth?.uid) {
+    throw new HttpsError('unauthenticated', 'sign-in required');
+  }
+  if (auth.token?.firebase?.sign_in_provider === 'anonymous') {
+    throw new HttpsError(
+      'permission-denied',
+      'a full account is required for this action',
+    );
+  }
+  return auth.uid;
+}
+
 // Store-review-alert credentials (App Store Connect .p8, Google Play SA JSON).
 // Set via: firebase functions:secrets:set ASC_P8 / PLAY_SA
 const ASC_P8 = defineSecret('ASC_P8');
@@ -12279,11 +12309,12 @@ export const availabilityCounts = onCall(
 export const submitFillerInterest = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
   async (request) => {
-    const auth = request.auth;
-    if (!auth?.uid) {
-      throw new HttpsError('unauthenticated', 'sign-in required');
-    }
-    const uid = auth.uid;
+    // Defence in depth. The match screen gates on `isGuest` and the helper
+    // refuses an anonymous session, but neither is binding: this callable is
+    // reachable by anything holding an anonymous ID token, and rules do not
+    // apply to it. Nothing below this line changes — the eligibility and
+    // business validation are exactly what they were.
+    const uid = requireFullAccount(request.auth);
     const data = (request.data ?? {}) as { gameId?: string };
     const gameId = typeof data.gameId === 'string' ? data.gameId : '';
     if (!gameId) {

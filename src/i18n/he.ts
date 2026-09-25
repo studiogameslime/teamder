@@ -1850,6 +1850,10 @@ export const he = {
   // you're in". The action is already understood to be happening.
   ctxAuthJoinGameTitle: 'עוד רגע אתה בהרכב',
   ctxAuthJoinGameBody: 'מתחברים כדי לשמור את המקום שלך במשחק.',
+  // Applying as a filler is not joining: the person is asking to be
+  // considered, and an admin decides. The copy must not promise a place.
+  ctxAuthApplyFillerTitle: 'מגישים מועמדות למחזור',
+  ctxAuthApplyFillerBody: 'מתחברים כדי שמנהל המחזור יידע מי הגיש.',
   ctxAuthJoinClubTitle: 'עוד רגע אתה בסגל',
   ctxAuthJoinClubBody: 'מתחברים כדי להצטרף למועדון.',
   ctxAuthCreateClubTitle: 'שומרים את המועדון',
@@ -3134,6 +3138,7 @@ export const he = {
   // in", rather than just what the answer is.
   resumeJoinedWaitlist: 'המחזור התמלא — נוספת לרשימת ההמתנה',
   resumeJoinedPending: 'הבקשה נשלחה — מנהל המחזור צריך לאשר',
+  resumeFillerApplied: 'המועמדות נשלחה — מנהל המחזור יחליט',
   /** The target stopped existing while they were signing in. */
   resumeTargetGone: 'הפריט כבר לא קיים',
 

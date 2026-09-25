@@ -171,27 +171,65 @@ export async function handleSpotOfferAction(
 
 type FillerAction = 'EXPRESS_FILLER_INTEREST' | 'DISMISS_FILLER';
 
+/** Where the tap came from. The helper was written for the push's action
+ *  buttons and stamped every event `viaNotificationAction: true` — but the
+ *  ONLY caller today is the banner on the match screen, so every filler
+ *  event in the product has been reporting a notification that did not
+ *  happen. The origin is a parameter now, and it defaults to `screen` —
+ *  the truthful answer for every call site that exists. */
+export type FillerOrigin = 'notification' | 'screen';
+
+/**
+ * Express interest in filling an empty slot.
+ *
+ * THROWS on failure, deliberately. The previous version swallowed every error
+ * in its own `catch`, so the caller's `try` never saw one: the match screen
+ * set its state to `sent`, showed "הבקשה נשלחה" and logged `game_joined` for
+ * requests that had been rejected by the server. A person was told an admin
+ * was considering them when nobody had been asked.
+ *
+ * Callers must handle the rejection. There is one, and it does.
+ */
 export async function handleFillerOpportunityAction(
   action: FillerAction,
   gameId: string,
+  origin: FillerOrigin = 'screen',
 ): Promise<void> {
-  if (!gameId) return;
+  if (!gameId) throw new Error('handleFillerOpportunityAction: gameId required');
   if (action === 'DISMISS_FILLER') {
     logEvent(AnalyticsEvent.GameViewed, {
       gameId,
-      viaNotificationAction: true,
+      viaNotificationAction: origin === 'notification',
       fillerDismissed: true,
     });
     return;
   }
+
+  // Mock mode has no callable to reach — `getFirebase()` throws by design.
+  // Without this the whole flow is unQAable offline, which is how the guest
+  // gate went unnoticed in the first place: the only way to see this CTA work
+  // was to fire a real application at a real club.
+  const { USE_MOCK_DATA } = await import('@/firebase/config');
+  if (USE_MOCK_DATA) {
+    logEvent(AnalyticsEvent.GameJoined, {
+      gameId,
+      viaNotificationAction: origin === 'notification',
+      asFillerInterest: true,
+      source: origin === 'notification' ? 'filler_push' : 'match_screen',
+    });
+    return;
+  }
+
+  const authUser = await waitForAuthRestore();
+  if (!authUser) throw new Error('handleFillerOpportunityAction: not signed in');
+  // A guest must never reach here: the screen gates on `isGuest` and the
+  // callable rejects an anonymous provider server-side. This is the third
+  // layer, and it is the cheap one.
+  if (authUser.isAnonymous) {
+    throw new Error('handleFillerOpportunityAction: anonymous session');
+  }
+
   try {
-    const authUser = await waitForAuthRestore();
-    if (!authUser) {
-      if (__DEV__) {
-        console.warn('[notifAction] no auth user; skipping', action, gameId);
-      }
-      return;
-    }
     // Lazy-import the callable infra so the bundle stays lean.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { httpsCallable } = require('firebase/functions');
@@ -199,25 +237,22 @@ export async function handleFillerOpportunityAction(
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'submitFillerInterest');
     await fn({ gameId });
-    logEvent(AnalyticsEvent.GameJoined, {
-      gameId,
-      viaNotificationAction: true,
-      asFillerInterest: true,
-      source: 'filler_push',
-    });
   } catch (err) {
-    // Common failure modes: game already filled, admin disabled
-    // fillers, candidate already submitted interest. All resolved
-    // by the CF returning a typed HttpsError; we swallow because
-    // the candidate can still see status in-app on next open.
-    logError('handleFillerInterestAction', err, { action, gameId });
+    // Logged here because this is where the context is, then RE-THROWN so the
+    // caller can tell the person the truth. Common server answers: the game
+    // filled up, the admin disabled fillers, interest was already submitted.
+    logError('handleFillerInterestAction', err, { action, gameId, origin });
     if (__DEV__) {
-      console.warn(
-        '[notifAction] filler interest failed',
-        action,
-        gameId,
-        err,
-      );
+      console.warn('[notifAction] filler interest failed', action, gameId, err);
     }
+    throw err;
   }
+
+  // Only after the server said yes.
+  logEvent(AnalyticsEvent.GameJoined, {
+    gameId,
+    viaNotificationAction: origin === 'notification',
+    asFillerInterest: true,
+    source: origin === 'notification' ? 'filler_push' : 'match_screen',
+  });
 }

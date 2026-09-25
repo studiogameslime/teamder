@@ -23,6 +23,11 @@ const CONTEXT_FOR: Partial<Record<PendingActionKind, OfferContext>> = {
   join_game: 'join_game',
   join_club: 'join_club',
   save_availability: 'availability',
+  // `apply_filler` is deliberately absent. The person is a CANDIDATE, not a
+  // participant — none of the pushes the `join_game` copy promises reach them
+  // yet, and the one that matters is the admin's decision. Offering
+  // notifications on the strength of an application would promise something
+  // that is not true until somebody else acts.
 };
 
 /**

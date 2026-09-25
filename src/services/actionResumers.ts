@@ -48,7 +48,15 @@ function fullUser() {
 /** Turn a thrown error into a decision. Only a transport hiccup or a rate limit
  *  is worth keeping the stash for; anything else is an answer about the world
  *  that will not change by asking again. */
-function fromError(err: unknown, where: string): ActionResult {
+function fromError(
+  err: unknown,
+  where: string,
+  /** The outcome this kind would have reached. Carried so a failure reads as
+   *  a failure OF THE RIGHT THING — a filler application that could not be
+   *  sent is not a join that did not happen. `reason` is what stops any of
+   *  these being reported as a success, whatever the outcome says. */
+  outcome: ActionResult['outcome'] = 'joined',
+): ActionResult {
   const code = (err as { code?: string })?.code ?? '';
   if (isPresentButUnreadable(code)) {
     // The document is there, we just cannot read it. The target screen has a
@@ -58,7 +66,7 @@ function fromError(err: unknown, where: string): ActionResult {
   const reason = failureReasonFromCode(code);
   const retryable = reason === 'network_unavailable' || reason === 'rate_limited';
   if (!retryable) logError(where, err, { code });
-  return { outcome: 'joined', terminal: !retryable, reason };
+  return { outcome, terminal: !retryable, reason };
 }
 
 // ─── join_game ────────────────────────────────────────────────────────────
@@ -91,6 +99,45 @@ registerResumer('join_game', async (action: PendingAction): Promise<ActionResult
       return { outcome: 'joined', terminal: true, reason: 'game_join_rejected' };
     }
     return fromError(err, 'resumeJoinGame');
+  }
+});
+
+// ─── apply_filler ─────────────────────────────────────────────────────────
+
+registerResumer('apply_filler', async (action: PendingAction): Promise<ActionResult> => {
+  const me = fullUser();
+  if (!me) return { outcome: 'approval_pending', terminal: false, reason: 'unknown' };
+  const gameId = 'targetId' in action ? action.targetId : undefined;
+  if (!gameId) {
+    return { outcome: 'approval_pending', terminal: true, reason: 'target_deleted' };
+  }
+
+  try {
+    // Asked fresh, through the same helper the screen uses — which now throws
+    // rather than swallowing, so a refusal reaches this catch instead of being
+    // reported as a success. The callable re-validates everything: the match
+    // may have filled, been cancelled, or had fillers switched off while the
+    // person was inside a provider's sheet.
+    // Imported dynamically: `notificationActionService` reaches
+    // `@/firebase/auth`, whose native module graph cannot be loaded under
+    // jest's node environment. A static import here breaks every test that
+    // touches the resumers — the same trap `notificationOffer` avoids the
+    // same way.
+    const { handleFillerOpportunityAction } = await import(
+      '@/services/notificationActionService'
+    );
+    await handleFillerOpportunityAction('EXPRESS_FILLER_INTEREST', gameId, 'screen');
+    // There is only ever one outcome. A filler application does not grant a
+    // place; it puts the person in front of an admin.
+    return { outcome: 'approval_pending', terminal: true };
+  } catch (err) {
+    const code = (err as { code?: string })?.code ?? '';
+    // `already-exists` means the interest is already on record — which is the
+    // state the person was asking for. Not a failure.
+    if (code === 'functions/already-exists' || code === 'already-exists') {
+      return { outcome: 'approval_pending', terminal: true };
+    }
+    return fromError(err, 'resumeApplyFiller', 'approval_pending');
   }
 });
 

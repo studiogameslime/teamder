@@ -67,7 +67,19 @@ const ORIGINS: ReadonlySet<string> = new Set([
 ]);
 
 /** Kinds that name a document. */
-export type TargetedKind = 'open_game' | 'open_club' | 'join_game' | 'join_club';
+export type TargetedKind =
+  | 'open_game'
+  | 'open_club'
+  | 'join_game'
+  | 'join_club'
+  /** Applying to fill an empty slot in somebody else's match. Targeted, not
+   *  drafted: it names a game and carries no form. Deliberately NOT folded
+   *  into `join_game` — a filler application is a different business action.
+   *  It goes to a Cloud Function rather than the roster transaction, it is
+   *  open to NON-members where a join is not, and it can only ever end in
+   *  "an admin will decide". Sharing the kind would make the resumer guess
+   *  which of the two the person actually asked for. */
+  | 'apply_filler';
 /** Kinds that carry work in progress. */
 export type DraftedKind = 'create_club' | 'create_game' | 'save_availability';
 
@@ -78,6 +90,7 @@ const TARGETED_KINDS: ReadonlySet<string> = new Set<TargetedKind>([
   'open_club',
   'join_game',
   'join_club',
+  'apply_filler',
 ]);
 const DRAFTED_KINDS: ReadonlySet<string> = new Set<DraftedKind>([
   'create_club',

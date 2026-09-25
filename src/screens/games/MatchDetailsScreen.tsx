@@ -111,6 +111,7 @@ import { deepLinkService } from '@/services/deepLinkService';
 import { createShortInviteUrl } from '@/services/inviteLinkService';
 import { ensureNotGuest } from '@/utils/guestGate';
 import { guestJoinGameRequest } from '@/services/guestJoin';
+import { guestApplyFillerRequest } from '@/services/guestFiller';
 import {
   useAuthenticatedAction,
   useIsGuest,
@@ -880,12 +881,25 @@ export function MatchDetailsScreen() {
   const [fillerState, setFillerState] = useState<'idle' | 'submitting' | 'sent'>('idle');
   const onApplyAsFiller = async () => {
     if (!game || fillerState !== 'idle') return;
+    // A guest never reaches the callable. This CTA was the last write on the
+    // screen that went straight to the server with an anonymous uid — the
+    // join CTA above was gated three rounds ago and this one was missed, so
+    // an anonymous session could put a real filler application in front of a
+    // real admin. The sheet is already mounted for the join path; the intent
+    // is stashed and finished by `apply_filler`'s resumer afterwards.
+    if (isGuest) {
+      void authAction.request(guestApplyFillerRequest(game.id));
+      return;
+    }
     setFillerState('submitting');
     try {
-      await handleFillerOpportunityAction('EXPRESS_FILLER_INTEREST', game.id);
+      await handleFillerOpportunityAction('EXPRESS_FILLER_INTEREST', game.id, 'screen');
       setFillerState('sent');
       toast.success(he.fillerApplySent);
     } catch (err) {
+      // Reached at last: the helper used to swallow its own errors, so this
+      // branch was dead and the screen said "נשלח" for applications the
+      // server had refused.
       logError('matchDetails.applyAsFiller', err, { gameId: game.id });
       setFillerState('idle');
       toast.error(he.fillerApplyError);

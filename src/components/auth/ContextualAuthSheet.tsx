@@ -56,6 +56,10 @@ const COPY: Record<AuthPromptReason, { title: string; body: string }> = {
   account_upgrade: { title: he.ctxAuthUpgradeTitle, body: he.ctxAuthUpgradeBody },
   join_game: { title: he.ctxAuthJoinGameTitle, body: he.ctxAuthJoinGameBody },
   join_club: { title: he.ctxAuthJoinClubTitle, body: he.ctxAuthJoinClubBody },
+  apply_filler: {
+    title: he.ctxAuthApplyFillerTitle,
+    body: he.ctxAuthApplyFillerBody,
+  },
   create_club: { title: he.ctxAuthCreateClubTitle, body: he.ctxAuthCreateClubBody },
   create_game: { title: he.ctxAuthCreateGameTitle, body: he.ctxAuthCreateGameBody },
   save_availability: {

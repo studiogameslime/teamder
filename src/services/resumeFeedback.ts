@@ -67,6 +67,13 @@ export function reportResumeOutcome(
       return;
     }
 
+    if (kind === 'apply_filler') {
+      // One outcome only: the person is now in front of an admin. Saying
+      // "joined" here would be the exact lie the filler banner used to tell.
+      if (result.outcome === 'approval_pending') toast.success(he.resumeFillerApplied);
+      return;
+    }
+
     // The creates and the availability save say nothing here ON PURPOSE.
     // `create_club` and `create_game` navigate to the thing they just made,
     // celebrating — a toast on top of that arrival is noise. `save_availability`

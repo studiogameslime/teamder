@@ -636,6 +636,11 @@ export const mockGamesV2: Game[] = [
     bringBall: true,
     bringShirts: false,
     notes: 'מגרש דשא סינטטי, חניה ברחוב',
+    // Short-handed and open to outsiders — the one mock game that renders the
+    // filler banner, so the guest gate on "בקש להצטרף" can be exercised
+    // without touching production. Nothing in the mock had `acceptsFillers`
+    // before, which is why the flow had never been seen in QA at all.
+    acceptsFillers: true,
     createdAt: Date.now() - 1000 * 60 * 60 * 12,
   },
   // 4. Open Game — public, full + waitlist active
