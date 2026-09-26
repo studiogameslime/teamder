@@ -105,6 +105,93 @@ async function removeDeviceTokenBeforeAuthTeardown(uid: string): Promise<void> {
   }
 }
 
+
+/**
+ * Everything the signed-out person left on the DEVICE, not on their account.
+ *
+ * `footy.pending.action` and the draft slots are device-scoped by design — a
+ * deep link has to survive the sign-in it triggers. That same property makes
+ * them a leak across identities: sign out mid-way through creating a club and
+ * the next person to sign in on the phone would have the resume fire for them.
+ *
+ * Best-effort on each key. A failure here must not stop a sign-out.
+ */
+async function clearSignedOutUserState(): Promise<void> {
+  // Imported lazily, not at module scope. A static import here pulls
+  // pendingAction's and draftStore's native dependency chain into every module
+  // that touches the user store, and that broke `silentGuest.test.ts` on an
+  // untransformed expo-constants — the same trap `actionResumers` hit with
+  // notificationActionService. The cost is nothing: this runs once, on a tap.
+  const [{ clearPendingAction }, { draftStore }] = await Promise.all([
+    import('@/services/pendingAction'),
+    import('@/services/draftStore'),
+  ]);
+  await clearPendingAction();
+  await Promise.all(
+    (['club', 'game', 'availability'] as const).map((kind) =>
+      draftStore.discard(kind),
+    ),
+  );
+}
+
+/**
+ * Start an anonymous session and land the store in a state the navigator can
+ * leave.
+ *
+ * Shared by boot and sign-out ON PURPOSE. It used to live inline in `hydrate`,
+ * which meant a guest was only ever created at launch — and `signOut` set
+ * `currentUser: null` without one. That combination
+ *
+ *     hydrated: true, currentUser: null, guestInitFailed: false
+ *
+ * is terminal: RootNavigator's first guard passes (hydrated), the second finds
+ * no user and no failure flag, and returns the splash forever. Signing out
+ * froze the app until it was force-quit. Having exactly one place that ends a
+ * session-less state is what stops that shape existing at all.
+ *
+ * The post-condition every caller relies on: when this resolves, EITHER
+ * `currentUser` is set, OR `guestInitFailed` is true. Never neither.
+ */
+async function startSilentGuest(
+  set: (partial: Partial<UserStore>) => void,
+  onboardingDone: boolean,
+  origin: 'silent' | 'post_sign_out',
+): Promise<void> {
+  if (USE_MOCK_DATA) {
+    // `guestInitFailed: true` because the flag is what the navigator reads to
+    // mean "there is no session and none is coming" — and in mock mode that
+    // is literally true: the attempt is skipped, so nothing will ever produce
+    // one. Setting it false left `currentUser` null with no fallback, and the
+    // navigator sat on the splash forever with no control to escape it. That
+    // broke every screenshot run and every mock QA pass.
+    set({ hydrated: true, onboardingDone, currentUser: null, guestInitFailed: true });
+    return;
+  }
+  let guest: User | null = null;
+  try {
+    guest = await userService.signInAsGuest();
+    logEvent(AnalyticsEvent.GuestSessionStarted, { origin });
+  } catch (err) {
+    // Offline is the realistic case — on first launch, or on the network drop
+    // that made somebody sign out in the first place. Report it and let
+    // RootNavigator fall back to the sign-in screen, which is where this
+    // person would have landed before any of this existed.
+    // Key kept as `userHydrateSilentGuest` even though this no longer lives in
+    // `hydrate`: it is the grouping key for an existing production error
+    // fingerprint, and renaming it in a hotfix would split the history for no
+    // gain. `origin` in the context says which path failed.
+    logError('userHydrateSilentGuest', err, { origin });
+    logEvent(AnalyticsEvent.BootHydrateFailed, { source: 'silent_guest' });
+    if (__DEV__) console.warn('[userStore] silent guest failed', origin, err);
+  }
+  set({
+    hydrated: true,
+    onboardingDone,
+    currentUser: guest,
+    guestInitFailed: guest === null,
+  });
+}
+
 export const useUserStore = create<UserStore>((set, get) => ({
   hydrated: false,
   onboardingDone: false,
@@ -150,34 +237,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
     // NOT in mock mode: there `getCurrentUser` reads a seeded AsyncStorage
     // user, and manufacturing a guest when the seed is absent would change
     // what screenshot runs and QA see.
-    if (USE_MOCK_DATA) {
-      // `guestInitFailed: true` because the flag is what the navigator reads to
-      // mean "there is no session and none is coming" — and in mock mode that
-      // is literally true: the attempt is skipped, so nothing will ever produce
-      // one. Setting it false left `currentUser` null with no fallback, and the
-      // navigator sat on the splash forever with no control to escape it. That
-      // broke every screenshot run and every mock QA pass, not just this round.
-      set({ hydrated: true, onboardingDone, currentUser: null, guestInitFailed: true });
-      return;
-    }
-    let guest: User | null = null;
-    try {
-      guest = await userService.signInAsGuest();
-      logEvent(AnalyticsEvent.GuestSessionStarted, { origin: 'silent' });
-    } catch (err) {
-      // Offline on first launch is the realistic case. Report it and let
-      // RootNavigator fall back to the sign-in screen, which is where this
-      // person would have landed before any of this existed.
-      logError('userHydrateSilentGuest', err, {});
-      logEvent(AnalyticsEvent.BootHydrateFailed, { source: 'silent_guest' });
-      if (__DEV__) console.warn('[userStore.hydrate] silent guest failed', err);
-    }
-    set({
-      hydrated: true,
-      onboardingDone,
-      currentUser: guest,
-      guestInitFailed: guest === null,
-    });
+    await startSilentGuest(set, onboardingDone, 'silent');
   },
 
   completeOnboarding: async () => {
@@ -233,6 +293,8 @@ export const useUserStore = create<UserStore>((set, get) => ({
       await removeDeviceTokenBeforeAuthTeardown(uid);
     }
     await userService.signOut();
+    // Drop the old identity from the tree before anything else runs, so no
+    // screen can render the previous account against the next session.
     set({ currentUser: null, guestInitFailed: false });
     // Wipe per-user stores so the next account (incl. the common
     // guest→register flow) never sees the previous user's communities/roster.
@@ -241,7 +303,15 @@ export const useUserStore = create<UserStore>((set, get) => ({
     // chatStore held the previous account's unread counts — without this the
     // tab badge briefly leaked Account A's chat activity into Account B.
     useChatStore.getState().clear();
+    // The pending action and its drafts are keyed to the DEVICE, not the uid.
+    // Left in place they would resume the signed-out person's half-finished
+    // club or availability under whoever signs in next.
+    await clearSignedOutUserState();
     logEvent(AnalyticsEvent.SignOut);
+    // Signing out of Teamder means becoming a guest, not leaving. Without this
+    // the store sits at `currentUser: null, guestInitFailed: false` and the
+    // navigator has nothing to render but the splash — forever.
+    await startSilentGuest(set, get().onboardingDone, 'post_sign_out');
   },
 
   deleteOwnAccount: async (password) => {
@@ -259,7 +329,12 @@ export const useUserStore = create<UserStore>((set, get) => ({
     useGroupStore.getState().reset();
     useGameStore.getState().reset();
     useChatStore.getState().clear();
+    await clearSignedOutUserState();
     logEvent(AnalyticsEvent.AccountDeleted);
+    // Same terminal state as sign-out, reached a different way: the account is
+    // gone and nothing would start a session, so the navigator would sit on the
+    // splash. Deleting an account leaves you a guest, like a fresh install.
+    await startSilentGuest(set, get().onboardingDone, 'post_sign_out');
   },
 
   subscribeCurrentUser: (uid) => {
