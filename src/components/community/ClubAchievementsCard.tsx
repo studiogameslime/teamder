@@ -12,7 +12,6 @@
 
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 import { Card } from '@/components/Card';
 import { AchievementBadge } from '@/components/AchievementBadge';
@@ -50,10 +49,10 @@ export function ClubAchievementsCard({ metrics }: Props) {
 
   return (
     <View>
-      {/* Under forceRTL, 'row' packs the first child (the icon) to the RIGHT
-          and anchors the whole header right. ('row-reverse' pushes it left.) */}
+      {/* No icon. "נתוני מועדון" sits directly above this on the same screen
+          with a bare heading, and the medal here made one of two neighbouring
+          section titles look like a different kind of thing. */}
       <View style={styles.sectionTitle}>
-        <Ionicons name="medal" size={16} color={colors.primary} />
         <Text style={styles.sectionTitleText}>
           {he.communityStatsSectionAchievements}
         </Text>

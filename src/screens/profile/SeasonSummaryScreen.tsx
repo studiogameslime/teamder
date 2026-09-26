@@ -572,20 +572,22 @@ export function SeasonSummaryScreen() {
             <View style={styles.card}>
               <CardTitle icon="podium" text={he.seasonSectionStanding} />
               <View style={styles.statGrid}>
-                {/* A medal for a podium finish, the plain icon otherwise. The
-                    three tiles here are the only ones on the screen that are a
-                    PLACE rather than a count, so they are allowed to celebrate
-                    when the place is worth celebrating. */}
+                {/* Goals and assists carry their OWN icon, the same ball and
+                    footsteps "המספרים שלך בעונה" uses a card above — a tile
+                    labelled שערים should look like the goals tile everywhere
+                    else, not like a podium. The celebration for a podium
+                    finish is still there, in the TINT. Wins keeps the medal,
+                    which is the one the owner asked to leave alone. */}
                 <Stat
                   label={he.statGoals}
                   value={me.ranks.goals ? he.seasonRankOf(me.ranks.goals, me.ranks.of) : '—'}
-                  icon={rankIcon(me.ranks.goals)}
+                  icon="football"
                   tint={rankTint(me.ranks.goals)}
                 />
                 <Stat
                   label={he.statAssists}
                   value={me.ranks.assists ? he.seasonRankOf(me.ranks.assists, me.ranks.of) : '—'}
-                  icon={rankIcon(me.ranks.assists)}
+                  icon="footsteps-outline"
                   tint={rankTint(me.ranks.assists)}
                 />
                 <Stat

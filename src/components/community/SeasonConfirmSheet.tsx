@@ -95,8 +95,16 @@ export function SeasonConfirmSheet({
                   : he.seasonsConfirmMethodRounds
               }
             />
+            {/* "משך עונה" is a lie when season 1 is being carried: its end is
+                the date two rows down, and this number only starts applying at
+                season 2. Reported with the row circled — "6 חודשים" printed
+                directly above "עונה 1 תסתיים 25.09.2028". */}
             <Row
-              label={he.seasonsLengthLabel}
+              label={
+                cadence === 'date' && !plan.sealsSeason1 && hasHistory
+                  ? he.seasonsConfirmFromSeason2
+                  : he.seasonsLengthLabel
+              }
               value={
                 cadence === 'date'
                   ? he.seasonsMonthsUnit(months)

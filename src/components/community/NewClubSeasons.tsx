@@ -18,10 +18,11 @@
 // is recoverable from the edit screen, unlike a half-made club.
 
 import React from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { InfoTip } from '@/components/InfoTip';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 // The SAME chip and stepper the edit screen draws — exported from it rather
 // than copied, so the two screens asking one question cannot drift into
 // looking like two different settings.
@@ -58,7 +59,16 @@ export function NewClubSeasons({
 
   return (
     <View style={styles.section}>
-      <View style={styles.toggleRow}>
+      {/* The same card the three toggles above this one are drawn as — a
+          surface, a radius, the whole row pressable, and the BallSwitch. This
+          block used to be a bare row with the platform Switch, so on the
+          create screen "עונות" read as a different kind of setting from
+          "מועדון פתוח", "דירוג פנימי" and "כרטיסים" sitting directly above it.
+          Reported by the owner with the row circled. */}
+      <Pressable
+        style={styles.toggleCard}
+        onPress={() => set({ enabled: !value.enabled })}
+      >
         <View style={styles.toggleText}>
           <View style={styles.titleRow}>
             <Text style={styles.label}>{he.seasonsToggleLabel}</Text>
@@ -68,12 +78,13 @@ export function NewClubSeasons({
           </View>
           <Text style={styles.hint}>{he.newClubSeasonsHint}</Text>
         </View>
-        <Switch
+        <BallSwitch
           value={value.enabled}
           onValueChange={(enabled) => set({ enabled })}
-          accessibilityLabel={he.seasonsToggleLabel}
+          trackColor={{ false: colors.border, true: colors.primary }}
+          thumbColor="#fff"
         />
-      </View>
+      </Pressable>
 
       {value.enabled ? (
         <>
@@ -154,8 +165,19 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  toggleText: { flex: 1, minWidth: 0 },
+  // Matches GroupWizardForm's `toggleCard` token for token, so the four
+  // toggles on that step read as one set.
+  toggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+  },
+  toggleText: { flexShrink: 1, minWidth: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   label: {
     ...typography.label,

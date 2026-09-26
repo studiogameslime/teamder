@@ -2186,6 +2186,12 @@ export const he = {
     'עונה היא פרק זמן עם התחלה וסוף. אפשר למדוד אותה בערבי משחק (״אחרי 20 מחזורים״) או בזמן (״אחרי חצי שנה״).\n\nכשעונה נגמרת: מחולקים תארים למי שהוביל בה — רק לפי מה שהמועדון באמת מדד, טבלת המועדון מתחילה מאפס, והעונה נשמרת בארכיון ואפשר תמיד לחזור אליה.\n\nמה שלא מושפע: הסטטיסטיקה המצטברת בפרופיל, ההישגים והרצפים. אפשר לכבות עונות בכל רגע — העונות שכבר נסגרו נשארות.',
   seasonsCadenceQuestion: 'איך העונה נגמרת',
   seasonsHowLong: 'אחרי כמה זמן',
+  /** Same control, said honestly when season 1's end is picked separately.
+   *  Carrying the club's history into season 1 means the months chips do NOT
+   *  end season 1 — the date chips below do — and they only start applying
+   *  from season 2. Labelled "אחרי כמה זמן" it read as the answer to "when
+   *  does this season end", which is a different control on the same screen. */
+  seasonsHowLongFromSeason2: 'אורך העונות מעונה 2 והלאה',
   seasonsHowMany: 'אחרי כמה מחזורים',
   seasonsTargetCustom:
     'היעד הנוכחי של המועדון לא אחת מהאפשרויות כאן. בחירה תחליף אותו.',
@@ -2342,7 +2348,7 @@ export const he = {
   // truncated mid-sentence on the device, and the explanation belongs in the
   // dialog body anyway.
   seasonsCloseFirstKeep: 'לצרף לעונה הנוכחית',
-  seasonsCloseFirstSeal: 'לסגור ולהתחיל מאפס',
+  seasonsCloseFirstSeal: 'לסגור ולהתחיל חדשה',
   seasonsEnabledToast: 'עונות הופעלו במועדון',
   // Only what the admin's own tap actually did. "כל מי ששיחק קיבל את הסיכום
   // שלו" was a claim about a push fan-out that runs after the close, dedupes on
@@ -2855,7 +2861,7 @@ export const he = {
   // The same fact about a season that is already over. "עדיין" is a promise a
   // sealed season cannot keep.
   seasonSummaryNoRoundsClosed: 'לא שיחקת בעונה הזאת, אז אין לך סיכום ממנה.',
-  seasonSectionNumbers: 'המספרים בעונה',
+  seasonSectionNumbers: 'המספרים שלך בעונה',
   seasonSectionStanding: 'המיקום במועדון',
   seasonSectionPeople: 'האנשים של העונה',
   seasonStatContributions: 'שערים + בישולים',

@@ -433,7 +433,7 @@ export function SeasonsSettings({
         // No season 1 to date when the club has already run one — and no
         // control on screen that could pick a date for it.
         hasHistory: !firstTime,
-        // A running season has no "לסגור ולהתחיל מאפס" chip to point at, so a
+        // A running season has no "לסגור ולהתחיל חדשה" chip to point at, so a
         // target equal to what it has played is the admin saying it ends here
         // — allowed, and announced below rather than refused. On a first
         // activation that chip is right there, so the refusal stays.
@@ -578,6 +578,12 @@ export function SeasonsSettings({
   //
   // `seasonService.reopenLast` is kept as the client-side wrapper for the
   // maintenance hook; nothing in the app calls it.
+
+  /** Season 1 keeps the club's history and gets its own end date, so the
+   *  months chips govern season 2 onward rather than the season on screen.
+   *  Only ever true on a FIRST activation — a club already running seasons
+   *  has no season 1 to carry and no date control for one. */
+  const carriesSeason1 = live === false && cadence === 'date' && !sealHistory;
 
   /**
    * Evenings this season has actually played, as the screen has them.
@@ -739,7 +745,16 @@ export function SeasonsSettings({
           </View>
 
           <Text style={styles.fieldLabel}>
-            {cadence === 'date' ? he.seasonsHowLong : he.seasonsHowMany}
+            {cadence === 'rounds'
+              ? he.seasonsHowMany
+              : /* Carrying the club's history into season 1? Then these chips
+                   do not end season 1 — the date chips further down do — and
+                   they only begin to apply from season 2. Under the old label
+                   this block answered a question it does not answer, next to
+                   the control that does. */
+                carriesSeason1
+                ? he.seasonsHowLongFromSeason2
+                : he.seasonsHowLong}
           </Text>
           {/* A club can hold a target that is not one of the chips — an older
               season, or one set before these choices existed. Say so rather
@@ -950,8 +965,14 @@ export function SeasonsSettings({
                 </>
               ) : null}
 
-              {/* What the plan says will happen, in the admin's own numbers. */}
-              {plan.ok && plan.nextStartsOn ? (
+              {/* What the plan says will happen, in the admin's own numbers.
+                  NOT before the admin has changed anything on a LIVE club: the
+                  box renders the PLAN, and on an untouched live club the plan
+                  is a season the club is not in. One was reported showing
+                  "סיום העונה 25.03.2027" three lines under the club's own
+                  "העונה מסתיימת ב־25.09.2028" — the preview of a six-month
+                  default beside the twenty-four months actually running. */}
+              {plan.ok && plan.nextStartsOn && (!live || targetChanged) ? (
                 <View style={styles.dateBox}>
                   {plan.endsOn ? (
                     <DateLine

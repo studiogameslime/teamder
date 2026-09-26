@@ -41,7 +41,7 @@ export interface ActivationInput {
    * being refused.
    *
    * Only the live "עדכן את יעד העונה" path sets it. Switching seasons ON has a
-   * chip that says exactly this out loud — "לסגור ולהתחיל מאפס" — so a target
+   * chip that says exactly this out loud — "לסגור ולהתחיל חדשה" — so a target
    * its own history already fills is a mistake there, and stays refused. A club
    * whose season is already running has no such chip and no other way to say
    * "this evening was the last one": an admin who moves the line to the number
