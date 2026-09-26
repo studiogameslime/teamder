@@ -5,7 +5,7 @@
 // app actually starts working. Now it's one screen: name + a
 // profile picture (photo upload OR built-in avatar), save → main app.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { InputField } from '@/components/InputField';
+import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { AVATARS, pickRandomAvatarId } from '@/data/avatars';
@@ -29,6 +30,8 @@ import { useUserStore } from '@/store/userStore';
 import { pickAndUploadAvatar, deleteUserPhoto } from '@/services/photoService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { readPendingAction } from '@/services/pendingAction';
+import { searchCities } from '@/services/israelLocationService';
+import { geocodeCity } from '@/services/geocodeService';
 
 const HERO_GRADIENT = ['#1E3A8A', '#1E40AF', '#3B82F6'] as const;
 const ACCENT = '#1E40AF';
@@ -70,6 +73,19 @@ export function PostSignInOnboardingScreen() {
   }, []);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  /**
+   * Home city. OPTIONAL, and the same field the availability editor and the
+   * club wizard write — `availability.homeCity`, picked from the same
+   * `searchCities` autocomplete. No new data model, no second "where do you
+   * live" on the user document.
+   *
+   * Optional because this screen is a confirmation, not a form: requiring it
+   * would put a network-backed autocomplete on the critical path of every
+   * sign-up, and a person who has just tapped "join" is here to finish that,
+   * not to fill in a profile.
+   */
+  const [city, setCity] = useState<string>(user?.availability?.homeCity ?? '');
+  const fetchCities = useCallback((q: string) => searchCities(q), []);
 
   // Photo / avatar state. We track them independently — picking an
   // avatar clears the photo (and vice versa) so the on-screen
@@ -143,10 +159,22 @@ export function PostSignInOnboardingScreen() {
   const handleSave = async () => {
     setBusy(true);
     try {
+      const trimmedCity = city.trim();
+      // Best-effort geocode. The matcher wants coordinates, but a Nominatim
+      // round-trip must never be what stands between somebody and their
+      // account: a failure, a timeout or an unrecognised spelling all fall
+      // through to saving the name on its own, which is still a useful answer
+      // and is exactly what the availability editor tolerates.
+      let coords: { lat: number; lng: number } | null = null;
+      if (trimmedCity) {
+        coords = await geocodeCity(trimmedCity).catch(() => null);
+      }
       await complete({
         name: name.trim(),
         avatarId: photoUrl ? undefined : avatarId,
         photoUrl,
+        ...(trimmedCity ? { homeCity: trimmedCity } : {}),
+        ...(coords ? { homeCityLat: coords.lat, homeCityLng: coords.lng } : {}),
       });
       // Closes the funnel leg that starts at auth_prompt_shown. `complete`
       // flips `onboardingCompleted`, which is what lets RootNavigator's resume
@@ -155,6 +183,11 @@ export function PostSignInOnboardingScreen() {
       logEvent(AnalyticsEvent.ProfileConfirmed, {
         action_kind: pendingKind ?? 'none',
         had_prefill: prefilledRef.current,
+        // The city is optional, so the only way to know whether asking for it
+        // was worth the extra field is to count how often it is answered.
+        // The VALUE never travels — a home city is a person's location.
+        has_city: trimmedCity.length > 0,
+        city_geocoded: !!coords,
       });
     } catch (err) {
       if (__DEV__) console.warn('[onboarding] complete failed', err);
@@ -208,6 +241,19 @@ export function PostSignInOnboardingScreen() {
             icon="person-outline"
             required
           />
+
+          {/* City — after the name, before the picture. The reference puts
+              identity (who) above location (where), and both above the
+              avatar grid, which is the longest thing on the screen. */}
+          <AutocompleteInput
+            label={he.psoCityLabel}
+            value={city}
+            onChange={setCity}
+            onSelect={setCity}
+            placeholder={he.psoCityPlaceholder}
+            fetchSuggestions={fetchCities}
+          />
+          <Text style={styles.cityHint}>{he.psoCityHint}</Text>
 
           <Text style={styles.label}>{he.profilePhotoLabel}</Text>
           <Pressable
@@ -339,6 +385,12 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
     marginBottom: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  cityHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
     marginTop: spacing.xs,
   },
 

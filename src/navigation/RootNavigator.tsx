@@ -15,7 +15,14 @@ import { PostSignInOnboardingScreen } from '@/screens/onboarding/PostSignInOnboa
 import { QARouteLauncher } from '@/dev/QARouteLauncher';
 import { AuthStack } from './AuthStack';
 import { MainTabs } from './MainTabs';
-import { navigateInvite, navigatePersonalInvite } from './navigationRef';
+import { EntryStack } from './EntryStack';
+import { decideEntry } from './entryGate';
+import { useEntryStore } from '@/store/entryStore';
+import {
+  navigateInvite,
+  navigatePersonalInvite,
+  navigateEntryIntent,
+} from './navigationRef';
 import { colors } from '@/theme';
 import { adsService } from '@/services/adsService';
 import { initRemoteConfig } from '@/services/remoteConfigService';
@@ -45,6 +52,24 @@ export function RootNavigator() {
   const profileComplete = useUserStore((s) => s.isProfileComplete());
   const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding());
   const hydrateUser = useUserStore((s) => s.hydrate);
+
+  // ── The organic first-run gate ──────────────────────────────────────────
+  //
+  // Both facts start as `null` ("not read yet"), and `decideEntry` renders
+  // that as the splash rather than guessing. Guessing "show Welcome" would
+  // flash the organic pitch at somebody who opened a match link, which is the
+  // single behaviour the gate exists to prevent.
+  const entryOrganicCompleted = useEntryStore((s) => s.organicCompleted);
+  const hydrateEntry = useEntryStore((s) => s.hydrate);
+
+  // Computed HERE, above the effects, not down in the decision tree where it
+  // is consumed. Two consumers need it: the render, which picks a stack, and
+  // the deep-link consumer below, which must not address a tab that the entry
+  // stack has replaced. `decideEntry` is pure, so hoisting it costs nothing.
+  const entryDecision = decideEntry({
+    isGuest: currentUser?.isGuest === true,
+    organicCompleted: entryOrganicCompleted,
+  });
 
   const groupHydrated = useGroupStore((s) => s.hydrated);
   const hydrateGroup = useGroupStore((s) => s.hydrate);
@@ -79,6 +104,36 @@ export function RootNavigator() {
     if (!currentUser) return;
     const viewerIsGuest = currentUser.isGuest === true;
     if (!viewerIsGuest && (!profileComplete || !hasCompletedOnboarding)) return;
+    // And the TABS have to be what is on screen. Every navigation below
+    // addresses a tab by name, and while the entry gate is still resolving —
+    // or showing Welcome — MainTabs does not exist. A navigate into a
+    // navigator that is not mounted is a no-op React Navigation only logs, so
+    // firing early would mark a personal invite "landed" without landing it.
+    //
+    // This is a WAIT, not a skip: `entryDecision` is in the dependency array,
+    // so the effect runs again the moment the gate opens, and `consumedRef` is
+    // set below only on the pass that actually does the work.
+    if (entryDecision !== 'app') return;
+    // ── The person chose something other than their invitation ──────────
+    //
+    // The entry flow offers the invitation as a card. If they tapped one of
+    // the other three instead, this consumer must not fire a frame later and
+    // drag them to the target they just declined — which is exactly what
+    // would happen, because the stash is still there.
+    //
+    // It is still there ON PURPOSE: `applyInviteAttributionIfFresh` reads it
+    // at signup, so the inviter is credited either way. Only the navigation
+    // is suppressed, and only for this launch.
+    if (useEntryStore.getState().suppressAutoConsume) {
+      if (__DEV__) console.info('[invite] consumer — invitation declined at entry');
+      return;
+    }
+    // `groupHydrated` for the same reason, and ONLY for that reason. The note
+    // above still stands on its own point — we do not wait on groups to decide
+    // member-vs-public, which is read from the store at consume time below —
+    // but the group splash unmounts MainTabs just as the entry gate does, and
+    // a navigate needs the tabs to exist.
+    if (!groupHydrated) return;
     consumedRef.current = true;
     (async () => {
       // PendingAction is the source of truth now. It reads the new key and
@@ -253,7 +308,13 @@ export function RootNavigator() {
     })().catch((err) => {
       if (__DEV__) console.warn('[invite] consume failed', err);
     });
-  }, [currentUser, profileComplete, hasCompletedOnboarding]);
+  }, [
+    currentUser,
+    profileComplete,
+    hasCompletedOnboarding,
+    entryDecision,
+    groupHydrated,
+  ]);
 
   // ── Resuming what somebody asked for before they had an identity ────────
   //
@@ -303,10 +364,72 @@ export function RootNavigator() {
     })();
   }, [currentUser, groupHydrated]);
 
+  // ── A full account has existed on this phone ────────────────────────────
+  //
+  // Which means the first-run pitch is behind this device for good. Written
+  // here rather than at the sign-up call site because the fact it records is
+  // "an account exists", not "an account was just created" — an upgrade
+  // install, a reinstall with a restored session and an ordinary launch all
+  // satisfy it.
+  //
+  // The reason it is written at all: sign-out starts a fresh anonymous
+  // session, and without this the gate would greet a two-year user with
+  // the organic first-run pitch. A deep link, by contrast, deliberately does NOT
+  // write it — see `entryGate.ts`.
+  const markAccountSeen = useEntryStore((s) => s.markAccountSeen);
+  useEffect(() => {
+    if (!currentUser || currentUser.isGuest === true) return;
+    void markAccountSeen();
+  }, [currentUser?.id, currentUser?.isGuest, markAccountSeen]);
+
+  // ── Somebody answered the intent question ───────────────────────────────
+  //
+  // IntentScreen cannot navigate: its three destinations live inside MainTabs,
+  // and MainTabs was not mounted while it was on screen. So it records the
+  // answer and flips the flag; this fires on the render that mounts the tabs.
+  //
+  // `takePendingIntent` is a one-shot, so a re-render cannot navigate twice.
+  // The retry exists for the frame where the tabs are mounted but the
+  // navigator has not finished registering their routes — `navigateEntryIntent`
+  // returns false rather than throwing, exactly like the deep-link consumer.
+  const takePendingIntent = useEntryStore((s) => s.takePendingIntent);
+  useEffect(() => {
+    if (entryOrganicCompleted !== true) return;
+    const intent = takePendingIntent();
+    if (!intent) return;
+    // The invitation card has no destination of its own: the deep-link
+    // consumer above already knows how to open a game, a club or the "איפה X
+    // משחק?" landing, including the existence pre-flight and the
+    // member-vs-public routing. Duplicating that here is how the two would
+    // drift. Choosing the invitation simply does not suppress it.
+    if (intent === 'invite') return;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const go = () => {
+      if (navigateEntryIntent(intent)) return;
+      if (attempts++ >= 10) {
+        // Ten frames and the navigator is still not ready. The person lands on
+        // the tabs instead of the wizard, which is a worse first screen but
+        // not a broken one — and the intent has already been recorded.
+        if (__DEV__) console.warn('[entry] intent nav gave up', intent);
+        return;
+      }
+      timer = setTimeout(go, 80);
+    };
+    go();
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [entryOrganicCompleted, takePendingIntent]);
+
   // Hydrate user store on mount + initialize side services.
   // Each side service is wrapped so a failure in one doesn't break boot.
   useEffect(() => {
     hydrateUser();
+    // Reads the entry flag and resolves this launch's bypass. Independent of
+    // the user hydrate above — the gate needs both, and serialising them would
+    // add a disk read to every cold start's critical path.
+    void hydrateEntry();
     // Fetch server-tunable knobs (ad frequency, etc.) early so they're
     // active before the app-open ad gate runs. Fire-and-forget; getters
     // fall back to in-code defaults until it resolves.
@@ -316,7 +439,7 @@ export function RootNavigator() {
     } catch (err) {
       if (__DEV__) console.warn('[boot] adsService.initializeAds threw', err);
     }
-  }, [hydrateUser]);
+  }, [hydrateUser, hydrateEntry]);
 
   // Show the app-open ad once we land on MainTabs, but never while a match
   // is locked/in-progress (the live screen shouldn't be obstructed by an ad).
@@ -426,6 +549,24 @@ export function RootNavigator() {
   // straight to the tabs — browsing public communities/games must not require
   // an account (App Store guideline 5.1.1(v)). Account actions prompt sign-in.
   const isGuest = currentUser.isGuest === true;
+
+  // ── The organic first run ───────────────────────────────────────────────
+  //
+  // Three outcomes, and the third is the one that matters:
+  //
+  //   app      a full account, or a guest who already answered, or a launch
+  //            that already knows where it is going
+  //   entry    an organic guest we have never asked
+  //   unknown  the two disk reads have not landed — SPLASH, never Welcome
+  //
+  // `unknown` is not defensiveness. `readPendingAction` is asynchronous and
+  // the navigator renders first, so defaulting it to `entry` would show the
+  // organic pitch for a frame to somebody who tapped a friend's match link,
+  // then yank it away. The whole point of the bypass is that they never see
+  // it. The splash is already what this person is looking at, so holding it
+  // one more frame is invisible.
+  if (entryDecision === 'unknown') return <Splash />;
+  if (entryDecision === 'entry') return <EntryStack />;
 
   // Post-sign-in onboarding (welcome → how → profile confirm) before group
   // selection. Once completed, /users/{uid}.onboardingCompleted is true and

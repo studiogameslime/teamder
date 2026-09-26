@@ -53,6 +53,34 @@ function buildGuestUser(uid: string): User {
   };
 }
 
+/**
+ * The in-memory mirror of the city write above.
+ *
+ * Kept next to it because the two must agree: the doc write uses dot paths and
+ * touches three keys, so the object we hand back to the store has to merge
+ * rather than replace. Returning a fresh `{ homeCity }` here would make the
+ * store believe the account has no availability until the next read — the
+ * "write succeeded, state disagrees" class of bug.
+ */
+function mergeHomeCity(
+  current: User['availability'],
+  city: string,
+  coords: { homeCityLat?: number; homeCityLng?: number },
+): NonNullable<User['availability']> {
+  return {
+    preferredDays: current?.preferredDays ?? [],
+    isAvailableForInvites: current?.isAvailableForInvites !== false,
+    ...current,
+    homeCity: city,
+    ...(typeof coords.homeCityLat === 'number'
+      ? { homeCityLat: coords.homeCityLat }
+      : {}),
+    ...(typeof coords.homeCityLng === 'number'
+      ? { homeCityLng: coords.homeCityLng }
+      : {}),
+  };
+}
+
 export const userService = {
   /**
    * Start a guest session (Firebase Anonymous Auth). Lets the user browse
@@ -444,6 +472,22 @@ export const userService = {
     name: string;
     avatarId?: string;
     photoUrl?: string;
+    /**
+     * Home city, optional, picked from the SAME autocomplete the club wizard
+     * and the availability editor use. Stored on the SAME field they store it
+     * on — `availability.homeCity` — because the app already has exactly one
+     * representation of "where this person plays" and a second one on the
+     * root document would be a fork, not a feature.
+     *
+     * Optional on purpose. Making it required would put a network-backed
+     * autocomplete on the critical path of every sign-up, and "זה אתה?" is a
+     * confirmation, not a form.
+     */
+    homeCity?: string;
+    /** Coordinates for `homeCity` when the geocode resolved. The matcher needs
+     *  them; a missing pair simply means the city is a label for now. */
+    homeCityLat?: number;
+    homeCityLng?: number;
   }): Promise<User> {
     // Sanitize here too — this is the PRIMARY path where every new user sets
     // their name. updateProfile sanitizes on later edits, but onboarding used
@@ -459,6 +503,10 @@ export const userService = {
     // exact field the Play pre-launch robot fills with our demo credentials —
     // see isEmailLikeName for the count and the damage.
     if (isEmailLikeName(trimmedName)) throw new Error('EMAIL_NAME');
+    // Same sanitiser as the name: this string is shown on public surfaces via
+    // the nearby-clubs and filler copy, so bidi / zero-width payloads have the
+    // same reach here that they had there.
+    const city = patch.homeCity ? sanitizeDisplayString(patch.homeCity) : '';
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();
       if (!cur) throw new Error('completeOnboarding: no current user');
@@ -467,6 +515,7 @@ export const userService = {
         name: trimmedName,
         ...(patch.avatarId ? { avatarId: patch.avatarId } : {}),
         ...(patch.photoUrl ? { photoUrl: patch.photoUrl } : {}),
+        ...(city ? { availability: mergeHomeCity(cur.availability, city, patch) } : {}),
         onboardingCompleted: true,
         updatedAt: Date.now(),
       };
@@ -484,8 +533,27 @@ export const userService = {
     };
     if (patch.avatarId) updates.avatarId = patch.avatarId;
     if (patch.photoUrl) updates.photoUrl = patch.photoUrl;
+    // DOT PATHS, not a nested object. A brand-new account has no
+    // `availability` map at all, and writing one wholesale here would stamp a
+    // partial UserAvailability over whatever the availability editor writes
+    // later. Dot paths create the map on first write and touch only these
+    // three keys afterwards. The reader in firestore.ts is already defensive
+    // about a partial map (`preferredDays ?? []`,
+    // `isAvailableForInvites !== false`), so a city-only availability reads
+    // back correctly everywhere.
+    const cityUpdates: Record<string, unknown> = city
+      ? {
+          'availability.homeCity': city,
+          ...(typeof patch.homeCityLat === 'number'
+            ? { 'availability.homeCityLat': patch.homeCityLat }
+            : {}),
+          ...(typeof patch.homeCityLng === 'number'
+            ? { 'availability.homeCityLng': patch.homeCityLng }
+            : {}),
+        }
+      : {};
     try {
-      await updateDoc(ref, updates);
+      await updateDoc(ref, { ...updates, ...cityUpdates });
     } catch (e) {
       logError('completeOnboarding', e, {
         uid: cur.id,
@@ -499,6 +567,7 @@ export const userService = {
       name: trimmedName,
       ...(patch.avatarId ? { avatarId: patch.avatarId } : {}),
       ...(patch.photoUrl ? { photoUrl: patch.photoUrl } : {}),
+      ...(city ? { availability: mergeHomeCity(cur.availability, city, patch) } : {}),
       onboardingCompleted: true,
       updatedAt,
     };

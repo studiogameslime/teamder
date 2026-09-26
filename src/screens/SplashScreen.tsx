@@ -1,377 +1,174 @@
-// SplashScreen — Teamder kickoff.
+// SplashScreen — the app's single launch screen, and the new person's welcome.
 //
-// Sequence (~1.3s before the parent's `ready` gate releases the fade):
-//   1. (0–80ms)    fade-in dark-blue stage
-//   2. (80–900ms)  white pitch lines DRAW ON via strokeDashoffset
-//                  (centre circle + halfway line + centre spot)
-//   3. (700–1200ms) ball drops from above with a 2× squash-stretch
-//                  bounce, settling on the centre spot.
-//   4. (1100ms+)   wordmark "Teamder" + tagline + 3 pulsing dots
-//                  rise into view under the pitch.
-//   5. (forever)   ball slowly rotates + breathes (subtle pulse) so
-//                  it reads as "alive" if the parent keeps us up.
-//   6. (on ready)  full root fades + scales out (existing logic).
+// ─── One screen, two endings ────────────────────────────────────────────
 //
-// We also export `SplashVisual` for callers that need the same look
-// WITHOUT the kickoff/exit logic — e.g. RootNavigator's "still
-// hydrating" state. Keeping both behind the same component guarantees
-// the user never sees two different loaders.
+// Everybody sees the same thing on launch: the artwork, with a slim progress
+// bar under the slogan. What happens when loading finishes is the only thing
+// that differs.
+//
+//   • somebody with an account — the bar completes, the screen fades, they are
+//     on their Home. No button, no second screen, no tap.
+//   • somebody new — the bar fades out and a "מתחילים" button rises in its
+//     place. The screen waits for them. Tapping it goes to "איך בא לך להתחיל?".
+//
+// This replaced a separate Welcome screen that sat AFTER the splash, which
+// meant a new person watched a loader, then met a second full-screen pitch
+// carrying the same artwork and the same sentence. One screen says it once.
+//
+// ─── The wordmark and slogan are in the ARTWORK ─────────────────────────
+//
+// Not drawn here. Not overlaid. See `SplashHero.tsx` — this file only draws
+// the bar and the button.
 
 import React, { useEffect, useRef } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import * as ExpoSplash from 'expo-splash-screen';
+import { Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
   cancelAnimation,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, Line } from 'react-native-svg';
-import { SoccerBall } from '@/components/SoccerBall';
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const AnimatedLine = Animated.createAnimatedComponent(Line);
+import { SPLASH_IMAGE } from '@/components/entry/SplashHero';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { colors, radius, spacing, typography } from '@/theme';
+import { he } from '@/i18n/he';
 
-const BALL_SIZE = 200;
-const MIN_HOLD_MS = 1400;     // give the new sequence time to read
+const MIN_HOLD_MS = 1400;
 const FADE_MS = 320;
-
-// Pitch geometry — the "centre circle" + the halfway line. Sized as a
-// fraction of the screen so it scales on small/large devices.
-const SCREEN_W = Dimensions.get('window').width;
-const SCREEN_H = Dimensions.get('window').height;
-const PITCH_CIRCLE_R = Math.min(SCREEN_W * 0.36, 170);
-const PITCH_CIRCLE_C = 2 * Math.PI * PITCH_CIRCLE_R;
-const HALFWAY_LEN = Math.min(SCREEN_W * 0.9, 380);
-const PITCH_STROKE = 2;
-const PITCH_COLOR = 'rgba(255,255,255,0.55)';
-const PITCH_BRIGHT = '#FFFFFF';
+/**
+ * The bar and the button occupy the SAME slot, at the same height, so the one
+ * literally replaces the other when loading ends — no jump, no reflow.
+ */
+const CTA_SLOT_H = 54;
+const BAR_H = 10;
 
 // ─── Pure visual ─────────────────────────────────────────────────────────
 
-export function SplashVisual() {
-  // PITCH — circle + halfway line draw on by interpolating
-  // strokeDashoffset from full → 0. The dash array equals the path
-  // length, so offset=length means "fully hidden", offset=0 means
-  // "fully drawn".
-  const circleOffset = useSharedValue(PITCH_CIRCLE_C);
-  const lineOffset = useSharedValue(HALFWAY_LEN);
-  const spotOpacity = useSharedValue(0);
+/**
+ * The launch artwork plus an INDETERMINATE bar.
+ *
+ * Indeterminate on purpose. Boot is a handful of awaits with no honest
+ * fraction attached — auth restore, a user read, group hydration, a remote
+ * config fetch — and a bar that walked 0→100% would be an invented number
+ * dressed as information. A sweeping fill says "working" without claiming to
+ * know how much is left.
+ */
+export function SplashVisual({ showBar = true }: { showBar?: boolean }) {
+  const { width, height } = useWindowDimensions();
 
-  // BALL — gets KICKED at the camera: starts tiny + low (far away),
-  // rushes in growing past full size with a fast spin, then settles on
-  // the centre spot and keeps a slow rotation + breathing.
-  const ballY = useSharedValue(SCREEN_H * 0.16);
-  const ballScaleY = useSharedValue(0.12);
-  const ballScaleX = useSharedValue(0.12);
-  const ballRotate = useSharedValue(0);
-  const ballOpacity = useSharedValue(0);
-  const ballBreath = useSharedValue(1);
-
-  // WORDMARK + TAGLINE + DOTS — rise in after the bounce settles.
-  const wordmarkOpacity = useSharedValue(0);
-  const wordmarkY = useSharedValue(14);
-  const dot0 = useSharedValue(0.3);
-  const dot1 = useSharedValue(0.3);
-  const dot2 = useSharedValue(0.3);
-
+  const grow = useSharedValue(0);
+  const fade = useSharedValue(1);
   useEffect(() => {
-    // 1. Pitch draws on (halfway line first, then centre circle, then
-    //    the centre spot pops). Quick + decisive — feels like a coach
-    //    laying chalk lines on the field.
-    lineOffset.value = withTiming(0, {
-      duration: 480,
-      easing: Easing.out(Easing.cubic),
-    });
-    circleOffset.value = withDelay(
-      120,
-      withTiming(0, { duration: 700, easing: Easing.out(Easing.cubic) }),
-    );
-    spotOpacity.value = withDelay(
-      700,
-      withTiming(1, { duration: 220, easing: Easing.out(Easing.quad) }),
-    );
-
-    // 2. KICK toward the viewer. The ball appears small + low (far on
-    //    the pitch), then rushes the camera: it grows PAST full size
-    //    (overshoot = it's coming "at" you) and pops up slightly before
-    //    settling on the centre spot. A fast spin during the flight
-    //    sells the kick.
-    const KICK_AT = 440;
-    ballOpacity.value = withDelay(
-      KICK_AT,
-      withTiming(1, { duration: 90, easing: Easing.out(Easing.quad) }),
-    );
-    // Depth: tiny → overshoot 1.18 (rushing in) → settle 1.0.
-    ballScaleX.value = withDelay(
-      KICK_AT,
+    // Fill, then clear, then fill again. Still INDETERMINATE — boot is a
+    // handful of awaits with no honest fraction attached, and nothing here
+    // claims a number — but it reads as progress rather than as a shuttle,
+    // which is what makes the button feel like it takes the bar's place.
+    grow.value = withRepeat(
       withSequence(
-        withTiming(1.18, { duration: 300, easing: Easing.out(Easing.cubic) }),
-        withTiming(1.0, { duration: 260, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 1150, easing: Easing.out(Easing.cubic) }),
+        withTiming(1, { duration: 260 }),
+        withTiming(0, { duration: 0 }),
       ),
+      -1,
+      false,
     );
-    ballScaleY.value = withDelay(
-      KICK_AT,
+    fade.value = withRepeat(
       withSequence(
-        withTiming(1.18, { duration: 300, easing: Easing.out(Easing.cubic) }),
-        withTiming(1.0, { duration: 260, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 1150 }),
+        withTiming(0, { duration: 240, easing: Easing.in(Easing.quad) }),
+        withTiming(1, { duration: 0 }),
       ),
+      -1,
+      false,
     );
-    // Arc: kicked up from low → overshoot above the spot → drop onto it.
-    ballY.value = withDelay(
-      KICK_AT,
-      withSequence(
-        withTiming(-22, { duration: 300, easing: Easing.out(Easing.cubic) }),
-        withTiming(0, { duration: 260, easing: Easing.inOut(Easing.quad) }),
-      ),
-    );
-
-    // 3. Spin: one fast turn during the kick, then ease into the slow
-    //    idle rotation. The repeat target is +360 from the settle value
-    //    so the wrap-around (720→360) is visually seamless.
-    ballRotate.value = withDelay(
-      KICK_AT,
-      withSequence(
-        withTiming(360, { duration: 560, easing: Easing.out(Easing.cubic) }),
-        withDelay(
-          200,
-          withRepeat(
-            withTiming(720, { duration: 4000, easing: Easing.linear }),
-            -1,
-            false,
-          ),
-        ),
-      ),
-    );
-    ballBreath.value = withDelay(
-      1400,
-      withRepeat(
-        withSequence(
-          withTiming(1.04, { duration: 700, easing: Easing.inOut(Easing.quad) }),
-          withTiming(1.0, { duration: 700, easing: Easing.inOut(Easing.quad) }),
-        ),
-        -1,
-        false,
-      ),
-    );
-
-    // 4. Wordmark rises into view after the ball lands.
-    wordmarkOpacity.value = withDelay(
-      1100,
-      withTiming(1, { duration: 380, easing: Easing.out(Easing.quad) }),
-    );
-    wordmarkY.value = withDelay(
-      1100,
-      withTiming(0, { duration: 460, easing: Easing.out(Easing.cubic) }),
-    );
-
-    // 5. Three loading dots — staggered pulse.
-    const dotSeq = (delay: number) =>
-      withSequence(
-        withTiming(0.3, { duration: delay }),
-        withRepeat(
-          withSequence(
-            withTiming(1.0, { duration: 420, easing: Easing.inOut(Easing.quad) }),
-            withTiming(0.3, { duration: 420, easing: Easing.inOut(Easing.quad) }),
-          ),
-          -1,
-          false,
-        ),
-      );
-    dot0.value = withDelay(1200, dotSeq(0));
-    dot1.value = withDelay(1200, dotSeq(140));
-    dot2.value = withDelay(1200, dotSeq(280));
-
     return () => {
-      [circleOffset, lineOffset, spotOpacity, ballY, ballScaleY, ballScaleX,
-       ballRotate, ballOpacity, ballBreath,
-       wordmarkOpacity, wordmarkY, dot0, dot1, dot2]
-        .forEach(cancelAnimation);
+      cancelAnimation(grow);
+      cancelAnimation(fade);
     };
-  }, [circleOffset, lineOffset, spotOpacity, ballY, ballScaleY, ballScaleX,
-      ballRotate, ballOpacity, ballBreath,
-      wordmarkOpacity, wordmarkY, dot0, dot1, dot2]);
+  }, [grow, fade]);
 
-  // SVG animated props — strokeDashoffset can't go through a normal
-  // animated style, so we feed them via animatedProps on the SVG node.
-  const circleAnim = useAnimatedStyle(() => ({}));
-  const lineAnim = useAnimatedStyle(() => ({}));
-  void circleAnim;
-  void lineAnim;
-  const circleProps = useAnimatedStyle(() => ({
-    // unused — we feed via inline props below
-  }));
-  void circleProps;
-
-  // For react-native-svg, animated props work via the `useAnimatedProps`
-  // hook, but to keep imports lean we inline-set via a re-render on
-  // shared value change using a tiny adapter component.
-  const ballStyle = useAnimatedStyle(() => ({
-    opacity: ballOpacity.value,
-    transform: [
-      { translateY: ballY.value },
-      { scaleX: ballScaleX.value * ballBreath.value },
-      { scaleY: ballScaleY.value * ballBreath.value },
-      { rotate: `${ballRotate.value}deg` },
-    ],
-  }));
-  const spotStyle = useAnimatedStyle(() => ({
-    opacity: spotOpacity.value,
-  }));
-  const wordmarkStyle = useAnimatedStyle(() => ({
-    opacity: wordmarkOpacity.value,
-    transform: [{ translateY: wordmarkY.value }],
-  }));
-  const dot0Style = useAnimatedStyle(() => ({
-    opacity: dot0.value, transform: [{ scale: dot0.value }],
-  }));
-  const dot1Style = useAnimatedStyle(() => ({
-    opacity: dot1.value, transform: [{ scale: dot1.value }],
-  }));
-  const dot2Style = useAnimatedStyle(() => ({
-    opacity: dot2.value, transform: [{ scale: dot2.value }],
+  const fillStyle = useAnimatedStyle(() => ({
+    // A percentage WIDTH on an ordinary row child. Under forceRTL a row lays
+    // out right-to-left, so the fill is anchored to the RIGHT edge and grows
+    // leftwards — the direction Hebrew reads. No `left`, no `translateX`,
+    // nothing that flips or has to be sign-corrected per locale.
+    width: `${grow.value * 100}%`,
+    opacity: fade.value,
   }));
 
   return (
-    <View style={styles.root} pointerEvents="none">
-      {/* Pitch SVG — anchored behind the ball, centered on the screen.
-          The center circle has its dash array = its full circumference,
-          and we animate strokeDashoffset from full→0 to "draw it on". */}
-      <View style={styles.pitchWrap}>
-        <Svg width={SCREEN_W} height={SCREEN_H}>
-          {/* Halfway line — horizontal stroke through the centre. */}
-          <PitchLine
-            x1={(SCREEN_W - HALFWAY_LEN) / 2}
-            y1={SCREEN_H / 2}
-            x2={(SCREEN_W + HALFWAY_LEN) / 2}
-            y2={SCREEN_H / 2}
-            offset={lineOffset}
-            length={HALFWAY_LEN}
-          />
-          {/* Center circle */}
-          <PitchCircle
-            cx={SCREEN_W / 2}
-            cy={SCREEN_H / 2}
-            r={PITCH_CIRCLE_R}
-            offset={circleOffset}
-            circumference={PITCH_CIRCLE_C}
-          />
-        </Svg>
-        {/* Center spot — a tiny dot at the exact centre, fades in last. */}
-        <Animated.View style={[styles.spot, spotStyle]} />
-      </View>
-
-      {/* Ball — drops in and settles on the centre spot. */}
-      <View style={styles.ballArea} pointerEvents="none">
-        <Animated.View
-          style={[
-            { width: BALL_SIZE, height: BALL_SIZE },
-            styles.ballWrap,
-            ballStyle,
-          ]}
-        >
-          <SoccerBall size={BALL_SIZE} />
-        </Animated.View>
-      </View>
-
-      {/* Wordmark + tagline + dots */}
-      <Animated.View style={[styles.wordmarkWrap, wordmarkStyle]}>
-        <Text style={styles.wordmark} allowFontScaling={false}>
-          Teamder
-        </Text>
-        <Text style={styles.tagline} allowFontScaling={false}>
-          המשחק הבא שלך מתחיל כאן
-        </Text>
-        <View style={styles.dotsRow}>
-          <Animated.View style={[styles.dot, dot0Style]} />
-          <Animated.View style={[styles.dot, dot1Style]} />
-          <Animated.View style={[styles.dot, dot2Style]} />
-        </View>
-      </Animated.View>
+    <View style={styles.root}>
+      {/* Definite width and height, from the window — not `absoluteFill`.
+          An Image sized only by insets makes `cover` scale from the bitmap's
+          own pixels instead of the box, and the artwork rendered several times
+          too large with the wordmark off-screen. Same failure the card slot
+          and the old hero both hit; numbers are the thing that resolves. */}
+      <Image
+        source={SPLASH_IMAGE}
+        style={{ width, height }}
+        resizeMode="cover"
+      />
+      {showBar ? (
+        <SafeAreaView edges={['bottom']} style={styles.ctaBar} pointerEvents="none">
+          <View style={styles.barSlot}>
+            <View style={styles.barTrack}>
+              <Animated.View style={[styles.barFill, fillStyle]} />
+            </View>
+          </View>
+        </SafeAreaView>
+      ) : null}
     </View>
   );
 }
 
-/** Tiny wrapper that animates strokeDashoffset on a Line via
- *  useAnimatedProps. Keeps the giant SplashVisual file readable. */
-function PitchLine({
-  x1, y1, x2, y2, offset, length,
-}: {
-  x1: number; y1: number; x2: number; y2: number;
-  offset: Animated.SharedValue<number>;
-  length: number;
-}) {
-  // We can't use useAnimatedProps cleanly with the typed Line, so we
-  // mount a fresh Line whose strokeDashoffset binds to the shared
-  // value via the AnimatedLine wrapper.
-  const animatedProps = useAnimatedDashProps(offset);
-  return (
-    <AnimatedLine
-      x1={x1}
-      y1={y1}
-      x2={x2}
-      y2={y2}
-      stroke={PITCH_COLOR}
-      strokeWidth={PITCH_STROKE}
-      strokeLinecap="round"
-      strokeDasharray={`${length}, ${length}`}
-      animatedProps={animatedProps}
-    />
-  );
-}
-
-function PitchCircle({
-  cx, cy, r, offset, circumference,
-}: {
-  cx: number; cy: number; r: number;
-  offset: Animated.SharedValue<number>;
-  circumference: number;
-}) {
-  const animatedProps = useAnimatedDashProps(offset);
-  return (
-    <AnimatedCircle
-      cx={cx}
-      cy={cy}
-      r={r}
-      stroke={PITCH_COLOR}
-      strokeWidth={PITCH_STROKE}
-      fill="none"
-      strokeDasharray={`${circumference}, ${circumference}`}
-      animatedProps={animatedProps}
-    />
-  );
-}
-
-/** Bind a shared value to an SVG element's `strokeDashoffset` prop. */
-function useAnimatedDashProps(offset: Animated.SharedValue<number>) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { useAnimatedProps } = require('react-native-reanimated');
-  return useAnimatedProps(() => ({
-    strokeDashoffset: offset.value,
-  }));
-}
-
-// ─── Kickoff / hold / fade-out wrapper ───────────────────────────────────
+// ─── Kickoff / hold / hand-off ───────────────────────────────────────────
 
 interface Props {
   ready: boolean;
+  /**
+   * This launch belongs to somebody who has not been asked what they came
+   * for. The screen stops being a loader and becomes their welcome: the bar
+   * gives way to a button and nothing happens until they tap it.
+   */
+  awaitStart?: boolean;
   onFinish: () => void;
 }
 
-export function SplashScreen({ ready, onFinish }: Props) {
+export function SplashScreen({ ready, awaitStart = false, onFinish }: Props) {
   const rootOpacity = useSharedValue(1);
   const rootScale = useSharedValue(1);
+  const ctaOpacity = useSharedValue(0);
+  const ctaShift = useSharedValue(14);
   const heldEnoughRef = useRef(false);
   const mountTsRef = useRef(Date.now());
+  const [showCta, setShowCta] = React.useState(false);
 
   useEffect(() => {
     ExpoSplash.hideAsync().catch(() => {});
   }, []);
+
+  const dismiss = React.useCallback(() => {
+    rootScale.value = withTiming(1.12, {
+      duration: FADE_MS,
+      easing: Easing.out(Easing.quad),
+    });
+    rootOpacity.value = withTiming(
+      0,
+      { duration: FADE_MS, easing: Easing.in(Easing.cubic) },
+      (finished) => {
+        if (finished) runOnJS(onFinish)();
+      },
+    );
+  }, [onFinish, rootOpacity, rootScale]);
 
   useEffect(() => {
     const elapsed = Date.now() - mountTsRef.current;
@@ -382,20 +179,25 @@ export function SplashScreen({ ready, onFinish }: Props) {
     }
     const timer = setTimeout(() => {
       heldEnoughRef.current = true;
-      rootScale.value = withTiming(1.12, {
-        duration: FADE_MS,
-        easing: Easing.out(Easing.quad),
-      });
-      rootOpacity.value = withTiming(
-        0,
-        { duration: FADE_MS, easing: Easing.in(Easing.cubic) },
-        (finished) => {
-          if (finished) runOnJS(onFinish)();
-        },
-      );
+      // A new person is NOT sent onward. The bar goes, the button arrives, and
+      // the screen holds until they choose to start.
+      if (awaitStart) {
+        // The welcome funnel's denominator moved here with the screen: this is
+        // the moment a new person is actually looking at the pitch with a way
+        // forward, which is what `entry_welcome_viewed` always counted.
+        logEvent(AnalyticsEvent.EntryWelcomeViewed, { is_guest: true });
+        setShowCta(true);
+        ctaOpacity.value = withTiming(1, { duration: 260 });
+        ctaShift.value = withTiming(0, {
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+        });
+        return;
+      }
+      dismiss();
     }, remaining);
     return () => clearTimeout(timer);
-  }, [ready, rootOpacity, rootScale, onFinish]);
+  }, [ready, awaitStart, dismiss, ctaOpacity, ctaShift]);
 
   useEffect(() => {
     return () => {
@@ -407,10 +209,40 @@ export function SplashScreen({ ready, onFinish }: Props) {
     opacity: rootOpacity.value,
     transform: [{ scale: rootScale.value }],
   }));
+  const ctaStyle = useAnimatedStyle(() => ({
+    opacity: ctaOpacity.value,
+    transform: [{ translateY: ctaShift.value }],
+  }));
 
   return (
-    <Animated.View style={[styles.absolute, rootStyle]} pointerEvents="none">
-      <SplashVisual />
+    <Animated.View
+      style={[styles.absolute, rootStyle]}
+      // Transparent to touches while it is only a loader; the button takes
+      // them once it is a welcome.
+      pointerEvents={showCta ? 'box-none' : 'none'}
+    >
+      <SplashVisual showBar={!showCta} />
+      {showCta ? (
+        <SafeAreaView edges={['bottom']} style={styles.ctaBar} pointerEvents="box-none">
+          <Animated.View style={[styles.ctaSlot, ctaStyle]}>
+            <Pressable
+              onPress={() => {
+                logEvent(AnalyticsEvent.EntryWelcomeContinued, { is_guest: true });
+                dismiss();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={he.entryWelcomeCta}
+              style={({ pressed }) => [styles.cta, pressed && { opacity: 0.92 }]}
+            >
+              <View style={styles.ctaInner}>
+                <Text style={styles.ctaText}>{he.entryWelcomeCta}</Text>
+                {/* `chevron-back` is the RTL "forward". */}
+                <Ionicons name="chevron-back" size={20} color={colors.textOnPrimary} />
+              </View>
+            </Pressable>
+          </Animated.View>
+        </SafeAreaView>
+      ) : null}
     </Animated.View>
   );
 }
@@ -421,68 +253,47 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     elevation: 9999,
   },
-  root: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0E2B6E',  // deep brand blue — feels like a night-game pitch
-  },
-  pitchWrap: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Centre spot — tiny white dot at the exact centre of the pitch.
-  spot: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: PITCH_BRIGHT,
-    top: SCREEN_H / 2 - 4,
-    left: SCREEN_W / 2 - 4,
-  },
-  ballArea: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ballWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  wordmarkWrap: {
-    position: 'absolute',
-    bottom: '15%',
-    alignSelf: 'center',
-    alignItems: 'center',
-  },
-  wordmark: {
-    color: '#FFFFFF',
-    fontSize: 38,
-    fontWeight: '900',
-    letterSpacing: 2.2,
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
-  tagline: {
-    color: 'rgba(255,255,255,0.92)',
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 0.4,
-    marginTop: 10,
-    textAlign: 'center',
-  },
-  dotsRow: {
+  root: { ...StyleSheet.absoluteFillObject, backgroundColor: '#3E8BF2' },
+  // Same height as the button so the swap is a replacement, not a reflow.
+  barSlot: { height: CTA_SLOT_H, justifyContent: 'center' },
+  barTrack: {
+    height: BAR_H,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    overflow: 'hidden',
+    // A row, so the fill below is an ordinary child that forceRTL anchors to
+    // the right edge.
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 18,
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  ctaBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.lg,
+  },
+  ctaSlot: { height: CTA_SLOT_H, justifyContent: 'center' },
+  cta: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.md + 2,
+    shadowColor: '#0B3A86',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.32,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  ctaInner: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.sm,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
+  ctaText: { ...typography.button, fontSize: 18, color: colors.textOnPrimary },
 });

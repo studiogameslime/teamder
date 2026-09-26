@@ -220,6 +220,9 @@ import { useAndroidBack } from '@/navigation/useAndroidBack';
 import { he } from '@/i18n/he';
 import { useScreenAwake } from '@/hooks/useScreenAwake';
 import { useUserStore } from '@/store/userStore';
+import { setEntrySource, type EntrySource } from '@/services/entrySource';
+import { useEntryStore } from '@/store/entryStore';
+import { decideEntry } from '@/navigation/entryGate';
 import { useGroupStore } from '@/store/groupStore';
 import {
   parseInviteUrl,
@@ -316,6 +319,16 @@ export default function App() {
   // stores in parallel — the splash fades out at the end and the user
   // lands on a ready UI without an extra spinner step.
   const [splashDone, setSplashDone] = useState(false);
+  // Does this launch belong to somebody who has never been asked what they
+  // came for? Same pure decision the navigator's gate uses, so the splash and
+  // the gate can never disagree about who is new.
+  const entryOrganicCompleted = useEntryStore((s) => s.organicCompleted);
+  const splashIsGuest = useUserStore((s) => s.currentUser?.isGuest === true);
+  const needsWelcome =
+    decideEntry({
+      isGuest: splashIsGuest,
+      organicCompleted: entryOrganicCompleted,
+    }) === 'entry';
   // Load the Ionicons font at runtime. Expo SDK 53 removed
   // @expo/vector-icons autolinking — without this hook the font
   // family `ionicons` isn't registered with the RN font registry,
@@ -457,6 +470,10 @@ export default function App() {
             : pending?.type === 'app'
               ? 'personal_invite'
               : 'unknown';
+    // Publish before reporting, so any screen that renders after this can
+    // say where the launch came from instead of assuming. See
+    // `src/services/entrySource.ts` — GuestHome used to hardcode `organic`.
+    setEntrySource(source as EntrySource);
     const u = useUserStore.getState().currentUser;
     logEvent(AnalyticsEvent.EntrySourceResolved, {
       entry_source: source,
@@ -1095,7 +1112,16 @@ export default function App() {
               is real before MainTabs paints. */}
       {!splashDone ? (
         <SplashScreen
-          ready={userHydrated && (!currentUserId || groupHydrated)}
+          // The entry flag joins the readiness condition because the splash
+          // now has to know WHICH ending it is playing before it stops
+          // holding — dismissing first and discovering afterwards that this
+          // person needed a welcome would flash the tabs at them.
+          ready={
+            userHydrated &&
+            entryOrganicCompleted !== null &&
+            (!currentUserId || groupHydrated)
+          }
+          awaitStart={needsWelcome}
           onFinish={handleSplashFinish}
         />
       ) : null}

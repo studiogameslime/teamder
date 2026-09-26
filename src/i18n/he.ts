@@ -3078,6 +3078,54 @@ export const he = {
   // and "מחזור" on every screen after it would teach the wrong word on the
   // way in. So the buttons say מחזור and the microcopy, where it reads
   // naturally, says משחק חד־פעמי.
+  // ── Entry: first run (Welcome → "איך בא לך להתחיל?") ────────────────────
+  //
+  // Copy is the owner's, from the reference designs. Two of the card titles
+  // carry an EXPLICIT line break, which is also how the reference sets them:
+  // left to wrap, "מקים מועדון עם החבר׳ה" orphans "עם" at the end of line one
+  // at every card width wide enough for the subtitle underneath, and a hard
+  // break is width-independent across the Android sizes this has to survive.
+  // The welcome's headline and supporting line are PAINTED INTO the launch
+  // artwork — see `SplashHero.tsx`. They are deliberately not strings any
+  // more: drawing them as Text would double them on top of themselves. The
+  // button over that artwork is the only entry copy left.
+  entryWelcomeCta: 'מתחילים',
+
+  entryIntentTitle: 'איך בא לך להתחיל?',
+  entryIntentBody: 'בחר את האפשרות שמתאימה לך,\nואנחנו נלווה אותך משם.',
+
+  entryIntentClubTitle: 'מקים מועדון\nעם החבר׳ה',
+  entryIntentClubBody: 'הקבוצה הקבועה שלכם,\nבמקום אחד.',
+  entryIntentFindTitle: 'מחפש משחק\nבאזור',
+  entryIntentFindBody: 'גלה משחקים פתוחים\nוהתחבר קרוב אליך.',
+  entryIntentOneOffTitle: 'משחק חד־פעמי',
+  entryIntentOneOffBody: 'פותחים משחק\nומתחילים לשחק.',
+
+  // ── The invite card ────────────────────────────────────────────────────
+  entryInviteTag: (name: string) => `הוזמנת על ידי ${name}`,
+  /** No inviter on the link — a shared link rather than a personal one. The
+   *  card still appears (it is the only way back to the thing they tapped),
+   *  it just cannot claim somebody sent it. */
+  entryInviteTagAnon: 'הגעת דרך קישור',
+  entryInviteGameTitle: (name: string) => `להצטרף למשחק\nשל ${name}`,
+  entryInviteGameTitleAnon: 'להצטרף למשחק',
+  entryInviteGameBody: 'המשחק שאליו הוזמנת\nמחכה לך כאן.',
+  entryInviteClubTitle: (name: string) => `להצטרף למועדון\nשל ${name}`,
+  entryInviteClubTitleAnon: 'להצטרף למועדון',
+  entryInviteClubBody: 'המועדון שאליו הוזמנת\nמחכה לך כאן.',
+  entryInviteReferralTitle: (name: string) => `לראות את הפעילות\nשל ${name}`,
+  entryInviteReferralBody: (name: string) =>
+    `הצטרפו למועדונים ולמשחקים\nשל ${name} והתחילו לשחק יחד.`,
+
+  // ── "איפה {name} משחק?" — the referral discovery screen ────────────────
+  inviterWhereTitle: (name: string) => `איפה ${name} משחק?`,
+  inviterWhereSubtitle: (name: string) =>
+    `כאן תוכל להצטרף למועדונים ולמשחקים של ${name}.`,
+  inviterClubsTitle: (name: string) => `מועדונים של ${name}`,
+  inviterGamesTitle: (name: string) => `המשחקים הקרובים של ${name}`,
+  inviterJoinClub: 'הצטרף למועדון',
+  inviterJoinGame: 'הצטרף למשחק',
+
   guestHomeTitle: 'יאללה, מתחילים לשחק ⚽',
   guestHomeSubtitle: 'פותחים מועדון, יוצרים מחזור, או מוצאים איפה לשחק.',
   guestHomeCreateClubCta: 'הקם מועדון',
@@ -3103,6 +3151,12 @@ export const he = {
   // ── Personal invite landing ────────────────────────────────────────────
   // Somebody's friend sent them here. The screen says who, then shows what
   // that person actually plays — and asks for nothing.
+  // Profile confirmation — the optional city. Wording says why it is asked,
+  // because a location field with no reason attached is the one people skip.
+  psoCityLabel: 'עיר',
+  psoCityPlaceholder: 'איפה בא לך לשחק?',
+  psoCityHint: 'עוזר לנו להציע לך מחזורים ומועדונים קרובים. אפשר גם לדלג.',
+
   personalInviteVia: (name: string) => `הגעת דרך ${name} 👋`,
   personalInviteViaBody: 'החבר שלך כבר משחק ב-Teamder.',
   /** No inviter, no mirror, or a read that failed. Never an error message —

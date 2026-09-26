@@ -71,7 +71,16 @@ interface UserStore {
   // Post-sign-in onboarding: true once /users/{uid}.onboardingCompleted is true.
   hasCompletedOnboarding: () => boolean;
   completePostSignInOnboarding: (
-    patch: { name: string; avatarId?: string; photoUrl?: string },
+    patch: {
+      name: string;
+      avatarId?: string;
+      photoUrl?: string;
+      /** Optional home city — written to `availability.homeCity`, the one
+       *  representation of "where this person plays" the app already has. */
+      homeCity?: string;
+      homeCityLat?: number;
+      homeCityLng?: number;
+    },
   ) => Promise<void>;
 }
 

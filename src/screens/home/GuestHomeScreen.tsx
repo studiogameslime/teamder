@@ -1,12 +1,20 @@
-// GuestHomeScreen — the Home IS the onboarding.
+// GuestHomeScreen — the home of a RETURNING guest.
 //
-// What a fresh install used to meet: three carousel slides nobody read, then a
-// sign-in wall, then the app. Then (last round) no wall, but the games feed —
-// a screen built for people who already know what a מחזור is, opening on a
-// list of other people's matches. Neither one answers the only question a new
-// person has, which is "what do I do here".
+// ─── It is no longer the onboarding ─────────────────────────────────────
 //
-// So this screen asks it back, in the product's own order of value:
+// The header on this file used to read "the Home IS the onboarding", which was
+// the decision of the round that built it: no carousel, no wall, land a fresh
+// install straight on a screen that asks what you want. That decision has been
+// reversed. A first run now meets Welcome → Intent (`src/screens/entry`), and
+// the intent is what routes somebody into one of the flows below rather than
+// this screen having to carry all four at once.
+//
+// What this screen IS, unchanged: where a guest lands on every launch AFTER
+// that first one — they have answered the question, they do not have an
+// account, and this is their app. Nothing in the file needed to change for the
+// new flow; the routing above it did. See `entryGate.ts`.
+//
+// It still offers all four, in the product's own order of value:
 //
 //   1  הקם מועדון   — the organiser, who brings everyone else
 //   2  צור מחזור    — the one-off, for somebody not ready to run a club
@@ -38,6 +46,7 @@ import { MatchCardSkeleton } from '@/components/anim/MatchCardSkeleton';
 import { AppearItem } from '@/components/anim/AppearItem';
 import { gameService } from '@/services/gameService';
 import { draftStore } from '@/services/draftStore';
+import { getEntrySource } from '@/services/entrySource';
 import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { useUserStore } from '@/store/userStore';
@@ -142,10 +151,16 @@ export function GuestHomeScreen() {
     reportedRef.current = true;
     logEvent(AnalyticsEvent.GuestHomeViewed, {
       is_guest: isGuest,
-      // Always organic: a deep link goes straight to its target through
-      // `navigateInvite`, which addresses GameTab / CommunitiesTab and never
-      // this stack. If this screen is what rendered, nothing was consumed.
-      entry_source: 'organic',
+      // The launch's REAL source, from the one place that resolves it.
+      //
+      // This used to be hardcoded `'organic'`, on the reasoning that a deep
+      // link goes straight to its target and never renders this stack. It
+      // does render it: `navigatePersonalInvite` addresses ProfileTab with
+      // `initial: false` so the Home sits beneath the landing as a back
+      // target, and the Home mounts and reports. A device run logged
+      // `entry_source_resolved{personal_invite}` and then
+      // `guest_home_viewed{organic}` for the same launch.
+      entry_source: getEntrySource(),
       has_open_games: discovery.status === 'ready' && discovery.games.length > 0,
       availability_state: availabilityState(user?.availability?.preferredDays?.length ?? 0),
     });

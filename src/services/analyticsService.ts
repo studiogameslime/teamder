@@ -372,6 +372,22 @@ export const AnalyticsEvent = {
    *  deferred attribution worked at all was unobservable. */
   DeferredDeepLinkResolved: 'deferred_deep_link_resolved', // channel, target_type, target_id
 
+  // ── The organic first run ──────────────────────────────────────────────
+  //
+  // Only the ORGANIC path emits these. Somebody who arrived from a link never
+  // sees these screens, so a drop in the ratio of `welcome_viewed` to
+  // `entry_source_resolved{organic}` is a real regression in the gate rather
+  // than a shift in traffic mix.
+  /** The Welcome screen rendered. First screen of a fresh organic install. */
+  EntryWelcomeViewed: 'entry_welcome_viewed',          // is_guest
+  /** Tapped through from Welcome to the intent question. */
+  EntryWelcomeContinued: 'entry_welcome_continued',    // is_guest
+  /** The intent question rendered. Denominator for the split below. */
+  EntryIntentViewed: 'entry_intent_viewed',            // is_guest
+  /** An intent was chosen — the answer the whole flow exists to collect.
+   *  `intent` is one of create_club | find_game | one_off_game. */
+  EntryIntentSelected: 'entry_intent_selected',        // intent, is_guest
+
   // ── The pending action ─────────────────────────────────────────────────
   PendingActionSaved: 'pending_action_saved',          // kind, origin, has_draft
   PendingActionResumed: 'pending_action_resumed',      // kind, origin, age_ms, is_guest

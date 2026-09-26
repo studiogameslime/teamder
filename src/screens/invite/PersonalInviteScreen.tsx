@@ -24,13 +24,12 @@
 // at SIGNUP, which happens long after this screen — see `inviteLanding.ts`.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 
 import { Card } from '@/components/Card';
-import { UserAvatar } from '@/components/UserAvatar';
 import { MatchListCard } from '@/components/match/MatchListCard';
 import { MatchCardSkeleton } from '@/components/anim/MatchCardSkeleton';
 import { AppearItem } from '@/components/anim/AppearItem';
@@ -187,10 +186,21 @@ export function PersonalInviteScreen() {
               <View style={styles.lineSkeleton} />
             </>
           ) : named ? (
+            // ── Discovery, not a profile ────────────────────────────────
+            //
+            // The question is "where does this person play", and the answer is
+            // the clubs and matches below. Deliberately absent: stats, goals,
+            // assists, rating, achievements, a bio, a feed — anything that
+            // would turn this into a profile page for somebody the viewer has
+            // not met. The tag and the name carry the personal context; the
+            // rest of the screen is places to join.
             <>
-              <UserAvatar user={inviter} size={72} ring />
-              <Text style={styles.heroTitle}>{he.personalInviteVia(named)}</Text>
-              <Text style={styles.heroBody}>{he.personalInviteViaBody}</Text>
+              <View style={styles.tag}>
+                <Text style={styles.tagText}>{he.entryInviteTag(named)}</Text>
+                <Ionicons name="heart" size={12} color={colors.primary} />
+              </View>
+              <Text style={styles.whereTitle}>{he.inviterWhereTitle(named)}</Text>
+              <Text style={styles.whereBody}>{he.inviterWhereSubtitle(named)}</Text>
             </>
           ) : (
             // No inviter, no mirror, a deleted account, a read that failed —
@@ -236,7 +246,7 @@ export function PersonalInviteScreen() {
           <>
             {ready!.clubs.length > 0 ? (
               <>
-                <SectionHead title={he.personalInviteClubsTitle} />
+                <SectionHead title={he.inviterClubsTitle(named ?? '')} />
                 <View style={styles.list}>
                   {ready!.clubs.map((c, i) => (
                     <AppearItem key={c.id} index={i}>
@@ -253,7 +263,7 @@ export function PersonalInviteScreen() {
 
             {ready!.games.length > 0 ? (
               <>
-                <SectionHead title={he.personalInviteGamesTitle} />
+                <SectionHead title={he.inviterGamesTitle(named ?? '')} />
                 <View style={styles.list}>
                   {ready!.games.map((g, i) => (
                     <AppearItem key={g.id} index={i}>
@@ -314,9 +324,16 @@ function ClubRow({
   return (
     <Card style={styles.clubCard} onPress={onPress}>
       <View style={styles.clubRow}>
-        <View style={styles.clubIcon}>
-          <Ionicons name="shield-outline" size={22} color={colors.primary} />
-        </View>
+        {/* The club's own cover when it has published one, the shield
+            otherwise. Nothing is invented: `coverPhotoUrl` is mirrored onto
+            `/groupsPublic` exactly so a public surface can show it. */}
+        {club.coverPhotoUrl ? (
+          <Image source={{ uri: club.coverPhotoUrl }} style={styles.clubCover} />
+        ) : (
+          <View style={styles.clubIcon}>
+            <Ionicons name="shield-outline" size={22} color={colors.primary} />
+          </View>
+        )}
         <View style={styles.clubText}>
           <Text style={styles.clubName} numberOfLines={1}>
             {club.name}
@@ -332,7 +349,14 @@ function ClubRow({
             </Text>
           ) : null}
         </View>
-        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+        {/* A named action, not a bare chevron. The row opens the public club
+            screen, which is where joining actually happens — including the
+            request flow for a club that is not open — so the label states the
+            intent without this screen owning the write. */}
+        <View style={styles.clubCta}>
+          <Text style={styles.clubCtaText}>{he.inviterJoinClub}</Text>
+          <Ionicons name="chevron-back" size={15} color={colors.primary} />
+        </View>
       </View>
     </Card>
   );
@@ -412,6 +436,55 @@ const styles = StyleSheet.create({
 
   list: { gap: spacing.md },
 
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.pill,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  tagText: {
+    ...typography.caption,
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  whereTitle: {
+    ...typography.h1,
+    fontSize: 27,
+    fontWeight: '800',
+    color: colors.primaryDark,
+    textAlign: 'center',
+  },
+  whereBody: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  clubCover: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+  },
+  clubCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  clubCtaText: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.primary,
+  },
   clubCard: { paddingVertical: spacing.md },
   clubRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   clubIcon: {

@@ -12,6 +12,35 @@ import type { AppDestination } from '@/utils/appLinks';
 export const navigationRef = createNavigationContainerRef();
 
 /**
+ * Is the tab navigator actually on screen?
+ *
+ * Every helper below addresses a TAB by name, and `navigate` to a route no
+ * mounted navigator owns does not throw — React Navigation logs "was not
+ * handled by any navigator" and returns. A helper that reported success
+ * anyway would let its caller latch or clear, and the thing the person tapped
+ * would be lost in silence.
+ *
+ * That window is real. RootNavigator renders the splash while the entry gate
+ * resolves and while groups hydrate, and MainTabs does not exist during
+ * either. The personal-invite consumer is the expensive case: it sets a
+ * one-per-device latch on a "successful" navigation, so one false positive
+ * costs that person their invitation permanently.
+ *
+ * Returning false instead means the caller keeps its stash and the next mount
+ * tries again — which is what all three call sites were already written to do.
+ */
+function tabsMounted(): boolean {
+  try {
+    const state = navigationRef.getRootState() as
+      | { routeNames?: readonly string[] }
+      | undefined;
+    return !!state?.routeNames?.includes('GameTab');
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Route a popup-campaign button tap (authored in Pulse) to the right
  * destination. Mirrors the action types in
  * src/services/campaignService.ts + pulse/src/services/campaigns.ts.
@@ -111,7 +140,7 @@ export function navigateInvite(args: {
   id: string;
   isMember?: boolean;
 }): boolean {
-  if (!navigationRef.isReady()) return false;
+  if (!navigationRef.isReady() || !tabsMounted()) return false;
   // Cast to `any` because navigationRef has no generic type — the ref
   // is shared across stacks with different ParamLists. Each branch
   // below targets a known route shape verified by manual testing.
@@ -154,7 +183,7 @@ export function navigatePersonalInvite(args: {
   invitedBy?: string;
   source?: string;
 }): boolean {
-  if (!navigationRef.isReady()) return false;
+  if (!navigationRef.isReady() || !tabsMounted()) return false;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
   nav.navigate('ProfileTab', {
@@ -163,6 +192,52 @@ export function navigatePersonalInvite(args: {
     params: { invitedBy: args.invitedBy, source: args.source },
   });
   return true;
+}
+
+/**
+ * Send somebody to the thing they just said they came for.
+ *
+ * Separate from `navigateAppDestination` for one reason that matters: the
+ * one-off match needs `quick: true`. Without it GameCreate opens the community
+ * picker, and a person who just tapped "רק משחק חד־פעמי" is asked to choose a
+ * club they do not have. `quick` is what provisions the hidden personal group
+ * instead — the same param GuestHome passes from its own one-off card.
+ *
+ * The destinations themselves are all EXISTING routes. Nothing here is a new
+ * flow; the intent screen only decides which of the three the person meets
+ * first.
+ *
+ * `initial: false` on the two creation routes keeps the tab's own root
+ * underneath, so backing out of a wizard lands on a screen rather than
+ * closing the tab.
+ */
+export function navigateEntryIntent(
+  intent: 'create_club' | 'find_game' | 'one_off_game',
+): boolean {
+  if (!navigationRef.isReady() || !tabsMounted()) return false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
+  switch (intent) {
+    case 'create_club':
+      nav.navigate('CommunitiesTab', { screen: 'CommunitiesCreate', initial: false });
+      return true;
+    case 'find_game':
+      // The MATCHES feed, not the clubs feed. "מחפש משחק באזור" promises open
+      // matches near you, and GamesList is the screen that lists them (plus
+      // nearby clubs and local demand underneath when there are few). See the
+      // implementation report for the copy-vs-destination finding this fixed.
+      nav.navigate('GameTab', { screen: 'GamesList' });
+      return true;
+    case 'one_off_game':
+      nav.navigate('GameTab', {
+        screen: 'GameCreate',
+        initial: false,
+        params: { quick: true },
+      });
+      return true;
+    default:
+      return false;
+  }
 }
 
 /**

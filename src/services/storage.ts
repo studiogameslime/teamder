@@ -50,6 +50,28 @@ const KEYS = {
   // modal is strictly one-time per version — it never reappears on relaunch /
   // foreground, even if the user closes the app mid-modal.
   WHATS_NEW_SEEN_VERSION: 'footy.whatsNew.seenVersion',
+  // Has this DEVICE finished the organic first-run entry experience
+  // (Welcome → Intent)?
+  //
+  // The name is the specification. It is NOT "has seen a screen" and NOT
+  // "arrived once from a link" — it is "this device no longer needs to be
+  // asked what it came for". Two things satisfy that and nothing else does:
+  //
+  //   • somebody picked an intent, so we know;
+  //   • a full account has existed on this phone, so the pitch is behind them
+  //     (this is what stops a sign-out from greeting a two-year user with a
+  //     first-run pitch).
+  //
+  // A deep link deliberately does NOT set it. Arriving at a match from a
+  // friend's link, looking, and closing the app tells us nothing about what
+  // this person wants from Teamder — the link is a bypass FOR THAT ENTRY, not
+  // an answer. See `entryGate.ts`, which computes the bypass per launch.
+  //
+  // Deliberately a NEW key rather than `footy.onboarding.done`: that one
+  // belongs to the retired pre-sign-in carousel and every existing install
+  // already carries it `true`, so reusing it would hide the new flow from the
+  // entire user base on upgrade.
+  ENTRY_ORGANIC_COMPLETED: 'footy.entry.organicCompleted',
 } as const;
 
 /**
@@ -81,6 +103,33 @@ export type PendingInvite =
   | ({ type: 'app'; invitedBy?: string } & AcquisitionTag);
 
 export const storage = {
+  // Organic first-run entry — see ENTRY_ORGANIC_COMPLETED above for what the
+  // flag means. Reads default to `false` on a failure: showing Welcome once
+  // too often is a small annoyance, skipping it forever is the feature not
+  // existing.
+  async getEntryOrganicCompleted(): Promise<boolean> {
+    try {
+      return (await AsyncStorage.getItem(KEYS.ENTRY_ORGANIC_COMPLETED)) === '1';
+    } catch {
+      return false;
+    }
+  },
+  async setEntryOrganicCompleted(): Promise<void> {
+    try {
+      await AsyncStorage.setItem(KEYS.ENTRY_ORGANIC_COMPLETED, '1');
+    } catch {
+      // Best-effort. A failure costs a repeated Welcome, never a lost account.
+    }
+  },
+  /** Visible for tests and for a QA reset of the entry flow. */
+  async clearEntryOrganicCompleted(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(KEYS.ENTRY_ORGANIC_COMPLETED);
+    } catch {
+      // Ignored on purpose.
+    }
+  },
+
   async getOnboardingDone(): Promise<boolean> {
     const v = await AsyncStorage.getItem(KEYS.ONBOARDING_DONE);
     return v === 'true';
