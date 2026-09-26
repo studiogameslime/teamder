@@ -100,6 +100,20 @@ export function useAuthenticatedAction(): UseAuthenticatedAction {
       // a modal over a modal, and on iOS the second one silently never shows.
       setPendingKind(null);
 
+      // Tell the store who is signed in now, BEFORE anything else runs.
+      //
+      // `upgradeAnonymous` links or switches the Firebase session directly and
+      // returns an outcome; it never touched `currentUser`. So the store still
+      // held the GUEST object after a successful upgrade, `useIsGuest()` stayed
+      // true, and the gate that had just been satisfied opened this sheet again
+      // on the very next press — for ever. Reported from production as "creating
+      // a club or a game asks me to sign in, then asks again, and I cannot get
+      // past it".
+      //
+      // Before the resume, not after: the resumer and every screen behind the
+      // sheet read the store, and they must see the real account.
+      await useUserStore.getState().refreshFromSession();
+
       // A brand-new account owes a name and an avatar. RootNavigator's gate
       // already renders `PostSignInOnboardingScreen` for exactly that state —
       // `hasCompletedOnboarding()` is false — so the resume is left to the

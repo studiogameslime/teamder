@@ -36,6 +36,17 @@ interface UserStore {
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
   signInAsGuest: () => Promise<void>;
+  /**
+   * Re-read the signed-in user from the CURRENT auth session.
+   *
+   * For the one path that changes who is signed in without going through this
+   * store: `upgradeAnonymous`, behind the contextual auth sheet. It links or
+   * switches the Firebase session directly and returns an outcome — it never
+   * touched `currentUser`, so after a successful upgrade the store still held
+   * the GUEST object. `useIsGuest()` stayed true, and the gate that had just
+   * been satisfied opened the sheet again on the next press. Round and round.
+   */
+  refreshFromSession: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
@@ -261,6 +272,20 @@ export const useUserStore = create<UserStore>((set, get) => ({
     const user = await userService.signInAsGuest();
     set({ currentUser: user });
     logEvent(AnalyticsEvent.SignInSuccess, { method: 'guest' });
+  },
+
+  refreshFromSession: async () => {
+    // `getCurrentUser` reads the live session and its /users document, which
+    // is exactly what every other sign-in path sets. If it comes back null the
+    // session is gone — leave what we have rather than blanking the tree from
+    // under a screen; the navigator's own guards handle a missing session.
+    try {
+      const user = await userService.getCurrentUser();
+      if (user) set({ currentUser: user, guestInitFailed: false });
+    } catch (err) {
+      logError('refreshFromSession', err, {});
+      if (__DEV__) console.warn('[userStore] refreshFromSession failed', err);
+    }
   },
 
   signInWithEmail: async (email, password) => {
