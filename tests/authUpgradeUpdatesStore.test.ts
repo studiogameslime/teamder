@@ -103,6 +103,49 @@ describe('refreshing the store from the session', () => {
   });
 });
 
+// ─── the email provider, which never reaches the sheet's handler ──────────
+
+/**
+ * "המשך עם מייל" is the one provider the sheet hands off rather than handling:
+ * it calls `onCancel()` and navigates to EmailAuthScreen, so the sheet is
+ * unmounted and `onAuthenticated` — the refresh AND the resume — never runs.
+ *
+ * `signInWithEmail` sets `currentUser` itself, so that path has no guest loop.
+ * What it had instead was a dead end: nobody popped the screen and nobody
+ * finished the parked club or game. A guest is already inside MainTabs, so
+ * signing in does not make RootNavigator swap anything.
+ */
+describe('signing in through the email screen', () => {
+  const src = require('fs').readFileSync(
+    require('path').resolve(__dirname, '..', 'src/screens/auth/EmailAuthScreen.tsx'),
+    'utf8',
+  ) as string;
+
+  it('resumes the parked action', () => {
+    expect(src).toContain("from '@/services/actionCoordinator'");
+    expect(src).toContain('resumePendingAction()');
+  });
+
+  it('leaves the screen it was pushed onto', () => {
+    expect(src).toContain('nav.canGoBack()');
+    expect(src).toContain('nav.goBack()');
+  });
+
+  it('reports what the resume actually got them', () => {
+    expect(src).toContain('reportResumeOutcome');
+  });
+
+  // A fresh account owes a profile: its document carries
+  // `onboardingCompleted: false`, RootNavigator swaps to the profile screen,
+  // and the coordinator's boot pass resumes after that screen saves. Resuming
+  // here would race the swap.
+  it('only does it for a sign-in, not a sign-up', () => {
+    const at = src.indexOf('const submit = async');
+    const body = src.slice(at, at + 2200);
+    expect(body).toMatch(/if \(mode === 'signIn'\) \{\s*await finishParkedAction\(\);/);
+  });
+});
+
 // ─── the wiring, so the fix cannot be removed from the one caller ──────────
 
 describe('the contextual auth sheet handler', () => {

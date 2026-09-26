@@ -26,6 +26,8 @@ import { useUserStore } from '@/store/userStore';
 import { EmailRegisteredWithProviderError } from '@/firebase/auth';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
+import { resumePendingAction } from '@/services/actionCoordinator';
+import { reportResumeOutcome } from '@/services/resumeFeedback';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { AuthStackParamList } from '@/navigation/AuthStack';
@@ -69,6 +71,29 @@ export function EmailAuthScreen() {
     setMode(to);
   };
 
+  /**
+   * Leave this screen and finish whatever was waiting behind the auth wall.
+   *
+   * Deliberately the same two steps, in the same order, that the sheet's own
+   * `onAuthenticated` performs: the pending action is resumed through its
+   * REGISTERED RESUMER — which asks the server fresh — and never by replaying
+   * a caller's executor. `resumePendingAction` returns `none` when there is
+   * nothing parked, which is the ordinary case for somebody who reached this
+   * screen from the sign-in screen rather than from a wall.
+   *
+   * `currentUser` is already correct here: `signInWithEmail` sets it. That is
+   * why this does not repeat the store refresh the sheet needs.
+   */
+  const finishParkedAction = async () => {
+    if (nav.canGoBack()) nav.goBack();
+    try {
+      const out = await resumePendingAction();
+      if (out.status === 'ran') reportResumeOutcome(out.kind, out.result);
+    } catch (err) {
+      logError('emailAuthResume', err, {});
+    }
+  };
+
   const submit = async () => {
     if (!canSubmit) return;
     setBusy(true);
@@ -78,7 +103,27 @@ export function EmailAuthScreen() {
       } else {
         await signUpWithEmail(email, password);
       }
-      // Success → RootNavigator swaps the stack; nothing else to do here.
+      // ── When this screen was opened BY the contextual auth sheet ──────────
+      //
+      // "המשך עם מייל" is the one provider the sheet does not handle itself:
+      // it needs two fields, validation and a reset path, so it closes and
+      // navigates here. The sheet is then unmounted, and its `onAuthenticated`
+      // — which refreshes the store and resumes the parked action — never runs.
+      //
+      // Nothing picked that up. Signing in from a create-club or create-game
+      // wall left the person looking at a cleared sign-in form, with the club
+      // they had filled in still parked and nothing to finish it. The comment
+      // that used to sit here said "RootNavigator swaps the stack", and for a
+      // guest it does not: a guest is already inside MainTabs, so signing in
+      // changes nothing about which tree is rendered and no one pops this
+      // screen.
+      //
+      // A fresh account is the exception and is left alone: its user document
+      // carries `onboardingCompleted: false`, RootNavigator DOES swap to the
+      // profile screen, and the coordinator's boot pass resumes after it saves.
+      if (mode === 'signIn') {
+        await finishParkedAction();
+      }
     } catch (err) {
       handleAuthError(err);
     } finally {
