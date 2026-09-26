@@ -589,7 +589,51 @@ export function SeasonsSettings({
   const playedThisSeason = Math.max(0, seasons?.playedRounds ?? 0);
   const canEndSeason = playedThisSeason >= MIN_SEASON_ROUNDS;
 
+  /**
+   * The season is too short to end — say so, and offer the way out.
+   *
+   * The button used to be disabled with a sentence beside it. That is correct
+   * about the rule and useless about what to do next: an admin who has just
+   * switched seasons on, played nothing, and wants to start the season over is
+   * not asking to seal anything — they are asking to change how the season is
+   * set up, and a grey button does not tell them that is the thing to do.
+   *
+   * So the press is allowed and answered. The dialog names the count, states
+   * the floor, and its primary action opens the season settings, which is
+   * where both real remedies live: move the finish line, or switch seasons off
+   * — the server DISCARDS an empty season rather than archiving it, so
+   * switching off really does leave the club clean rather than stamping a
+   * season of nothing into permanent history.
+   */
+  const offerSeasonSettings = useCallback(() => {
+    appAlert(
+      he.seasonsEndTooEarlyTitle,
+      he.seasonBlockedTooFewRoundsAt(playedThisSeason, MIN_SEASON_ROUNDS),
+      [
+        {
+          text: he.seasonsEditSettingsCta,
+          // Expands the section when it is collapsed. When it is already open
+          // — which is the usual case, because this button only renders for a
+          // live club — the settings the dialog is pointing at are the chips
+          // and stepper directly above it.
+          onPress: () => setOpen(true),
+        },
+        { text: he.cancel, style: 'cancel' },
+      ],
+      { tone: 'warning' },
+    );
+  }, [playedThisSeason]);
+
   const endNow = useCallback(() => {
+    // The floor, answered before the destructive confirmation rather than
+    // after it. The server refuses this too (`season-close:tooFewRounds`), but
+    // an admin should not have to read "are you sure you want to archive the
+    // table and award nine titles" and press it to be told the season is
+    // empty.
+    if (!canEndSeason) {
+      offerSeasonSettings();
+      return;
+    }
     // Which season, and how much of it there is.
     //
     // The paragraph on its own reads identically for a season holding nothing
@@ -620,7 +664,7 @@ export function SeasonsSettings({
       },
       { text: he.cancel, style: 'cancel' },
     ]);
-  }, [groupId, run, seasons?.playedRounds, thisSeasonNo]);
+  }, [canEndSeason, offerSeasonSettings, groupId, run, seasons?.playedRounds, thisSeasonNo]);
 
   const currentTargetLine =
     seasons?.cadence?.type === 'rounds' &&
@@ -1020,11 +1064,14 @@ export function SeasonsSettings({
               // A season with nothing in it cannot be sealed — the server
               // refuses it (`season-close:tooFewRounds`) and an archive is
               // written once, so a season of zero evenings would be permanent
-              // history. The button that cannot succeed is not pressable, and
-              // the line above says why. Reported on a club created minutes
-              // earlier: seasons on, no evening ever played, "סיים עונה עכשיו"
-              // sealed it.
-              disabled={busy || !canEndSeason}
+              // history. Reported on a club created minutes earlier: seasons
+              // on, no evening ever played, "סיים עונה עכשיו" sealed it.
+              //
+              // Not disabled, though. Pressing it when the season is too short
+              // opens `offerSeasonSettings`, which explains the floor and
+              // points at the settings — a dead grey button answers the first
+              // half of that and none of the second.
+              disabled={busy}
               loading={busy}
               onPress={endNow}
             />

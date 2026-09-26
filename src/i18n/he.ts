@@ -2365,6 +2365,15 @@ export const he = {
    * Two forms, because the server names the club's own figure and the screen
    * should say it: "עוד אחד" is actionable, "לפחות 2" on its own is not.
    */
+  /** Title for the refusal an admin reaches by PRESSING "סיים עונה עכשיו" on a
+   *  season that has not played enough. "שגיאה" would be wrong: nothing failed
+   *  and nothing was attempted against the server — the rule was explained
+   *  before anything happened. */
+  seasonsEndTooEarlyTitle: 'עוד מוקדם לסיים את העונה',
+  /** The way forward from that dialog. Both real remedies — moving the finish
+   *  line, and switching seasons off over an empty season — live in the season
+   *  settings, so that is where it points. */
+  seasonsEditSettingsCta: 'ערוך את הגדרות העונה',
   seasonBlockedTooFewRounds: (min: number) =>
     `אפשר לסיים עונה רק אחרי ${count(min, 'מחזור אחד', 'מחזורים')} לפחות.`,
   seasonBlockedTooFewRoundsAt: (played: number, min: number) =>
