@@ -143,6 +143,7 @@ import { useGameStore } from '@/store/gameStore';
 import { useChatStore } from '@/store/chatStore';
 import { chatKeyFor } from '@/services/chatService';
 import type { GameStackParamList } from '@/navigation/GameStack';
+import { clubRouteFor } from '@/utils/clubRoute';
 
 type Nav = NativeStackNavigationProp<GameStackParamList, 'MatchDetails'>;
 type Params = RouteProp<GameStackParamList, 'MatchDetails'>;
@@ -3637,7 +3638,7 @@ export function MatchDetailsScreen() {
                                   nav as {
                                     navigate: (s: string, p: unknown) => void;
                                   }
-                                ).navigate('CommunityDetails', {
+                                ).navigate(clubRouteFor(game.groupId), {
                                   groupId: game.groupId,
                                 }),
                               accessibilityLabel: 'פתח את עמוד המועדון',

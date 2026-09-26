@@ -64,6 +64,7 @@ import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useAuthenticatedAction } from '@/hooks/useAuthenticatedAction';
+import { clubRouteFor } from '@/utils/clubRoute';
 
 type RouteParams = {
   PlayerCard: {
@@ -607,7 +608,10 @@ function CommunityChips({ groups }: { groups: Group[] }) {
           <Pressable
             key={g.id}
             style={({ pressed }) => [styles.commChip, pressed && { opacity: 0.7 }]}
-            onPress={() => nav.navigate('CommunityDetails', { groupId: g.id })}
+            // The members' page or the public one, by membership. These chips
+            // are another person's clubs — usually NOT the viewer's — and a
+            // guest reaches this card from any public game's roster.
+            onPress={() => nav.navigate(clubRouteFor(g.id), { groupId: g.id })}
             accessibilityRole="button"
             accessibilityLabel={g.name}
           >

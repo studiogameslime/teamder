@@ -12,6 +12,8 @@ import { CommunityChatScreen } from '@/screens/chat/CommunityChatScreen';
 import { DirectChatScreen } from '@/screens/chat/DirectChatScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { PlayerCompareScreen } from '@/screens/players/PlayerCompareScreen';
+import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
+import { CommunityDetailsPublicScreen } from '@/screens/communities/CommunityDetailsPublicScreen';
 
 export type ChatStackParamList = {
   ChatsList: undefined;
@@ -20,6 +22,12 @@ export type ChatStackParamList = {
   DirectChat: { convId: string };
   PlayerCard: { userId: string; groupId?: string };
   PlayerCompare: { groupId: string; otherUid: string; otherName?: string };
+  // A player card lists the clubs that person belongs to, and tapping one
+  // opens a club page. The card is registered here; the two club pages were
+  // not, so from the chats tab that tap was a silent no-op — `navigate()` on a
+  // name the focused stack does not register does nothing and says nothing.
+  CommunityDetails: { groupId: string };
+  CommunityDetailsPublic: { groupId: string };
 };
 
 const Stack = createNativeStackNavigator<ChatStackParamList>();
@@ -36,6 +44,11 @@ export function ChatStack() {
       <Stack.Screen name="DirectChat" component={DirectChatScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
       <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
+      <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
+      <Stack.Screen
+        name="CommunityDetailsPublic"
+        component={CommunityDetailsPublicScreen}
+      />
     </Stack.Navigator>
   );
 }
