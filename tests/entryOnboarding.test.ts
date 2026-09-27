@@ -357,3 +357,33 @@ describe('the launch artwork', () => {
     }
   });
 });
+
+// ─── A draft that can never become a club ─────────────────────────────────
+
+describe('resuming a club draft with no name', () => {
+  const src = read(path.join('src', 'services', 'actionResumers.ts'));
+
+  it('is terminal on the first attempt, not retried every launch', () => {
+    // `createClubFromValues` throws VALIDATION_ERROR for an empty name, and a
+    // validation failure is not retryable — so the coordinator kept the action
+    // stashed and tried again on EVERY launch, for anyone whose draft had no
+    // name. Two error-inbox entries were the small half of that.
+    const at = src.indexOf("registerResumer('create_club'");
+    const body = src.slice(at, src.indexOf("registerResumer('create_game'"));
+    expect(body).toContain('if (!values.name || !values.name.trim())');
+    expect(body).toMatch(/terminal: true, reason: 'draft_expired'/);
+    // and the unusable draft is thrown away rather than left on disk
+    expect(body).toContain("draftStore.discard('club')");
+  });
+
+  it('checks BEFORE calling create, not in the catch', () => {
+    const at = src.indexOf("registerResumer('create_club'");
+    const body = src.slice(at, src.indexOf("registerResumer('create_game'"));
+    // Match the CALL, not the word — the comment above the guard names the
+    // function too, and matching that made the assertion pass on the wrong
+    // occurrence.
+    expect(body.indexOf('if (!values.name')).toBeLessThan(
+      body.indexOf('await createClubFromValues('),
+    );
+  });
+});

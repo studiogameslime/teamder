@@ -189,6 +189,24 @@ registerResumer('create_club', async (): Promise<ActionResult> => {
     draft.values,
   ) as unknown as GroupFormValues;
 
+  // ── A draft that cannot become a club ────────────────────────────────
+  //
+  // Somebody opened the wizard, filled in something that is not the name — a
+  // city, a note — and met the auth wall before typing one. The draft is
+  // saved, and `createClubFromValues` then throws "יש להזין שם המועדון" every
+  // time it is resumed.
+  //
+  // That threw twice into the error inbox, but the count is the small half of
+  // it: a validation failure is not retryable, so the coordinator kept the
+  // action stashed and tried again on EVERY launch, forever, for anyone whose
+  // draft had no name. Checking here makes it terminal on the first attempt
+  // and reports it as the expired draft it effectively is — nothing was typed
+  // that can be built, and re-offering it is offering a club nobody named.
+  if (!values.name || !values.name.trim()) {
+    await draftStore.discard('club');
+    return { outcome: 'created', terminal: true, reason: 'draft_expired' };
+  }
+
   try {
     const { groupId } = await createClubFromValues(values, me);
     // Land them on the club they just made, celebrating — the same arrival the
