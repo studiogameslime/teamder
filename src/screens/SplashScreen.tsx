@@ -2,9 +2,9 @@
 //
 // ─── One screen, two endings ────────────────────────────────────────────
 //
-// Everybody sees the same thing on launch: the artwork, with a slim progress
-// bar under the slogan. What happens when loading finishes is the only thing
-// that differs.
+// Everybody sees the same thing on launch: the artwork, with a progress bar
+// sitting exactly where the button will be. What happens when loading finishes
+// is the only thing that differs.
 //
 //   • somebody with an account — the bar completes, the screen fades, they are
 //     on their Home. No button, no second screen, no tap.
@@ -32,7 +32,6 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
@@ -54,47 +53,60 @@ const BAR_H = 10;
 // ─── Pure visual ─────────────────────────────────────────────────────────
 
 /**
- * The launch artwork plus an INDETERMINATE bar.
+ * The launch artwork plus a bar that fills ONCE, against real boot progress.
  *
- * Indeterminate on purpose. Boot is a handful of awaits with no honest
- * fraction attached — auth restore, a user read, group hydration, a remote
- * config fetch — and a bar that walked 0→100% would be an invented number
- * dressed as information. A sweeping fill says "working" without claiming to
- * know how much is left.
+ * ─── Why it is not a loop any more ──────────────────────────────────────
+ *
+ * The first version swept 0→100 repeatedly. It was honest about not knowing
+ * the fraction, but it read as the app loading several times over, which is a
+ * worse lie than the one it was avoiding.
+ *
+ * `progress` is the share of the splash's OWN readiness gates that have
+ * passed — auth restore, the entry flag, group hydration. Every one is a real
+ * state transition, so the bar only ever moves forward and it finishes exactly
+ * when the app does.
+ *
+ * ─── The creep, and why it is not a fake percentage ─────────────────────
+ *
+ * Between two gates there is nothing to report, and a bar frozen for three
+ * seconds looks broken. So within a segment the fill eases toward — but never
+ * reaches — the next gate: it covers at most 60% of the gap and decelerates.
+ * It can therefore never claim a milestone that has not happened, and it can
+ * never reach the end before the app is genuinely ready.
  */
-export function SplashVisual({ showBar = true }: { showBar?: boolean }) {
+export function SplashVisual({
+  showBar = true,
+  progress = 0,
+}: {
+  showBar?: boolean;
+  progress?: number;
+}) {
   const { width, height } = useWindowDimensions();
 
-  const grow = useSharedValue(0);
-  const fade = useSharedValue(1);
+  const grow = useSharedValue(0.04);
   useEffect(() => {
-    // Fill, then clear, then fill again. Still INDETERMINATE — boot is a
-    // handful of awaits with no honest fraction attached, and nothing here
-    // claims a number — but it reads as progress rather than as a shuttle,
-    // which is what makes the button feel like it takes the bar's place.
-    grow.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1150, easing: Easing.out(Easing.cubic) }),
-        withTiming(1, { duration: 260 }),
-        withTiming(0, { duration: 0 }),
-      ),
-      -1,
-      false,
+    const target = Math.max(0.04, Math.min(1, progress));
+    // Monotonic by construction: never animate below where the bar already is,
+    // so a creep that has run ahead of its segment does not snap backwards
+    // when the next gate lands.
+    const from = Math.max(grow.value, 0);
+    if (target >= 1) {
+      grow.value = withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) });
+      return;
+    }
+    const settled = Math.max(from, target);
+    const gap = (1 - settled) * 0.6;
+    grow.value = withSequence(
+      withTiming(settled, { duration: 380, easing: Easing.out(Easing.cubic) }),
+      // The long, decelerating reach toward the next gate. Capped short of it.
+      withTiming(Math.min(0.94, settled + gap), {
+        duration: 6000,
+        easing: Easing.out(Easing.quad),
+      }),
     );
-    fade.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1150 }),
-        withTiming(0, { duration: 240, easing: Easing.in(Easing.quad) }),
-        withTiming(1, { duration: 0 }),
-      ),
-      -1,
-      false,
-    );
-    return () => {
-      cancelAnimation(grow);
-      cancelAnimation(fade);
-    };
-  }, [grow, fade]);
+  }, [progress, grow]);
+
+  useEffect(() => () => cancelAnimation(grow), [grow]);
 
   const fillStyle = useAnimatedStyle(() => ({
     // A percentage WIDTH on an ordinary row child. Under forceRTL a row lays
@@ -102,7 +114,6 @@ export function SplashVisual({ showBar = true }: { showBar?: boolean }) {
     // leftwards — the direction Hebrew reads. No `left`, no `translateX`,
     // nothing that flips or has to be sign-corrected per locale.
     width: `${grow.value * 100}%`,
-    opacity: fade.value,
   }));
 
   return (
@@ -140,10 +151,17 @@ interface Props {
    * gives way to a button and nothing happens until they tap it.
    */
   awaitStart?: boolean;
+  /** Share of the boot gates that have passed, 0..1. Drives the bar. */
+  progress?: number;
   onFinish: () => void;
 }
 
-export function SplashScreen({ ready, awaitStart = false, onFinish }: Props) {
+export function SplashScreen({
+  ready,
+  awaitStart = false,
+  progress = 0,
+  onFinish,
+}: Props) {
   const rootOpacity = useSharedValue(1);
   const rootScale = useSharedValue(1);
   const ctaOpacity = useSharedValue(0);
@@ -221,7 +239,9 @@ export function SplashScreen({ ready, awaitStart = false, onFinish }: Props) {
       // them once it is a welcome.
       pointerEvents={showCta ? 'box-none' : 'none'}
     >
-      <SplashVisual showBar={!showCta} />
+      {/* Once the hold is over the bar is full by definition — the gates it
+          tracks are what `ready` is made of. */}
+      <SplashVisual showBar={!showCta} progress={ready ? 1 : progress} />
       {showCta ? (
         <SafeAreaView edges={['bottom']} style={styles.ctaBar} pointerEvents="box-none">
           <Animated.View style={[styles.ctaSlot, ctaStyle]}>

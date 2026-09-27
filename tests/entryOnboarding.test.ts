@@ -288,6 +288,31 @@ describe('the launch artwork', () => {
     expect(splash).toMatch(/ctaSlot: \{ height: CTA_SLOT_H/);
   });
 
+  it('fills the bar ONCE against real boot gates, never on a loop', () => {
+    const splash = read(path.join('src', 'screens', 'SplashScreen.tsx'));
+    const app = read('App.tsx');
+    // The gates are the same three `ready` is made of, so the bar finishes
+    // exactly when the app does.
+    expect(app).toContain('const bootGates = [');
+    expect(app).toContain('progress={bootProgress}');
+    // A repeating sweep read as the app loading several times over.
+    expect(splash).not.toContain('withRepeat');
+  });
+
+  it('never moves the bar backwards', () => {
+    const splash = read(path.join('src', 'screens', 'SplashScreen.tsx'));
+    expect(splash).toContain('const settled = Math.max(from, target);');
+  });
+
+  it('creeps toward the next gate but can never reach it', () => {
+    const splash = read(path.join('src', 'screens', 'SplashScreen.tsx'));
+    // 60% of the remaining gap, hard-capped below 1 — so the fill cannot
+    // claim a milestone that has not happened, or finish before the app is
+    // genuinely ready.
+    expect(splash).toContain('const gap = (1 - settled) * 0.6;');
+    expect(splash).toContain('Math.min(0.94, settled + gap)');
+  });
+
   it('fills the bar right-to-left without any flippable coordinate', () => {
     const splash = read(path.join('src', 'screens', 'SplashScreen.tsx'));
     const at = splash.indexOf('const fillStyle');
