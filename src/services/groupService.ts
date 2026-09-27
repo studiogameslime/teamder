@@ -44,7 +44,7 @@ import { withAuthRaceRetry } from '@/firebase/authRace';
 import { col, docs, GroupJoinRequestDoc, type PublicUser } from '@/firebase/firestore';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
-import { logError, logUnexpected } from '@/services/errorLog';
+import { logError, logUnexpected, isExpectedDenial } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 let groupsById: Record<GroupId, Group> = {
@@ -169,7 +169,17 @@ export const groupService = {
       const snap = await getDoc(docs.group(groupId));
       return snap.exists() ? snap.data() : null;
     } catch (err) {
-      logError('getGroup', err, { groupId });
+      // A DELETED club reads back as `permission-denied`, not "not found":
+      // `allow get` is a membership test, and on a missing document there is
+      // no `resource.data` to test, so the rule refuses. Same answer arrives
+      // for somebody who simply is not a member.
+      //
+      // Neither is a fault to report. Twelve entries in the error inbox came
+      // from one person opening a stale link to a club that no longer exists,
+      // filed as "insufficient permissions" — which sent the reader looking
+      // for a rules bug that was not there. The caller still gets the throw
+      // and decides what to show.
+      if (!isExpectedDenial(err)) logError('getGroup', err, { groupId });
       if (__DEV__) console.warn('[groupService] get failed', err);
       throw err;
     }

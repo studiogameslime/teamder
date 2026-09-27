@@ -75,7 +75,7 @@ export type UpgradeOutcome =
  */
 function isCancellation(err: unknown): boolean {
   const e = err as { code?: string; message?: string } | null;
-  const code = e?.code ?? '';
+  const code = String(e?.code ?? '');
   const msg = e?.message ?? '';
   return (
     code === 'ERR_REQUEST_CANCELED' ||
@@ -86,6 +86,39 @@ function isCancellation(err: unknown): boolean {
     code === '-5' || // Google Sign-In iOS: SIGN_IN_CANCELLED
     code === '12501' || // Google Sign-In Android: SIGN_IN_CANCELLED
     /cancel/i.test(msg)
+  );
+}
+
+/**
+ * The provider failed in a way that is the ENVIRONMENT's problem, not ours.
+ *
+ * These reach the error inbox as "פעולה נכשלה · upgradeAcquire" and there is
+ * nothing in the app to fix for any of them:
+ *
+ *   8   Play Services INTERNAL_ERROR — a Google-side hiccup, or Play Services
+ *       needing an update on that device
+ *   -1  the iOS Google sheet failed to present or was dismissed without a
+ *       result; indistinguishable from a cancel from our side
+ *   7 / NETWORK_ERROR   no connection at the moment of the tap
+ *   ERR_REQUEST_UNKNOWN Apple returned a request it would not explain, which
+ *       in practice is a dismissed sheet
+ *
+ * The person sees the auth sheet stay put and taps again, which is the right
+ * outcome. Logging them buried the denials that DO need looking at: three of
+ * these in one day, on one user each, next to a real permission bug nobody
+ * noticed for a week.
+ *
+ * They are still reported to analytics as `auth_failed` with the code, so the
+ * rate stays visible — this only keeps them out of the error inbox.
+ */
+function isProviderEnvironmentFailure(err: unknown): boolean {
+  const code = String((err as { code?: unknown } | null)?.code ?? '');
+  return (
+    code === '8' ||
+    code === '-1' ||
+    code === '7' ||
+    code === 'ERR_REQUEST_UNKNOWN' ||
+    code === 'NETWORK_ERROR'
   );
 }
 
@@ -187,8 +220,12 @@ export async function upgradeAnonymous(
     acquired = await acquire(method, opts?.email, opts?.password);
   } catch (err) {
     if (isCancellation(err)) return { status: 'cancelled' };
-    const code = (err as { code?: string })?.code ?? 'provider-failed';
-    logError('upgradeAcquire', err, { method, code });
+    const code = String((err as { code?: unknown })?.code ?? 'provider-failed');
+    // Environment failures are reported to analytics by the caller, not to the
+    // error inbox — see `isProviderEnvironmentFailure`.
+    if (!isProviderEnvironmentFailure(err)) {
+      logError('upgradeAcquire', err, { method, code });
+    }
     return { status: 'failed', code, message: (err as Error)?.message };
   }
 

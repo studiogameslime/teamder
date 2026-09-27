@@ -67,7 +67,7 @@ import { CommunityShareInviteCta } from '@/components/community/CommunityShareIn
 import { InviteMembersSheet } from '@/components/community/InviteMembersSheet';
 import { RichRulesText } from '@/components/community/RichRulesText';
 import { groupService } from '@/services';
-import { logError } from '@/services/errorLog';
+import { logError, isExpectedDenial } from '@/services/errorLog';
 import { pickAndUploadGroupCover } from '@/services/photoService';
 import { gameService } from '@/services/gameService';
 import { seasonHistoryService } from '@/services/seasonHistoryService';
@@ -215,11 +215,17 @@ export function CommunityDetailsScreen() {
         setHistory(hist);
         setCommunityStats(cStats);
       } catch (err) {
-        logError('communityDetailsReload', err, {
-          screen: 'CommunityDetailsScreen',
-          groupId,
-          userId: me?.id,
-        });
+        // Not logged when the club is simply unreachable — deleted, or one the
+        // viewer is not in. Both come back as `permission-denied` (see
+        // `groupService.get`), and both are ordinary states of a stale link,
+        // not defects. Anything else still reports.
+        if (!isExpectedDenial(err)) {
+          logError('communityDetailsReload', err, {
+            screen: 'CommunityDetailsScreen',
+            groupId,
+            userId: me?.id,
+          });
+        }
         if (__DEV__) console.warn('[community] reload failed', err);
       } finally {
         setLoading(false);

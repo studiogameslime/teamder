@@ -50,7 +50,13 @@ export async function openWhatsApp(phone: string | undefined): Promise<boolean> 
     await Linking.openURL(url);
     return true;
   } catch (err) {
-    logError('openWhatsApp', err, {});
+    // "Unable to open URL" means WhatsApp is not installed and no browser
+    // claimed wa.me. That is a fact about the phone, not a fault in the app,
+    // and it was filling the error inbox with an entry nobody can act on. The
+    // caller already falls back on `false`.
+    if (!/unable to open url/i.test((err as Error)?.message ?? '')) {
+      logError('openWhatsApp', err, { url });
+    }
     return false;
   }
 }
