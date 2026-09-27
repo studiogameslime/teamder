@@ -2386,6 +2386,14 @@ export const he = {
     played <= 0
       ? `בעונה הזאת עוד לא שוחק אף מחזור, ואי אפשר לסיים עונה ריקה. שחקו ${count(min, 'מחזור אחד', 'מחזורים')} לפחות — או כבו את העונות, והעונה הריקה פשוט תימחק.`
       : `בעונה הזאת שוחק ${count(played, 'מחזור אחד', 'מחזורים')}, ואפשר לסיים עונה רק אחרי ${min}. שחקו עוד ${count(min - played, 'מחזור אחד', 'מחזורים')} — או כבו את העונות, והעונה תימחק בלי להישמר.`,
+  /** Refusal shown when "לסגור ולהתחיל חדשה" is chosen on a club that has not
+   *  played enough to have a season worth archiving. Names the other chip by
+   *  its exact label, because that chip IS the way forward: it starts the
+   *  count from today instead of sealing an empty record. */
+  seasonsErrSealTooFew: (played: number, min: number) =>
+    played <= 0
+      ? `עוד לא שוחק אף מחזור במועדון, ואי אפשר לסגור עונה ריקה. בחרו "לצרף לעונה הנוכחית" כדי להתחיל לספור מעכשיו, או שנו את הגדרות העונה.`
+      : `שוחק עד היום ${count(played, 'מחזור אחד', 'מחזורים')}, ואפשר לסגור עונה רק אחרי ${min}. בחרו "לצרף לעונה הנוכחית" כדי לצרף אותם לעונה הרצה, או שנו את הגדרות העונה.`,
   seasonBlockedUnsealed:
     'יש מחזור שהסתיים אבל הנתונים שלו עדיין לא נסגרו. חכו שהעדכון יסתיים ונסו שוב.',
   seasonsReopenCta: 'בטל את סגירת העונה האחרונה',

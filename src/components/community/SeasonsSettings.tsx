@@ -193,6 +193,8 @@ function planErrorText(
       return he.seasonsErrSeasonEndOf(no);
     case 'season1EndNotFuture':
       return he.seasonsErrSeasonPastOf(no);
+    case 'sealTooFewRounds':
+      return he.seasonsErrSealTooFew(plan.playedHistory, MIN_SEASON_ROUNDS);
     default:
       return he.error;
   }

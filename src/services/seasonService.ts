@@ -167,6 +167,10 @@ function refusalOf(err: unknown): SeasonRefusal | null {
     if (msg.includes('historyFillsTarget')) return 'historyFillsTarget';
     if (msg.includes('season1EndRequired')) return 'seasonEndRequired';
     if (msg.includes('season1EndNotFuture')) return 'seasonEndPast';
+    // Sealing a season the club has not played enough to have. The SAME
+    // refusal `endSeasonNow` gives, reached through the enable screen instead
+    // of the close button, so it gets the same name and the same wording.
+    if (msg.includes('sealTooFewRounds')) return 'tooFewRounds';
     return 'unknown';
   }
   // `busy` is the fallback clubIsQuiet's callers pass when it refuses without

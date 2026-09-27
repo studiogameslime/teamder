@@ -64,7 +64,10 @@ export type ActivationError =
   | 'historyExceedsTarget'
   | 'historyFillsTarget'
   | 'season1EndRequired'
-  | 'season1EndNotFuture';
+  | 'season1EndNotFuture'
+  /** "לסגור ולהתחיל חדשה" chosen with fewer than MIN_SEASON_ROUNDS behind the
+   *  club. Sealing is closing, and a season may not close under the floor. */
+  | 'sealTooFewRounds';
 
 export interface ActivationPlan {
   ok: boolean;
@@ -121,6 +124,24 @@ export function planActivation(input: ActivationInput): ActivationPlan {
     sealsSeason1: choice === 'sealNow',
     activeSeasonNo: choice === 'sealNow' ? 2 : 1,
   };
+
+  // Sealing is CLOSING a season, and a season may not close under the floor.
+  //
+  // The rule was already enforced at the two other doors — `endSeasonNow`
+  // refuses to seal a season that has played fewer than MIN_SEASON_ROUNDS, and
+  // the target picker refuses to set one that would end sooner. This door was
+  // left open: a club with nothing behind it could switch seasons ON, choose
+  // "לסגור ולהתחיל חדשה", and get an archived season 1 holding zero evenings —
+  // nine `null` titles over an empty table, `count: 1`, and a club that now
+  // reports a closed season it never played. An archive is written once and
+  // never recomputed, so that record is permanent.
+  //
+  // Checked before the cadence is validated on purpose: the refusal is about
+  // the choice the admin just made, not about a month count they have not
+  // reached yet.
+  if (choice === 'sealNow' && playedHistory < MIN_SEASON_ROUNDS) {
+    return { ...base, error: 'sealTooFewRounds' };
+  }
 
   if (cadence === 'rounds') {
     const target = input.targetRounds;
