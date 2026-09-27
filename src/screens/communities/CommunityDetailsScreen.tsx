@@ -51,6 +51,9 @@ import {
   type HamburgerSection,
 } from '@/components/profile/HamburgerMenu';
 import { CommunityStadiumHero } from '@/components/community/CommunityStadiumHero';
+import { ClubTabs, type ClubTab, type ClubTabKey } from '@/components/club/ClubTabs';
+import { CommunityPlayersScreen } from './CommunityPlayersScreen';
+import { CommunityStatsScreen } from './CommunityStatsScreen';
 import { CoverImagePicker } from '@/components/community/CoverImagePicker';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { CommunityStatsGrid } from '@/components/community/CommunityStatsGrid';
@@ -68,7 +71,10 @@ import { InviteMembersSheet } from '@/components/community/InviteMembersSheet';
 import { RichRulesText } from '@/components/community/RichRulesText';
 import { groupService } from '@/services';
 import { logError, isExpectedDenial } from '@/services/errorLog';
-import { pickAndUploadGroupCover } from '@/services/photoService';
+import {
+  pickAndUploadGroupCover,
+  pickAndUploadGroupLogo,
+} from '@/services/photoService';
 import { gameService } from '@/services/gameService';
 import { seasonHistoryService } from '@/services/seasonHistoryService';
 import { deepLinkService } from '@/services/deepLinkService';
@@ -87,7 +93,16 @@ import {
   WeekdayIndex,
 } from '@/types';
 import type { ClubMetrics } from '@/data/clubAchievements';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import {
+  RTL_LABEL_ALIGN,
+  clubAccent,
+  clubShadow,
+  clubSurface,
+  colors,
+  radius,
+  spacing,
+  typography,
+} from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -121,6 +136,9 @@ export function CommunityDetailsScreen() {
   const leaveGroup = useGroupStore((s) => s.leaveGroup);
   const deleteGroup = useGroupStore((s) => s.deleteGroup);
 
+  // Which tab is on screen. Resets to מידע on every arrival — a club opens on
+  // what it IS, not on wherever the last club was left.
+  const [tab, setTab] = useState<ClubTabKey>('info');
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<User[]>([]);
   const [upcoming, setUpcoming] = useState<Game[]>([]);
@@ -148,6 +166,12 @@ export function CommunityDetailsScreen() {
   // so returning to the screen costs nothing.
   const [liveGoals, setLiveGoals] = useState<number | null>(null);
   const [archivedGoals, setArchivedGoals] = useState(0);
+  // Mini-games, the same two halves as the goals and from the same two reads:
+  // the live counter rides the `communityStats` doc the goal total already
+  // fetches, and the archived counter rides the season list already listed.
+  // The club's "נתוני מועדון" card needs both; neither costs a new read.
+  const [liveRounds, setLiveRounds] = useState(0);
+  const [archivedRounds, setArchivedRounds] = useState(0);
   const [loading, setLoading] = useState(true);
   // Pull-to-refresh has its own state so the native RefreshControl
   // spinner doesn't fire at the same time as our SoccerBallLoader.
@@ -157,6 +181,7 @@ export function CommunityDetailsScreen() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteIds, setInviteIds] = useState<string[]>([]);
@@ -326,7 +351,7 @@ export function CommunityDetailsScreen() {
 
   // The live half of the club's goal total (see the state above).
   //
-  // ONE document — `communityStats/{groupId}`, via `getCommunityGoalTotal`.
+  // ONE document — `communityStats/{groupId}`, via `getCommunityTotals`.
   // This first read `getCommunityChampionship`, which answers the same
   // question by fetching every `communityPlayerStats` row in the club and
   // summing the goals column: one read per person who has ever played for it,
@@ -345,9 +370,11 @@ export function CommunityDetailsScreen() {
     if (!groupId || !belongs || !clubHasRecord) return;
     let alive = true;
     gameService
-      .getCommunityGoalTotal(groupId)
-      .then((g) => {
-        if (alive) setLiveGoals(g);
+      .getCommunityTotals(groupId)
+      .then((t) => {
+        if (!alive) return;
+        setLiveGoals(t.goals);
+        setLiveRounds(t.rounds);
       })
       // A failure must not hide the other five badges — treat it as "no goals
       // known yet" rather than as "no achievements".
@@ -365,6 +392,7 @@ export function CommunityDetailsScreen() {
   useEffect(() => {
     if (!groupId || !belongs || !clubHasRecord || closedSeasons <= 0) {
       setArchivedGoals(0);
+      setArchivedRounds(0);
       return;
     }
     let alive = true;
@@ -375,6 +403,7 @@ export function CommunityDetailsScreen() {
         // that on a dropped connection would read as having lost them.
         if (!alive || list === 'error') return;
         setArchivedGoals(list.reduce((a, x) => a + x.totals.goals, 0));
+        setArchivedRounds(list.reduce((a, x) => a + x.totals.rounds, 0));
       })
       .catch(() => undefined);
     return () => {
@@ -469,6 +498,49 @@ export function CommunityDetailsScreen() {
         field: 'coverImageId',
       });
       appAlert(he.error, he.communityCoverUploadFailed);
+    }
+  };
+
+  // Upload the club CREST. Mirrors the cover handler below it, including the
+  // silence on 'cancelled' and 'permission' (App Store 5.1.1(iv) forbids
+  // nagging after a denial). A club that never sets one simply has no crest —
+  // the hero renders without it.
+  const handleUploadLogo = async () => {
+    if (!group || !me || uploadingLogo) return;
+    setUploadingLogo(true);
+    const res = await pickAndUploadGroupLogo(group.id);
+    if (!res.ok) {
+      setUploadingLogo(false);
+      if (res.reason !== 'cancelled') {
+        logEvent(AnalyticsEvent.PhotoUploadFailed, {
+          source: 'community_logo',
+          groupId: group.id,
+          reason: res.reason,
+        });
+      }
+      if (res.reason === 'unavailable') {
+        appAlert(he.error, he.profilePhotoUnavailable);
+      } else if (res.reason === 'network') {
+        appAlert(he.error, he.communityLogoUploadFailed);
+      }
+      return;
+    }
+    try {
+      const fresh = await groupService.updateGroupMetadata(group.id, me.id, {
+        logoUrl: res.url,
+      });
+      setGroup(fresh);
+      logEvent(AnalyticsEvent.PhotoUploaded, { source: 'community_logo' });
+      toast.success(he.communityLogoUpdated);
+    } catch (e) {
+      logError('updateGroupMetadata', e, {
+        screen: 'CommunityDetailsScreen',
+        groupId: group.id,
+        field: 'logoUrl',
+      });
+      appAlert(he.error, he.communityLogoUploadFailed);
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
@@ -808,15 +880,23 @@ export function CommunityDetailsScreen() {
               },
             ]
           : []),
+        ...(isAdmin
+          ? [
+              {
+                id: 'clubLogo',
+                label: he.communityLogoChange,
+                icon: 'image-outline' as const,
+                onPress: () => void handleUploadLogo(),
+              },
+            ]
+          : []),
         {
           id: 'allPlayers',
           label: he.communityPlayersSeeAll,
           icon: 'people-outline' as const,
-          onPress: () =>
-            (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-              'CommunityPlayers',
-              { groupId: group.id },
-            ),
+          // A tab now, not a route. Pushing it would stack a second club hero
+          // behind a back button that returns to the club you are already on.
+          onPress: () => setTab('players'),
         },
         {
           id: 'history',
@@ -832,11 +912,7 @@ export function CommunityDetailsScreen() {
           id: 'stats',
           label: he.communityMenuStats,
           icon: 'stats-chart-outline' as const,
-          onPress: () =>
-            (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-              'CommunityStats',
-              { groupId: group.id },
-            ),
+          onPress: () => setTab('stats'),
         },
         ...(isMember || isAdmin
           ? [
@@ -897,6 +973,83 @@ export function CommunityDetailsScreen() {
 
   const openMenu = () => setMenuOpen(true);
 
+  /**
+   * Nothing is locked here, and the reason is structural rather than a policy
+   * decision: reaching this render at all means `/groups/{id}` was READ, and
+   * the rules only hand that document to a member. Whoever is looking at this
+   * screen can already see everything the roster and the numbers would show.
+   *
+   * Gating the two tabs on `isMember || isAdmin` looked equivalent and is not —
+   * `playerIds` membership and read access are different facts, and the gate
+   * padlocked both tabs for a reader who had the document open in front of
+   * them. The lock belongs to the visitor screen, which reads the public
+   * projection and genuinely cannot answer either tab.
+   */
+  const clubTabs: ClubTab[] = [
+    { key: 'info', label: he.clubTabInfo },
+    { key: 'players', label: he.clubTabPlayers },
+    { key: 'stats', label: he.clubTabStats },
+  ];
+
+  /**
+   * Everything above the tab content: the hero, the floating club numbers that
+   * overlap it, and the tab bar itself.
+   *
+   * Built once and handed to whichever tab is mounted, because each tab owns
+   * its own scrolling — the roster is a virtualised FlatList and nesting it in
+   * a shared ScrollView would throw its windowing away on a 200-member club.
+   * So the header travels INTO the active tab's list rather than sitting above
+   * three scroll views.
+   *
+   * Not sticky, and deliberately: FlatList can only pin its
+   * ListHeaderComponent as a whole, which would pin the entire hero. Uniform
+   * behaviour across the three tabs beats a pinned bar on one of them.
+   */
+  const header = (
+    <>
+        {/* ① Stadium hero */}
+        <CommunityStadiumHero
+          name={group.name}
+          memberCount={group.playerIds?.length ?? 0}
+          coverUrl={group.coverPhotoUrl}
+          coverImageId={group.coverImageId}
+          logoUrl={group.logoUrl}
+          canEditCover={isAdmin}
+          uploadingCover={uploadingCover}
+          onBackPress={() => nav.goBack()}
+          onMenuPress={openMenu}
+          onEditCoverPress={handleEditCover}
+          onChatPress={
+            isMember && me
+              ? () => {
+                  logEvent(AnalyticsEvent.CommunityChatOpened, {
+                    groupId: group.id,
+                  });
+                  logEvent(AnalyticsEvent.ChatEntryPointTapped, {
+                    source: 'community_details',
+                    scope: 'community',
+                  });
+                  goToCommunityChat(group.id);
+                }
+              : undefined
+          }
+        />
+
+        {/* The two floating cards that used to overlap the hero — תאריך הקמה
+            and מפגשים שנערכו — were removed on the owner's instruction. The
+            same numbers live inside the tabs, where the rest of the club's
+            figures are. */}
+      <ClubTabs
+        tabs={clubTabs}
+        active={tab}
+        onChange={(k) => {
+          setTab(k);
+          logEvent(AnalyticsEvent.ScreenView, { screen: 'ClubDetails', tab: k });
+        }}
+      />
+    </>
+  );
+
   return (
     <View style={styles.root}>
       {celebrate ? (
@@ -911,6 +1064,17 @@ export function CommunityDetailsScreen() {
           />
         </View>
       ) : null}
+      {/* Only the active tab is mounted, and that is the point: the numbers
+          tab reads season archives, the all-time rollup and the pair documents
+          on mount. Mounting all three on every club open would pay for three
+          tabs to show one. A tab unmounts when you leave it and reloads when
+          you come back — the alternative, keeping all three alive, is the read
+          bill this branch exists to cut. */}
+      {tab === 'players' ? (
+        <CommunityPlayersScreen groupId={group.id} header={header} />
+      ) : tab === 'stats' ? (
+        <CommunityStatsScreen groupId={group.id} header={header} />
+      ) : (
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -947,69 +1111,19 @@ export function CommunityDetailsScreen() {
           />
         }
       >
-        {/* ① Stadium hero */}
-        <CommunityStadiumHero
-          name={group.name}
-          memberCount={group.playerIds?.length ?? 0}
-          coverUrl={group.coverPhotoUrl}
-          coverImageId={group.coverImageId}
-          canEditCover={isAdmin}
-          uploadingCover={uploadingCover}
-          onBackPress={() => nav.goBack()}
-          onMenuPress={openMenu}
-          onEditCoverPress={handleEditCover}
-          onChatPress={
-            isMember && me
-              ? () => {
-                  logEvent(AnalyticsEvent.CommunityChatOpened, {
-                    groupId: group.id,
-                  });
-                  logEvent(AnalyticsEvent.ChatEntryPointTapped, {
-                    source: 'community_details',
-                    scope: 'community',
-                  });
-                  goToCommunityChat(group.id);
-                }
-              : undefined
-          }
-        />
-
-        {/* ② Floating stats grid — pulled UP via negative margin so it
-            overlaps the bottom of the hero (the hero leaves a 56px
-            strip of stadium for exactly this overlap zone). Trimmed
-            to two stats: founding date and matches held. The other
-            two metrics moved elsewhere — member count is now a pill
-            badge under the title in the hero, and the regular field
-            is shown on each game card already. */}
-        <View style={styles.statsFloat}>
-          <CommunityStatsGrid
-            items={[
-              {
-                icon: 'calendar',
-                label: he.communityStatsCreatedAt,
-                value: formatShortDate(group.createdAt),
-              },
-              {
-                icon: 'football',
-                // Until the club stats resolve, matchesHeld would briefly read
-                // "0" (history fallback is still empty on first paint) and then
-                // jump to the real count — a visible flash. Show a neutral "—"
-                // placeholder until communityStats loads; from then on the value
-                // is authoritative and persists across re-focus (never reset to
-                // null), so no 0-flash on return.
-                label: he.communityStatsMatchesHeld,
-                value: communityStats ? String(matchesHeld) : '—',
-              },
-            ]}
-          />
-        </View>
+        {header}
 
         <View style={styles.body}>
           {SCREENSHOT_MODE ? (
             /* Ad layout: club numbers on top, champions table below — nothing
                else (level/titles/next-game/players are hidden for the promo). */
             <>
-              <CommunityStatsSection stats={communityStats} />
+              <CommunityStatsSection
+                stats={communityStats}
+                memberCount={group.playerIds?.length ?? 0}
+                goals={(liveGoals ?? 0) + archivedGoals}
+                miniGames={liveRounds + archivedRounds}
+              />
               <CommunityChampionship
                 groupId={group.id}
                 memberIds={group.playerIds ?? []}
@@ -1067,68 +1181,15 @@ export function CommunityDetailsScreen() {
             isMember={isMember || isAdmin}
           />
 
-          <Button
-            title={he.communityViewStatsTable}
-            variant="outline"
-            size="lg"
-            fullWidth
-            iconLeft="stats-chart"
-            onPress={() =>
-              (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                'CommunityStats',
-                { groupId: group.id },
-              )
-            }
-          />
+          {/* The full stats window used to be a button here that pushed a
+              route. It is the third tab now — a button that scrolls you past
+              the tab bar to reach what the tab bar already offers is one
+              control too many. */}
 
-          {/* Group description — free-text "about this group" copy
-              the admin set in the create / edit wizard. Rendered
-              prominently right after the stats so visitors see the
-              group's character before scrolling into the operational
-              details. Hidden when empty so new groups don't show an
-              empty card. Note: `rules` is a separate (newer) field
-              that the existing edit screen surfaces in the menu;
-              this card is the "what is this group about" copy. */}
-          {group.description?.trim() ? (
-            <View style={styles.descriptionCard}>
-              <Text style={styles.descriptionTitle}>
-                {he.communityDescriptionTitle}
-              </Text>
-              <CollapsibleContent>
-                <Text style={styles.descriptionBody}>
-                  {group.description.trim()}
-                </Text>
-              </CollapsibleContent>
-            </View>
-          ) : null}
-
-          {/* Group rules — distinct from `description`. The wizard
-              captures explicit do/don't copy here (no kickers, no
-              smoking, "show up 5 min early", etc.) so it deserves
-              its own card. Hidden when empty. */}
-          {group.rules?.trim() ? (
-            <View style={styles.rulesCard}>
-              <Text style={styles.descriptionTitle}>
-                {he.communityRulesTitle}
-              </Text>
-              {/* Rules support markdown-lite (**bold** + "- " bullets).
-                  RichRulesText parses + renders; plain legacy rules
-                  fall through as ordinary paragraphs. Collapsed by default
-                  when long so the rules don't fill the whole screen. */}
-              <CollapsibleContent>
-                <RichRulesText text={group.rules.trim()} />
-              </CollapsibleContent>
-            </View>
-          ) : null}
-
-          {/* ③ Notification toggle — members only */}
-          {isMember && me ? (
-            <CommunityNotifyToggle
-              subscribed={(me.newGameSubscriptions ?? []).includes(group.id)}
-              onChange={handleNotify}
-            />
-          ) : null}
-
+          {/* The next game night leads the tab, per the reference: it is the
+              one thing on this screen that is about to happen. It used to sit
+              below the club's description, which is the one thing that never
+              changes. */}
           {/* ④ Next game — main focus.
                Navigates within THIS stack (CommunitiesStack now hosts
                MatchDetails too) so back returns to CommunityDetails.
@@ -1204,17 +1265,79 @@ export function CommunityDetailsScreen() {
             onPress={(gid) => nav.navigate('MatchDetails', { gameId: gid })}
           />
 
+
+          {/* Group description — free-text "about this group" copy
+              the admin set in the create / edit wizard. Rendered
+              prominently right after the stats so visitors see the
+              group's character before scrolling into the operational
+              details. Hidden when empty so new groups don't show an
+              empty card. Note: `rules` is a separate (newer) field
+              that the existing edit screen surfaces in the menu;
+              this card is the "what is this group about" copy. */}
+          {group.description?.trim() ? (
+            <View style={styles.descriptionCard}>
+              <Text style={styles.descriptionTitle}>
+                {he.communityDescriptionTitle}
+              </Text>
+              <CollapsibleContent>
+                <Text style={styles.descriptionBody}>
+                  {group.description.trim()}
+                </Text>
+              </CollapsibleContent>
+            </View>
+          ) : null}
+
+          {/* Group rules — distinct from `description`. The wizard
+              captures explicit do/don't copy here (no kickers, no
+              smoking, "show up 5 min early", etc.) so it deserves
+              its own card. Hidden when empty. */}
+          {group.rules?.trim() ? (
+            <View style={styles.rulesCard}>
+              <Text style={styles.descriptionTitle}>
+                {he.communityRulesTitle}
+              </Text>
+              {/* Rules support markdown-lite (**bold** + "- " bullets).
+                  RichRulesText parses + renders; plain legacy rules
+                  fall through as ordinary paragraphs. Collapsed by default
+                  when long so the rules don't fill the whole screen. */}
+              <CollapsibleContent>
+                <RichRulesText text={group.rules.trim()} />
+              </CollapsibleContent>
+            </View>
+          ) : null}
+
+          {/* ③ Notification toggle — members only */}
+          {isMember && me ? (
+            <CommunityNotifyToggle
+              subscribed={(me.newGameSubscriptions ?? []).includes(group.id)}
+              onChange={handleNotify}
+            />
+          ) : null}
+
+          {/* ── נתוני מועדון ── the reference's third card.
+              Moved here from below the last-cycle block; there is exactly ONE
+              of these. Adding a second in the reference's position while the
+              original stayed put rendered the card twice, which is visible
+              only on the device and was.
+              Loaded once by the parent (read cost bounded to ~200
+              finished/cancelled game docs) and passed down, so the count here
+              AGREES with "מפגשים שנערכו". */}
+          <CommunityStatsSection
+            stats={communityStats}
+            memberCount={group.playerIds?.length ?? 0}
+            goals={(liveGoals ?? 0) + archivedGoals}
+            miniGames={liveRounds + archivedRounds}
+          />
+
           {/* ⑤ Players preview */}
           <PlayersPreview
             total={group.playerIds?.length ?? 0}
             members={members.filter((u) => (group.playerIds ?? []).includes(u.id))}
             adminIds={group.adminIds ?? []}
-            onSeeAll={() =>
-              (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                'CommunityPlayers',
-                { groupId: group.id },
-              )
-            }
+            // Switches tab instead of pushing a route: the roster is on this
+            // screen now, and pushing it would put a second copy of the club's
+            // hero on the stack behind a back button.
+            onSeeAll={() => setTab('players')}
             onPressMember={(uid) =>
               (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                 'PlayerCard',
@@ -1267,10 +1390,6 @@ export function CommunityDetailsScreen() {
             );
           })()}
 
-          {/* Community-level aggregate stats. Loaded once by the parent
-              (read cost bounded to ~200 finished/cancelled game docs) and
-              passed down so the count here AGREES with "מפגשים שנערכו". */}
-          <CommunityStatsSection stats={communityStats} />
 
           {/* ── הישגי המועדון (תארים) ──
               ישירות מתחת ל"נתוני מועדון", לבקשת הבעלים (דיווח של אלירן,
@@ -1339,6 +1458,7 @@ export function CommunityDetailsScreen() {
           )}
         </View>
       </ScrollView>
+      )}
 
       <HamburgerMenu
         visible={menuOpen}
@@ -1449,52 +1569,97 @@ export function CommunityDetailsScreen() {
 
 // ─── Community stats section ────────────────────────────────────────────
 
-function CommunityStatsSection({ stats }: { stats: CommunityStatsData | null }) {
+function CommunityStatsSection({
+  stats,
+  memberCount,
+  goals,
+  miniGames,
+}: {
+  stats: CommunityStatsData | null;
+  memberCount: number;
+  /** Lifetime goals — live counter + every sealed season. */
+  goals: number;
+  /** Lifetime mini-games, the same two halves. */
+  miniGames: number;
+}) {
   if (!stats) return null;
   if (stats.totalFinished === 0 && stats.totalCancelled === 0) return null;
 
-  const orgPct = Math.round(stats.organizationRate * 100);
-  const avg = stats.avgAttendance.toFixed(1);
-
+  // The reference's four: שחקנים · גולים · מחזורים · משחקים. All four are
+  // already in hand — the goal and mini-game counters ride the two reads this
+  // screen was making anyway, so the card costs nothing new.
   return (
     <View style={statsSectionStyles.wrap}>
       <Text style={statsSectionStyles.title}>{he.communityStatsTitle}</Text>
       <View style={statsSectionStyles.grid}>
         <StatCell
-          label={he.communityStatsTotalFinished}
-          value={String(stats.totalFinished)}
+          icon="people"
+          tint={clubAccent.purple}
+          label={he.communityStatsPlayers}
+          value={String(memberCount)}
         />
         <StatCell
-          label={he.communityStatsThisMonth}
-          value={String(stats.thisMonthFinished)}
+          icon="football"
+          tint={clubAccent.blue}
+          label={he.communityStatsGoals}
+          value={String(goals)}
         />
         <StatCell
-          label={he.communityStatsOrgRate}
-          value={`${orgPct}%`}
+          icon="calendar"
+          tint={clubAccent.gold}
+          label={he.communityStatsEvenings}
+          value={String(stats.lifetime?.totalFinished ?? stats.totalFinished)}
         />
         <StatCell
-          label={he.communityStatsAvgAttendance}
-          value={avg}
+          icon="grid"
+          tint={clubAccent.green}
+          label={he.communityStatsMiniGames}
+          value={String(miniGames)}
         />
       </View>
-      {/* Club "vitality meter" (מד חיים) removed per owner request. */}
     </View>
   );
 }
 
-function StatCell({ label, value }: { label: string; value: string }) {
+function StatCell({
+  label,
+  value,
+  icon,
+  tint,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  tint: string;
+}) {
   return (
+    // Icon FIRST → visual LEFT is wrong here: under forceRTL the first child
+    // lands on the RIGHT. The reference's info-tab cell puts the plate on the
+    // LEFT and the number on the right, so the text block leads.
     <View style={statsSectionStyles.cell}>
-      <Text style={statsSectionStyles.value}>{value}</Text>
-      <Text style={statsSectionStyles.label}>{label}</Text>
+      <View style={statsSectionStyles.cellText}>
+        <Text style={statsSectionStyles.value}>{value}</Text>
+        <Text style={statsSectionStyles.label} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+      <View style={[statsSectionStyles.cellIcon, { backgroundColor: tint + '1A' }]}>
+        <Ionicons name={icon} size={20} color={tint} />
+      </View>
     </View>
   );
 }
 
 const statsSectionStyles = StyleSheet.create({
-  wrap: { gap: spacing.sm, marginTop: spacing.md },
+  wrap: {
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    ...clubShadow,
+    padding: spacing.lg,
+  },
   title: {
-    ...typography.body,
+    fontSize: 16,
     color: colors.text,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
@@ -1507,21 +1672,37 @@ const statsSectionStyles = StyleSheet.create({
   cell: {
     flexBasis: '47%',
     flexGrow: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
     backgroundColor: colors.surface,
     padding: spacing.md,
     borderRadius: 14,
+    ...clubShadow,
+  },
+  cellText: { flexShrink: 1, minWidth: 0 },
+  cellIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   value: {
-    ...typography.h2,
+    fontSize: 22,
+    lineHeight: 28,
     color: colors.text,
-    fontWeight: '800',
+    fontWeight: '900',
+    textAlign: RTL_LABEL_ALIGN,
+    fontVariant: ['tabular-nums'],
   },
   label: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xs,
+    fontSize: 12,
+    color: clubSurface.subtle,
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: 1,
   },
 });
 
@@ -1559,7 +1740,9 @@ function nextOccurrence(g: Group): number | null {
   return target.getTime();
 }
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+  // Local club ground — cool and a step below white, so the cards on it
+  // have an edge. See `clubSurface`.
+  root: { flex: 1, backgroundColor: clubSurface.ground },
   lastCycleWrap: { marginTop: spacing.lg, paddingHorizontal: spacing.lg },
   lastCycleTitle: {
     ...typography.h3,
@@ -1631,9 +1814,13 @@ const styles = StyleSheet.create({
   // operational section. Uses primaryLight as the accent so it reads
   // as a "first impression" surface — different from the white cards
   // below which feel transactional.
+  // White on the page's tint, per the reference. The card used to be a blue
+  // block, which put a second accent behind text that is already the club's
+  // own words.
   descriptionCard: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    ...clubShadow,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     marginBottom: spacing.md,
@@ -1642,17 +1829,18 @@ const styles = StyleSheet.create({
   // don't read as the same thing — description is identity ("who we
   // are"), rules is behaviour ("what we expect").
   rulesCard: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 14,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 18,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     marginBottom: spacing.md,
   },
   descriptionTitle: {
-    ...typography.label,
-    color: colors.primary,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+    marginBottom: 6,
   },
   descriptionBody: {
     ...typography.body,
@@ -1667,6 +1855,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     gap: spacing.md,
   },
+  // The reference's info tab: white cards on a faintly tinted page, which is
+  // what separates one card from the next without a border on each.
+  infoPage: { backgroundColor: colors.bg },
   busyOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',

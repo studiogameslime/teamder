@@ -33,6 +33,8 @@ export const CHEMISTRY_LABEL: Record<ChemistryKind, string> = {
   wall: he.chemistryWall,
   rivalry: he.chemistryRivalry,
   balancedRivalry: he.chemistryBalanced,
+  bestRatio: he.chemistryBestRatio,
+  mostLosses: he.chemistryMostLosses,
 };
 
 // Rendered AFTER the label, never before: under forceRTL the first thing in a
@@ -45,6 +47,8 @@ export const CHEMISTRY_EMOJI: Record<ChemistryKind, string> = {
   wall: '🧱',
   rivalry: '⚔️',
   balancedRivalry: '⚖️',
+  bestRatio: '🎯',
+  mostLosses: '📉',
 };
 
 export interface PairPerson {

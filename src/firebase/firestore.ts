@@ -514,6 +514,7 @@ const groupConverter: FirestoreDataConverter<Group> = {
       description: g.description ?? null,
       coverPhotoUrl: g.coverPhotoUrl ?? null,
       coverImageId: g.coverImageId ?? null,
+      logoUrl: g.logoUrl ?? null,
       defaultMaxPlayers:
         typeof g.defaultMaxPlayers === 'number' ? g.defaultMaxPlayers : null,
       lat: g.lat ?? null,
@@ -588,6 +589,10 @@ const groupConverter: FirestoreDataConverter<Group> = {
         typeof d.coverPhotoUrl === 'string' ? d.coverPhotoUrl : undefined,
       coverImageId:
         typeof d.coverImageId === 'string' ? d.coverImageId : undefined,
+      // Same passthrough, same reason as the cover two lines up: this reader
+      // rebuilds the object field by field, so a field it does not name does
+      // not exist on the client however faithfully it was written.
+      logoUrl: typeof d.logoUrl === 'string' ? d.logoUrl : undefined,
       adminIds: d.adminIds ?? [],
       playerIds: d.playerIds ?? [],
       pendingPlayerIds: d.pendingPlayerIds ?? [],
@@ -1030,6 +1035,7 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       // changed the cover. That's the bug surfaced today.
       coverPhotoUrl: g.coverPhotoUrl ?? null,
       coverImageId: g.coverImageId ?? null,
+      logoUrl: g.logoUrl ?? null,
       preferredDays: g.preferredDays ?? [],
       preferredHour: g.preferredHour ?? null,
       costPerGame: g.costPerGame ?? null,
@@ -1070,6 +1076,12 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       coverImageId:
         typeof d.coverImageId === 'string' && d.coverImageId.length > 0
           ? d.coverImageId
+          : undefined,
+      // The visitor's hero reads from THIS projection, so the crest has to
+      // survive the public converter too — not only the member one.
+      logoUrl:
+        typeof d.logoUrl === 'string' && d.logoUrl.length > 0
+          ? d.logoUrl
           : undefined,
       preferredDays: readWeekdays(d.preferredDays),
       preferredHour:

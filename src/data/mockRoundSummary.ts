@@ -1,3 +1,4 @@
+import type { EveningStat } from '@/utils/eveningRecords';
 // A summary for demo mode.
 //
 // Hand-built rather than derived from the mock games: the point of the screen
@@ -43,4 +44,52 @@ export function mockRoundSummary(gameId: string): RoundSummary {
     basis: { since: Date.now() - 200 * 24 * 60 * 60 * 1000, eveningsCompared: 12 },
     coverage: { hasRoundHistory: true, hasAssists: true },
   };
+}
+
+/**
+ * A club's evenings, for the emulator's club-records cards.
+ *
+ * Shaped like the production documents and deliberately UNEVEN — one evening
+ * well clear on goals, a tie on shootouts, and one evening with
+ * `hasRoundHistory: false` so the exclusion path is exercised rather than
+ * assumed. The dates are spread across the last few months so the season
+ * filter has something to cut.
+ */
+export function mockEveningStats(
+  _groupId: string,
+  opts?: { from?: number; to?: number },
+): EveningStat[] {
+  const DAY = 86_400_000;
+  // Anchored to the mock season windows in `seasonHistoryService` so the scope
+  // picker actually changes the records on screen:
+  //   season 1   1_752_000_000_000 → 1_776_000_000_000  (closed)
+  //   current    1_776_000_000_000 → now
+  const S1 = 1_752_000_000_000;
+  const S1_END = 1_776_000_000_000;
+  const rows: EveningStat[] = [
+    // ── the running season ──────────────────────────────────────────────
+    // Ids are REAL mock games, so tapping a record opens an evening that
+    // exists — a synthetic id proved the navigation fired but landed on
+    // "המחזור כבר לא קיים", which proves nothing about the target.
+    { gameId: 'gv2-7', at: S1_END + 40 * DAY, goals: 47, rounds: 12, shootouts: 2, hasRoundHistory: true },
+    { gameId: 'gv2-lastnight', at: S1_END + 26 * DAY, goals: 31, rounds: 18, shootouts: 1, hasRoundHistory: true },
+    { gameId: 'gv2-6', at: S1_END + 12 * DAY, goals: 28, rounds: 9, shootouts: 5, hasRoundHistory: true },
+    // Ties the running season's shootout record, and is OLDER — so this is the
+    // evening the card names and opens, not gv2-6.
+    { gameId: 'gv2-5', at: S1_END + 4 * DAY, goals: 22, rounds: 8, shootouts: 5, hasRoundHistory: true },
+    // ── season 1, closed ────────────────────────────────────────────────
+    // Deliberately SMALLER than the running season's, so switching scope
+    // visibly changes every number and every target.
+    { gameId: 'gv2-4', at: S1 + 60 * DAY, goals: 19, rounds: 7, shootouts: 3, hasRoundHistory: true },
+    { gameId: 'gv2-3', at: S1 + 20 * DAY, goals: 14, rounds: 6, shootouts: 1, hasRoundHistory: true },
+    // Replayed from before the summaries existed: all zeros, and excluded from
+    // every calculation rather than counted as an evening where nothing
+    // happened.
+    { gameId: 'gv2-2', at: S1 + 5 * DAY, goals: 0, rounds: 0, shootouts: 0, hasRoundHistory: false },
+  ];
+  return rows.filter(
+    (r) =>
+      (opts?.from === undefined || r.at >= opts.from) &&
+      (opts?.to === undefined || r.at <= opts.to),
+  );
 }

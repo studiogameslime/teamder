@@ -1149,6 +1149,7 @@ export const groupService = {
         | 'city'
         | 'maxMembers'
         | 'coverPhotoUrl'
+        | 'logoUrl'
         | 'coverImageId'
       >
     >,
@@ -1199,6 +1200,7 @@ export const groupService = {
       'maxMembers',
       'coverPhotoUrl',
       'coverImageId',
+      'logoUrl',
     ] as const) {
       if (k in patch) (cleaned as Record<string, unknown>)[k] = patch[k];
     }
@@ -1243,6 +1245,9 @@ export const groupService = {
       ...(cleaned.contactPhone !== undefined ? { contactPhone: cleaned.contactPhone } : {}),
       ...(cleaned.coverPhotoUrl !== undefined ? { coverPhotoUrl: cleaned.coverPhotoUrl } : {}),
       ...(cleaned.coverImageId !== undefined ? { coverImageId: cleaned.coverImageId } : {}),
+      // The crest is mirrored: a visitor's hero renders from the public
+      // projection, and an unmirrored logo would show for members only.
+      ...(cleaned.logoUrl !== undefined ? { logoUrl: cleaned.logoUrl } : {}),
       updatedAt: Date.now(),
     };
     // Only fire the public-projection update if there's something to
@@ -2006,6 +2011,9 @@ function toPublic(g: Group): GroupPublic {
   // round-trips through toPublic) silently wiped the cover, so the
   // feed card kept showing the bundled stadium fallback even after
   // the admin had set a real photo.
+  if (typeof g.logoUrl === 'string' && g.logoUrl.length > 0) {
+    out.logoUrl = g.logoUrl;
+  }
   if (typeof g.coverPhotoUrl === 'string' && g.coverPhotoUrl.length > 0) {
     out.coverPhotoUrl = g.coverPhotoUrl;
   }

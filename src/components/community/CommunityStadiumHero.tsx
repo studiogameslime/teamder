@@ -15,6 +15,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Image,
   ImageBackground,
   Pressable,
   StyleSheet,
@@ -46,10 +47,27 @@ interface Props {
   /** Spinner over the edit button while an upload is in flight. */
   uploadingCover?: boolean;
   onBackPress: () => void;
-  onMenuPress: () => void;
+  /**
+   * Omitted for a visitor: every item in that menu is a member or admin
+   * action, so the button would open an empty sheet. A control that does
+   * nothing is worse than no control.
+   */
+  onMenuPress?: () => void;
   onEditCoverPress?: () => void;
   /** Members only — opens the community chat. Hidden when undefined. */
   onChatPress?: () => void;
+  /**
+   * The club crest, above the name.
+   *
+   * ⚠️ Nothing populates this yet. `Group` has `coverPhotoUrl` and
+   * `coverImageId` — both the wide hero photo — and no logo field at all, so
+   * the mockup's circular crest has no data behind it. The slot exists so
+   * adding one later is a prop, not a redesign; until then the hero renders
+   * name-first exactly as it does today. Do NOT fall back to the cover photo
+   * here: a crop of the background inside a ring on top of that same
+   * background reads as a rendering bug.
+   */
+  logoUrl?: string;
 }
 
 const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
@@ -65,6 +83,7 @@ export function CommunityStadiumHero({
   onMenuPress,
   onEditCoverPress,
   onChatPress,
+  logoUrl,
 }: Props) {
   // Priority: uploaded photo → built-in gallery pick → bundled default.
   const source: ImageSourcePropType = coverUrl
@@ -78,11 +97,15 @@ export function CommunityStadiumHero({
         resizeMode="cover"
       >
         <LinearGradient
+          // The reference photo stays bright: the darkening is a scrim behind
+          // the TEXT, not a wash over the whole image. The old stops
+          // (0.55 → 0.95) turned a sunset pitch into a grey rectangle.
           colors={[
-            'rgba(7,12,32,0.55)',
-            'rgba(7,12,32,0.78)',
-            'rgba(7,12,32,0.95)',
+            'rgba(4,10,25,0.45)',
+            'rgba(4,10,25,0.12)',
+            'rgba(4,10,25,0.58)',
           ]}
+          locations={[0, 0.42, 1]}
           style={StyleSheet.absoluteFill}
         />
         <SafeAreaView edges={['top']} style={styles.safe}>
@@ -103,9 +126,11 @@ export function CommunityStadiumHero({
             >
               <Ionicons name="chevron-forward" size={22} color="#FFFFFF" />
             </Pressable>
-            <Text style={styles.titleInline} numberOfLines={1}>
-              {he.communityHeroDetailsTitle}
-            </Text>
+            {/* No title strip. The reference puts nothing between the two
+                round buttons — the club's own name, three lines down, is the
+                title, and "פרטי מועדון" above it said the same thing twice in
+                a smaller font. */}
+            <View style={styles.topSpacer} />
             {/* Trailing action group: chat (members) sits just before the
                 menu so both share the hero's leading (left under RTL) edge. */}
             <View style={styles.actions}>
@@ -123,22 +148,27 @@ export function CommunityStadiumHero({
                   <Ionicons name="chatbubble-ellipses" size={22} color="#FFFFFF" />
                 </Pressable>
               ) : null}
-              <Pressable
-                onPress={onMenuPress}
-                hitSlop={10}
-                style={({ pressed }) => [
-                  styles.iconBtn,
-                  pressed && { opacity: 0.7 },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={he.profileMenuOpen}
-              >
-                <Ionicons name="menu" size={24} color="#FFFFFF" />
-              </Pressable>
+              {onMenuPress ? (
+                <Pressable
+                  onPress={onMenuPress}
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.iconBtn,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={he.profileMenuOpen}
+                >
+                  <Ionicons name="menu" size={24} color="#FFFFFF" />
+                </Pressable>
+              ) : null}
             </View>
           </View>
 
           <View style={styles.identity}>
+            {logoUrl ? (
+              <Image source={{ uri: logoUrl }} style={styles.logo} />
+            ) : null}
             <Text style={styles.name} numberOfLines={2}>
               {name}
             </Text>
@@ -186,10 +216,10 @@ const styles = StyleSheet.create({
   },
   bg: {
     width: '100%',
-    // Leaves a strip of stadium photo below the title so the floating
-    // stats grid (pulled up via negative margin in the screen) lands
-    // ON the photo, not on the white body.
-    paddingBottom: 56,
+    // The tab strip below overlaps the hero by its own corner radius, so the
+    // photo needs a little room under the badge for that overlap to fall on
+    // the image rather than on a card.
+    paddingBottom: 44,
   },
   safe: {
     paddingHorizontal: spacing.lg,
@@ -202,9 +232,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.14)',
@@ -215,29 +245,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  // Inline title sandwiched between the two icon buttons — same
-  // pattern as MatchStadiumHero's "פרטי משחק".
-  titleInline: {
-    flex: 1,
-    textAlign: 'center',
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
+  topSpacer: { flex: 1 },
+  logo: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: 'rgba(7,12,32,0.6)',
+    marginBottom: spacing.sm,
   },
   identity: {
     alignItems: 'center',
-    paddingTop: spacing.xl,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   // Community name — the loudest thing on the screen.
   name: {
     color: '#FFFFFF',
-    fontSize: 30,
+    fontSize: 31,
     fontWeight: '900',
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
     width: '100%',
+    // The scrim alone does not carry white type over a bright sky; the
+    // reference name has a soft shadow under it.
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   // Member-count badge — small frosted pill that hugs the name from
   // below. White-on-translucent so it reads cleanly over the dark
@@ -246,16 +282,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(8,14,30,0.42)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   memberPillText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.2,
   },

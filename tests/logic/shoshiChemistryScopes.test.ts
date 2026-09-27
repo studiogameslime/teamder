@@ -38,11 +38,13 @@ describe('עונה 1 — a closed season has chemistry of its own', () => {
 
   it('and draws the cards that used to be absent entirely', () => {
     // Before the fix this object was empty, because `pairs` never reached the
-    // client. Five cards, one short of six: deadlyDuo needs three assists
-    // between a pair and this season's best is two.
+    // client. deadlyDuo is still absent — it needs three assists between a
+    // pair and this season's best is two. `bestRatio` joined when the club
+    // screen's five categories were added: 7 wins in 10 shared mini-games.
     expect(cardsOf(season)).toEqual({
       winningDuo: 'מתן לוי + Lioz Madar — 7',
       regulars: 'מתן לוי + Lioz Madar — 10',
+      bestRatio: 'מתן לוי + Lioz Madar — 70',
       wall: 'Lioz Madar + Nofar Tzabari — 6',
       rivalry: 'Nofar Tzabari + הלן צברי — 11',
       balancedRivalry: 'Nofar Tzabari + הלן צברי — 11',
@@ -61,6 +63,7 @@ describe('כל הזמנים — summed, because it is stored nowhere', () => {
     expect(all).toEqual({
       winningDuo: 'מתן לוי + Lioz Madar — 10',
       regulars: 'מתן לוי + Lioz Madar — 14',
+      bestRatio: 'מתן לוי + Lioz Madar — 71',
       wall: 'מתן לוי + Lioz Madar — 6',
       rivalry: 'מתן לוי + איציק לוי — 12',
       balancedRivalry: 'Nofar Tzabari + הלן צברי — 11',

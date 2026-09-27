@@ -239,6 +239,10 @@ const CLUB_SEASON_FIELDS = [
   'tiedRounds',
   'shootoutRounds',
   'scorelessRounds',
+  // Sealed with the season, so a closed season keeps the sample its own
+  // outcome counters were measured over. Without it an archived season's 0:0
+  // rate would fall back on `rounds` and repeat the bug one level down.
+  'countedRounds',
 ] as const;
 
 /** One pair's frozen season counters. Mirrors `communityPairStats`, with a/b

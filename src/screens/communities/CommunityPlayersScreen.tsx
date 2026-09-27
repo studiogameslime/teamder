@@ -12,6 +12,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   type GestureResponderEvent,
 } from 'react-native';
@@ -49,7 +50,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
-import { PlayerIdentity } from '@/components/PlayerIdentity';
+import { UserAvatar } from '@/components/UserAvatar';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { toast } from '@/components/Toast';
 import { groupService } from '@/services';
@@ -57,7 +58,7 @@ import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { useUserStore } from '@/store/userStore';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { RTL_LABEL_ALIGN, clubAccent, clubSurface, colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import type { Group, User, UserId } from '@/types';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
@@ -72,9 +73,33 @@ interface PlayerStats {
   gamesPlayed: number;
 }
 
-export function CommunityPlayersScreen() {
+export interface CommunityPlayersScreenProps {
+  /**
+   * Set when the roster is rendered as a TAB of the club screen rather than
+   * pushed as its own route. Then the club id comes from the shell, and the
+   * shell owns the chrome: this component drops its SafeAreaView and its
+   * ScreenHeader, and renders the shell's hero + tab bar as the list's sticky
+   * header instead.
+   */
+  groupId?: string;
+  /** The shell's hero + tab bar. Sticks to the top of the list. */
+  header?: React.ReactElement | null;
+}
+
+export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) {
   const nav = useNavigation<Nav>();
-  const { groupId } = useRoute<Params>().params;
+  // Route params only when pushed as a route. `useRoute` still runs — hooks
+  // cannot be conditional — but its params are ignored in embedded mode.
+  const routeParams = useRoute<Params>().params as Params['params'] | undefined;
+  // One of the two always holds it: embedded, the shell passes it; standalone,
+  // the CommunityPlayers route cannot be reached without it.
+  const groupId: string = props.groupId ?? routeParams!.groupId;
+  const embedded = !!props.groupId;
+  // Search and the three filter chips, both from the reference. Pure view
+  // state over the roster that is ALREADY loaded — no query, no extra read,
+  // and the virtualised list keeps windowing whatever survives the filter.
+  const [query, setQuery] = useState('');
+  const [chip, setChip] = useState<'all' | 'admins' | 'players'>('all');
   const me = useUserStore((s) => s.currentUser);
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<User[]>([]);
@@ -477,25 +502,50 @@ export function CommunityPlayersScreen() {
     });
   }, [members, stats, group]);
 
+  // `ordered` stays the ranking: the rank a row shows is its place in the CLUB,
+  // not its place in the filtered view, so searching for a name does not
+  // renumber the player you searched for.
+  const rankOf = new Map(ordered.map((u, i) => [u.id, i + 1]));
+  const adminSet = new Set(group?.adminIds ?? []);
+  const needle = query.trim().toLowerCase();
+  const visible = ordered.filter((u) => {
+    if (chip === 'admins' && !adminSet.has(u.id)) return false;
+    if (chip === 'players' && adminSet.has(u.id)) return false;
+    if (needle && !(u.name ?? '').toLowerCase().includes(needle)) return false;
+    return true;
+  });
+  const adminCount = ordered.filter((u) => adminSet.has(u.id)).length;
+
   return (
     // Top only. This screen sits inside the tab navigator, which already
     // reserves the bottom inset — claiming it here counted it twice and left a
     // visible band above the ad banner. Same shape as the two live screens
     // that had it before; targeting API 36 made the inset large enough to see.
-    <SafeAreaView style={styles.root} edges={['top']}>
-      <ScreenHeader title={he.communityPlayersScreenTitle} />
+    // Embedded, the shell above already claimed the top inset — claiming it
+    // again pushes the hero down by the status-bar height.
+    <SafeAreaView style={styles.root} edges={embedded ? [] : ['top']}>
+      {embedded ? null : <ScreenHeader title={he.communityPlayersScreenTitle} />}
       {loading && !group ? (
-        <View style={styles.center}>
-          <SoccerBallLoader size={40} />
-        </View>
+        <>
+          {props.header}
+          <View style={styles.center}>
+            <SoccerBallLoader size={40} />
+          </View>
+        </>
       ) : !group ? (
-        <View style={styles.center}>
-          <Text style={styles.empty}>{he.communitiesEmpty}</Text>
-        </View>
+        <>
+          {props.header}
+          <View style={styles.center}>
+            <Text style={styles.empty}>{he.communitiesEmpty}</Text>
+          </View>
+        </>
       ) : ordered.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.empty}>{he.communityPlayersEmpty}</Text>
-        </View>
+        <>
+          {props.header}
+          <View style={styles.center}>
+            <Text style={styles.empty}>{he.communityPlayersEmpty}</Text>
+          </View>
+        </>
       ) : (
         // FlatList virtualises the row list so a 200-member community
         // renders only the visible window. We keep the single
@@ -503,19 +553,59 @@ export function CommunityPlayersScreen() {
         // ListHeaderComponent + the renderItem; the visual matches
         // the old ScrollView + map.
         <FlatList
-          data={ordered}
+          data={visible}
           keyExtractor={(u) => u.id}
           contentContainerStyle={styles.content}
           ListHeaderComponent={
-            <Text style={styles.headline}>
-              {he.communityPlayersTitle}{' '}
-              <Text style={styles.headlineCount}>({ordered.length})</Text>
-            </Text>
+            <>
+              {props.header ? (
+                <View style={styles.headerBleed}>{props.header}</View>
+              ) : null}
+              <View style={styles.search}>
+                <Ionicons name="search" size={18} color={colors.textMuted} />
+                <TextInput
+                  style={styles.searchInput}
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder={he.communityPlayersSearch}
+                  placeholderTextColor={colors.textMuted}
+                  returnKeyType="search"
+                  accessibilityLabel={he.communityPlayersSearch}
+                />
+                {query ? (
+                  <Pressable onPress={() => setQuery('')} hitSlop={8}>
+                    <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+                  </Pressable>
+                ) : null}
+              </View>
+              <View style={styles.chips}>
+                {(
+                  [
+                    ['all', he.communityPlayersChipAll, ordered.length],
+                    ['admins', he.communityPlayersChipAdmins, adminCount],
+                    ['players', he.communityPlayersChipPlayers, ordered.length - adminCount],
+                  ] as const
+                ).map(([key, label, n]) => (
+                  <Pressable
+                    key={key}
+                    onPress={() => setChip(key)}
+                    style={[styles.chipPill, chip === key && styles.chipPillOn]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: chip === key }}
+                  >
+                    <Text style={[styles.chipLabel, chip === key && styles.chipLabelOn]}>
+                      {`${label} (${n})`}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
           }
           renderItem={({ item: u, index: i }) => {
             return (
               <View style={i === 0 ? styles.listCard : null}>
                 <PlayerRow
+                  rank={rankOf.get(u.id) ?? i + 1}
                   user={u}
                   isAdmin={group.adminIds.includes(u.id)}
                   stats={stats?.[u.id]}
@@ -527,9 +617,18 @@ export function CommunityPlayersScreen() {
                   rating={
                     ratingsHiddenFromMe ? undefined : group.adminRatings?.[u.id]
                   }
-                  // Show the rating chip to admins (display-only); editing is
-                  // via the "דרג" menu item, not a chip tap.
-                  showRating={internalRating && iAmAdmin && !ratingsHiddenFromMe}
+                  // Every MEMBER sees the rating, per the reference — the
+                  // number under the name. It was admin-only for no reason the
+                  // data supports: `adminRatings` lives on the group document,
+                  // which the rules already hand to members and nobody else, so
+                  // the admin check was hiding a field the reader could already
+                  // fetch. Editing stays admin-only (the "דרג" menu item);
+                  // this is display.
+                  //
+                  // `ratingsHiddenFromMe` is UNTOUCHED: a club that switched
+                  // `hideInternalRating` on has said it does not want its
+                  // members comparing numbers, and that decision still holds.
+                  showRating={internalRating && !ratingsHiddenFromMe}
                   // ONLY the ⋮ opens the menu — the row body is not tappable and
                   // there's no chevron (user request).
                   onOpenMenu={(e) => openPlayerMenu(u, e)}
@@ -582,6 +681,7 @@ export function CommunityPlayersScreen() {
 
 
 function PlayerRow({
+  rank,
   user,
   isAdmin,
   stats,
@@ -594,6 +694,8 @@ function PlayerRow({
   holdsJerseys,
   cardCounts,
 }: {
+  /** Place in the club's ranking — not in the filtered view. */
+  rank: number;
   user: User;
   isAdmin: boolean;
   stats?: PlayerStats;
@@ -614,7 +716,10 @@ function PlayerRow({
 }) {
   return (
     <View style={[styles.row, showDivider && styles.rowDivider]}>
-      <PlayerIdentity user={user} size="sm" />
+      {/* `md` (56 → rendered at 48 by the wrapper's own padding) rather than
+          `sm` (36): the reference's roster avatar is the row's anchor and reads
+          at a glance. `sm` made the row look like a settings list. */}
+      <UserAvatar user={user} size={48} />
       <View style={styles.rowBody}>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1}>
@@ -645,17 +750,23 @@ function PlayerRow({
             see it; when internal rating is off, no chip at all — and with the
             games-played stat removed (user report) the row then has no stats
             line, so we skip the wrapper entirely to avoid a phantom gap. */}
+        {/* The reference puts the rating straight under the name as
+            "4.5 ⭐" — number first, star closing it on the left. Not a chip:
+            a pill around every row's rating turned the column into a row of
+            buttons. The GATE is unchanged (admins only, internal rating on,
+            not hidden); only the presentation moved. */}
         {internalRating && showRating ? (
-          <View style={styles.statsRow}>
-            <View style={[styles.chip, styles.ratingChip]}>
-              <Ionicons name="star" size={12} color={colors.warning} />
-              <Text style={[styles.chipText, styles.ratingChipText]}>
-                {isRated(rating) ? formatRating(rating) : he.ratingNotRated}
-              </Text>
-            </View>
+          <View style={styles.ratingRow}>
+            <Text style={styles.ratingValue}>
+              {isRated(rating) ? formatRating(rating) : he.ratingNotRated}
+            </Text>
+            <Ionicons name="star" size={14} color={colors.warning} />
           </View>
         ) : null}
       </View>
+      {/* Rank, then the menu — the reference closes every row with those two,
+          in that order, on the leading (left) edge. */}
+      <Text style={styles.rank}>{rank}</Text>
       <Pressable
         onPress={onOpenMenu}
         hitSlop={10}
@@ -670,7 +781,59 @@ function PlayerRow({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+  // The reference's search field: a soft grey pill with the magnifier on the
+  // leading edge.
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    height: 46,
+    paddingHorizontal: spacing.md,
+    borderRadius: 14,
+    backgroundColor: '#E8EEF8',
+  },
+  searchInput: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 15,
+    color: colors.text,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    padding: 0,
+  },
+  chips: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  ratingValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  rank: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: clubSurface.subtle,
+    minWidth: 20,
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
+  chipPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: '#E8EEF8',
+  },
+  chipPillOn: { backgroundColor: clubAccent.blue },
+  chipLabel: { fontSize: 13.5, fontWeight: '700', color: '#4B5878' },
+  chipLabelOn: { color: colors.textOnPrimary },
+  // Local club ground — cool and a step below white, so the cards on it
+  // have an edge. See `clubSurface`.
+  root: { flex: 1, backgroundColor: clubSurface.ground },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -685,6 +848,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
     paddingBottom: spacing.xl,
+  },
+  // The shell's hero is full-bleed; this list's content container is not.
+  // Undo its gutter for the header alone rather than un-padding every row.
+  headerBleed: {
+    marginHorizontal: -spacing.lg,
+    marginTop: -spacing.lg,
   },
   headline: {
     ...typography.h3,
@@ -705,15 +874,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: spacing.md,
+    // The reference's rows breathe: ~68pt of pitch per player, against the
+    // ~52 this had. Density was the single loudest difference on this tab.
+    paddingVertical: spacing.md + 2,
     paddingHorizontal: spacing.lg,
+    minHeight: 72,
   },
   removeBtn: {
     padding: 4,
   },
   rowDivider: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.divider,
+    borderTopWidth: 1,
+    borderTopColor: clubSurface.divider,
   },
   rowBody: {
     flex: 1,
@@ -730,8 +902,9 @@ const styles = StyleSheet.create({
   },
   name: {
     ...typography.body,
+    fontSize: 17,
     color: colors.text,
-    fontWeight: '700',
+    fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
     // Don't shrink — force the badges to wrap first. Cap at the row width so a
     // genuinely screen-wide name still clips gracefully rather than overflowing.

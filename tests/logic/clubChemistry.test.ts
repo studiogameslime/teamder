@@ -227,7 +227,15 @@ describe('choosing the six', () => {
     const picks = pickChemistry(
       club({ 'a__b': { winsTogether: 14, sameTeam: 27, assistsAToB: 9 } }),
     );
-    expect(titlesOf(picks, 'a__b').sort()).toEqual(['deadlyDuo', 'regulars', 'winningDuo']);
+    // `bestRatio` joined the set: 14 wins in 27 shared mini-games is 52%, over
+    // the coin-flip floor and over the ten-game sample, so the pair holds the
+    // rate title too.
+    expect(titlesOf(picks, 'a__b').sort()).toEqual([
+      'bestRatio',
+      'deadlyDuo',
+      'regulars',
+      'winningDuo',
+    ]);
     expect(titlesOf(picks, 'x__y')).toEqual([]);
   });
 });

@@ -178,7 +178,9 @@ export type ChemistryKind =
   | 'deadlyDuo'
   | 'wall'
   | 'rivalry'
-  | 'balancedRivalry';
+  | 'balancedRivalry'
+  | 'bestRatio'
+  | 'mostLosses';
 
 /**
  * The floor under each category.
@@ -196,7 +198,23 @@ export const CHEMISTRY_MIN: Record<ChemistryKind, number> = {
   wall: 5,
   rivalry: 10,
   balancedRivalry: 10,
+  // A percentage, so the floor is on the RATIO and the sample is guarded
+  // separately by RATIO_MIN_SAMPLE below. Without that guard the winner of
+  // "הכי מוצלח" is whoever played together twice and won both.
+  // Better than a coin flip. 55 looked like a sensible "good" line and simply
+  // hid the category on real clubs — the top pair on the fixture wins 52% of
+  // the mini-games they share, which is the best in the club and worth naming.
+  bestRatio: 50,
+  mostLosses: 5,
 };
+
+/**
+ * Mini-games a pair must have played together before a win RATE means
+ * anything. A rate is the one metric here that gets BETTER with a smaller
+ * sample, which is exactly how a pair with two games together ends up crowned
+ * over a pair with sixty.
+ */
+export const RATIO_MIN_SAMPLE = 10;
 
 export interface ChemistryPick {
   kind: ChemistryKind;
@@ -218,7 +236,18 @@ function metricOf(kind: ChemistryKind, p: PairTotals): number {
     case 'wall': return p.cleanSheetsTogether;
     case 'rivalry': return p.against;
     case 'balancedRivalry': return p.against;
+    // Win RATE together, as a whole percentage — the pair that wins most often
+    // when they are on the same side, not the pair that wins most often.
+    case 'bestRatio':
+      return p.sameTeam > 0 ? Math.round((p.winsTogether / p.sameTeam) * 100) : 0;
+    case 'mostLosses': return p.lossesTogether;
   }
+}
+
+/** Pairs too thin for a given kind to describe. Only the rate needs one. */
+function eligible(kind: ChemistryKind, p: PairTotals): boolean {
+  if (kind === 'bestRatio') return p.sameTeam >= RATIO_MIN_SAMPLE;
+  return true;
 }
 
 function topBy(
@@ -226,10 +255,13 @@ function topBy(
   kind: ChemistryKind,
 ): ChemistryPick | null {
   let best = 0;
-  for (const p of Object.values(pairs)) best = Math.max(best, metricOf(kind, p));
+  for (const p of Object.values(pairs)) {
+    if (!eligible(kind, p)) continue;
+    best = Math.max(best, metricOf(kind, p));
+  }
   if (best < CHEMISTRY_MIN[kind]) return null;
   const keys = Object.keys(pairs)
-    .filter((k) => metricOf(kind, pairs[k]) === best)
+    .filter((k) => eligible(kind, pairs[k]) && metricOf(kind, pairs[k]) === best)
     .sort();
   return { kind, pairs: keys, value: best, tied: keys.length > 1 };
 }
@@ -276,7 +308,15 @@ export function pickChemistry(
   pairs: Record<string, PairTotals>,
 ): ChemistryPick[] {
   const out: ChemistryPick[] = [];
-  for (const kind of ['winningDuo', 'regulars', 'deadlyDuo', 'wall', 'rivalry'] as const) {
+  for (const kind of [
+    'winningDuo',
+    'regulars',
+    'bestRatio',
+    'mostLosses',
+    'wall',
+    'deadlyDuo',
+    'rivalry',
+  ] as const) {
     const pick = topBy(pairs, kind);
     if (!pick) continue;
     if (kind === 'rivalry') {

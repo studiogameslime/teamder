@@ -32,9 +32,22 @@ it('reads the club that actually played', () => {
   expect(Object.keys(pairs).length).toBe(241);
 });
 
-it('finds all six categories', () => {
+it('finds every category on the club that actually played', () => {
+  // Eight, since the club screen's five cards added the win-rate and the
+  // losses pairs. This fixture is a real club's rollup, so it is also the
+  // check that both new kinds are reachable on real data rather than only in
+  // a hand-built pair.
   expect(picks.map((p) => p.kind).sort()).toEqual(
-    ['balancedRivalry', 'deadlyDuo', 'regulars', 'rivalry', 'wall', 'winningDuo'].sort(),
+    [
+      'balancedRivalry',
+      'bestRatio',
+      'deadlyDuo',
+      'mostLosses',
+      'regulars',
+      'rivalry',
+      'wall',
+      'winningDuo',
+    ].sort(),
   );
 });
 

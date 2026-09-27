@@ -56,9 +56,14 @@ describe('the reset list is exactly the competition', () => {
   });
 
   it('zeroes the club counters a season owns', () => {
+    // `countedRounds` belongs in this list, and the reason is the whole point
+    // of the field: it is the SAMPLE the outcome counters beside it were
+    // measured over. Left un-zeroed by a close, a new season would divide its
+    // own handful of 0:0 rounds by the previous season's sample and report a
+    // rate near zero on its first evening.
     expect(CLUB.sort()).toEqual([
-      'goals', 'guestGoals', 'ownGoals', 'rounds', 'scorelessRounds',
-      'shootoutRounds', 'tiedRounds',
+      'countedRounds', 'goals', 'guestGoals', 'ownGoals', 'rounds',
+      'scorelessRounds', 'shootoutRounds', 'tiedRounds',
     ]);
   });
 

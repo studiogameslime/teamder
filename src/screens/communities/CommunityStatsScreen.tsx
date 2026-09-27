@@ -33,8 +33,23 @@ import { userService } from '@/services';
 import { groupService } from '@/services';
 import { type ChampionshipRow } from '@/utils/championship';
 import { penaltyKing, penaltyKeeperKing, pctOf } from '@/utils/penaltyStats';
-import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
+import {
+  RTL_LABEL_ALIGN,
+  clubAccent,
+  clubCardTint,
+  clubShadow,
+  clubSurface,
+  colors,
+  radius,
+  spacing,
+  typography,
+} from '@/theme';
 import { ChemistrySection } from '@/components/chemistry/ChemistrySection';
+import { roundSummaryService } from '@/services/roundSummaryService';
+import { eveningRecordsOf, type EveningStat } from '@/utils/eveningRecords';
+import { ClubRecords } from '@/components/club/ClubRecords';
+import { ResultsBreakdown } from '@/components/club/ResultsBreakdown';
+import { buildClubRecords } from '@/utils/clubRecords';
 import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 import { mergeAllTime, type TableSlice } from '@/utils/allTimeTable';
@@ -61,6 +76,8 @@ interface ChampData {
   tiedRounds: number;
   shootoutRounds: number;
   scorelessRounds: number;
+  /** Mini-games the two outcome counters were measured over. */
+  countedRounds: number;
   guestGoals: number;
   ownGoals: number;
   players: ChampionshipRow[];
@@ -124,9 +141,24 @@ function leaderBy(
   return best;
 }
 
-export function CommunityStatsScreen() {
+export interface CommunityStatsScreenProps {
+  /**
+   * Set when the club numbers are rendered as a TAB of the club screen rather
+   * than pushed as their own route. The shell then owns the chrome and passes
+   * its hero + tab bar down as `header`.
+   */
+  groupId?: string;
+  /** The shell's hero + tab bar. Sticks to the top of the scroll. */
+  header?: React.ReactElement | null;
+}
+
+export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
   const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
-  const { groupId } = useRoute<Params>().params;
+  const routeParams = useRoute<Params>().params as Params['params'] | undefined;
+  // One of the two always holds it: embedded, the shell passes it; standalone,
+  // the CommunityStats route cannot be reached without it.
+  const groupId: string = props.groupId ?? routeParams!.groupId;
+  const embedded = !!props.groupId;
   // Which season these numbers belong to, when the club runs them.
   //
   // Without this the table simply RESETS one day and says nothing: a member
@@ -163,6 +195,19 @@ export function CommunityStatsScreen() {
   // straight into the archive fetch and into the table's `seasonId`, and the
   // first thing it would do is ask Firestore for a season called "__all".
   const [scope, setScope] = useState<Scope>({ k: 'current' });
+  // The scope list is collapsed behind the summary row, as in the reference.
+  const [scopeOpen, setScopeOpen] = useState(false);
+  /**
+   * The club's sealed evenings, for the three evening records.
+   *
+   * Refetched whenever the SCOPE changes, because a season's record has to be
+   * that season's evening — showing a lifetime best under a season heading is
+   * the bug this whole screen has been fixing. The window comes from the
+   * season's own boundaries: a past season has `startsAt`/`endsAt`, and the
+   * running season begins where the last sealed one ended.
+   */
+  const [eveningStats, setEveningStats] = useState<EveningStat[]>([]);
+
   const [archive, setArchive] = useState<FinishedSeasonTable | null>(null);
   /** Every past season, merged with the live rows. Fetched once, then cached —
    *  switching back and forth must not cost a read each time. */
@@ -250,6 +295,7 @@ export function CommunityStatsScreen() {
           tiedRounds: 0,
           shootoutRounds: 0,
           scorelessRounds: 0,
+          countedRounds: 0,
           guestGoals: 0,
           ownGoals: 0,
           players: [],
@@ -363,6 +409,7 @@ export function CommunityStatsScreen() {
               tiedRounds: champ?.tiedRounds ?? 0,
               shootoutRounds: champ?.shootoutRounds ?? 0,
               scorelessRounds: champ?.scorelessRounds ?? 0,
+              countedRounds: champ?.countedRounds ?? 0,
               guestGoals: champ?.guestGoals ?? 0,
               ownGoals: champ?.ownGoals ?? 0,
               players: champ?.players ?? [],
@@ -416,6 +463,47 @@ export function CommunityStatsScreen() {
     [scope, pastSeasons],
   );
 
+  /**
+   * The window the evening records are computed over, derived from the scope.
+   *
+   *   all      no window — every summary the club has
+   *   season   that season's own `startsAt`/`endsAt`
+   *   current  from where the last sealed season ended, or no window for a
+   *            club that has never closed one
+   */
+  const recordWindow = useMemo((): { from?: number; to?: number } => {
+    if (scope.k === 'all') return {};
+    if (scope.k === 'season') {
+      return scopedCard
+        ? { from: scopedCard.startsAt, to: scopedCard.endsAt }
+        : // A season whose archive has not loaded yet. An unbounded window
+          // here would show a lifetime record under a season heading, so the
+          // impossible window hides the cards until it arrives.
+          { from: Number.MAX_SAFE_INTEGER };
+    }
+    const lastSealed = pastSeasons.reduce((m, p) => Math.max(m, p.endsAt), 0);
+    return lastSealed > 0 ? { from: lastSealed } : {};
+  }, [scope, scopedCard, pastSeasons]);
+
+  useEffect(() => {
+    if (!groupId) return;
+    let alive = true;
+    roundSummaryService
+      .listEveningStats(groupId, recordWindow)
+      .then((r) => {
+        if (alive) setEveningStats(r.evenings);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [groupId, recordWindow]);
+
+  const eveningRecords = useMemo(
+    () => eveningRecordsOf(eveningStats),
+    [eveningStats],
+  );
+
   // Everything below reads ONE of these, never `champ`/`duo` directly: the
   // screen renders a past season through the same derivation as the running
   // one, because the archive was built to hold exactly the same counters.
@@ -438,6 +526,7 @@ export function CommunityStatsScreen() {
             tiedRounds: slice.tiedRounds,
             shootoutRounds: slice.shootoutRounds,
             scorelessRounds: slice.scorelessRounds,
+            countedRounds: slice.countedRounds,
             guestGoals: slice.guestGoals,
             ownGoals: slice.ownGoals,
             players: slice.players,
@@ -479,15 +568,20 @@ export function CommunityStatsScreen() {
     const tiedRounds = viewChamp?.tiedRounds ?? 0;
     const shootoutRounds = viewChamp?.shootoutRounds ?? 0;
     const scorelessRounds = viewChamp?.scorelessRounds ?? 0;
+    // The sample the two outcome counters were measured over. `totalRounds`
+    // counts every mini-game the club ever played; these two started counting
+    // when they were deployed. Dividing by the wrong one is what made the 0:0
+    // rate read 3% on a club where it is far higher.
+    const countedRounds = viewChamp?.countedRounds ?? 0;
     // Goals scored by guests across the club — a separate breakout, NOT folded
     // into totalGoals (which is real ranked players only). Drives its own row.
     const guestGoals = viewChamp?.guestGoals ?? 0;
     const goalsPerMini = totalRounds > 0 ? totalGoals / totalRounds : 0;
     const drawPct = totalRounds > 0 ? Math.round((tiedRounds / totalRounds) * 100) : 0;
     const shootoutPct =
-      totalRounds > 0 ? Math.round((shootoutRounds / totalRounds) * 100) : 0;
+      countedRounds > 0 ? Math.round((shootoutRounds / countedRounds) * 100) : 0;
     const scorelessPct =
-      totalRounds > 0 ? Math.round((scorelessRounds / totalRounds) * 100) : 0;
+      countedRounds > 0 ? Math.round((scorelessRounds / countedRounds) * 100) : 0;
     // Club-wide penalty conversion — sum every player's scored/taken. Drives
     // the "דיוק מהנקודה הלבנה" fun fact. Gated on penTakenTotal > 0.
     const penTakenTotal = players.reduce((a, p) => a + (p.penTaken ?? 0), 0);
@@ -514,6 +608,10 @@ export function CommunityStatsScreen() {
       shootoutPct,
       scorelessRounds,
       scorelessPct,
+      countedRounds,
+      // Detectable, exactly, and only because `countedRounds` exists: the club
+      // played more mini-games than the counters saw.
+      partialCoverage: countedRounds > 0 && countedRounds < totalRounds,
       guestGoals,
       // Own goals — club total (for the fun fact) + the player who scored the
       // most (a dubious crown). null when nobody has an own goal yet.
@@ -614,6 +712,67 @@ export function CommunityStatsScreen() {
    */
   const lifetimeScope = scope.k === 'all' || (seasons?.count ?? 0) === 0;
 
+  /**
+   * What the summary row says. Built from the SAME strings the chips use, so
+   * the collapsed row can never name a different scope from the one selected
+   * in the list underneath it.
+   */
+  const scopeTitle =
+    scope.k === 'all'
+      ? he.communityStatsScopeAllTime
+      : scope.k === 'season'
+        ? he.communityStatsScopePast(
+            pastSeasons.find((p) => p.seasonId === scope.id)?.no ?? 1,
+          )
+        : seasons && !seasons.enabled && (seasons.count ?? 0) > 0
+          ? he.communityStatsScopeSinceOff(seasons.count ?? 1)
+          : // The bar names the scope and nothing else. The chip below it still
+            // says "· עכשיו" because in a LIST of seasons that is what tells
+            // you which one is running; alone on the bar it is decoration.
+            he.communityStatsScopeSeasonPlain(seasons?.currentNo ?? 1);
+
+  /**
+   * "שיאי המועדון". Each record carries its OWN scope rule rather than the
+   * area carrying one, which is why the builder takes nulls: under a season
+   * the club keeps two of the four, instead of the whole area disappearing.
+   *
+   *   streak        lifetime only — a record is permanent, and printing the
+   *                 club's 22-night record beside a table reading 0 מחזורים
+   *                 is the bug the `lifetimeScope` gate below was added for.
+   *   most attended any scope — `topPlayers` is scanned per scope.
+   *   attendance    any scope — a mean over that scope's finished nights.
+   *   organization  lifetime only — the season-scoped rate was wrong; see the
+   *                 note on the donut that reads it.
+   */
+  const clubRecords = buildClubRecords({
+    // The streak the SCOPE is about, not a lifetime figure shown under a
+    // season heading.
+    //
+    // The earlier gate passed 0 under a season and made the record vanish,
+    // which left the section with three cards in a season and four in
+    // all-time. That was a fix for the wrong half of the problem: the bug it
+    // was written for was printing the club's 22-night LIFETIME record beside
+    // a season table reading 0 מחזורים — and `StatsData` already carries the
+    // season-scoped streak beside the lifetime one. Showing a season its own
+    // streak is correct, and keeps the grid at four in every scope.
+    longestStreak: lifetimeScope
+      ? (stats?.lifetime?.longestStreak ?? stats?.longestStreak ?? 0)
+      : (stats?.longestStreak ?? 0),
+    longestStreakUid: lifetimeScope
+      ? (stats?.lifetime?.longestStreakUid ?? stats?.longestStreakUid ?? null)
+      : (stats?.longestStreakUid ?? null),
+    totalFinished: stats?.totalFinished ?? 0,
+    mostGoalsEvening: eveningRecords.goals,
+    mostShootoutsEvening: eveningRecords.shootouts,
+    longestEvening: eveningRecords.rounds,
+    // `name()` answers '—' for an unknown uid. The builder wants a null, so it
+    // can drop the record instead of hanging a dash where a person goes.
+    nameOf: (uid: string) => {
+      const n = name(uid);
+      return n === '—' ? null : n;
+    },
+  });
+
   const isEmpty =
     !loading &&
     // NEVER while a past season is selected. The empty state replaces the
@@ -659,25 +818,40 @@ export function CommunityStatsScreen() {
   const hasScoring = derived.totalGoals > 0 && derived.players.length > 0;
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
-      <ScreenHeader title={he.communityStatsScreenTitle} subtitle={subtitle || undefined} />
+    // Embedded, the shell above already claimed the top inset.
+    <SafeAreaView style={styles.root} edges={embedded ? [] : ['top']}>
+      {embedded ? null : (
+        <ScreenHeader
+          title={he.communityStatsScreenTitle}
+          subtitle={subtitle || undefined}
+        />
+      )}
 
       {bootLoading ? (
-        <View style={styles.center}>
-          <SoccerBallLoader />
-          <Text style={styles.loadingText}>{he.communityStatsLoading}</Text>
-        </View>
+        <>
+          {props.header}
+          <View style={styles.center}>
+            <SoccerBallLoader />
+            <Text style={styles.loadingText}>{he.communityStatsLoading}</Text>
+          </View>
+        </>
       ) : isEmpty ? (
-        <EmptyState
-          icon="stats-chart-outline"
-          title={he.communityStatsEmptyTitle}
-          hint={he.communityStatsEmptyBody}
-        />
+        <>
+          {props.header}
+          <EmptyState
+            icon="stats-chart-outline"
+            title={he.communityStatsEmptyTitle}
+            hint={he.communityStatsEmptyBody}
+          />
+        </>
       ) : (
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
+          {embedded && props.header ? (
+            <View style={styles.headerBleed}>{props.header}</View>
+          ) : null}
           {/* בורר התצוגה. מופיע לכל מועדון שמנהל עונות — גם לפני שנסגרה
               עונה ראשונה, כי בלעדיו אי אפשר לדעת שהמספרים על המסך הם של
               העונה ולא של כל הזמנים. זו בדיוק השאלה שנשאלה. */}
@@ -697,8 +871,31 @@ export function CommunityStatsScreen() {
                   The banner below still says the numbers belong to a season —
                   that was this row's other job, and it keeps doing it. */}
               {(seasons?.count ?? 0) > 0 ? (
+              <View>
+              {/* The reference's scope control: a white row with a calendar on
+                  the leading edge and the chosen scope closing it on the left.
+                  Tapping opens the list in place — the club can have any number
+                  of past seasons, and a chip row for eight of them was a
+                  horizontal scroll nobody found. */}
+              <Pressable
+                style={styles.scopeBar}
+                onPress={() => setScopeOpen((v) => !v)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: scopeOpen }}
+                accessibilityLabel={he.communityStatsScopeLabel}
+              >
+                <Ionicons name="calendar" size={20} color={clubAccent.blue} />
+                <Text style={styles.scopeCurrent} numberOfLines={1}>
+                  {scopeTitle}
+                </Text>
+                <Ionicons
+                  name={scopeOpen ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={clubAccent.blue}
+                />
+              </Pressable>
+              {scopeOpen ? (
               <View style={styles.scopeRow}>
-                <Text style={styles.scopeLabel}>{he.communityStatsScopeLabel}</Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -717,7 +914,7 @@ export function CommunityStatsScreen() {
                         : he.communityStatsScopeCurrent(seasons?.currentNo ?? 1)
                     }
                     active={scope.k === 'current'}
-                    onPress={() => setScope({ k: 'current' })}
+                    onPress={() => { setScope({ k: 'current' }); setScopeOpen(false); }}
                   />
                   {/* כל הזמנים = השורות החיות ועוד כל עונה שנסגרה. אחרי
                       הסגירה הראשונה זה המקום היחיד שעונה על "כמה שערים
@@ -729,7 +926,7 @@ export function CommunityStatsScreen() {
                     <ScopeChip
                       text={he.communityStatsScopeAllTime}
                       active={scope.k === 'all'}
-                      onPress={() => setScope({ k: 'all' })}
+                      onPress={() => { setScope({ k: 'all' }); setScopeOpen(false); }}
                     />
                   ) : null}
                   {pastSeasons.map((ps) => (
@@ -737,10 +934,12 @@ export function CommunityStatsScreen() {
                       key={ps.seasonId}
                       text={he.communityStatsScopePast(ps.no)}
                       active={scope.k === 'season' && scope.id === ps.seasonId}
-                      onPress={() => setScope({ k: 'season', id: ps.seasonId })}
+                      onPress={() => { setScope({ k: 'season', id: ps.seasonId }); setScopeOpen(false); }}
                     />
                   ))}
                 </ScrollView>
+              </View>
+              ) : null}
               </View>
               ) : null}
               {/* The table below belongs to ONE season. Said out loud, because
@@ -759,7 +958,17 @@ export function CommunityStatsScreen() {
                   season, with "סיכום העונה שלי" at the bottom of it. A link
                   pointing at something already on screen is one control too
                   many. */}
-              {seasons?.enabled && scope.k === 'current' ? (
+              {/* Only the fresh-season line survives. The ordinary
+                  "הטבלה מציגה את עונה N" paragraph showed on the DEFAULT scope,
+                  is not in the reference, and repeated what the selector above
+                  it already says. The fresh-season line is a different thing
+                  and stays: after a close, half this screen is gated on `> 0`
+                  and goes dark in one paint, and without a sentence the
+                  ten-year member reads it as "מחקו לי הכל". */}
+              {seasons?.enabled &&
+              scope.k === 'current' &&
+              (seasons.count ?? 0) > 0 &&
+              !hasScoring ? (
                 <View style={styles.seasonBanner}>
                   <Text style={styles.seasonBannerText}>
                     {/* A club whose new season has no goals yet is not an empty
@@ -769,19 +978,15 @@ export function CommunityStatsScreen() {
                         `> 0` and goes dark in one paint on the first evening after
                         a close; without this the ten-year member reads it as
                         "מחקו לי הכל". */}
-                    {(seasons.count ?? 0) > 0 && !hasScoring
-                      ? he.communityStatsSeasonFresh(seasons.currentNo ?? 1)
-                      : he.communityStatsSeasonBanner(seasons.currentNo ?? 1)}
+                    {he.communityStatsSeasonFresh(seasons.currentNo ?? 1)}
                   </Text>
                   {/* Kept ONLY on the fresh-season line, where it names the
                       chip to press. On the ordinary line it used to read
                       "עונות קודמות ותארים", which was the name of the screen
                       it opened and means nothing now. */}
-                  {(seasons.count ?? 0) > 0 && !hasScoring ? (
-                    <Text style={styles.seasonBannerLink}>
-                      {he.communityStatsSeasonFreshCta}
-                    </Text>
-                  ) : null}
+                  <Text style={styles.seasonBannerLink}>
+                    {he.communityStatsSeasonFreshCta}
+                  </Text>
                 </View>
               ) : null}
               {scope.k === 'all' ? (
@@ -846,13 +1051,15 @@ export function CommunityStatsScreen() {
               מובילי המועדון, where it is compared with its peers instead of
               being staged above them. (Owner, 22.09.) */}
           {/* ── המועדון במספרים (4) ── */}
-          <SectionTitle icon="bar-chart" text={he.communityStatsSectionNumbers} />
+          <Card style={styles.heroCard}>
+          <Text style={styles.cardTitle}>{he.communityStatsSectionNumbers}</Text>
           <View style={styles.heroGrid}>
-            <HeroTile icon={<MaterialCommunityIcons name="soccer" size={24} color={colors.primary} />} tint={colors.primary} value={derived.totalGoals} label={he.communityStatsGoals} />
-            <HeroTile icon={<MaterialCommunityIcons name="shoe-cleat" size={24} color="#7C3AED" />} tint="#7C3AED" value={derived.totalAssists} label={he.communityStatsAssists} />
-            <HeroTile icon={<MaterialCommunityIcons name="soccer-field" size={24} color="#0EA5E9" />} tint="#0EA5E9" value={derived.totalRounds} label={he.communityStatsMiniGames} />
-            <HeroTile icon={<MaterialCommunityIcons name="calendar-month" size={24} color={colors.success} />} tint={colors.success} value={eveningsInScope ?? 0} label={he.communityStatsEvenings} />
+            <HeroTile icon={<MaterialCommunityIcons name="soccer" size={28} color={clubAccent.blue} />} tint={clubAccent.blue} value={derived.totalGoals} label={he.communityStatsGoals} />
+            <HeroTile icon={<MaterialCommunityIcons name="shoe-cleat" size={28} color={clubAccent.purple} />} tint={clubAccent.purple} value={derived.totalAssists} label={he.communityStatsAssists} />
+            <HeroTile icon={<MaterialCommunityIcons name="soccer-field" size={28} color={clubAccent.green} />} tint={clubAccent.green} value={derived.totalRounds} label={he.communityStatsMiniGames} />
+            <HeroTile icon={<MaterialCommunityIcons name="calendar-month" size={28} color={clubAccent.gold} />} tint={clubAccent.gold} value={eveningsInScope ?? 0} label={he.communityStatsEvenings} />
           </View>
+          </Card>
 
           {/* ── מובילי המועדון ── (only once goals exist; else all "—") */}
           {hasScoring ? (
@@ -869,21 +1076,21 @@ export function CommunityStatsScreen() {
                   uid: derived.topScorer.uid,
                   value: derived.topScorer.goals,
                   unit: 'שערים',
-                  tint: colors.primary,
+                  tint: clubAccent.blue,
                 },
                 derived.topAssister && {
                   title: he.communityStatsTopAssister,
                   uid: derived.topAssister.uid,
                   value: derived.topAssister.assists,
                   unit: 'בישולים',
-                  tint: '#7C3AED',
+                  tint: clubAccent.blue,
                 },
                 derived.topWinner && {
                   title: he.communityStatsTopWinner,
                   uid: derived.topWinner.uid,
                   value: derived.topWinner.wins,
                   unit: 'נצחונות',
-                  tint: colors.warning,
+                  tint: clubAccent.blue,
                 },
                 derived.cleanSheetKing && {
                   title: he.communityStatsCleanSheetKing,
@@ -923,7 +1130,9 @@ export function CommunityStatsScreen() {
                   uid: derived.ownGoalKing.uid,
                   value: derived.ownGoalKing.ownGoals,
                   unit: 'עצמיים',
-                  tint: '#F59E0B',
+                  // An own-goal crown is the one dubious title here — the
+                  // only negative in the list, and the only red.
+                  tint: clubAccent.red,
                 },
               ].filter(Boolean) as {
                 title: string;
@@ -933,19 +1142,44 @@ export function CommunityStatsScreen() {
                 tint: string;
                 suffix?: string;
               }[]
-            ).map((r, i, arr) => (
-              <LeaderRow
-                key={r.title}
-                title={r.title}
-                user={resolved(r.uid)}
-                value={r.value}
-                unit={r.unit}
-                suffix={r.suffix}
-                tint={r.tint}
-                index={i}
-                last={i === arr.length - 1}
-              />
-            ))}
+            ).map((r) => r)
+              .reduce<React.ReactNode[]>((out, _r, _i, arr) => {
+                // The first three become the headline cards, the rest stay
+                // rows. The reference shows three; this club crowns up to
+                // eight, and dropping five titles to match a screenshot would
+                // delete five kings. The hierarchy that DOES exist is between
+                // the three cards and the list under them — never inside the
+                // three.
+                if (out.length) return out;
+                const top = arr.slice(0, 3);
+                const rest = arr.slice(3);
+                out.push(
+                  <LeaderTrio
+                    key="trio"
+                    items={top.map((r) => ({
+                      ...r,
+                      user: resolved(r.uid),
+                      icon: LEADER_ICON[r.title] ?? 'star',
+                    }))}
+                  />,
+                );
+                rest.forEach((r, i) =>
+                  out.push(
+                    <LeaderRow
+                      key={r.title}
+                      title={r.title}
+                      user={resolved(r.uid)}
+                      value={r.value}
+                      unit={r.unit}
+                      suffix={r.suffix}
+                      tint={r.tint}
+                      index={i}
+                      last={i === rest.length - 1}
+                    />,
+                  ),
+                );
+                return out;
+              }, [])}
           </Card>
           </>
           ) : null}
@@ -967,7 +1201,7 @@ export function CommunityStatsScreen() {
               history it does not have. */}
           {scopeLoading ? null : (
             <>
-              <SectionTitle icon="people" text={he.chemistrySection} />
+              <SectionTitle icon="people" text={he.clubPairsTitle} />
               {lifetimeScope && (seasons?.count ?? 0) > 0 ? (
                 <Text style={styles.chemistryNote}>{he.chemistryAllTimeNote}</Text>
               ) : null}
@@ -983,153 +1217,128 @@ export function CommunityStatsScreen() {
             </>
           )}
 
-          {/* ── נתונים מעניינים (מעל הטבלה — בקשת אלירן) ── */}
+          {/* ── שיאי המועדון ── */}
+          {/* After the pairs and before the club-wide facts, which is the
+              reference's order: one person, then two, then everybody. */}
+          <ClubRecords
+            records={clubRecords}
+            onHolderPress={(uid) =>
+              (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                'PlayerCard',
+                { userId: uid, groupId },
+              )
+            }
+            // The SAME route the history list and the next-game card already
+            // use to open an evening — no new screen, no modal, no alternative
+            // summary.
+            onEveningPress={(gameId) =>
+              (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                'MatchDetails',
+                { gameId },
+              )
+            }
+          />
+
+          {/* ── נתונים מעניינים ──
+              Three measures, one row component, one card.
+
+              Four measures, each telling a different story — no two of them
+              complements of one another. "% שהסתיימו בגול" is gone precisely
+              because it was the complement of the 0:0 rate and said the same
+              thing twice; penalty conversion took the slot.
+
+              The 0:0 and penalty rates divide by `countedRounds`, the sample
+              their counters were actually measured over — NOT by the club's
+              lifetime `totalRounds`. The assisted-goals rate has no such
+              caveat: assists and goals are per-player rollups covering the
+              whole history. */}
           <SectionTitle icon="sparkles" text={he.communityStatsSectionFun} />
           <Card style={styles.funCard}>
-            {/* חלק המלך מוצג למעלה באריח "המצטיין". האחוזים כאן = דונאטים מונפשים. */}
-            {derived.totalGoals > 0 && derived.totalAssists > 0 ? (
-              <FunDonutRow index={0} pct={derived.assistedGoalsPct} tint="#7C3AED"
-                text="מהגולים במועדון הגיעו אחרי בישול — כדורגל של עבודת צוות" />
-            ) : null}
-            {derived.penTakenTotal > 0 ? (
-              <FunDonutRow index={1} pct={derived.penAccuracyPct} tint={colors.success}
-                text="מהפנדלים במועדון הסתיימו בגול" />
-            ) : null}
-            {derived.totalRounds > 0 && derived.drawPct > 0 ? (
-              <FunDonutRow index={2} pct={derived.drawPct} tint={colors.info}
-                text="מהמשחקים הסתיימו בתיקו" />
-            ) : null}
-            {derived.scorelessRounds > 0 ? (
-              <FunDonutRow index={3} pct={derived.scorelessPct} tint={colors.textMuted}
-                text="מהמשחקים הסתיימו 0:0" />
-            ) : null}
-            {derived.shootoutRounds > 0 ? (
-              <FunDonutRow index={4} pct={derived.shootoutPct} tint={colors.danger}
-                text="מהמשחקים הוכרעו בפנדלים" />
-            ) : null}
-            {/* אחוז ההתארגנות נספר מסריקת המשחקים של המועדון, לא ממונה
-                שהעונה שומרת — ולכן אין לו תשובה לעונה שנסגרה.
-                LIFETIME, and gated on there being something to measure.
-                It read `stats.organizationRate`, the season-scoped figure, and
-                was the only donut here gated on the SCOPE instead of on its own
-                value — so a club three days into a new season was told, in
-                green, that 0% of its planned evenings had happened. That club
-                had never cancelled an evening in its life: its real rate was
-                96%, sitting unused in `lifetime` ten lines away. "No attempts
-                yet" and "every attempt failed" are the same number, and this
-                was rendering the second meaning. */}
-            {/* Shown under "כל הזמנים", which is where a lifetime number
-                belongs — and, before the club's first close, under the running
-                season as well, because until then the two are the same thing.
-                See `lifetimeScope`. It also stops the seasons-off club, which
-                now OPENS on all-time, from losing its organisation rate. */}
-            {lifetimeScope &&
-            (stats?.lifetime?.totalFinished ?? 0) +
-              (stats?.lifetime?.totalCancelled ?? 0) >
-              0 ? (
-              <FunDonutRow index={5} pct={Math.round((stats?.lifetime?.organizationRate ?? 0) * 100)}
-                tint={colors.success} text="מכל המחזורים שתוכננו במועדון אי פעם יצאו לפועל" />
-            ) : null}
-            {/* עובדות טקסט (בלי אחוז) */}
-            {viewDuo && viewDuo.assists > 0 ? (
-              <FunRow
-                icon="git-network-outline"
-                tint="#7C3AED"
-                parts={[
-                  { t: name(viewDuo.uidA), em: 'name' },
-                  { t: ' ו' },
-                  { t: name(viewDuo.uidB), em: 'name' },
-                  { t: ' הם הצמד עם הכי הרבה בישולים משותפים (' },
-                  { t: `${viewDuo.assists}`, em: 'num' },
-                  { t: ')' },
-                ]}
-              />
-            ) : null}
-            {/* The club's longest-ever run — a RECORD, so it is read from
-                `lifetime` and not from the season rollup; reading the scoped
-                figure made a club's 22-night record vanish from the app the
-                morning after every close.
-
-                Being a lifetime number is also why it is gated on
-                `lifetimeScope` rather than on the scope alone: a record
-                printed under a season that shows 0 מחזורים is the report this
-                gate comes from. ("פעילים השנה", below, is the one row here
-                still shown under a season — its scope is a 365-day window,
-                which is neither the season nor the club's life, and it says
-                "השנה" out loud.) */}
-            {lifetimeScope && stats && (stats.lifetime?.longestStreak ?? stats.longestStreak) >= 2 ? (
-              <FunRow
-                icon="flame-outline"
-                tint={colors.danger}
-                parts={[
-                  { t: name(stats.lifetime?.longestStreakUid ?? stats.longestStreakUid ?? undefined), em: 'name' },
-                  { t: ' הגיע ' },
-                  { t: `${stats.lifetime?.longestStreak ?? stats.longestStreak} מחזורים`, em: 'num' },
-                  { t: ' ברצף — הרצף הארוך של המועדון אי פעם' },
-                ]}
-              />
-            ) : null}
-            {/* "פעילים השנה" נמדד מול היום, לא מול העונה — למחזור שנסגר
-                לפני חצי שנה זו לא תשובה. במקום זה: כמה שחקנים בכלל שיחקו
-                בעונה, מתוך השורות החתומות שלה. */}
-            {scope.k !== 'current' ? (
-              <FunRow
-                icon="calendar-outline"
-                tint={colors.primary}
-                parts={[
-                  { t: `${derived.players.length} שחקנים`, em: 'num' },
-                  { t: scope.k === 'all' ? ' שיחקו במועדון' : ' שיחקו בעונה' },
-                ]}
-                last={!(derived.guestGoals > 0) && !(derived.totalOwnGoals > 0)}
-              />
-            ) : (
-              <FunRow
-                icon="calendar-outline"
-                tint={colors.primary}
-                parts={[
-                  // LIFETIME. `activeThisYear` is a 365-day window INTERSECTED
-                  // with the season filter, so the morning after a close it is
-                  // a 365-day label on a several-day window: a club whose
-                  // entire roster played this month read "0 שחקנים היו פעילים
-                  // השנה". Every other row in this card carries the season
-                  // banner above it to say what it is scoped to; the word
-                  // "השנה" is the only scope this one declares, so it has to
-                  // be true.
-                  { t: `${stats?.lifetime?.activeThisYear ?? stats?.activeThisYear ?? 0} שחקנים`, em: 'num' },
-                  { t: ' היו פעילים השנה' },
-                ]}
-                last={!(derived.guestGoals > 0) && !(derived.totalOwnGoals > 0)}
-              />
-            )}
-            {/* גולים של אורחים — שורה נפרדת (רק אם קיים נתון). אורחים אינם
-                בטבלה המדורגת, אז זו הדרך היחידה שהתרומה שלהם נספרת גלוי. */}
-            {derived.guestGoals > 0 ? (
-              <FunRow
-                icon="people-outline"
-                tint={colors.info}
-                parts={[
-                  { t: `${derived.guestGoals} גולים`, em: 'num' },
-                  { t: ' הוכנסו על ידי אורחים' },
-                ]}
-                last={!(derived.totalOwnGoals > 0)}
-              />
-            ) : null}
-            {/* שערים עצמיים — סה"כ במועדון (רק אם קיים נתון). */}
-            {derived.totalOwnGoals > 0 ? (
-              <FunRow
-                icon="footsteps-outline"
-                tint="#F59E0B"
-                parts={[
-                  { t: `${derived.totalOwnGoals} שערים עצמיים`, em: 'num' },
-                  { t: ' נכבשו במועדון' },
-                ]}
-                last
-              />
-            ) : null}
+            {(() => {
+              // Always four, in this order. A measure with no sample passes
+              // `null` and renders its "not measured yet" state in place —
+              // the section must not resize as coverage arrives.
+              const sampled = derived.countedRounds > 0;
+              const rows = [
+                {
+                  key: 'assisted',
+                  icon: 'git-network' as const,
+                  tint: clubAccent.blue,
+                  pct:
+                    derived.totalGoals > 0 && derived.totalAssists > 0
+                      ? derived.assistedGoalsPct
+                      : null,
+                  text: he.funAssistedGoals,
+                },
+                {
+                  key: 'scoreless',
+                  icon: 'remove-circle' as const,
+                  tint: clubAccent.green,
+                  pct: sampled ? derived.scorelessPct : null,
+                  text: he.funScoreless,
+                },
+                {
+                  key: 'penRate',
+                  icon: 'football' as const,
+                  tint: clubAccent.purple,
+                  pct: derived.penTakenTotal > 0 ? derived.penAccuracyPct : null,
+                  text: he.funPenaltyRate,
+                },
+                {
+                  key: 'shootout',
+                  icon: 'disc' as const,
+                  tint: clubAccent.red,
+                  pct: sampled ? derived.shootoutPct : null,
+                  text: he.funShootout,
+                },
+              ];
+              return rows.map((r, i) => (
+                <FunDonutRow
+                  key={r.key}
+                  icon={r.icon}
+                  pct={r.pct}
+                  tint={r.tint}
+                  text={r.text}
+                  last={i === rows.length - 1}
+                />
+              ));
+            })()}
           </Card>
+          {/* Exact, not a hedge: the club played N mini-games and the counters
+              behind two of the rows above saw M of them. Before `countedRounds`
+              this could not be detected at all — the old caveat only fired when
+              BOTH counters were zero, so a club with partial history showed a
+              wrong number silently. */}
+          {derived.partialCoverage ? (
+            <Text style={styles.scopeNote}>
+              {he.funMeasuredOver(derived.countedRounds, derived.totalRounds)}
+            </Text>
+          ) : null}
 
-          {/* טבלת הליגה המלאה — מתחת ל"נתונים מעניינים" (בקשת אלירן: הנתונים
-              המעניינים מעל הטבלה). מציגה את כל חברי המועדון מדורגים. */}
+          {/* ── איך המשחקונים הסתיימו ── */}
+          {/* One ring in place of three separate donuts. Draw-rate, 0:0-rate
+              and penalty-rate were three unrelated-looking percentages of the
+              same denominator; as slices of one ring they add up on screen,
+              which is the thing a reader wanted from them. */}
+          <ResultsBreakdown
+            // The MEASURED set, the same one the bars above divide by. See the
+            // prop's own note for the production numbers that forced this.
+            totalRounds={derived.countedRounds}
+            tiedRounds={derived.tiedRounds}
+            shootoutRounds={derived.shootoutRounds}
+            scorelessRounds={derived.scorelessRounds}
+            partial={derived.partialCoverage}
+          />
+
+
+          {/* "הישגי המועדון" moved to CommunityDetails, under the club's
+              numbers — the owner asked for it on the club page, not buried at
+              the bottom of the stats screen. */}
+
+          <View style={{ height: spacing.xl }} />
+
+          {/* טבלת הליגה המלאה — האזור האחרון במסך. היא ארוכה מכל השאר גם יחד,
+              ולכן כל אזור שהיה מתחתיה היה נקבר. */}
           <CommunityChampionship
             groupId={groupId}
             memberIds={memberIds}
@@ -1148,12 +1357,6 @@ export function CommunityStatsScreen() {
             // prints this exact number as "מחזורים".
             clubEvenings={eveningsInScope}
           />
-
-          {/* "הישגי המועדון" moved to CommunityDetails, under the club's
-              numbers — the owner asked for it on the club page, not buried at
-              the bottom of the stats screen. */}
-
-          <View style={{ height: spacing.xl }} />
         </ScrollView>
       )}
     </SafeAreaView>
@@ -1207,10 +1410,10 @@ function HeroTile({
   label: string;
 }) {
   return (
-    <Card style={styles.heroTile}>
-      <View style={[styles.heroIcon, { backgroundColor: tint + '1A' }]}>
-        {icon}
-      </View>
+    // A plain cell, not a Card: in the reference the four cells sit INSIDE one
+    // white card, so a second elevation here would stack two shadows.
+    <View style={styles.heroTile}>
+      <View style={styles.heroIcon}>{icon}</View>
       <View style={styles.heroText}>
         {/* Numbers count up (0 → value) as the stats resolve. */}
         {typeof value === 'number' ? (
@@ -1220,7 +1423,108 @@ function HeroTile({
         )}
         <Text style={styles.heroLabel} numberOfLines={1}>{label}</Text>
       </View>
-    </Card>
+    </View>
+  );
+}
+
+/**
+ * The club's three headline leaders, as three EQUAL cards.
+ *
+ * Deliberately not a podium, and this is a correction of an earlier design
+ * rather than a style preference. These are three different CATEGORIES — top
+ * scorer, top assister, top winner — not three placings in one contest. The
+ * previous version gave the middle card more width, more height, a bigger
+ * avatar, a bigger number and a stronger tint, which reads as gold / silver /
+ * bronze and says something about the club that is simply untrue.
+ *
+ * So every card shares one style contract: same flex, same padding, same
+ * avatar, same metric size, same border, same accent. No card is raised, and
+ * no index is printed anywhere — a "1" beside the first card would re-create
+ * the ranking the layout just stopped implying. They differ by their icon,
+ * their title, their number and their player, and by nothing else.
+ *
+ * All three carry Teamder blue. A colour per category was decoration: it made
+ * the area a rainbow and told the reader nothing, because the categories are
+ * not positive-vs-negative, they are just different.
+ */
+/**
+ * One glyph per title. This map, the title text, the number and the player are
+ * the entire difference between the three cards — there is no colour, size or
+ * position cue, by design.
+ */
+const LEADER_ICON: Record<string, React.ComponentProps<typeof Ionicons>['name']> = {
+  [he.communityStatsTopScorer]: 'football',
+  [he.communityStatsTopAssister]: 'git-network',
+  [he.communityStatsTopWinner]: 'trophy',
+  [he.communityStatsCleanSheetKing]: 'shield-checkmark',
+  [he.communityStatsMostLoyal]: 'calendar',
+  [he.communityStatsPenaltyKing]: 'disc',
+  [he.communityStatsPenaltyKeeperKing]: 'hand-left',
+  [he.communityStatsOwnGoalKing]: 'alert-circle',
+};
+
+/**
+ * The three headline categories, by position in the leaders list.
+ *
+ * Colour identifies the CATEGORY and nothing else. The three cards are
+ * identical in every dimension that could imply rank — size, height, padding,
+ * avatar, metric, shadow — so a reader can tell them apart without being told
+ * one of them won.
+ */
+const TRIO_ACCENT = [clubAccent.blue, clubAccent.purple, clubAccent.gold];
+
+function LeaderTrio({
+  items,
+}: {
+  items: {
+    title: string;
+    user: Resolved;
+    value: number;
+    unit: string;
+    icon: React.ComponentProps<typeof Ionicons>['name'];
+    suffix?: string;
+  }[];
+}) {
+  if (!items.length) return null;
+  return (
+    <View style={styles.trio}>
+      {items.map((r, i) => {
+        const accent = TRIO_ACCENT[i] ?? clubAccent.blue;
+        return (
+          <View
+            key={r.title}
+            style={[styles.trioCard, { backgroundColor: clubCardTint(accent) }]}
+          >
+            {/* Rides the card's top edge, filled with the category colour. */}
+            {/* The ring takes the CARD's tint, not the page ground. Ringing
+                it in the page colour cut a hole in a tinted card and the badge
+                read as pasted on rather than part of it. */}
+            <View
+              style={[
+                styles.trioBadge,
+                { backgroundColor: accent, borderColor: clubCardTint(accent) },
+              ]}
+            >
+              <Ionicons name={r.icon} size={17} color="#FFFFFF" />
+            </View>
+            <Text style={styles.trioTitle} numberOfLines={2}>
+              {r.title}
+            </Text>
+            <UserAvatar user={r.user} size={56} ring />
+            <CountUp
+              from={0}
+              to={r.value}
+              durationMs={1000}
+              suffix={r.suffix}
+              style={[styles.trioValue, { color: accent }]}
+            />
+            <Text style={styles.trioName} numberOfLines={1}>
+              {fullName(r.user.name)}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -1274,61 +1578,66 @@ function LeaderRow({
 // row tint; `em:'name'` → bold in the main text colour.
 type FunPart = { t: string; em?: 'num' | 'name' };
 
-function FunRow({
-  icon,
-  tint,
-  parts,
-  last,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  tint: string;
-  parts: FunPart[];
-  last?: boolean;
-}) {
-  return (
-    <View style={[styles.funRow, !last && styles.funDivider]}>
-      <View style={[styles.funIcon, { backgroundColor: tint + '1A' }]}>
-        <Ionicons name={icon} size={16} color={tint} />
-      </View>
-      <Text style={styles.funSentence}>
-        {parts.map((p, i) => (
-          <Text
-            key={i}
-            style={
-              p.em === 'num'
-                ? [styles.funEm, { color: tint }]
-                : p.em === 'name'
-                  ? styles.funEmName
-                  : undefined
-            }
-          >
-            {p.t}
-          </Text>
-        ))}
-      </Text>
-    </View>
-  );
-}
-
-// A fun fact whose stat is a percentage → an animated donut (the "graph") on
-// the right that sweeps to the value, with the descriptive sentence beside it.
 function FunDonutRow({
   pct,
   tint,
   text,
-  index,
+  icon,
   last,
 }: {
-  pct: number;
+  /**
+   * `null` = no sample yet. Rendered as an explicit "not measured" state, not
+   * as 0%: a bar sitting empty beside a bold zero claims the club has never
+   * done the thing, when the truth is that nobody has counted.
+   */
+  pct: number | null;
   tint: string;
   text: string;
-  index: number;
+  /** The reference gives every row its own glyph; the bar alone is anonymous. */
+  icon: React.ComponentProps<typeof Ionicons>['name'];
   last?: boolean;
 }) {
+  const measured = pct !== null;
+  const clamped = measured ? Math.max(0, Math.min(100, pct)) : 0;
   return (
+    // Icon leads on the right, the sentence and its bar fill the middle, and
+    // the percentage closes the row on the left — the reference's shape. A
+    // donut for a share of a whole is legible; four donuts stacked in a column
+    // are four rings of different circumference saying nothing to each other,
+    // which is why the reference puts them on a common baseline.
     <View style={[styles.funRow, !last && styles.funDivider]}>
-      <StatDonut pct={pct} tint={tint} size={48} delayMs={index * 90} />
-      <Text style={styles.funSentence}>{text}</Text>
+      <View
+        style={[
+          styles.funIcon,
+          { backgroundColor: measured ? tint + '1A' : clubSurface.divider },
+        ]}
+      >
+        <Ionicons name={icon} size={18} color={measured ? tint : '#94A3B8'} />
+      </View>
+      <View style={styles.funBody}>
+        <Text style={styles.funSentence} numberOfLines={2}>
+          {text}
+        </Text>
+        {measured ? (
+          <View style={styles.funTrack}>
+            {/* Grows from the RIGHT — see `funTrack`. */}
+            <View style={[styles.funFill, { width: `${clamped}%`, backgroundColor: tint }]} />
+          </View>
+        ) : (
+          <>
+            {/* An empty track, visibly inactive, and a sentence saying why —
+                the row keeps its place so the section never jumps between two
+                and four measures. */}
+            <View style={styles.funTrack} />
+            <Text style={styles.funPending}>{he.funNotMeasuredYet}</Text>
+          </>
+        )}
+      </View>
+      {measured ? (
+        <Text style={[styles.funPct, { color: tint }]}>{`${clamped}%`}</Text>
+      ) : (
+        <Text style={[styles.funPct, styles.funPctPending]}>—</Text>
+      )}
     </View>
   );
 }
@@ -1352,14 +1661,35 @@ const styles = StyleSheet.create({
     color: colors.primary,
     textAlign: RTL_LABEL_ALIGN,
   },
-  root: { flex: 1, backgroundColor: colors.bg },
+  // Local club ground — cool and a step below white, so the cards on it
+  // have an edge. See `clubSurface`.
+  root: { flex: 1, backgroundColor: clubSurface.ground },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
   loadingText: { ...typography.body, color: colors.textMuted },
   scroll: { padding: spacing.md, gap: spacing.sm },
+  // The shell's hero is full-bleed; this scroll's content container is not.
+  headerBleed: { marginHorizontal: -spacing.md, marginTop: -spacing.md },
 
   // Label first in source order → rightmost under forceRTL, chips running
   // leftwards from it.
-  scopeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  scopeBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: spacing.md,
+    height: 46,
+    ...clubShadow,
+  },
+  scopeCurrent: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  scopeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.xs },
   scopeLabel: { ...typography.caption, color: colors.textMuted },
   scopeChips: { gap: spacing.xs, paddingVertical: 2 },
   scopeChip: {
@@ -1422,31 +1752,122 @@ const styles = StyleSheet.create({
   // the file says so itself four times below. These two were the only places
   // that used row-reverse for a WRAPPING grid, so the four tiles filled left
   // to right: the first number a Hebrew reader meets was the last one written.
+  // The four cells live inside one card, as in the reference.
+  // A hairline edge on every card: white on the club ground needs one to read
+  // as a layer rather than as a lighter patch of the same sheet.
+  heroCard: { gap: spacing.md, ...clubShadow },
   heroGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   heroTile: {
-    width: '48.5%',
+    flexGrow: 1,
+    flexBasis: '47%',
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    ...clubShadow,
   },
-  heroIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  // The reference uses a bare coloured glyph on the trailing edge — no tinted
+  // plate behind it. The plate made four cells read as four buttons.
+  heroIcon: { width: 30, alignItems: 'center', justifyContent: 'center' },
   heroText: { flex: 1, minWidth: 0 },
-  heroValue: { ...typography.h2, color: colors.text, fontWeight: '900', fontVariant: ['tabular-nums'], textAlign: RTL_LABEL_ALIGN },
-  heroLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '700', textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
+  heroValue: {
+    fontSize: 27,
+    lineHeight: 33,
+    color: '#0F172A',
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  heroLabel: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: 1,
+  },
+  // One row, three equal cards. `alignItems: 'stretch'` so they share a height
+  // even when one title wraps to two lines and the others do not — an uneven
+  // bottom edge is the last thing left that could read as a ranking.
+  trio: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: spacing.sm,
+    // Clearance for the badges riding the cards' top edges.
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  trioCard: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 6,
+    // Room above for the badge that rides the top edge.
+    paddingTop: spacing.lg + 8,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xs,
+    borderRadius: 16,
+    // No border: the reference's cards have a tint and a shadow, and a grey
+    // outline over both is what made these read as table cells.
+    ...clubShadow,
+  },
+  trioBadge: {
+    position: 'absolute',
+    top: -16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+  trioTitle: {
+    fontSize: 12.5,
+    lineHeight: 16,
+    fontWeight: '700',
+    color: '#64748B',
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  trioValue: {
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: -0.8,
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
+  trioName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+  },
 
   // leaders — right-aligned list rows
-  leadersCard: { padding: 0, overflow: 'hidden' },
+  leadersCard: { padding: 0, overflow: 'hidden', ...clubShadow },
   // `row` (not row-reverse): under forceRTL the first child (avatar) sits on the
   // visual RIGHT, category/name flow to its left, value pinned far LEFT.
-  leaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
+  // The five titles BELOW the podium are deliberately quieter than it: shorter
+  // rows, a smaller number, a lighter name. They carry titles the podium has
+  // no room for — they are not a second podium, and when they had the same
+  // weight the area read as eight equal winners with three of them decorated.
+  leaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md },
   leaderMid: { flex: 1, minWidth: 0, alignItems: 'flex-start' },
-  leaderCat: { ...typography.caption, color: colors.textMuted, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
-  leaderName: { ...typography.body, color: colors.text, fontWeight: '900', textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
+  leaderCat: { fontSize: 12, color: clubSurface.subtle, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  leaderName: { fontSize: 15, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
   leaderVal: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
-  leaderValNum: { ...typography.h3, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  leaderValUnit: { ...typography.caption, color: colors.textMuted, fontWeight: '800' },
+  leaderValNum: { fontSize: 19, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  leaderValUnit: { fontSize: 12, color: clubSurface.subtle, fontWeight: '700' },
 
   // scorers table
   tableCard: { padding: spacing.sm },
@@ -1469,13 +1890,40 @@ const styles = StyleSheet.create({
   goalsPillText: { ...typography.body, color: colors.primary, fontWeight: '900', fontVariant: ['tabular-nums'] },
 
   // fun facts
-  funCard: { padding: 0, overflow: 'hidden' },
+  funCard: { padding: 0, overflow: 'hidden', ...clubShadow },
   // `row` (not row-reverse): under forceRTL the first child (icon) sits on the
   // visual RIGHT, with the sentence flowing to its left (user request).
-  funRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
-  funDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  funIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  funSentence: { ...typography.body, flex: 1, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, lineHeight: 24 },
+  funRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg - 2, paddingHorizontal: spacing.lg },
+  funBody: { flex: 1, minWidth: 0, gap: 7 },
+  // Fills from the RIGHT. 0% is the right edge and the bar grows leftwards,
+  // which is the direction a Hebrew reader reads a quantity in. A plain `row`
+  // does this under forceRTL; `row-reverse` was an earlier misreading of the
+  // reference and shipped a bar that grew the wrong way.
+  funTrack: {
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: clubSurface.divider,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  funFill: { height: '100%', borderRadius: 6 },
+  funPending: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+  },
+  funPctPending: { color: '#94A3B8' },
+  funPct: {
+    fontSize: 21,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+    minWidth: 46,
+    textAlign: 'left',
+  },
+  funDivider: { borderBottomWidth: 1, borderBottomColor: clubSurface.divider },
+  funIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  funSentence: { fontSize: 14.5, flex: 1, color: clubSurface.subtle, textAlign: RTL_LABEL_ALIGN, lineHeight: 20 },
   funEm: { fontWeight: '900', fontVariant: ['tabular-nums'] },
   funEmName: { fontWeight: '800', color: colors.text },
 

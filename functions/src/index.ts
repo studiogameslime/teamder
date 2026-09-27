@@ -9754,6 +9754,77 @@ export const uploadGroupCover = onCall(
   },
 );
 
+/**
+ * The club crest. A square sibling of `uploadGroupCover`, and deliberately a
+ * copy of it rather than a shared helper: the two differ only in the object
+ * path and the size cap, and the cover's comment about App Check applies word
+ * for word — a direct client Storage write fails because the rule's
+ * `firestore.get()` carries no App Check token, so the write goes through the
+ * Admin SDK here.
+ */
+export const uploadGroupLogo = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign in required');
+    }
+    const uid = request.auth.uid;
+    const data = (request.data ?? {}) as {
+      groupId?: string;
+      imageBase64?: string;
+      contentType?: string;
+    };
+    const groupId = typeof data.groupId === 'string' ? data.groupId : '';
+    const imageBase64 =
+      typeof data.imageBase64 === 'string' ? data.imageBase64 : '';
+    const contentType =
+      typeof data.contentType === 'string' ? data.contentType : 'image/jpeg';
+    if (!groupId || !imageBase64) {
+      throw new HttpsError('invalid-argument', 'groupId + imageBase64 required');
+    }
+    if (!/^image\/(jpeg|png|webp)$/.test(contentType)) {
+      throw new HttpsError('invalid-argument', 'unsupported content type');
+    }
+
+    // Admin gate — Admin SDK read is not subject to App Check.
+    const gSnap = await db.collection('groups').doc(groupId).get();
+    if (!gSnap.exists) {
+      throw new HttpsError('not-found', 'group not found');
+    }
+    const adminIds = (gSnap.data()?.adminIds as string[] | undefined) ?? [];
+    if (!adminIds.includes(uid)) {
+      throw new HttpsError('permission-denied', 'group admins only');
+    }
+
+    const buffer = Buffer.from(imageBase64, 'base64');
+    // A crest is 512x512 at most — a tenth of the cover's budget.
+    if (buffer.length === 0 || buffer.length > 512 * 1024) {
+      throw new HttpsError('invalid-argument', 'image missing or too large');
+    }
+
+    const token = randomUUID();
+    const bucket = admin.storage().bucket();
+    const objectPath = `groups/${groupId}/logo.jpg`;
+    const file = bucket.file(objectPath);
+    try {
+      await file.save(buffer, {
+        contentType,
+        resumable: false,
+        metadata: {
+          metadata: { firebaseStorageDownloadTokens: token },
+        },
+      });
+    } catch (err) {
+      console.error('[uploadGroupLogo] save failed', groupId, err);
+      throw new HttpsError('internal', 'upload failed');
+    }
+    const url =
+      `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+      `${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
+    return { url };
+  },
+);
+
 export const createGroupCallable = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
   async (request) => {
@@ -14338,6 +14409,22 @@ export const commitRoundStats = onCall(
           // fun fact. Counts from deploy onward — round-level scores aren't
           // stored historically, so old 0:0 rounds can't be backfilled.
           scorelessRounds: scoreA === 0 && scoreB === 0 ? 1 : 0,
+          // The DENOMINATOR for the two counters above, and the reason this
+          // field exists at all.
+          //
+          // `rounds` counts every mini-game the club has ever played.
+          // `shootoutRounds` and `scorelessRounds` only started counting when
+          // they were deployed, and cannot be backfilled — round-level scores
+          // were never stored. Dividing one by the other produced a rate that
+          // looked like a lifetime figure and was not: a club with 200 rounds
+          // of history and 10 since the deploy reported its 0:0 rate as if the
+          // other 190 had all ended with a goal.
+          //
+          // `countedRounds` increments in the SAME write as those two, so the
+          // numerator and the denominator always describe the same sample. It
+          // also makes partial coverage detectable: `countedRounds < rounds`
+          // says so exactly, and by how much.
+          countedRounds: 1,
         },
       );
     }

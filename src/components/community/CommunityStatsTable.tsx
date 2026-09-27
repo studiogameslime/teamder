@@ -24,7 +24,7 @@ import {
   minRoundsForRanking,
   eligibleForRanking,
 } from '@/utils/efficiencyStats';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { RTL_LABEL_ALIGN, clubAccent, clubSurface, colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import type { User } from '@/types';
 
@@ -248,7 +248,30 @@ export function CommunityStatsTable({
   // assists → then the outcomes/counts (losses → appearances → mini-games).
   // Wins lead — it's the headline stat the owner wants read first — followed by
   // the two point sources (goals, assists).
-  type Col = { key: string; label: string; cell: (r: ChampionshipRow) => string };
+  type Col = {
+    key: string;
+    label: string;
+    cell: (r: ChampionshipRow) => string;
+    /** The reference gives each column its own hue; a wall of one blue reads
+     *  as one number repeated. Falls back to the primary. */
+    tint?: string;
+  };
+  // One hue per kind of thing counted: goals and wins in the club's blue,
+  // assists in the assist purple used by the leaders and the fun bars, the
+  // per-game averages in amber. Columns not listed keep the default.
+  // Blue for the columns the table is actually about, red for the one negative
+  // column, and a neutral dark for the rest. A hue per column made the row a
+  // row of unrelated colours; the tint has to mean something or be absent.
+  const COL_TINT: Record<string, string> = {
+    wins: clubAccent.blue,
+    goals: clubAccent.blue,
+    assists: clubAccent.blue,
+    losses: clubAccent.red,
+    ties: '#334155',
+    cleanSheets: '#334155',
+    games: '#334155',
+    rounds: '#334155',
+  };
   const cumulativeCols: Col[] = ([
     { key: 'wins', label: he.champColWins, primary: true },
     { key: 'goals', label: he.champColGoals },
@@ -267,6 +290,7 @@ export function CommunityStatsTable({
     key: c.key as string,
     label: c.label,
     cell: (r: ChampionshipRow) => String(r[c.key] ?? 0),
+    tint: COL_TINT[c.key as string],
   }));
 
   // Right-to-left after the name column, in the order asked for. Under
@@ -317,6 +341,7 @@ export function CommunityStatsTable({
         {/* Fixed name column (lands on the RIGHT under forceRTL). */}
         <View style={styles.nameCol}>
           <View style={styles.headerCell}>
+            <Text style={styles.headerRank}>#</Text>
             <Text style={styles.headerWho}>{he.champColPlayer}</Text>
           </View>
           {rows.map((r, i) => {
@@ -329,6 +354,7 @@ export function CommunityStatsTable({
                 accessibilityRole="button"
                 accessibilityLabel={p?.name ?? ''}
               >
+                <Text style={styles.rank}>{i + 1}</Text>
                 <View
                   style={[
                     styles.avatarWrap,
@@ -348,7 +374,7 @@ export function CommunityStatsTable({
         {/* Scrollable stat grid (header + rows scroll together). */}
         <ScrollView horizontal showsHorizontalScrollIndicator style={styles.scroll}>
           <View>
-            <View style={[styles.gridRow, { height: HEADER_H }]}>
+            <View style={[styles.gridRow, styles.headerGridRow, { height: HEADER_H }]}>
               {cols.map((c) => {
                 const active = c.key === sortKey;
                 return (
@@ -381,7 +407,7 @@ export function CommunityStatsTable({
                     key={c.key}
                     style={[
                       styles.statCell,
-                      { width: statW },
+                      { width: statW, color: c.tint ?? clubAccent.blue },
                       c.key === sortKey && styles.primaryCell,
                     ]}
                   >
@@ -404,7 +430,7 @@ export function CommunityStatsTable({
 }
 
 const styles = StyleSheet.create({
-  table: { padding: 0, overflow: 'hidden' },
+  table: { padding: 0, overflow: 'hidden', borderWidth: 1, borderColor: clubSurface.border },
   barNote: {
     ...typography.caption,
     color: colors.textMuted,
@@ -422,44 +448,65 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   scroll: { flex: 1 },
+  // A tinted strip, as in the reference — the column labels were hairline-grey
+  // on white and read as a first data row.
   headerCell: {
     height: HEADER_H,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     paddingHorizontal: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    backgroundColor: '#E8EEF8',
   },
-  headerWho: { ...typography.caption, color: colors.textMuted, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  headerRank: {
+    width: 18,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#4B5878',
+    textAlign: 'center',
+  },
+  rank: {
+    width: 18,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
+  headerWho: { flex: 1, ...typography.caption, color: '#4B5878', fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   nameCell: {
     height: ROW_H,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
     paddingHorizontal: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    borderTopColor: clubSurface.divider,
   },
   avatarWrap: { borderRadius: 99, padding: 1.5, borderColor: 'transparent', borderWidth: 2 },
-  name: { flex: 1, minWidth: 0, ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  name: { flex: 1, minWidth: 0, ...typography.body, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN },
   gridRow: { flexDirection: 'row', alignItems: 'center' },
-  dataRow: { height: ROW_H, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  headerGridRow: { backgroundColor: '#E8EEF8' },
+  dataRow: { height: ROW_H, borderTopWidth: 1, borderTopColor: clubSurface.divider },
   headerHit: { width: STAT_W, height: '100%', justifyContent: 'center' },
   statHeader: {
     width: STAT_W,
     ...typography.caption,
     fontSize: 11,
-    color: colors.textMuted,
-    fontWeight: '700',
+    color: '#4B5878',
+    fontWeight: '800',
     textAlign: 'center',
   },
   primaryHeader: { color: colors.primary, fontWeight: '800' },
   statCell: {
     width: STAT_W,
     ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
+    color: colors.primary,
+    fontWeight: '800',
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
-  primaryCell: { color: colors.primary, fontWeight: '900' },
+  // The sorted column keeps its own hue and gains weight — recolouring it to
+  // the brand blue erased the per-column tint on whichever column you sorted.
+  primaryCell: { fontWeight: '900' },
 });

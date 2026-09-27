@@ -183,6 +183,88 @@ export async function pickAndUploadAvatar(
  * The storage rule only lets coaches of {groupId} write, so a
  * non-admin upload fails with reason 'network'.
  */
+/** The crest is square and small — 512 is plenty for an 84pt circle at 3x. */
+const LOGO_SIZE = 512;
+const LOGO_QUALITY = 0.85;
+
+/**
+ * Pick and upload a club CREST.
+ *
+ * A square sibling of `pickAndUploadGroupCover`, deliberately kept as its own
+ * function rather than a parameterised shared one: the crop aspect, the output
+ * size and the callable all differ, and the two are edited for different
+ * reasons. The App Check note on the cover applies here word for word.
+ */
+export async function pickAndUploadGroupLogo(
+  groupId: string,
+): Promise<PhotoUploadResult> {
+  if (!groupId) return { ok: false, reason: 'unknown' };
+  if (USE_MOCK_DATA) {
+    return { ok: false, reason: 'unknown' };
+  }
+
+  const native = loadNativePickers();
+  if (!native.ok) {
+    return { ok: false, reason: 'unavailable' };
+  }
+  const { ImagePicker, ImageManipulator } = native;
+
+  let resized: { base64?: string };
+  try {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== 'granted') {
+      return { ok: false, reason: 'permission' };
+    }
+
+    // 1:1 — the slot in the hero is a circle.
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (picked.canceled || !picked.assets?.[0]) {
+      return { ok: false, reason: 'cancelled' };
+    }
+    const sourceUri = picked.assets[0].uri;
+
+    resized = await ImageManipulator.manipulateAsync(
+      sourceUri,
+      [{ resize: { width: LOGO_SIZE, height: LOGO_SIZE } }],
+      {
+        compress: LOGO_QUALITY,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      },
+    );
+  } catch (err) {
+    logError('pickAndUploadGroupLogo', err, { groupId });
+    return { ok: false, reason: 'unknown', err };
+  }
+  const imageBase64 = resized.base64;
+  if (!imageBase64) {
+    return { ok: false, reason: 'unknown' };
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const { functions } = getFirebase();
+    const fn = httpsCallable(functions, 'uploadGroupLogo');
+    const res = (await fn({
+      groupId,
+      imageBase64,
+      contentType: 'image/jpeg',
+    })) as { data?: { url?: string } };
+    const url = res?.data?.url;
+    if (!url) return { ok: false, reason: 'network' };
+    return { ok: true, url };
+  } catch (err) {
+    logError('uploadGroupLogo', err, { groupId });
+    return { ok: false, reason: 'network', err };
+  }
+}
+
 export async function pickAndUploadGroupCover(
   groupId: string,
 ): Promise<PhotoUploadResult> {

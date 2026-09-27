@@ -2,7 +2,8 @@
 // screen. Not a screen of its own: it sits beside the leaders and the fun
 // facts, and a category with nothing behind it simply isn't drawn.
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { UserAvatar } from '@/components/UserAvatar';
 import {
@@ -21,7 +22,15 @@ import {
 } from '@/utils/clubChemistry';
 import { formatDateShort } from '@/utils/format';
 import { logEvent, AnalyticsEvent } from '@/services/analyticsService';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import {
+  clubAccent,
+  clubCardTint,
+  clubShadow,
+  colors,
+  spacing,
+  typography,
+  RTL_LABEL_ALIGN,
+} from '@/theme';
 import { he } from '@/i18n/he';
 
 function headline(p: ChemistryPick): string {
@@ -35,8 +44,49 @@ function headline(p: ChemistryPick): string {
       return p.balance
         ? `${he.chemistryBalancedLine(p.balance.winsA, p.balance.winsB)} · ${he.chemistryMeetings(p.value)}`
         : he.chemistryMeetings(p.value);
+    case 'bestRatio': return he.chemistryWinRateTogether;
+    case 'mostLosses': return he.chemistryLossesTogether(p.value);
   }
 }
+
+/** The big number on a card, already formatted. A rate carries its own sign. */
+function metricText(p: ChemistryPick): string {
+  return p.kind === 'bestRatio' ? `${p.value}%` : String(p.value);
+}
+
+/**
+ * The five categories the club screen shows, IN ORDER.
+ *
+ * `pickChemistry` computes more than these — deadlyDuo and the rivalry are
+ * still crowned, and the pair card still tags a pair with every title it
+ * holds. This list decides only what the GRID draws, so narrowing it costs no
+ * title and no data.
+ */
+const GRID_KINDS = ['winningDuo', 'regulars', 'bestRatio', 'mostLosses', 'wall'] as const;
+
+/**
+ * Each category's colour. The tint is the card's ground and the accent is its
+ * title, its number and its icon — one hue per card, as in the reference.
+ * Losses are the only red: the card is about a record nobody is chasing.
+ */
+/**
+ * One colour per category, and one football glyph per category.
+ *
+ * The colour is DIFFERENTIATION, not a status code — an earlier pass forced
+ * every non-semantic category to blue and turned this area into a row of
+ * identical white boxes. The tint is 8%, measured off the reference's own
+ * cards, and it works because the page under it is lighter than the tint.
+ */
+const KIND_STYLE: Record<
+  (typeof GRID_KINDS)[number],
+  { accent: string; icon: string }
+> = {
+  winningDuo: { accent: clubAccent.gold, icon: 'trophy' },
+  regulars: { accent: clubAccent.blue, icon: 'people' },
+  bestRatio: { accent: clubAccent.green, icon: 'disc' },
+  mostLosses: { accent: clubAccent.red, icon: 'football' },
+  wall: { accent: clubAccent.purple, icon: 'shield-checkmark' },
+};
 
 /**
  * `pairs` decides WHICH window this section describes.
@@ -123,12 +173,22 @@ export function ChemistrySection({
 
   return (
     <>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}
-      >
-        {data.picks.map((p) => {
+      {/* Two columns, in the reference's order. A category with nobody behind
+          it is not drawn at all, so a young club shows one or two cards rather
+          than a grid of blanks — and the remaining cards still tile, because
+          the row wraps rather than reserving slots. */}
+      <View style={styles.grid}>
+        {(() => {
+          const drawn = GRID_KINDS.filter((k) => data.picks.some((x) => x.kind === k));
+          return drawn;
+        })().map((kind, idx, drawn) => {
+          const p = data.picks.find((x) => x.kind === kind)!;
+          const st = KIND_STYLE[kind];
+          // An odd card at the end fills the row instead of sitting at half
+          // width beside a hole. It keeps the same tint, the same shadow and
+          // the same radius, and it is SHORTER than the cards above — the
+          // reference draws it as a strip, not as a feature.
+          const wide = drawn.length % 2 === 1 && idx === drawn.length - 1;
           // On a genuine tie the card shows the first pair and says so, rather
           // than inventing a winner or silently dropping the others.
           const [x, y] = pairMembers(p.pairs[0]);
@@ -136,31 +196,67 @@ export function ChemistrySection({
           const py = person(y);
           return (
             <Pressable
-              key={p.kind}
-              style={styles.card}
+              key={kind}
+              style={({ pressed }) => [
+                styles.card,
+                wide && styles.cardWide,
+                { backgroundColor: clubCardTint(st.accent) },
+                pressed && styles.cardPressed,
+              ]}
               onPress={() => {
-                logEvent(AnalyticsEvent.ScreenView, { screen: 'PairCard', kind: p.kind });
+                logEvent(AnalyticsEvent.ScreenView, { screen: 'PairCard', kind });
                 setOpen([x, y]);
               }}
               accessibilityRole="button"
-              accessibilityLabel={`${CHEMISTRY_LABEL[p.kind]}: ${px?.name ?? ''} ${py?.name ?? ''}`}
+              accessibilityLabel={`${CHEMISTRY_LABEL[kind]}: ${px?.name ?? ''} ${py?.name ?? ''}`}
             >
-              <Text style={styles.cardTitle}>
-                {`${CHEMISTRY_LABEL[p.kind]} ${CHEMISTRY_EMOJI[p.kind]}`}
-              </Text>
-              <View style={styles.avatars}>
-                {px ? <UserAvatar user={{ id: x, name: px.name, avatarId: px.avatarId, photoUrl: px.photoUrl }} size={38} /> : null}
-                {py ? <UserAvatar user={{ id: y, name: py.name, avatarId: py.avatarId, photoUrl: py.photoUrl }} size={38} /> : null}
+              <View style={styles.cardTop}>
+                <Text style={[styles.cardTitle, { color: st.accent }]} numberOfLines={2}>
+                  {CHEMISTRY_LABEL[kind]}
+                </Text>
+                <Ionicons name={st.icon as never} size={20} color={st.accent} />
               </View>
-              <Text style={styles.cardNames} numberOfLines={2}>
+
+              <View style={styles.cardBody}>
+                <View style={styles.cardText}>
+                  <Text style={[styles.cardValue, { color: st.accent }]}>
+                    {metricText(p)}
+                  </Text>
+                  <Text style={styles.cardMetric} numberOfLines={2}>
+                    {headline(p)}
+                  </Text>
+                </View>
+                {/* Overlapping, and the second sits UNDER the first so the
+                    overlap always falls the same way whichever names are
+                    longer. A white ring separates them from the tint. */}
+                <View style={styles.avatars}>
+                  {py ? (
+                    <View style={[styles.avatarRing, styles.avatarBack]}>
+                      <UserAvatar
+                        user={{ id: y, name: py.name, avatarId: py.avatarId, photoUrl: py.photoUrl }}
+                        size={34}
+                      />
+                    </View>
+                  ) : null}
+                  {px ? (
+                    <View style={styles.avatarRing}>
+                      <UserAvatar
+                        user={{ id: x, name: px.name, avatarId: px.avatarId, photoUrl: px.photoUrl }}
+                        size={34}
+                      />
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+
+              <Text style={styles.cardNames} numberOfLines={1}>
                 {`${px?.name ?? ''} + ${py?.name ?? ''}`}
               </Text>
-              <Text style={styles.cardValue}>{headline(p)}</Text>
               {p.tied ? <Text style={styles.tied}>{he.chemistryTied}</Text> : null}
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
       {/* The window's start date. Hidden when the screen already names the
           window: on a club running seasons the scope chip says which season
           these numbers are, and the close that opened it is the very thing
@@ -186,22 +282,65 @@ export function ChemistrySection({
 }
 
 const styles = StyleSheet.create({
-  row: { gap: spacing.sm, paddingVertical: spacing.xs },
+  // Centred, so an odd fifth card sits in the middle of its own row instead
+  // of hanging at one edge beside a hole. A full row of two is unaffected —
+  // the pair already fills the width.
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
   card: {
-    width: 150,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    // Strictly two per row. A fifth card keeps its half width and is centred
+    // by the grid — letting it grow to full width broke the grid and made the
+    // odd card read as a different kind of thing from the four above it.
+    flexGrow: 0,
+    flexBasis: '48.5%',
+    borderRadius: 16,
     padding: spacing.md,
     gap: 6,
-    alignItems: 'center',
+    minHeight: 158,
+    justifyContent: 'space-between',
+    // Tint + shadow, no outline — the reference's pair cards have no border.
+    ...clubShadow,
   },
-  cardTitle: { fontSize: 12, fontWeight: '800', color: colors.textMuted, textAlign: 'center' },
-  avatars: { flexDirection: 'row', gap: -6 },
-  cardNames: { fontSize: 13, fontWeight: '800', color: colors.text, textAlign: 'center' },
-  cardValue: { fontSize: 13, fontWeight: '700', color: colors.primary, textAlign: 'center' },
-  tied: { fontSize: 10, color: colors.textMuted, fontWeight: '700' },
+  cardWide: {
+    flexBasis: '100%',
+    minHeight: 0,
+  },
+  cardPressed: { opacity: 0.75 },
+  // Title leads on the right, icon closes on the left.
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+  },
+  cardTitle: { fontSize: 13, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, flexShrink: 1 },
+  cardBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+  },
+  cardText: { flexShrink: 1 },
+  // The number is the first thing the eye lands on: bigger than the
+  // category above it and far bigger than the names below.
+  cardValue: { fontSize: 32, fontWeight: '900', textAlign: RTL_LABEL_ALIGN, letterSpacing: -0.5 },
+  cardMetric: { fontSize: 12, color: '#64748B', textAlign: RTL_LABEL_ALIGN },
+  avatars: { flexDirection: 'row', alignItems: 'center' },
+  avatarRing: {
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#FFFFFF',
+  },
+  // Pulls the second avatar under the first. Negative margin on the BACK one,
+  // so the front avatar keeps its full ring.
+  avatarBack: { marginLeft: -14 },
+  cardNames: { fontSize: 12, fontWeight: '600', color: '#64748B', textAlign: RTL_LABEL_ALIGN },
+  tied: { fontSize: 10, color: colors.textMuted, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   since: { fontSize: 11, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
   empty: { ...typography.body, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
 });

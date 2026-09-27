@@ -38,6 +38,7 @@ const slice = (
   tiedRounds: 0,
   shootoutRounds: 0,
   scorelessRounds: 0,
+  countedRounds: 0,
   guestGoals: 0,
   ownGoals: 0,
   players,

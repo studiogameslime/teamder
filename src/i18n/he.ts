@@ -999,10 +999,19 @@ export const he = {
     'הסיכום נוצר בסוף מחזור שנוהל במסך החי. למחזורים ישנים יותר הוא לא קיים.',
   // ── כימיה במועדון ───────────────────────────────────────────────────
   chemistrySection: 'כימיה במועדון',
-  chemistryWinningDuo: 'הצמד המנצח',
-  chemistryRegulars: 'השותפים הקבועים',
+  chemistryWinningDuo: 'הצמד עם הכי הרבה ניצחונות',
+  chemistryRegulars: 'הצמד ששיחק הכי הרבה יחד',
+  // ⚠️ אל תשנה כאן לבד. המוקאפ של מסך המועדון קורא לכרטיס הזה "הכי מחוברים",
+  // אבל אותו מדד הוא גם תואר עונתי שנענד — `deadlyDuo` בראש הקובץ — ו-
+  // seasonAwards.ts דורש שהשניים יסכימו על שם אחד. שינוי כאן בלבד מפצל אותם:
+  // המדליה תגיד "הצמד הקטלני" והכרטיס "הכי מחוברים", על אותו צמד.
   chemistryDeadlyDuo: 'הצמד הקטלני',
-  chemistryWall: 'החומה',
+  // לא תואר עונתי שנענד (רק deadlyDuo הוא כזה), ולכן שינוי השם כאן מוכל.
+  // כל חמש הכותרות פותחות ב"הצמד": בלי זה הן נקראו כדירוג של שחקן יחיד
+  // ("הכי מוצלח", "הכי הרבה ביחד") ולא כעובדה על זוג.
+  chemistryWall: 'צמד הגנת הברזל',
+  chemistryBestRatio: 'הצמד עם אחוז הניצחונות הגבוה ביותר',
+  chemistryMostLosses: 'הצמד עם הכי הרבה הפסדים',
   chemistryRivalry: 'היריבות הגדולה',
   chemistryBalanced: 'היריבות הכי מאוזנת',
   chemistryWinsTogether: (n: number) => `${n} ניצחונות יחד`,
@@ -1019,6 +1028,8 @@ export const he = {
     `${count(n, 'שער נקי אחד', 'שערים נקיים')} יחד`,
   chemistryMeetings: (n: number) => `${n} מפגשים כיריבים`,
   chemistryBalancedLine: (a: number, b: number) => `${a}–${b}`,
+  chemistryWinRateTogether: 'אחוזי ניצחון יחד',
+  chemistryLossesTogether: (n: number) => count(n, 'הפסד אחד יחד', 'הפסדים יחד'),
   chemistryTied: 'שוויון',
   // הבסיס ההיסטורי — כל מספר בכרטיס הזוג נמדד מהתאריך הזה, ולא מעורבב עם
   // נתונים מוקדמים יותר שאין להם אותה רזולוציה.
@@ -4594,4 +4605,76 @@ export const he = {
   chatBlockConfirmBody: (name: string) => `לא תראה יותר את ההודעות של ${name}.`,
   chatBlockDone: 'המשתמש נחסם',
   chatBlockedHidden: (name: string) => `הודעה מוסתרת — חסמת את ${name}`,
+
+  // ─── מסך פרטי המועדון ─────────────────────────────────────────────────────
+  // שיאי המועדון. `clubRecordStreakHint` נאמר במפורש ב"מחזורים" ולא ב"ניצחונות":
+  // longestStreak הוא רצף הגעה, וכל ניסוח שמרמז על ניצחונות משקר על הנתון.
+  clubRecordsTitle: 'שיאי המועדון',
+  // הכיסוי חלקי: שכבת סיכומי הערב התחילה באמצע חיי המוצר, ולכן אלה השיאים
+  // של התקופה שנמדדה ולא של כל הזמנים. נאמר פעם אחת מתחת לכותרת.
+  clubRecordsSince: 'שיאים מאז תחילת המדידה',
+  clubRecordOpenEvening: 'פותח את פרטי המחזור',
+  clubRecordMostGoals: 'המחזור הפורה ביותר',
+  clubRecordMostGoalsHint: 'שערים',
+  clubRecordMostShootouts: 'שיא הכרעות בפנדלים',
+  // "משחקונים" ולא "פנדלים": הנתון סופר משחקונים שהוכרעו בשובר שוויון,
+  // לא בעיטות ולא פנדלים שהובקעו.
+  clubRecordMostShootoutsHint: 'משחקונים',
+  clubRecordLongestEvening: 'המחזור הארוך ביותר',
+  clubRecordLongestEveningHint: 'משחקונים',
+  clubRecordStreak: 'הרצף הארוך ביותר',
+  clubRecordStreakHint: 'מחזורים ברצף',
+  clubRecordRegular: 'הכי מתמיד',
+  clubRecordRegularHint: 'מחזורים',
+  clubRecordAttendance: 'ממוצע משתתפים',
+  clubRecordAttendanceHint: 'למחזור',
+  clubRecordOrganization: 'אחוז ארגון',
+  clubRecordOrganizationHint: 'מהמתוכננים',
+  clubRecordsEmpty: 'עוד אין שיאים — הם יופיעו אחרי המחזורים הראשונים',
+
+  // פילוח תוצאות המשחקונים. שלוש הפרוסות זרות זו לזו: commitRoundStats מונה
+  // shootoutRounds רק כשיש penalties[], ואלה נושאים winnerSide אמיתי ולכן לא
+  // נספרים כתיקו. "רגיל" הוא מה שנשאר.
+  clubResultsTitle: 'איך המשחקונים הסתיימו',
+  clubResultsCenter: 'משחקונים',
+  clubResultsRegular: 'הוכרעו במשחק',
+  clubResultsTie: 'הסתיימו בתיקו',
+  clubResultsShootout: 'הוכרעו בפנדלים',
+  clubResultsScoreless: (n: number, pct: number) =>
+    `${count(n, 'משחקון אחד', 'משחקונים')} הסתיימו 0:0 — ${pct}% מכלל המשחקונים`,
+  // ⚠️ לא "עוד לא הסתיימו משחקונים": המועדון בהחלט שיחק, פשוט תוצאות
+  // המשחקונים טרם נאספו. שני מצבים שונים לחלוטין.
+  clubResultsEmpty: 'תוצאות המשחקונים טרם נאספו',
+  // shootoutRounds ו-scorelessRounds נספרים רק מאז שה-counter עלה לאוויר,
+  // ולכן מחזורים ישנים לא מיוצגים בהם. נאמר, ולא מוסתר.
+  clubResultsPartial: 'הפילוח נספר מהמחזורים האחרונים בלבד',
+
+  // צמדים במועדון. "הכי מחוברים" הוא ה-pick של הבישולים ההדדיים — אותו מדד
+  // שהמוקאפ קורא לו "הכי מחוברים" — ראה ההערה ליד chemistryDeadlyDuo.
+  clubPairsTitle: 'צמדים במועדון',
+  communityStatsPlayers: 'שחקנים',
+  // ארבעת ה"נתונים המעניינים" — ארבע שורות, אותו רכיב, אותה שפה.
+  funAssistedGoals: 'מהגולים במועדון הגיעו אחרי בישול',
+  funScoreless: 'מהמשחקים הסתיימו 0:0',
+  funShootout: 'מהמשחקים הוכרעו בפנדלים',
+  funPenaltyRate: 'מהפנדלים במועדון הסתיימו בגול',
+  funNotMeasuredYet: 'טרם נאספו מספיק נתונים',
+  funMeasuredOver: (counted: number, total: number) =>
+    `נתוני 0:0 ופנדלים מבוססים על ${counted} מתוך ${total} משחקונים`,
+  communityLogoChange: 'החלף לוגו מועדון',
+  communityLogoUpdated: 'הלוגו עודכן',
+  communityLogoUploadFailed: 'העלאת הלוגו נכשלה',
+  communityStatsScopeSeasonPlain: (n: number) => `עונה ${n}`,
+  communityPlayersSearch: 'חיפוש שחקן...',
+  communityPlayersChipAll: 'הכל',
+  communityPlayersChipAdmins: 'מנהלים',
+  communityPlayersChipPlayers: 'שחקנים',
+
+  // הטאבים של מסך המועדון. לא-חבר רואה את אותם שלושה, נעולים — לא מוסתרים.
+  clubTabInfo: 'מידע',
+  clubTabPlayers: 'שחקנים',
+  clubTabStats: 'סטטיסטיקות',
+  clubTabLockedTitle: 'זה פתוח לחברי המועדון',
+  clubTabLockedBody: 'הצטרפו למועדון כדי לראות את הסגל ואת הסטטיסטיקות.',
+  clubPairsEmpty: 'עוד אין מספיק משחקונים כדי לזהות צמדים',
 } as const;

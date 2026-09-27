@@ -1278,6 +1278,8 @@ export const gameService = {
     tiedRounds: number;
     /** Mini-games decided by a penalty shootout (for the "% by penalties" fact). */
     shootoutRounds: number;
+    /** Mini-games the outcome counters above were actually measured over. */
+    countedRounds: number;
     /** Mini-games that ended 0:0 in regulation (for the "% ended 0:0" fact). */
     scorelessRounds: number;
     /** Goals scored by guests across the club (for the "גולים ע"י אורחים" fact). */
@@ -1286,7 +1288,7 @@ export const gameService = {
     ownGoals: number;
     players: ChampionshipRow[];
   }> {
-    const empty = { totalGoals: 0, totalRounds: 0, tiedRounds: 0, shootoutRounds: 0, scorelessRounds: 0, guestGoals: 0, ownGoals: 0, players: [] as ChampionshipRow[] };
+    const empty = { totalGoals: 0, totalRounds: 0, tiedRounds: 0, shootoutRounds: 0, scorelessRounds: 0, countedRounds: 0, guestGoals: 0, ownGoals: 0, players: [] as ChampionshipRow[] };
     if (!groupId) return empty;
     if (USE_MOCK_DATA) {
       const players: ChampionshipRow[] = mockPlayers.slice(0, 8).map((p, i) => {
@@ -1350,6 +1352,10 @@ export const gameService = {
         totalRounds: 210,
         tiedRounds: 34,
         shootoutRounds: 11,
+        // The fixture is deliberately PARTIAL: 210 rounds played, 120 of them
+        // measured. That is the real-world shape for any club older than the
+        // counters, and it is what the "מתוך N" caption is there to say.
+        countedRounds: 120,
         scorelessRounds: 6,
         guestGoals: 7,
         ownGoals: 4,
@@ -1382,6 +1388,7 @@ export const gameService = {
             rounds?: number;
             tiedRounds?: number;
             shootoutRounds?: number;
+            countedRounds?: number;
             scorelessRounds?: number;
             guestGoals?: number;
             ownGoals?: number;
@@ -1390,13 +1397,14 @@ export const gameService = {
       const totalRounds = cs?.rounds ?? 0;
       const tiedRounds = cs?.tiedRounds ?? 0;
       const shootoutRounds = cs?.shootoutRounds ?? 0;
+      const countedRounds = cs?.countedRounds ?? 0;
       const scorelessRounds = cs?.scorelessRounds ?? 0;
       // Goals scored by GUESTS across the club (separate from totalGoals, which
       // is real ranked players only). Drives the "X גולים ע"י אורחים" fun fact.
       const guestGoals = cs?.guestGoals ?? 0;
       // Own goals across the club → the "X שערים עצמיים" fun fact.
       const ownGoals = cs?.ownGoals ?? 0;
-      return { totalGoals, totalRounds, tiedRounds, shootoutRounds, scorelessRounds, guestGoals, ownGoals, players };
+      return { totalGoals, totalRounds, tiedRounds, shootoutRounds, scorelessRounds, countedRounds, guestGoals, ownGoals, players };
     } catch (err) {
       logError('getCommunityChampionship', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityChampionship failed', err);
@@ -1425,28 +1433,43 @@ export const gameService = {
    * 1 read instead of N+1. Members only: the doc is member-readable, and a
    * denial here is indistinguishable from a club that has scored nothing.
    */
-  async getCommunityGoalTotal(groupId: GroupId): Promise<number> {
-    if (!groupId) return 0;
+  /**
+   * The club's running goal and mini-game totals — ONE document,
+   * `communityStats/{groupId}`.
+   *
+   * Both numbers come off the same doc the goal total was already reading, so
+   * asking for the second one costs nothing: the same server batch writes
+   * `goals` and `rounds` together. The club screen needs both for its
+   * "נתוני מועדון" card, and fetching `rounds` any other way means the
+   * championship rollup — one read per person who ever played for the club.
+   */
+  async getCommunityTotals(
+    groupId: GroupId,
+  ): Promise<{ goals: number; rounds: number }> {
+    if (!groupId) return { goals: 0, rounds: 0 };
     if (USE_MOCK_DATA) {
-      // The same number the mock championship rows add up to, so the emulator
+      // The same numbers the mock championship rows add up to, so the emulator
       // shows the badges at the tier it always did.
-      return mockPlayers
-        .slice(0, 8)
-        .reduce((a, _p, i) => a + Math.max(0, 58 - i * 7), 0);
+      return {
+        goals: mockPlayers
+          .slice(0, 8)
+          .reduce((a, _p, i) => a + Math.max(0, 58 - i * 7), 0),
+        rounds: 210,
+      };
     }
     try {
       const db = getFirebase().db;
       const snap = await getDoc(doc(db, 'communityStats', groupId));
-      const goals = snap.exists()
-        ? (snap.data() as { goals?: number }).goals
-        : 0;
-      return typeof goals === 'number' && Number.isFinite(goals)
-        ? Math.max(0, goals)
-        : 0;
+      const d = snap.exists()
+        ? (snap.data() as { goals?: number; rounds?: number })
+        : {};
+      const n = (v: unknown) =>
+        typeof v === 'number' && Number.isFinite(v) ? Math.max(0, v) : 0;
+      return { goals: n(d.goals), rounds: n(d.rounds) };
     } catch (err) {
-      logError('getCommunityGoalTotal', err, { groupId });
-      if (__DEV__) console.warn('[gameService] getCommunityGoalTotal failed', err);
-      return 0;
+      logError('getCommunityTotals', err, { groupId });
+      if (__DEV__) console.warn('[gameService] getCommunityTotals failed', err);
+      return { goals: 0, rounds: 0 };
     }
   },
 

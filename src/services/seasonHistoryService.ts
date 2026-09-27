@@ -228,6 +228,7 @@ function mockTable(): FinishedSeasonTable {
     totalGoals: 642,
     totalRounds: 118,
     tiedRounds: 21,
+    countedRounds: 118,
     shootoutRounds: 6,
     scorelessRounds: 9,
     guestGoals: 37,

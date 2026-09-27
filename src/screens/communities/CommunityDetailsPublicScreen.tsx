@@ -34,6 +34,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { CommunityStadiumHero } from '@/components/community/CommunityStadiumHero';
+import { ClubTabs } from '@/components/club/ClubTabs';
+import { NextGameCard } from '@/components/community/NextGameCard';
 import { toast } from '@/components/Toast';
 import { successHaptic } from '@/utils/haptics';
 import { groupService } from '@/services';
@@ -50,7 +53,7 @@ import {
   openWhatsApp,
 } from '@/services/whatsappService';
 import { Game, GroupPublic, WeekdayIndex } from '@/types';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { RTL_LABEL_ALIGN, clubAccent, clubSurface, colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -324,13 +327,20 @@ export function CommunityDetailsPublicScreen() {
   };
 
   // CTA label depends on `isOpen` — auto-join vs admin approval.
+  // The soonest upcoming game, from the list this screen already loaded.
+  const nextPublicGame = upcomingGames.length
+    ? [...upcomingGames].sort((a, b) => (a.startsAt ?? 0) - (b.startsAt ?? 0))[0]
+    : null;
+
   const cta = group.isOpen ? he.communityJoinAuto : he.communityRequestToJoin;
   const ctaDisabled = isPending || busyJoin;
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+    // No 'top' any more: the hero claims the status-bar inset itself, exactly
+    // as it does on the member screen. Claiming it here as well pushed the
+    // whole hero down by the height of the notch.
+    <SafeAreaView style={styles.root} edges={['bottom']}>
       {authAction.sheet}
-      <ScreenHeader title={group.name} />
       <ScrollView
         contentContainerStyle={styles.content}
         // "I press buttons and nothing is pressed; I scroll a little and then
@@ -347,11 +357,78 @@ export function CommunityDetailsPublicScreen() {
         // and only an unclaimed tap falls through.
         keyboardShouldPersistTaps="handled"
       >
+        {/* The same hero and the same three tabs a member sees. A visitor's
+            club must not be a different-looking screen — that was the whole
+            complaint. What differs is what the tabs can open, and that is a
+            real boundary: this screen reads `/groupsPublic`, the projection,
+            because the rules do not let a non-member read `/groups` at all.
+            So the two members-only tabs render LOCKED rather than absent, and
+            tapping one explains what opens it. */}
+        <View style={styles.heroBlock}>
+          <CommunityStadiumHero
+            name={group.name}
+            memberCount={group.memberCount}
+            coverUrl={group.coverPhotoUrl}
+            coverImageId={group.coverImageId}
+            logoUrl={group.logoUrl}
+            onBackPress={() => nav.goBack()}
+            // No hamburger for a visitor — every item in it is an admin or
+            // member action, so the button would open an empty sheet.
+          />
+          {/* Hero and tabs are ONE block: the tab strip rides up over the
+              photo by its own corner radius, and the scroll's `gap` between
+              siblings would have prised them apart. */}
+          <ClubTabs
+            tabs={[
+              { key: 'info', label: he.clubTabInfo },
+              { key: 'players', label: he.clubTabPlayers, locked: true },
+              { key: 'stats', label: he.clubTabStats, locked: true },
+            ]}
+            active="info"
+            onChange={() => {}}
+            onLockedPress={() => toast.info(he.clubTabLockedBody)}
+          />
+        </View>
+
+        {/* ── המחזור הקרוב ──
+            The visitor gets the member's Information tab, in the member's
+            order, as far as the permissions reach. This card costs NOTHING
+            new: `upcomingGames` was already being fetched for the "ימי מחזור"
+            and "שעת מחזור" lines below and simply went undrawn. It is not
+            tappable — opening the game itself is a members-only screen, and a
+            card that leads to a locked door is worse than a card that does
+            not lead anywhere. */}
+        {nextPublicGame ? (
+          <View style={styles.section}>
+            {/* No heading of our own: the card carries "המחזור הקרוב" inside
+                it, exactly as it does on the member's tab, and a second one
+                above it said the same words twice. */}
+            <NextGameCard
+              startsAt={nextPublicGame.startsAt}
+              fieldName={nextPublicGame.fieldName ?? group.fieldName ?? ''}
+              playersCount={nextPublicGame.players?.length}
+              maxPlayers={nextPublicGame.maxPlayers}
+              format={nextPublicGame.format}
+              fieldType={nextPublicGame.fieldType}
+            />
+          </View>
+        ) : null}
+
+        {/* ── תיאור המועדון ── same card as the member's, same heading. */}
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>{he.communityDetailsAbout}</Text>
+          <Text style={styles.sectionTitle}>{he.communityDescriptionTitle}</Text>
+          <Text style={styles.clubName}>{group.name}</Text>
           {group.description ? (
             <Text style={styles.bodyText}>{group.description}</Text>
           ) : null}
+        </Card>
+
+        {/* ── נתוני מועדון ── the public facts, in the member's card. The
+            member's four numbers (גולים · מחזורים · משחקים) live in
+            `communityStats`, which the rules hand to members only, so this
+            card carries what the public projection actually holds. */}
+        <Card style={styles.section}>
+          <Text style={styles.sectionTitle}>{he.communityStatsTitle}</Text>
           <MetaRow
             icon="location-outline"
             label={he.communityDetailsCity}
@@ -451,9 +528,27 @@ function MetaRow({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+  // Local club ground — cool and a step below white, so the cards on it
+  // have an edge. See `clubSurface`.
+  root: { flex: 1, backgroundColor: clubSurface.ground },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl },
-  section: { gap: spacing.xs },
+
+  // The hero is full-bleed; the scroll's content container is not. Undo its
+  // gutter for this one child rather than un-padding the whole page.
+  // The hero is full-bleed; this scroll's content container is not. Undo its
+  // gutter and its top padding for the hero block alone.
+  heroBlock: {
+    marginHorizontal: -spacing.lg,
+    marginTop: -spacing.lg,
+  },
+
+  section: { gap: spacing.sm },
+  clubName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+  },
   sectionTitle: {
     ...typography.h3,
     color: colors.text,

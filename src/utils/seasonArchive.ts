@@ -39,6 +39,8 @@ export interface FinishedSeasonTable {
   tiedRounds: number;
   shootoutRounds: number;
   scorelessRounds: number;
+  /** Mini-games the two counters above were measured over. */
+  countedRounds: number;
   guestGoals: number;
   ownGoals: number;
   players: ChampionshipRow[];
@@ -122,6 +124,7 @@ export function parseSeasonTable(
     tiedRounds: num(totals.tiedRounds),
     shootoutRounds: num(totals.shootoutRounds),
     scorelessRounds: num(totals.scorelessRounds),
+    countedRounds: num(totals.countedRounds),
     guestGoals: num(totals.guestGoals),
     ownGoals: num(totals.ownGoals),
     players: players.sort((a, b) => a.uid.localeCompare(b.uid)),

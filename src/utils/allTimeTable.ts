@@ -20,6 +20,7 @@ export interface ClubTotals {
   tiedRounds: number;
   shootoutRounds: number;
   scorelessRounds: number;
+  countedRounds: number;
   guestGoals: number;
   ownGoals: number;
 }
@@ -83,6 +84,7 @@ export function mergeAllTime(slices: readonly TableSlice[]): TableSlice {
     tiedRounds: 0,
     shootoutRounds: 0,
     scorelessRounds: 0,
+    countedRounds: 0,
     guestGoals: 0,
     ownGoals: 0,
   };
@@ -94,6 +96,9 @@ export function mergeAllTime(slices: readonly TableSlice[]): TableSlice {
     totals.tiedRounds += n(s.tiedRounds);
     totals.shootoutRounds += n(s.shootoutRounds);
     totals.scorelessRounds += n(s.scorelessRounds);
+    // Summed like the rest: all-time's denominator is the sum of the samples
+    // each season was measured over, not the sum of rounds played.
+    totals.countedRounds += n(s.countedRounds);
     totals.guestGoals += n(s.guestGoals);
     totals.ownGoals += n(s.ownGoals);
     for (const [uid, name] of Object.entries(s.names ?? {})) {
