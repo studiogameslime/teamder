@@ -72,6 +72,14 @@ const KEYS = {
   // already carries it `true`, so reusing it would hide the new flow from the
   // entire user base on upgrade.
   ENTRY_ORGANIC_COMPLETED: 'footy.entry.organicCompleted',
+  // How long the last successful cold boot took on THIS device, in ms.
+  //
+  // The launch screen's progress bar animates against it. There is no way to
+  // know in advance how long a boot will take, but the previous boot on the
+  // same phone, on the same network, is a far better estimate than a guess —
+  // and it self-corrects: a slow device settles on a slow bar, a fast one on
+  // a fast bar. Smoothed across runs so a single outlier does not swing it.
+  BOOT_DURATION_MS: 'footy.boot.durationMs',
 } as const;
 
 /**
@@ -103,6 +111,38 @@ export type PendingInvite =
   | ({ type: 'app'; invitedBy?: string } & AcquisitionTag);
 
 export const storage = {
+  /**
+   * Last cold-boot duration, clamped to a sane band.
+   *
+   * Returns null on a first run or a bad read, and the caller falls back to a
+   * default. The clamp matters: a boot that took 40s because the phone was in
+   * a lift must not leave every future launch with a bar that crawls.
+   */
+  async getBootDurationMs(): Promise<number | null> {
+    try {
+      const raw = await AsyncStorage.getItem(KEYS.BOOT_DURATION_MS);
+      const n = raw ? Number(raw) : NaN;
+      if (!Number.isFinite(n)) return null;
+      return Math.min(9000, Math.max(700, n));
+    } catch {
+      return null;
+    }
+  },
+  /** Blend the new measurement into the stored one, 60/40 toward history. */
+  async recordBootDurationMs(ms: number): Promise<void> {
+    try {
+      if (!Number.isFinite(ms) || ms <= 0) return;
+      const prev = await this.getBootDurationMs();
+      const next = prev == null ? ms : prev * 0.6 + ms * 0.4;
+      await AsyncStorage.setItem(
+        KEYS.BOOT_DURATION_MS,
+        String(Math.round(Math.min(9000, Math.max(700, next)))),
+      );
+    } catch {
+      // Best-effort. A failure costs one less-accurate bar, nothing else.
+    }
+  },
+
   // Organic first-run entry — see ENTRY_ORGANIC_COMPLETED above for what the
   // flag means. Reads default to `false` on a failure: showing Welcome once
   // too often is a small annoyance, skipping it forever is the feature not

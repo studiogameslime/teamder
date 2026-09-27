@@ -37,11 +37,14 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { SPLASH_IMAGE } from '@/components/entry/SplashHero';
+import { storage } from '@/services/storage';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 
 const MIN_HOLD_MS = 1400;
+/** First run, or an unreadable measurement. A middling phone's cold boot. */
+const DEFAULT_BOOT_MS = 2600;
 const FADE_MS = 320;
 /**
  * The bar and the button occupy the SAME slot, at the same height, so the one
@@ -53,58 +56,81 @@ const BAR_H = 10;
 // ─── Pure visual ─────────────────────────────────────────────────────────
 
 /**
- * The launch artwork plus a bar that fills ONCE, against real boot progress.
+ * The launch artwork plus a bar that fills ONCE, over the time boot actually
+ * takes on this device.
  *
- * ─── Why it is not a loop any more ──────────────────────────────────────
+ * ─── Two earlier versions, and why both were wrong ──────────────────────
  *
- * The first version swept 0→100 repeatedly. It was honest about not knowing
- * the fraction, but it read as the app loading several times over, which is a
- * worse lie than the one it was avoiding.
+ * The first swept 0→100 on a loop. It was honest about not knowing the
+ * fraction, but it read as the app loading several times over.
  *
- * `progress` is the share of the splash's OWN readiness gates that have
- * passed — auth restore, the entry flag, group hydration. Every one is a real
- * state transition, so the bar only ever moves forward and it finishes exactly
- * when the app does.
+ * The second counted "readiness gates". That looked principled and was not:
+ * on a fresh install `currentUserId` is null, so the group-hydration gate
+ * passed for free at mount, and the other two flipped together — the bar went
+ * 33% → 100% in one jump and then sat at the end waiting. It also was not
+ * monotonic underneath, because that gate flips BACK to false the moment a
+ * session appears.
  *
- * ─── The creep, and why it is not a fake percentage ─────────────────────
+ * ─── What it does now ───────────────────────────────────────────────────
  *
- * Between two gates there is nothing to report, and a bar frozen for three
- * seconds looks broken. So within a segment the fill eases toward — but never
- * reaches — the next gate: it covers at most 60% of the gap and decelerates.
- * It can therefore never claim a milestone that has not happened, and it can
- * never reach the end before the app is genuinely ready.
+ * There is no way to know in advance how long a boot will take. But the
+ * previous boot ON THIS PHONE is a real measurement, and it is a far better
+ * estimate than a guess: the bar animates across `expectedMs`, which is the
+ * smoothed duration of past launches, so on a slow device it is a slow bar and
+ * on a fast one a fast bar. Every launch measures itself and feeds the next.
+ *
+ * Two guards keep it from lying:
+ *
+ *   • it stops at 92% and then creeps, so it can never show a full bar while
+ *     the app is still working. Completion is driven by `ready`, not by time;
+ *   • if boot finishes early the bar jumps to full and the screen hands over —
+ *     the estimate is never allowed to hold anybody back.
  */
 export function SplashVisual({
   showBar = true,
-  progress = 0,
+  ready = false,
+  expectedMs,
+  finishMs = 260,
 }: {
   showBar?: boolean;
-  progress?: number;
+  ready?: boolean;
+  expectedMs: number | null;
+  /**
+   * How long the bar has left to complete in. The screen never dismisses
+   * before its minimum hold, so on a warm boot — where `ready` lands almost
+   * immediately — completing in 260ms would leave a full bar sitting there
+   * doing nothing for a second, which is the "fills and waits" the whole
+   * rework is about. The caller passes the hold it still owes.
+   */
+  finishMs?: number;
 }) {
   const { width, height } = useWindowDimensions();
 
   const grow = useSharedValue(0.04);
+  const startedRef = useRef(false);
   useEffect(() => {
-    const target = Math.max(0.04, Math.min(1, progress));
-    // Monotonic by construction: never animate below where the bar already is,
-    // so a creep that has run ahead of its segment does not snap backwards
-    // when the next gate lands.
-    const from = Math.max(grow.value, 0);
-    if (target >= 1) {
-      grow.value = withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) });
+    if (ready) {
+      // Real completion, paced to land exactly as the screen hands over — so
+      // the bar is still travelling right up to the moment the button appears,
+      // instead of finishing early and waiting.
+      cancelAnimation(grow);
+      grow.value = withTiming(1, {
+        duration: Math.max(240, finishMs),
+        easing: Easing.out(Easing.cubic),
+      });
       return;
     }
-    const settled = Math.max(from, target);
-    const gap = (1 - settled) * 0.6;
+    if (expectedMs == null || startedRef.current) return;
+    startedRef.current = true;
     grow.value = withSequence(
-      withTiming(settled, { duration: 380, easing: Easing.out(Easing.cubic) }),
-      // The long, decelerating reach toward the next gate. Capped short of it.
-      withTiming(Math.min(0.94, settled + gap), {
-        duration: 6000,
-        easing: Easing.out(Easing.quad),
-      }),
+      // The estimate. Near-linear, because a boot's cost is spread across it
+      // rather than front-loaded, and an eased curve would read as stalling.
+      withTiming(0.92, { duration: expectedMs, easing: Easing.linear }),
+      // Past the estimate the honest thing is "slower than usual, still
+      // working" — so it keeps inching without ever arriving.
+      withTiming(0.985, { duration: 14000, easing: Easing.out(Easing.quad) }),
     );
-  }, [progress, grow]);
+  }, [ready, expectedMs, finishMs, grow]);
 
   useEffect(() => () => cancelAnimation(grow), [grow]);
 
@@ -151,17 +177,10 @@ interface Props {
    * gives way to a button and nothing happens until they tap it.
    */
   awaitStart?: boolean;
-  /** Share of the boot gates that have passed, 0..1. Drives the bar. */
-  progress?: number;
   onFinish: () => void;
 }
 
-export function SplashScreen({
-  ready,
-  awaitStart = false,
-  progress = 0,
-  onFinish,
-}: Props) {
+export function SplashScreen({ ready, awaitStart = false, onFinish }: Props) {
   const rootOpacity = useSharedValue(1);
   const rootScale = useSharedValue(1);
   const ctaOpacity = useSharedValue(0);
@@ -169,6 +188,35 @@ export function SplashScreen({
   const heldEnoughRef = useRef(false);
   const mountTsRef = useRef(Date.now());
   const [showCta, setShowCta] = React.useState(false);
+
+  // How long boot took last time on this device. Read once, and the bar waits
+  // the few milliseconds for it rather than starting on a wrong estimate and
+  // having to retarget. `null` until it lands; the fallback covers a first run
+  // and a failed read.
+  const [expectedMs, setExpectedMs] = React.useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void storage
+      .getBootDurationMs()
+      // Never shorter than the hold: the screen is up for MIN_HOLD_MS no
+      // matter how fast boot is, so a bar that finished sooner would just sit
+      // at the end.
+      .then((v) => alive && setExpectedMs(Math.max(MIN_HOLD_MS, v ?? DEFAULT_BOOT_MS)))
+      .catch(() => alive && setExpectedMs(Math.max(MIN_HOLD_MS, DEFAULT_BOOT_MS)));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // And this launch measures itself, so the next one is better calibrated.
+  // Recorded once, at the moment the app is genuinely ready — not when the
+  // screen goes away, which for a new person is whenever they tap.
+  const measuredRef = useRef(false);
+  useEffect(() => {
+    if (!ready || measuredRef.current) return;
+    measuredRef.current = true;
+    void storage.recordBootDurationMs(Date.now() - mountTsRef.current);
+  }, [ready]);
 
   useEffect(() => {
     ExpoSplash.hideAsync().catch(() => {});
@@ -241,7 +289,15 @@ export function SplashScreen({
     >
       {/* Once the hold is over the bar is full by definition — the gates it
           tracks are what `ready` is made of. */}
-      <SplashVisual showBar={!showCta} progress={ready ? 1 : progress} />
+      <SplashVisual
+        showBar={!showCta}
+        ready={ready}
+        expectedMs={expectedMs}
+        finishMs={Math.max(
+          240,
+          MIN_HOLD_MS - (Date.now() - mountTsRef.current),
+        )}
+      />
       {showCta ? (
         <SafeAreaView edges={['bottom']} style={styles.ctaBar} pointerEvents="box-none">
           <Animated.View style={[styles.ctaSlot, ctaStyle]}>

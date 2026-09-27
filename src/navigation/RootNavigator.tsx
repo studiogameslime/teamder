@@ -598,11 +598,14 @@ export function RootNavigator() {
   );
 }
 
-// Fallback splash for the rare case where RootNavigator re-renders
-// with !groupHydrated AFTER the parent SplashScreen has already faded
-// out (e.g. signing out + back in mid-session). Reuses the same
-// visual as the boot splash so the user never sees a different
-// loader — one big ball, end to end.
+// Fallback splash for the rare case where RootNavigator re-renders with
+// `!groupHydrated` AFTER the parent SplashScreen has already faded out (e.g.
+// signing out and back in mid-session). Reuses the same artwork so the person
+// never sees a different loader.
+//
+// No bar here on purpose. This is a re-render mid-session, not a cold boot:
+// there is no measured duration that describes it, and a second bar filling
+// from zero would suggest the app had started over.
 function Splash() {
-  return <SplashVisual />;
+  return <SplashVisual showBar={false} expectedMs={null} />;
 }

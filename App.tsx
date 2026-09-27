@@ -417,24 +417,6 @@ export default function App() {
   const userHydrated = useUserStore((s) => s.hydrated);
   const groupHydrated = useGroupStore((s) => s.hydrated);
 
-  // ── Real boot progress, not a loop ──────────────────────────────────────
-  //
-  // The launch bar used to sweep 0→100 over and over, which reads as the app
-  // loading several times instead of once. These are the ACTUAL gates the
-  // splash waits on — the same three that make up `ready` below — so counting
-  // how many have passed is genuine progress, monotonic by construction, and
-  // it completes exactly once.
-  //
-  // Nothing is invented: each flag is a state transition that really happened.
-  // A signed-OUT launch has no group state to hydrate (`hydrateGroup` only
-  // runs once a currentUser exists), so that gate counts as passed for them
-  // rather than pinning the bar at two thirds forever.
-  const bootGates = [
-    userHydrated,
-    entryOrganicCompleted !== null,
-    !currentUserId || groupHydrated,
-  ];
-  const bootProgress = bootGates.filter(Boolean).length / bootGates.length;
 
   // Keep the paired Wear OS watch in sync with the user's current game
   // state (live stopwatch / next game / not-registered). Android-only,
@@ -1142,7 +1124,6 @@ export default function App() {
             (!currentUserId || groupHydrated)
           }
           awaitStart={needsWelcome}
-          progress={bootProgress}
           onFinish={handleSplashFinish}
         />
       ) : null}

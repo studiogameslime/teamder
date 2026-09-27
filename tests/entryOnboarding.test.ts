@@ -288,29 +288,47 @@ describe('the launch artwork', () => {
     expect(splash).toMatch(/ctaSlot: \{ height: CTA_SLOT_H/);
   });
 
-  it('fills the bar ONCE against real boot gates, never on a loop', () => {
+  it('fills once over a MEASURED duration, not on a loop', () => {
     const splash = read(path.join('src', 'screens', 'SplashScreen.tsx'));
-    const app = read('App.tsx');
-    // The gates are the same three `ready` is made of, so the bar finishes
-    // exactly when the app does.
-    expect(app).toContain('const bootGates = [');
-    expect(app).toContain('progress={bootProgress}');
     // A repeating sweep read as the app loading several times over.
     expect(splash).not.toContain('withRepeat');
+    expect(splash).toContain('withTiming(0.92, { duration: expectedMs');
   });
 
-  it('never moves the bar backwards', () => {
+  it('estimates from THIS device\'s own previous boots', () => {
     const splash = read(path.join('src', 'screens', 'SplashScreen.tsx'));
-    expect(splash).toContain('const settled = Math.max(from, target);');
+    const store = read(path.join('src', 'services', 'storage.ts'));
+    expect(store).toContain("BOOT_DURATION_MS: 'footy.boot.durationMs'");
+    expect(splash).toContain('.getBootDurationMs()');
+    // and every launch feeds the next one
+    expect(splash).toContain('storage.recordBootDurationMs(');
   });
 
-  it('creeps toward the next gate but can never reach it', () => {
+  it('clamps a freak measurement so one bad boot cannot poison every launch', () => {
+    const store = read(path.join('src', 'services', 'storage.ts'));
+    expect(store).toContain('Math.min(9000, Math.max(700, n))');
+    // smoothed, so a single outlier only moves it part of the way
+    expect(store).toContain('prev * 0.6 + ms * 0.4');
+  });
+
+  it('never finishes before the screen does, even on a warm boot', () => {
     const splash = read(path.join('src', 'screens', 'SplashScreen.tsx'));
-    // 60% of the remaining gap, hard-capped below 1 — so the fill cannot
-    // claim a milestone that has not happened, or finish before the app is
-    // genuinely ready.
-    expect(splash).toContain('const gap = (1 - settled) * 0.6;');
-    expect(splash).toContain('Math.min(0.94, settled + gap)');
+    // The screen holds for MIN_HOLD_MS regardless of how fast boot is. A bar
+    // that completed in 260ms would then sit full and idle — the exact
+    // "fills and waits" this rework exists to remove.
+    expect(splash).toContain('Math.max(MIN_HOLD_MS, v ?? DEFAULT_BOOT_MS)');
+    expect(splash).toContain('MIN_HOLD_MS - (Date.now() - mountTsRef.current)');
+    expect(splash).toContain('duration: Math.max(240, finishMs)');
+  });
+
+  it('cannot reach full on the estimate alone — only `ready` completes it', () => {
+    const splash = read(path.join('src', 'screens', 'SplashScreen.tsx'));
+    const at = splash.indexOf('if (ready) {');
+    expect(at).toBeGreaterThan(-1);
+    // the timed path stops short
+    expect(splash).toContain('withTiming(0.985,');
+    // and the ready path is the only one that animates to 1
+    expect(splash.slice(at, at + 320)).toContain('withTiming(1,');
   });
 
   it('fills the bar right-to-left without any flippable coordinate', () => {
