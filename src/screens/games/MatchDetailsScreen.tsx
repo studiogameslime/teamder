@@ -2546,6 +2546,30 @@ export function MatchDetailsScreen() {
   // Who may read the finished-evening shortcuts. Playing here is the obvious
   // case; club membership is the one that was missing — a member left off the
   // roster could not open the club's own evening.
+  /**
+   * The two summary CTAs, through one door.
+   *
+   * They were `nav.navigate(name, { gameId: game.id })` written twice. If
+   * `game.id` is ever empty the navigation still "succeeds" — the destination
+   * mounts, finds no id, loads nothing — and the report that reaches us is
+   * "the button does nothing", with no error anywhere to look at. A button
+   * that cannot do its job should say so out loud, not fail quietly.
+   */
+  //
+  // A plain function, NOT a useCallback: everything down here sits below the
+  // screen's early returns, and a hook past one of those changes the hook
+  // count between renders — `tests/hooksAfterEarlyReturn` fails the build for
+  // it, correctly. Nothing memoises this handler anyway.
+  const openSummary = (screen: 'EveningSummary' | 'RoundSummary') => {
+    const id = game?.id || gameId;
+    if (!id) {
+      logError('matchSummaryCta', new Error('missing gameId'), { screen });
+      toast.error(he.summaryOpenFailed);
+      return;
+    }
+    nav.navigate(screen, { gameId: id });
+  };
+
   const viewerPlayedHere = !!user && (game.players ?? []).includes(user.id);
   const viewerIsClubMember =
     !!user && !!game.groupId && myCommunities.some((c) => c.id === game.groupId);
@@ -3066,7 +3090,7 @@ export function MatchDetailsScreen() {
                   screen. */}
               {viewerPlayedHere ? (
                 <Pressable
-                  onPress={() => nav.navigate('EveningSummary', { gameId: game.id })}
+                  onPress={() => openSummary('EveningSummary')}
                   style={({ pressed }) => [
                     styles.summaryCta,
                     pressed && { opacity: 0.9 },
@@ -3091,7 +3115,7 @@ export function MatchDetailsScreen() {
                   predates the feature, which is honest and rare enough not to
                   warrant hiding the button behind a probe read. */}
               <Pressable
-                onPress={() => nav.navigate('RoundSummary', { gameId: game.id })}
+                onPress={() => openSummary('RoundSummary')}
                 style={({ pressed }) => [
                   styles.roundSummaryCta,
                   pressed && { opacity: 0.9 },

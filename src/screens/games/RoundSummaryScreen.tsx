@@ -56,7 +56,7 @@ export function RoundSummaryScreen() {
           // the selection rules are picking the right ones.
           logEvent(AnalyticsEvent.ScreenView, {
             screen: 'RoundSummary',
-            events: s.events.length,
+            events: (s.events ?? []).length,
             mini_games: s.stats.rounds,
           });
           const ids = new Set<string>();
@@ -176,9 +176,9 @@ export function RoundSummaryScreen() {
           </Section>
         ) : null}
 
-        {summary.teamHighlights.best.length > 0 ? (
+        {(summary.teamHighlights?.best ?? []).length > 0 ? (
           <Section title={he.roundSummaryTeams}>
-            {summary.teamHighlights.best.map((t) => (
+            {(summary.teamHighlights?.best ?? []).map((t) => (
               <Line
                 key={`b${t.colourIndex}`}
                 icon="🏆"
@@ -186,7 +186,7 @@ export function RoundSummaryScreen() {
                 text={he.roundSummaryTeamBest(teamLabel(t.colourIndex), t.wins)}
               />
             ))}
-            {summary.teamHighlights.worst.map((t) => (
+            {(summary.teamHighlights?.worst ?? []).map((t) => (
               <Line
                 key={`w${t.colourIndex}`}
                 icon="📉"
@@ -208,8 +208,8 @@ export function RoundSummaryScreen() {
                 summary.pairHighlight.goals,
               )}
             />
-            {summary.pairHighlight.breakdown.length > 1
-              ? summary.pairHighlight.breakdown.map((b) => (
+            {(summary.pairHighlight.breakdown ?? []).length > 1
+              ? (summary.pairHighlight.breakdown ?? []).map((b) => (
                   <Text key={`${b.assisterId}${b.scorerId}`} style={styles.legText}>
                     {he.roundSummaryPairLeg(
                       nameOf(b.assisterId) ?? '',

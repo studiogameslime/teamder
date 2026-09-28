@@ -22,6 +22,46 @@ import type { RoundSummary } from '@/utils/roundSummary';
 import type { EveningStat } from '@/utils/eveningRecords';
 import { mockRoundSummary, mockEveningStats } from '@/data/mockRoundSummary';
 
+/**
+ * Give the screen the shape it is typed as.
+ *
+ * `snap.data() as RoundSummary` was a promise, not a check. The screen reads
+ * `teamHighlights.best.length`, `pairHighlight.breakdown.length` and
+ * `events.length` straight off it, so a document written without one of those
+ * — an older sealing function, a partial write, a field added later — threw
+ * `Cannot read property 'length' of undefined` and the app's root error
+ * boundary replaced the WHOLE UI with "משהו השתבש". From the outside that is
+ * indistinguishable from a button that does nothing.
+ *
+ * Proven, not theorised: seeding a summary without `teamHighlights.best`
+ * reproduced exactly that on a device. Every one of the 26 documents in
+ * production happens to be complete today, which is a property of the
+ * function that writes them and not a guarantee the reader may rely on.
+ *
+ * Missing pieces become empty, never undefined. An empty array renders as an
+ * absent section, which is the honest thing to show for a fact the evening
+ * does not carry.
+ */
+function normalise(raw: unknown): RoundSummary {
+  const d = (raw ?? {}) as Partial<RoundSummary> & Record<string, unknown>;
+  const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  const th = (d.teamHighlights ?? {}) as Partial<RoundSummary['teamHighlights']>;
+  const ph = d.pairHighlight as RoundSummary['pairHighlight'];
+  return {
+    ...(d as RoundSummary),
+    events: arr(d.events),
+    leaders: (d.leaders ?? {}) as RoundSummary['leaders'],
+    stats: (d.stats ?? {}) as RoundSummary['stats'],
+    teamHighlights: {
+      best: arr(th.best),
+      worst: arr(th.worst),
+    },
+    // A pair with no breakdown is still a pair worth naming; only the leg
+    // list has to be safe to iterate.
+    pairHighlight: ph ? { ...ph, breakdown: arr(ph.breakdown) } : null,
+  };
+}
+
 export const roundSummaryService = {
   /**
    * The club's summary for one evening, or null when there is none.
@@ -113,7 +153,7 @@ export const roundSummaryService = {
     try {
       const snap = await getDoc(doc(getFirebase().db, 'roundSummaries', gameId));
       if (!snap.exists()) return null;
-      return snap.data() as RoundSummary;
+      return normalise(snap.data());
     } catch (err) {
       // A member of another club reading a shared link is denied by the rules;
       // that is the rule working, not an error worth reporting.

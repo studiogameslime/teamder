@@ -203,6 +203,9 @@ export const he = {
   liveMatchNotFound: 'המחזור לא נמצא או הוסר.',
 
   // Global error boundary — fallback UI when a React tree crashes.
+  // A CTA that cannot do its job says so. Silence reads as a dead button and
+  // costs an evening of guessing at both ends.
+  summaryOpenFailed: 'לא הצלחנו לפתוח את הסיכום. נסה שוב.',
   errorBoundaryTitle: 'משהו השתבש',
   errorBoundaryBody:
     'נתקלנו בתקלה לא צפויה. אנחנו מצטערים על אי הנוחות. נסה שוב, או הפעל מחדש את האפליקציה.',
