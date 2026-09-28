@@ -150,6 +150,11 @@ export function CommunityChampionship({
   return (
     <View style={styles.wrap}>
       <View style={styles.titleRow}>
+        {/* Icon FIRST in source order → rightmost under forceRTL, which is
+            where every other section heading on this screen carries its own
+            (see SectionTitle in CommunityStatsScreen). This heading was the
+            only one without one and read as a stray line of bold text. */}
+        <Ionicons name="podium" size={16} color={colors.primary} />
         <Text style={styles.title}>{he.communityChampTitle}</Text>
         <Pressable
           onPress={() =>

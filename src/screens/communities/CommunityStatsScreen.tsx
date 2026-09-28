@@ -606,6 +606,16 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     const penTakenTotal = players.reduce((a, p) => a + (p.penTaken ?? 0), 0);
     const penScoredTotal = players.reduce((a, p) => a + (p.penScored ?? 0), 0);
     const penAccuracyPct = pctOf(penScoredTotal, penTakenTotal);
+    // Does the "נתונים מעניינים" section have anything to print?
+    //
+    // Mirrors the per-row test below: a measure counts when it has a
+    // percentage, or a bare count worth stating on its own. With none of the
+    // four, the section is a heading over four dashes and it does not render.
+    const funRowCount =
+      (totalGoals > 0 && totalAssists > 0 ? 1 : 0) +
+      (countedRounds > 0 || scorelessRounds > 0 ? 1 : 0) +
+      (penTakenTotal > 0 ? 1 : 0) +
+      (countedRounds > 0 || shootoutRounds > 0 ? 1 : 0);
     // `players` is ranked by POINTS (goals*2+assists), so players[0] is NOT
     // necessarily the top scorer — pick the max-goals player explicitly.
     const topScorer = players.length
@@ -638,6 +648,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
       ownGoalKing: leaderBy(players, (p) => p.ownGoals),
       penTakenTotal,
       penAccuracyPct,
+      funRowCount,
       totalAssists,
       totalWins,
       goalsPerMini,
@@ -749,6 +760,51 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             // says "· עכשיו" because in a LIST of seasons that is what tells
             // you which one is running; alone on the bar it is decoration.
             he.communityStatsScopeSeasonPlain(seasons?.currentNo ?? 1);
+
+  /**
+   * The drop-list's contents, in the order they appear.
+   *
+   * Built from the same strings `scopeTitle` reads, so the closed bar and the
+   * open list can never name the same scope differently — that was the point
+   * of the old chips too, and it survives the change of shape.
+   */
+  const scopeOptions: {
+    key: string;
+    text: string;
+    active: boolean;
+    select: () => void;
+  }[] = [
+    {
+      key: 'current',
+      // A club that switched seasons OFF has no running season: the switch-off
+      // closed it, and the live rows hold everything played since. The line
+      // says that, instead of naming a season that never ran.
+      text:
+        seasons && !seasons.enabled && (seasons.count ?? 0) > 0
+          ? he.communityStatsScopeSinceOff(seasons.count ?? 1)
+          : he.communityStatsScopeCurrent(seasons?.currentNo ?? 1),
+      active: scope.k === 'current',
+      select: () => setScope({ k: 'current' }),
+    },
+    // Only once there IS a closed season to add — offered to a club with none
+    // it was a second line identical to the first.
+    ...(pastSeasons.length > 0
+      ? [
+          {
+            key: 'all',
+            text: he.communityStatsScopeAllTime,
+            active: scope.k === 'all',
+            select: () => setScope({ k: 'all' as const }),
+          },
+        ]
+      : []),
+    ...pastSeasons.map((ps) => ({
+      key: ps.seasonId,
+      text: he.communityStatsScopePast(ps.no),
+      active: scope.k === 'season' && scope.id === ps.seasonId,
+      select: () => setScope({ k: 'season' as const, id: ps.seasonId }),
+    })),
+  ];
 
   /**
    * "שיאי המועדון". Each record carries its OWN scope rule rather than the
@@ -925,51 +981,46 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   color={clubAccent.blue}
                 />
               </Pressable>
+              {/* A real drop-list (owner, 28.09): the seasons and "כל הזמנים"
+                  ARE the list, one line each, and tapping the bar opens it.
+                  It used to expand into a horizontal chip row — a second,
+                  differently-shaped control appearing under the first, which
+                  read as tabs rather than as the bar's own options and put
+                  eight seasons behind a sideways scroll nobody found. */}
               {scopeOpen ? (
-              <View style={styles.scopeRow}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.scopeChips}
-                >
-                  {/* העונה הרצה ראשונה — היא ברירת המחדל, וב-RTL היא נופלת
-                      הכי ימינה, שם העין מתחילה. */}
-                  {/* למועדון שכיבה את העונות זו כבר לא עונה: הכיבוי סגר את
-                      הרצה, ומה שנשאר בשורות החיות הוא כל מה ששוחק מאז אותה
-                      סגירה. השבב אומר בדיוק את זה, במקום "עונה 4 · עכשיו"
-                      על עונה שמעולם לא רצה. */}
-                  <ScopeChip
-                    text={
-                      seasons && !seasons.enabled && (seasons.count ?? 0) > 0
-                        ? he.communityStatsScopeSinceOff(seasons.count ?? 1)
-                        : he.communityStatsScopeCurrent(seasons?.currentNo ?? 1)
-                    }
-                    active={scope.k === 'current'}
-                    onPress={() => { setScope({ k: 'current' }); setScopeOpen(false); }}
-                  />
-                  {/* כל הזמנים = השורות החיות ועוד כל עונה שנסגרה. אחרי
-                      הסגירה הראשונה זה המקום היחיד שעונה על "כמה שערים
-                      הבקעתי במועדון הזה אי פעם".
-                      Only once there IS a closed season to add. Offered to a
-                      club with none, it was a chip identical to the one beside
-                      it whose note read "0 העונות שנסגרו". */}
-                  {pastSeasons.length > 0 ? (
-                    <ScopeChip
-                      text={he.communityStatsScopeAllTime}
-                      active={scope.k === 'all'}
-                      onPress={() => { setScope({ k: 'all' }); setScopeOpen(false); }}
-                    />
-                  ) : null}
-                  {pastSeasons.map((ps) => (
-                    <ScopeChip
-                      key={ps.seasonId}
-                      text={he.communityStatsScopePast(ps.no)}
-                      active={scope.k === 'season' && scope.id === ps.seasonId}
-                      onPress={() => { setScope({ k: 'season', id: ps.seasonId }); setScopeOpen(false); }}
-                    />
+                <View style={styles.scopeMenu}>
+                  {scopeOptions.map((o, idx) => (
+                    <Pressable
+                      key={o.key}
+                      style={({ pressed }) => [
+                        styles.scopeItem,
+                        idx > 0 && styles.scopeItemDivider,
+                        pressed && styles.scopeItemPressed,
+                      ]}
+                      onPress={() => {
+                        o.select();
+                        setScopeOpen(false);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: o.active }}
+                    >
+                      <Text
+                        style={[
+                          styles.scopeItemText,
+                          o.active && styles.scopeItemTextOn,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {o.text}
+                      </Text>
+                      {/* The tick closes the row on the left under forceRTL,
+                          and only the chosen line carries one. */}
+                      {o.active ? (
+                        <Ionicons name="checkmark" size={18} color={clubAccent.blue} />
+                      ) : null}
+                    </Pressable>
                   ))}
-                </ScrollView>
-              </View>
+                </View>
               ) : null}
               </View>
               ) : null}
@@ -1283,12 +1334,21 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               lifetime `totalRounds`. The assisted-goals rate has no such
               caveat: assists and goals are per-player rollups covering the
               whole history. */}
+          {/* Title and card together, or neither: a heading over an empty
+              card is the same empty promise one row further out. */}
+          {derived.funRowCount > 0 ? (
+            <>
           <SectionTitle icon="sparkles" text={he.communityStatsSectionFun} />
           <Card style={styles.funCard}>
             {(() => {
-              // Always four, in this order. A measure with no sample passes
-              // `null` and renders its "not measured yet" state in place —
-              // the section must not resize as coverage arrives.
+              // Four measures, in this order — but only the ones that have
+              // something to say (owner, 28.09). A row reading "—" beside
+              // "טרם נאספו מספיק נתונים" is a promise, not a fact, and four
+              // promises make a section that looks broken rather than young.
+              //
+              // "Something to say" is a percentage OR a bare count: 20 games
+              // ended 0:0 is worth printing even while the rate it belongs to
+              // is still uncomputable. Only a measure with neither drops out.
               const sampled = derived.countedRounds > 0;
               const rows = [
                 {
@@ -1326,7 +1386,12 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   countText: he.funShootoutCount,
                   text: he.funShootout,
                 },
-              ];
+              ].filter(
+                (r) =>
+                  r.pct !== null ||
+                  ('count' in r && typeof r.count === 'number' && r.count > 0),
+              );
+              if (rows.length === 0) return null;
               return rows.map((r, i) => (
                 <FunDonutRow
                   key={r.key}
@@ -1350,6 +1415,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             <Text style={styles.scopeNote}>
               {he.funMeasuredOver(derived.countedRounds, derived.totalRounds)}
             </Text>
+          ) : null}
+            </>
           ) : null}
 
           {/* ── איך המשחקונים הסתיימו ── */}
@@ -1402,30 +1469,6 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────
-
-function ScopeChip({
-  text,
-  active,
-  onPress,
-}: {
-  text: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.scopeChip, active && styles.scopeChipOn]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      hitSlop={6}
-    >
-      <Text style={[styles.scopeChipText, active && styles.scopeChipTextOn]}>
-        {text}
-      </Text>
-    </Pressable>
-  );
-}
 
 function SectionTitle({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
   return (
@@ -1548,7 +1591,9 @@ function LeaderTrio({
             <Text style={styles.trioTitle} numberOfLines={2}>
               {r.title}
             </Text>
-            <UserAvatar user={r.user} size={56} ring />
+            {/* Number first, face second (owner, 28.09). The figure is what
+                the card is FOR — how many goals, how many wins — and it now
+                reads before the person it belongs to. */}
             <CountUp
               from={0}
               to={r.value}
@@ -1556,6 +1601,7 @@ function LeaderTrio({
               suffix={r.suffix}
               style={[styles.trioValue, { color: accent }]}
             />
+            <UserAvatar user={r.user} size={56} ring />
             <Text style={styles.trioName} numberOfLines={1}>
               {fullName(r.user.name)}
             </Text>
@@ -1746,30 +1792,41 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: RTL_LABEL_ALIGN,
   },
-  scopeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.xs },
-  scopeLabel: { ...typography.caption, color: colors.textMuted },
-  scopeChips: { gap: spacing.xs, paddingVertical: 2 },
-  scopeChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
+  // The open drop-list. Same surface, radius and shadow as the bar it hangs
+  // under, so the two read as one control rather than as a control and a
+  // separate row of tabs.
+  scopeMenu: {
+    marginTop: spacing.xs,
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 14,
+    overflow: 'hidden',
+    ...clubShadow,
   },
-  scopeChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  // ⚠️ writingDirection, not just an alignment: the chip now carries
-  // "מאז שעונה 2 הסתיימה" beside "עונה 2 · עכשיו", and a Hebrew label that
-  // mixes in a digit and a "·" is exactly the shape that renders its
-  // punctuation on the wrong end when the base direction is left to autodetect.
-  scopeChipText: {
-    ...typography.caption,
-    color: colors.textMuted,
+  scopeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 13,
+  },
+  scopeItemDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: clubSurface.divider,
+  },
+  scopeItemPressed: { backgroundColor: 'rgba(15,23,42,0.03)' },
+  // writingDirection, not only alignment: these carry "מאז שעונה 2 הסתיימה"
+  // and "עונה 2 · עכשיו" — Hebrew mixing a digit and a "·" is exactly the
+  // shape that puts its punctuation on the wrong end when the base direction
+  // is left to autodetect.
+  scopeItemText: {
+    flex: 1,
+    fontSize: 15,
     fontWeight: '600',
+    color: colors.text,
     textAlign: RTL_LABEL_ALIGN,
     writingDirection: 'rtl',
   },
-  scopeChipTextOn: { color: '#fff' },
+  scopeItemTextOn: { fontWeight: '800', color: clubAccent.blue },
   scopeNoteRow: {
     flexDirection: 'row',
     alignItems: 'center',

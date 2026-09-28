@@ -815,7 +815,15 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
     padding: 0,
   },
-  chips: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
+  chips: {
+    // Clear of the search field above, for the same reason the field is clear
+    // of the tab bar: flush against it, the chips read as part of the search
+    // control rather than as a filter over the list below.
+    marginTop: spacing.xs,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    flexWrap: 'wrap',
+  },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
