@@ -572,7 +572,26 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     // counts every mini-game the club ever played; these two started counting
     // when they were deployed. Dividing by the wrong one is what made the 0:0
     // rate read 3% on a club where it is far higher.
-    const countedRounds = viewChamp?.countedRounds ?? 0;
+    //
+    // Backfilled on 28.09 for every club that already had history: the counter
+    // itself only starts from that date, so without it a club that has played
+    // for months would have gone on showing "—" forever. The backfill takes
+    // `rounds` and subtracts the mini-games committed before 26.07, read off
+    // each evening; for a club whose first evening is after that date — every
+    // club created since — nothing is subtracted and the sample is exact.
+    //
+    // Floored at the outcomes it has to contain. A denominator smaller than
+    // its own numerator would print a rate above 100%, and no arithmetic here
+    // should be able to say that a club's 0:0 games outnumbered its games.
+    // ⚠️ The floor applies only to a denominator that EXISTS. Flooring an
+    // absent one (0) to its own numerator would turn "we never measured this"
+    // into a confident 100%, which is the loudest possible version of the bug
+    // this field was added to kill.
+    const rawCounted = viewChamp?.countedRounds ?? 0;
+    const countedRounds =
+      rawCounted > 0
+        ? Math.max(rawCounted, scorelessRounds, shootoutRounds + tiedRounds)
+        : 0;
     // Goals scored by guests across the club — a separate breakout, NOT folded
     // into totalGoals (which is real ranked players only). Drives its own row.
     const guestGoals = viewChamp?.guestGoals ?? 0;
