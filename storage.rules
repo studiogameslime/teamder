@@ -65,18 +65,6 @@ service firebase.storage {
     // compromised admin can't turn the folder into free image hosting.
     // 2 MB cap: the client pipeline emits a 1280×720 JPEG (~250 KB), so
     // this is generous headroom while still killing abusive uploads.
-    // Community crest — the circular logo at the top of the club hero. Same
-    // shape as the cover below it, and closed to client writes for the same
-    // reason: the admin check needs a Firestore read, that read carries no
-    // App Check token, and this project enforces App Check on Firestore.
-    // Uploads go through the `uploadGroupLogo` callable, which verifies the
-    // admin and writes with the Admin SDK. Filename pinned (no wildcard) so
-    // the folder cannot become free image hosting.
-    match /groups/{groupId}/logo.jpg {
-      allow read: if request.auth != null;
-      allow write: if false;
-    }
-
     match /groups/{groupId}/cover.jpg {
       allow read: if request.auth != null;
       // Client writes are disabled: the admin-check rule below used

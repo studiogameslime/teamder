@@ -198,11 +198,12 @@ export function AdminApprovalScreen() {
               >
                 <PlayerIdentity user={item.user} size={42} />
                 <View style={{ flex: 1 }}>
+                  {/* The name alone. The club is the HEADING above this row —
+                      repeating it here is the exact thing the heading was
+                      added to replace, and two lines saying different things
+                      about one person is why it read as part of them. */}
                   <Text style={styles.name} numberOfLines={1}>
                     {item.user.name}
-                  </Text>
-                  <Text style={styles.groupName} numberOfLines={1}>
-                    {item.group.name}
                   </Text>
                 </View>
               </Pressable>
@@ -252,7 +253,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   name: { ...typography.body, color: colors.text },
-  groupName: { ...typography.caption, color: colors.textMuted },
   identityHit: {
     flex: 1,
     flexDirection: 'row',

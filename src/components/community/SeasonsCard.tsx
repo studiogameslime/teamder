@@ -163,7 +163,9 @@ export function SeasonsCard({
       <View style={styles.head}>
         <Ionicons name="trophy" size={18} color={colors.primary} />
         <Text style={styles.title}>
-          {he.seasonsCardTitle} · {he.seasonNumberLabel(seasons.currentNo ?? 1)}
+          {/* Just the season. The card is plainly the seasons card — the
+              word in front of it was the category said twice. */}
+          {he.seasonNumberLabel(seasons.currentNo ?? 1)}
         </Text>
         {/* The number nobody could interpret — the owner watched "22 מתוך 22"
             while the archive recorded 19 — with no way to ask what a מחזור is

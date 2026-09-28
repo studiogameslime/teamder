@@ -827,31 +827,43 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
         />
       )}
 
-      {bootLoading ? (
-        <>
-          {props.header}
+      {/* ONE container for all three states.
+       *
+       *  Loading and empty used to render the header as a bare sibling of the
+       *  SafeAreaView and only the loaded state put it inside the ScrollView.
+       *  React sees two different element types at that position, so the swap
+       *  UNMOUNTED the hero and mounted a new one: the stadium photo blanked
+       *  and reloaded and the whole page re-laid-out underneath it, every
+       *  single time this tab was opened. Reported on 1.1.18 as "כשעוברים בין
+       *  טאבים נראה שכל המסך קופץ".
+       *
+       *  Now the ScrollView and the header are the same elements in every
+       *  state and only what sits BELOW the header changes. */}
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          // `center` is flex:1, which needs a growable content container to
+          // mean anything inside a ScrollView.
+          (bootLoading || isEmpty) && styles.scrollFill,
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {embedded && props.header ? (
+          <View style={styles.headerBleed}>{props.header}</View>
+        ) : null}
+        {bootLoading ? (
           <View style={styles.center}>
             <SoccerBallLoader />
             <Text style={styles.loadingText}>{he.communityStatsLoading}</Text>
           </View>
-        </>
-      ) : isEmpty ? (
-        <>
-          {props.header}
+        ) : isEmpty ? (
           <EmptyState
             icon="stats-chart-outline"
             title={he.communityStatsEmptyTitle}
             hint={he.communityStatsEmptyBody}
           />
-        </>
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-        >
-          {embedded && props.header ? (
-            <View style={styles.headerBleed}>{props.header}</View>
-          ) : null}
+        ) : (
+          <>
           {/* בורר התצוגה. מופיע לכל מועדון שמנהל עונות — גם לפני שנסגרה
               עונה ראשונה, כי בלעדיו אי אפשר לדעת שהמספרים על המסך הם של
               העונה ולא של כל הזמנים. זו בדיוק השאלה שנשאלה. */}
@@ -1275,6 +1287,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   icon: 'remove-circle' as const,
                   tint: clubAccent.green,
                   pct: sampled ? derived.scorelessPct : null,
+                  count: derived.scorelessRounds,
+                  countText: he.funScorelessCount,
                   text: he.funScoreless,
                 },
                 {
@@ -1289,6 +1303,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   icon: 'disc' as const,
                   tint: clubAccent.red,
                   pct: sampled ? derived.shootoutPct : null,
+                  count: derived.shootoutRounds,
+                  countText: he.funShootoutCount,
                   text: he.funShootout,
                 },
               ];
@@ -1297,6 +1313,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   key={r.key}
                   icon={r.icon}
                   pct={r.pct}
+                  count={'count' in r ? r.count : undefined}
+                  countText={'countText' in r ? r.countText : undefined}
                   tint={r.tint}
                   text={r.text}
                   last={i === rows.length - 1}
@@ -1357,8 +1375,9 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             // prints this exact number as "מחזורים".
             clubEvenings={eveningsInScope}
           />
-        </ScrollView>
-      )}
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -1580,17 +1599,29 @@ type FunPart = { t: string; em?: 'num' | 'name' };
 
 function FunDonutRow({
   pct,
+  count,
+  countText,
   tint,
   text,
   icon,
   last,
 }: {
   /**
-   * `null` = no sample yet. Rendered as an explicit "not measured" state, not
-   * as 0%: a bar sitting empty beside a bold zero claims the club has never
-   * done the thing, when the truth is that nobody has counted.
+   * `null` = the RATE cannot be computed, because the denominator that would
+   * make it honest is not known yet.
+   *
+   * That is not the same as knowing nothing. `count` may still hold an exact
+   * figure — 19 mini-games really were decided on penalties — and hiding it
+   * behind a dash threw away a true number because a derived one was
+   * unavailable. When the rate is null and the count is not, the row states
+   * the count and draws no bar: a bar without a denominator has nothing to be
+   * a fraction OF.
    */
   pct: number | null;
+  /** The raw figure behind the rate, shown when the rate cannot be. */
+  count?: number;
+  /** How to say that raw figure. Required whenever `count` can be > 0. */
+  countText?: (n: number) => string;
   tint: string;
   text: string;
   /** The reference gives every row its own glyph; the bar alone is anonymous. */
@@ -1599,6 +1630,8 @@ function FunDonutRow({
 }) {
   const measured = pct !== null;
   const clamped = measured ? Math.max(0, Math.min(100, pct)) : 0;
+  // Known count, unknown rate — the middle state the first version missed.
+  const countOnly = !measured && typeof count === 'number' && count > 0 && !!countText;
   return (
     // Icon leads on the right, the sentence and its bar fill the middle, and
     // the percentage closes the row on the left — the reference's shape. A
@@ -1616,13 +1649,15 @@ function FunDonutRow({
       </View>
       <View style={styles.funBody}>
         <Text style={styles.funSentence} numberOfLines={2}>
-          {text}
+          {countOnly && countText ? countText(count!) : text}
         </Text>
         {measured ? (
           <View style={styles.funTrack}>
             {/* Grows from the RIGHT — see `funTrack`. */}
             <View style={[styles.funFill, { width: `${clamped}%`, backgroundColor: tint }]} />
           </View>
+        ) : countOnly ? (
+          <Text style={styles.funPending}>{he.funRateUnknown}</Text>
         ) : (
           <>
             {/* An empty track, visibly inactive, and a sentence saying why —
@@ -1635,6 +1670,8 @@ function FunDonutRow({
       </View>
       {measured ? (
         <Text style={[styles.funPct, { color: tint }]}>{`${clamped}%`}</Text>
+      ) : countOnly ? (
+        <Text style={[styles.funPct, { color: tint }]}>{String(count)}</Text>
       ) : (
         <Text style={[styles.funPct, styles.funPctPending]}>—</Text>
       )}
@@ -1667,6 +1704,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
   loadingText: { ...typography.body, color: colors.textMuted },
   scroll: { padding: spacing.md, gap: spacing.sm },
+  scrollFill: { flexGrow: 1 },
   // The shell's hero is full-bleed; this scroll's content container is not.
   headerBleed: { marginHorizontal: -spacing.md, marginTop: -spacing.md },
 

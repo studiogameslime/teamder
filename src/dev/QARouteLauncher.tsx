@@ -259,7 +259,7 @@ const AUTH_KINDS: AuthPromptReason[] = [
  *  destructive confirmation). */
 const ALERTS: Record<string, () => void> = {
   info: () =>
-    appAlert('מה זה מחזור?', 'מחזור הוא ערב משחק אחד. בתוכו יש כמה משחקונים.'),
+    appAlert('מה זה מחזור?', 'מחזור הוא ערב משחק אחד. בתוכו יש כמה משחקים.'),
   warning: () =>
     appAlert('הרישום נסגר בעוד שעה', 'אחרי זה אפשר להצטרף רק לרשימת המתנה.', [
       { text: 'הבנתי', style: 'cancel' },

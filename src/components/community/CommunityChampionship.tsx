@@ -166,20 +166,12 @@ export function CommunityChampionship({
           />
         </Pressable>
       </View>
-      <Text style={styles.note}>{he.communityChampNote}</Text>
+      {/* The "ממוין לפי ניצחונות…" note used to sit here. It said what the
+          tooltip beside the title already says, one line lower. */}
 
-      <View style={styles.totals}>
-        <Card style={styles.totalCard}>
-          <Ionicons name="football" size={18} color={colors.primary} />
-          <Text style={styles.totalValue}>{data.totalGoals}</Text>
-          <Text style={styles.totalLabel}>{he.communityChampTotalGoals}</Text>
-        </Card>
-        <Card style={styles.totalCard}>
-          <Ionicons name="repeat" size={18} color={colors.primary} />
-          <Text style={styles.totalValue}>{data.totalRounds}</Text>
-          <Text style={styles.totalLabel}>{he.communityChampTotalRounds}</Text>
-        </Card>
-      </View>
+      {/* The goals/mini-games pair that used to sit here is gone: the same
+          two numbers open this tab in "המועדון במספרים", and a second copy
+          four sections later read as a different figure. */}
 
       <MatchSegmentControl
         value={tab}

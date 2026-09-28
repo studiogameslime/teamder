@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ClubRecord } from '@/utils/clubRecords';
 import { he } from '@/i18n/he';
 import { formatDateShort } from '@/utils/format';
-import { RTL_LABEL_ALIGN, clubCardTint, clubShadow, colors, spacing } from '@/theme';
+import { RTL_LABEL_ALIGN, clubAccent, clubCardTint, clubShadow, colors, spacing } from '@/theme';
 
 export interface ClubRecordsProps {
   records: ClubRecord[];
@@ -36,7 +36,12 @@ export function ClubRecords({
 }: ClubRecordsProps) {
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>{he.clubRecordsTitle}</Text>
+      {/* Icon leads on the right, matching every other section heading on
+          this screen (SectionTitle does the same). */}
+      <View style={styles.titleRow}>
+        <Ionicons name="trophy" size={18} color={clubAccent.gold} />
+        <Text style={styles.title}>{he.clubRecordsTitle}</Text>
+      </View>
       {/* Said once, here, and never repeated on a card: the summary layer
           these records are read from began partway through the product's
           life, so they are the best of the measured period. */}
@@ -122,6 +127,7 @@ export function ClubRecords({
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   title: {
     fontSize: 17,
     fontWeight: '800',

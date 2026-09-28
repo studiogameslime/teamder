@@ -852,16 +852,6 @@ export interface Group {
    * admin can switch to another gallery image or upload their own.
    */
   coverImageId?: string;
-  /**
-   * The club's crest — a SQUARE image shown in the circle at the top of the
-   * club hero. Uploaded by an admin to `groups/{id}/logo.jpg`.
-   *
-   * Distinct from `coverPhotoUrl`, which is the wide photo BEHIND it. The two
-   * are never interchangeable: a crop of the cover inside a ring on top of
-   * that same cover reads as a rendering bug, so a club without a crest simply
-   * shows none.
-   */
-  logoUrl?: string;
 
   /**
    * @deprecated Recurring-game configuration moved to per-Game
@@ -1155,8 +1145,6 @@ export interface GroupPublic {
   coverPhotoUrl?: string;
   /** Mirrored from Group — built-in gallery cover id. */
   coverImageId?: string;
-  /** Mirrored from Group — the club crest, for the public hero. */
-  logoUrl?: string;
   /** @deprecated Recurring schedule moved to per-Game. Legacy reads only. */
   preferredDays?: WeekdayIndex[];
   /** @deprecated See `preferredDays`. */
@@ -2265,7 +2253,7 @@ export interface LiveMatchState {
    */
   goalTally?: Record<UserId, number>;
   /**
-   * Current round (משחקון) number. Increments after every "סיים משחקון".
+   * Current round (משחק) number. Increments after every "סיים משחק".
    * Optional so legacy state without the field reads as round 1.
    */
   roundNumber?: number;

@@ -65,16 +65,12 @@ import { UnverifiedEveningsCard } from '@/components/community/UnverifiedEvening
 import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
 import { NextGameCard } from '@/components/community/NextGameCard';
 import { UpcomingMoreRow } from '@/components/community/UpcomingMoreRow';
-import { PlayersPreview } from '@/components/community/PlayersPreview';
 import { CommunityShareInviteCta } from '@/components/community/CommunityShareInviteCta';
 import { InviteMembersSheet } from '@/components/community/InviteMembersSheet';
 import { RichRulesText } from '@/components/community/RichRulesText';
 import { groupService } from '@/services';
 import { logError, isExpectedDenial } from '@/services/errorLog';
-import {
-  pickAndUploadGroupCover,
-  pickAndUploadGroupLogo,
-} from '@/services/photoService';
+import { pickAndUploadGroupCover } from '@/services/photoService';
 import { gameService } from '@/services/gameService';
 import { seasonHistoryService } from '@/services/seasonHistoryService';
 import { deepLinkService } from '@/services/deepLinkService';
@@ -181,7 +177,6 @@ export function CommunityDetailsScreen() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteIds, setInviteIds] = useState<string[]>([]);
@@ -498,49 +493,6 @@ export function CommunityDetailsScreen() {
         field: 'coverImageId',
       });
       appAlert(he.error, he.communityCoverUploadFailed);
-    }
-  };
-
-  // Upload the club CREST. Mirrors the cover handler below it, including the
-  // silence on 'cancelled' and 'permission' (App Store 5.1.1(iv) forbids
-  // nagging after a denial). A club that never sets one simply has no crest —
-  // the hero renders without it.
-  const handleUploadLogo = async () => {
-    if (!group || !me || uploadingLogo) return;
-    setUploadingLogo(true);
-    const res = await pickAndUploadGroupLogo(group.id);
-    if (!res.ok) {
-      setUploadingLogo(false);
-      if (res.reason !== 'cancelled') {
-        logEvent(AnalyticsEvent.PhotoUploadFailed, {
-          source: 'community_logo',
-          groupId: group.id,
-          reason: res.reason,
-        });
-      }
-      if (res.reason === 'unavailable') {
-        appAlert(he.error, he.profilePhotoUnavailable);
-      } else if (res.reason === 'network') {
-        appAlert(he.error, he.communityLogoUploadFailed);
-      }
-      return;
-    }
-    try {
-      const fresh = await groupService.updateGroupMetadata(group.id, me.id, {
-        logoUrl: res.url,
-      });
-      setGroup(fresh);
-      logEvent(AnalyticsEvent.PhotoUploaded, { source: 'community_logo' });
-      toast.success(he.communityLogoUpdated);
-    } catch (e) {
-      logError('updateGroupMetadata', e, {
-        screen: 'CommunityDetailsScreen',
-        groupId: group.id,
-        field: 'logoUrl',
-      });
-      appAlert(he.error, he.communityLogoUploadFailed);
-    } finally {
-      setUploadingLogo(false);
     }
   };
 
@@ -880,16 +832,6 @@ export function CommunityDetailsScreen() {
               },
             ]
           : []),
-        ...(isAdmin
-          ? [
-              {
-                id: 'clubLogo',
-                label: he.communityLogoChange,
-                icon: 'image-outline' as const,
-                onPress: () => void handleUploadLogo(),
-              },
-            ]
-          : []),
         {
           id: 'allPlayers',
           label: he.communityPlayersSeeAll,
@@ -1013,7 +955,6 @@ export function CommunityDetailsScreen() {
           memberCount={group.playerIds?.length ?? 0}
           coverUrl={group.coverPhotoUrl}
           coverImageId={group.coverImageId}
-          logoUrl={group.logoUrl}
           canEditCover={isAdmin}
           uploadingCover={uploadingCover}
           onBackPress={() => nav.goBack()}
@@ -1174,6 +1115,49 @@ export function CommunityDetailsScreen() {
             onResolved={() => void reload({ pullToRefresh: true })}
           />
 
+          {/* Who the club IS comes before how its season is going — the
+              description and the rules are what a member reads once and a
+              visitor reads first. */}
+          {/* Group description — free-text "about this group" copy
+              the admin set in the create / edit wizard. Rendered
+              prominently right after the stats so visitors see the
+              group's character before scrolling into the operational
+              details. Hidden when empty so new groups don't show an
+              empty card. Note: `rules` is a separate (newer) field
+              that the existing edit screen surfaces in the menu;
+              this card is the "what is this group about" copy. */}
+          {group.description?.trim() ? (
+            <View style={styles.descriptionCard}>
+              <Text style={styles.descriptionTitle}>
+                {he.communityDescriptionTitle}
+              </Text>
+              <CollapsibleContent>
+                <Text style={styles.descriptionBody}>
+                  {group.description.trim()}
+                </Text>
+              </CollapsibleContent>
+            </View>
+          ) : null}
+
+          {/* Group rules — distinct from `description`. The wizard
+              captures explicit do/don't copy here (no kickers, no
+              smoking, "show up 5 min early", etc.) so it deserves
+              its own card. Hidden when empty. */}
+          {group.rules?.trim() ? (
+            <View style={styles.rulesCard}>
+              <Text style={styles.descriptionTitle}>
+                {he.communityRulesTitle}
+              </Text>
+              {/* Rules support markdown-lite (**bold** + "- " bullets).
+                  RichRulesText parses + renders; plain legacy rules
+                  fall through as ordinary paragraphs. Collapsed by default
+                  when long so the rules don't fill the whole screen. */}
+              <CollapsibleContent>
+                <RichRulesText text={group.rules.trim()} />
+              </CollapsibleContent>
+            </View>
+          ) : null}
+
           {/* Where the season stands. Managing it lives in club settings. */}
           <SeasonsCard
             groupId={group.id}
@@ -1266,46 +1250,6 @@ export function CommunityDetailsScreen() {
           />
 
 
-          {/* Group description — free-text "about this group" copy
-              the admin set in the create / edit wizard. Rendered
-              prominently right after the stats so visitors see the
-              group's character before scrolling into the operational
-              details. Hidden when empty so new groups don't show an
-              empty card. Note: `rules` is a separate (newer) field
-              that the existing edit screen surfaces in the menu;
-              this card is the "what is this group about" copy. */}
-          {group.description?.trim() ? (
-            <View style={styles.descriptionCard}>
-              <Text style={styles.descriptionTitle}>
-                {he.communityDescriptionTitle}
-              </Text>
-              <CollapsibleContent>
-                <Text style={styles.descriptionBody}>
-                  {group.description.trim()}
-                </Text>
-              </CollapsibleContent>
-            </View>
-          ) : null}
-
-          {/* Group rules — distinct from `description`. The wizard
-              captures explicit do/don't copy here (no kickers, no
-              smoking, "show up 5 min early", etc.) so it deserves
-              its own card. Hidden when empty. */}
-          {group.rules?.trim() ? (
-            <View style={styles.rulesCard}>
-              <Text style={styles.descriptionTitle}>
-                {he.communityRulesTitle}
-              </Text>
-              {/* Rules support markdown-lite (**bold** + "- " bullets).
-                  RichRulesText parses + renders; plain legacy rules
-                  fall through as ordinary paragraphs. Collapsed by default
-                  when long so the rules don't fill the whole screen. */}
-              <CollapsibleContent>
-                <RichRulesText text={group.rules.trim()} />
-              </CollapsibleContent>
-            </View>
-          ) : null}
-
           {/* ③ Notification toggle — members only */}
           {isMember && me ? (
             <CommunityNotifyToggle
@@ -1329,22 +1273,9 @@ export function CommunityDetailsScreen() {
             miniGames={liveRounds + archivedRounds}
           />
 
-          {/* ⑤ Players preview */}
-          <PlayersPreview
-            total={group.playerIds?.length ?? 0}
-            members={members.filter((u) => (group.playerIds ?? []).includes(u.id))}
-            adminIds={group.adminIds ?? []}
-            // Switches tab instead of pushing a route: the roster is on this
-            // screen now, and pushing it would put a second copy of the club's
-            // hero on the stack behind a back button.
-            onSeeAll={() => setTab('players')}
-            onPressMember={(uid) =>
-              (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                'PlayerCard',
-                { userId: uid, groupId: group.id },
-              )
-            }
-          />
+          {/* The players preview used to sit here. It is gone: the roster is a
+              TAB of this screen now, one tap away, and a strip of avatars over
+              a "לצפייה בכל השחקנים" link was the same destination said twice. */}
 
           {/* "מהמחזור האחרון" — who brought the ball / jerseys last evening
               (user request). Vector icons, no emoji. Hidden when neither holder

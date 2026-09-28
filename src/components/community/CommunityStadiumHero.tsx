@@ -15,7 +15,6 @@
 import React from 'react';
 import {
   ActivityIndicator,
-  Image,
   ImageBackground,
   Pressable,
   StyleSheet,
@@ -56,18 +55,6 @@ interface Props {
   onEditCoverPress?: () => void;
   /** Members only — opens the community chat. Hidden when undefined. */
   onChatPress?: () => void;
-  /**
-   * The club crest, above the name.
-   *
-   * ⚠️ Nothing populates this yet. `Group` has `coverPhotoUrl` and
-   * `coverImageId` — both the wide hero photo — and no logo field at all, so
-   * the mockup's circular crest has no data behind it. The slot exists so
-   * adding one later is a prop, not a redesign; until then the hero renders
-   * name-first exactly as it does today. Do NOT fall back to the cover photo
-   * here: a crop of the background inside a ring on top of that same
-   * background reads as a rendering bug.
-   */
-  logoUrl?: string;
 }
 
 const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
@@ -83,7 +70,6 @@ export function CommunityStadiumHero({
   onMenuPress,
   onEditCoverPress,
   onChatPress,
-  logoUrl,
 }: Props) {
   // Priority: uploaded photo → built-in gallery pick → bundled default.
   const source: ImageSourcePropType = coverUrl
@@ -166,9 +152,6 @@ export function CommunityStadiumHero({
           </View>
 
           <View style={styles.identity}>
-            {logoUrl ? (
-              <Image source={{ uri: logoUrl }} style={styles.logo} />
-            ) : null}
             <Text style={styles.name} numberOfLines={2}>
               {name}
             </Text>
@@ -246,15 +229,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   topSpacer: { flex: 1 },
-  logo: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.85)',
-    backgroundColor: 'rgba(7,12,32,0.6)',
-    marginBottom: spacing.sm,
-  },
   identity: {
     alignItems: 'center',
     paddingTop: spacing.lg,

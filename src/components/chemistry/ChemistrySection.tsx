@@ -257,15 +257,10 @@ export function ChemistrySection({
           );
         })}
       </View>
-      {/* The window's start date. Hidden when the screen already names the
-          window: on a club running seasons the scope chip says which season
-          these numbers are, and the close that opened it is the very thing
-          that zeroed the pair counters — so the date underneath repeated the
-          chip, in wording that reads like a warning about missing data.
-          Kept for a club with no seasons, where nothing else says it. */}
-      {data.since && !seasonScoped ? (
-        <Text style={styles.since}>{he.chemistrySince(formatDateShort(data.since))}</Text>
-      ) : null}
+      {/* The "הנתונים מ-DD.MM ואילך" line used to sit here and is gone on the
+          owner's instruction. The pair card's own footer still carries it,
+          where a reader is looking at one pair's numbers and the window
+          actually qualifies something. */}
 
       <PairCard
         visible={open !== null}

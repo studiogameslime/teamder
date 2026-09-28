@@ -370,7 +370,6 @@ export function CommunityDetailsPublicScreen() {
             memberCount={group.memberCount}
             coverUrl={group.coverPhotoUrl}
             coverImageId={group.coverImageId}
-            logoUrl={group.logoUrl}
             onBackPress={() => nav.goBack()}
             // No hamburger for a visitor — every item in it is an admin or
             // member action, so the button would open an empty sheet.

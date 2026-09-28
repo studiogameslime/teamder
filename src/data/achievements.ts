@@ -105,7 +105,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'cleanSheets',
     titleHe: 'שער נקי',
     nounHe: 'שערים נקיים',
-    howHe: 'סיים משחקון בלי שהקבוצה שלך תספוג',
+    howHe: 'סיים משחק בלי שהקבוצה שלך תספוג',
     icon: 'shield-checkmark',
     // Scaled to the real rate, measured over 5 stored game-nights of a weekly
     // club: a regular collects 3–4 clean sheets a night (the club's leader had

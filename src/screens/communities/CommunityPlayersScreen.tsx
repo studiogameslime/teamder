@@ -1,6 +1,7 @@
 // CommunityPlayersScreen — full member list with per-community stats.
 // Reachable from the redesigned CommunityDetailsScreen via the
-// PlayersPreview tap, and from the hamburger menu.
+// the שחקנים tab, and from the hamburger menu. (The info tab's players
+// preview that used to lead here was removed — the tab replaced it.)
 //
 // Visual: identity-row card per player (jersey + name + admin badge
 // + games played). Sorted admins-first, then by games-played desc.
@@ -85,6 +86,9 @@ export interface CommunityPlayersScreenProps {
   /** The shell's hero + tab bar. Sticks to the top of the list. */
   header?: React.ReactElement | null;
 }
+
+/** Stable empty list — a fresh [] each render would churn FlatList. */
+const EMPTY_ROWS: User[] = [];
 
 export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) {
   const nav = useNavigation<Nav>();
@@ -502,10 +506,6 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
     });
   }, [members, stats, group]);
 
-  // `ordered` stays the ranking: the rank a row shows is its place in the CLUB,
-  // not its place in the filtered view, so searching for a name does not
-  // renumber the player you searched for.
-  const rankOf = new Map(ordered.map((u, i) => [u.id, i + 1]));
   const adminSet = new Set(group?.adminIds ?? []);
   const needle = query.trim().toLowerCase();
   const visible = ordered.filter((u) => {
@@ -525,42 +525,53 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
     // again pushes the hero down by the status-bar height.
     <SafeAreaView style={styles.root} edges={embedded ? [] : ['top']}>
       {embedded ? null : <ScreenHeader title={he.communityPlayersScreenTitle} />}
-      {loading && !group ? (
-        <>
-          {props.header}
-          <View style={styles.center}>
-            <SoccerBallLoader size={40} />
-          </View>
-        </>
-      ) : !group ? (
-        <>
-          {props.header}
-          <View style={styles.center}>
-            <Text style={styles.empty}>{he.communitiesEmpty}</Text>
-          </View>
-        </>
-      ) : ordered.length === 0 ? (
-        <>
-          {props.header}
-          <View style={styles.center}>
-            <Text style={styles.empty}>{he.communityPlayersEmpty}</Text>
-          </View>
-        </>
-      ) : (
-        // FlatList virtualises the row list so a 200-member community
-        // renders only the visible window. We keep the single
-        // wrapping Card by spreading FlatList contents through
-        // ListHeaderComponent + the renderItem; the visual matches
-        // the old ScrollView + map.
-        <FlatList
-          data={visible}
+      {/* ONE list for all four states.
+       *
+       *  Loading, no-group and no-members each rendered the header as a bare
+       *  sibling, and only the populated state put it inside the list. React
+       *  sees two different element types at that position, so the swap
+       *  UNMOUNTED the hero and mounted a new one: the stadium photo blanked
+       *  and reloaded and the page re-laid-out under it, every time this tab
+       *  was opened. Reported on 1.1.18 as "כשעוברים בין טאבים נראה שכל המסך
+       *  קופץ"; the numbers tab had the same fault.
+       *
+       *  The list is the same element throughout now — `data` stays empty
+       *  until there are members and ListEmptyComponent carries the three
+       *  messages.
+       *
+       *  FlatList virtualises the row list so a 200-member community renders
+       *  only the visible window. We keep the single wrapping Card by
+       *  spreading FlatList contents through ListHeaderComponent + the
+       *  renderItem; the visual matches the old ScrollView + map. */}
+      <FlatList
+          data={group && ordered.length > 0 ? visible : EMPTY_ROWS}
           keyExtractor={(u) => u.id}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            // `center` is flex:1 and only means something in a container that
+            // is allowed to grow.
+            !(group && ordered.length > 0) && styles.contentFill,
+          ]}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              {loading && !group ? (
+                <SoccerBallLoader size={40} />
+              ) : (
+                <Text style={styles.empty}>
+                  {!group ? he.communitiesEmpty : he.communityPlayersEmpty}
+                </Text>
+              )}
+            </View>
+          }
           ListHeaderComponent={
             <>
               {props.header ? (
                 <View style={styles.headerBleed}>{props.header}</View>
               ) : null}
+              {/* Search and filters belong to a roster that HAS people; over
+                  an empty list they are three controls that do nothing. */}
+              {group && ordered.length > 0 ? (
+              <>
               <View style={styles.search}>
                 <Ionicons name="search" size={18} color={colors.textMuted} />
                 <TextInput
@@ -599,13 +610,17 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
                   </Pressable>
                 ))}
               </View>
+              </>
+              ) : null}
             </>
           }
           renderItem={({ item: u, index: i }) => {
+            // Unreachable while `data` is empty without a group, but the
+            // compiler cannot see that through the ternary above.
+            if (!group) return null;
             return (
               <View style={i === 0 ? styles.listCard : null}>
                 <PlayerRow
-                  rank={rankOf.get(u.id) ?? i + 1}
                   user={u}
                   isAdmin={group.adminIds.includes(u.id)}
                   stats={stats?.[u.id]}
@@ -639,7 +654,6 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
           initialNumToRender={20}
           windowSize={10}
         />
-      )}
 
       <AdminRatingSheet
         target={ratingTarget}
@@ -681,7 +695,6 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
 
 
 function PlayerRow({
-  rank,
   user,
   isAdmin,
   stats,
@@ -694,8 +707,6 @@ function PlayerRow({
   holdsJerseys,
   cardCounts,
 }: {
-  /** Place in the club's ranking — not in the filtered view. */
-  rank: number;
   user: User;
   isAdmin: boolean;
   stats?: PlayerStats;
@@ -764,9 +775,9 @@ function PlayerRow({
           </View>
         ) : null}
       </View>
-      {/* Rank, then the menu — the reference closes every row with those two,
-          in that order, on the leading (left) edge. */}
-      <Text style={styles.rank}>{rank}</Text>
+      {/* No position number. The roster is a list of the club's members, not a
+          league table — the numbers read as a ranking nobody had earned, and
+          the standings that DO rank people live in the סטטיסטיקות tab. */}
       <Pressable
         onPress={onOpenMenu}
         hitSlop={10}
@@ -784,6 +795,9 @@ const styles = StyleSheet.create({
   // The reference's search field: a soft grey pill with the magnifier on the
   // leading edge.
   search: {
+    // Clear of the tab bar above it — the field sat flush against the tabs and
+    // read as part of them.
+    marginTop: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -814,14 +828,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontVariant: ['tabular-nums'],
   },
-  rank: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: clubSurface.subtle,
-    minWidth: 20,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
   chipPill: {
     paddingHorizontal: spacing.md,
     paddingVertical: 9,
@@ -844,6 +850,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
   },
+  contentFill: { flexGrow: 1 },
   content: {
     padding: spacing.lg,
     gap: spacing.md,

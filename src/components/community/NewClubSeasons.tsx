@@ -28,6 +28,13 @@ import { BallSwitch } from '@/components/anim/BallSwitch';
 // looking like two different settings.
 import { Chip, Stepper } from '@/components/community/SeasonsSettings';
 import { MIN_SEASON_ROUNDS } from '@/utils/seasonActivation';
+import {
+  CLUB_TZ,
+  formatCalendarDate,
+  nextSeasonStart,
+  seasonEndDate,
+  todayIn,
+} from '@/utils/seasonDates';
 import type { NewClubSeasonsValue } from '@/utils/newClubSeasons';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -56,6 +63,26 @@ export function NewClubSeasons({
   const set = (patch: Partial<NewClubSeasonsValue>) =>
     onChange({ ...value, ...patch });
   const byRounds = value.cadenceType === 'rounds';
+
+  /**
+   * The two dates the choice above just fixed.
+   *
+   * The edit screen's confirmation sheet has shown these since seasons
+   * shipped, and their absence here was reported ("להוסיף הצגה של תאריך סיום
+   * של העונה ותאריך התחלה של העונה החדשה כמו שיש בעריכת מועדון"): an admin
+   * picking "אחרי 24 חודשים" was choosing a finish line without being told
+   * where it lands.
+   *
+   * Computed exactly the way the activation plan computes them for a club
+   * with no history — which is every club on this screen — so the dates shown
+   * here and the dates written moments later cannot disagree. Rounds cadence
+   * has no date to show; it finishes on a count, not a day.
+   */
+  const dates = React.useMemo(() => {
+    if (!value.enabled || byRounds) return null;
+    const endsOn = seasonEndDate(todayIn(CLUB_TZ), value.months);
+    return { endsOn, nextStartsOn: nextSeasonStart(endsOn) };
+  }, [value.enabled, byRounds, value.months]);
 
   return (
     <View style={styles.section}>
@@ -149,6 +176,19 @@ export function NewClubSeasons({
             </>
           )}
 
+          {dates ? (
+            <View style={styles.dates}>
+              <DateRow
+                label={he.seasonsEndsOnLabel}
+                value={formatCalendarDate(dates.endsOn)}
+              />
+              <DateRow
+                label={he.seasonsNextStartsLabel}
+                value={formatCalendarDate(dates.nextStartsOn)}
+              />
+            </View>
+          ) : null}
+
           {/* What happens at the end, said once. There is no "close the season"
               control here and there must not be — the season has not started. */}
           <Text style={styles.hint}>{he.newClubSeasonsWhatHappens}</Text>
@@ -158,7 +198,42 @@ export function NewClubSeasons({
   );
 }
 
+/** Label right, value trailing to its left — the confirmation sheet's Row. */
+function DateRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.dateRow}>
+      <Text style={styles.dateLabel}>{label}</Text>
+      <Text style={styles.dateValue}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  dates: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.md,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    gap: spacing.xs,
+  },
+  dateRow: {
+    // `row` lays children right-to-left under forceRTL, so the label written
+    // first lands on the right and the date trails to its left.
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  dateValue: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '700',
+    textAlign: RTL_LABEL_ALIGN,
+  },
   section: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

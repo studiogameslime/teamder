@@ -1033,6 +1033,8 @@ export const he = {
   chemistryTied: 'שוויון',
   // הבסיס ההיסטורי — כל מספר בכרטיס הזוג נמדד מהתאריך הזה, ולא מעורבב עם
   // נתונים מוקדמים יותר שאין להם אותה רזולוציה.
+  /** ⚠️ No longer rendered on the club screen — the owner asked for the
+   *  line to go. Still used by the pair card's own footer. */
   chemistrySince: (date: string) => `הנתונים מ-${date} ואילך`,
   chemistryEmpty: 'עוד קצת משחקים ונגלה מי הכימיה של המועדון',
   /**
@@ -4139,7 +4141,7 @@ export const he = {
   // Tapping the (i) next to the title explains the scoring + tie-breaks.
   communityChampInfoTitle: 'איך מחושב הדירוג?',
   communityChampInfoBody:
-    'הטבלה ממוינת לפי מספר הניצחונות. אם מספר הניצחונות שווה, השוויון נשבר לפי מספר הגולים; ואם גם הגולים שווים — לפי מספר הבישולים.',
+    'הטבלה ממוינת לפי כמות נצחונות בברירת מחדל, ניתן ללחוץ על כותרת אחרת כדי למיין לפיה.',
   communityChampTotalGoals: 'סך הגולים',
   // "משחקים", matching the season summary, which the owner renamed the same
   // way on 22.09. The pair that must stay distinct on one screen is
@@ -4617,11 +4619,11 @@ export const he = {
   clubRecordMostGoals: 'המחזור הפורה ביותר',
   clubRecordMostGoalsHint: 'שערים',
   clubRecordMostShootouts: 'שיא הכרעות בפנדלים',
-  // "משחקונים" ולא "פנדלים": הנתון סופר משחקונים שהוכרעו בשובר שוויון,
+  // "משחקים" ולא "פנדלים": הנתון סופר משחקים שהוכרעו בשובר שוויון,
   // לא בעיטות ולא פנדלים שהובקעו.
-  clubRecordMostShootoutsHint: 'משחקונים',
+  clubRecordMostShootoutsHint: 'משחקים',
   clubRecordLongestEvening: 'המחזור הארוך ביותר',
-  clubRecordLongestEveningHint: 'משחקונים',
+  clubRecordLongestEveningHint: 'משחקים',
   clubRecordStreak: 'הרצף הארוך ביותר',
   clubRecordStreakHint: 'מחזורים ברצף',
   clubRecordRegular: 'הכי מתמיד',
@@ -4632,19 +4634,21 @@ export const he = {
   clubRecordOrganizationHint: 'מהמתוכננים',
   clubRecordsEmpty: 'עוד אין שיאים — הם יופיעו אחרי המחזורים הראשונים',
 
-  // פילוח תוצאות המשחקונים. שלוש הפרוסות זרות זו לזו: commitRoundStats מונה
+  // פילוח תוצאות המשחקים. שלוש הפרוסות זרות זו לזו: commitRoundStats מונה
   // shootoutRounds רק כשיש penalties[], ואלה נושאים winnerSide אמיתי ולכן לא
   // נספרים כתיקו. "רגיל" הוא מה שנשאר.
-  clubResultsTitle: 'איך המשחקונים הסתיימו',
-  clubResultsCenter: 'משחקונים',
+  clubResultsTitle: 'איך המשחקים הסתיימו',
+  clubResultsCenter: 'משחקים',
   clubResultsRegular: 'הוכרעו במשחק',
   clubResultsTie: 'הסתיימו בתיקו',
   clubResultsShootout: 'הוכרעו בפנדלים',
   clubResultsScoreless: (n: number, pct: number) =>
-    `${count(n, 'משחקון אחד', 'משחקונים')} הסתיימו 0:0 — ${pct}% מכלל המשחקונים`,
-  // ⚠️ לא "עוד לא הסתיימו משחקונים": המועדון בהחלט שיחק, פשוט תוצאות
-  // המשחקונים טרם נאספו. שני מצבים שונים לחלוטין.
-  clubResultsEmpty: 'תוצאות המשחקונים טרם נאספו',
+    n === 1
+      ? `משחק אחד הסתיים 0:0 — ${pct}% מכלל המשחקים`
+      : `${n} משחקים הסתיימו 0:0 — ${pct}% מכלל המשחקים`,
+  // ⚠️ לא "עוד לא הסתיימו משחקים": המועדון בהחלט שיחק, פשוט תוצאות
+  // המשחקים טרם נאספו. שני מצבים שונים לחלוטין.
+  clubResultsEmpty: 'תוצאות המשחקים טרם נאספו',
   // shootoutRounds ו-scorelessRounds נספרים רק מאז שה-counter עלה לאוויר,
   // ולכן מחזורים ישנים לא מיוצגים בהם. נאמר, ולא מוסתר.
   clubResultsPartial: 'הפילוח נספר מהמחזורים האחרונים בלבד',
@@ -4659,11 +4663,14 @@ export const he = {
   funShootout: 'מהמשחקים הוכרעו בפנדלים',
   funPenaltyRate: 'מהפנדלים במועדון הסתיימו בגול',
   funNotMeasuredYet: 'טרם נאספו מספיק נתונים',
+  // המונה ידוע, המכנה לא. אומרים את המספר ולא ממציאים אחוז.
+  funRateUnknown: 'האחוז יחושב כשייאסף מדגם מלא',
+  funScorelessCount: (n: number) =>
+    `${count(n, 'משחק אחד הסתיים', 'משחקים הסתיימו')} 0:0`,
+  funShootoutCount: (n: number) =>
+    `${count(n, 'משחק אחד הוכרע', 'משחקים הוכרעו')} בפנדלים`,
   funMeasuredOver: (counted: number, total: number) =>
-    `נתוני 0:0 ופנדלים מבוססים על ${counted} מתוך ${total} משחקונים`,
-  communityLogoChange: 'החלף לוגו מועדון',
-  communityLogoUpdated: 'הלוגו עודכן',
-  communityLogoUploadFailed: 'העלאת הלוגו נכשלה',
+    `נתוני 0:0 ופנדלים מבוססים על ${counted} מתוך ${total} משחקים`,
   communityStatsScopeSeasonPlain: (n: number) => `עונה ${n}`,
   communityPlayersSearch: 'חיפוש שחקן...',
   communityPlayersChipAll: 'הכל',

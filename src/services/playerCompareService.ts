@@ -200,11 +200,12 @@ export const playerCompareService = {
         metric('winPct', 'אחוז ניצחון', a.winPct, b.winPct, 'pct'),
         metric('gpg', 'ממוצע גולים למחזור', a.goalsPerGame, b.goalsPerGame, 'avg1'),
         metric('games', 'מחזורים', a.games, b.games, 'int'),
-        // משחקונים, not "משחקים": this row is `rounds`, the mini-games inside
-        // the evening, and the row above it is the evenings themselves. Two
-        // rows one under the other both reading like "games" is how the two
-        // got conflated everywhere else in the app.
-        metric('rounds', 'משחקונים', a.rounds, b.rounds, 'int'),
+        // "משחקים", the name the 22.09 copy pass gave the mini-games
+        // everywhere. The row above is `games`, the EVENINGS, and it is called
+        // מחזורים — the pair the app keeps distinct is מחזורים / משחקים, two
+        // words that share nothing. This row read "משחקונים" against a club
+        // stats screen one tap away printing the same number as "משחקים".
+        metric('rounds', 'משחקים', a.rounds, b.rounds, 'int'),
       ];
       // Draws only when one of them has any — a three-team club never draws,
       // and a 0-vs-0 row teaches nothing. Same rule as the penalty rows below
