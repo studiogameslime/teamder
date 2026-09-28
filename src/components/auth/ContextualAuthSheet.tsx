@@ -75,6 +75,25 @@ const COPY: Record<AuthPromptReason, { title: string; body: string }> = {
 interface Props {
   visible: boolean;
   kind: AuthPromptReason;
+  /**
+   * Say something other than `COPY[kind]`.
+   *
+   * One caller needs it: "התחברות לחשבון קיים" on the entry screen. Its
+   * `kind` is `account_upgrade` — the same authentication, the same outcome
+   * handling — but that kind's line is "פותחים לך חשבון", and answering
+   * somebody who just said they HAVE an account by offering to open one is a
+   * contradiction on the one screen where it matters most.
+   *
+   * An override rather than a new kind: `AuthPromptReason` is
+   * `PendingAction['kind']`, and this action deliberately parks no pending
+   * action, so it has no business widening that union. An override rather
+   * than a second sheet, because everything below the two lines — the
+   * providers, the cancel, the outcome, the email hand-off — must stay the
+   * one implementation.
+   *
+   * Omitted everywhere else, and `COPY[kind]` is untouched.
+   */
+  copy?: { title: string; body: string };
   /** Whether to say "what you filled in is saved" — true for the form kinds,
    *  where leaving the screen is the thing somebody is afraid of. */
   hasDraft?: boolean;
@@ -88,6 +107,7 @@ interface Props {
 export function ContextualAuthSheet({
   visible,
   kind,
+  copy: copyOverride,
   hasDraft,
   onCancel,
   onAuthenticated,
@@ -171,7 +191,7 @@ export function ContextualAuthSheet({
     onAuthenticated({ uid: outcome.uid, isNewAccount: outcome.isNewAccount });
   };
 
-  const copy = COPY[kind];
+  const copy = copyOverride ?? COPY[kind];
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onCancel}>

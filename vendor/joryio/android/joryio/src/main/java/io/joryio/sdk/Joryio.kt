@@ -1631,6 +1631,32 @@ class Joryio private constructor(
             return instance != null
         }
 
+        // ── Static forwarders the React Native bridge calls ─────────────
+        // JoryioModule.kt calls these five on the Joryio TYPE. They were
+        // instance-only here, so the bridge did not compile without a local
+        // patch on the consumer's side - five pulls in a row (Teamder,
+        // 2026-09-28). The parity tripwire now parses this companion object
+        // for every name the bridge calls statically; a grep of the sources
+        // cannot tell an instance method from a static one, which is how the
+        // gap survived. The void calls queue until initialize() like the rest
+        // of the pre-initialization API; the query answers false before then.
+        //
+        // Deliberately NOT @JvmStatic: that would emit a static method on the
+        // outer class with the same JVM signature as the instance method and
+        // the compiler rejects the clash. Kotlin callers reach these as
+        // Joryio.optOut(); Java callers use Joryio.Companion.optOut() or the
+        // instance.
+
+        fun optOut() = withSdk { it.optOut() }
+
+        fun optIn() = withSdk { it.optIn() }
+
+        fun isUserOptedOut(): Boolean = instance?.isUserOptedOut() ?: false
+
+        fun syncInAppCampaigns() = withSdk { it.syncInAppCampaigns() }
+
+        fun resetDisplayedCampaigns() = withSdk { it.resetDisplayedCampaigns() }
+
         /**
          * Initialize WITHOUT blocking the calling thread.
          *
@@ -1781,44 +1807,6 @@ class Joryio private constructor(
         }
 
         // Marketing subscription - NOT optIn/optOut, which is tracking consent.
-        // ── LOCAL PATCH (Teamder, re-applied 2026-09-28) ───────────────────
-        // The React Native module calls all five of these STATICALLY
-        // (Joryio.optOut(), Joryio.syncInAppCampaigns(), …) but Joryio is a
-        // `class` with a companion, and upstream declares them as INSTANCE
-        // methods only — so :joryio_react-native-sdk:compileReleaseKotlin
-        // fails with "Unresolved reference".
-        //
-        // FIFTH pull in a row carrying this patch. Their parity tripwire greps
-        // the SDK sources for method NAMES, and a grep cannot tell an instance
-        // method from a static one — so it keeps approving a bridge that does
-        // not compile. Audited again on this pull, mechanically: of the 17
-        // names the bridge calls on the Joryio type, the companion carries 12
-        // and these five are still absent.
-        //
-        // Same shape as the subscription forwarders directly below, which
-        // upstream DID add. Remove when upstream carries these.
-        fun optOut() {
-            withSdk { it.optOut() }
-        }
-
-        fun optIn() {
-            withSdk { it.optIn() }
-        }
-
-        // Reads through getInstance() rather than withSdk: withSdk QUEUES the
-        // action when the SDK is not yet up, and a queued action cannot return
-        // a Boolean. Before initialize() nobody has opted out, so false is both
-        // the honest answer and the safe default.
-        fun isUserOptedOut(): Boolean = instance?.isUserOptedOut() ?: false
-
-        fun syncInAppCampaigns() {
-            withSdk { it.syncInAppCampaigns() }
-        }
-
-        fun resetDisplayedCampaigns() {
-            withSdk { it.resetDisplayedCampaigns() }
-        }
-
         fun setSubscription(channel: String, status: String) {
             withSdk { it.setSubscription(channel, status) }
         }

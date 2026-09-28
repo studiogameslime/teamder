@@ -135,6 +135,18 @@ export function CommunityDetailsScreen() {
   // Which tab is on screen. Resets to מידע on every arrival — a club opens on
   // what it IS, not on wherever the last club was left.
   const [tab, setTab] = useState<ClubTabKey>('info');
+  /**
+   * Which tabs have ever been opened.
+   *
+   * Drives the lazy-then-kept panes below: a tab enters the tree the first
+   * time it is selected and stays for the life of the screen. `info` starts in
+   * the set because it is the tab the screen opens on.
+   */
+  const [seen, setSeen] = useState<Set<ClubTabKey>>(() => new Set<ClubTabKey>(['info']));
+  const showTab = (k: ClubTabKey) => {
+    setTab(k);
+    setSeen((prev) => (prev.has(k) ? prev : new Set(prev).add(k)));
+  };
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<User[]>([]);
   const [upcoming, setUpcoming] = useState<Game[]>([]);
@@ -832,14 +844,10 @@ export function CommunityDetailsScreen() {
               },
             ]
           : []),
-        {
-          id: 'allPlayers',
-          label: he.communityPlayersSeeAll,
-          icon: 'people-outline' as const,
-          // A tab now, not a route. Pushing it would stack a second club hero
-          // behind a back button that returns to the club you are already on.
-          onPress: () => setTab('players'),
-        },
+        // "לצפייה בכל השחקנים" and "סטטיסטיקה" are gone from this menu. Both
+        // only switched to a TAB that is already on screen, two taps behind a
+        // ☰ instead of one tap on the bar above — a menu row for something the
+        // person can already see (owner, 28.09).
         {
           id: 'history',
           label: he.communityMenuHistory,
@@ -849,12 +857,6 @@ export function CommunityDetailsScreen() {
               'CommunityHistory',
               { groupId: group.id },
             ),
-        },
-        {
-          id: 'stats',
-          label: he.communityMenuStats,
-          icon: 'stats-chart-outline' as const,
-          onPress: () => setTab('stats'),
         },
         ...(isMember || isAdmin
           ? [
@@ -984,7 +986,7 @@ export function CommunityDetailsScreen() {
         tabs={clubTabs}
         active={tab}
         onChange={(k) => {
-          setTab(k);
+          showTab(k);
           logEvent(AnalyticsEvent.ScreenView, { screen: 'ClubDetails', tab: k });
         }}
       />
@@ -1005,17 +1007,25 @@ export function CommunityDetailsScreen() {
           />
         </View>
       ) : null}
-      {/* Only the active tab is mounted, and that is the point: the numbers
-          tab reads season archives, the all-time rollup and the pair documents
-          on mount. Mounting all three on every club open would pay for three
-          tabs to show one. A tab unmounts when you leave it and reloads when
-          you come back — the alternative, keeping all three alive, is the read
-          bill this branch exists to cut. */}
-      {tab === 'players' ? (
-        <CommunityPlayersScreen groupId={group.id} header={header} />
-      ) : tab === 'stats' ? (
-        <CommunityStatsScreen groupId={group.id} header={header} />
-      ) : (
+      {/* Mounted on FIRST visit, then kept — hidden, not destroyed.
+       *
+       *  It used to be a ternary: one tab alive, the other two gone. That is
+       *  cheapest on open and wrong on every tap afterwards. Switching tabs
+       *  unmounted a whole tree and built another, so the hero was torn down
+       *  and rebuilt each time — "כשאני עובר בין טאבים אתה מרנדר את כל המסך",
+       *  and the cover photo blinked with it — and the tab you came back to
+       *  re-read its documents from scratch. A club browsed for a minute paid
+       *  for the numbers tab three times.
+       *
+       *  Lazy keeps the saving that mattered: opening a club still mounts ONE
+       *  tab, and a tab never visited is never built. What changes is the
+       *  second visit — free, instant, and with its scroll position where the
+       *  reader left it.
+       *
+       *  `display: none` rather than unmounting: an inactive tab keeps its
+       *  state and its listeners but occupies no layout and paints nothing. */}
+      {seen.has('info') ? (
+      <View style={tab === 'info' ? styles.tabPane : styles.tabPaneHidden}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -1389,7 +1399,18 @@ export function CommunityDetailsScreen() {
           )}
         </View>
       </ScrollView>
-      )}
+      </View>
+      ) : null}
+      {seen.has('players') ? (
+        <View style={tab === 'players' ? styles.tabPane : styles.tabPaneHidden}>
+          <CommunityPlayersScreen groupId={group.id} header={header} />
+        </View>
+      ) : null}
+      {seen.has('stats') ? (
+        <View style={tab === 'stats' ? styles.tabPane : styles.tabPaneHidden}>
+          <CommunityStatsScreen groupId={group.id} header={header} />
+        </View>
+      ) : null}
 
       <HamburgerMenu
         visible={menuOpen}
@@ -1724,6 +1745,11 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: spacing.xxl,
   },
+  // A pane fills the screen; an inactive one is out of the layout entirely.
+  // `display: 'none'` keeps the subtree mounted — state, scroll offset and
+  // listeners survive — while it paints nothing and measures nothing.
+  tabPane: { flex: 1 },
+  tabPaneHidden: { display: 'none' },
   center: {
     flex: 1,
     alignItems: 'center',

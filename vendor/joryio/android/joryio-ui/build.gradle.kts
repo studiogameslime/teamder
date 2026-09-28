@@ -1,18 +1,32 @@
+import java.util.Properties
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("maven-publish")
 }
 
-// Single source of truth for both artifacts' version. base and -ui are released
-// in LOCKSTEP at the same number, which is what stops a consumer assembling an
-// incompatible pair; Braze does the same for android-sdk-base/-ui.
-// ── LOCAL PATCH (Teamder) ──────────────────────────────────────────────────
-// Upstream still says "1.0.0" while :joryio publishes 1.2.0, so this artifact
-// would go out two versions behind and pin base to a version that never sat
-// beside it. "Single source of truth" is the intent, not the mechanism —
-// :joryio hardcodes its own number in its own file and nothing compares them.
-val sdkVersion = "1.2.0"
+// base and -ui are released in LOCKSTEP at the same number, which is what stops
+// a consumer assembling an incompatible pair; Braze does the same for
+// android-sdk-base/-ui. The number lives ONCE, in gradle.properties
+// (joryioSdkVersion), read by both modules.
+// The published version of both artifacts, read from THIS repository's
+// gradle.properties by path. Gradle only reads gradle.properties from the
+// ROOT project and the user home, and a React Native app consumes these
+// modules as projects of its own build (`include ':joryio-sdk'` +
+// projectDir), so `project.findProperty(...)` is null there and an error()
+// took every consumer's build down at configuration time (Teamder,
+// 2026-09-28). The version only matters when PUBLISHING: a consumer that
+// never publishes gets "unspecified" and builds; a publish without the
+// property fails at publish time, where it belongs.
+val sdkVersion: String = run {
+    val props = Properties()
+    val own = file("${projectDir.parentFile}/gradle.properties")
+    if (own.isFile) own.inputStream().use { props.load(it) }
+    (project.findProperty("joryioSdkVersion") as String?)
+        ?: props.getProperty("joryioSdkVersion")
+        ?: "unspecified"
+}
 
 android {
     namespace = "io.joryio.sdk.ui"
@@ -78,16 +92,39 @@ publishing {
             afterEvaluate {
                 from(components["release"])
 
-                // ── LOCAL PATCH (Teamder) ──────────────────────────
-                // The generated POM ALREADY carries io.joryio:joryio-android at
-                // this exact version, from the project dependency below — so the
-                // pin this block was written for is there for free.
-                //
-                // It appended a SECOND <dependencies> element to a POM that
-                // already had one, which is invalid, and Gradle refused the
-                // publication outright: publishReleasePublicationToMavenLocal
-                // failed with "POM file is invalid" on every machine, so the
-                // artifact could not be released at all.
+                // Pin base to the EXACT same version rather than letting Gradle
+                // resolve a range. The reflective lookup between the two
+                // artifacts (base finds DefaultInAppMessagePresenter by name)
+                // has no compile-time check, so a mismatched pair would fail by
+                // displaying nothing rather than by failing to build. An exact
+                // pin makes that impossible at resolution time.
+                pom.withXml {
+                    // `from(components["release"])` already wrote the
+                    // <dependencies> element AND the joryio-android entry (from
+                    // `api(project(":joryio"))`). Appending a second
+                    // <dependencies> made an invalid POM that Gradle refused
+                    // to publish (Teamder, 2026-09-28); appending a second
+                    // joryio-android entry would be a duplicate declaration.
+                    // So: find the entry that is there and pin ITS version.
+                    val root = asNode()
+                    val nameOf = { n: Any? -> (n as? groovy.util.Node)?.name().toString().substringAfter('}') }
+                    val deps = (root.children().firstOrNull { nameOf(it) == "dependencies" } as? groovy.util.Node)
+                        ?: root.appendNode("dependencies")
+                    val existing = deps.children().filterIsInstance<groovy.util.Node>().firstOrNull { dep ->
+                        dep.children().filterIsInstance<groovy.util.Node>().any { nameOf(it) == "artifactId" && it.text() == "joryio-android" }
+                    }
+                    if (existing != null) {
+                        val version = existing.children().filterIsInstance<groovy.util.Node>().firstOrNull { nameOf(it) == "version" }
+                        if (version != null) version.setValue("[$sdkVersion]") else existing.appendNode("version", "[$sdkVersion]")
+                    } else {
+                        deps.appendNode("dependency").apply {
+                            appendNode("groupId", "io.joryio")
+                            appendNode("artifactId", "joryio-android")
+                            appendNode("version", "[$sdkVersion]")
+                            appendNode("scope", "compile")
+                        }
+                    }
+                }
             }
         }
     }

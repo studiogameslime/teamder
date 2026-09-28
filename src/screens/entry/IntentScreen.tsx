@@ -30,10 +30,11 @@
 // deep-link consumer dragging the person to the target they just declined.
 
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ContextualAuthSheet } from '@/components/auth/ContextualAuthSheet';
 import { PressableScale } from '@/components/PressableScale';
 import { AppearItem } from '@/components/anim/AppearItem';
 import {
@@ -91,6 +92,39 @@ export function IntentScreen() {
   const isGuest = useUserStore((s) => s.currentUser?.isGuest === true);
   const chooseIntent = useEntryStore((s) => s.chooseIntent);
   const invite = useEntryStore((s) => s.invite);
+  const beginExistingAccountAttempt = useEntryStore(
+    (s) => s.beginExistingAccountAttempt,
+  );
+  const endExistingAccountAttempt = useEntryStore(
+    (s) => s.endExistingAccountAttempt,
+  );
+
+  /**
+   * "כבר השתמשת ב-Teamder? התחברות לחשבון קיים".
+   *
+   * The sheet is opened DIRECTLY rather than through `useAuthenticatedAction`,
+   * and that is the whole design of this action. The hook is for "run this,
+   * but sign the person in first", and it parks a PendingAction to remember
+   * the work — which here would overwrite an invitation already sitting on the
+   * disk, the one thing FLOW 3 must never do. There is no work to remember:
+   * this is authentication and nothing else.
+   *
+   * It is also NOT an intent. `chooseIntent` is never called, so nothing
+   * writes `pendingIntent`, nothing raises `suppressAutoConsume`, and
+   * `organicCompleted` stays exactly as it was. A person who taps this and
+   * backs out has changed nothing at all.
+   *
+   * What happens next is decided by the EXISTING gates, not here:
+   *   • an account that has finished onboarding → RootNavigator renders the
+   *     tabs, and the pending-action consumer resumes the invitation;
+   *   • one that has not → the profile screen, and `existingAccountWasNew`
+   *     brings them back to this question afterwards.
+   */
+  const [authOpen, setAuthOpen] = useState(false);
+  const openExistingAccount = () => {
+    beginExistingAccountAttempt();
+    setAuthOpen(true);
+  };
 
   // The inviter's NAME is not in the stash — the link carries a uid. It is
   // resolved here from `/usersPublic`, the same four-field mirror the invite
@@ -185,7 +219,60 @@ export function IntentScreen() {
             </PressableScale>
           </AppearItem>
         ))}
+
+        {/* A tertiary action, and shaped like one: no card, no button, no
+            surface of its own. The question is muted and the answer is the
+            tappable half in Teamder blue — one line, closing the list without
+            competing with the three cards above it.
+
+            Inside the ScrollView on purpose. With the invitation on screen
+            there are four cards, and the reason this screen scrolls at all is
+            that four do not fit a small phone; a row pinned outside the
+            scroller would be the one thing a short screen cuts off. */}
+        <View style={styles.existing}>
+          <Text style={styles.existingPrompt}>{he.entryExistingPrompt}</Text>
+          <Pressable
+            onPress={openExistingAccount}
+            accessibilityRole="button"
+            accessibilityLabel={he.entryExistingCta}
+            hitSlop={10}
+          >
+            {({ pressed }) => (
+              <Text style={[styles.existingCta, pressed && styles.existingCtaOn]}>
+                {he.entryExistingCta}
+              </Text>
+            )}
+          </Pressable>
+        </View>
       </ScrollView>
+
+      <ContextualAuthSheet
+        visible={authOpen}
+        kind="account_upgrade"
+        // The kind is right — this is the same authentication the generic wall
+        // runs — but its line offers to OPEN an account, and this person has
+        // just said they have one. Only the two lines change; everything below
+        // them is the shared sheet.
+        copy={{
+          title: he.entryExistingSheetTitle,
+          body: he.entryExistingSheetBody,
+        }}
+        onCancel={() => {
+          // Backing out changes nothing: no intent, no pending action, and the
+          // invitation — which was never touched — is still on the disk and
+          // still on the card above.
+          setAuthOpen(false);
+          endExistingAccountAttempt();
+        }}
+        onAuthenticated={() => {
+          // Deliberately empty of routing. Whether this identity has a Teamder
+          // account behind it is not ours to judge from the auth result —
+          // `isNewAccount` describes the Firebase credential, not the account —
+          // and RootNavigator's gates already read the only thing that answers
+          // it. Closing the sheet is the whole job.
+          setAuthOpen(false);
+        }}
+      />
     </View>
   );
 }
@@ -236,6 +323,35 @@ export function buildInviteChoice(
 }
 
 const styles = StyleSheet.create({
+  existing: {
+    // `row` puts the first child on the RIGHT under forceRTL, so the question
+    // leads and the action follows it leftwards — one sentence, read in order.
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    // The content container already puts `spacing.lg` between children; this
+    // is the extra air that separates a tertiary action from the cards it
+    // must not compete with. `paddingBottom: spacing.xxl` below keeps it
+    // clear of the bottom edge on a short screen.
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  existingPrompt: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+  },
+  existingCta: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+  },
+  existingCtaOn: { opacity: 0.6 },
   root: { flex: 1, backgroundColor: SKY },
   head: {
     paddingHorizontal: spacing.xl,

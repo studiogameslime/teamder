@@ -75,6 +75,35 @@ export class GroupJoinRejectedError extends Error {
 
 // ─── Service ──────────────────────────────────────────────────────────────
 
+/**
+ * Is `userId` the session Firestore will actually evaluate the rules against?
+ *
+ * `listForUser` and `subscribeForUser` both query
+ * `where('playerIds', 'array-contains', userId)`, and the groups rule allows a
+ * read only when `request.auth.uid` is in that array. Those two uids are the
+ * same for every caller that passes the current user — and different for a
+ * hydrate still in flight when the session underneath it changed. Firestore
+ * cannot prove the rule from the query then, so it denies the WHOLE list.
+ *
+ * Seen in production: six `listForUser` denials over three days, always with
+ * `lastUserId` (the signed-in uid) different from the uid in the query, both
+ * of them anonymous — a guest session replaced while its hydrate was running.
+ * `subscribeForUser` and the two live-game queries failed in the same seconds
+ * for the same reason.
+ *
+ * Returning empty rather than querying is not hiding it. The query can only be
+ * denied, and the answer belongs to a session that no longer exists; a hydrate
+ * for the NEW uid follows it. What this removes is a permission-denied in the
+ * error inbox that reads like a rules bug and is not one.
+ */
+function isCurrentSession(userId: UserId): boolean {
+  if (USE_MOCK_DATA) return true;
+  const uid = getFirebase().auth.currentUser?.uid;
+  // No session at all: let the call proceed and fail the way it always did —
+  // that is a different fault and must stay visible.
+  return !uid || uid === userId;
+}
+
 export const groupService = {
   /**
    * Groups the user is an APPROVED community member of.
@@ -87,6 +116,7 @@ export const groupService = {
           (g.adminIds.includes(userId) || g.playerIds.includes(userId)),
       );
     }
+    if (!isCurrentSession(userId)) return [];
     const q = query(col.groups(), where('playerIds', 'array-contains', userId));
     let snap;
     try {
@@ -121,6 +151,10 @@ export const groupService = {
             (g.adminIds.includes(userId) || g.playerIds.includes(userId)),
         ),
       );
+      return () => {};
+    }
+    if (!isCurrentSession(userId)) {
+      onChange([]);
       return () => {};
     }
     const q = query(col.groups(), where('playerIds', 'array-contains', userId));

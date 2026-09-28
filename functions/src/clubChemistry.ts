@@ -253,16 +253,21 @@ function eligible(kind: ChemistryKind, p: PairTotals): boolean {
 function topBy(
   pairs: Record<string, PairTotals>,
   kind: ChemistryKind,
+  /** Pairs another card has already claimed — see `exclusive` below. */
+  exclude?: ReadonlySet<string>,
 ): ChemistryPick | null {
+  const usable = (k: string) =>
+    eligible(kind, pairs[k]) && !(exclude?.has(k) ?? false);
   let best = 0;
-  for (const p of Object.values(pairs)) {
-    if (!eligible(kind, p)) continue;
-    best = Math.max(best, metricOf(kind, p));
+  for (const k of Object.keys(pairs)) {
+    if (!usable(k)) continue;
+    best = Math.max(best, metricOf(kind, pairs[k]));
   }
   if (best < CHEMISTRY_MIN[kind]) return null;
   const keys = Object.keys(pairs)
-    .filter((k) => eligible(kind, pairs[k]) && metricOf(kind, pairs[k]) === best)
+    .filter((k) => usable(k) && metricOf(kind, pairs[k]) === best)
     .sort();
+  if (keys.length === 0) return null;
   return { kind, pairs: keys, value: best, tied: keys.length > 1 };
 }
 
@@ -308,6 +313,23 @@ export function pickChemistry(
   pairs: Record<string, PairTotals>,
 ): ChemistryPick[] {
   const out: ChemistryPick[] = [];
+
+  /**
+   * One pair cannot hold both "הכי הרבה ניצחונות יחד" and "הכי הרבה הפסדים".
+   *
+   * Not a contradiction in the data — the pair who plays together most often
+   * naturally tops both columns, and on one club it did: 36 wins and 21 losses
+   * on the same two names, side by side. But a section that hands the same
+   * face the crown and the wooden spoon reads as broken, and the owner said so.
+   *
+   * The wins card is decided first and keeps its pair; the losses card falls to
+   * the next pair down. Only these two are exclusive of each other — the rest
+   * measure different things and may legitimately overlap (the regulars are
+   * often also the deadly duo, and that is worth saying, not hiding).
+   */
+  const claimed = new Set<string>();
+  const EXCLUSIVE = new Set<ChemistryKind>(['winningDuo', 'mostLosses']);
+
   for (const kind of [
     'winningDuo',
     'regulars',
@@ -317,8 +339,9 @@ export function pickChemistry(
     'deadlyDuo',
     'rivalry',
   ] as const) {
-    const pick = topBy(pairs, kind);
+    const pick = topBy(pairs, kind, EXCLUSIVE.has(kind) ? claimed : undefined);
     if (!pick) continue;
+    if (EXCLUSIVE.has(kind)) for (const k of pick.pairs) claimed.add(k);
     if (kind === 'rivalry') {
       const p = pairs[pick.pairs[0]];
       pick.balance = { winsA: p.winsA, winsB: p.winsB, against: p.against };

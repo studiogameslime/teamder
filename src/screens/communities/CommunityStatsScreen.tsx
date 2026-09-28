@@ -1406,16 +1406,12 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               ));
             })()}
           </Card>
-          {/* Exact, not a hedge: the club played N mini-games and the counters
-              behind two of the rows above saw M of them. Before `countedRounds`
-              this could not be detected at all — the old caveat only fired when
-              BOTH counters were zero, so a club with partial history showed a
-              wrong number silently. */}
-          {derived.partialCoverage ? (
-            <Text style={styles.scopeNote}>
-              {he.funMeasuredOver(derived.countedRounds, derived.totalRounds)}
-            </Text>
-          ) : null}
+          {/* The coverage caveat used to print here. Removed on the owner's
+              instruction (28.09): two grey lines of small print under the ring
+              explaining which sample it was measured over — the reader wanted
+              the space, not the footnote. The numbers themselves are still
+              divided by `countedRounds`, which is what made them honest; only
+              the sentence about it is gone. */}
             </>
           ) : null}
 

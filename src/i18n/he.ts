@@ -1880,6 +1880,15 @@ export const he = {
   ctxAuthAvailabilityBody: 'מתחברים כדי שנוכל להתאים לך משחקים.',
   /** The one reason that is not an action: the person asked to register, full
    *  stop. Nothing is waiting to be finished, so the copy promises nothing. */
+  // The tertiary action under the three entry cards. Two parts on one line:
+  // the question is secondary text, the answer is the tappable half.
+  entryExistingPrompt: 'כבר השתמשת ב-Teamder?',
+  // The sheet's own two lines on THIS path only. `ctxAuthUpgradeTitle` says
+  // "פותחים לך חשבון", which is right for the generic wall and a
+  // contradiction here — the person has just said they already have one.
+  entryExistingSheetTitle: 'התחברות לחשבון קיים',
+  entryExistingSheetBody: 'בחר איך להתחבר לחשבון Teamder שלך',
+  entryExistingCta: 'התחברות לחשבון קיים',
   ctxAuthUpgradeTitle: 'פותחים לך חשבון',
   ctxAuthUpgradeBody: 'מתחברים כדי לשמור מחזורים, להצטרף למועדונים ולבנות פרופיל שחקן.',
   /** Fallback — a kind with no copy of its own. Should never be reached; the

@@ -31,7 +31,10 @@ import { RTL_LABEL_ALIGN, clubAccent, clubShadow, clubSurface, colors, spacing }
 
 const ACircle = Animated.createAnimatedComponent(Circle);
 
-const SIZE = 146;
+// 146 → 124. At the old size the ring and its legend shared the row so
+// tightly that the legend's own sentences clipped on a narrow phone, and the
+// centre label sat against the stroke. Reported with both circled.
+const SIZE = 124;
 const STROKE = 26;
 
 // The reference palette: a green majority, a neutral grey middle and a red
@@ -157,16 +160,28 @@ export function ResultsBreakdown({
     );
   }
 
-  const slices: Slice[] = [
-    { key: 'regular', label: he.clubResultsRegular, value: regular, tint: SLICE_TINT.regular },
-    { key: 'tie', label: he.clubResultsTie, value: tie, tint: SLICE_TINT.tie },
+  // A slice worth nothing is not drawn and not listed.
+  //
+  // "הסתיימו בתיקו · 0%" sat in the legend of a club that resolves every draw
+  // with penalties, and the owner asked the obvious question: how are there
+  // zero ties? The answer is that there are none to have — `commitRoundStats`
+  // increments `tiedRounds` only for a round left level, and a round sent to
+  // penalties carries a real winner. The row was reporting the absence of a
+  // thing that cannot happen in that club, next to a ring where it drew no arc
+  // at all.
+  //
+  // A club that DOES leave rounds level still sees it. The line appears when
+  // the number does.
+  const slices: Slice[] = ([
+    { key: 'regular' as const, label: he.clubResultsRegular, value: regular, tint: SLICE_TINT.regular },
+    { key: 'tie' as const, label: he.clubResultsTie, value: tie, tint: SLICE_TINT.tie },
     {
-      key: 'shootout',
+      key: 'shootout' as const,
       label: he.clubResultsShootout,
       value: shootout,
       tint: SLICE_TINT.shootout,
     },
-  ];
+  ] satisfies Slice[]).filter((s) => s.value > 0);
 
   // Cumulative offsets, computed once over the same array the legend renders,
   // so a slice's arc and its legend row can never disagree.
@@ -237,7 +252,6 @@ export function ResultsBreakdown({
           {he.clubResultsScoreless(scoreless, pctOf(scoreless))}
         </Text>
       )}
-      {partial && <Text style={styles.partial}>{he.clubResultsPartial}</Text>}
     </View>
   );
 }

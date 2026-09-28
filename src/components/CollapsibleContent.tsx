@@ -21,13 +21,23 @@ export function CollapsibleContent({
   const [expanded, setExpanded] = useState(false);
   const [fullHeight, setFullHeight] = useState(0);
   const overflows = fullHeight > collapsedHeight + 12;
+  // The WHOLE clamped block opens it, not the eight-point "קרא עוד" alone
+  // (owner, 28.09). The text is the thing a thumb lands on; the link under it
+  // was the only part that answered, so tapping the paragraph you are trying
+  // to read did nothing. Only while it is clamped: once open, the text is
+  // selectable content again and must not collapse under an accidental tap.
+  //
+  // `Pressable` with no press handler is still a view, so when the content
+  // fits there is nothing to open and nothing intercepts the touch.
+  const clamped = !expanded && overflows;
   return (
     <View>
-      <View
+      <Pressable
+        onPress={clamped ? () => setExpanded(true) : undefined}
+        accessibilityRole={clamped ? 'button' : undefined}
+        accessibilityLabel={clamped ? he.communityReadMore : undefined}
         style={
-          !expanded && overflows
-            ? { maxHeight: collapsedHeight, overflow: 'hidden' }
-            : undefined
+          clamped ? { maxHeight: collapsedHeight, overflow: 'hidden' } : undefined
         }
       >
         <View
@@ -42,7 +52,7 @@ export function CollapsibleContent({
         >
           {children}
         </View>
-      </View>
+      </Pressable>
       {overflows ? (
         <Pressable
           onPress={() => setExpanded((v) => !v)}

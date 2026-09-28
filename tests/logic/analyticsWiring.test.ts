@@ -42,6 +42,14 @@ const KNOWN_UNWIRED = new Set<string>([
   'WidgetSyncPushed',
   'WidgetTimerAction',
 
+  // ── Surface removed, constant kept ──
+  // The communities feed's map button was taken out on 28.09 (owner: the row
+  // carried three controls over one search field). `CommunitiesMap` and its
+  // route are untouched and still reachable from the games feed; only this
+  // entry point is gone, and its event with it. Restore both together — the
+  // removed block is in git.
+  'CommunitiesMapOpened',
+
   // ── Inherited: defined before this integration, never wired ──
   // Names reserved by an earlier pass with no call site behind them. Left
   // as-is rather than quietly deleted — each is a product decision about

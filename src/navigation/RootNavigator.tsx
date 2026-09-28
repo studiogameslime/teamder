@@ -66,10 +66,29 @@ export function RootNavigator() {
   // is consumed. Two consumers need it: the render, which picks a stack, and
   // the deep-link consumer below, which must not address a tab that the entry
   // stack has replaced. `decideEntry` is pure, so hoisting it costs nothing.
+  const existingAccountWasNew = useEntryStore((s) => s.existingAccountWasNew);
   const entryDecision = decideEntry({
     isGuest: currentUser?.isGuest === true,
     organicCompleted: entryOrganicCompleted,
+    existingAccountWasNew,
+    hasCompletedOnboarding,
   });
+
+  /**
+   * The existing-account attempt turned out to be a new person.
+   *
+   * Latched HERE, not in the auth sheet, because "המשך עם מייל" leaves the
+   * sheet for `EmailAuth` and its `onAuthenticated` never runs — a flag set by
+   * the sheet alone would be right for Google and Apple and wrong for email.
+   * This condition is true for all three: a full account that still owes the
+   * profile screen, while a CTA attempt is open.
+   */
+  useEffect(() => {
+    if (!useEntryStore.getState().existingAccountAttempt) return;
+    if (!currentUser || currentUser.isGuest === true) return;
+    if (hasCompletedOnboarding) return;
+    useEntryStore.getState().markExistingAccountWasNew();
+  }, [currentUser, hasCompletedOnboarding]);
 
   const groupHydrated = useGroupStore((s) => s.hydrated);
   const hydrateGroup = useGroupStore((s) => s.hydrate);

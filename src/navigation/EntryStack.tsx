@@ -18,10 +18,22 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { EmailAuthScreen } from '@/screens/auth/EmailAuthScreen';
 import { IntentScreen } from '@/screens/entry/IntentScreen';
 
 export type EntryStackParamList = {
   EntryIntent: undefined;
+  /**
+   * The one provider the contextual auth sheet does not handle itself: it
+   * needs two fields, validation and a reset path, so the sheet closes and
+   * navigates here.
+   *
+   * Registered because the sheet is now reachable from THIS stack, and
+   * `navigate` to a route a stack does not own fails in silence — the email
+   * button would have looked dead. Same screen component as the other four
+   * stacks; nothing about it changes.
+   */
+  EmailAuth: undefined;
 };
 
 const Stack = createNativeStackNavigator<EntryStackParamList>();
@@ -33,6 +45,7 @@ export function EntryStack() {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="EntryIntent" component={IntentScreen} />
+      <Stack.Screen name="EmailAuth" component={EmailAuthScreen} />
     </Stack.Navigator>
   );
 }

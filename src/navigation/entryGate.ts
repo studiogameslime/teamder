@@ -98,7 +98,36 @@ export function decideEntry(args: {
   isGuest: boolean;
   /** `null` while the read is in flight. */
   organicCompleted: boolean | null;
+  /**
+   * An "התחברות לחשבון קיים" attempt found a brand-new identity.
+   *
+   * See `entryStore.existingAccountWasNew`. Paired with `hasCompletedOnboarding`
+   * below, which is what separates "on the way to the profile screen" from
+   * "back from it".
+   */
+  existingAccountWasNew?: boolean;
+  /** `/users/{uid}.onboardingCompleted`. Only read for the rule above. */
+  hasCompletedOnboarding?: boolean;
 }): EntryDecision {
+  // Rule 0. Somebody who said "I already have an account", did not, and has
+  // since finished the profile screen comes BACK here to answer the question —
+  // a new person does not get to skip it by claiming to be an old one.
+  //
+  // Deliberately narrower than "any new account owes the question": a person
+  // who picked a card, hit the auth wall and turned out to be new has already
+  // said what they came for, and must resume that instead. The flag is only
+  // ever set on the CTA's own journey.
+  //
+  // `hasCompletedOnboarding` is what holds this back until the profile is in:
+  // without it the rule would fire the instant the account became full and
+  // would replace the profile screen with the question.
+  if (
+    !args.isGuest &&
+    args.existingAccountWasNew === true &&
+    args.hasCompletedOnboarding === true
+  ) {
+    return 'entry';
+  }
   // Rule 1. Checked FIRST and without touching storage: a signed-in person
   // must never be held on a splash waiting for a flag that cannot change the
   // answer. This is also what keeps every existing account out of the new

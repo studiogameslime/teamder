@@ -554,7 +554,12 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
           ]}
           ListEmptyComponent={
             <View style={styles.center}>
-              {loading && !group ? (
+              {/* `loading`, not `loading && !group`. The club document lands
+                  before its member docs do, and gating the loader on the
+                  document meant the roster announced "אין שחקנים" for the
+                  second it took the people to arrive — a club with 29 members
+                  claiming to be empty. Same ball the numbers tab spins. */}
+              {loading ? (
                 <SoccerBallLoader size={40} />
               ) : (
                 <Text style={styles.empty}>

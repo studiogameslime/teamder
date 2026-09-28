@@ -24,10 +24,15 @@ public struct UserIdentity: Codable {
 /// User identification request
 public struct IdentifyRequest: Codable {
     public let userId: String
+    /// The device's anonymous id, so the server stitches the pre-login history
+    /// onto the person on identify - as Android's request always did. Without
+    /// it, alias() was the only call that joined the two on iOS.
+    public let anonymousId: String?
     public let attributes: [String: AnyCodable]
 
-    public init(userId: String, attributes: UserAttributes) {
+    public init(userId: String, anonymousId: String? = nil, attributes: UserAttributes) {
         self.userId = userId
+        self.anonymousId = anonymousId
         self.attributes = attributes.mapValues { AnyCodable($0) }
     }
 }

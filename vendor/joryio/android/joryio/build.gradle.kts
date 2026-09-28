@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -125,12 +127,31 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }
 
+// The published version of both artifacts, read from THIS repository's
+// gradle.properties by path. Gradle only reads gradle.properties from the
+// ROOT project and the user home, and a React Native app consumes these
+// modules as projects of its own build (`include ':joryio-sdk'` +
+// projectDir), so `project.findProperty(...)` is null there and an error()
+// took every consumer's build down at configuration time (Teamder,
+// 2026-09-28). The version only matters when PUBLISHING: a consumer that
+// never publishes gets "unspecified" and builds; a publish without the
+// property fails at publish time, where it belongs.
+val sdkVersion: String = run {
+    val props = Properties()
+    val own = file("${projectDir.parentFile}/gradle.properties")
+    if (own.isFile) own.inputStream().use { props.load(it) }
+    (project.findProperty("joryioSdkVersion") as String?)
+        ?: props.getProperty("joryioSdkVersion")
+        ?: "unspecified"
+}
+
 publishing {
     publications {
         create<MavenPublication>("release") {
             groupId = "io.joryio"
             artifactId = "joryio-android"
-            version = "1.2.0"
+            // ONE number for base and -ui: gradle.properties (joryioSdkVersion), see sdkVersion above.
+            version = sdkVersion
 
             afterEvaluate {
                 from(components["release"])

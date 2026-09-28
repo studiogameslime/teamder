@@ -266,6 +266,41 @@ export async function upgradeAnonymous(
       } catch (inner) {
         if (isCancellation(inner)) return { status: 'cancelled' };
         const icode = (inner as { code?: string })?.code ?? 'signin-failed';
+
+        // ── An Apple credential is SINGLE-USE ────────────────────────────
+        //
+        // Its nonce is spent by the `linkWithCredential` that just failed, so
+        // replaying the same one here is refused:
+        //
+        //   auth/missing-or-invalid-nonce
+        //   "Duplicate credential received. Please try again with a new
+        //    credential."
+        //
+        // That is not a double tap. It is every iOS person who already has an
+        // Apple account and opens the app on a guest session: the link fails
+        // because the credential is in use, the fallback replays the spent
+        // token, and they cannot sign in at all. Seen twice in production
+        // within twenty minutes, on iOS, on the Apple path.
+        //
+        // Firebase only attaches a fresh credential to the error sometimes;
+        // when it does, `recovered` above is already a new one and this never
+        // runs. When it does not, the only way through is to ask Apple again.
+        // One extra prompt beats a sign-in that cannot complete.
+        if (icode === 'auth/missing-or-invalid-nonce') {
+          try {
+            const again = await acquire(method);
+            const cred = await signInWithCredential(auth, again.credential);
+            again.mirror();
+            await bindUpgradedIdentity(cred.user.uid, method, false);
+            return { status: 'switched', uid: cred.user.uid, isNewAccount: false };
+          } catch (retry) {
+            if (isCancellation(retry)) return { status: 'cancelled' };
+            const rcode = (retry as { code?: string })?.code ?? 'signin-failed';
+            logError('upgradeNonceRetry', retry, { method, code: rcode });
+            return { status: 'failed', code: rcode, message: (retry as Error)?.message };
+          }
+        }
+
         logError('upgradeFallbackSignIn', inner, { method, code: icode });
         return { status: 'failed', code: icode, message: (inner as Error)?.message };
       }

@@ -45,8 +45,41 @@ interface EntryState {
    */
   suppressAutoConsume: boolean;
 
+  /**
+   * An "התחברות לחשבון קיים" attempt is open.
+   *
+   * Set when the CTA opens the auth sheet, cleared when the journey ends. It
+   * exists to SCOPE the return-to-intent behaviour below to this one path:
+   * somebody who picked a card, hit the auth wall and turned out to be new
+   * must resume their action, not be asked the question again.
+   *
+   * It is NOT an intent and NOT a pending action. Nothing is written to disk
+   * for it, `organicCompleted` is untouched, and `suppressAutoConsume` stays
+   * where it was — an invitation already on the disk survives it intact.
+   */
+  existingAccountAttempt: boolean;
+  /**
+   * That attempt found a brand-new identity: the person claimed an account and
+   * does not have one.
+   *
+   * Latched by RootNavigator at the only moment it is knowable — a full
+   * account that still owes onboarding — because the email provider leaves
+   * the sheet before it can answer, and a flag set only by the sheet would be
+   * true for Google and Apple and false for email.
+   *
+   * While it is set AND onboarding has since completed, the gate shows the
+   * entry stack again: a new person does not get to skip the question either.
+   */
+  existingAccountWasNew: boolean;
+
   hydrate: () => Promise<void>;
   chooseIntent: (intent: EntryIntent) => Promise<void>;
+  /** The CTA opened the sheet. */
+  beginExistingAccountAttempt: () => void;
+  /** The attempt's identity has no Teamder account behind it. */
+  markExistingAccountWasNew: () => void;
+  /** Cancelled, or finished — either way the attempt is over. */
+  endExistingAccountAttempt: () => void;
   markAccountSeen: () => Promise<void>;
   takePendingIntent: () => EntryIntent | null;
 }
@@ -56,6 +89,8 @@ export const useEntryStore = create<EntryState>((set, get) => ({
   invite: null,
   pendingIntent: null,
   suppressAutoConsume: false,
+  existingAccountAttempt: false,
+  existingAccountWasNew: false,
 
   hydrate: async () => {
     // Two independent reads. A failure in either resolves to the SAFE value
@@ -87,9 +122,21 @@ export const useEntryStore = create<EntryState>((set, get) => ({
       pendingIntent: intent,
       organicCompleted: true,
       suppressAutoConsume: intent !== 'invite',
+      // Answering the question ends any existing-account journey: this is the
+      // choice that journey was sent back here to make.
+      existingAccountAttempt: false,
+      existingAccountWasNew: false,
     });
     await storage.setEntryOrganicCompleted();
   },
+
+  beginExistingAccountAttempt: () => set({ existingAccountAttempt: true }),
+  markExistingAccountWasNew: () => {
+    if (!get().existingAccountAttempt) return;
+    set({ existingAccountWasNew: true });
+  },
+  endExistingAccountAttempt: () =>
+    set({ existingAccountAttempt: false, existingAccountWasNew: false }),
 
   markAccountSeen: async () => {
     if (get().organicCompleted) return;

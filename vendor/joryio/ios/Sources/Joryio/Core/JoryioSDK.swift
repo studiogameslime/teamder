@@ -456,7 +456,7 @@ public class Joryio {
         // Send to server
         Task {
             do {
-                let request = IdentifyRequest(userId: userId, attributes: [:])
+                let request = IdentifyRequest(userId: userId, anonymousId: identity.getAnonymousId(), attributes: [:])
                 try await network.identify(request)
                 logger.info("User identified on server: \(userId)")
             } catch {
