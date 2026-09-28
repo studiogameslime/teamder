@@ -161,8 +161,6 @@ export function GamesListScreen() {
   const [openGames, setOpenGames] = useState<Game[]>([]);
   // Scheduled ("בקרוב") games in my communities — registration not yet open.
   const [scheduledUpcoming, setScheduledUpcoming] = useState<Game[]>([]);
-  // Guards the map button while it geocodes cities (spinner + no re-fire).
-  const [mapBusy, setMapBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   // Tracks pull-to-refresh ONLY. The native RefreshControl spinner
   // and our SoccerBallLoader used to share `loading`, which made
@@ -694,166 +692,13 @@ export function GamesListScreen() {
         {/* Tabs removed — the list is one sectioned scroll now. Spacer keeps
             the filter button on the trailing edge. */}
         <View style={{ flex: 1 }} />
-        {/* Map view — opens the games map next to the filter. */}
-        <Pressable
-          disabled={mapBusy}
-          onPress={async () => {
-            if (mapBusy) return;
-            setMapBusy(true);
-            try {
-            const now = new Date();
-            const sameDay = (a: Date, b: Date) =>
-              a.getFullYear() === b.getFullYear() &&
-              a.getMonth() === b.getMonth() &&
-              a.getDate() === b.getDate();
-            const tomorrow = new Date(now);
-            tomorrow.setDate(now.getDate() + 1);
-            const BUCKET = {
-              today: '#2563EB',
-              tomorrow: '#16A34A',
-              weekend: '#EA580C',
-              other: '#6B7280',
-            } as const;
-            // Show every game the user can see — open + their own registered
-            // + community — not just the open list, so a game they're already
-            // in (e.g. their Tel Aviv game) also pins. Deduped by id.
-            const mapGames = Array.from(
-              new Map(
-                [...openGames, ...myGames, ...communityGames].map((g) => [g.id, g]),
-              ).values(),
-            );
-            // Games usually store the field's city (text), not lat/lng —
-            // geocode the unique cities (cached) so they appear on the map.
-            const { geocodeCity } = await import('@/services/geocodeService');
-            // Geocode by city, falling back to the field/venue name (games
-            // often store the location there rather than in `city`).
-            const cityKey = (g: Game) => (g.city || g.fieldName || '').trim();
-            const cities = [
-              ...new Set(
-                mapGames
-                  .filter(
-                    (g) =>
-                      !(typeof g.fieldLat === 'number' && typeof g.fieldLng === 'number'),
-                  )
-                  .map(cityKey)
-                  .filter(Boolean),
-              ),
-            ];
-            const coords = new Map<string, { lat: number; lng: number } | null>();
-            await Promise.all(
-              cities.map(async (c) => coords.set(c, await geocodeCity(c))),
-            );
-            const items = mapGames.flatMap((g) => {
-              let lat = g.fieldLat;
-              let lng = g.fieldLng;
-              if (!(typeof lat === 'number' && typeof lng === 'number')) {
-                const c = coords.get(cityKey(g));
-                if (c) {
-                  lat = c.lat;
-                  lng = c.lng;
-                }
-              }
-              if (typeof lat !== 'number' || typeof lng !== 'number') return [];
-              const d = new Date(g.startsAt);
-              const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(
-                d.getMinutes(),
-              ).padStart(2, '0')}`;
-              // Buckets drive pin colour + the legend. Per feedback the
-              // legend is now just היום / מחר / אחר — the old "סוף שבוע"
-              // (weekend) bucket folds into "other".
-              let bucket: 'today' | 'tomorrow' | 'weekend' | 'other' = 'other';
-              let dayLabel = `${d.getDate()}.${d.getMonth() + 1}`;
-              if (sameDay(d, now)) {
-                bucket = 'today';
-                dayLabel = he.mapLegendToday;
-              } else if (sameDay(d, tomorrow)) {
-                bucket = 'tomorrow';
-                dayLabel = he.mapLegendTomorrow;
-              }
-              return [
-                {
-                  id: g.id,
-                  kind: 'game' as const,
-                  lat,
-                  lng,
-                  color: BUCKET[bucket],
-                  dateBucket: bucket,
-                  dateMs: g.startsAt,
-                  timeLabel: `${dayLabel} · ${hhmm}`,
-                  title: g.title,
-                  subtitle: joinLocation(g.fieldName, g.city),
-                  badge: g.format
-                    ? g.format.replace('v', '×')
-                    : `${g.players.length}/${g.maxPlayers}`,
-                  open: g.players.length < g.maxPlayers,
-                },
-              ];
-            });
-            // Overlay layer for the "הצג מועדונים" toggle — the user's
-            // communities as secondary pins (geocoded by city when they
-            // lack coords). Without this the toggle never appeared.
-            const commCities = [
-              ...new Set(
-                myCommunities
-                  .filter(
-                    (c) => !(typeof c.lat === 'number' && typeof c.lng === 'number'),
-                  )
-                  .map((c) => (c.city || '').trim())
-                  .filter(Boolean),
-              ),
-            ];
-            const commCoords = new Map<string, { lat: number; lng: number } | null>();
-            await Promise.all(
-              commCities.map(async (c) => commCoords.set(c, await geocodeCity(c))),
-            );
-            const overlay = myCommunities.flatMap((c) => {
-              let clat = c.lat;
-              let clng = c.lng;
-              if (!(typeof clat === 'number' && typeof clng === 'number')) {
-                const co = commCoords.get((c.city || '').trim());
-                if (co) {
-                  clat = co.lat;
-                  clng = co.lng;
-                }
-              }
-              if (typeof clat !== 'number' || typeof clng !== 'number') return [];
-              return [
-                {
-                  id: c.id,
-                  kind: 'community' as const,
-                  lat: clat,
-                  lng: clng,
-                  fill: '#2563EB',
-                  color: '#FFFFFF',
-                  title: c.name,
-                  subtitle: c.city || '',
-                  badge: `${c.playerIds?.length ?? 0} בסגל`,
-                  open: true,
-                },
-              ];
-            });
-            nav.navigate('GamesMap', { mode: 'games', items, overlay });
-            } catch (err) {
-              logError('gamesMapGeocode', err, { screen: 'GamesListScreen' });
-              toast.info(he.mapLoadError);
-            } finally {
-              setMapBusy(false);
-            }
-          }}
-          style={({ pressed }) => [
-            styles.filterBtn,
-            pressed && { opacity: 0.85 },
-            mapBusy && { opacity: 0.6 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={he.mapButtonLabel}
-        >
-          {mapBusy ? (
-            <ActivityIndicator size="small" color="#1E40AF" />
-          ) : (
-            <Ionicons name="map-outline" size={20} color="#1E40AF" />
-          )}
-        </Pressable>
+        {/* The map button is OUT of this row too (owner, 28.09) — same call
+            as the communities feed: the row carried three controls over one
+            search field, and the field is what people reach for. Removed
+            rather than hidden, because the payload it assembles (every open
+            game, plus my clubs geocoded by city) came with it and a
+            commented-out block that large rots. `GamesMap` and its route are
+            untouched; restore this from git when the row has room. */}
         <Pressable
           onPress={() => {
             logEvent(AnalyticsEvent.GameFilterSheetOpened);
