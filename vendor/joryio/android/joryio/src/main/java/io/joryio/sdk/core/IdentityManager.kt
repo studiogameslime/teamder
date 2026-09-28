@@ -8,7 +8,8 @@ import io.joryio.sdk.models.UserAttributes
 internal class IdentityManager(
     private val storage: StorageManager,
     private val logger: Logger,
-    initialUserId: String? = null
+    initialUserId: String? = null,
+    initialAnonymousId: String? = null
 ) {
     // The user-attribute trait bag (email/phone/name/custom) is PII and is held
     // IN MEMORY ONLY for the session — never persisted at rest. The server is
@@ -17,10 +18,25 @@ internal class IdentityManager(
     // read-back (getUserAttributes / getAttribute).
     private val attributes: MutableMap<String, Any?> = mutableMapOf()
 
+    /**
+     * The id this run reports under when the caller supplied one. Mirrors the
+     * web SDK exactly: a caller-supplied id is used for this run and SEEDS
+     * storage only when nothing is stored yet, so an id set once at init
+     * survives the app dropping the option later. `JoryioConfig.anonymousId`
+     * was accepted and never read here (audit 2026-09-26, A17).
+     */
+    private var suppliedAnonymousId: String? = initialAnonymousId?.takeIf { it.isNotBlank() }
+
     init {
         // Set initial user ID if provided
         if (initialUserId != null && storage.getUserId() == null) {
             storage.setUserId(initialUserId)
+        }
+
+        // Seed the anonymous id if provided and nothing is stored yet.
+        val seed = suppliedAnonymousId
+        if (seed != null && !storage.hasStoredAnonymousId()) {
+            storage.setAnonymousId(seed)
         }
 
         // One-time purge: delete any attributes bag persisted by an older SDK
@@ -31,7 +47,15 @@ internal class IdentityManager(
     // MARK: - Anonymous ID
 
     fun getAnonymousId(): String {
-        return storage.getAnonymousId()
+        return suppliedAnonymousId ?: storage.getAnonymousId()
+    }
+
+    /**
+     * After wipeData() the stored id is regenerated; the seed must not outlive
+     * the data it seeded, or the "wiped" install would keep reporting under it.
+     */
+    fun onDataWiped() {
+        suppliedAnonymousId = null
     }
 
     // MARK: - User ID

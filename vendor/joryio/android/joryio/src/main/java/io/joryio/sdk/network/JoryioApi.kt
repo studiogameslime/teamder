@@ -101,6 +101,12 @@ internal interface JoryioApi {
         @Body request: TrackImpressionRequest
     ): Response<ImpressionResponse>
 
+    /** A form inside an in-app message; the same route the web SDK posts to. */
+    @POST("v1/in-app/form-submit")
+    suspend fun submitInAppForm(
+        @Body request: io.joryio.sdk.models.InAppFormSubmitRequest
+    ): Response<io.joryio.sdk.models.InAppFormSubmitResponse>
+
     /**
      * Register push notification device token
      */

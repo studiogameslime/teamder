@@ -6,16 +6,31 @@ class IdentityManager {
     private let logger: Logger
     private var identity: UserIdentity
 
-    init(storage: StorageManager, logger: Logger, initialUserId: String? = nil) {
+    init(
+        storage: StorageManager,
+        logger: Logger,
+        initialUserId: String? = nil,
+        initialAnonymousId: String? = nil
+    ) {
         self.storage = storage
         self.logger = logger
+
+        // A caller-supplied anonymous id SEEDS the stored one, exactly as the
+        // web SDK does: it is used for this run, and persisted only when
+        // nothing is stored yet, so an id set once at init survives the app
+        // dropping the option later. `JoryioConfig.anonymousId` was accepted
+        // and never read here (audit 2026-09-26, I9).
+        if let seed = initialAnonymousId, !seed.isEmpty, !storage.hasStoredAnonymousId() {
+            storage.setAnonymousId(seed)
+        }
 
         // Load or create identity. Attributes are the PII trait bag
         // (email/phone/name/custom) and are NEVER persisted at rest: start
         // empty each session (the server is the source of truth, and
         // increment/append/remove are now server-atomic so no local value is
         // needed for correctness). Kept in memory only for in-session reads.
-        let anonymousId = storage.getAnonymousId()
+        let anonymousId = (initialAnonymousId?.isEmpty == false ? initialAnonymousId : nil)
+            ?? storage.getAnonymousId()
         let userId = initialUserId ?? storage.getUserId()
 
         self.identity = UserIdentity(
@@ -147,5 +162,20 @@ class IdentityManager {
         pending.clear()
 
         logger.debug("Identity reset complete")
+    }
+
+    /// After `wipeData()` has cleared storage: drop the in-memory anonymous id
+    /// and take the freshly minted one, so the wiped install reports under a
+    /// new identity rather than the one it was asked to erase.
+    ///
+    /// This manager caches the id at init (Android reads storage on every
+    /// call), so clearing storage alone left every subsequent event carrying
+    /// the OLD id - and, because `getAnonymousId()` re-persists what it finds
+    /// missing, the wipe was undone by the next flush. A caller-supplied seed
+    /// (`JoryioConfig.anonymousId`) is not re-applied either: the seed must
+    /// not outlive the data it seeded. Matches Android's `onDataWiped()`.
+    func onDataWiped() {
+        identity.anonymousId = storage.getAnonymousId()
+        logger.info("Anonymous ID regenerated after wipe: \(identity.anonymousId)")
     }
 }

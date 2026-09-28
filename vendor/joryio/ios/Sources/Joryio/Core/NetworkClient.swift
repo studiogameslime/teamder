@@ -106,6 +106,14 @@ class NetworkClient {
         logger.debug("Impression tracked: \(request.campaignId)")
     }
 
+    /// A form inside a message: the values go to the backend with this SDK's identity (same route the web SDK uses).
+    func submitInAppForm(_ request: InAppFormSubmitRequest) async throws -> InAppFormSubmitResponse {
+        let endpoint = "\(apiEndpoint)/v1/in-app/form-submit"
+        let response: InAppFormSubmitResponse = try await sendRequest(endpoint: endpoint, method: "POST", body: request)
+        logger.debug("In-app form submitted: \(request.campaignId) ok=\(response.ok)")
+        return response
+    }
+
     // MARK: - Push Notifications
 
     func registerPushToken(userId: String?, anonymousId: String, deviceToken: String, deviceId: String?, deviceInfo: [String: Any]) async throws {

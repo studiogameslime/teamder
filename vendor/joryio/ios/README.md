@@ -223,24 +223,22 @@ JoryioConfig(
     sessionTimeout: TimeInterval,      // Default: 1800 (30 minutes)
     trackSessionStart: Bool,           // Default: true
 
-    // UTM Tracking
-    captureUTM: Bool,                  // Default: true
-    resetSessionOnNewCampaign: Bool,   // Default: false
-    trackPageProperties: Bool,         // Default: true
+    // Push
+    requestPushPermissionAtLaunch: Bool, // Default: false - prefer a primer
 
     // In-App Messaging
     inApp: InAppConfig,                // In-app messaging config
-
-    // Storage
-    persistQueue: Bool,                // Default: true
 
     // Network & Retry
     maxRetries: Int,                   // Default: 3
     retryBackoffMs: Double,            // Default: 1000.0
     requestTimeout: TimeInterval,      // Default: 10.0
 
+    // SDK Authentication (opt-in)
+    enableSdkAuthentication: Bool,     // Default: false
+    sdkAuthenticationToken: String?,   // Default: nil
+
     // Privacy & GDPR
-    respectDoNotTrack: Bool,           // Default: true
     optOut: Bool,                      // Default: false
     trackingConsent: TrackingConsent,  // Default: .granted
 
@@ -409,7 +407,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Request push permissions
         Task {
-            let granted = await Joryio.shared.requestPushPermissions()
+            let granted = await Joryio.shared.requestPushPermission()
             if granted {
                 print("Push notifications enabled")
             }
@@ -461,7 +459,7 @@ Joryio.shared.updateBadgeCount(5)
 Joryio.shared.clearBadge()
 
 // Unregister from push
-Joryio.shared.unregisterFromPushNotifications()
+Joryio.shared.unregisterPush()
 ```
 
 #### 3. Configure APNS in Dashboard

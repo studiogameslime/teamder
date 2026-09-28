@@ -256,13 +256,96 @@ final class InAppWebMessageView: BaseMessageView {
           }
 
           // Same surface as the web SDK's joryioBridge, so one authored
-          // template works on web, Android and iOS unchanged.
+          // template works on web, Android and iOS unchanged. Every method
+          // takes the same arguments as on web; the campaign id the web
+          // bootstrap prepends is implied here (one WebView per message).
+          var pending = {};
+          var seq = 0;
+          window.__joryioFormResult = function(id, result) {
+            var p = pending[id]; delete pending[id];
+            if (p) { p(result || {ok: false}); }
+          };
           window.\(Self.bridgeName) = {
+            logCustomEvent: function(name, props){ post('logCustomEvent', {name: name, properties: props || {}}); },
+            setCustomUserAttribute: function(k, v){ post('setCustomUserAttribute', {key: k, value: v}); },
+            changeUser: function(uid){ post('changeUser', {userId: uid}); },
+            requestPushPermission: function(){ post('requestPushPermission', {}); },
+            logConversion: function(ev){ post('logConversion', {event: ev || 'in_app_conversion'}); },
+            logClick: function(action){ post('trackClick', {action: action}); },
             trackClick: function(cid, action){ post('trackClick', {action: action}); },
             closeMessage: function(){ post('closeMessage', {}); },
-            navigate: function(cid, url, target){ post('navigate', {url: url, target: target}); },
-            setSize: function(cid, h){ post('setSize', {height: h}); }
+            navigate: function(url, target){
+              // Web passes (url, target); the older native shape was (cid, url, target).
+              if (typeof target === 'string' && /^https?:/i.test(target) && !/^https?:/i.test(String(url))) { url = target; target = arguments[2]; }
+              post('navigate', {url: url, target: target});
+            },
+            setSize: function(cid, h){ post('setSize', {height: h}); },
+            openUrl: function(url){ post('openUrl', {url: url}); },
+            submitForm: function(values){
+              return new Promise(function(resolve){
+                var id = 'f' + (++seq);
+                pending[id] = resolve;
+                post('submitForm', {requestId: id, values: values || {}});
+              });
+            }
           };
+
+          // data-joryio-action buttons and plain links, as on web: the sandbox
+          // cannot navigate the app, so links go through the bridge.
+          document.addEventListener('click', function(e){
+            var el = e.target;
+            while (el && el !== document.body && el !== document.documentElement) {
+              var action = el.getAttribute && el.getAttribute('data-joryio-action');
+              if (action && typeof window.\(Self.bridgeName)[action] === 'function') { e.preventDefault(); window.\(Self.bridgeName)[action](el.getAttribute('data-joryio-event') || undefined); return; }
+              var tag = el.tagName;
+              if (tag === 'A' || tag === 'BUTTON') {
+                // As on web: every link and button click is reported, named by
+                // data-action when the author gave one. A link opens outside
+                // the message without a second click event.
+                if (el.type === 'submit') { return; }
+                var da = el.getAttribute('data-action');
+                var href = tag === 'A' ? el.getAttribute('href') : null;
+                post('trackClick', {action: da || (href ? 'link_click' : 'cta_click')});
+                if (href && /^(https?:\\/\\/|\\/(?!\\/))/i.test(href)) { e.preventDefault(); post('openUrl', {url: href}); }
+                return;
+              }
+              el = el.parentNode;
+            }
+          }, true);
+
+          // Forms (data-jry-form): serialise, hand the values to the app, show
+          // the answer in place. A redirect goes through navigate.
+          document.addEventListener('submit', function(ev){
+            var f = ev.target;
+            if (!(f && f.tagName === 'FORM' && f.hasAttribute('data-jry-form'))) return;
+            ev.preventDefault();
+            if (f.getAttribute('data-jry-busy')) return;
+            var d = {}, els = f.querySelectorAll('input,select,textarea');
+            for (var i = 0; i < els.length; i++) {
+              var el = els[i], n = el.name; if (!n || el.disabled) continue;
+              if (el.type === 'checkbox') { if (!el.checked) continue; if (d[n] === undefined) d[n] = []; d[n].push(el.value || 'on'); }
+              else if (el.type === 'radio') { if (el.checked) d[n] = el.value; }
+              else d[n] = el.value;
+            }
+            function msg(text, ok){
+              var b = f.querySelector('[data-jry-message]');
+              if (!b) { b = document.createElement('div'); b.setAttribute('data-jry-message', ''); b.setAttribute('role', 'status'); f.appendChild(b); }
+              b.textContent = text; b.className = ok ? 'jry-form-success' : 'jry-form-error';
+            }
+            f.setAttribute('data-jry-busy', '1');
+            var btn = f.querySelector('button[type="submit"],input[type="submit"]'); if (btn) btn.disabled = true;
+            post('trackClick', {action: 'form_submit'});
+            window.\(Self.bridgeName).submitForm(d).then(function(r){
+              if (r && r.ok) {
+                if (r.redirect) { window.\(Self.bridgeName).navigate(r.redirect, '_top'); return; }
+                var all = f.querySelectorAll('input,select,textarea,button'); for (var j = 0; j < all.length; j++) { all[j].disabled = true; }
+                msg(r.message || 'Thank you.', true);
+              } else {
+                msg((r && (r.message || (r.errors && r.errors[0]))) || 'Something went wrong. Please try again.', false);
+                f.removeAttribute('data-jry-busy'); if (btn) btn.disabled = false;
+              }
+            });
+          }, true);
 
           function report() {
             try {
@@ -298,9 +381,43 @@ final class InAppWebMessageView: BaseMessageView {
         case "navigate":
             guard let url = args["url"] as? String else { return }
             delegate?.messageViewClicked(campaign.id, action: "link", url: url)
+        case "openUrl":
+            // A link the bootstrap already reported as a click: open it, count nothing.
+            guard let raw = args["url"] as? String, let url = URL(string: raw), let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return }
+            DispatchQueue.main.async { UIApplication.shared.open(url) }
+        // The rest of the web bridge (BACKLOG C23, 2026-09-26): a message script
+        // that records an event or an attribute used to do nothing here.
+        case "logCustomEvent":
+            guard let name = args["name"] as? String, !name.isEmpty else { return }
+            Joryio.shared.track(name, properties: (args["properties"] as? [String: Any]) ?? [:])
+        case "setCustomUserAttribute":
+            guard let key = args["key"] as? String, !key.isEmpty, let value = args["value"] else { return }
+            Joryio.shared.setAttribute(key, value: value)
+        case "changeUser":
+            guard let userId = args["userId"] as? String, !userId.isEmpty else { return }
+            Joryio.shared.identify(userId)
+        case "requestPushPermission":
+            Task { _ = await Joryio.shared.requestPushPermission() }
+        case "logConversion":
+            Joryio.shared.trackInAppImpression(campaignId: campaign.id, action: "converted")
+        case "submitForm":
+            guard let requestId = args["requestId"] as? String else { return }
+            let values = (args["values"] as? [String: Any]) ?? [:]
+            let campaignId = campaign.id
+            Task { [weak self] in
+                let result = await Joryio.shared.submitInAppForm(campaignId: campaignId, values: values)
+                await MainActor.run { self?.deliverFormResult(requestId: requestId, result: result) }
+            }
         default:
             break
         }
+    }
+
+    /// Hand the server's answer back to the message's promise.
+    private func deliverFormResult(requestId: String, result: InAppFormSubmitResponse) {
+        guard let data = try? JSONEncoder().encode(result), let json = String(data: data, encoding: .utf8) else { return }
+        let id = requestId.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
+        webView.evaluateJavaScript("window.__joryioFormResult('\(id)', \(json));", completionHandler: nil)
     }
 
     @objc private func backdropTapped() {

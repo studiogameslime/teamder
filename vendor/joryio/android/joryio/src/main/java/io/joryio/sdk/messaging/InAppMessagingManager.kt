@@ -472,7 +472,8 @@ internal class InAppMessagingManager(
             .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
             .format(java.util.Date())
 
-    suspend fun trackImpression(campaignId: String, action: String) {
+    /** `name` is what the message called a click (data-action, logClick, a button id); it rides in the wire `action` while the markers still say click. */
+    suspend fun trackImpression(campaignId: String, action: String, name: String? = null) {
         try {
             logger.debug("Tracking impression: $campaignId - $action")
 
@@ -500,7 +501,7 @@ internal class InAppMessagingManager(
                 anonymousId = identityManager.getAnonymousId(),
                 sessionId = sessionManager.getSessionId(),
                 action = when {
-                    normalized.contains("click") -> "click"
+                    normalized.contains("click") -> name?.takeIf { it.isNotBlank() } ?: "click"
                     normalized.contains("dismiss") -> "dismiss"
                     else -> action
                 },

@@ -2,7 +2,10 @@
 # End-to-end health check for the Joryio integration.
 # Read-only: probes, counts and compares. Never writes to Joryio or Firestore.
 set -uo pipefail
-B="${JORYIO_BASE_URL:-https://hippomation-backend.fly.dev/api}"
+# PRODUCTION. hippomation-backend.fly.dev was the test backend and is retired;
+# defaulting to it meant a "verified" run that proved nothing about the host the
+# app actually talks to.
+B="${JORYIO_BASE_URL:-https://api-eu1.joryio.com/api}"
 K="${JORYIO_API_KEY:?set JORYIO_API_KEY}"
 R=/Users/matan/Projects/soccer
 pass=0; fail=0

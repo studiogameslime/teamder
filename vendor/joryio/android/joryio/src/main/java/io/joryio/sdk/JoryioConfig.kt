@@ -61,7 +61,14 @@ data class JoryioConfig(
     val allowHtmlJsInAppMessages: Boolean = false,
 
     // Privacy & GDPR
-    val respectDoNotTrack: Boolean = true,
+    //
+    // `respectDoNotTrack` is GONE. It was accepted, stored and never read
+    // (audit 2026-09-26, A17), and it could not have been: Do Not Track is a
+    // BROWSER signal (`navigator.doNotTrack`) with no Android equivalent - the
+    // "limit ad tracking" flag is an advertising-id setting that needs Play
+    // Services and says nothing about first-party analytics. Web keeps the
+    // option because the browser has the concept; a mobile option that can
+    // never do anything reads as a promise, which is worse than none.
     val optOut: Boolean = false,
     val trackingConsent: TrackingConsent = TrackingConsent.GRANTED,
 

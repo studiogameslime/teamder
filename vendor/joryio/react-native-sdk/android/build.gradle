@@ -17,11 +17,15 @@ android {
     compileSdkVersion 34
 
     defaultConfig {
-        // Matches the native SDK this wraps (packages/sdk-android → minSdk 21).
-        // A thin bridge must never declare a HIGHER floor than the library it
-        // delegates to: manifest merging takes the max across all libraries, so
-        // 24 here silently made every React Native consumer minSdk 24 and broke
-        // the stock RN 0.75 template (which generates 23) with
+        // The native SDK this wraps (packages/sdk-android) declares minSdk 23,
+        // and manifest merging takes the MAX across libraries - so the effective
+        // floor for any consumer is 23 whatever is written here. This used to
+        // claim the native SDK was 21 (audit 2026-09-26, R24); it never was.
+        //
+        // Kept below the native floor on purpose. A thin bridge must never be
+        // the library that RAISES it: 24 here silently made every React Native
+        // consumer minSdk 24 and broke the stock RN 0.75 template (which
+        // generates 23) with
         //   uses-sdk:minSdkVersion 23 cannot be smaller than version 24
         //   declared in library [:joryio_react-native-sdk]
         // The bridge itself uses no API above 21 - it only forwards calls.

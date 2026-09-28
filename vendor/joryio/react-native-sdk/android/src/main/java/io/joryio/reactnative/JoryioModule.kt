@@ -66,6 +66,22 @@ class JoryioModule(private val reactContext: ReactApplicationContext) :
             if (config.hasKey("trackSessionStart")) {
                 hippConfig = hippConfig.copy(trackSessionStart = config.getBoolean("trackSessionStart"))
             }
+            // Four options the native SDKs honour that this bridge dropped on
+            // the floor (audit 2026-09-26, D26): a JS app setting any of them
+            // got the native default and no error. Same names as native;
+            // `requestTimeout` is milliseconds on both sides here.
+            if (config.hasKey("anonymousId")) {
+                hippConfig = hippConfig.copy(anonymousId = config.getString("anonymousId"))
+            }
+            if (config.hasKey("sendImmediately")) {
+                hippConfig = hippConfig.copy(sendImmediately = config.getBoolean("sendImmediately"))
+            }
+            if (config.hasKey("maxQueueSize")) {
+                hippConfig = hippConfig.copy(maxQueueSize = config.getInt("maxQueueSize"))
+            }
+            if (config.hasKey("requestTimeout")) {
+                hippConfig = hippConfig.copy(requestTimeout = config.getInt("requestTimeout").toLong())
+            }
             if (config.hasKey("enableSdkAuthentication")) {
                 hippConfig = hippConfig.copy(
                     enableSdkAuthentication = config.getBoolean("enableSdkAuthentication"),
@@ -572,6 +588,18 @@ class JoryioModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun trackInAppImpression(campaignId: String, action: String) {
         Joryio.whenReady { it.trackInAppImpression(campaignId, action) }
+    }
+
+    /**
+     * A form inside an HTML message the app rendered itself. Resolves with the
+     * server's verdict as a JSON string ({ ok, message?, redirect?, errors? });
+     * never rejects. Mirrors sdk-android `Joryio.submitInAppForm`.
+     */
+    @ReactMethod
+    fun submitInAppForm(campaignId: String, values: ReadableMap, promise: Promise) {
+        Joryio.whenReady { sdk ->
+            sdk.submitInAppForm(campaignId, values.toHashMap()) { json -> promise.resolve(json) }
+        }
     }
 
     // ─── SDK Authentication ────────────────────────────────────────────────

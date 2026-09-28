@@ -146,6 +146,7 @@ internal class InAppMessageRenderer(
                 },
                 onEvent = { action, meta -> activity.runOnUiThread { onEvent(action, meta) } },
                 openUrl = { url -> activity.runOnUiThread { openExternally(activity, url) } },
+                requestPush = { activity.runOnUiThread { requestPushPermission(activity) } },
             ),
             BRIDGE,
         )
@@ -356,13 +357,105 @@ internal class InAppMessageRenderer(
                   (window.innerWidth <= 480 ? ' jr-vp-mobile' : ' jr-vp-desktop');
               } catch (e) {}
 
+              // The same surface as the web SDK's joryioBridge, over the
+              // Java interface (which takes strings): the object the message
+              // sees keeps the web method signatures, and the Java side gets
+              // JSON. BACKLOG C23 (2026-09-26): logCustomEvent and friends
+              // used to be missing here, so a script calling them did nothing.
+              var native = window.$BRIDGE;
+              var pending = {}, seq = 0;
+              window.__joryioFormResult = function(id, result) {
+                var p = pending[id]; delete pending[id];
+                if (p) { p(result || {ok: false}); }
+              };
+              function str(v) { return v === undefined || v === null ? '' : String(v); }
+              window.$BRIDGE = {
+                logCustomEvent: function(name, props){ try { native.logCustomEvent(CID, str(name), JSON.stringify(props || {})); } catch (e) {} },
+                setCustomUserAttribute: function(k, v){ try { native.setCustomUserAttribute(CID, str(k), JSON.stringify({value: v})); } catch (e) {} },
+                changeUser: function(uid){ try { native.changeUser(CID, str(uid)); } catch (e) {} },
+                requestPushPermission: function(){ try { native.requestPushPermission(CID); } catch (e) {} },
+                logConversion: function(ev){ try { native.logConversion(CID, str(ev || 'in_app_conversion')); } catch (e) {} },
+                logClick: function(action){ try { native.trackClick(CID, str(action || 'click')); } catch (e) {} },
+                trackClick: function(cid, action){ try { native.trackClick(CID, str(action || 'click')); } catch (e) {} },
+                closeMessage: function(){ try { native.closeMessage(CID); } catch (e) {} },
+                navigate: function(url, target){
+                  if (typeof target === 'string' && /^https?:/i.test(target) && !/^https?:/i.test(String(url))) { url = target; target = arguments[2]; }
+                  try { native.navigate(CID, str(url), target ? str(target) : null); } catch (e) {}
+                },
+                setSize: function(cid, h){ try { native.setSize(CID, h | 0); } catch (e) {} },
+                submitForm: function(values){
+                  return new Promise(function(resolve){
+                    var id = 'f' + (++seq);
+                    pending[id] = resolve;
+                    try { native.submitForm(CID, id, JSON.stringify(values || {})); } catch (e) { delete pending[id]; resolve({ok: false}); }
+                  });
+                }
+              };
+
+              // data-joryio-action buttons, as on web.
+              document.addEventListener('click', function(e){
+                var el = e.target;
+                while (el && el !== document.body && el !== document.documentElement) {
+                  var action = el.getAttribute && el.getAttribute('data-joryio-action');
+                  if (action && typeof window.$BRIDGE[action] === 'function') { e.preventDefault(); window.$BRIDGE[action](el.getAttribute('data-joryio-event') || undefined); return; }
+                  var tag = el.tagName;
+                  if (tag === 'A' || tag === 'BUTTON') {
+                    // As on web: every link and button click is reported, named
+                    // by data-action when the author gave one. A link opens
+                    // outside the message; navigate only opens, so one click.
+                    if (el.type === 'submit') { return; }
+                    var da = el.getAttribute('data-action');
+                    var href = tag === 'A' ? el.getAttribute('href') : null;
+                    window.$BRIDGE.trackClick(CID, da || (href ? 'link_click' : 'cta_click'));
+                    if (href && /^(https?:\\/\\/|\\/(?!\\/))/i.test(href)) { e.preventDefault(); window.$BRIDGE.navigate(href, el.getAttribute('target')); }
+                    return;
+                  }
+                  el = el.parentNode;
+                }
+              }, true);
+
+              // Forms (data-jry-form): serialise, hand the values to the app,
+              // show the answer in place. A redirect goes through navigate.
+              document.addEventListener('submit', function(ev){
+                var f = ev.target;
+                if (!(f && f.tagName === 'FORM' && f.hasAttribute('data-jry-form'))) return;
+                ev.preventDefault();
+                if (f.getAttribute('data-jry-busy')) return;
+                var d = {}, els = f.querySelectorAll('input,select,textarea');
+                for (var i = 0; i < els.length; i++) {
+                  var el = els[i], n = el.name; if (!n || el.disabled) continue;
+                  if (el.type === 'checkbox') { if (!el.checked) continue; if (d[n] === undefined) d[n] = []; d[n].push(el.value || 'on'); }
+                  else if (el.type === 'radio') { if (el.checked) d[n] = el.value; }
+                  else d[n] = el.value;
+                }
+                function msg(text, ok){
+                  var b = f.querySelector('[data-jry-message]');
+                  if (!b) { b = document.createElement('div'); b.setAttribute('data-jry-message', ''); b.setAttribute('role', 'status'); f.appendChild(b); }
+                  b.textContent = text; b.className = ok ? 'jry-form-success' : 'jry-form-error';
+                  report();
+                }
+                f.setAttribute('data-jry-busy', '1');
+                var btn = f.querySelector('button[type="submit"],input[type="submit"]'); if (btn) btn.disabled = true;
+                window.$BRIDGE.logClick('form_submit');
+                window.$BRIDGE.submitForm(d).then(function(r){
+                  if (r && r.ok) {
+                    if (r.redirect) { window.$BRIDGE.navigate(r.redirect, '_top'); return; }
+                    var all = f.querySelectorAll('input,select,textarea,button'); for (var j = 0; j < all.length; j++) { all[j].disabled = true; }
+                    msg(r.message || 'Thank you.', true);
+                  } else {
+                    msg((r && (r.message || (r.errors && r.errors[0]))) || 'Something went wrong. Please try again.', false);
+                    f.removeAttribute('data-jry-busy'); if (btn) btn.disabled = false;
+                  }
+                });
+              }, true);
+
               function report() {
                 try {
                   var h = Math.max(
                     document.body ? document.body.scrollHeight : 0,
                     document.documentElement ? document.documentElement.scrollHeight : 0
                   );
-                  if (h > 0 && window.$BRIDGE) window.$BRIDGE.setSize(CID, h);
+                  if (h > 0 && native) native.setSize(CID, h);
                 } catch (e) {}
               }
               window.addEventListener('load', report);
@@ -438,7 +531,57 @@ internal class InAppMessageRenderer(
         private val dismiss: (String) -> Unit,
         private val onEvent: (String, Map<String, Any?>) -> Unit,
         private val openUrl: (String) -> Unit,
+        private val requestPush: () -> Unit,
     ) {
+        // The rest of the web bridge (BACKLOG C23, 2026-09-26). Arguments
+        // arrive as JSON strings from the bootstrap; the base SDK does the work
+        // through onEvent, so this artifact stays free of a dependency on it.
+        @JavascriptInterface
+        fun logCustomEvent(cid: String, name: String?, propertiesJson: String?) {
+            if (cid != campaignId || name.isNullOrBlank()) return
+            onEvent("custom_event", mapOf("name" to name, "properties" to parseJsonObject(propertiesJson)))
+        }
+
+        @JavascriptInterface
+        fun setCustomUserAttribute(cid: String, key: String?, valueJson: String?) {
+            if (cid != campaignId || key.isNullOrBlank()) return
+            val value = parseJsonObject(valueJson)["value"] ?: return
+            onEvent("set_attribute", mapOf("key" to key, "value" to value))
+        }
+
+        @JavascriptInterface
+        fun changeUser(cid: String, userId: String?) {
+            if (cid != campaignId || userId.isNullOrBlank()) return
+            onEvent("change_user", mapOf("userId" to userId))
+        }
+
+        @JavascriptInterface
+        fun requestPushPermission(cid: String) {
+            if (cid != campaignId) return
+            requestPush()
+        }
+
+        @JavascriptInterface
+        fun logConversion(cid: String, event: String?) {
+            if (cid != campaignId) return
+            onEvent("converted", mapOf("event" to (event ?: "in_app_conversion")))
+        }
+
+        /**
+         * A form inside the message. The base SDK posts the values with its
+         * identity and answers through `respond`, which lands the JSON in the
+         * message's promise (window.__joryioFormResult).
+         */
+        @JavascriptInterface
+        fun submitForm(cid: String, requestId: String?, valuesJson: String?) {
+            if (cid != campaignId || requestId.isNullOrBlank()) return
+            val id = requestId.replace("\\", "\\\\").replace("'", "\\'")
+            val respond: (String) -> Unit = { json ->
+                webView.post { webView.evaluateJavascript("window.__joryioFormResult('$id', $json);", null) }
+            }
+            onEvent("form_submit", mapOf("values" to parseJsonObject(valuesJson), "respond" to respond))
+        }
+
         @JavascriptInterface
         fun trackClick(cid: String, action: String?) {
             if (cid != campaignId) return
@@ -478,4 +621,22 @@ internal class InAppMessageRenderer(
             }
         }
     }
+}
+
+/** A JSON object from the bootstrap as a plain map (strings, numbers, booleans, lists, nested maps). File-level so the nested Bridge can use it. */
+@Suppress("UNCHECKED_CAST")
+private fun parseJsonObject(json: String?): Map<String, Any?> {
+    if (json.isNullOrBlank()) return emptyMap()
+    return try {
+        toKotlin(org.json.JSONObject(json)) as Map<String, Any?>
+    } catch (_: Exception) {
+        emptyMap()
+    }
+}
+
+private fun toKotlin(v: Any?): Any? = when (v) {
+    null, org.json.JSONObject.NULL -> null
+    is org.json.JSONObject -> v.keys().asSequence().associateWith { k -> toKotlin(v.opt(k)) }
+    is org.json.JSONArray -> (0 until v.length()).map { i -> toKotlin(v.opt(i)) }
+    else -> v
 }

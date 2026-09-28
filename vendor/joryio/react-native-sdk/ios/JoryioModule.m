@@ -69,6 +69,10 @@ RCT_EXTERN_METHOD(enableInAppMessages:(NSArray *)capabilities)
 
 RCT_EXTERN_METHOD(ecommerce:(NSString *)method payload:(NSDictionary *)payload)
 
+RCT_EXTERN_METHOD(submitInAppForm:(NSString *)campaignId
+                  values:(NSDictionary *)values
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(trackInAppImpression:(NSString *)campaignId
                   action:(NSString *)action)
 

@@ -174,7 +174,14 @@ public struct JoryioConfig {
     public let sdkAuthenticationToken: String?
 
     // Privacy & GDPR
-    public let respectDoNotTrack: Bool
+    // `respectDoNotTrack` is GONE. It was accepted, stored and never read
+    // (audit 2026-09-26, I8). It could not have been read: Do Not Track is a
+    // BROWSER signal (`navigator.doNotTrack`) and iOS has no equivalent - App
+    // Tracking Transparency governs cross-app tracking, not first-party
+    // analytics, and honouring it here would have silently switched the SDK
+    // off for every user who declined an unrelated prompt. Web keeps the
+    // option because the browser has the concept; a mobile option that can
+    // never do anything is worse than none, since it reads as a promise.
     public let optOut: Bool
     public let trackingConsent: TrackingConsent
 
@@ -211,7 +218,6 @@ public struct JoryioConfig {
         requestTimeout: TimeInterval = ConfigDefaults.requestTimeout,
         enableSdkAuthentication: Bool = false,
         sdkAuthenticationToken: String? = nil,
-        respectDoNotTrack: Bool = true,
         optOut: Bool = false,
         trackingConsent: TrackingConsent = .granted,
         enableDebug: Bool = false,
@@ -232,7 +238,6 @@ public struct JoryioConfig {
         self.requestTimeout = requestTimeout
         self.enableSdkAuthentication = enableSdkAuthentication
         self.sdkAuthenticationToken = sdkAuthenticationToken
-        self.respectDoNotTrack = respectDoNotTrack
         self.optOut = optOut
         self.trackingConsent = trackingConsent
         self.enableDebug = enableDebug

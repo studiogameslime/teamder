@@ -327,10 +327,12 @@ def main():
     ap.add_argument("--out", default="joryio_payload.json")
     a = ap.parse_args()
 
-    base = os.environ.get("JORYIO_BASE_URL", "").rstrip("/")
+    base = os.environ.get("JORYIO_BASE_URL", "https://api-eu1.joryio.com/api").rstrip("/")
     key = os.environ.get("JORYIO_API_KEY", "")
-    if a.live and not (base and key):
-        sys.exit("חסר JORYIO_BASE_URL / JORYIO_API_KEY בסביבה")
+    # `base` now always has the production default, so the KEY is the only
+    # thing a live run can actually be missing.
+    if a.live and not key:
+        sys.exit("חסר JORYIO_API_KEY בסביבה")
 
     attrs, ev, skipped = build(gtoken())
 

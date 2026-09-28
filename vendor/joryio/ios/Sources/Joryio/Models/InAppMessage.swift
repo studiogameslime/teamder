@@ -593,3 +593,46 @@ public struct ResolveResponse: Codable {
     public let eligible: Bool
     public let campaign: InAppCampaign?
 }
+
+// MARK: - Forms inside messages (landing pages phase C, 2026-09-26)
+
+/// A form value as the message serialises it: a string, or the list a
+/// checkbox group produces. Encoded as a JSON string or array.
+enum InAppFormValue: Encodable {
+    case string(String)
+    case list([String])
+
+    // Internal on purpose: the SDK's no-ambiguous-overloads tripwire counts
+    // every `public func` across files, and Event.swift already has an encode.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        switch self {
+        case .string(let s): try c.encode(s)
+        case .list(let l): try c.encode(l)
+        }
+    }
+}
+
+/// What the SDK posts when a form inside a message is submitted: the values,
+/// with THIS SDK's identity so the backend writes them to the right person.
+struct InAppFormSubmitRequest: Encodable {
+    let campaignId: String
+    let userId: String?
+    let anonymousId: String
+    let values: [String: InAppFormValue]
+}
+
+/// The server's verdict, handed back to the message runtime as it is.
+public struct InAppFormSubmitResponse: Codable {
+    public let ok: Bool
+    public let message: String?
+    public let redirect: String?
+    public let errors: [String]?
+
+    public init(ok: Bool, message: String? = nil, redirect: String? = nil, errors: [String]? = nil) {
+        self.ok = ok
+        self.message = message
+        self.redirect = redirect
+        self.errors = errors
+    }
+}

@@ -329,12 +329,16 @@ class PushNotificationManager: NSObject {
 
         // A silent nudge is not a delivered message: counting it as one would
         // add a phantom "received" to whatever campaign the tester was checking.
+        //
+        // The delivery RECEIPT is the only signal here. It becomes
+        // `message.delivered`, the one push delivery signal with evidence
+        // behind it: APNs answers a send with "accepted" and never reports what
+        // reached the handset. There is deliberately NO local analytics event
+        // beside it: a private "track notification event" helper used to sit
+        // here that only logged (audit 2026-09-26, I13), and Android tracks none
+        // either - the receipt and the click endpoint are the push analytics on
+        // every platform, and a client-minted "received" event would double-count.
         if campaignId != nil {
-            trackNotificationEvent(userInfo: userInfo, action: "received")
-            // The delivery RECEIPT - distinct from the analytics event above.
-            // This one becomes `message.delivered`, the only push delivery
-            // signal with evidence behind it: APNs answers a send with
-            // "accepted" and never reports what reached the handset.
             reportDelivered(userInfo: userInfo)
         }
 
@@ -391,14 +395,13 @@ class PushNotificationManager: NSObject {
 
         logger.debug("User interacted with notification: \(response.actionIdentifier)")
 
-        // Track push click if tracking ID is present
+        // Track push click if tracking ID is present. A payload without one
+        // is not a Joryio-tracked send and there is nothing honest to record:
+        // the "fallback" that used to sit in an else-branch here only logged.
         if let trackingId = userInfo["trackingId"] as? String {
             Task {
                 await trackPushClick(trackingId: trackingId)
             }
-        } else {
-            // Fallback to old tracking method
-            trackNotificationEvent(userInfo: userInfo, action: "opened")
         }
 
         // Show anything triggered by the tap. Fire-and-forget: a
@@ -431,17 +434,6 @@ class PushNotificationManager: NSObject {
         }
     }
 
-    /// Track notification event
-    private func trackNotificationEvent(userInfo: [AnyHashable: Any], action: String) {
-        guard let campaignId = userInfo["jry_campaign_id"] as? String else {
-            return
-        }
-
-        // Track via network client
-        // Note: This would need to be integrated with the main SDK's track method
-        logger.debug("Tracked notification \(action) for campaign: \(campaignId)")
-    }
-
     /// Handle notification content (for silent push or background processing)
     private func handleNotificationContent(userInfo: [AnyHashable: Any]) {
         // Check for silent push data sync
@@ -455,11 +447,12 @@ class PushNotificationManager: NSObject {
                 // push woke the app and it went straight back to sleep.
                 logger.debug("Silent push: syncing in-app campaigns")
                 Task { await Joryio.shared.syncInAppCampaigns() }
-            case "user_attributes":
-                // Still a no-op, and now says so rather than implying a sync.
-                logger.debug("Silent push: user_attributes sync is not implemented")
             default:
-                logger.debug("Unknown sync type: \(syncType)")
+                // Named rather than silently ignored: an unknown type means the
+                // backend and the SDK disagree. A "user_attributes" branch used
+                // to sit here as a no-op (audit 2026-09-26, I14); the backend
+                // never sends it and Android has never had it, so it is gone.
+                logger.debug("Unknown jry_sync type: \(syncType)")
             }
         }
     }
@@ -562,12 +555,7 @@ extension PushNotificationManager: UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        let userInfo = notification.request.content.userInfo
-
         logger.debug("Will present notification in foreground")
-
-        // Track notification received
-        trackNotificationEvent(userInfo: userInfo, action: "received_foreground")
 
         // Show notification even when app is in foreground
         completionHandler([.banner, .sound, .badge])

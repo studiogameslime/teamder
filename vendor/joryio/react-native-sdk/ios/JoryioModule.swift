@@ -62,6 +62,16 @@ class JoryioModule: RCTEventEmitter {
     let requestPushPermissionAtLaunch = config["requestPushPermissionAtLaunch"] as? Bool ?? false
     let userId = config["userId"] as? String
 
+    // Four options the native SDKs honour that this bridge dropped on the
+    // floor (audit 2026-09-26, D26): a JS app setting any of them got the
+    // native default and no error. Same names as native; `requestTimeout`
+    // follows flushInterval - JS sends milliseconds, iOS wants seconds.
+    let anonymousId = config["anonymousId"] as? String
+    let sendImmediately = config["sendImmediately"] as? Bool ?? false
+    let maxQueueSize = config["maxQueueSize"] as? Int ?? ConfigDefaults.maxQueueSize
+    let requestTimeout = (config["requestTimeout"] as? Double).map { $0 / 1000.0 }
+      ?? ConfigDefaults.requestTimeout
+
     // Optional SDK authentication (opt-in). Mirrors the sdk-ios
     // JoryioConfig fields; both default off/nil so behaviour is unchanged.
     let enableSdkAuthentication = config["enableSdkAuthentication"] as? Bool ?? false
@@ -77,12 +87,16 @@ class JoryioModule: RCTEventEmitter {
 
     let joryioConfig = JoryioConfig(
       userId: userId,
+      anonymousId: anonymousId,
       batchSize: batchSize,
       flushInterval: flushInterval,
+      sendImmediately: sendImmediately,
+      maxQueueSize: maxQueueSize,
       sessionTimeout: sessionTimeout,
       trackSessionStart: trackSessionStart,
       requestPushPermissionAtLaunch: requestPushPermissionAtLaunch,
       inApp: InAppConfig(allowHtmlJsInAppMessages: allowHtmlJsInAppMessages),
+      requestTimeout: requestTimeout,
       enableSdkAuthentication: enableSdkAuthentication,
       sdkAuthenticationToken: sdkAuthenticationToken,
       enableDebug: enableDebug,
@@ -502,6 +516,21 @@ class JoryioModule: RCTEventEmitter {
   /// reads as delivered to nobody and breaks revenue attribution.
   @objc func trackInAppImpression(_ campaignId: String, action: String) {
     Joryio.shared.trackInAppImpression(campaignId: campaignId, action: action)
+  }
+
+  /// A form inside an HTML message the app rendered itself. Resolves with the
+  /// server's verdict ({ ok, message?, redirect?, errors? }) - never rejects,
+  /// a failure is `ok: false`. Mirrors sdk-ios `Joryio.submitInAppForm`.
+  @objc func submitInAppForm(_ campaignId: String, values: NSDictionary, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    let dict = (values as? [String: Any]) ?? [:]
+    Task {
+      let r = await Joryio.shared.submitInAppForm(campaignId: campaignId, values: dict)
+      var out: [String: Any] = ["ok": r.ok]
+      if let m = r.message { out["message"] = m }
+      if let u = r.redirect { out["redirect"] = u }
+      if let e = r.errors { out["errors"] = e }
+      resolve(out)
+    }
   }
 
   // MARK: - SDK Authentication

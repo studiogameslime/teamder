@@ -34,7 +34,14 @@ internal class NetworkClient(
     private val retryBackoffMs: Long = 1000,
     private val enableDebug: Boolean = false,
     enableSdkAuthentication: Boolean = false,
-    sdkAuthenticationToken: String? = null
+    sdkAuthenticationToken: String? = null,
+    /**
+     * Per-request timeout (connect, read and write), milliseconds. Comes from
+     * `JoryioConfig.requestTimeout`, which was documented, stored and never
+     * read while this client sat on a hard-coded 30 s (audit 2026-09-26, A17).
+     * iOS applies its `requestTimeout` to the URLSession the same way.
+     */
+    requestTimeoutMs: Long = 10_000
 ) {
     private val api: JoryioApi
     private val okHttpClient: OkHttpClient
@@ -93,10 +100,13 @@ internal class NetworkClient(
             .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
             .create()
 
+        // A non-positive timeout would make OkHttp wait forever; fall back to
+        // the config default rather than hand an integrator an unbounded call.
+        val timeoutMs = if (requestTimeoutMs > 0) requestTimeoutMs else 10_000L
         okHttpClient = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+            .readTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+            .writeTimeout(timeoutMs, TimeUnit.MILLISECONDS)
             .addInterceptor(createAuthInterceptor())
             // Added AFTER the SDK-key interceptor so this (inner) interceptor's
             // received request already carries the base headers; its one-shot
@@ -138,6 +148,8 @@ internal class NetworkClient(
      *                             is not silently upgraded to https and broken
      *  - explicit https://      → left alone
      *
+     *  - no path at all         → "/api" appended (the backend's global prefix)
+     *
      * Always ends in "/" because Retrofit requires it.
      */
     private fun normalizeBaseUrl(host: String): String {
@@ -147,7 +159,13 @@ internal class NetworkClient(
             trimmed.startsWith("https://", ignoreCase = true) -> trimmed
             else -> "https://$trimmed"
         }
-        return if (withScheme.endsWith("/")) withScheme else "$withScheme/"
+        val noSlash = withScheme.trimEnd('/')
+        // Same rule as web and iOS: a host with no path gets the backend's
+        // "api" prefix, where the SDK routes are mounted. A bare
+        // "api-eu1.joryio.com" used to produce a 404 on every request.
+        val path = runCatching { java.net.URI(noSlash).path ?: "" }.getOrDefault("")
+        val withPrefix = if (path.isEmpty() || path == "/") "$noSlash/api" else noSlash
+        return "$withPrefix/"
     }
 
     /**
@@ -518,6 +536,12 @@ internal class NetworkClient(
     suspend fun trackImpression(request: io.joryio.sdk.models.TrackImpressionRequest): NetworkResult<ImpressionResponse> {
         return executeWithRetry("trackImpression") {
             api.trackImpression(request)
+        }
+    }
+
+    suspend fun submitInAppForm(request: io.joryio.sdk.models.InAppFormSubmitRequest): NetworkResult<io.joryio.sdk.models.InAppFormSubmitResponse> {
+        return executeWithRetry("submitInAppForm") {
+            api.submitInAppForm(request)
         }
     }
 

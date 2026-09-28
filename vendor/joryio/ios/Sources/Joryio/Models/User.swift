@@ -3,7 +3,9 @@ import Foundation
 /// User identity information
 public struct UserIdentity: Codable {
     public var userId: String?
-    public let anonymousId: String
+    /// `var`, not `let`: `wipeData()` replaces it in place after clearing
+    /// storage (IdentityManager.onDataWiped), which is the one time it changes.
+    public var anonymousId: String
     public var attributes: [String: AnyCodable]
 
     public init(userId: String?, anonymousId: String, attributes: UserAttributes = [:]) {

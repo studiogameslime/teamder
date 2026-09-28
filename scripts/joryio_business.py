@@ -18,7 +18,9 @@ from collections import defaultdict, Counter
 
 P = "soccer-app-52b6b"
 FS = f"https://firestore.googleapis.com/v1/projects/{P}/databases/(default)/documents"
-BASE = os.environ.get("JORYIO_BASE_URL", "").rstrip("/")
+# Defaults to PRODUCTION. This used to be "", so an unset variable sent every
+# request to a bare path and failed in a way that looked like an API fault.
+BASE = os.environ.get("JORYIO_BASE_URL", "https://api-eu1.joryio.com/api").rstrip("/")
 KEY = os.environ.get("JORYIO_API_KEY", "")
 WS = "33b93794-3468-4241-aeaf-d752166ae066"
 LIVE = "--live" in sys.argv

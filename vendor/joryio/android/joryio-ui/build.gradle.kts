@@ -7,12 +7,12 @@ plugins {
 // Single source of truth for both artifacts' version. base and -ui are released
 // in LOCKSTEP at the same number, which is what stops a consumer assembling an
 // incompatible pair; Braze does the same for android-sdk-base/-ui.
-//
-// It was "1.0.0" while :joryio published 1.1.0 - so this artifact went out a
-// version behind and pinned base to a version that did not exist beside it.
-// "Single source of truth" is the intent, not the mechanism: :joryio hardcodes
-// its own number in its own file, and nothing compares the two.
-val sdkVersion = "1.1.0"
+// ── LOCAL PATCH (Teamder) ──────────────────────────────────────────────────
+// Upstream still says "1.0.0" while :joryio publishes 1.2.0, so this artifact
+// would go out two versions behind and pin base to a version that never sat
+// beside it. "Single source of truth" is the intent, not the mechanism —
+// :joryio hardcodes its own number in its own file and nothing compares them.
+val sdkVersion = "1.2.0"
 
 android {
     namespace = "io.joryio.sdk.ui"
@@ -76,17 +76,18 @@ publishing {
             version = sdkVersion
 
             afterEvaluate {
+                from(components["release"])
+
+                // ── LOCAL PATCH (Teamder) ──────────────────────────
                 // The generated POM ALREADY carries io.joryio:joryio-android at
-                // this exact version, from the project dependency below - so the
-                // pin the intent called for is there for free.
+                // this exact version, from the project dependency below — so the
+                // pin this block was written for is there for free.
                 //
-                // There used to be a pom.withXml block adding it a second time.
                 // It appended a SECOND <dependencies> element to a POM that
                 // already had one, which is invalid, and Gradle refused the
-                // publication outright: `:joryio-ui:publishReleasePublicationToMavenLocal`
-                // failed with "POM file is invalid" on every machine, so this
+                // publication outright: publishReleasePublicationToMavenLocal
+                // failed with "POM file is invalid" on every machine, so the
                 // artifact could not be released at all.
-                from(components["release"])
             }
         }
     }

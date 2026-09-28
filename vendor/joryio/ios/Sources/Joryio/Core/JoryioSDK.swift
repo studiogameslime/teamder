@@ -141,6 +141,21 @@ public class Joryio {
     /// exactly what happened on 2026-08-12.
     public var currentApiEndpoint: String? { apiEndpoint }
 
+    /// The API base every request is built on (`<base>/v1/track/batch`).
+    /// Accepts a bare host, a host with scheme, or the full base with "/api".
+    /// Keep identical to `normalizeApiEndpoint` (web) and `normalizeBaseUrl` (Android).
+    static func normalizeApiEndpoint(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lower = trimmed.lowercased()
+        let withScheme = (lower.hasPrefix("http://") || lower.hasPrefix("https://")) ? trimmed : "https://\(trimmed)"
+        var noSlash = withScheme
+        while noSlash.hasSuffix("/") { noSlash.removeLast() }
+        if let url = URL(string: noSlash), url.path.isEmpty || url.path == "/" {
+            return noSlash + "/api"
+        }
+        return noSlash
+    }
+
     public func initialize(sdkKey: String, apiHost: String, config: JoryioConfig? = nil) {
         guard !isInitialized else {
             // Re-initialisation is NOT supported: managers, timers, the queue
@@ -152,9 +167,7 @@ public class Joryio {
             // host kept sending to the previous one and looked broken with no
             // explanation - the SDK reported "initialized", the app displayed
             // the new host, and every request failed against the old one.
-            let requested = apiHost.hasPrefix("http://") || apiHost.hasPrefix("https://")
-                ? apiHost
-                : "https://\(apiHost)"
+            let requested = Self.normalizeApiEndpoint(apiHost)
             // Name WHAT differs. Reporting only the endpoint printed two
             // identical hosts when it was the KEY that changed, which told the
             // reader nothing - that happened on 2026-08-12 and sent the
@@ -208,12 +221,11 @@ public class Joryio {
         // Store SDK key and construct endpoint
         self.sdkKey = sdkKey
 
-        // Build full API endpoint URL
-        if apiHost.hasPrefix("http://") || apiHost.hasPrefix("https://") {
-            self.apiEndpoint = apiHost
-        } else {
-            self.apiEndpoint = "https://\(apiHost)"
-        }
+        // Build full API endpoint URL - the same rule as web and Android:
+        // scheme added, trailing slash dropped, "/api" appended when the host
+        // carries no path (the backend mounts the SDK routes under it; a bare
+        // "api-eu1.joryio.com" used to produce a 404 on every request).
+        self.apiEndpoint = Self.normalizeApiEndpoint(apiHost)
 
         // Use provided config or create default
         self.config = config ?? JoryioConfig()
@@ -253,7 +265,8 @@ public class Joryio {
         self.identity = IdentityManager(
             storage: storage,
             logger: logger,
-            initialUserId: self.config.userId
+            initialUserId: self.config.userId,
+            initialAnonymousId: self.config.anonymousId
         )
         self.session = SessionManager(
             storage: storage,
@@ -754,6 +767,13 @@ public class Joryio {
         storage?.clearSession()
         storage?.clearDeviceToken()
         inAppMessaging?.clear()
+        // The anonymous id too, in storage AND in memory - it is the key the
+        // erased profile was filed under. Android clears its whole prefs file
+        // here and regenerates on the next read; iOS caches the id, so both
+        // halves are explicit. Order matters: clear storage first, then let
+        // the identity manager mint the replacement.
+        storage?.clearAnonymousId()
+        identity?.onDataWiped()
         logger.info("Local SDK data wiped")
     }
 
@@ -1116,6 +1136,41 @@ public class Joryio {
     /// `action` is `displayed`, `clicked` or `dismissed`. Matches Android's
     /// method of the same name. Only needed alongside
     /// `setInAppMessageCallback`; the SDK reports its own rendering.
+    /**
+     Submit a form shown inside an in-app message (the `joryioBridge.submitForm`
+     bridge call lands here). The backend validates against the form the
+     campaign carries and writes the person; the answer is what the message
+     runtime shows. Never throws: a failure is an `ok: false` answer.
+     */
+    public func submitInAppForm(campaignId: String, values: [String: Any]) async -> InAppFormSubmitResponse {
+        guard isInitialized else {
+            logNotInitialized()
+            return InAppFormSubmitResponse(ok: false, message: "Something went wrong. Please try again.")
+        }
+        var encoded: [String: InAppFormValue] = [:]
+        for (key, raw) in values {
+            if let list = raw as? [Any] {
+                encoded[key] = .list(list.map { String(describing: $0) })
+            } else if let s = raw as? String {
+                encoded[key] = .string(s)
+            } else if !(raw is NSNull) {
+                encoded[key] = .string(String(describing: raw))
+            }
+        }
+        let request = InAppFormSubmitRequest(
+            campaignId: campaignId,
+            userId: identity.getUserId(),
+            anonymousId: identity.getAnonymousId(),
+            values: encoded
+        )
+        do {
+            return try await network.submitInAppForm(request)
+        } catch {
+            logger.error("In-app form submit failed: \(error.localizedDescription)")
+            return InAppFormSubmitResponse(ok: false, message: "Something went wrong. Please try again.")
+        }
+    }
+
     public func trackInAppImpression(campaignId: String, action: String) {
         guard isInitialized else {
             logNotInitialized()

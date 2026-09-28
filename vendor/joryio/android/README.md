@@ -294,7 +294,8 @@ val config = JoryioConfig(
 
     // Debugging
     enableDebug = false,         // Enable debug logging
-    logLevel = LogLevel.ERROR    // Log level (VERBOSE, DEBUG, INFO, WARN, ERROR)
+    logLevel = null              // VERBOSE, DEBUG, INFO, WARN or ERROR. Default null:
+                                 // follows enableDebug (DEBUG when on, ERROR when off)
 )
 ```
 

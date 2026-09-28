@@ -51,18 +51,45 @@ export interface JoryioConfig {
   requestPushPermissionAtLaunch?: boolean;
   /** Enable debug logging (default: false) */
   enableDebug?: boolean;
-  /** Log level: 'debug' | 'info' | 'warn' | 'error' (default: 'info') */
+  /**
+   * Log level: 'debug' | 'info' | 'warn' | 'error'.
+   *
+   * No fixed default: left unset, both native bridges derive it from
+   * `enableDebug` - 'debug' when that is true, 'error' otherwise. Set it only
+   * to override that derivation (for example 'warn' with `enableDebug: true`).
+   */
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
   /** Event batch size before auto-flush. Omit to use the native default (50). */
   batchSize?: number;
   /** Event flush interval in ms. Omit to use the native default (5000). */
   flushInterval?: number;
+  /**
+   * Send each event as soon as it is tracked instead of batching (default:
+   * false). Not recommended for production - one request per event.
+   */
+  sendImmediately?: boolean;
+  /**
+   * Most events the local queue holds while flushes fail; beyond it the oldest
+   * are dropped. Omit to use the native default (1000).
+   */
+  maxQueueSize?: number;
+  /** Per-request HTTP timeout in ms. Omit to use the native default (10000). */
+  requestTimeout?: number;
   /** Session timeout in ms. Omit to use the native default (1800000 / 30 min). */
   sessionTimeout?: number;
   /** Automatically track session start (default: true) */
   trackSessionStart?: boolean;
   /** Initial user ID if known at init time */
   userId?: string;
+  /**
+   * Your own anonymous id, if you already have one for this device.
+   *
+   * Used for this run and stored only when nothing is stored yet, exactly as
+   * the native SDKs and the web SDK treat it - so an id set once at init
+   * survives the app dropping the option later. Omit to let the SDK generate
+   * one.
+   */
+  anonymousId?: string;
   /**
    * Enable JWT-based SDK Authentication (default: false). When enabled, supply a
    * customer-minted JWT via `sdkAuthenticationToken` and/or
@@ -682,6 +709,16 @@ class JoryioSDK {
   }
 
   /**
+   * Turn in-app messaging on and say what YOUR renderer can draw
+   * (`content.native`, `content.html`). `onInAppMessage` calls this for you;
+   * call it directly only when you subscribe some other way. Documented for a
+   * long time, exposed on the class only since 2026-09-26.
+   */
+  enableInAppMessages(capabilities?: string[]): void {
+    this._dispatch(() => JoryioModule.enableInAppMessages(capabilities ?? null));
+  }
+
+  /**
    * Track an in-app message impression or action.
    *
    * @param campaignId - The campaign ID from the message
@@ -705,6 +742,21 @@ class JoryioSDK {
 
   trackInAppImpression(campaignId: string, action: string): void {
     this._dispatch(() => JoryioModule.trackInAppImpression(campaignId, action));
+  }
+
+  /**
+   * Submit a form shown inside an HTML in-app message that your app renders
+   * itself (a `<form data-jry-form>` in the campaign's html). The values are
+   * posted with the SDK's identity; the backend validates them against the
+   * form the campaign carries and writes the person. Resolves with the
+   * server's verdict - `{ ok, message?, redirect?, errors? }` - and never
+   * throws: a failure is `ok: false`.
+   */
+  async submitInAppForm(campaignId: string, values: Record<string, string | string[]>): Promise<{ ok: boolean; message?: string; redirect?: string; errors?: string[] }> {
+    if (!(await this._awaitReady('submitInAppForm'))) return { ok: false, message: 'Something went wrong. Please try again.' };
+    const raw = await JoryioModule.submitInAppForm(campaignId, values);
+    // Android answers a JSON string, iOS an object; both mean the same thing.
+    return typeof raw === 'string' ? (JSON.parse(raw) as { ok: boolean; message?: string; redirect?: string; errors?: string[] }) : raw;
   }
 
   // ─── SDK Authentication ──────────────────────────────────────────────────

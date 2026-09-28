@@ -618,7 +618,8 @@ class InAppMessagingManager {
     // MARK: - Impression Tracking
 
     /// Track impression to backend
-    private func trackImpression(campaignId: String, action: String) async {
+    /// `name` is what the message called the click (data-action, a bridge logClick); it rides in the wire `action` while the markers still say 'click'.
+    private func trackImpression(campaignId: String, action: String, name: String? = nil) async {
         let sessionId = sessionManager.getSessionId()
 
         // Echo the delivery token the server issued for this message - proof we
@@ -643,7 +644,7 @@ class InAppMessagingManager {
             userId: identityManager.getUserId() ?? "",
             anonymousId: identityManager.getAnonymousId(),
             sessionId: sessionId,
-            action: isClick ? "click" : (isDismiss ? "dismiss" : action),
+            action: isClick ? (name?.isEmpty == false ? name! : "click") : (isDismiss ? "dismiss" : action),
             displayedAt: normalized.contains("display") ? nowIso : nil,
             clicked: isClick ? true : nil,
             clickedAt: isClick ? nowIso : nil,
@@ -760,7 +761,7 @@ extension InAppMessagingManager: InAppMessageViewDelegate {
         logger.debug("Click on campaign \(campaignId): \(action)")
 
         Task {
-            await trackImpression(campaignId: campaignId, action: "click")
+            await trackImpression(campaignId: campaignId, action: "click", name: action)
 
             // http(s) only - the view already filtered, this is defence in
             // depth. `javascript:`/`data:`/`file:` URLs are how authored

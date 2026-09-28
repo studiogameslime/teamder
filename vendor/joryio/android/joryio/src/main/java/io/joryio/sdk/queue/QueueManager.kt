@@ -43,9 +43,32 @@ internal class QueueManager(
     // Callback for when events are ready to flush
     var onFlush: (suspend (EventBatch) -> Boolean)? = null
 
+    /**
+     * Row count of the events table, refreshed after every write.
+     *
+     * Exists so [getQueueSize] can be a PLAIN function, like iOS and web, rather
+     * than a suspend one. The queue is a Room table and counting it is a
+     * database read, which must not block the caller's thread - so the count is
+     * kept here and read for free. It is exact after each write completes and
+     * at most one write stale while one is in flight, which is all a
+     * diagnostic needs. Seeded from the table at construction so a queue that
+     * persisted across launches reports its real size before the first write.
+     */
+    @Volatile
+    private var cachedCount: Int = 0
+
     init {
         logger.debug("QueueManager initialized (batchSize=$batchSize, flushInterval=${flushInterval}ms)")
+        scope.launch { refreshCount() }
         startAutoFlush()
+    }
+
+    private suspend fun refreshCount() {
+        try {
+            cachedCount = eventDao.getCount()
+        } catch (e: Exception) {
+            logger.error("Failed to count queue: ${e.message}", e)
+        }
     }
 
     /**
@@ -68,6 +91,7 @@ internal class QueueManager(
 
             // Check if we should flush immediately
             val queueSize = eventDao.getCount()
+            cachedCount = queueSize
             if (queueSize >= batchSize) {
                 logger.debug("Batch size reached, flushing immediately")
                 flush()
@@ -88,6 +112,7 @@ internal class QueueManager(
 
             // Check if we should flush
             val queueSize = eventDao.getCount()
+            cachedCount = queueSize
             if (queueSize >= batchSize) {
                 flush()
             }
@@ -108,6 +133,7 @@ internal class QueueManager(
         }
         try {
             val queueSize = eventDao.getCount()
+            cachedCount = queueSize
             if (queueSize == 0) {
                 logger.debug("Queue empty, nothing to flush")
                 return
@@ -149,6 +175,7 @@ internal class QueueManager(
                 // Delete events that have been retried too many times
                 eventDao.deleteExpiredEvents(maxRetries)
             }
+            refreshCount()
         } catch (e: Exception) {
             logger.error("Failed to flush queue: ${e.message}", e)
         } finally {
@@ -197,16 +224,10 @@ internal class QueueManager(
     }
 
     /**
-     * Get queue size
+     * How many events are waiting to be sent. A plain call, like iOS and web -
+     * see [cachedCount] for why it does not touch the database.
      */
-    suspend fun getQueueSize(): Int {
-        return try {
-            eventDao.getCount()
-        } catch (e: Exception) {
-            logger.error("Failed to get queue size: ${e.message}", e)
-            0
-        }
-    }
+    fun getQueueSize(): Int = cachedCount
 
     /**
      * Clear all events from queue
@@ -214,6 +235,7 @@ internal class QueueManager(
     suspend fun clear() {
         try {
             eventDao.deleteAll()
+            cachedCount = 0
             logger.info("Queue cleared")
         } catch (e: Exception) {
             logger.error("Failed to clear queue: ${e.message}", e)

@@ -234,6 +234,23 @@ class StorageManager {
         return newId
     }
 
+    /// Whether an anonymous id has been persisted yet. Lets a caller-supplied
+    /// id seed storage without `getAnonymousId()` generating one first.
+    func hasStoredAnonymousId() -> Bool {
+        return userDefaults.string(forKey: anonymousIdKey) != nil
+    }
+
+    func setAnonymousId(_ id: String) {
+        userDefaults.set(id, forKey: anonymousIdKey)
+    }
+
+    /// Forget the stored anonymous id; the next `getAnonymousId()` mints a new
+    /// one. Part of `wipeData()`, which erases the profile this id names.
+    func clearAnonymousId() {
+        userDefaults.removeObject(forKey: anonymousIdKey)
+        logger.debug("Anonymous ID cleared")
+    }
+
     // MARK: - Device ID
 
     func getDeviceId() -> String {

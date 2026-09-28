@@ -54,6 +54,16 @@ internal class StorageManager(
         return newId
     }
 
+    /**
+     * Whether an anonymous id has been persisted yet. Lets a caller-supplied id
+     * seed storage without [getAnonymousId] generating one first.
+     */
+    fun hasStoredAnonymousId(): Boolean = prefs.getString(KEY_ANONYMOUS_ID, null) != null
+
+    fun setAnonymousId(id: String) {
+        prefs.edit().putString(KEY_ANONYMOUS_ID, id).apply()
+    }
+
     // MARK: - Device ID
 
     fun getDeviceId(): String {

@@ -83,6 +83,8 @@ class Joryio private constructor(
      */
     private val allowHtmlJsInAppMessages: Boolean = config.allowHtmlJsInAppMessages
     private val debugEnabled: Boolean = config.enableDebug
+    /** Captured at init like [debugEnabled]: `config` is a constructor parameter, not a property. */
+    private val sendImmediately: Boolean = config.sendImmediately
     private val requestPushPermissionAtLaunch: Boolean = config.requestPushPermissionAtLaunch
     /** One attempt per process; a refused prompt must not be re-fired every foreground. */
     private var launchPromptAttempted = false
@@ -186,14 +188,18 @@ class Joryio private constructor(
         // run. The PERSISTED flag wins on its own: a user who called optOut()
         // last run must stay opted out even when the host app passes its
         // default config, which is the common case.
-        isOptedOut = config.optOut || storage.getOptedOut()
+        // trackingConsent DENIED is an opt-out too - it was stored and never read
+        // here, so Android kept collecting where iOS and web stop (audit 2026-09-26).
+        isOptedOut = config.optOut || storage.getOptedOut() || config.trackingConsent == TrackingConsent.DENIED
         if (isOptedOut) logger.warn("User has opted out of tracking")
 
         // Initialize identity manager
         identityManager = IdentityManager(
             storage = storage,
             logger = logger,
-            initialUserId = config.userId
+            initialUserId = config.userId,
+            // Was never passed, so a caller-supplied anonymous id did nothing (A17).
+            initialAnonymousId = config.anonymousId
         )
 
         // Initialize session manager
@@ -213,7 +219,9 @@ class Joryio private constructor(
             retryBackoffMs = config.retryBackoffMs,
             enableDebug = config.enableDebug,
             enableSdkAuthentication = config.enableSdkAuthentication,
-            sdkAuthenticationToken = config.sdkAuthenticationToken
+            sdkAuthenticationToken = config.sdkAuthenticationToken,
+            // Was never passed; OkHttp sat on a hard-coded 30 s (A17).
+            requestTimeoutMs = config.requestTimeout
         )
 
         // Initialize queue manager
@@ -223,6 +231,8 @@ class Joryio private constructor(
             logger = logger,
             batchSize = config.batchSize,
             flushInterval = config.flushInterval,
+            // Was never passed, so QueueManager's own 10,000 applied against a documented 1,000.
+            maxQueueSize = config.maxQueueSize,
             maxRetries = config.maxRetries
         )
 
@@ -434,6 +444,13 @@ class Joryio private constructor(
 
                 queueManager.enqueue(event)
                 sessionManager.updateActivity()
+
+                // Send immediately if configured. `sendImmediately` was stored and
+                // never read here (audit 2026-09-26, A17); web and iOS flush after
+                // each track when it is on, so Android now does the same.
+                if (sendImmediately) {
+                    queueManager.flush()
+                }
             } catch (e: Exception) {
                 logger.error("Failed to track event: ${e.message}", e)
             }
@@ -837,6 +854,7 @@ class Joryio private constructor(
         scope.launch { queueManager.clear() }
         identityManager.reset()
         storage.clearAllData()
+        identityManager.onDataWiped()
         logger.info("Local SDK data wiped")
     }
 
@@ -1026,8 +1044,8 @@ class Joryio private constructor(
                         // returns was being thrown away.
                         //
                         // Reported from a production integration, 2026-08-23.
-                        val drew = presenter.present(activity, campaign) { action, _ ->
-                            trackInAppImpression(campaign.id, action)
+                        val drew = presenter.present(activity, campaign) { action, meta ->
+                            handleInAppMessageEvent(activity, campaign, action, meta)
                         }
                         if (drew) {
                             inAppMessagingManager.noteDisplayed()
@@ -1059,10 +1077,86 @@ class Joryio private constructor(
     /**
      * Track in-app message impression
      */
-    fun trackInAppImpression(campaignId: String, action: String) {
+    /**
+     * What a displayed message reports back (BACKLOG C23, 2026-09-26). The
+     * impression actions (displayed / clicked / dismissed / converted) go to
+     * the tracker as before; the rest are the bridge methods a message script
+     * calls, which used to be silent no-ops on Android:
+     * `joryioBridge.logCustomEvent`, `setCustomUserAttribute`, `changeUser`,
+     * `requestPushPermission`, `logConversion` and `submitForm`. Kept in the
+     * base SDK so joryio-ui stays free of a compile-time dependency on it.
+     */
+    private fun handleInAppMessageEvent(
+        activity: android.app.Activity,
+        campaign: io.joryio.sdk.models.InAppCampaign,
+        action: String,
+        meta: Map<String, Any?>,
+    ) {
+        when (action) {
+            "custom_event" -> {
+                val name = meta["name"] as? String ?: return
+                @Suppress("UNCHECKED_CAST")
+                track(name, (meta["properties"] as? Map<String, Any?>) ?: emptyMap())
+            }
+            "set_attribute" -> {
+                val key = meta["key"] as? String ?: return
+                val value = meta["value"] ?: return
+                setAttribute(key, value)
+            }
+            "change_user" -> {
+                val userId = meta["userId"] as? String ?: return
+                if (userId.isNotBlank()) identify(userId)
+            }
+            "push_permission" -> requestPushPermission(activity)
+            "form_submit" -> {
+                @Suppress("UNCHECKED_CAST")
+                val values = (meta["values"] as? Map<String, Any?>) ?: emptyMap()
+                @Suppress("UNCHECKED_CAST")
+                val respond = meta["respond"] as? (String) -> Unit
+                submitInAppForm(campaign.id, values) { json -> respond?.invoke(json) }
+            }
+            // A click keeps the name the message gave it (data-action, logClick, a
+            // native button id); it used to be dropped here with the whole meta map.
+            "clicked" -> trackInAppImpression(campaign.id, action, meta["action"] as? String)
+            else -> trackInAppImpression(campaign.id, action)
+        }
+    }
+
+    /**
+     * Submit a form shown inside an in-app message. The backend validates
+     * against the form the campaign carries and writes the person; the JSON
+     * answer is what the message runtime shows. Never fails loudly: an error
+     * becomes an `ok: false` answer.
+     */
+    fun submitInAppForm(campaignId: String, values: Map<String, Any?>, onResult: (String) -> Unit) {
+        val gson = com.google.gson.Gson()
+        val fallback = gson.toJson(io.joryio.sdk.models.InAppFormSubmitResponse(ok = false, message = "Something went wrong. Please try again."))
+        scope.launch {
+            val request = io.joryio.sdk.models.InAppFormSubmitRequest(
+                campaignId = campaignId,
+                userId = identityManager.getUserId(),
+                anonymousId = identityManager.getAnonymousId(),
+                values = values,
+            )
+            val json = when (val result = networkClient.submitInAppForm(request)) {
+                is NetworkResult.Success -> gson.toJson(result.data)
+                is NetworkResult.Error -> {
+                    logger.warn("In-app form submit failed: ${result.message}")
+                    fallback
+                }
+            }
+            onResult(json)
+        }
+    }
+
+    // @JvmOverloads keeps the two-argument form for Java callers (the Unity
+    // bridge is Java); the click NAME was added 2026-09-26 with a Kotlin
+    // default, which Java cannot see.
+    @JvmOverloads
+    fun trackInAppImpression(campaignId: String, action: String, name: String? = null) {
         inAppReported++
         scope.launch {
-            inAppMessagingManager.trackImpression(campaignId, action)
+            inAppMessagingManager.trackImpression(campaignId, action, name)
         }
     }
 
@@ -1158,10 +1252,12 @@ class Joryio private constructor(
     /**
      * How many events are waiting to be sent.
      *
-     * Suspending because the queue is a Room table, not an in-memory list -
-     * counting it is a database read and must not block the caller's thread.
+     * A plain call, matching iOS and web. The queue is a Room table, so this
+     * reads a count the queue keeps up to date after every write rather than
+     * running a query on the caller's thread - it used to be `suspend` for that
+     * reason, while every doc showed a plain call (audit 2026-09-26, A21).
      */
-    suspend fun getQueueSize(): Int = queueManager.getQueueSize()
+    fun getQueueSize(): Int = queueManager.getQueueSize()
 
     // MARK: - Push Notifications
 
@@ -1684,20 +1780,23 @@ class Joryio private constructor(
             withSdk { it.flush() }
         }
 
-        // ── LOCAL PATCH (Teamder, re-applied 2026-09-07) ───────────────────
+        // Marketing subscription - NOT optIn/optOut, which is tracking consent.
+        // ── LOCAL PATCH (Teamder, re-applied 2026-09-28) ───────────────────
         // The React Native module calls all five of these STATICALLY
         // (Joryio.optOut(), Joryio.syncInAppCampaigns(), …) but Joryio is a
         // `class` with a companion, and upstream declares them as INSTANCE
         // methods only — so :joryio_react-native-sdk:compileReleaseKotlin
         // fails with "Unresolved reference".
         //
-        // FOURTH pull in a row carrying this patch. Their parity tripwire greps
+        // FIFTH pull in a row carrying this patch. Their parity tripwire greps
         // the SDK sources for method NAMES, and a grep cannot tell an instance
         // method from a static one — so it keeps approving a bridge that does
-        // not compile. Audited again on this pull: all five still missing.
+        // not compile. Audited again on this pull, mechanically: of the 17
+        // names the bridge calls on the Joryio type, the companion carries 12
+        // and these five are still absent.
         //
-        // Same shape as the subscription forwarders directly below, which the
-        // marketing commit DID add. Remove when upstream carries these.
+        // Same shape as the subscription forwarders directly below, which
+        // upstream DID add. Remove when upstream carries these.
         fun optOut() {
             withSdk { it.optOut() }
         }
@@ -1720,7 +1819,6 @@ class Joryio private constructor(
             withSdk { it.resetDisplayedCampaigns() }
         }
 
-        // Marketing subscription - NOT optIn/optOut, which is tracking consent.
         fun setSubscription(channel: String, status: String) {
             withSdk { it.setSubscription(channel, status) }
         }
