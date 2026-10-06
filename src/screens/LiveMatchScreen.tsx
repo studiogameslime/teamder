@@ -808,6 +808,23 @@ function PlainLiveMatchScreen() {
       >
         <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)}>
           <Pressable style={styles.menuCard} onPress={() => undefined}>
+            {/* Same entry as the advanced screen's, so the two live screens
+                do not hide the same thing behind two different gestures. */}
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate(
+                  'MatchRounds',
+                  { gameId: game.id, live: true },
+                );
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={he.liveMenuRounds}
+            >
+              <Text style={styles.menuItemText}>{he.liveMenuRounds}</Text>
+              <Ionicons name="list" size={20} color="#1D4ED8" />
+            </Pressable>
             <Pressable
               style={styles.menuItem}
               onPress={() => {

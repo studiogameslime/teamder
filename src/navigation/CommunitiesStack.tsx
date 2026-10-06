@@ -37,7 +37,6 @@ import { DraftSetupScreen } from '@/screens/games/DraftSetupScreen';
 import { DraftBoardScreen } from '@/screens/games/DraftBoardScreen';
 import { EveningSummaryScreen } from '@/screens/games/EveningSummaryScreen';
 import { SeasonSummaryScreen } from '@/screens/profile/SeasonSummaryScreen';
-import { RoundSummaryScreen } from '@/screens/games/RoundSummaryScreen';
 import { MatchRoundsScreen } from '@/screens/games/MatchRoundsScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
@@ -78,7 +77,12 @@ export type CommunitiesStackParamList = {
   // Match-detail chain — same routes as GameStack, deliberately
   // duplicated so back-navigation from MatchDetails returns to
   // CommunityDetails rather than jumping the user to the Games tab.
-  MatchDetails: { gameId: string };
+  // `initialTab` names which of the four tabs opens first. It exists because the
+  // statistics tab IS the evening's summary now — the standalone RoundSummary
+  // screen was removed — so anything that used to send a person to that summary
+  // sends them here instead. Absent → "מידע", which is what every existing
+  // caller passes and expects.
+  MatchDetails: { gameId: string; initialTab?: 'info' | 'games' | 'stats' | 'players' };
   // Draft Teams (חלוקת כוחות) — reachable from MatchDetails' "קביעת כוחות".
   DraftSetup: { gameId: string };
   DraftBoard: {
@@ -91,8 +95,10 @@ export type CommunitiesStackParamList = {
   EveningSummary: { gameId: string };
   /** `seasonId` omitted = the season currently running. */
   SeasonSummary: { groupId: string; seasonId?: string };
-  RoundSummary: { gameId: string };
-  MatchRounds: { gameId: string };
+  // `live` is set when the screen is opened from the live screen mid-evening.
+  // It changes the title and the empty-state copy and adds a refresh on
+  // focus; the list itself is the same committed round history either way.
+  MatchRounds: { gameId: string; live?: boolean };
   MatchPlayers: { gameId: string };
   AvailablePlayers: { gameId: string };
   AddMembers: { gameId: string };
@@ -158,7 +164,6 @@ export function CommunitiesStack() {
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
       <Stack.Screen name="SeasonSummary" component={SeasonSummaryScreen} />
-      <Stack.Screen name="RoundSummary" component={RoundSummaryScreen} />
       <Stack.Screen name="MatchRounds" component={MatchRoundsScreen} />
       <Stack.Screen name="AddMembers" component={AddMembersScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />

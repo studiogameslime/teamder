@@ -92,6 +92,12 @@ function Stepper({ label, hint, value, min, max, onChange }: StepperProps) {
           maxLength={2}
           selectTextOnFocus
           style={styles.valueBox}
+          // Two digits in a chip sized for two digits. Android's largest font
+          // setting scaled 20pt past the box and clipped the number — reported
+          // with the steppers circled. Capped rather than unbounded: the value
+          // still grows with the system setting, just not past the control
+          // that holds it, and `minHeight` below lets the row breathe.
+          maxFontSizeMultiplier={1.4}
           accessibilityLabel={`${label}: ${value}`}
         />
 
@@ -263,7 +269,9 @@ const styles = StyleSheet.create({
   stepBtnPressed: { opacity: 0.6 },
   valueBox: {
     minWidth: 58,
-    height: 44,
+    // minHeight, not height: a fixed one clips a scaled digit instead of
+    // growing with it.
+    minHeight: 44,
     borderRadius: radius.md,
     backgroundColor: colors.primaryLight,
     color: colors.primary,

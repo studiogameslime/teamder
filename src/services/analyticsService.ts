@@ -14,6 +14,7 @@ import { Platform } from 'react-native';
 import analytics from '@react-native-firebase/analytics';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
+import { crumbAct } from '@/services/breadcrumbs';
 import { joryio } from '@/services/joryio';
 
 export const AnalyticsEvent = {
@@ -198,11 +199,6 @@ export const AnalyticsEvent = {
   WidgetOpened: 'widget_opened',
   /** Phone-side: cached widget snapshot was refreshed in SharedPreferences. */
   WidgetSyncPushed: 'widget_sync_pushed',
-
-  /** The Teamder Assistant card's CTA was tapped (params: scenario, id).
-   *  Together with which scenario fired, this is how we learn which assistant
-   *  lines actually move players and which are wallpaper. */
-  HomeAssistantCtaTapped: 'home_assistant_cta_tapped',
 
   // ─── Discovery & filtering ─────────────────────────────────────────────
   /** A filter on the games-list screen was applied (date / city / format). */
@@ -689,6 +685,14 @@ export function logEvent(
   params?: Record<string, string | number | boolean | undefined | null>,
 ): void {
   const cleaned = cleanParams(params);
+
+  // The diagnostic trail carried on user reports. Hooked HERE rather than at
+  // each call site because the events are already the app's own record of
+  // "something happened" — the trail wants exactly that list, and keeping one
+  // source means a new event is on the trail the day it is written. Screen
+  // views are excluded: the navigation hook in App.tsx already records them,
+  // and recording both doubles every screen change.
+  if (name !== AnalyticsEvent.ScreenView) crumbAct(name);
 
   if (__DEV__) console.log('[analytics]', name, cleaned);
   if (USE_MOCK_DATA) return;

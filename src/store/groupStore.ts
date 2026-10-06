@@ -12,6 +12,7 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { achievementsService } from '@/services/achievementsService';
 import { useUserStore } from '@/store/userStore';
 import { logError } from '@/services/errorLog';
+import { isStaleSession } from '@/services/staleSession';
 
 type MembershipStatus =
   | 'none'      // user has no group at all
@@ -195,8 +196,18 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
         p.then(
           (value) => ({ ok: true, value }),
           (err: unknown) => {
-            logError(op, err, { userId });
-            if (__DEV__) console.warn(`[groupStore.hydrate] ${op}`, err);
+            // A hydrate overtaken by a session change is not a fault: the
+            // question was asked on behalf of a uid that no longer holds the
+            // token, and the hydrate for the new one is already on its way.
+            // It takes the `ok: false` path like any other failure — which is
+            // the POINT, because that path keeps the clubs we already had —
+            // but it is not written to the error inbox.
+            if (!isStaleSession(err)) {
+              logError(op, err, { userId });
+              if (__DEV__) console.warn(`[groupStore.hydrate] ${op}`, err);
+            } else if (__DEV__) {
+              console.log(`[groupStore.hydrate] ${op} skipped — stale session`);
+            }
             return { ok: false, value: fallback };
           },
         );

@@ -275,6 +275,26 @@ export function GameWizardForm({
   registeredCount,
 }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  // One scroll view carries all three steps, so moving between them kept the
+  // previous step's offset: stepping onto the settings step landed the person
+  // at its BOTTOM, mid-form, with the heading off screen (owner report).
+  //
+  // Resetting in an effect alone is NOT enough, and that was the first attempt:
+  // the effect runs before the new step has laid out, so the scroll is set to
+  // zero against the OLD content height and the position comes back as soon as
+  // the taller step measures. The reset is therefore ARMED on the step change
+  // and fired from `onContentSizeChange`, which is the first moment the new
+  // step's real height is known. The immediate call stays as well, so a step
+  // of identical height (which fires no size change) still goes to the top.
+  const scrollRef = React.useRef<ScrollView>(null);
+  const pendingScrollTop = React.useRef(false);
+  const scrollToTop = React.useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []);
+  useEffect(() => {
+    pendingScrollTop.current = true;
+    scrollToTop();
+  }, [step, scrollToTop]);
   const [busy, setBusy] = useState(false);
   const [values, setValues] = useState<GameFormValues>(initial);
 
@@ -495,9 +515,15 @@ export function GameWizardForm({
           />
         </View>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => {
+            if (!pendingScrollTop.current) return;
+            pendingScrollTop.current = false;
+            scrollToTop();
+          }}
         >
           {extraTopSlot && step === 1 ? (
             <View style={styles.extraSlot}>{extraTopSlot}</View>

@@ -51,87 +51,10 @@ function loadModule(): PlayInstallReferrerModule | null {
   }
 }
 
-/**
- * Parse a referrer string into the matching PendingInvite shape.
- * Two supported formats — the older one shipped before invite
- * attribution existed and is still emitted by historical landing-page
- * versions, so we keep it readable indefinitely:
- *
- *   • `invite_<type>_<id>`              — no inviter
- *   • `invite_<type>_<id>_by_<userId>`  — credits `<userId>`
- *
- * Anything else (organic installs, partner tracking, junk) returns
- * null and is ignored.
- */
-export function parseReferrerInvite(referrer: string): PendingInvite | null {
-  if (!referrer) return null;
-  // Generic "invite to the app" — `invite_app_by_<uid>` (no target).
-  const appRef = /^invite_app_by_([^_]+)$/.exec(referrer);
-  if (appRef) {
-    const invitedBy = safeDecode(appRef[1]);
-    return invitedBy ? { type: 'app', invitedBy } : { type: 'app' };
-  }
-  // Try the attributed format first since its prefix is a strict
-  // superset; falling back to the legacy short form only if the
-  // `_by_` segment isn't present.
-  const attributed = /^invite_(session|team)_(.+)_by_([^_]+)$/.exec(referrer);
-  if (attributed) {
-    const type = attributed[1] === 'session' ? 'session' : 'team';
-    const id = safeDecode(attributed[2]);
-    const invitedBy = safeDecode(attributed[3]);
-    if (!id) return null;
-    return invitedBy ? { type, id, invitedBy } : { type, id };
-  }
-  const legacy = /^invite_(session|team)_(.+)$/.exec(referrer);
-  if (legacy) {
-    const type = legacy[1] === 'session' ? 'session' : 'team';
-    const id = safeDecode(legacy[2]);
-    if (!id) return null;
-    return { type, id };
-  }
-  // Acquisition (UTM) referrer emitted by the Pulse ad-link landing page,
-  // e.g. `utm_source=whatsapp&utm_campaign=summer&g=<gameId>`. Standard
-  // querystring form so it interoperates with Play's referrer field.
-  if (/(^|&)utm_source=/.test(referrer)) {
-    const params = parseQuery(referrer);
-    const source = params.utm_source || params.s;
-    if (source) {
-      const gameId = params.g;
-      const campaign = params.utm_campaign || params.c;
-      const linkId = params.l; // per-link attribution key
-      const base = gameId
-        ? ({ type: 'session', id: gameId } as const)
-        : ({ type: 'app' } as const);
-      return {
-        ...base,
-        source,
-        ...(campaign ? { campaign } : {}),
-        ...(linkId ? { linkId } : {}),
-      };
-    }
-  }
-  return null;
-}
+export { parseReferrerInvite } from '@/utils/referrerInvite';
+import { parseReferrerInvite } from '@/utils/referrerInvite';
 
-function parseQuery(s: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const pair of s.split('&')) {
-    const i = pair.indexOf('=');
-    if (i <= 0) continue;
-    const k = pair.slice(0, i);
-    const v = safeDecode(pair.slice(i + 1));
-    if (k && v) out[k] = v;
-  }
-  return out;
-}
 
-function safeDecode(s: string): string {
-  try {
-    return decodeURIComponent(s);
-  } catch {
-    return s;
-  }
-}
 
 /**
  * One-shot read-and-stash. Safe to call on every launch — the

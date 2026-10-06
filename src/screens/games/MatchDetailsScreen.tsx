@@ -16,7 +16,6 @@ import {
   Linking,
   Modal,
   Pressable,
-  RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
@@ -32,7 +31,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   RouteProp,
   useFocusEffect,
@@ -72,14 +71,17 @@ import {
 } from '@/components/profile/HamburgerMenu';
 import { MatchStadiumHero } from '@/components/match/MatchStadiumHero';
 import { DraftTeamCard } from '@/components/draft/DraftTeamCard';
-import { MatchStatsStrip } from '@/components/match/MatchStatsStrip';
 import { MatchDetailsGrid } from '@/components/match/MatchDetailsGrid';
-import {
-  MatchParticipantsSection,
-  // (FillerInterestsSection imported separately below — keeps the
-  // existing match-component barrel pristine.)
-  type ParticipantEntry,
-} from '@/components/match/MatchParticipantsSection';
+import { ClubTabs, type ClubTab } from '@/components/club/ClubTabs';
+import { TabScroll, TabEmpty } from '@/components/match/tabs/MatchTabShell';
+import { MatchStatsTab } from '@/components/match/tabs/MatchStatsTab';
+import { MatchPlayerCounters } from '@/components/match/tabs/MatchPlayersTab';
+import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
+import { MatchRoundsScreen } from '@/screens/games/MatchRoundsScreen';
+import { weatherKind } from '@/utils/heroAtmosphere';
+import { roundSummaryService } from '@/services/roundSummaryService';
+import { didEveningHappen } from '@/utils/eveningPlayed';
+import type { RoundSummary } from '@/utils/roundSummary';
 import { FillerInterestsSection } from '@/components/match/FillerInterestsSection';
 import { PinnedAdminMessageCard } from '@/components/match/PinnedAdminMessageCard';
 import { isFinalRoundOfSeason } from '@/utils/seasonFinalRound';
@@ -147,6 +149,9 @@ import { clubRouteFor } from '@/utils/clubRoute';
 
 type Nav = NativeStackNavigationProp<GameStackParamList, 'MatchDetails'>;
 type Params = RouteProp<GameStackParamList, 'MatchDetails'>;
+
+/** The four tabs. `ClubTabs` is generic over this — one bar, two screens. */
+type GameTabKey = 'info' | 'games' | 'stats' | 'players';
 
 type CardStatus = 'joined' | 'waitlist' | 'pending' | 'none';
 
@@ -406,7 +411,62 @@ function buildStatusCardProps(args: {
   };
 }
 
+/** The sky, in one word, for the weather row in "פרטי המחזור".
+ *  Classification comes from `weatherKind` — the same function the hero's
+ *  atmosphere overlay and the animated glyph use, so the row can never
+ *  disagree with the picture behind it. */
+function skyLabel(code?: number): string {
+  switch (weatherKind(code)) {
+    case 'clear':
+      return he.gdSkyClear;
+    case 'clouds':
+      return he.gdSkyClouds;
+    case 'rain':
+      return he.gdSkyRain;
+    case 'storm':
+      return he.gdSkyStorm;
+    case 'snow':
+      return he.gdSkySnow;
+    case 'fog':
+      return he.gdSkyFog;
+    default:
+      return he.gdSkyClear;
+  }
+}
+
+/** The row's icon, matched to the same classification. A plain Ionicon, not the
+ *  animated glyph: this is a line of metadata, and an animation in it would
+ *  make it the loudest thing on a card of quiet rows. */
+function weatherRowIcon(code?: number): keyof typeof Ionicons.glyphMap {
+  switch (weatherKind(code)) {
+    case 'clouds':
+      return 'cloudy-outline';
+    case 'rain':
+      return 'rainy-outline';
+    case 'storm':
+      return 'thunderstorm-outline';
+    case 'snow':
+      return 'snow-outline';
+    case 'fog':
+      return 'cloud-outline';
+    default:
+      return 'sunny-outline';
+  }
+}
+
 export function MatchDetailsScreen() {
+  const [tab, setTab] = useState<GameTabKey>('info');
+  const [seen, setSeen] = useState<Set<GameTabKey>>(
+    () => new Set<GameTabKey>(['info']),
+  );
+  const showTab = (k: GameTabKey) => {
+    setTab(k);
+    setSeen((prev) => (prev.has(k) ? prev : new Set(prev).add(k)));
+  };
+  /** The sealed evening summary — the ONLY source the statistics tab reads. */
+  const [roundSummary, setRoundSummary] = useState<RoundSummary | null>(null);
+
+  const insets = useSafeAreaInsets();
   const nav = useNavigation<Nav>();
   const route = useRoute<Params>();
   const gameId = route.params?.gameId;
@@ -638,8 +698,16 @@ export function MatchDetailsScreen() {
     onUpdate: React.useCallback(
       (g: Game) => {
         setGame((prev) => (prev ? g : prev));
+        // Cancellations included: someone who dropped out is no longer in
+        // `players`, so without this their name never resolves and the
+        // "ביטלו השתתפות" rows all read the generic "שחקן".
         const uids = Array.from(
-          new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
+          new Set([
+            ...g.players,
+            ...g.waitlist,
+            ...(g.pending ?? []),
+            ...Object.keys(g.cancellations ?? {}),
+          ]),
         );
         if (uids.length > 0) hydratePlayers(uids);
       },
@@ -708,7 +776,12 @@ export function MatchDetailsScreen() {
       setNotFound(false);
       logEvent(AnalyticsEvent.GameViewed, { gameId: g.id, status: g.status });
       const uids = Array.from(
-        new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
+        new Set([
+          ...g.players,
+          ...g.waitlist,
+          ...(g.pending ?? []),
+          ...Object.keys(g.cancellations ?? {}),
+        ]),
       );
       if (uids.length > 0) hydratePlayers(uids);
     } catch (err) {
@@ -861,6 +934,135 @@ export function MatchDetailsScreen() {
     [game?.players, playersMap],
   );
 
+  // ─── The four tabs ───────────────────────────────────────────────────
+  //
+  //  Which of them are open is a property of the EVENING, not of the viewer:
+  //  משחקים and סטטיסטיקות only exist for a game created in advanced mode,
+  //  because that is the mode that records mini-games at all. The flag is the
+  //  game's own `advancedMode` — no new flag, and no per-club setting.
+  //
+  //  A locked tab stays visible and answers a tap with a toast, rather than
+  //  disappearing: a tab that vanishes reads as a bug, while one that explains
+  //  itself teaches the admin what the create-screen toggle buys them.
+  // The club behind this evening, for the hero's cover. `isOrphanContext` is
+  // the one-off marker; those keep the bundled stadium.
+  const heroClub =
+    game && !game.isOrphanContext && game.groupId
+      ? myCommunities.find((c) => c.id === game.groupId)
+      : undefined;
+
+  const advanced = game?.advancedMode === true;
+
+  //  A tab can be locked for two different reasons, and the toast has to name
+  //  the right one — "the mode is off" told to a stranger who simply is not in
+  //  the club would be false.
+  //
+  //  The second reason is not new: the three buttons these tabs replace were
+  //  gated on `viewerPlayedHere || viewerIsClubMember`, because the documents
+  //  behind them (`roundSummaries`, `roundHistory`) are club-readable and a
+  //  non-member's read is DENIED. Widening the gate would not show them more —
+  //  it would show them an empty state that blames missing data for a
+  //  permission error. So the old gate is carried over verbatim.
+  const viewerInClub =
+    !!user &&
+    ((game?.players ?? []).includes(user.id) ||
+      (!!game?.groupId && myCommunities.some((c) => c.id === game.groupId)));
+  const dataTabsLocked = !advanced || !viewerInClub;
+  // `initialTab` is honoured ONCE, and only after the game has loaded — which
+  // is the only moment we know whether the requested tab is locked. Sending
+  // someone straight to a locked tab would show them a pane the tab bar says
+  // they cannot open; when that happens the request is dropped and they land
+  // on מידע, the same place every other caller lands.
+  const initialTabApplied = React.useRef(false);
+  useEffect(() => {
+    if (initialTabApplied.current || !game) return;
+    const want = route.params?.initialTab;
+    if (!want || want === 'info') {
+      initialTabApplied.current = true;
+      return;
+    }
+    initialTabApplied.current = true;
+    if ((want === 'games' || want === 'stats') && dataTabsLocked) return;
+    showTab(want);
+    // `showTab` is a plain function over setState — stable enough for an effect
+    // that runs once, and listing it would only re-arm the guard above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game, dataTabsLocked, route.params?.initialTab]);
+
+  const gameTabs = useMemo<ClubTab<GameTabKey>[]>(
+    // Order is right-to-left on screen, so this array reads מידע · שחקנים ·
+    // משחקים · סטטיסטיקות. The owner asked for שחקנים to sit beside מידע and
+    // for the two data tabs to move left: the roster is what people open on a
+    // game that has not been played, and the two locked-by-default tabs belong
+    // at the far end rather than between the two everyone uses.
+    () => [
+      { key: 'info', label: he.gdTabInfo },
+      { key: 'players', label: he.gdTabPlayers },
+      { key: 'games', label: he.gdTabGames, locked: dataTabsLocked },
+      { key: 'stats', label: he.gdTabStats, locked: dataTabsLocked },
+    ],
+    [dataTabsLocked],
+  );
+
+  // Did this evening actually happen? Asked of ONE module so the two tabs
+  // below cannot answer it differently from the club screen or the season
+  // close — see `src/utils/eveningPlayed.ts`. It decides which empty state
+  // the tabs show: "עדיין לא שוחק" or "אין נתונים למחזור הזה".
+  const eveningHasPlayed = useMemo(() => didEveningHappen(game), [game]);
+
+  // The sealed summary for the statistics tab. Fetched once per game, and only
+  // when that tab is first opened — an evening whose statistics nobody looks at
+  // costs no read. A miss is a legitimate answer (the document only exists for
+  // evenings closed since `roundSummaries` shipped), so a failure leaves it null
+  // and the tab renders its no-coverage state.
+  const summaryFetched = React.useRef<string | null>(null);
+  useEffect(() => {
+    if (!gameId || !seen.has('stats')) return;
+    if (summaryFetched.current === gameId) return;
+    summaryFetched.current = gameId;
+    let alive = true;
+    roundSummaryService
+      .get(gameId)
+      .then((s) => {
+        if (!alive || !s) return;
+        setRoundSummary(s);
+        // Names and faces for the leaders, the pair and the event lines. The
+        // same hydration the standalone summary screen does, for the same
+        // reason: the summary stores uids only.
+        const ids = new Set<string>();
+        for (const l of Object.values(s.leaders)) {
+          for (const u of (l as { userIds?: string[] } | null)?.userIds ?? []) ids.add(u);
+        }
+        for (const e of s.events) if ('userIds' in e) e.userIds.forEach((u) => ids.add(u));
+        if (s.pairHighlight) s.pairHighlight.userIds.forEach((u) => ids.add(u));
+        const real = Array.from(ids).filter((u) => !u.startsWith('guest:'));
+        if (real.length > 0) hydratePlayers(real);
+      })
+      .catch(() => {
+        // Left null on purpose — the tab's no-coverage state is the answer.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [gameId, seen, hydratePlayers]);
+
+  const summaryNameOf = React.useCallback(
+    (uid: string) => (playersMap[uid]?.displayName ?? '').trim(),
+    [playersMap],
+  );
+  const summaryUserOf = React.useCallback(
+    (uid: string) => {
+      const p = playersMap[uid];
+      return {
+        id: uid,
+        name: (p?.displayName ?? '').trim() || he.genericUserName,
+        avatarId: p?.avatarId,
+        photoUrl: p?.photoUrl,
+      };
+    },
+    [playersMap],
+  );
+
   // Filler candidate: a signed-in user who is NOT a member of this game's
   // community and NOT already in the roster, viewing a game that opted into
   // outside fillers. They can't join directly — they apply ("הגש מועמדות")
@@ -901,9 +1103,24 @@ export function MatchDetailsScreen() {
       // Reached at last: the helper used to swallow its own errors, so this
       // branch was dead and the screen said "נשלח" for applications the
       // server had refused.
-      logError('matchDetails.applyAsFiller', err, { gameId: game.id });
+      //
+      // NOT logged here. `handleFillerOpportunityAction` already wrote this
+      // exact failure to the error log — with more context than this call site
+      // has — and then rethrew. Logging it again produced TWO fingerprints per
+      // tap, which is why 30.09 reads as "x9 applyAsFiller + x9
+      // handleFillerInterestAction" for what was one person tapping nine
+      // times. One failure, one record.
+      const code = String((err as { code?: unknown })?.code ?? '');
       setFillerState('idle');
-      toast.error(he.fillerApplyError);
+      // `functions/internal` from the JS SDK is also what "could not reach the
+      // server" looks like — it is not only a server crash. The server log for
+      // that minute shows ONE request, answered 200 in 3.7s; the other eight
+      // never arrived. Say so, instead of inviting a ninth tap.
+      toast.error(
+        code === 'functions/internal' || code === 'functions/unavailable'
+          ? he.fillerApplyOffline
+          : he.fillerApplyError,
+      );
     }
   };
 
@@ -1831,38 +2048,6 @@ export function MatchDetailsScreen() {
   // Approve / reject a pending join request RIGHT HERE on the match
   // details page (admins) — no longer forcing a trip to the full
   // players screen (user report). Mirrors MatchPlayersScreen's flow.
-  const handleApprovePending = async (uid: string) => {
-    try {
-      const r = await gameService.approveGameJoin(game.id, uid);
-      if (r?.bucket === 'waitlist') toast.info(he.requestsApprovedToWaitlist);
-      else toast.success(he.matchPlayersApproveDone);
-      await reload();
-    } catch (err) {
-      logError('matchApprovePending', err, { gameId: game.id, uid });
-      toast.error(he.error);
-    }
-  };
-  const handleRejectPending = (uid: string, name: string) => {
-    appAlert(he.matchPlayersRejectTitle, he.matchPlayersRejectBody(name), [
-      { text: he.cancel, style: 'cancel' },
-      {
-        text: he.matchPlayersRejectCta,
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await gameService.rejectGameJoin(game.id, uid);
-            await reload();
-          } catch (err) {
-            logError('matchRejectPending', err, { gameId: game.id, uid });
-            toast.error(he.error);
-          }
-        },
-      },
-    ]);
-  };
-
-  // Visibility toggle — preserved from the previous design, now
-  // hosted inside the collapsible MatchManageSection.
   const flipVisibility = async (next: boolean) => {
     const target: 'public' | 'community' = next ? 'public' : 'community';
     if (target === game.visibility) return;
@@ -2560,14 +2745,20 @@ export function MatchDetailsScreen() {
   // screen's early returns, and a hook past one of those changes the hook
   // count between renders — `tests/hooksAfterEarlyReturn` fails the build for
   // it, correctly. Nothing memoises this handler anyway.
-  const openSummary = (screen: 'EveningSummary' | 'RoundSummary') => {
+  //
+  // One destination now, not two: the evening's own summary became the
+  // statistics TAB of this screen, so only the PERSONAL summary is still a
+  // separate place to go.
+  const openSummary = () => {
     const id = game?.id || gameId;
     if (!id) {
-      logError('matchSummaryCta', new Error('missing gameId'), { screen });
+      logError('matchSummaryCta', new Error('missing gameId'), {
+        screen: 'EveningSummary',
+      });
       toast.error(he.summaryOpenFailed);
       return;
     }
-    nav.navigate(screen, { gameId: id });
+    nav.navigate('EveningSummary', { gameId: id });
   };
 
   const viewerPlayedHere = !!user && (game.players ?? []).includes(user.id);
@@ -2701,69 +2892,6 @@ export function MatchDetailsScreen() {
   const equipmentGroup = myCommunities.find((g) => g.id === game.groupId);
   const ballHolders = new Set(equipmentGroup?.ballHolderIds ?? []);
   const jerseyHolders = new Set(equipmentGroup?.jerseysHolderIds ?? []);
-  const participantEntries: ParticipantEntry[] = [
-    ...(game.players ?? []).map((uid): ParticipantEntry => {
-      const p = playersMap[uid];
-      return {
-        id: uid,
-        // '...' ONLY while the user is still hydrating; once loaded, a blank
-        // `name` falls back to the "שחקן" placeholder — never an empty row
-        // (user report: registered players showed no name). `??` alone missed
-        // this because an empty-string name isn't nullish.
-        name: p ? (p.displayName ?? '').trim() || he.fillerDefaultName : '...',
-        avatarId: p?.avatarId,
-        photoUrl: p?.photoUrl,
-        isAdmin: groupAdminIds.has(uid),
-        isOrganizer: game.createdBy === uid,
-        arrival: game.arrivals?.[uid],
-        bucket: 'players' as const,
-        isBringingBall: ballBringers.has(uid),
-        holdsBall: ballHolders.has(uid),
-        holdsJerseys: jerseyHolders.has(uid),
-        // Flag the auth user's own row so the participants section
-        // renders a tappable inline ball toggle on it (and only on
-        // it). Keeps the "אני מביא כדור" affordance above the fold
-        // without a separate section below the match details.
-        isCurrentUser: user?.id === uid,
-      };
-    }),
-    // Guests share the section with registered players, tagged "אורח"
-    // so the roster reads as one list and matches the live capacity
-    // counter (which already counts guests). Ball-bringer state is
-    // looked up by the synthetic roster id so the icon stays in sync
-    // when admin toggles a guest's "brings a ball" flag.
-    ...(game.guests ?? []).map((g): ParticipantEntry => {
-      const guestRosterId = toGuestRosterId(g.id);
-      return {
-        id: guestRosterId,
-        name: (g.name ?? '').trim() || he.fillerDefaultName,
-        isAdmin: false,
-        isOrganizer: false,
-        // A guest added while the game was full sits on the waitlist — render
-        // it in the waitlist group rather than the active roster.
-        bucket: g.waitlisted ? ('waitlist' as const) : ('guest' as const),
-        isBringingBall: ballBringers.has(guestRosterId),
-      };
-    }),
-  ];
-
-  // Primary CTA label flips with state: positive admin action when
-  // applicable, then "join" for non-joined users, otherwise the
-  // social default — "הזמן חברים לאפליקציה".
-  // Sticky-CTA descriptor — what the floating bottom bar shows.
-  // Priorities (highest first):
-  //   1. Conflict block — user tried to join while already registered
-  //      to an overlapping game. Re-tapping opens the conflict modal.
-  //   2. Cancel registration — the user (or admin) is in the roster
-  //      AND still inside the cancellation window. The button reads
-  //      "בטל הרשמה" in destructive red and runs the cancel handler.
-  //   3. Admin session action — anything from "צור קבוצות" to
-  //      "התחל ערב". Share is excluded here because it lives in the
-  //      header now (next to the hamburger).
-  //   4. Join — primary action for a user who isn't in the roster yet.
-  // Falls through to `null` when none apply (e.g. past-deadline
-  // registered user / terminal game) — the bar is hidden in that case
-  // since share already has a permanent home in the header.
   const ctaState: {
     label: string;
     icon: keyof typeof Ionicons.glyphMap;
@@ -2813,6 +2941,94 @@ export function MatchDetailsScreen() {
     return null;
   })();
 
+  // The header, built once here and handed to every pane. It scrolls INSIDE a
+  // pane rather than sitting fixed above all four — see the note at the top of
+  // `MatchTabShell` for why. `heroNode` leaves the screen with the content;
+  // `tabBarNode` is pinned by `stickyHeaderIndices` and always stays.
+  //
+  // `compact` reclaims the 56 points of photo the hero used to leave empty for
+  // the old floating stats strip to overlap. Those three facts now live as
+  // ordinary rows: two inside "פרטי המחזור", one on the שחקנים tab.
+  const heroNode = (
+    // The -22 overlap that tucks the tab bar under the hero's bottom now
+    // lives HERE, as the hero's own negative bottom margin, instead of on
+    // the bar. `stickyHeaderIndices` pins the bar's LAYOUT box at y=0, and
+    // a box whose own top sits 22pt above that point loses those 22pt —
+    // which is exactly the clipped tab labels the owner reported. Moving
+    // the offset to the hero keeps the visual join identical and leaves
+    // the sticky child's box starting at its true top.
+    <View style={styles.heroWrap}>
+        <MatchStadiumHero
+          startsAt={game.startsAt}
+          title={game.title}
+          // Which season this evening counts in. An evening already stamped
+          // shows its own stamp; one that has not kicked off shows the season
+          // it WILL land in, which is the club's running one — the stamp is
+          // written on the transition to active, not at creation.
+          seasonLabel={seasonLabelForGame}
+          // The club's own cover, so an evening looks like the club it belongs
+          // to (owner request). ONLY for a club game: a one-off has no club to
+          // borrow from and keeps the bundled stadium. Read from the club the
+          // viewer already has in the store — no extra fetch.
+          coverUrl={heroClub?.coverPhotoUrl}
+          coverImageId={heroClub?.coverImageId}
+          onMenuPress={hasMenuItems ? () => setMenuOpen(true) : undefined}
+          compact
+          locationLine={locationStr || undefined}
+          onBackPress={goBackSafe}
+          // Share lives in the header so the sticky CTA at the bottom
+          // is free to surface the contextual action (join / cancel /
+          // session-action). Hidden for terminal-state games where
+          // there's nothing meaningful to share.
+          onSharePress={!isTerminalGame(game) ? handleShare : undefined}
+          // A game that ended (or was cancelled, or already kicked off)
+          // must not still be counting down to its own kickoff.
+          countdownHidden={isTerminalGame(game) || isActiveGame(game)}
+          // Kickoff behind us and the evening has not ended: say so, because
+          // the countdown is gone and the hour alone reads like a future time.
+          // A finished or cancelled evening says nothing (owner report).
+          showStarted={
+            typeof game.startsAt === 'number' &&
+            game.startsAt <= Date.now() &&
+            !isTerminalGame(game)
+          }
+          onChatPress={
+            user && (game.players.includes(user.id) || user.id === game.createdBy)
+              ? () => {
+                  logEvent(AnalyticsEvent.ChatEntryPointTapped, {
+                    source: 'game_details',
+                    scope: 'game',
+                    unread: chatUnread,
+                  });
+                  goToGameChat(game.id);
+                }
+              : undefined
+          }
+          chatUnread={chatUnread}
+        />
+    </View>
+  );
+  const tabBarNode = (
+    // `flush`, NOT a wrapper that adds 22 back. The previous shape tried to
+    // cancel `ClubTabs`' own -22 with a +22 on the wrapper, and margins on a
+    // parent and its only child do not cancel — they stack: the wrapper moved
+    // down 22, the bar moved up 22 inside it, and the bar ended up 22pt above
+    // its own parent's top edge. Pinned, those 22pt fall off the top of the
+    // viewport (the clipped labels) and on Android a child outside its
+    // parent's bounds is never hit-tested, which is why the tabs stopped
+    // responding once the hero had scrolled away. The hero's own
+    // `marginBottom: -22` already makes the join.
+    <ClubTabs<GameTabKey>
+      tabs={gameTabs}
+      active={tab}
+      onChange={showTab}
+      flush
+      onLockedPress={() =>
+        toast.info(!advanced ? he.gdTabLockedToast : he.gdTabMembersToast)
+      }
+    />
+  );
+
   return (
     <View style={styles.root}>
       {/* The contextual auth sheet. Rendered here rather than over a modal so
@@ -2839,939 +3055,782 @@ export function MatchDetailsScreen() {
           onComplete={() => setShowPromotion(false)}
         />
       </View>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          // Clear the sticky CTA bar dynamically — its height varies with the
-          // number of buttons (1 share / 1 action / both stacked).
-          ctaHeight > 0 ? { paddingBottom: ctaHeight + spacing.lg } : null,
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
+      {/* The status-bar strip. It belongs to the SCREEN, not to the hero:
+          the tab bar pins to the top of each pane's scroll, and only a strip
+          that sits above the scroll keeps it clear of the clock in both the
+          scrolled and unscrolled state. Painted in the app's own dark ground,
+          which is what the stadium photo fades into anyway. */}
+      <View style={{ height: insets.top, backgroundColor: colors.bg }} />
+
+      {/* Lazy, then kept: a pane is built the first time it is selected and
+       *  hidden rather than destroyed afterwards, so switching back is free
+       *  and each tab holds its own scroll position. */}
+      {seen.has('info') ? (
+        <View style={tab === 'info' ? styles.pane : styles.paneHidden}>
+          {/* Pull-to-refresh lives on the two tabs built from the game
+              document — this one and שחקנים — and refetches exactly that, the
+              same `reload` the single scroll view used before the tabs. */}
+          <TabScroll
+            header={heroNode}
+            stickyHeader={tabBarNode}
+            bottomInset={ctaHeight}
             refreshing={refreshing}
             onRefresh={() => reload({ pullToRefresh: true })}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
-      >
-        <MatchStadiumHero
-          startsAt={game.startsAt}
-          title={game.title}
-          // Which season this evening counts in. An evening already stamped
-          // shows its own stamp; one that has not kicked off shows the season
-          // it WILL land in, which is the club's running one — the stamp is
-          // written on the transition to active, not at creation.
-          seasonLabel={seasonLabelForGame}
-          onMenuPress={hasMenuItems ? () => setMenuOpen(true) : undefined}
-          onBackPress={goBackSafe}
-          // Share lives in the header so the sticky CTA at the bottom
-          // is free to surface the contextual action (join / cancel /
-          // session-action). Hidden for terminal-state games where
-          // there's nothing meaningful to share.
-          onSharePress={!isTerminalGame(game) ? handleShare : undefined}
-          // A game that ended (or was cancelled, or already kicked off)
-          // must not still be counting down to its own kickoff.
-          countdownHidden={isTerminalGame(game) || isActiveGame(game)}
-          onChatPress={
-            user && (game.players.includes(user.id) || user.id === game.createdBy)
-              ? () => {
-                  logEvent(AnalyticsEvent.ChatEntryPointTapped, {
-                    source: 'game_details',
-                    scope: 'game',
-                    unread: chatUnread,
-                  });
-                  goToGameChat(game.id);
-                }
-              : undefined
-          }
-          chatUnread={chatUnread}
-        />
-
-        {/* Filler-candidate banner — a non-member who reached this game via a
-            fillerOpportunity push. They can't join directly; they apply and the
-            admin approves. */}
-        {isFillerCandidate ? (
-          <View style={styles.fillerBanner}>
-            {/* Vertical layout: the note gets the full width (no longer squeezed
-                by an inline button → no truncation), and the action is a normal
-                full-width "בקש להצטרף" button like every other join CTA (user
-                report). Underneath it still runs the filler application → admin
-                approval; only the label + shape changed. */}
-            <View style={styles.fillerBannerHead}>
-              <Text style={styles.fillerBannerTitle}>{he.fillerApplyTitle}</Text>
-              <Ionicons name="megaphone-outline" size={20} color={colors.primary} />
-            </View>
-            <Text style={styles.fillerBannerSub}>
-              {fillerState === 'sent' ? he.fillerApplySentSub : he.fillerApplySub}
-            </Text>
-            {fillerState === 'sent' ? (
-              <View style={styles.fillerSentChip}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                <Text style={styles.fillerSentTxt}>{he.fillerApplySentChip}</Text>
-              </View>
-            ) : (
-              <Button
-                title={he.gameCardRequestJoin}
-                variant="primary"
-                fullWidth
-                loading={fillerState === 'submitting'}
-                disabled={fillerState === 'submitting'}
-                onPress={onApplyAsFiller}
-              />
-            )}
-          </View>
-        ) : null}
-
-        {/* Floating stats strip — pulled UP via negative margin so
-            it overlaps the bottom of the stadium hero. The hero
-            already leaves a small `bg.paddingBottom` so the photo
-            extends below the floating time card; the strip sits in
-            that overlap zone. */}
-        <View style={styles.statsFloat}>
-          <MatchStatsStrip
-            registered={heroOccupancy}
-            capacity={game.maxPlayers}
-            durationMinutes={game.matchDurationMinutes}
-            startsAt={game.startsAt}
-            weather={
-              forecast
-                ? { tempC: forecast.tempC, rainProb: forecast.rainProb }
-                : undefined
-            }
-            weatherCode={forecast?.weatherCode}
-          />
-        </View>
-
-        <View style={styles.body}>
-
-          {/* Tonight decides the season.
-              Above the pinned note on purpose: it is not the admin talking,
-              it is the state of the competition, and it should be the first
-              thing read under the header. Only while the evening is still to
-              come or under way — announcing a final round on a game that
-              already finished is a fact about last week. */}
-          {/* The season is inside its 24-hour correction window, so this
-              evening cannot start yet. Said HERE rather than only in the
-              dialog behind the start button: a club opened an evening, seven
-              people registered, and they found out at kickoff. It clears
-              itself — `pendingClose` is deleted by the close, so nothing has
-              to remember to take this down. Above the final-round banner,
-              because a blocker outranks encouragement. */}
-          {seasonClosing && !isTerminalGame(game) ? (
-            <View style={styles.seasonClosingBanner}>
-              <Ionicons name="time-outline" size={16} color="#92400E" />
-              <Text style={styles.seasonClosingText}>
-                {he.seasonClosingGameBanner}
-              </Text>
-            </View>
-          ) : null}
-
-          {finalRoundOfSeason && !isTerminalGame(game) ? (
-            <View style={styles.finalRoundBanner}>
-              <Ionicons name="flame" size={16} color={colors.danger} />
-              <Text style={styles.finalRoundText}>{he.seasonFinalRoundBanner}</Text>
-            </View>
-          ) : null}
-
-          {/* Admin-pinned announcement. Renders nothing for non-admins
-              when there's no message; admins always see at least the
-              empty "+ הוסף הודעה" tile. */}
-          <PinnedAdminMessageCard
-            message={game.pinnedMessage}
-            // On a terminal (finished / cancelled) game the admin
-            // controls disappear: no "+ הוסף הערה לכולם" tile and no
-            // edit affordance. A non-admin viewer with an existing
-            // pinned note still sees it read-only (PinnedAdminMessageCard
-            // renders the message for everyone; isAdmin only gates the
-            // add/edit UI).
-            isAdmin={isAdmin && !isTerminalGame(game)}
-            onSave={async (text) => {
-              try {
-                await gameService.setPinnedMessage(game.id, text);
-                // Optimistic local mirror so the new value renders
-                // without waiting for the realtime subscription tick.
-                setGame((prev) =>
-                  prev ? { ...prev, pinnedMessage: text || undefined } : prev,
-                );
-              } catch (err) {
-                logError('setPinnedMessage', err, {
-                  screen: 'MatchDetailsScreen',
-                  gameId: game.id,
-                });
-                if (__DEV__) {
-                  console.warn('[matchDetails] setPinnedMessage failed', err);
-                }
-              }
-            }}
-          />
-
-          {/* Rule chips — `ruleTags` (new) with a graceful fallback
-              to the legacy hasReferee/Penalties/HalfTime booleans on
-              not-yet-edited games. Component returns null if there's
-              nothing to show. Format / duration are deliberately
-              omitted here because MatchStatsStrip above already
-              surfaces them. */}
-          <MatchFactsRow
-            ruleTags={game.ruleTags}
-            hasReferee={game.hasReferee}
-            hasPenalties={game.hasPenalties}
-            hasHalfTime={game.hasHalfTime}
-          />
-
-          {/* (Average-rating badge removed per owner request — the internal
-              rating is admin-only and shouldn't surface a public average.) */}
-
-          {/* "צרו כוחות" nudge — kickoff is close and no split exists yet.
-              Without this, creating teams is buried in the ☰ menu. */}
-          {showCreateTeamsBanner ? (
-            <Pressable
-              style={styles.createTeamsBanner}
-              onPress={() => openDraftSetup('create_banner')}
-              accessibilityRole="button"
-            >
-              <View style={styles.createTeamsIcon}>
-                <Ionicons name="shuffle" size={20} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.createTeamsTitle}>
-                  {he.matchCreateTeamsBannerTitle}
-                </Text>
-                <Text style={styles.createTeamsSub}>
-                  {he.matchCreateTeamsBannerSub}
-                </Text>
-                {/* If auto-teams is SCHEDULED, tell the admin exactly when it
-                    will fire (Pulse request). */}
-                {game.autoTeamsAt && game.autoTeamsAt > Date.now() ? (
-                  <Text style={styles.createTeamsAutoNote}>
-                    {he.matchAutoTeamsScheduled(
-                      `${formatDayDate(game.autoTeamsAt)} · ${formatTime(game.autoTeamsAt)}`,
-                    )}
-                  </Text>
-                ) : null}
-              </View>
-              <Ionicons name="chevron-back" size={20} color={colors.primary} />
-            </Pressable>
-          ) : null}
-
-          {showManageTeamsBanner ? (
-            <Pressable
-              style={styles.createTeamsBanner}
-              onPress={() => openDraftSetup('manage_banner')}
-              accessibilityRole="button"
-            >
-              <View style={styles.createTeamsIcon}>
-                <Ionicons name="options" size={20} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.createTeamsTitle}>
-                  {he.matchManageTeamsBannerTitle}
-                </Text>
-                <Text style={styles.createTeamsSub}>
-                  {he.matchManageTeamsBannerSub}
-                </Text>
-              </View>
-              <Ionicons name="chevron-back" size={20} color={colors.primary} />
-            </Pressable>
-          ) : null}
-
-          {/* Finished-game shortcuts — placed ABOVE the drawn teams (user
-              request). Open to anyone in the CLUB, not only to this week's
-              roster: a member who sat the evening out still wants to read what
-              happened (Eliran's request). `roundSummaries` and `roundHistory`
-              are both club-readable, so this matches what the rules allow. */}
-          {isFinished(game) && (viewerPlayedHere || viewerIsClubMember) ? (
-            <>
-              {/* The player's OWN card leads (Eliran's request — it is the one
-                  he opens; the club's evening is the follow-up). A member who
-                  didn't play has no personal card, so that slot becomes a
-                  placeholder saying so rather than a button into an empty
-                  screen. */}
-              {viewerPlayedHere ? (
-                <Pressable
-                  onPress={() => openSummary('EveningSummary')}
-                  style={({ pressed }) => [
-                    styles.summaryCta,
-                    pressed && { opacity: 0.9 },
-                  ]}
-                >
-                  <Ionicons name="sparkles" size={18} color="#fff" />
-                  <Text style={styles.summaryCtaTxt}>{he.summaryCta}</Text>
-                </Pressable>
-              ) : (
-                <View style={styles.summaryPlaceholder}>
-                  <Ionicons
-                    name="sparkles-outline"
-                    size={18}
-                    color={colors.textMuted}
-                  />
-                  <Text style={styles.summaryPlaceholderTxt}>
-                    {he.summaryNotPlayedPlaceholder}
+          >
+            {/* The teams pointer.
+                
+                The teams UI moved to the שחקנים tab, where the roster it
+                splits already is. This card is what keeps it findable from
+                the first screen: it states the one fact that decides whether
+                to split yet — how many are in — and hands over. It is not a
+                second way to create teams; tapping it only changes tab. */}
+            {showCreateTeamsBanner || showManageTeamsBanner ? (
+              <View style={styles.teamsPointer}>
+                <View style={styles.teamsPointerText}>
+                  <View style={styles.teamsPointerHead}>
+                    <Ionicons name="football" size={17} color="#B45309" />
+                    <Text style={styles.teamsPointerTitle}>
+                      {he.gdTeamsPointerTitle(totalParticipants)}
+                    </Text>
+                  </View>
+                  <Text style={styles.teamsPointerBody}>
+                    {showCreateTeamsBanner
+                      ? he.gdTeamsPointerCreateBody
+                      : he.gdTeamsPointerManageBody}
                   </Text>
                 </View>
-              )}
-              {/* It leads to a screen that says "no summary" when the evening
-                  predates the feature, which is honest and rare enough not to
-                  warrant hiding the button behind a probe read. */}
+                <Pressable
+                  onPress={() => showTab('players')}
+                  style={({ pressed }) => [
+                    styles.teamsPointerCta,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.teamsPointerCtaTx}>
+                    {showCreateTeamsBanner
+                      ? he.gdTeamsPointerCreateCta
+                      : he.gdTeamsPointerManageCta}
+                  </Text>
+                  <Ionicons name="arrow-back" size={16} color={colors.primary} />
+                </Pressable>
+              </View>
+            ) : null}
+
+            {/* Filler-candidate banner — a non-member who reached this game via a
+                fillerOpportunity push. They can't join directly; they apply and
+                the admin approves. */}
+            {isFillerCandidate ? (
+              <View style={styles.fillerBanner}>
+                {/* Vertical layout: the note gets the full width (no longer squeezed
+                    by an inline button → no truncation), and the action is a normal
+                    full-width "בקש להצטרף" button like every other join CTA (user
+                    report). Underneath it still runs the filler application → admin
+                    approval; only the label + shape changed. */}
+                <View style={styles.fillerBannerHead}>
+                  <Text style={styles.fillerBannerTitle}>{he.fillerApplyTitle}</Text>
+                  <Ionicons name="megaphone-outline" size={20} color={colors.primary} />
+                </View>
+                <Text style={styles.fillerBannerSub}>
+                  {fillerState === 'sent' ? he.fillerApplySentSub : he.fillerApplySub}
+                </Text>
+                {fillerState === 'sent' ? (
+                  <View style={styles.fillerSentChip}>
+                    <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                    <Text style={styles.fillerSentTxt}>{he.fillerApplySentChip}</Text>
+                  </View>
+                ) : (
+                  <Button
+                    title={he.gameCardRequestJoin}
+                    variant="primary"
+                    fullWidth
+                    loading={fillerState === 'submitting'}
+                    disabled={fillerState === 'submitting'}
+                    onPress={onApplyAsFiller}
+                  />
+                )}
+              </View>
+            ) : null}
+
+            {/* Tonight decides the season.
+                Above the pinned note on purpose: it is not the admin talking,
+                it is the state of the competition, and it should be the first
+                thing read under the header. Only while the evening is still to
+                come or under way — announcing a final round on a game that
+                already finished is a fact about last week. */}
+            {/* The season is inside its 24-hour correction window, so this
+                evening cannot start yet. Said HERE rather than only in the
+                dialog behind the start button: a club opened an evening, seven
+                people registered, and they found out at kickoff. It clears
+                itself — `pendingClose` is deleted by the close, so nothing has
+                to remember to take this down. Above the final-round banner,
+                because a blocker outranks encouragement. */}
+            {seasonClosing && !isTerminalGame(game) ? (
+              <View style={styles.seasonClosingBanner}>
+                <Ionicons name="time-outline" size={16} color="#92400E" />
+                <Text style={styles.seasonClosingText}>
+                  {he.seasonClosingGameBanner}
+                </Text>
+              </View>
+            ) : null}
+
+            {finalRoundOfSeason && !isTerminalGame(game) ? (
+              <View style={styles.finalRoundBanner}>
+                <Ionicons name="flame" size={16} color={colors.danger} />
+                <Text style={styles.finalRoundText}>{he.seasonFinalRoundBanner}</Text>
+              </View>
+            ) : null}
+
+            {/* Admin-pinned announcement. Renders nothing for non-admins
+                when there's no message; admins always see at least the
+                empty "+ הוסף הודעה" tile. */}
+            <PinnedAdminMessageCard
+              message={game.pinnedMessage}
+              // On a terminal (finished / cancelled) game the admin
+              // controls disappear: no "+ הוסף הערה לכולם" tile and no
+              // edit affordance. A non-admin viewer with an existing
+              // pinned note still sees it read-only (PinnedAdminMessageCard
+              // renders the message for everyone; isAdmin only gates the
+              // add/edit UI).
+              isAdmin={isAdmin && !isTerminalGame(game)}
+              onSave={async (text) => {
+                try {
+                  await gameService.setPinnedMessage(game.id, text);
+                  // Optimistic local mirror so the new value renders
+                  // without waiting for the realtime subscription tick.
+                  setGame((prev) =>
+                    prev ? { ...prev, pinnedMessage: text || undefined } : prev,
+                  );
+                } catch (err) {
+                  logError('setPinnedMessage', err, {
+                    screen: 'MatchDetailsScreen',
+                    gameId: game.id,
+                  });
+                  if (__DEV__) {
+                    console.warn('[matchDetails] setPinnedMessage failed', err);
+                  }
+                }
+              }}
+            />
+
+            {/* Rule chips — `ruleTags` (new) with a graceful fallback
+                to the legacy hasReferee/Penalties/HalfTime booleans on
+                not-yet-edited games. Component returns null if there's
+                nothing to show. Format / duration are deliberately
+                omitted here because the row above already
+                surfaces them. */}
+            <MatchFactsRow
+              ruleTags={game.ruleTags}
+              hasReferee={game.hasReferee}
+              hasPenalties={game.hasPenalties}
+              hasHalfTime={game.hasHalfTime}
+            />
+
+            {/* (Average-rating badge removed per owner request — the internal
+                rating is admin-only and shouldn't surface a public average.) */}
+
+            {/* Community rules — free text from the community form, shown
+                to every participant. Amber tint = "behaviour expectations".
+                Sits below the roster + waitlist (per user feedback). */}
+            {communityRules ? (
+              <View style={styles.rulesCard}>
+                <View style={styles.rulesHeader}>
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={16}
+                    color="#B45309"
+                  />
+                  <Text style={styles.rulesTitle}>{he.communityRulesTitle}</Text>
+                </View>
+                {/* Collapsible (קרא עוד / הצג פחות) — same behaviour as the rules
+                    card on CommunityDetails, so a long rules block never fills
+                    the whole screen. */}
+                <CollapsibleContent>
+                  <RichRulesText text={communityRules} baseStyle={styles.rulesBody} />
+                </CollapsibleContent>
+              </View>
+            ) : null}
+
+            {/* Cross-community filler interests — visible only to the
+                admin when the game has `acceptsFillers === true` AND
+                there's at least one pending interest. The component
+                hides itself in all other cases, so non-admins and
+                "no fillers needed" games see no extra section. */}
+            <FillerInterestsSection
+              gameId={game.id}
+              isAdmin={isAdmin}
+              acceptsFillers={game.acceptsFillers === true}
+            />
+
+            {/* "Navigate to the field" — the most common thing a person does
+                from this screen, so it sits ABOVE the details card where it is
+                reachable without reading past six rows first (owner report; it
+                was briefly moved below and moved straight back). The location
+                row keeps its own small icon; this is the full-width version of
+                the same action, and it renders only with enough for Waze. */}
+            {locationStr ? (
               <Pressable
-                onPress={() => openSummary('RoundSummary')}
+                onPress={openWaze}
+                accessibilityRole="button"
+                accessibilityLabel={he.matchDetailsNavigateWaze}
                 style={({ pressed }) => [
-                  styles.roundSummaryCta,
+                  styles.navigateCta,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Ionicons name="navigate" size={20} color={colors.primary} />
+                <Text style={styles.navigateCtaText}>
+                  {he.matchDetailsNavigateButton}
+                </Text>
+              </Pressable>
+            ) : null}
+
+            <MatchDetailsGrid
+              title={he.matchDetailsCardTitle}
+              items={[
+                // What the organiser wrote about the evening leads the card —
+                // it is the only row in free prose, and it is what a person
+                // scans for first. Omitted entirely when there is none: the
+                // grid prints an absent value as "—", and a row reading
+                // "הערות —" is an empty section, not a fact.
+                ...(typeof game.notes === 'string' && game.notes.trim()
+                  ? [
+                      {
+                        icon: 'reader-outline' as const,
+                        label: he.matchDetailsLabelNotes,
+                        value: game.notes,
+                        multiline: true, // show the full note, never clamp it
+                      },
+                    ]
+                  : []),
+                // Field-name row removed per user feedback (Pulse AbwW4G) — the
+                // location row below already answers "where do I drive?", so the
+                // venue nickname was a redundant extra line.
+                // Unified city + address row. The two fields conceptually
+                // describe the same thing ("where do I drive?"), and the
+                // Waze button belongs HERE — not on the field-name row
+                // (which is just the venue's nickname). We join them as
+                // "<city>, <address>" when both exist; otherwise show
+                // whichever one we have.
+                {
+                  icon: 'location-outline',
+                  label: he.matchDetailsLabelLocation,
+                  // Only prepend the city when the address doesn't already
+                  // contain it — most free-text games store the full address
+                  // ("עזריה 21, תל־אביב–יפו") so a naive join repeated the city.
+                  value: (() => {
+                    const addr = (game.fieldAddress ?? '').trim();
+                    const city = (game.city ?? '').trim();
+                    if (addr && city && !addr.toLowerCase().includes(city.toLowerCase())) {
+                      return `${city}, ${addr}`;
+                    }
+                    return addr || city || null;
+                  })(),
+                  action: locationStr
+                    ? {
+                        icon: 'navigate',
+                        onPress: openWaze,
+                        accessibilityLabel: he.matchDetailsNavigateWaze,
+                      }
+                    : undefined,
+                },
+                {
+                  icon: 'leaf-outline',
+                  label: he.matchDetailsLabelFieldType,
+                  value: fieldTypeLabel,
+                },
+                {
+                  icon: 'grid-outline',
+                  label: he.matchDetailsLabelFormat,
+                  value: game.format
+                    ? gameFormatLabel(game.format).replace(/ /g, '')
+                    : null,
+                },
+                // One-time games (or any game with no real community to show)
+                // OMIT the "מועדון" row entirely — the grid renders empty values
+                // as "—", so a one-time game would otherwise read "מועדון —".
+                // Keyed on the resolved name (not just isOrphanContext, which
+                // older quick-created games may not have set). (Pulse odLGvyv.)
+                ...(game.isOrphanContext || !communityName
+                  ? []
+                  : [
+                      {
+                        icon: 'people-outline' as const,
+                        label: he.matchDetailsLabelCommunity,
+                        value: communityName,
+                        action:
+                          communityName && game.groupId
+                            ? {
+                                icon: 'open-outline' as const,
+                                onPress: () =>
+                                  (
+                                    nav as {
+                                      navigate: (s: string, p: unknown) => void;
+                                    }
+                                  ).navigate(clubRouteFor(game.groupId), {
+                                    groupId: game.groupId,
+                                  }),
+                                accessibilityLabel: 'פתח את עמוד המועדון',
+                              }
+                            : undefined,
+                      },
+                    ]),
+                {
+                  icon: 'person-outline',
+                  label: he.matchDetailsLabelOrganizer,
+                  value: organizerName,
+                  // Tap the organizer's row → open the creator's player card.
+                  action: game.createdBy
+                    ? {
+                        icon: 'open-outline',
+                        onPress: () =>
+                          (
+                            nav as {
+                              navigate: (s: string, p: unknown) => void;
+                            }
+                          ).navigate('PlayerCard', {
+                            userId: game.createdBy,
+                            groupId: game.groupId,
+                          }),
+                        accessibilityLabel: he.matchDetailsLabelOrganizer,
+                      }
+                    : undefined,
+                },
+                {
+                  icon: 'calendar-outline',
+                  label: he.matchDetailsLabelCreatedAt,
+                  value: game.createdAt
+                    ? formatShortDate(game.createdAt)
+                    : null,
+                },
+                // Duration and weather: two facts that used to sit in a strip
+                // of cards above this card. They are properties of the evening
+                // like every other row here, and a row is all they need.
+                ...(typeof game.matchDurationMinutes === 'number' &&
+                game.matchDurationMinutes > 0
+                  ? [
+                      {
+                        icon: 'time-outline' as const,
+                        label: he.matchStatsDuration,
+                        value: he.gdDetailDuration(game.matchDurationMinutes),
+                      },
+                    ]
+                  : []),
+                // No forecast, no row. The grid prints an absent value as "—",
+                // and "מזג אוויר —" is worse than saying nothing: it reads as a
+                // fact we are withholding rather than one we never had.
+                ...(forecast
+                  ? [
+                      {
+                        icon: weatherRowIcon(forecast.weatherCode),
+                        label: he.matchStatsWeather,
+                        value: he.gdDetailWeather(
+                          forecast.tempC,
+                          skyLabel(forecast.weatherCode),
+                          // A rain chance is only worth the words when there is
+                          // one. Below a fifth, it is noise on a dry evening.
+                          forecast.rainProb >= 20 ? forecast.rainProb : null,
+                        ),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+
+            {primaryDestructive && canCancelRegistration(game) ? (
+              <Pressable
+                onPress={handlePrimary}
+                style={({ pressed }) => [
+                  styles.cancelRegBtn,
                   pressed && { opacity: 0.9 },
                 ]}
                 accessibilityRole="button"
+                accessibilityLabel={he.matchDetailsCancel}
               >
-                <Ionicons name="stats-chart" size={18} color="#fff" />
-                <Text style={styles.summaryCtaTxt}>{he.roundSummaryCta}</Text>
+                <Ionicons name="close-circle-outline" size={18} color="#fff" />
+                <Text style={styles.cancelRegBtnText}>{he.matchDetailsCancel}</Text>
               </Pressable>
-              <Pressable
-                onPress={() => nav.navigate('MatchRounds', { gameId: game.id })}
-                style={({ pressed }) => [
-                  styles.roundsCta,
-                  pressed && { opacity: 0.92 },
-                ]}
-                accessibilityRole="button"
-              >
-                <View style={styles.roundsCtaIcon}>
-                  <Ionicons name="list" size={20} color="#fff" />
-                </View>
-                <View style={styles.roundsCtaText}>
-                  <Text style={styles.roundsCtaTitle}>{he.matchDetailsRoundsCta}</Text>
-                  <Text style={styles.roundsCtaSub}>{he.matchDetailsRoundsSub}</Text>
-                </View>
-                <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.9)" />
-              </Pressable>
-            </>
-          ) : null}
+            ) : null}
+          </TabScroll>
+        </View>
+      ) : null}
 
-          {/* Drafted teams (חלוקת כוחות) — sits ABOVE the roster (2026-06-12)
-              so the split is the first thing participants see. A "!" badge
-              warns the admin when someone joined after teams were saved. */}
-          {teamsVisibleToViewer ? (
-            <View style={styles.draftSection}>
-              <Pressable
-                style={styles.draftSectionHeader}
-                onPress={openDraftView}
-                accessibilityRole="button"
-              >
-                {/* RTL: title sits on the right (the leading edge), the
-                    chevron affordance on the left (QA request). */}
-                <View style={styles.draftTitleRow}>
-                  <Text style={styles.draftSectionTitle}>{he.draftTeamsSectionTitle}</Text>
-                  {teamsAreDraft ? (
-                    <View style={styles.draftBadge}>
-                      <Ionicons name="eye-off-outline" size={12} color={colors.warning} />
-                      <Text style={styles.draftBadgeText}>{he.draftTeamsDraftBadge}</Text>
+      {seen.has('games') ? (
+        <View style={tab === 'games' ? styles.pane : styles.paneHidden}>
+          {/* The mini-games list, embedded rather than re-implemented. It owns
+              the `roundHistory` query and its own empty state; all this tab
+              adds is the colour filter and the reason the list is empty, which
+              the list itself cannot know — it sees no rounds either way. */}
+          <MatchRoundsScreen
+            gameId={game.id}
+            embedded
+            showFilter
+            hasPlayed={eveningHasPlayed}
+            header={heroNode}
+            stickyHeader={tabBarNode}
+            bottomInset={ctaHeight}
+          />
+        </View>
+      ) : null}
+
+      {seen.has('stats') ? (
+        <View style={tab === 'stats' ? styles.pane : styles.paneHidden}>
+          <MatchStatsTab
+            header={heroNode}
+            stickyHeader={tabBarNode}
+            game={game}
+            summary={roundSummary}
+            nameOf={summaryNameOf}
+            userOf={summaryUserOf}
+            hasPlayed={eveningHasPlayed}
+            showPersonalSummary={isFinished(game) && viewerPlayedHere}
+            onOpenPersonalSummary={openSummary}
+            championshipRefreshKey={retroRefreshKey}
+            bottomInset={ctaHeight}
+            // Admin-only: complete a goal missed during the evening. It sits
+            // directly above the scorers table, which is where the admin
+            // notices the gap — the table moved into this tab, and the button
+            // moved with it rather than being left behind on another one.
+            adminExtras={
+              isFinished(game) && isAdmin ? (
+                <Pressable
+                  style={({ pressed }) => [styles.retroBtn, pressed && { opacity: 0.85 }]}
+                  onPress={() => {
+                    logEvent(AnalyticsEvent.RetroGoalsOpened, {
+                      gameId: game.id,
+                      roster: (game.players ?? []).length,
+                    });
+                    setRetroOpen(true);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={he.retroEntryCta}
+                >
+                  <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+                  <Text style={styles.retroBtnText}>{he.retroEntryCta}</Text>
+                </Pressable>
+              ) : null
+            }
+          />
+        </View>
+      ) : null}
+
+      {seen.has('players') ? (
+        <View style={tab === 'players' ? styles.pane : styles.paneHidden}>
+          {/* The REAL roster, not a preview. It used to be three rows behind a
+              "הצג הכל" link into a separate screen; the owner asked for the
+              full list here with the admin rating, the ⋮ menu and the join
+              time, and for that link to go. Rather than rebuild any of it,
+              `MatchPlayersScreen` renders embedded — one definition, two
+              placements — so the waitlist, cancellations, admin removals,
+              promote/demote and guest editing all come along unchanged.
+              The two summary counters ride above it as `leading`. */}
+          <MatchPlayersScreen
+            gameId={game.id}
+            embedded
+            header={heroNode}
+            stickyHeader={tabBarNode}
+            bottomInset={ctaHeight}
+            leading={
+              <>
+                {/* The teams section, moved here from מידע: it splits the
+                    roster, and the roster is on this tab. */}
+                {/* "צרו כוחות" nudge — kickoff is close and no split exists yet.
+                    Without this, creating teams is buried in the ☰ menu. */}
+                {showCreateTeamsBanner ? (
+                  <Pressable
+                    style={styles.createTeamsBanner}
+                    onPress={() => openDraftSetup('create_banner')}
+                    accessibilityRole="button"
+                  >
+                    <View style={styles.createTeamsIcon}>
+                      <Ionicons name="shuffle" size={20} color={colors.primary} />
                     </View>
-                  ) : null}
-                  {teamsStale ? (
-                    <View style={styles.staleBadge}>
-                      <Text style={styles.staleBadgeText}>!</Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
-              </Pressable>
-              {teamsAreDraft ? (
-                <Text style={styles.draftHint}>{he.draftTeamsDraftHint}</Text>
-              ) : null}
-              {teamsStale ? (
-                <Text style={styles.staleHint}>{he.draftTeamsStaleHint}</Text>
-              ) : null}
-              <View style={styles.draftSectionList}>
-                {[...splitTeams]
-                  .sort((a, b) => a.index - b.index)
-                  .map((t) => (
-                    <DraftTeamCard
-                      key={t.index}
-                      index={t.index}
-                      colorKey={t.colorKey}
-                      captain={resolveDraftUser(t.captainId)}
-                      members={t.playerIds.slice(1).map(resolveDraftUser)}
-                      teamRating={teamAvgRating(t.playerIds)}
-                      onPressUser={(id) => {
-                        if ((game.guests ?? []).some((g) => g.id === id)) return;
-                        nav.navigate('PlayerCard', {
-                          userId: id,
-                          groupId: game.groupId,
-                        });
-                      }}
-                    />
-                  ))}
-              </View>
-              {isAdmin && teamsAreDraft ? (
-                <View style={styles.publishTeamsWrap}>
-                  <Button
-                    title={he.draftPublishCta}
-                    onPress={handlePublishTeams}
-                    loading={publishingTeams}
-                    fullWidth
-                    size="lg"
-                    iconLeft="megaphone-outline"
-                  />
-                </View>
-              ) : null}
-              <Pressable
-                onPress={handleExportTeams}
-                style={styles.exportTeamsBtn}
-                accessibilityRole="button"
-              >
-                {/* Icon AFTER text → visual-left under forceRTL (user request). */}
-                <Text style={styles.exportTeamsText}>
-                  {he.draftExportWhatsapp}
-                </Text>
-                <Ionicons
-                  name="share-social-outline"
-                  size={16}
-                  color={colors.primary}
-                />
-              </Pressable>
-              {/* "הלכו הביתה" summary — who left mid-evening and when, kept on
-                  draftTeams.leftHome (with its timestamp) so it survives into
-                  the finished-game recap. Shown ONLY for a game that was
-                  actually played (live-started or finished) — never on a
-                  pre-match/not-started game, where "went home" makes no sense. */}
-              {gameWasPlayed && (draftTeams.leftHome ?? []).length > 0 ? (
-                <View style={styles.leftHomeSummary}>
-                  <Text style={styles.leftHomeSummaryTitle}>
-                    {he.wentHomeSectionTitle}
-                  </Text>
-                  {[...(draftTeams.leftHome ?? [])]
-                    .sort((a, b) => (a.at ?? 0) - (b.at ?? 0))
-                    .map((l) => (
-                      <View key={l.playerId} style={styles.leftHomeRow}>
-                        <Text style={styles.leftHomeName} numberOfLines={1}>
-                          {resolveDraftUser(l.playerId).name}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.createTeamsTitle}>
+                        {he.matchCreateTeamsBannerTitle}
+                      </Text>
+                      <Text style={styles.createTeamsSub}>
+                        {he.matchCreateTeamsBannerSub}
+                      </Text>
+                      {/* If auto-teams is SCHEDULED, tell the admin exactly when it
+                          will fire (Pulse request). */}
+                      {game.autoTeamsAt && game.autoTeamsAt > Date.now() ? (
+                        <Text style={styles.createTeamsAutoNote}>
+                          {he.matchAutoTeamsScheduled(
+                            `${formatDayDate(game.autoTeamsAt)} · ${formatTime(game.autoTeamsAt)}`,
+                          )}
                         </Text>
-                        {l.at ? (
-                          <Text style={styles.leftHomeTime}>{fmtHomeTime(l.at)}</Text>
+                      ) : null}
+                    </View>
+                    <Ionicons name="chevron-back" size={20} color={colors.primary} />
+                  </Pressable>
+                ) : null}
+
+                {showManageTeamsBanner ? (
+                  <Pressable
+                    style={styles.createTeamsBanner}
+                    onPress={() => openDraftSetup('manage_banner')}
+                    accessibilityRole="button"
+                  >
+                    <View style={styles.createTeamsIcon}>
+                      <Ionicons name="options" size={20} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.createTeamsTitle}>
+                        {he.matchManageTeamsBannerTitle}
+                      </Text>
+                      <Text style={styles.createTeamsSub}>
+                        {he.matchManageTeamsBannerSub}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-back" size={20} color={colors.primary} />
+                  </Pressable>
+                ) : null}
+                {/* The drawn teams, with "פרסם כוחות" and "ייצא כוחות לוואטסאפ".
+                
+                This block was lost when the שחקנים tab stopped being a preview
+                and became the embedded players screen: the pane it lived in
+                was replaced wholesale, and the split, the publish button and
+                the WhatsApp export went with it (owner: "כל החלק של הכוחות
+                נעלם!"). It is back, unchanged, and now sits where it belongs —
+                above the roster it divides, on the tab that owns the roster. */}
+                {teamsVisibleToViewer ? (
+                  <View style={styles.draftSection}>
+                    <Pressable
+                      style={styles.draftSectionHeader}
+                      onPress={openDraftView}
+                      accessibilityRole="button"
+                    >
+                      {/* RTL: title sits on the right (the leading edge), the
+                          chevron affordance on the left (QA request). */}
+                      <View style={styles.draftTitleRow}>
+                        <Text style={styles.draftSectionTitle}>{he.draftTeamsSectionTitle}</Text>
+                        {teamsAreDraft ? (
+                          <View style={styles.draftBadge}>
+                            <Ionicons name="eye-off-outline" size={12} color={colors.warning} />
+                            <Text style={styles.draftBadgeText}>{he.draftTeamsDraftBadge}</Text>
+                          </View>
+                        ) : null}
+                        {teamsStale ? (
+                          <View style={styles.staleBadge}>
+                            <Text style={styles.staleBadgeText}>!</Text>
+                          </View>
                         ) : null}
                       </View>
-                    ))}
-                </View>
-              ) : null}
-              {/* Team feedback. Members react 👍/👎 to the PROPOSED teams BEFORE
-                  the game — a pre-match "are these balanced?" reaction. Hidden
-                  once the game is terminal (finished/cancelled): there's nothing
-                  left to react to or re-send. Also hidden while the split is an
-                  unpublished DRAFT — no player has seen it yet. */}
-              {!isTerminalGame(game) && !teamsAreDraft && (() => {
-                const fb = game.draftTeamFeedback ?? {};
-                const likes = Object.values(fb).filter((v) => v === 'like').length;
-                const dislikes = Object.values(fb).filter(
-                  (v) => v === 'dislike',
-                ).length;
-                const mine = user ? fb[user.id] : undefined;
-                const isParticipant = !!user && game.players.includes(user.id);
-                return (
-                  <View style={styles.teamFbWrap}>
-                    {isParticipant ? (
-                      <View style={styles.teamFbRow}>
-                        <Text style={styles.teamFbPrompt}>
-                          {he.teamFeedbackPrompt}
-                        </Text>
-                        <View style={styles.teamFbBtns}>
-                          <Pressable
-                            onPress={() => void handleSetTeamFeedback('like')}
-                            style={[
-                              styles.teamFbBtn,
-                              mine === 'like' && styles.teamFbBtnLikeOn,
-                            ]}
-                            accessibilityRole="button"
-                          >
-                            <Ionicons
-                              name={mine === 'like' ? 'thumbs-up' : 'thumbs-up-outline'}
-                              size={18}
-                              color={mine === 'like' ? colors.success : colors.textMuted}
-                            />
-                          </Pressable>
-                          <Pressable
-                            onPress={() => void handleSetTeamFeedback('dislike')}
-                            style={[
-                              styles.teamFbBtn,
-                              mine === 'dislike' && styles.teamFbBtnDislikeOn,
-                            ]}
-                            accessibilityRole="button"
-                          >
-                            <Ionicons
-                              name={
-                                mine === 'dislike'
-                                  ? 'thumbs-down'
-                                  : 'thumbs-down-outline'
-                              }
-                              size={18}
-                              color={mine === 'dislike' ? colors.danger : colors.textMuted}
-                            />
-                          </Pressable>
-                        </View>
-                      </View>
+                      <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+                    </Pressable>
+                    {teamsAreDraft ? (
+                      <Text style={styles.draftHint}>{he.draftTeamsDraftHint}</Text>
                     ) : null}
-                    {isAdmin ? (
-                      <View style={styles.teamFbAdminRow}>
-                        <Text style={styles.teamFbAgg}>
-                          {he.teamFeedbackAggregate(likes, dislikes)}
-                        </Text>
-                        <Pressable
-                          onPress={() => void handleNotifyTeams()}
-                          disabled={notifyingTeams}
-                          style={[
-                            styles.teamFbNotify,
-                            notifyingTeams && styles.teamFbNotifyBusy,
-                          ]}
-                          accessibilityRole="button"
-                        >
-                          {/* Icon AFTER text → visual-left under forceRTL. */}
-                          <Text style={styles.teamFbNotifyText}>
-                            {he.autoBalanceNotifyPlayers}
-                          </Text>
-                          <Ionicons
-                            name="notifications-outline"
-                            size={16}
-                            color={colors.primary}
+                    {teamsStale ? (
+                      <Text style={styles.staleHint}>{he.draftTeamsStaleHint}</Text>
+                    ) : null}
+                    <View style={styles.draftSectionList}>
+                      {[...splitTeams]
+                        .sort((a, b) => a.index - b.index)
+                        .map((t) => (
+                          <DraftTeamCard
+                            key={t.index}
+                            index={t.index}
+                            colorKey={t.colorKey}
+                            captain={resolveDraftUser(t.captainId)}
+                            members={t.playerIds.slice(1).map(resolveDraftUser)}
+                            teamRating={teamAvgRating(t.playerIds)}
+                            onPressUser={(id) => {
+                              if ((game.guests ?? []).some((g) => g.id === id)) return;
+                              nav.navigate('PlayerCard', {
+                                userId: id,
+                                groupId: game.groupId,
+                              });
+                            }}
                           />
-                        </Pressable>
+                        ))}
+                    </View>
+                    {isAdmin && teamsAreDraft ? (
+                      <View style={styles.publishTeamsWrap}>
+                        <Button
+                          title={he.draftPublishCta}
+                          onPress={handlePublishTeams}
+                          loading={publishingTeams}
+                          fullWidth
+                          size="lg"
+                          iconLeft="megaphone-outline"
+                        />
                       </View>
                     ) : null}
-                  </View>
-                );
-              })()}
-            </View>
-          ) : null}
-
-          {/* Pending join requests — approve/reject inline (admins only),
-              so the admin doesn't have to leave for the full players
-              screen (user report). */}
-          {isAdmin && (game.pending ?? []).length > 0 ? (
-            <Card style={styles.pendingCard}>
-              <Text style={styles.pendingTitle}>
-                {he.matchPlayersSectionPending} ({(game.pending ?? []).length})
-              </Text>
-              {(game.pending ?? []).map((uid, i) => {
-                const p = playersMap[uid];
-                const name = p ? (p.displayName ?? '').trim() || he.fillerDefaultName : '...';
-                return (
-                  <View
-                    key={uid}
-                    style={[styles.pendingRow, i > 0 && styles.pendingRowDivider]}
-                  >
                     <Pressable
-                      style={styles.pendingWho}
-                      onPress={() =>
-                        nav.navigate('PlayerCard', {
-                          userId: uid,
-                          groupId: game.groupId,
-                        })
-                      }
+                      onPress={handleExportTeams}
+                      style={styles.exportTeamsBtn}
+                      accessibilityRole="button"
                     >
-                      <UserAvatar
-                        user={{ id: uid, name, avatarId: p?.avatarId, photoUrl: p?.photoUrl }}
-                        size={38}
+                      {/* Icon AFTER text → visual-left under forceRTL (user request). */}
+                      <Text style={styles.exportTeamsText}>
+                        {he.draftExportWhatsapp}
+                      </Text>
+                      <Ionicons
+                        name="share-social-outline"
+                        size={16}
+                        color={colors.primary}
                       />
-                      <Text style={styles.pendingName} numberOfLines={1}>
-                        {name}
-                      </Text>
                     </Pressable>
-                    <Pressable
-                      style={styles.pendingApprove}
-                      onPress={() => handleApprovePending(uid)}
-                      accessibilityRole="button"
-                      accessibilityLabel={he.matchPlayersApproveDone}
-                    >
-                      <Ionicons name="checkmark" size={22} color="#FFFFFF" />
-                    </Pressable>
-                    <Pressable
-                      style={styles.pendingReject}
-                      onPress={() => handleRejectPending(uid, name)}
-                      accessibilityRole="button"
-                      accessibilityLabel={he.matchPlayersRejectCta}
-                    >
-                      <Ionicons name="close" size={20} color={colors.danger} />
-                    </Pressable>
+                    {/* "הלכו הביתה" summary — who left mid-evening and when, kept on
+                        draftTeams.leftHome (with its timestamp) so it survives into
+                        the finished-game recap. Shown ONLY for a game that was
+                        actually played (live-started or finished) — never on a
+                        pre-match/not-started game, where "went home" makes no sense. */}
+                    {gameWasPlayed && (draftTeams.leftHome ?? []).length > 0 ? (
+                      <View style={styles.leftHomeSummary}>
+                        <Text style={styles.leftHomeSummaryTitle}>
+                          {he.wentHomeSectionTitle}
+                        </Text>
+                        {[...(draftTeams.leftHome ?? [])]
+                          .sort((a, b) => (a.at ?? 0) - (b.at ?? 0))
+                          .map((l) => (
+                            <View key={l.playerId} style={styles.leftHomeRow}>
+                              <Text style={styles.leftHomeName} numberOfLines={1}>
+                                {resolveDraftUser(l.playerId).name}
+                              </Text>
+                              {l.at ? (
+                                <Text style={styles.leftHomeTime}>{fmtHomeTime(l.at)}</Text>
+                              ) : null}
+                            </View>
+                          ))}
+                      </View>
+                    ) : null}
+                    {/* Team feedback. Members react 👍/👎 to the PROPOSED teams BEFORE
+                        the game — a pre-match "are these balanced?" reaction. Hidden
+                        once the game is terminal (finished/cancelled): there's nothing
+                        left to react to or re-send. Also hidden while the split is an
+                        unpublished DRAFT — no player has seen it yet. */}
+                    {!isTerminalGame(game) && !teamsAreDraft && (() => {
+                      const fb = game.draftTeamFeedback ?? {};
+                      const likes = Object.values(fb).filter((v) => v === 'like').length;
+                      const dislikes = Object.values(fb).filter(
+                        (v) => v === 'dislike',
+                      ).length;
+                      const mine = user ? fb[user.id] : undefined;
+                      const isParticipant = !!user && game.players.includes(user.id);
+                      return (
+                        <View style={styles.teamFbWrap}>
+                          {isParticipant ? (
+                            <View style={styles.teamFbRow}>
+                              <Text style={styles.teamFbPrompt}>
+                                {he.teamFeedbackPrompt}
+                              </Text>
+                              <View style={styles.teamFbBtns}>
+                                <Pressable
+                                  onPress={() => void handleSetTeamFeedback('like')}
+                                  style={[
+                                    styles.teamFbBtn,
+                                    mine === 'like' && styles.teamFbBtnLikeOn,
+                                  ]}
+                                  accessibilityRole="button"
+                                >
+                                  <Ionicons
+                                    name={mine === 'like' ? 'thumbs-up' : 'thumbs-up-outline'}
+                                    size={18}
+                                    color={mine === 'like' ? colors.success : colors.textMuted}
+                                  />
+                                </Pressable>
+                                <Pressable
+                                  onPress={() => void handleSetTeamFeedback('dislike')}
+                                  style={[
+                                    styles.teamFbBtn,
+                                    mine === 'dislike' && styles.teamFbBtnDislikeOn,
+                                  ]}
+                                  accessibilityRole="button"
+                                >
+                                  <Ionicons
+                                    name={
+                                      mine === 'dislike'
+                                        ? 'thumbs-down'
+                                        : 'thumbs-down-outline'
+                                    }
+                                    size={18}
+                                    color={mine === 'dislike' ? colors.danger : colors.textMuted}
+                                  />
+                                </Pressable>
+                              </View>
+                            </View>
+                          ) : null}
+                          {isAdmin ? (
+                            <View style={styles.teamFbAdminRow}>
+                              <Text style={styles.teamFbAgg}>
+                                {he.teamFeedbackAggregate(likes, dislikes)}
+                              </Text>
+                              <Pressable
+                                onPress={() => void handleNotifyTeams()}
+                                disabled={notifyingTeams}
+                                style={[
+                                  styles.teamFbNotify,
+                                  notifyingTeams && styles.teamFbNotifyBusy,
+                                ]}
+                                accessibilityRole="button"
+                              >
+                                {/* Icon AFTER text → visual-left under forceRTL. */}
+                                <Text style={styles.teamFbNotifyText}>
+                                  {he.autoBalanceNotifyPlayers}
+                                </Text>
+                                <Ionicons
+                                  name="notifications-outline"
+                                  size={16}
+                                  color={colors.primary}
+                                />
+                              </Pressable>
+                            </View>
+                          ) : null}
+                        </View>
+                      );
+                    })()}
                   </View>
-                );
-              })}
-            </Card>
-          ) : null}
+                ) : null}
 
-          <MatchParticipantsSection
-            total={totalParticipants}
-            capacity={game.maxPlayers}
-            // Show only the 3 LATEST registrants on the details page
-            // — the full unified roster lives behind "הצג הכל" on
-            // MatchPlayersScreen. `.slice(-3).reverse()` takes the
-            // newest three (players array is append-on-join order)
-            // and surfaces the most recent join first. Earlier we
-            // rendered every entry inline, which buried the next-game
-            // CTA below a long scrolling list of names.
-            maxRows={3}
-            // Roster preview = the ACTIVE roster only. Exclude waitlisted guests
-            // (bucket 'waitlist') so a "המתנה"-tagged row never leaks into
-            // "ההרכב" (user report) — the waitlist has its own preview below.
-            members={[...participantEntries]
-              .filter((e) => e.bucket === 'players' || e.bucket === 'guest')
-              .reverse()
-              .slice(0, 3)}
-            isAdminViewer={isAdmin}
-            pendingCount={game.pending?.length ?? 0}
-            onSeeAll={() => nav.navigate('MatchPlayers', { gameId: game.id })}
-            // "הוסף אורח" lives as an inline text link next to the
-            // section header. Admins can always add; registered players AND
-            // waitlisted players can too (user request) unless the game
-            // restricts it until a set time (the "הגבלת הוספת אורחים עד זמן
-            // מסוים" toggle). Hidden on any status where the server/rules would
-            // reject the write (GAME_NOT_OPEN).
-            onAddGuest={
-              canAddGuest(game, {
-                isOrganizerOrAdmin: isAdmin,
-                isParticipant:
-                  !!user &&
-                  (game.players.includes(user.id) ||
-                    (game.waitlist ?? []).includes(user.id)),
-              })
-                ? () => setGuestModalOpen(true)
-                : undefined
-            }
-            onRemoveGuest={handleRemoveGuest}
-            onPressMember={(uid) => {
-              // Tapping a row = open the player's card. Guests have no
-              // PlayerCard (synthetic `guest:<id>` token) so their row tap
-              // is a no-op; removal is the dedicated ✕ button instead.
-              if (typeof uid === 'string' && uid.startsWith('guest:')) return;
-              nav.navigate('PlayerCard', {
-                userId: uid,
-                groupId: game.groupId,
-              });
-            }}
-            onToggleBringingBall={(uid) => {
-              // Two paths share this handler:
-              //   1. The auth user toggling their OWN bring-ball state
-              //      (uid === me.id). Always allowed.
-              //   2. An admin toggling a GUEST's bring-ball state on
-              //      their behalf (guests can't sign in). The roster
-              //      id for a guest is `guest:<id>` — stored in the
-              //      same `ballBringerIds` array as real uids.
-              const isGuestId = typeof uid === 'string' && uid.startsWith('guest:');
-              const isSelf = !!user && user.id === uid;
-              if (!isSelf && !(isGuestId && isAdmin)) return;
-              const isBringing =
-                Array.isArray(game.ballBringerIds) &&
-                game.ballBringerIds.includes(uid);
-              const next = !isBringing;
-              setGame((prev) => {
-                if (!prev) return prev;
-                const cur = new Set(prev.ballBringerIds ?? []);
-                if (next) cur.add(uid);
-                else cur.delete(uid);
-                return { ...prev, ballBringerIds: Array.from(cur) };
-              });
-              gameService
-                .setBringingBall(game.id, uid, next)
-                .catch((err) => {
-                  if (__DEV__) {
-                    console.warn('[matchDetails] setBringingBall', err);
+                <MatchPlayerCounters
+                  registered={`${totalParticipants}/${game.maxPlayers}`}
+                  waiting={
+                    (game.waitlist ?? []).length +
+                    (game.guests ?? []).filter((g) => g.waitlisted).length
                   }
-                });
-            }}
-          />
-
-          {/* Waitlist preview — sits directly UNDER the roster (per user
-              feedback) so "in" and "waiting for a spot" read as one block,
-              with the community rules below them. Hidden when empty. Tap =
-              navigate to the full players screen. */}
-          {(() => {
-            // Unified waitlist preview = regular waitlisted players PLUS
-            // waitlisted guests (added while full). Guests live in game.guests
-            // with waitlisted:true — they must appear here (and in the count),
-            // otherwise filtering them out of the roster made them vanish.
-            const waitlistPreview: { key: string; name: string }[] = [
-              ...(game.waitlist ?? []).map((uid) => {
-                const p = playersMap[uid];
-                return {
-                  key: uid,
-                  name: p ? (p.displayName ?? '').trim() || he.fillerDefaultName : '…',
-                };
-              }),
-              ...(game.guests ?? [])
-                .filter((g) => g.waitlisted)
-                .map((g) => ({
-                  key: toGuestRosterId(g.id),
-                  name: `${g.name} · ${he.guestBadge}`,
-                })),
-            ];
-            if (waitlistPreview.length === 0) return null;
-            return (
-              <View style={styles.waitlistSection}>
-                <Pressable
-                  onPress={() =>
-                    nav.navigate('MatchPlayers', { gameId: game.id })
-                  }
-                  style={styles.waitlistHeader}
-                >
-                  <Text style={styles.waitlistTitle}>
-                    {he.matchDetailsWaitlistTitle}{' '}
-                    <Text style={styles.waitlistCount}>
-                      ({waitlistPreview.length})
-                    </Text>
-                  </Text>
-                  <Ionicons
-                    name="chevron-back"
-                    size={18}
-                    color={colors.textMuted}
-                  />
-                </Pressable>
-                <View style={styles.waitlistCard}>
-                  {waitlistPreview.slice(0, 3).map((w, i) => (
-                    <View
-                      key={w.key}
-                      style={[
-                        styles.waitlistRow,
-                        i > 0 && styles.waitlistRowDivider,
-                      ]}
-                    >
-                      <Text style={styles.waitlistOrder}>{i + 1}.</Text>
-                      <Text style={styles.waitlistName} numberOfLines={1}>
-                        {w.name}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            );
-          })()}
-
-          {/* Community rules — free text from the community form, shown
-              to every participant. Amber tint = "behaviour expectations".
-              Sits below the roster + waitlist (per user feedback). */}
-          {communityRules ? (
-            <View style={styles.rulesCard}>
-              <View style={styles.rulesHeader}>
-                <Ionicons
-                  name="shield-checkmark-outline"
-                  size={16}
-                  color="#B45309"
                 />
-                <Text style={styles.rulesTitle}>{he.communityRulesTitle}</Text>
-              </View>
-              {/* Collapsible (קרא עוד / הצג פחות) — same behaviour as the rules
-                  card on CommunityDetails, so a long rules block never fills
-                  the whole screen. */}
-              <CollapsibleContent>
-                <RichRulesText text={communityRules} baseStyle={styles.rulesBody} />
-              </CollapsibleContent>
-            </View>
-          ) : null}
 
-          {/* Cross-community filler interests — visible only to the
-              admin when the game has `acceptsFillers === true` AND
-              there's at least one pending interest. The component
-              hides itself in all other cases, so non-admins and
-              "no fillers needed" games see no extra section. */}
-          <FillerInterestsSection
-            gameId={game.id}
-            isAdmin={isAdmin}
-            acceptsFillers={game.acceptsFillers === true}
+                {/* "הוסף אורח". It used to hang off the roster preview's
+                    header, and vanished with that preview when this tab became
+                    the embedded players screen (owner: "תחזיר את ה'הוסף אורח'!
+                    הוא נעלם!"). The modal and `canAddGuest` were never touched
+                    — only the button that opens them went — so this is the
+                    same gate and the same sheet, given a place to live.
+                    Directly above the roster, which is what it adds to. */}
+                {canAddGuest(game, {
+                  isOrganizerOrAdmin: isAdmin,
+                  isParticipant:
+                    !!user &&
+                    (game.players.includes(user.id) ||
+                      (game.waitlist ?? []).includes(user.id)),
+                }) ? (
+                  <Pressable
+                    onPress={() => setGuestModalOpen(true)}
+                    style={({ pressed }) => [
+                      styles.addGuestRow,
+                      pressed && { opacity: 0.85 },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={he.guestAddButton}
+                  >
+                    <Ionicons
+                      name="person-add-outline"
+                      size={17}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.addGuestRowText}>
+                      {he.guestAddButton}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </>
+            }
           />
-
-          {/* Prominent "navigate to field" CTA — surfaces the most
-              common action a player takes from this screen (driving
-              to the match) instead of hiding it as a small icon
-              inside the details grid. Only renders when we have
-              enough location to feed Waze. */}
-          {locationStr ? (
-            <Pressable
-              onPress={openWaze}
-              accessibilityRole="button"
-              accessibilityLabel={he.matchDetailsNavigateWaze}
-              style={({ pressed }) => [
-                styles.navigateCta,
-                pressed && { opacity: 0.85 },
-              ]}
-            >
-              <Ionicons name="navigate" size={20} color={colors.primary} />
-              <Text style={styles.navigateCtaText}>
-                {he.matchDetailsNavigateButton}
-              </Text>
-            </Pressable>
-          ) : null}
-
-          <MatchDetailsGrid
-            title={he.matchDetailsCardTitle}
-            items={[
-              // Field-name row removed per user feedback (Pulse AbwW4G) — the
-              // location row below already answers "where do I drive?", so the
-              // venue nickname was a redundant extra line.
-              // Unified city + address row. The two fields conceptually
-              // describe the same thing ("where do I drive?"), and the
-              // Waze button belongs HERE — not on the field-name row
-              // (which is just the venue's nickname). We join them as
-              // "<city>, <address>" when both exist; otherwise show
-              // whichever one we have.
-              {
-                icon: 'location-outline',
-                label: he.matchDetailsLabelLocation,
-                // Only prepend the city when the address doesn't already
-                // contain it — most free-text games store the full address
-                // ("עזריה 21, תל־אביב–יפו") so a naive join repeated the city.
-                value: (() => {
-                  const addr = (game.fieldAddress ?? '').trim();
-                  const city = (game.city ?? '').trim();
-                  if (addr && city && !addr.toLowerCase().includes(city.toLowerCase())) {
-                    return `${city}, ${addr}`;
-                  }
-                  return addr || city || null;
-                })(),
-                action: locationStr
-                  ? {
-                      icon: 'navigate',
-                      onPress: openWaze,
-                      accessibilityLabel: he.matchDetailsNavigateWaze,
-                    }
-                  : undefined,
-              },
-              {
-                icon: 'leaf-outline',
-                label: he.matchDetailsLabelFieldType,
-                value: fieldTypeLabel,
-              },
-              {
-                icon: 'grid-outline',
-                label: he.matchDetailsLabelFormat,
-                value: game.format
-                  ? gameFormatLabel(game.format).replace(/ /g, '')
-                  : null,
-              },
-              // One-time games (or any game with no real community to show)
-              // OMIT the "מועדון" row entirely — the grid renders empty values
-              // as "—", so a one-time game would otherwise read "מועדון —".
-              // Keyed on the resolved name (not just isOrphanContext, which
-              // older quick-created games may not have set). (Pulse odLGvyv.)
-              ...(game.isOrphanContext || !communityName
-                ? []
-                : [
-                    {
-                      icon: 'people-outline' as const,
-                      label: he.matchDetailsLabelCommunity,
-                      value: communityName,
-                      action:
-                        communityName && game.groupId
-                          ? {
-                              icon: 'open-outline' as const,
-                              onPress: () =>
-                                (
-                                  nav as {
-                                    navigate: (s: string, p: unknown) => void;
-                                  }
-                                ).navigate(clubRouteFor(game.groupId), {
-                                  groupId: game.groupId,
-                                }),
-                              accessibilityLabel: 'פתח את עמוד המועדון',
-                            }
-                          : undefined,
-                    },
-                  ]),
-              {
-                icon: 'person-outline',
-                label: he.matchDetailsLabelOrganizer,
-                value: organizerName,
-                // Tap the organizer's row → open the creator's player card.
-                action: game.createdBy
-                  ? {
-                      icon: 'open-outline',
-                      onPress: () =>
-                        (
-                          nav as {
-                            navigate: (s: string, p: unknown) => void;
-                          }
-                        ).navigate('PlayerCard', {
-                          userId: game.createdBy,
-                          groupId: game.groupId,
-                        }),
-                      accessibilityLabel: he.matchDetailsLabelOrganizer,
-                    }
-                  : undefined,
-              },
-              {
-                icon: 'calendar-outline',
-                label: he.matchDetailsLabelCreatedAt,
-                value: game.createdAt
-                  ? formatShortDate(game.createdAt)
-                  : null,
-              },
-              {
-                icon: 'reader-outline',
-                label: he.matchDetailsLabelNotes,
-                value: game.notes,
-                multiline: true, // show the full note, never clamp it
-              },
-            ]}
-          />
-
-        {/* Admin-only: complete a goal missed during the evening. Sits ABOVE
-            the scorers table — that's where the admin notices a missing goal. */}
-        {isFinished(game) && isAdmin ? (
-          <Pressable
-            style={({ pressed }) => [styles.retroBtn, pressed && { opacity: 0.85 }]}
-            onPress={() => {
-              logEvent(AnalyticsEvent.RetroGoalsOpened, {
-                gameId: game.id,
-                roster: (game.players ?? []).length,
-              });
-              setRetroOpen(true);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={he.retroEntryCta}
-          >
-            <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-            <Text style={styles.retroBtnText}>{he.retroEntryCta}</Text>
-          </Pressable>
-        ) : null}
-
-        {/* Per-game championship — goals + assists tallied in THIS game,
-            ranked by score (goal=2, assist=1). Only after the game is
-            finished. Renders nothing for games with no recorded stats. */}
-        {isFinished(game) ? (
-          <GameChampionship
-            gameId={game.id}
-            groupId={game.groupId}
-            refreshKey={retroRefreshKey}
-            // Everyone who showed up (not a no-show) is listed even with no
-            // stats — they "were in the evening" (report [cetR]). Active guests
-            // (roster id `guest:<id>`) are included too — a guest is a full
-            // player in the cycle.
-            attendedUids={[
-              ...(game.players ?? []).filter(
-                (uid) => game.arrivals?.[uid] !== 'no_show',
-              ),
-              ...(game.guests ?? [])
-                .filter((g) => !g.waitlisted)
-                .map((g) => `guest:${g.id}`),
-            ]}
-            guests={(game.guests ?? []).filter((g) => !g.waitlisted)}
-          />
-        ) : null}
-
-        {/* Cancel registration — a plain (non-floating) red button at the very
-            bottom of the content, for a registered user still inside the
-            cancellation window (user request). Same gate + handler as the ☰
-            menu's "יציאה מהמשחק"; the floating CTA still shows the contextual
-            primary action, this is the always-visible explicit exit. */}
-        {primaryDestructive && canCancelRegistration(game) ? (
-          <Pressable
-            onPress={handlePrimary}
-            style={({ pressed }) => [
-              styles.cancelRegBtn,
-              pressed && { opacity: 0.9 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={he.matchDetailsCancel}
-          >
-            <Ionicons name="close-circle-outline" size={18} color="#fff" />
-            <Text style={styles.cancelRegBtnText}>{he.matchDetailsCancel}</Text>
-          </Pressable>
-        ) : null}
         </View>
-      </ScrollView>
+      ) : null}
 
       {/* Sticky bottom CTA — pinned to the bottom of the screen so
           the contextual action (join / cancel / start session / etc.)
@@ -4163,6 +4222,68 @@ function InfoCell({
 }
 
 const styles = StyleSheet.create({
+  // A tab pane is hidden, not unmounted, so it keeps its scroll position and
+  // its loaded data. `display:'none'` is what makes that free — the subtree
+  // stays mounted but is skipped by layout entirely.
+  // The teams pointer: the same amber the community-rules card uses, so the
+  // two read as one family of "notes about this evening" rather than two
+  // unrelated highlights. Row, so the CTA sits on the leading (left) edge
+  // opposite the text — icon first in source order keeps it rightmost.
+  teamsPointer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  teamsPointerText: { flex: 1, gap: 2 },
+  teamsPointerHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  teamsPointerTitle: {
+    ...typography.label,
+    color: '#B45309',
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  teamsPointerBody: {
+    ...typography.caption,
+    color: '#92400E',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  teamsPointerCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+  },
+  teamsPointerCtaTx: {
+    ...typography.bodyBold,
+    fontSize: 14,
+    color: colors.primary,
+  },
+  // Full width, unlike the little pill the roster header used to carry: it is
+  // its own row here rather than a corner of somebody else's heading.
+  addGuestRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.lg,
+    paddingVertical: 12,
+  },
+  addGuestRowText: {
+    ...typography.bodyBold,
+    fontSize: 15,
+    color: colors.primary,
+  },
+  heroWrap: { marginBottom: -22 },
+  pane: { flex: 1 },
+  paneHidden: { display: 'none' },
   root: { flex: 1, backgroundColor: colors.bg },
   // "סיכום הערב שלי" — shareable summary CTA below the finished-game table.
   summaryCta: {
@@ -5030,7 +5151,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.lg,
+    // No marginTop: the banner used to sit mid-list in "מידע" and needed its
+    // own air. It now leads the שחקנים tab, whose container already spaces its
+    // children — the margin only pushed it away from the top edge.
     padding: spacing.md,
     borderRadius: radius.lg,
     backgroundColor: '#EAF1FF',

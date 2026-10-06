@@ -730,6 +730,8 @@ function PlayerRow({
   /** Open the player's ⋮ action menu (the ONLY interaction — no row tap). */
   onOpenMenu: (e: GestureResponderEvent) => void;
 }) {
+  const ratingShown = !!internalRating && !!showRating;
+  const hasCards = (cardCounts?.yellow ?? 0) > 0 || (cardCounts?.red ?? 0) > 0;
   return (
     <View style={[styles.row, showDivider && styles.rowDivider]}>
       {/* `md` (56 → rendered at 48 by the wrapper's own padding) rather than
@@ -748,17 +750,6 @@ function PlayerRow({
               </Text>
             </View>
           ) : null}
-          {holdsBall ? (
-            <View style={styles.holderBadge} accessibilityLabel={he.equipmentHolderBallA11y}>
-              <Ionicons name="football" size={13} color="#1D4ED8" />
-            </View>
-          ) : null}
-          {holdsJerseys ? (
-            <View style={styles.holderBadge} accessibilityLabel={he.equipmentHolderJerseysA11y}>
-              <Ionicons name="shirt" size={13} color="#7C3AED" />
-            </View>
-          ) : null}
-          <CardCountBadges counts={cardCounts} />
         </View>
         {/* Internal rating is ADMIN-ONLY and DISPLAY-ONLY here: the chip shows
             the value (or "לא דורג"), but tapping does nothing — rating is
@@ -771,12 +762,38 @@ function PlayerRow({
             a pill around every row's rating turned the column into a row of
             buttons. The GATE is unchanged (admins only, internal rating on,
             not hidden); only the presentation moved. */}
-        {internalRating && showRating ? (
+        {/* The second line: the rating, then the badges that qualify this
+            person — who is holding the ball and the jerseys, and any active
+            cards. The badges used to sit up in the NAME row, pushed out past
+            the admin chip and a long name, which left them floating in the
+            middle of the row with nothing to read them against (owner, 02.10:
+            "תוריד את הגופיה והכדור שיהיו ליד הדירוג"). Down here they share a
+            baseline with the rating, which is the other per-player fact.
+
+            Rendered whenever there is ANYTHING to show, not only for a rated
+            admin view — moving them into the rating's own condition would
+            have hidden the equipment holders from every ordinary member. */}
+        {ratingShown || holdsBall || holdsJerseys || hasCards ? (
           <View style={styles.ratingRow}>
-            <Text style={styles.ratingValue}>
-              {isRated(rating) ? formatRating(rating) : he.ratingNotRated}
-            </Text>
-            <Ionicons name="star" size={14} color={colors.warning} />
+            {ratingShown ? (
+              <>
+                <Text style={styles.ratingValue}>
+                  {isRated(rating) ? formatRating(rating) : he.ratingNotRated}
+                </Text>
+                <Ionicons name="star" size={14} color={colors.warning} />
+              </>
+            ) : null}
+            {holdsBall ? (
+              <View style={styles.holderBadge} accessibilityLabel={he.equipmentHolderBallA11y}>
+                <Ionicons name="football" size={13} color="#1D4ED8" />
+              </View>
+            ) : null}
+            {holdsJerseys ? (
+              <View style={styles.holderBadge} accessibilityLabel={he.equipmentHolderJerseysA11y}>
+                <Ionicons name="shirt" size={13} color="#7C3AED" />
+              </View>
+            ) : null}
+            <CardCountBadges counts={cardCounts} />
           </View>
         ) : null}
       </View>

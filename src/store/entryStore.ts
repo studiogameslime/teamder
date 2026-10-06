@@ -74,6 +74,19 @@ interface EntryState {
 
   hydrate: () => Promise<void>;
   chooseIntent: (intent: EntryIntent) => Promise<void>;
+  /**
+   * The destination the chosen intent opened, while the person is still a
+   * guest inside it. Cleared the moment they finish or back out.
+   *
+   * It exists so backing out of that destination can put the entry question
+   * back rather than dropping a brand-new person into the app — see
+   * `reopenIntent`.
+   */
+  intentDestination: EntryIntent | null;
+  /** Backed out of the intent's destination without doing anything. */
+  reopenIntent: () => Promise<void>;
+  /** Reached the destination and stayed — stop watching for a back-out. */
+  clearIntentDestination: () => void;
   /** The CTA opened the sheet. */
   beginExistingAccountAttempt: () => void;
   /** The attempt's identity has no Teamder account behind it. */
@@ -91,6 +104,7 @@ export const useEntryStore = create<EntryState>((set, get) => ({
   suppressAutoConsume: false,
   existingAccountAttempt: false,
   existingAccountWasNew: false,
+  intentDestination: null,
 
   hydrate: async () => {
     // Two independent reads. A failure in either resolves to the SAFE value
@@ -122,12 +136,30 @@ export const useEntryStore = create<EntryState>((set, get) => ({
       pendingIntent: intent,
       organicCompleted: true,
       suppressAutoConsume: intent !== 'invite',
+      // Remembered so a back-press out of the destination can restore the
+      // question instead of leaving a new person in the app having answered
+      // nothing. `invite` has no destination of its own — the deep-link
+      // consumer owns it — so it is not watched.
+      intentDestination: intent === 'invite' ? null : intent,
       // Answering the question ends any existing-account journey: this is the
       // choice that journey was sent back here to make.
       existingAccountAttempt: false,
       existingAccountWasNew: false,
     });
     await storage.setEntryOrganicCompleted();
+  },
+
+  // Backing out of "הקמת מועדון" (or the one-off wizard) used to leave the
+  // person inside the app: `chooseIntent` had already flipped the completion
+  // flag, so the gate no longer had a reason to show the question and the back
+  // press landed on the tabs. Answering the question is not the same as
+  // finishing onboarding, so the flag goes back down and the disk key with it.
+  reopenIntent: async () => {
+    set({ organicCompleted: false, pendingIntent: null, intentDestination: null });
+    await storage.clearEntryOrganicCompleted();
+  },
+  clearIntentDestination: () => {
+    if (get().intentDestination) set({ intentDestination: null });
   },
 
   beginExistingAccountAttempt: () => set({ existingAccountAttempt: true }),

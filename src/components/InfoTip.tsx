@@ -31,7 +31,16 @@ interface Props {
 
 const CARD_W = 280;
 const MARGIN = 12;
-const EST_H = 170; // rough card height for the above/below decision
+/**
+ * First-paint guess for the above/below decision only.
+ *
+ * It is a guess, and for a long explanation it is wildly wrong — the seasons
+ * text is nearer 400pt, so a card placed "below" on the strength of 170 ran
+ * off the bottom of the screen and took its own title with it. The real
+ * height arrives from `onLayout` a frame later and re-clamps (see `onCard`),
+ * so this only has to be close enough for the first frame.
+ */
+const EST_H = 170;
 
 interface Anchor {
   top: number;
@@ -43,6 +52,24 @@ interface Anchor {
 export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Props) {
   const ref = useRef<View>(null);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
+
+  /**
+   * Re-place the card once its real height is known.
+   *
+   * Keeps the side it was given (above / below the icon) and only pulls it
+   * back inside the screen, so a long card grows upward instead of off the
+   * bottom edge. Guarded on an actual change, or the layout pass and the
+   * state update chase each other.
+   */
+  const onCard = (h: number) => {
+    setAnchor((a) => {
+      if (!a || h <= 0) return a;
+      const screen = Dimensions.get('window');
+      const maxTop = screen.height - MARGIN - h;
+      const next = Math.max(MARGIN, Math.min(a.top, maxTop));
+      return next === a.top ? a : { ...a, top: next };
+    });
+  };
 
   const open = () => {
     const node = ref.current;
@@ -90,6 +117,7 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
               // is unaffected by this.
               style={[styles.card, { width: CARD_W, top: anchor.top, left: anchor.left }]}
               onPress={(e) => e.stopPropagation()}
+              onLayout={(e) => onCard(e.nativeEvent.layout.height)}
             >
               {/* caret — a real triangle pointing at the icon */}
               <View
@@ -99,8 +127,16 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
                   anchor.above ? styles.caretDown : styles.caretUp,
                 ]}
               />
-              {title ? <Text style={styles.title}>{title}</Text> : null}
-              <Text style={styles.body}>{text}</Text>
+              {/* The card is laid out LTR so the caret's absolute `left` is
+                  physical. Hebrew inside it therefore needs its OWN direction
+                  rather than a textAlign override per <Text> — with only the
+                  override, a long line started outside the card's padding and
+                  the first character was clipped. One RTL block, and the text
+                  lays out in the frame it is actually written in. */}
+              <View style={styles.textBlock}>
+                {title ? <Text style={styles.title}>{title}</Text> : null}
+                <Text style={styles.body}>{text}</Text>
+              </View>
               <Pressable onPress={() => setAnchor(null)} style={styles.gotItWrap} hitSlop={6}>
                 <Text style={styles.gotIt}>{he.infoTipGotIt}</Text>
               </Pressable>
@@ -113,6 +149,7 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
 }
 
 const styles = StyleSheet.create({
+  textBlock: { direction: 'rtl', alignSelf: 'stretch' },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.25)',

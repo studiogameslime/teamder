@@ -24,8 +24,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { spacing } from '@/theme';
+import { spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { formatDayDate, formatTime } from '@/utils/format';
 import { skyForHour } from '@/utils/heroAtmosphere';
@@ -62,10 +61,44 @@ interface Props {
    *  happily kept ticking "עוד 2:45" under a game that was already over
    *  (Eliran's report). The screen knows the status; it decides. */
   countdownHidden?: boolean;
+  /** Show "המחזור התחיל" under the hour. The caller decides — see the note at
+   *  the render site. */
+  showStarted?: boolean;
   /** Unread message count for the game chat — renders a badge on the
    *  chat icon. 0/undefined → no badge. */
   chatUnread?: number;
+  /**
+   * The pitch, under the time — "מגרש אלמוג, אור יהודה".
+   *
+   * Part of the header in the four-tab design: the three facts a person opens
+   * this screen for are WHEN, WHERE and who. The first two now live together
+   * in the card instead of the where being four sections down the page.
+   */
+  locationLine?: string;
+  /**
+   * The parent club's cover, so an evening looks like the club it belongs to.
+   *
+   * Same two fields and the same precedence the club's own hero uses — an
+   * uploaded photo first, then a pick from the built-in gallery — because a
+   * second way of resolving the same image is how the two screens end up
+   * showing different pictures for one club. Both absent (a one-off game with
+   * no club) falls through to the bundled stadium, which is what every evening
+   * showed before this.
+   */
+  coverUrl?: string;
+  coverImageId?: string;
+  /**
+   * Drop the strip of stadium the hero used to leave below its card.
+   *
+   * That padding existed for one thing: the match stats strip floated onto it with
+   * a negative margin. The four-tab screen has no strip — the tab bar sits
+   * directly under the hero — and without this the header carries 56 points of
+   * empty photo above the tabs.
+   */
+  compact?: boolean;
 }
+
+import { getCoverSource } from '@/data/coverImages';
 
 const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
 
@@ -78,18 +111,27 @@ export function MatchStadiumHero({
   onSharePress,
   onChatPress,
   countdownHidden = false,
+  showStarted = false,
   chatUnread = 0,
+  locationLine,
+  coverUrl,
+  coverImageId,
+  compact = false,
 }: Props) {
   // Living sky: the gradient tint follows the kickoff hour (morning/day/
   // sunset/night), with floodlights at night.
   const hour = startsAt ? new Date(startsAt).getHours() : 12;
   const sky = skyForHour(hour);
+  // Priority mirrors `CommunityStadiumHero` exactly.
+  const bg: ImageSourcePropType = coverUrl
+    ? { uri: coverUrl }
+    : getCoverSource(coverImageId) ?? STADIUM_BG;
 
   return (
     <View style={styles.wrap}>
       <ImageBackground
-        source={STADIUM_BG}
-        style={styles.bg}
+        source={bg}
+        style={[styles.bg, compact && styles.bgCompact]}
         resizeMode="cover"
       >
         {/* Time-of-day sky. Bottom stop stays dark so the floating white
@@ -98,7 +140,13 @@ export function MatchStadiumHero({
 
         {/* Night-only floodlight washes in the top corners. */}
         {sky.floodlights ? <Floodlights /> : null}
-        <SafeAreaView edges={['top']} style={styles.safe}>
+        {/* No top inset here any more. The SCREEN reserves the status-bar
+            strip above this hero, because the tab bar below it becomes sticky:
+            pinned at the scroll's y=0, a bar whose inset lived inside the hero
+            would draw under the system clock the moment the hero scrolled off.
+            Reserving it one level up is the only place that holds in both
+            states. */}
+        <View style={styles.safe}>
           <View style={styles.topBar}>
             {/* Back is now first → renders on the leading edge under
                 our flex flow. Title sits centered between the two
@@ -216,9 +264,36 @@ export function MatchStadiumHero({
               {startsAt && !countdownHidden ? (
                 <LiveCountdown startsAt={startsAt} />
               ) : null}
+              {/* Kickoff has passed. The countdown only counts DOWN, so at
+                  zero it vanishes and left the hour standing alone — a person
+                  opening the screen at 20:30 saw "20:00" and nothing to say
+                  which side of it they were on. Whether to show this is the
+                  CALLER's call, not a time comparison here: a finished or
+                  cancelled evening must not announce that it is starting, and
+                  only the screen knows the status. */}
+              {showStarted ? (
+                <View style={styles.startedRow}>
+                  {/* Text FIRST → rightmost under forceRTL, the play mark
+                      closing it on the left (owner, 01.10). Deliberately
+                      UNLIKE the pin and the calendar below, which stay
+                      leading: those label a value, this one is a state. */}
+                  <Text style={styles.startedText}>{he.gdHeroStarted}</Text>
+                  <Ionicons name="play-circle" size={13} color="#86EFAC" />
+                </View>
+              ) : null}
+              {locationLine ? (
+                <View style={styles.floatingPlaceRow}>
+                  {/* Pin FIRST in source order → rightmost under forceRTL,
+                      matching the calendar on the date row above it. */}
+                  <Ionicons name="location" size={13} color="rgba(255,255,255,0.82)" />
+                  <Text style={styles.floatingPlace} numberOfLines={1}>
+                    {locationLine}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
-        </SafeAreaView>
+        </View>
       </ImageBackground>
     </View>
   );
@@ -249,6 +324,35 @@ function Floodlights() {
 const styles = StyleSheet.create({
   wrap: {
     overflow: 'visible',
+  },
+  // The strip below the card existed only for the floating stats row. Without
+  // one, `compact` reclaims it — see the prop's note.
+  bgCompact: { paddingBottom: spacing.lg },
+  startedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
+  startedText: {
+    ...typography.caption,
+    color: '#86EFAC',
+    fontWeight: '800',
+  },
+  floatingPlaceRow: {
+    // `row` puts the first child on the RIGHT under forceRTL: pin, then place.
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+    maxWidth: '100%',
+  },
+  floatingPlace: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: RTL_LABEL_ALIGN,
+    flexShrink: 1,
   },
   floodWrap: { ...StyleSheet.absoluteFillObject },
   flood: { position: 'absolute', top: -56 },

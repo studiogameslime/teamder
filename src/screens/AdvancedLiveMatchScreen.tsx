@@ -237,6 +237,9 @@ export function AdvancedLiveMatchScreen() {
     current: number | null;
     // Mid-evening substitution → keep the running clock/score on final commit.
     keepClock: boolean;
+    /** The score of the round that just ended, for the picker to report.
+     *  Absent on a mid-evening substitution — nothing ended. */
+    savedResult?: { a: number; b: number; winner: string | null };
   } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   // 1s ticker so the still-ongoing stoppage duration counts up while paused
@@ -470,6 +473,10 @@ export function AdvancedLiveMatchScreen() {
     // Mid-evening substitution (went-home refill) → keep the running clock/score
     // on commit. Round transitions (start/end) leave this false → clock zeroed.
     keepClock = false,
+    // The result the commit has just banked. Read off the live doc BEFORE
+    // `prepareRoundResult` zeroes it — which is the whole reason the picker
+    // needs to be told: by the time it opens, the board behind it says 0:0.
+    savedResult?: { a: number; b: number; winner: string | null },
   ) => {
     const working = {
       teams: skeleton.teams,
@@ -493,6 +500,7 @@ export function AdvancedLiveMatchScreen() {
       queue,
       current: null,
       keepClock,
+      savedResult,
     };
     advanceFillFlow();
   };
@@ -544,6 +552,7 @@ export function AdvancedLiveMatchScreen() {
           players: req.donors.map(resolveFillPlayer),
           recommendedIds: pickRandom(req.donors, need),
           requiredCount: need,
+          savedResult: flow.savedResult,
         });
         return; // wait for the admin to confirm
       }
@@ -692,6 +701,27 @@ export function AdvancedLiveMatchScreen() {
       // keep ticking through the fill flow. It's zeroed after the new round is
       // committed (see advanceFillFlow).
       await gameService.pauseTimer(gameId, me.id, me.name ?? '').catch(() => {});
+      // Read the score NOW. `prepareRoundResult` below commits the round's
+      // stats and zeroes the live score in the same breath, so this is the
+      // last moment the finished game's result exists on the client — and the
+      // fill picker that opens afterwards is the only place left to state it.
+      const [playA, playB] = rotation?.playing ?? [];
+      const sA = live?.scoreA ?? 0;
+      const sB = live?.scoreB ?? 0;
+      const endedResult = {
+        a: sA,
+        b: sB,
+        // A rotation with no `playing` pair cannot name a winner — say the
+        // score and stop, rather than labelling it with a guess.
+        winner:
+          playA == null || playB == null
+            ? null
+            : sA > sB
+              ? teamName(playA, draftTeams?.teams)
+              : sB > sA
+                ? teamName(playB, draftTeams?.teams)
+                : null,
+      };
       // Commit stats + build the post-round skeleton (no rotate yet). A 4-team
       // tie auto-resolves; a 2–3 team tie returns outcome null → tie chooser
       // (manual pick vs penalty shootout).
@@ -709,7 +739,7 @@ export function AdvancedLiveMatchScreen() {
         goals: live?.goals?.length ?? 0,
         elapsedSec: Math.round(timerMs / 1000),
       });
-      beginFillFlow(res.skeleton, res.draft);
+      beginFillFlow(res.skeleton, res.draft, undefined, false, endedResult);
     } catch (err) {
       logError('liveFinalizeRound', err, { gameId, userId: me.id });
       toast.error(he.roundFinalizeFailed);
@@ -2230,6 +2260,29 @@ export function AdvancedLiveMatchScreen() {
                 running clock AND the round's goals, and it used to sit a
                 thumb-width from the two buttons pressed all evening. Its own
                 confirm dialog is unchanged. */}
+            {/* The mini-games already played tonight.
+                Opens the SAME screen the finished evening uses — same card,
+                same order, same data — with `live` only changing the title
+                and the empty-state wording. Nothing new is drawn: the round
+                history is written by `commitRoundStats`, so it already
+                contains exactly the games that have ended and nothing else. */}
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate(
+                  'MatchRounds',
+                  { gameId, live: true },
+                );
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={he.liveMenuRounds}
+            >
+              {/* Label first: under forceRTL the first child renders rightmost,
+                  so the icon lands immediately to its LEFT. */}
+              <Text style={styles.menuItemText}>{he.liveMenuRounds}</Text>
+              <Ionicons name="list" size={20} color="#1D4ED8" />
+            </Pressable>
             <Pressable
               style={styles.menuItem}
               onPress={() => {

@@ -10,6 +10,51 @@
 export const GOAL_POINTS = 2;
 export const ASSIST_POINTS = 1;
 
+/**
+ * THE club-table order. One comparator, used everywhere a player's position
+ * in a club is decided.
+ *
+ * Wins first — the club table ranks by success, per the owner — then goals,
+ * then assists, then uid. The uid is not decoration: it is what makes the
+ * order TOTAL. Without a final tie-break the result depends on the order the
+ * rows happened to arrive in, and that order is not the same everywhere:
+ *
+ *   • a LIVE slice arrives already ranked, straight from `buildChampionshipRows`
+ *   • an ALL-TIME slice arrives from `mergeAllTime`, in map-insertion order
+ *
+ * So two players level on wins could sit one way round on the club's stats
+ * screen and the other way round on the two-player screen, and each would be
+ * telling the reader a different position for the same person in the same
+ * club. Exported so that cannot happen again by copying.
+ *
+ * ⚠️ This is the TIE-BREAK and the primary key TOGETHER. A caller that sorts
+ * by its own column first (the stats table lets you tap any header) should
+ * use `comparePoints` only as the fallback — see `compareByThen`.
+ */
+export function comparePoints(a: ChampionshipRow, b: ChampionshipRow): number {
+  return (
+    b.wins - a.wins ||
+    b.goals - a.goals ||
+    b.assists - a.assists ||
+    a.uid.localeCompare(b.uid)
+  );
+}
+
+/**
+ * Sort by one numeric column, descending, and fall back to the club order.
+ *
+ * The stats table sorts by whichever header was tapped. Equal values used to
+ * keep "the incoming order", which is only meaningful when the incoming order
+ * means something — and for an all-time slice it does not. This makes every
+ * column's ties resolve the same way the table's own ranking does.
+ */
+export function compareByThen(
+  key: keyof ChampionshipRow,
+): (a: ChampionshipRow, b: ChampionshipRow) => number {
+  return (a, b) =>
+    Number(b[key] ?? 0) - Number(a[key] ?? 0) || comparePoints(a, b);
+}
+
 export interface ChampionshipRow {
   uid: string;
   goals: number;
@@ -147,10 +192,9 @@ export function rankChampionshipRows(
       )
       .sort((a, b) =>
         sortBy === 'points'
-          ? b.wins - a.wins ||
-            b.goals - a.goals ||
-            b.assists - a.assists ||
-            a.uid.localeCompare(b.uid)
+          ? // The one club order, shared with every other screen that places
+            // a player in this club. See `comparePoints`.
+            comparePoints(a, b)
           : b.goals - a.goals ||
             b.wins - a.wins ||
             b.games - a.games ||

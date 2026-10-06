@@ -11,6 +11,7 @@
 //    must never recurse into itself.
 
 import { Platform } from 'react-native';
+import { crumbErr } from '@/services/breadcrumbs';
 import Constants from 'expo-constants';
 import {
   doc,
@@ -130,11 +131,23 @@ function isSignedOutDenial(code: string | undefined, uid: string | undefined): b
 
 function isTransientEnvError(code?: string, message?: string): boolean {
   if (code && TRANSIENT_CODES.has(code)) return true;
-  // Fallback for errors that arrive without a `code` (raw FirebaseError):
-  // match the two stable offline/network sentinels by message.
+  // Fallback for errors that arrive without a `code` (raw FirebaseError, or a
+  // native SDK reporting through a string), matched on the stable sentinels
+  // each platform uses for "there is no network".
   const m = (message ?? '').toLowerCase();
   return (
-    m.includes('client is offline') || m.includes('network request failed')
+    m.includes('client is offline') ||
+    m.includes('network request failed') ||
+    // Android's DNS failure, verbatim: 'Unable to resolve host "x": No address
+    // associated with hostname'. Logged once on 29.09 as a Joryio push-token
+    // bug; the host resolves fine and returns 200 from anywhere with a
+    // network. It is a dead zone, every time.
+    m.includes('unable to resolve host') ||
+    m.includes('no address associated with hostname') ||
+    // iOS / NSURLError equivalents.
+    m.includes('the internet connection appears to be offline') ||
+    m.includes('a server with the specified hostname could not be found') ||
+    m.includes('could not connect to the server')
   );
 }
 
@@ -267,6 +280,11 @@ export function logError(
     const uid = currentUid();
     // A denial with no session at all is an expected outcome, not a bug.
     if (isSignedOutDenial(code, uid)) return;
+    // On the report trail too — a failure is a step, and "the tap DID reach
+    // something, and that something failed" is a different story from a tap
+    // that reached nothing. The operation name only; the message, the stack
+    // and the context stay here.
+    crumbErr(operation);
     const fp = djb2(`${operation}|${normalize(message)}`);
     // Runaway guard: once this signature has been written SESSION_WRITE_CAP
     // times this session, stop buffering it (protects a single hot doc).
@@ -310,6 +328,23 @@ export function logError(
  * "didn't work as expected" separately from thrown errors/crashes.
  */
 export function logUnexpected(operation: string, context?: ErrorContext): void {
+  // ⚠️ The error handed to `logError` carries the OPERATION as its message,
+  // so `isTransientEnvError` — which reads the error's code and message — can
+  // never match on it. By construction every silent report got through the
+  // filter, including the ones whose cause was plainly "no network".
+  //
+  // Seen on 29.09: `joryioRegisterPushToken` filed as a bug, with the real
+  // cause sitting untouched in the context — 'Unable to resolve host
+  // "api-eu1.joryio.com"'. The host resolves and answers 200; the phone had no
+  // network. So the CONTEXT's own message gets the same test the error's would
+  // have, and a silent report whose cause is a dead zone is dropped like any
+  // other transient blip.
+  //
+  // Only `context.message`, deliberately: it is where every caller already
+  // puts the underlying failure, and widening it to the whole serialised
+  // context would start matching on screen names and ids.
+  const cause = typeof context?.message === 'string' ? context.message : '';
+  if (cause && isTransientEnvError(undefined, cause)) return;
   logError(operation, new Error(operation), { ...(context ?? {}), silent: true });
 }
 

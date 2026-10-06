@@ -14,6 +14,7 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { useUserStore } from '@/store/userStore';
 import { logError } from '@/services/errorLog';
+import { formatTrail } from '@/services/breadcrumbs';
 
 export type FeedbackType = 'bug' | 'suggestion';
 
@@ -78,9 +79,19 @@ export async function submitFeedback(
     // with the same id and comes back `already-exists`. The report was saved;
     // telling the user it failed only makes them send it twice. Swallow that one
     // code — every other failure still surfaces.
+    // The last ~50 steps before the report was written: taps with their
+    // coordinates, screens, actions, failures. Attached because the owner
+    // asked for it on 02.10 while filing a report he knew could not be
+    // reproduced — this is what turns "פתאום זה לא לוחץ" into a readable
+    // sequence, and in particular it is the only place a tap that triggered
+    // NOTHING ever shows up. Capped so a long session cannot crowd out the
+    // screenshot in the same document.
+    const trail = formatTrail().slice(0, 4000);
+
     await addDoc(collection(db, 'feedback'), {
       type,
       message: text,
+      ...(trail ? { trail } : {}),
       userId: fbUser.uid,
       userName,
       ...(screen ? { screen } : {}),

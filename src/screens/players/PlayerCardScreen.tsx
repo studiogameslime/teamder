@@ -402,21 +402,38 @@ export function PlayerCardScreen() {
           // ── Other-player card (per the owner's sketch) ──
           <>
             <OtherTopCard user={user} viewerId={me.id} />
-            {/* The "השווה אליי" comparison lives in the community players-list
-                ⋮ menu, NOT here — there the groupId is unambiguous. On this
-                card the group is fuzzy (route param or the current group), which
-                is wrong when the two share zero or multiple communities. */}
-            {/* H2H "played together" must be GLOBAL (all communities) to agree
-                with the Statistics screen's "השותף הקבוע" — scoping it to the
-                rating group made a card opened from one community show "no
-                shared history" even when the two played together elsewhere
-                (user report, 2026-06-21). The same-team / against rows come
-                from the global pairStats doc, so they were never group-scoped. */}
-            <PairStatsSection
-              viewerId={me.id}
-              otherId={user.id}
-              otherName={user.name}
-            />
+            {/* One screen owns "you and X", and this card is the way in.
+                
+                The full pair section used to live HERE, reading the global
+                `pairStats` document — every number cross-club, none of it
+                filterable by season. That screen now exists properly, per
+                club and per season, so repeating a second and differently
+                scoped copy of the same facts underneath it would give the
+                reader two answers to one question.
+                
+                ⚠️ Only with `routeGroupId`, never the derived `groupId`. That
+                one falls back to whatever club the viewer happens to have
+                selected, and a two-player screen headed with the WRONG club
+                is worse than no link: every figure on it would be true, of
+                the wrong people's evenings. The card appears when the caller
+                said which club, and not otherwise. */}
+            {routeGroupId ? (
+              <PairEntryCard
+                groupId={routeGroupId}
+                otherId={user.id}
+                otherName={user.name}
+              />
+            ) : (
+              /* No club in the route — Requests, Friends, Referrals. Nothing
+                 here can say WHICH club's record to show, so the old global
+                 section stays exactly as it was rather than guessing one.
+                 It is the only surface left reading `pairStats`. */
+              <PairStatsSection
+                viewerId={me.id}
+                otherId={user.id}
+                otherName={user.name}
+              />
+            )}
           </>
         ) : (
           // Not signed in — minimal identity only.
@@ -629,6 +646,58 @@ function CommunityChips({ groups }: { groups: Group[] }) {
         ))}
       </ScrollView>
     </View>
+  );
+}
+
+/**
+ * The way into the two-player screen, from a player card opened inside a club.
+ *
+ * Deliberately a POINTER and not a summary. A number here would have to be
+ * fetched and scoped exactly as the screen behind it does — and the moment the
+ * two disagreed by one, the card would be lying about the screen it opens.
+ */
+function PairEntryCard({
+  groupId,
+  otherId,
+  otherName,
+}: {
+  groupId: string;
+  otherId: string;
+  otherName: string;
+}) {
+  const nav = useNavigation<{ navigate: (s: string, p: object) => void }>();
+  return (
+    <Card
+      onPress={() => {
+        logEvent(AnalyticsEvent.PlayerCompareOpened, {
+          groupId,
+          otherUid: otherId,
+          source: 'player_card',
+        });
+        nav.navigate('PlayerCompare', { groupId, otherUid: otherId, otherName });
+      }}
+    >
+      {/* ONE child, and the row lives on it.
+          A tappable Card renders through PressableScale, which puts several
+          children inside a single wrapper View with no flexDirection — they
+          stack. The component says so in a dev warning; this is the inner row
+          it asks for. */}
+      <View style={styles.pairEntry}>
+        {/* Icon first → visual RIGHT; the chevron closes the row on the left. */}
+        <View style={styles.pairEntryIcon}>
+          <Ionicons name="people" size={20} color={colors.primary} />
+        </View>
+        <View style={styles.pairEntryTexts}>
+          <Text style={styles.pairEntryTitle} numberOfLines={1}>
+            {he.pairEntryTitle(otherName)}
+          </Text>
+          <Text style={styles.pairEntrySub} numberOfLines={2}>
+            {he.pairEntrySub}
+          </Text>
+        </View>
+        <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
+      </View>
+    </Card>
   );
 }
 
@@ -979,6 +1048,31 @@ const styles = StyleSheet.create({
   },
   ctaCard: {
     gap: spacing.sm,
+  },
+  pairEntry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  pairEntryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
+  },
+  pairEntryTexts: { flex: 1, minWidth: 0 },
+  pairEntryTitle: {
+    ...typography.body,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  pairEntrySub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
   },
   pairWrap: {
     gap: spacing.lg,

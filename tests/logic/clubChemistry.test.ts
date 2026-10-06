@@ -280,3 +280,57 @@ describe('a pair is one pair, whichever card opened it', () => {
     expect(titlesOf(picks, pairKey('a', 'b')).length).toBeGreaterThanOrEqual(2);
   });
 });
+
+/**
+ * The wall and the wooden spoon cannot be the same two faces.
+ *
+ * Reported 02.10 against the real club: ניר תורג'מן + Eli Avidor held both
+ * "הצמד עם הכי הרבה הפסדים" (21) and "צמד הגנת הברזל" (20), one card above
+ * the other. Both numbers were true. Together they read as nonsense, because
+ * a clean sheet is a game you did not concede in and you cannot lose one of
+ * those.
+ */
+describe('the wall never shares a pair with the most losses', () => {
+  const pair = (over: Partial<PairTotals>): PairTotals => ({
+    ...EMPTY_PAIR,
+    ...over,
+  });
+
+  it('hands the wall to the next pair down', () => {
+    const picks = pickChemistry({
+      'a|b': pair({ sameTeam: 60, lossesTogether: 21, cleanSheetsTogether: 20 }),
+      'c|d': pair({ sameTeam: 40, lossesTogether: 4, cleanSheetsTogether: 12 }),
+    });
+    const losses = picks.find((p) => p.kind === 'mostLosses');
+    const wall = picks.find((p) => p.kind === 'wall');
+
+    expect(losses?.pairs).toEqual(['a|b']);
+    expect(wall?.pairs).toEqual(['c|d']);
+    expect(wall?.value).toBe(12);
+  });
+
+  it('drops the wall entirely when nobody else clears the floor', () => {
+    const picks = pickChemistry({
+      'a|b': pair({ sameTeam: 60, lossesTogether: 21, cleanSheetsTogether: 20 }),
+      'c|d': pair({ sameTeam: 40, lossesTogether: 4, cleanSheetsTogether: 2 }),
+    });
+
+    expect(picks.find((p) => p.kind === 'mostLosses')?.pairs).toEqual(['a|b']);
+    // 2 is under CHEMISTRY_MIN.wall — a card with nothing honest to say is
+    // absent, never filled with the contradiction it was meant to avoid.
+    expect(picks.find((p) => p.kind === 'wall')).toBeUndefined();
+  });
+
+  it('still lets the WINNING duo also be the wall', () => {
+    // Winning while conceding nothing is one coherent story. The exclusion is
+    // between the wall and the LOSSES card, not a blanket ban on overlap.
+    const picks = pickChemistry({
+      'a|b': pair({ sameTeam: 40, winsTogether: 30, cleanSheetsTogether: 20 }),
+      'c|d': pair({ sameTeam: 40, lossesTogether: 21, cleanSheetsTogether: 6 }),
+    });
+
+    expect(picks.find((p) => p.kind === 'winningDuo')?.pairs).toEqual(['a|b']);
+    expect(picks.find((p) => p.kind === 'wall')?.pairs).toEqual(['a|b']);
+    expect(picks.find((p) => p.kind === 'mostLosses')?.pairs).toEqual(['c|d']);
+  });
+});

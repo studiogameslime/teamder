@@ -13,7 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { userService } from '@/services';
-import { type ChampionshipRow } from '@/utils/championship';
+import { compareByThen, type ChampionshipRow } from '@/utils/championship';
 import {
   toEfficiencyRow,
   sortEfficiency,
@@ -124,8 +124,8 @@ export function CommunityStatsTable({
     [players, attendedByUser],
   );
   // Sort by the chosen column (desc), THEN slice — so the top-N reflects the
-  // active sort. V8's sort is stable, so ties keep the incoming order (which is
-  // itself wins→goals ranked), giving sensible tie-breaking.
+  // active sort. Ties resolve through the shared club comparator rather than
+  // through the incoming order; see the note on the sort itself.
   /** Per-game rates, keyed by uid. Built for both modes so the efficiency
    *  sort can run without re-deriving on every comparison. */
   const efficiency = React.useMemo(() => {
@@ -174,9 +174,21 @@ export function CommunityStatsTable({
       for (const p of ranked) byUid[p.uid] = p;
       return order.map((e) => byUid[e.uid]).slice(0, limit);
     }
+    // Ties fall back to the CLUB ORDER, not to the order the rows arrived in.
+    //
+    // The old sort relied on V8's stability plus an assumption written in the
+    // comment above: that the incoming rows are "itself wins→goals ranked".
+    // True for a live slice, which comes straight from `buildChampionshipRows`
+    // — and false for an all-time one, which comes from `mergeAllTime` in
+    // map-insertion order. Two players level on wins could therefore sit one
+    // way round here and the other way round on the two-player screen, each
+    // telling the reader a different position for the same person.
+    //
+    // `compareByThen` keeps the tapped column as the primary key — the ranking
+    // METHOD is unchanged — and resolves equal values through the one shared
+    // comparator.
     return [...effPlayers]
-      .sort((a, b) => Number(b[sortKey as keyof ChampionshipRow] ?? 0) -
-                      Number(a[sortKey as keyof ChampionshipRow] ?? 0))
+      .sort(compareByThen(sortKey as keyof ChampionshipRow))
       .slice(0, limit);
   }, [effPlayers, ranked, efficiency, sortKey, limit, mode, showAttendance]);
 

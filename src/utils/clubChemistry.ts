@@ -319,12 +319,44 @@ export function pickChemistry(
    * face the crown and the wooden spoon reads as broken, and the owner said so.
    *
    * The wins card is decided first and keeps its pair; the losses card falls to
-   * the next pair down. Only these two are exclusive of each other — the rest
-   * measure different things and may legitimately overlap (the regulars are
-   * often also the deadly duo, and that is worth saying, not hiding).
+   * the next pair down. The rest measure different things and may legitimately
+   * overlap (the regulars are often also the deadly duo, and that is worth
+   * saying, not hiding).
+   *
+   * ⚠️ One more pair of cards cannot share a face, for a sharper reason:
+   * "צמד הגנת הברזל" and "הצמד עם הכי הרבה הפסדים". A clean sheet means the
+   * team conceded nothing, and you cannot LOSE a game you conceded nothing in
+   * — the worst a clean sheet can end is 0:0. Both numbers can still be true
+   * of one pair across enough mini-games, and on the real club they were: ניר
+   * תורג'מן + Eli Avidor, 21 losses together and 20 clean sheets together,
+   * stacked one above the other. The owner read exactly what any reader would
+   * — "זה לא סותר שהם מובילים בשניהם" (02.10). So the wall falls to the next
+   * pair down, the way the losses card already fell below the wins card.
+   *
+   * Which card yields is a choice: the loss card is picked first and keeps its
+   * pair, because "most losses" has no runner-up worth promoting — the point of
+   * it is the extreme — while "the wall" reads just as well one pair down.
+   *
+   * `AVOID` names, per card, the cards whose winners it may not repeat. A set
+   * per card rather than one shared pool: the winning duo and the wall SHOULD
+   * be allowed to be the same two people (winning while conceding nothing is
+   * one coherent story, not two contradictory ones), and a single `claimed`
+   * pool could not express that.
    */
-  const claimed = new Set<string>();
-  const EXCLUSIVE = new Set<ChemistryKind>(['winningDuo', 'mostLosses']);
+  const AVOID: Partial<Record<ChemistryKind, readonly ChemistryKind[]>> = {
+    mostLosses: ['winningDuo'],
+    wall: ['mostLosses'],
+  };
+  const claimedBy = new Map<ChemistryKind, ReadonlySet<string>>();
+  const blockedFor = (kind: ChemistryKind): ReadonlySet<string> | undefined => {
+    const avoid = AVOID[kind];
+    if (!avoid) return undefined;
+    const out = new Set<string>();
+    for (const other of avoid) {
+      for (const k of claimedBy.get(other) ?? []) out.add(k);
+    }
+    return out;
+  };
 
   for (const kind of [
     'winningDuo',
@@ -335,9 +367,9 @@ export function pickChemistry(
     'deadlyDuo',
     'rivalry',
   ] as const) {
-    const pick = topBy(pairs, kind, EXCLUSIVE.has(kind) ? claimed : undefined);
+    const pick = topBy(pairs, kind, blockedFor(kind));
     if (!pick) continue;
-    if (EXCLUSIVE.has(kind)) for (const k of pick.pairs) claimed.add(k);
+    claimedBy.set(kind, new Set(pick.pairs));
     if (kind === 'rivalry') {
       const p = pairs[pick.pairs[0]];
       pick.balance = { winsA: p.winsA, winsB: p.winsB, against: p.against };

@@ -1,11 +1,24 @@
-// DidYouKnowCard — a rotating "ידעת ש..." feature-discovery tip on the home
-// screen. Cycles through short benefit blurbs (auto-advance every few seconds),
-// with a dots indicator and a lightbulb. Tapping the card jumps to the feature
-// the current tip is about.
+// DidYouKnowCard — the rotating "ידעת ש..." tip at the foot of the home
+// screen. Short benefit blurbs that advance on their own, a dots indicator,
+// and a tap that jumps to the feature the current tip is about.
+//
+// This is the ONE rotating surface on the screen, and it is allowed to be:
+// the tips are a set with no order and no urgency, so cycling them costs the
+// reader nothing. Everything else on this screen states a single fact and
+// gets a single card.
+//
+// The rotation itself is unchanged — same interval, same order, same tips
+// from the screen. Only the surface around it was redrawn.
+//
+// A faded clipboard glyph was tried in the trailing corner as texture. On the
+// device it read as a stray white shape rather than decoration, so it is not
+// here: the card is the lamp, the words and the dots.
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -35,12 +48,24 @@ export function DidYouKnowCard({ tips }: { tips: Tip[] }) {
   return (
     <Pressable
       onPress={tip.onPress}
-      style={({ pressed }) => [styles.card, pressed && tip.onPress && { opacity: 0.9 }]}
-      accessibilityRole="button"
+      style={({ pressed }) => [styles.card, pressed && tip.onPress && { opacity: 0.92 }]}
+      accessibilityRole={tip.onPress ? 'button' : 'summary'}
+      accessibilityLabel={`${he.homeDidYouKnowTitle} ${tip.text}`}
     >
+      <LinearGradient
+        colors={['#EEF2FF', '#E7E9FE']}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+
+      {/* First child → visual RIGHT: the lamp, then the words, which is the
+          order a Hebrew reader takes them in. */}
       <View style={styles.iconDisc}>
-        <Ionicons name="bulb-outline" size={22} color="#6366F1" />
+        <Ionicons name="bulb" size={20} color="#6366F1" />
       </View>
+
       <View style={styles.textWrap}>
         <Text style={styles.title}>{he.homeDidYouKnowTitle}</Text>
         <Text style={styles.body} numberOfLines={2}>
@@ -49,10 +74,7 @@ export function DidYouKnowCard({ tips }: { tips: Tip[] }) {
         {tips.length > 1 ? (
           <View style={styles.dots}>
             {tips.map((_, i) => (
-              <View
-                key={i}
-                style={[styles.dot, i === idx && styles.dotActive]}
-              />
+              <View key={i} style={[styles.dot, i === idx && styles.dotActive]} />
             ))}
           </View>
         ) : null}
@@ -66,20 +88,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 18,
+    borderRadius: 20,
+    overflow: 'hidden',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#D9DDFB',
   },
   iconDisc: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#E0E7FF',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  textWrap: { flex: 1, gap: 2 },
+  textWrap: { flex: 1, minWidth: 0, gap: 2 },
   title: {
     ...typography.body,
     color: '#4338CA',
@@ -91,17 +115,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
   },
-  dots: {
-    flexDirection: 'row',
-    gap: 5,
-    marginTop: 6,
-    alignSelf: 'flex-start',
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#C7D2FE',
-  },
+  dots: { flexDirection: 'row', gap: 5, marginTop: 6, alignSelf: 'flex-start' },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#C7D2FE' },
   dotActive: { backgroundColor: '#6366F1', width: 16 },
 });

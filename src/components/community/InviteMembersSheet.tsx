@@ -49,7 +49,7 @@ export function InviteMembersSheet({ visible, clubName, onShare, onDismiss }: Pr
             accessibilityRole="button"
             accessibilityLabel={he.inviteSheetCta}
           >
-            {/* Row on the inner View — see HomeNextGameCard. */}
+            {/* Row on the inner View — see HomeRoundCards. */}
             <View style={styles.ctaRow}>
               <Text style={styles.ctaText}>{he.inviteSheetCta}</Text>
               <Ionicons name="share-social" size={18} color="#FFFFFF" />

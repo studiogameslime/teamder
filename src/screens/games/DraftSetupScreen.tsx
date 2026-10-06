@@ -552,7 +552,7 @@ function MethodCard({
 function BackToMethods({ onPress }: { onPress: () => void }) {
   return (
     <PressableScale onPress={onPress} style={styles.backRow}>
-      {/* Row on the inner View — see HomeNextGameCard. */}
+      {/* Row on the inner View — see HomeRoundCards. */}
       <View style={styles.backRowInner}>
         <Ionicons name="chevron-forward" size={18} color={colors.primary} />
         <Text style={styles.backText}>{he.draftMethodBack}</Text>

@@ -67,8 +67,13 @@ export function CoverImagePicker({
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
+                {/* Text FIRST, icon second. Under forceRTL the first child
+                    lands on the visual RIGHT, so writing the icon first put
+                    the cloud to the right of the label — the owner asked for
+                    it on the left, matching every other CTA in the app
+                    (Pulse, Eliran Tzabari). */}
                 <Text style={styles.uploadBtnText}>{he.coverPickerUpload}</Text>
+                <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
               </>
             )}
           </Pressable>

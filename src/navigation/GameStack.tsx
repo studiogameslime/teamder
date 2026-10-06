@@ -24,7 +24,6 @@ import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { EveningSummaryScreen } from '@/screens/games/EveningSummaryScreen';
 import { SeasonSummaryScreen } from '@/screens/profile/SeasonSummaryScreen';
-import { RoundSummaryScreen } from '@/screens/games/RoundSummaryScreen';
 import { MatchRoundsScreen } from '@/screens/games/MatchRoundsScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
@@ -85,16 +84,23 @@ export type GameStackParamList = {
     applyToSeries?: boolean;
   };
   /** Read-mostly view of one match. */
-  MatchDetails: { gameId: string };
+  // `initialTab` names which of the four tabs opens first. It exists because the
+  // statistics tab IS the evening's summary now — the standalone RoundSummary
+  // screen was removed — so anything that used to send a person to that summary
+  // sends them here instead. Absent → "מידע", which is what every existing
+  // caller passes and expects.
+  MatchDetails: { gameId: string; initialTab?: 'info' | 'games' | 'stats' | 'players' };
   /** Shareable personal "סיכום הערב" for a finished game. Registered in
    *  GameStack + ProfileStack + CommunitiesStack (shared screen). */
   EveningSummary: { gameId: string };
   /** `seasonId` omitted = the season currently running. */
   SeasonSummary: { groupId: string; seasonId?: string };
-  RoundSummary: { gameId: string };
   /** Per-game history of a finished round ("היסטוריית המשחקים"). Shared
    *  screen — registered in GameStack + ProfileStack + CommunitiesStack. */
-  MatchRounds: { gameId: string };
+  // `live` is set when the screen is opened from the live screen mid-evening.
+  // It changes the title and the empty-state copy and adds a refresh on
+  // focus; the list itself is the same committed round history either way.
+  MatchRounds: { gameId: string; live?: boolean };
   /** v2 — live-match screen takes the gameId of the game it manages. */
   LiveMatch: { gameId: string };
   /** Phase 9 — find invitable players for a specific game. */
@@ -179,7 +185,6 @@ export function GameStack() {
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
       <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
       <Stack.Screen name="SeasonSummary" component={SeasonSummaryScreen} />
-      <Stack.Screen name="RoundSummary" component={RoundSummaryScreen} />
       <Stack.Screen name="MatchRounds" component={MatchRoundsScreen} />
       <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />
       <Stack.Screen

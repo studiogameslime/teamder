@@ -45,6 +45,9 @@ import { col, docs, GroupJoinRequestDoc, type PublicUser } from '@/firebase/fire
 import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
 import { logError, logUnexpected, isExpectedDenial } from '@/services/errorLog';
+import { StaleSessionError } from '@/services/staleSession';
+
+export { StaleSessionError, isStaleSession } from '@/services/staleSession';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 let groupsById: Record<GroupId, Group> = {
@@ -91,10 +94,21 @@ export class GroupJoinRejectedError extends Error {
  * `subscribeForUser` and the two live-game queries failed in the same seconds
  * for the same reason.
  *
- * Returning empty rather than querying is not hiding it. The query can only be
- * denied, and the answer belongs to a session that no longer exists; a hydrate
- * for the NEW uid follows it. What this removes is a permission-denied in the
- * error inbox that reads like a rules bug and is not one.
+ * ⚠️ This guard used to RETURN AN EMPTY LIST, and that was worse than the
+ * denial it was avoiding. An empty list is not a neutral value here: it is a
+ * factual claim that this person belongs to no clubs. `groupStore.hydrate`
+ * read it as a successful answer, wiped the user's clubs out of the store and
+ * erased their selected club FROM DISK — the exact outcome the fifteen-line
+ * note in that file exists to prevent. The home screen then drew the
+ * new-user activation checklist at somebody with five clubs and 55 evenings
+ * behind him ("כאילו התאפס לו האפליקציה", 30.09), and `resumeJoinClub`, which
+ * asks the same store whether you are already a member, tried to re-join a
+ * club its owner was already in and was denied by the rules — correctly.
+ *
+ * So it THROWS. A hydrate for the new uid follows within the same tick, and
+ * until it lands the store keeps what it already had. The throw is a
+ * `StaleSessionError`, which every caller recognises and none logs: this is
+ * still not a bug, and it still must not reach the error inbox.
  */
 function isCurrentSession(userId: UserId): boolean {
   if (USE_MOCK_DATA) return true;
@@ -116,7 +130,12 @@ export const groupService = {
           (g.adminIds.includes(userId) || g.playerIds.includes(userId)),
       );
     }
-    if (!isCurrentSession(userId)) return [];
+    if (!isCurrentSession(userId)) {
+      throw new StaleSessionError(
+        userId,
+        getFirebase().auth.currentUser?.uid ?? '',
+      );
+    }
     const q = query(col.groups(), where('playerIds', 'array-contains', userId));
     let snap;
     try {
@@ -154,7 +173,14 @@ export const groupService = {
       return () => {};
     }
     if (!isCurrentSession(userId)) {
-      onChange([]);
+      // Say NOTHING. Emitting `[]` here told the store "this person has no
+      // clubs", which is a claim, not a shrug — see the note on
+      // `isCurrentSession`. The listener for the correct uid is attached a
+      // moment later by the same effect; until then the store keeps what it
+      // has.
+      onError?.(
+        new StaleSessionError(userId, getFirebase().auth.currentUser?.uid ?? ''),
+      );
       return () => {};
     }
     const q = query(col.groups(), where('playerIds', 'array-contains', userId));

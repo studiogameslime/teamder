@@ -5,6 +5,7 @@ import { notificationsService } from '@/services/notificationsService';
 import { storage } from '@/services/storage';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
+import { clearTrail } from '@/services/breadcrumbs';
 import { useGroupStore } from '@/store/groupStore';
 import { useGameStore } from '@/store/gameStore';
 import { useChatStore } from '@/store/chatStore';
@@ -337,6 +338,9 @@ export const useUserStore = create<UserStore>((set, get) => ({
     // chatStore held the previous account's unread counts — without this the
     // tab badge briefly leaked Account A's chat activity into Account B.
     useChatStore.getState().clear();
+    // The diagnostic trail is a record of what THIS person did. It must not
+    // ride along into the next account's first report.
+    clearTrail();
     // The pending action and its drafts are keyed to the DEVICE, not the uid.
     // Left in place they would resume the signed-out person's half-finished
     // club or availability under whoever signs in next.

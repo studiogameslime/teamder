@@ -45,6 +45,11 @@ import {
   typography,
 } from '@/theme';
 import { ChemistrySection } from '@/components/chemistry/ChemistrySection';
+import {
+  SeasonScopeBar,
+  buildScopeOptions,
+  type StatsScope,
+} from '@/components/stats/SeasonScopeBar';
 import { roundSummaryService } from '@/services/roundSummaryService';
 import { eveningRecordsOf, type EveningStat } from '@/utils/eveningRecords';
 import { ClubRecords } from '@/components/club/ClubRecords';
@@ -65,7 +70,10 @@ import type { GroupSeasons, User } from '@/types';
 type Params = RouteProp<CommunitiesStackParamList, 'CommunityStats'>;
 
 /** The running season, everything ever played, or one sealed season. */
-type Scope = { k: 'current' } | { k: 'all' } | { k: 'season'; id: string };
+// The union itself now lives with the control that reads it — the two-player
+// screen needs the same one, and two copies would be two things to keep in
+// step. Aliased rather than renamed so this file reads as it always has.
+type Scope = StatsScope;
 type Resolved = Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>;
 
 const MEDALS = ['#F4B73E', '#9AA4B2', '#CD7F32']; // gold / silver / bronze
@@ -768,43 +776,9 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
    * open list can never name the same scope differently — that was the point
    * of the old chips too, and it survives the change of shape.
    */
-  const scopeOptions: {
-    key: string;
-    text: string;
-    active: boolean;
-    select: () => void;
-  }[] = [
-    {
-      key: 'current',
-      // A club that switched seasons OFF has no running season: the switch-off
-      // closed it, and the live rows hold everything played since. The line
-      // says that, instead of naming a season that never ran.
-      text:
-        seasons && !seasons.enabled && (seasons.count ?? 0) > 0
-          ? he.communityStatsScopeSinceOff(seasons.count ?? 1)
-          : he.communityStatsScopeCurrent(seasons?.currentNo ?? 1),
-      active: scope.k === 'current',
-      select: () => setScope({ k: 'current' }),
-    },
-    // Only once there IS a closed season to add — offered to a club with none
-    // it was a second line identical to the first.
-    ...(pastSeasons.length > 0
-      ? [
-          {
-            key: 'all',
-            text: he.communityStatsScopeAllTime,
-            active: scope.k === 'all',
-            select: () => setScope({ k: 'all' as const }),
-          },
-        ]
-      : []),
-    ...pastSeasons.map((ps) => ({
-      key: ps.seasonId,
-      text: he.communityStatsScopePast(ps.no),
-      active: scope.k === 'season' && scope.id === ps.seasonId,
-      select: () => setScope({ k: 'season' as const, id: ps.seasonId }),
-    })),
-  ];
+  // Built by the shared helper, so the list this screen shows and the list the
+  // two-player screen shows are literally the same code.
+  const scopeOptions = buildScopeOptions(seasons, pastSeasons, scope);
 
   /**
    * "שיאי המועדון". Each record carries its OWN scope rule rather than the
@@ -964,64 +938,20 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   Tapping opens the list in place — the club can have any number
                   of past seasons, and a chip row for eight of them was a
                   horizontal scroll nobody found. */}
-              <Pressable
-                style={styles.scopeBar}
-                onPress={() => setScopeOpen((v) => !v)}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: scopeOpen }}
-                accessibilityLabel={he.communityStatsScopeLabel}
-              >
-                <Ionicons name="calendar" size={20} color={clubAccent.blue} />
-                <Text style={styles.scopeCurrent} numberOfLines={1}>
-                  {scopeTitle}
-                </Text>
-                <Ionicons
-                  name={scopeOpen ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={clubAccent.blue}
-                />
-              </Pressable>
-              {/* A real drop-list (owner, 28.09): the seasons and "כל הזמנים"
-                  ARE the list, one line each, and tapping the bar opens it.
-                  It used to expand into a horizontal chip row — a second,
-                  differently-shaped control appearing under the first, which
-                  read as tabs rather than as the bar's own options and put
-                  eight seasons behind a sideways scroll nobody found. */}
-              {scopeOpen ? (
-                <View style={styles.scopeMenu}>
-                  {scopeOptions.map((o, idx) => (
-                    <Pressable
-                      key={o.key}
-                      style={({ pressed }) => [
-                        styles.scopeItem,
-                        idx > 0 && styles.scopeItemDivider,
-                        pressed && styles.scopeItemPressed,
-                      ]}
-                      onPress={() => {
-                        o.select();
-                        setScopeOpen(false);
-                      }}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: o.active }}
-                    >
-                      <Text
-                        style={[
-                          styles.scopeItemText,
-                          o.active && styles.scopeItemTextOn,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {o.text}
-                      </Text>
-                      {/* The tick closes the row on the left under forceRTL,
-                          and only the chosen line carries one. */}
-                      {o.active ? (
-                        <Ionicons name="checkmark" size={18} color={clubAccent.blue} />
-                      ) : null}
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
+              {/* The shared control. Same bar, same drop-list, same option
+                  order as the two-player screen — one component, so the two
+                  can never disagree about what a scope is called. `title`
+                  keeps this screen's own closed-bar wording. */}
+              <SeasonScopeBar
+                options={scopeOptions}
+                open={scopeOpen}
+                onToggle={() => setScopeOpen((v) => !v)}
+                onSelect={(sc) => {
+                  setScope(sc);
+                  setScopeOpen(false);
+                }}
+                title={scopeTitle}
+              />
               </View>
               ) : null}
               {/* The table below belongs to ONE season. Said out loud, because
@@ -1694,20 +1624,22 @@ function FunDonutRow({
   // Known count, unknown rate — the middle state the first version missed.
   const countOnly = !measured && typeof count === 'number' && count > 0 && !!countText;
   return (
-    // Icon leads on the right, the sentence and its bar fill the middle, and
-    // the percentage closes the row on the left — the reference's shape. A
-    // donut for a share of a whole is legible; four donuts stacked in a column
-    // are four rings of different circumference saying nothing to each other,
-    // which is why the reference puts them on a common baseline.
+    // The NUMBER leads on the right, the sentence and its bar fill the middle,
+    // and the glyph closes the row on the left (owner, 02.10 — it read the
+    // other way round and the figure, which is the point of the row, was the
+    // last thing the eye reached). Under forceRTL the first child in source
+    // order is the RIGHTMOST one, so the percentage is written first here and
+    // the icon last. A donut for a share of a whole is legible; four donuts
+    // stacked in a column are four rings of different circumference saying
+    // nothing to each other, which is why they share a common baseline.
     <View style={[styles.funRow, !last && styles.funDivider]}>
-      <View
-        style={[
-          styles.funIcon,
-          { backgroundColor: measured ? tint + '1A' : clubSurface.divider },
-        ]}
-      >
-        <Ionicons name={icon} size={18} color={measured ? tint : '#94A3B8'} />
-      </View>
+      {measured ? (
+        <Text style={[styles.funPct, { color: tint }]}>{`${clamped}%`}</Text>
+      ) : countOnly ? (
+        <Text style={[styles.funPct, { color: tint }]}>{String(count)}</Text>
+      ) : (
+        <Text style={[styles.funPct, styles.funPctPending]}>—</Text>
+      )}
       <View style={styles.funBody}>
         <Text style={styles.funSentence} numberOfLines={2}>
           {countOnly && countText ? countText(count!) : text}
@@ -1729,13 +1661,14 @@ function FunDonutRow({
           </>
         )}
       </View>
-      {measured ? (
-        <Text style={[styles.funPct, { color: tint }]}>{`${clamped}%`}</Text>
-      ) : countOnly ? (
-        <Text style={[styles.funPct, { color: tint }]}>{String(count)}</Text>
-      ) : (
-        <Text style={[styles.funPct, styles.funPctPending]}>—</Text>
-      )}
+      <View
+        style={[
+          styles.funIcon,
+          { backgroundColor: measured ? tint + '1A' : clubSurface.divider },
+        ]}
+      >
+        <Ionicons name={icon} size={18} color={measured ? tint : '#94A3B8'} />
+      </View>
     </View>
   );
 }
@@ -1769,60 +1702,6 @@ const styles = StyleSheet.create({
   // The shell's hero is full-bleed; this scroll's content container is not.
   headerBleed: { marginHorizontal: -spacing.md, marginTop: -spacing.md },
 
-  // Label first in source order → rightmost under forceRTL, chips running
-  // leftwards from it.
-  scopeBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingHorizontal: spacing.md,
-    height: 46,
-    ...clubShadow,
-  },
-  scopeCurrent: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  // The open drop-list. Same surface, radius and shadow as the bar it hangs
-  // under, so the two read as one control rather than as a control and a
-  // separate row of tabs.
-  scopeMenu: {
-    marginTop: spacing.xs,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    overflow: 'hidden',
-    ...clubShadow,
-  },
-  scopeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 13,
-  },
-  scopeItemDivider: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: clubSurface.divider,
-  },
-  scopeItemPressed: { backgroundColor: 'rgba(15,23,42,0.03)' },
-  // writingDirection, not only alignment: these carry "מאז שעונה 2 הסתיימה"
-  // and "עונה 2 · עכשיו" — Hebrew mixing a digit and a "·" is exactly the
-  // shape that puts its punctuation on the wrong end when the base direction
-  // is left to autodetect.
-  scopeItemText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
-  },
-  scopeItemTextOn: { fontWeight: '800', color: clubAccent.blue },
   scopeNoteRow: {
     flexDirection: 'row',
     alignItems: 'center',

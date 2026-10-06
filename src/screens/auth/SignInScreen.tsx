@@ -200,8 +200,13 @@ export function SignInScreen() {
             <ActivityIndicator color={ACCENT} />
           ) : (
             <>
-              <Ionicons name="logo-google" size={20} color={ACCENT} />
+            {/* Label FIRST in source order → rightmost under forceRTL, the
+                provider mark closing the row on its left. Matches
+                ContextualAuthSheet, which was turned round on 26.09 while
+                this screen — the one most people actually meet — was not
+                (owner, 02.10). */}
               <Text style={styles.ctaText}>{he.signInGoogle}</Text>
+              <Ionicons name="logo-google" size={20} color={ACCENT} />
             </>
           )}
         </Pressable>
@@ -225,8 +230,8 @@ export function SignInScreen() {
               <ActivityIndicator color={ACCENT} />
             ) : (
               <>
-                <Ionicons name="logo-apple" size={20} color={ACCENT} />
                 <Text style={styles.ctaText}>{he.signInApple}</Text>
+                <Ionicons name="logo-apple" size={20} color={ACCENT} />
               </>
             )}
           </Pressable>
@@ -247,8 +252,8 @@ export function SignInScreen() {
           accessibilityRole="button"
           accessibilityLabel={he.signInEmail}
         >
-          <Ionicons name="mail-outline" size={20} color={ACCENT} />
           <Text style={styles.ctaText}>{he.signInEmail}</Text>
+          <Ionicons name="mail-outline" size={20} color={ACCENT} />
         </Pressable>
         {/* Browse without an account. Required so users can explore the app
             before committing to sign-up (App Store guideline 5.1.1(v)). */}

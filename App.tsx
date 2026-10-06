@@ -199,6 +199,7 @@ try {
   // expo-notifications native module not available — no-op.
 }
 import { NavigationContainer } from '@react-navigation/native';
+import { crumbNav, crumbTap } from '@/services/breadcrumbs';
 import * as Linking from 'expo-linking';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -245,7 +246,11 @@ import { BannerHost } from '@/components/Banner';
 import { adsService, AdDebugOverlay } from '@/services/adsService';
 import { MaintenanceGate, AnnouncementBanner } from '@/components/RemoteGates';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { checkForUpdate, type UpdateKind } from '@/services/updateService';
+import {
+  checkForUpdate,
+  setUpdateGateOpen,
+  type UpdateKind,
+} from '@/services/updateService';
 import { useWatchSync } from '@/services/watchSyncService';
 import { UpdateModal } from '@/components/UpdateModal';
 import { WhatsNewGate } from '@/components/WhatsNewGate';
@@ -349,6 +354,12 @@ export default function App() {
   // App-update prompt. Single source of truth: a plain enum kept
   // here at the App root.
   const [updateKind, setUpdateKind] = useState<UpdateKind>('none');
+  // Publish the gate's visibility so a screen does not stack its own modal on
+  // top of it. See the note on `setUpdateGateOpen`.
+  useEffect(() => {
+    setUpdateGateOpen(updateKind !== 'none');
+    return () => setUpdateGateOpen(false);
+  }, [updateKind]);
   // Guard so the post-splash check fires exactly once even if the
   // splash effect re-runs.
   const updateCheckedRef = useRef(false);
@@ -1056,6 +1067,7 @@ export default function App() {
             : null;
           if (r) {
             currentScreenRef.current = r.name;
+            crumbNav(r.name);
             logEvent(AnalyticsEvent.ScreenView, { screen: r.name });
           }
         }}
@@ -1064,6 +1076,7 @@ export default function App() {
           const next = navigationRef.getCurrentRoute()?.name;
           if (next && next !== currentScreenRef.current) {
             currentScreenRef.current = next;
+            crumbNav(next);
             logEvent(AnalyticsEvent.ScreenView, { screen: next });
           }
         }}
@@ -1075,7 +1088,22 @@ export default function App() {
               2. Text.defaultProps above — applies textAlign:'right' +
                  writingDirection:'rtl' to every Text in the tree
             That combination is bulletproof across iOS + Android. */}
-        <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <View
+          style={{ flex: 1, backgroundColor: colors.bg }}
+          // Every touch in the app passes through here on its way down.
+          //
+          // `onStartShouldSetResponderCapture` is the ONE hook that sees a
+          // touch before any descendant claims it, and returning false leaves
+          // the responder negotiation exactly as it was — nothing about the
+          // app's behaviour changes, we simply get to watch. That is what
+          // makes a DEAD tap visible: a press that no button takes produces no
+          // analytics event, no navigation and no error, so until now it left
+          // no trace anywhere. Now it leaves a `tap` with nothing after it.
+          onStartShouldSetResponderCapture={(e) => {
+            crumbTap(e.nativeEvent.pageX, e.nativeEvent.pageY);
+            return false;
+          }}
+        >
           <MockModeBanner />
           <AnnouncementBanner />
           <View style={{ flex: 1, backgroundColor: colors.bg }}>

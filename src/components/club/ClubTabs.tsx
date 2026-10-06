@@ -1,4 +1,5 @@
-// The club screen's three tabs: מידע · שחקנים · סטטיסטיקות.
+// The tab bar shared by the club screen (מידע · שחקנים · סטטיסטיקות) and the
+// match screen (מידע · משחקים · סטטיסטיקות · שחקנים).
 //
 // A locked tab is still a TAB — visible, in place, and tappable. A visitor who
 // cannot see the roster should learn that the roster exists and what unlocks
@@ -15,26 +16,58 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RTL_LABEL_ALIGN, clubAccent, colors } from '@/theme';
 
+/** The club screen's three. The bar itself is generic — see `ClubTabsProps`. */
 export type ClubTabKey = 'info' | 'players' | 'stats';
 
-export interface ClubTab {
-  key: ClubTabKey;
+export interface ClubTab<K extends string = ClubTabKey> {
+  key: K;
   label: string;
   /** Renders a lock and routes the press to `onLockedPress`. */
   locked?: boolean;
 }
 
-export interface ClubTabsProps {
-  tabs: ClubTab[];
-  active: ClubTabKey;
-  onChange: (key: ClubTabKey) => void;
+/**
+ * Generic over the key so the same bar serves the club's three tabs and the
+ * match screen's four. One bar, one set of measurements, one RTL behaviour —
+ * a second copy would drift the moment either screen was touched.
+ */
+export interface ClubTabsProps<K extends string = ClubTabKey> {
+  tabs: ClubTab<K>[];
+  active: K;
+  onChange: (key: K) => void;
   /** What a locked tab does instead of switching. */
-  onLockedPress?: (key: ClubTabKey) => void;
+  onLockedPress?: (key: K) => void;
+  /**
+   * Drop the bar's own -22 overlap and let the CALLER own the join.
+   *
+   * The overlap exists so the strip's rounded top rides up over the bottom of
+   * the hero photo. On the club screen the bar is an ordinary child and owning
+   * the offset here is right. On the match screen it is a STICKY child, and a
+   * box whose content starts 22pt above its own top loses those 22pt twice
+   * over: the platform pins the box, so the strip's top is clipped off the
+   * viewport, and on Android a child drawn outside its parent's bounds is not
+   * hit-tested at all — "אי אפשר לעבור בין טאבים" once the hero has scrolled
+   * away. The match screen passes `flush` and puts the same -22 on its hero's
+   * bottom margin instead, which produces an identical join out of a box that
+   * contains its own content.
+   */
+  flush?: boolean;
 }
 
-export function ClubTabs({ tabs, active, onChange, onLockedPress }: ClubTabsProps) {
+export function ClubTabs<K extends string = ClubTabKey>({
+  tabs,
+  active,
+  onChange,
+  onLockedPress,
+  flush = false,
+}: ClubTabsProps<K>) {
+  // Four tabs split the same width three used to, and "סטטיסטיקות" is ten
+  // characters — at the three-tab size it truncates on a narrow phone. The bar
+  // steps the type down instead of letting a label lose its last letters, and
+  // `adjustsFontSizeToFit` absorbs whatever the step does not.
+  const dense = tabs.length > 3;
   return (
-    <View style={styles.bar}>
+    <View style={[styles.bar, flush && styles.barFlush]}>
       {tabs.map((t) => {
         const isActive = t.key === active && !t.locked;
         return (
@@ -61,10 +94,13 @@ export function ClubTabs({ tabs, active, onChange, onLockedPress }: ClubTabsProp
             <Text
               style={[
                 styles.label,
+                dense && styles.labelDense,
                 isActive && styles.labelActive,
                 t.locked && styles.labelLocked,
               ]}
               numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
             >
               {t.label}
             </Text>
@@ -89,13 +125,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.divider,
   },
+  // `flush` — the caller owns the overlap; see the prop's note.
+  barFlush: { marginTop: 0 },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 4,
     height: 52,
+    paddingHorizontal: 2,
     // The active underline sits ON the strip's bottom edge, so the tab owns
     // the full height and paints the bar itself.
     borderBottomWidth: 3,
@@ -112,6 +151,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
   },
+  labelDense: { fontSize: 14 },
   labelActive: { color: clubAccent.blue, fontWeight: '800' },
   labelLocked: { opacity: 0.6 },
 });

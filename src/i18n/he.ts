@@ -13,6 +13,46 @@
 // "1 מחזורים יחד" under השותף הקבוע, for a pair who have played one evening
 // together. The same shape sat in the chemistry card, the round summary, the
 // club units and the assistant's weekly line.
+/**
+ * Wrap a PERSON'S NAME so the Unicode bidi algorithm treats it as one opaque
+ * run — First-Strong Isolate (U+2068) … Pop Directional Isolate (U+2069).
+ *
+ * Without it, a Latin name dropped into a Hebrew sentence drags the neutral
+ * characters around it (the "·" separators, the "—", the digits) to the wrong
+ * side, and — worse — a HEBREW name standing between two Latin ones gets its
+ * own words separated and reordered. Reported by a user on 01.10 against the
+ * round summary: "Lioz Madar · Eliran Tzabari · שלומי צדוק · Haim Yaakov"
+ * rendered with "שלומי" and "צדוק" on opposite ends of a line break.
+ *
+ * An isolate, not an LRM: a mark only nudges the boundary, while an isolate
+ * says "whatever is inside here has no bearing on the direction outside",
+ * which is the actual claim. Use it on every interpolated name; `\u200E`
+ * stays the right tool for a NUMBER that must keep its sign or its slash
+ * ("+2", "16/15").
+ */
+export const iso = (name: string): string => `\u2068${name}\u2069`;
+
+/**
+ * A Hebrew one-letter prefix (ו, ל, ב, מ…) in front of a NAME.
+ *
+ * Hebrew glues these straight onto the next word — "לדני", "ודני". That is
+ * correct for a Hebrew word and wrong for a Latin one: the letter ends up
+ * welded to the previous word instead, and "מתן לוי ו⁨Eliran⁩" renders as
+ * "מתן לויו Eliran" — the vav reads as part of "לוי". Hebrew typography puts
+ * a maqaf there, "ו-Eliran", and that is what this adds.
+ *
+ * Seen on the device during the bidi pass on the two-player screen, on both
+ * the pair subtitle and the assist rows. The isolate was already doing its
+ * job — the words were in the right ORDER — and the join was still unreadable.
+ *
+ * The test is on the first real character, so a name like "  Eliran" or
+ * "(Eliran)" is judged by the letter rather than by the bracket.
+ */
+export const prefixName = (prefix: string, name: string): string =>
+  /^[^֐-׿\s\W]|^[A-Za-z]/.test(name.trim())
+    ? `${prefix}-${iso(name)}`
+    : `${prefix}${iso(name)}`;
+
 const count = (n: number, one: string, many: string) =>
   n === 1 ? one : `${n} ${many}`;
 
@@ -455,6 +495,20 @@ export const he = {
   rotationEndRoundConfirmOk: 'סיים משחק',
   /** `team` arrives WITHOUT its leading ה — see teamNameAfterPreposition. */
   fillPickerTitle: (team: string) => `השלמת שחקנים ל${team}`,
+  /**
+   * The result of the round that just ended, stated ON the picker.
+   *
+   * The round's stats are committed BEFORE this sheet opens — that is what
+   * makes them safe — and committing zeroes the live score, so the board
+   * behind the sheet reads 0:0 for a game that finished 2:0. From the admin's
+   * side it looks exactly like the result being thrown away mid-substitution:
+   * "גם מאפס את התוצאה בזמן ההחלפה במסך מאחורה וזה גורם לחשוב שהתוצאה לא
+   * נשמרה" (01.10). Saying the score and saying it was saved costs one line.
+   */
+  fillPickerSavedResult: (winner: string, a: number, b: number) =>
+    `המשחק נגמר · ‎${a}–${b} · ${winner} ניצחו. התוצאה נשמרה`,
+  fillPickerSavedResultTie: (a: number, b: number) =>
+    `המשחק נגמר · ‎${a}–${b} · התוצאה נשמרה`,
   fillPickerSelectCount: (chosen: number, required: number) =>
     `בחר ${required} שחקנים להשלמה — נבחרו ${chosen}/${required}`,
   fillPickerConfirm: 'אישור',
@@ -704,6 +758,11 @@ export const he = {
   matchDetailsRoundsSub: 'מי נגד מי · גולים · בישולים · פנדלים',
   matchRoundsCount: (n: number) =>
     n === 1 ? 'משחק אחד' : `${n} משחקים`,
+  // With a colour filter on, the pill must count what is on SCREEN, not what
+  // the evening holds — "3 משחקים" over a single card is simply wrong. It says
+  // both, so narrowing never looks like data went missing.
+  matchRoundsCountFiltered: (shown: number, total: number) =>
+    `${shown} מתוך ${total} משחקים`,
   matchRoundsRoundN: (n: number) => `משחק ${n}`,
   matchRoundsTeamA: 'קבוצה א׳',
   matchRoundsTeamB: 'קבוצה ב׳',
@@ -723,6 +782,14 @@ export const he = {
   matchRoundsGuest: 'אורח',
   matchRoundsEmptyTitle: 'אין היסטוריית משחקים',
   matchRoundsEmptySub: 'למחזור הזה לא נשמרו פרטי משחקים.',
+  // Opened from the LIVE screen, mid-evening. The list being empty here is a
+  // normal moment, not a gap in the record — the first mini-game simply has
+  // not been committed yet, and it will land in this list when it is.
+  matchRoundsLiveTitle: 'משחקים',
+  matchRoundsLiveEmptyTitle: 'עוד אין משחקים שהסתיימו',
+  matchRoundsLiveEmptySub: 'כשהמשחק הראשון יסתיים, הוא יופיע כאן.',
+  /** The live menu's way in. */
+  liveMenuRounds: 'משחקים',
 
   // Evening summary card + sharing
   summaryTitle: 'סיכום המחזור',
@@ -747,6 +814,80 @@ export const he = {
   // ── Player comparison (head-to-head) ──
   compareTitle: 'השוואה',
   compareCta: 'השווה אליי',
+
+  // ── The unified two-player screen ("יחד" / "ראש בראש") ────────────────
+  //
+  // ⚠️ VOCABULARY. The app keeps two words that share nothing, and this screen
+  // is where they used to collide: a **מחזור** is one evening, a **משחקון** is
+  // one mini-game inside it. The old pair card printed "נרשמתם יחד 41"
+  // (evenings) directly above "באותה קבוצה 38 משחקים" (mini-games) with no
+  // unit on either, which is two different scales stacked vertically. Every
+  // label below carries its unit.
+  pairTabTogether: 'יחד',
+  pairTabH2H: 'ראש בראש',
+  pairTogetherTitle: 'כששיחקתם באותה קבוצה',
+  // ⚠️ These take RAW names. Every pair string isolates (and maqafs) its own
+  // names — one rule, in one place. Callers that pre-wrapped them produced a
+  // DOUBLE isolate, and worse: `prefixName` tests the name's first character
+  // to decide on the maqaf, and a pre-wrapped name begins with U+2068, so the
+  // test failed and the hyphen never appeared. Seen on the device.
+  pairTogetherSub: (a: string, b: string) =>
+    `הנתונים כש${iso(a)} ${prefixName('ו', b)} היו באותו הרכב`,
+  pairRoundsTogether: 'משחקים',
+  pairWinsTogether: 'ניצחונות',
+  pairLossesTogether: 'הפסדים',
+  pairTiesTogetherNote: (n: number) =>
+    n === 1 ? 'ועוד משחקון אחד שהסתיים בתיקו' : `ועוד ${n} משחקונים שהסתיימו בתיקו`,
+  pairTogetherFormTitle: 'איך הלך לכם יחד',
+  pairWinPctTogether: 'אחוז ניצחון',
+  // Said instead of "0%" when nothing was decided. 0% is a claim about a pair
+  // that lost; a pair who have only drawn have not made it.
+  pairWinPctUndecided: 'עוד לא הוכרע משחקון שבו שיחקתם יחד',
+  pairCleanSheetsTogether: 'שערים נקיים',
+  pairCleanSheetsValue: (n: number) =>
+    n === 1 ? 'שער נקי אחד' : `${n} שערים נקיים`,
+  // The unit only — the count is the big number beside it, and printing it
+  // twice in one card is the number saying nothing the second time.
+  pairAssistsUnit: (n: number) => (n === 1 ? 'בישול' : 'בישולים'),
+  pairCleanSheetPct: (pct: number) => `${pct}% מהמשחקונים שלכם`,
+  pairAssistsTitle: 'בישולים ישירים ביניכם',
+  pairAssistDirection: (from: string, to: string) =>
+    `${iso(from)} בישל ${prefixName('ל', to)}`,
+  pairTogetherEmpty: 'עדיין לא שובצתם לאותה קבוצה בתקופה הזו',
+  pairTogetherEmptyButRivals: 'נפגשתם כיריבים, אבל עוד לא שיחקתם יחד.',
+
+  pairH2HTitle: 'כששיחקתם אחד נגד השני',
+  pairH2HEmpty: 'עדיין לא שיחקתם אחד נגד השני בתקופה הזו',
+  pairRoundsAgainst: 'משחקים',
+  // The scoreboard says the two numbers; this line says what they are.
+  pairH2HWinsCaption: 'ניצחונות במפגשים ביניכם',
+  pairRoundsAgainstChip: (n: number) =>
+    n === 1 ? 'משחק אחד' : `${n} משחקים`,
+  pairTiesAgainstChip: (n: number) => (n === 1 ? 'תיקו אחד' : `${n} תיקו`),
+  pairRankLabelShort: 'מיקום בטבלה',
+  pairRankOf: (total: number) => `מתוך ${total}`,
+  pairWinsOf: (name: string) => `ניצחונות ${iso(name)}`,
+  pairSeriesLeader: (name: string) => `${iso(name)} מוביל בסדרה`,
+  pairSeriesLevel: 'הסדרה ביניכם שקולה',
+  pairCompareTitle: 'השוואה במועדון',
+  // Who is ahead across the club categories. The share card has said this
+  // since day one; the SCREEN did not, and a reader had to tally eleven rows
+  // by eye to answer the first question they came with (Pulse, מתן לוי).
+  pairVerdictYou: (n: number, total: number) => `אתה מוביל ב-${n} מתוך ${total} קטגוריות`,
+  pairVerdictThem: (name: string, n: number, total: number) =>
+    `${iso(name)} מוביל ב-${n} מתוך ${total} קטגוריות`,
+  pairVerdictTie: (n: number, total: number) =>
+    `שקול — כל אחד מוביל ב-${n} מתוך ${total}`,
+  // Said instead of a column of zeros. A player with no row in the slice did
+  // not play it — which is a different statement from playing it badly.
+  pairDidNotPlayScope: (name: string) => `${iso(name)} לא שיחק בתקופה הזו`,
+  // The window the club's pair counters cover. Without it "26 משחקונים יחד"
+  // reads as a lifetime, and for every club in the app it is not one.
+  pairSince: (date: string) => `נתוני הצמד נאספים במועדון מאז ${date}`,
+  // The compact entry card on the player card, replacing the full pair
+  // section that used to duplicate this screen.
+  pairEntryTitle: (name: string) => `אתה ${prefixName('ו', name)}`,
+  pairEntrySub: 'הנתונים שלכם יחד, והמפגשים ראש בראש',
   compareShareCta: 'שתף השוואה ⚡',
   compareShareTitle: 'שיתוף השוואת שחקנים',
   compareUnavailable: 'אין מספיק נתונים להשוואה עדיין',
@@ -1033,7 +1174,7 @@ export const he = {
   chemistryBalancedLine: (a: number, b: number) => `${a}–${b}`,
   chemistryWinRateTogether: 'אחוזי ניצחון יחד',
   chemistryLossesTogether: (n: number) => count(n, 'הפסד אחד יחד', 'הפסדים יחד'),
-  chemistryTied: 'שוויון',
+  chemistryTied: 'שוויון — עוד צמדים עם אותו מספר',
   // הבסיס ההיסטורי — כל מספר בכרטיס הזוג נמדד מהתאריך הזה, ולא מעורבב עם
   // נתונים מוקדמים יותר שאין להם אותה רזולוציה.
   /** ⚠️ No longer rendered on the club screen — the owner asked for the
@@ -1098,14 +1239,14 @@ export const he = {
     `ערב קשה ל${teamAfterL} — ${losses} הפסדים`,
   roundSummaryPair: 'הצמד של הערב',
   roundSummaryPairText: (a: string, b: string, goals: number) =>
-    `${a} ו${b} — ${goals} שערים נוצרו ביניהם`,
+    `${iso(a)} ו${iso(b)} — ${goals} שערים נוצרו ביניהם`,
   // Same bidi trap as pairCardAssistLeg — words, not arrows.
   roundSummaryPairLeg: (from: string, to: string, n: number) =>
-    `${from} בישל ל${to} · ${n}`,
+    `${iso(from)} בישל ל${iso(to)} · ${n}`,
   // הבסיס שממנו נמדדים השיאים — כדי לא לטעון "אי פעם" על היסטוריה חלקית.
   roundSummaryBasis: (date: string) => `שיאים נמדדים מאז ${date}`,
   summaryNamesAndMore: (a: string, b: string, more: number) =>
-    `${a}, ${b} ועוד ${more}`,
+    `${iso(a)}, ${iso(b)} ועוד ${more}`,
   summaryMetricGoals: 'שערים',
   summaryMetricAssists: 'בישולים',
   summaryMetricInvolvement: 'מעורבויות בשער',
@@ -1116,13 +1257,13 @@ export const he = {
   summaryMetricShootouts: 'הכרעות פנדלים',
   summaryMetricTies: 'תיקו',
   summaryRecordNew: (who: string, value: number, metric: string, prev: number) =>
-    `שיא מועדון חדש · ${who} — ${value} ${metric} (הקודם: ${prev})`,
+    `שיא מועדון חדש · ${iso(who)} — ${value} ${metric} (הקודם: ${prev})`,
   summaryRecordTied: (who: string, value: number, metric: string) =>
-    `השוואת שיא מועדון · ${who} — ${value} ${metric}`,
+    `השוואת שיא מועדון · ${iso(who)} — ${value} ${metric}`,
   summaryPersonalNew: (who: string, value: number, metric: string) =>
-    `שיא אישי · ${who} — ${value} ${metric}`,
+    `שיא אישי · ${iso(who)} — ${value} ${metric}`,
   summaryPersonalTied: (who: string, value: number, metric: string) =>
-    `השוואת שיא אישי · ${who} — ${value} ${metric}`,
+    `השוואת שיא אישי · ${iso(who)} — ${value} ${metric}`,
   summaryClubMilestone: (threshold: number, metric: string) =>
     `${threshold} ${metric} למועדון`,
   summaryPlayerMilestone: (who: string, threshold: number, metric: string) =>
@@ -1635,8 +1776,10 @@ export const he = {
   communityNextGameTomorrow: 'מחר',
   communityNextGameInDays: (n: number) => `עוד ${n} ימים`,
   communityNextGameLocked: 'ההרשמה תיפתח בקרוב',
-  communityNextGameLockedBody: (when: string) =>
-    `ההרשמה תיפתח ב-${when}.`,
+  // No "ב-" here. The preposition belongs to a DATE, and `when` may be
+  // "היום 20:00" or "מחר 20:00" — "ההרשמה תיפתח ב-היום" is not Hebrew, it
+  // reads as a typo. The caller adds the prefix only when it is a date.
+  communityNextGameLockedBody: (when: string) => `ההרשמה תיפתח ${when}.`,
   communityNextGameCreateRecurring: 'תזמן מחזור שבועי למועדון',
   // Secondary "more upcoming" row shown under the primary NextGameCard
   // when the community has additional scheduled games queued up.
@@ -1647,7 +1790,7 @@ export const he = {
   // the admin (e.g. "המגרש החליף לדשא 2", "תביאו חולצות שחורות").
   // Visible to everyone when set; admin sees a + tile to add when not.
   pinnedMessageEmptyAdminCta: 'הוסף הודעה לשחקנים',
-  pinnedMessageEmptyAdminHint: 'רק אתה רואה את הריבוע הזה',
+  pinnedMessageEmptyAdminHint: 'כולם יראו את ההודעה רק לאחר שיהיה פה טקסט',
   pinnedMessageHeader: 'הודעת מנהל',
   pinnedMessageEditTitle: 'הודעת מנהל',
   pinnedMessageEditPlaceholder:
@@ -2117,12 +2260,111 @@ export const he = {
   homeMarkAvailability: 'סמן זמינות',
   // ── Home dashboard (redesign) ──
   homeBrandName: 'Teamder',
+  // The hero greeting. The name goes through `iso` because it is very often
+  // Latin ("Eliran") sitting inside a Hebrew sentence: without the isolate the
+  // comma and the wave migrate to the wrong side of it. The wave is written
+  // AFTER the isolated name and lands where a reader of Hebrew expects the end
+  // of the line.
+  homeHeroGreeting: (greeting: string, name: string) =>
+    name ? `${greeting}, ${iso(name)} 👋` : `${greeting} 👋`,
+  homeHeroSub: 'מוכן למשחק הבא?',
+  // The roster preview on the next-game card. Avatars are shown only for
+  // players already in memory; this line is what the card says either way.
+  homeRegisteredCount: (n: number) =>
+    n === 1 ? 'נרשם אחד' : `${n} נרשמו`,
+  /**
+   * "+7" — the players the avatar stack had no room for.
+   *
+   * Wrapped in an explicit LTR isolate (LRI…PDI). Left bare in a Hebrew
+   * paragraph the plus is a weak character and reorders to the far side of
+   * the digit: the pill rendered "7+". The isolate pins the whole token to
+   * one direction so it reads the way the number is written.
+   */
+  homeRosterMore: (n: number) => `\u2066+${n}\u2069`,
   homeNextGameTitle: 'המחזור הקרוב שלך',
   homeGameTypeRegular: 'מחזור רגיל',
   homeGameDetailsCta: 'לפרטי המחזור',
   homeRosterFull: 'ההרכב מלא',
   homeSpotsLeft: (n: number) =>
     n === 0 ? '0 מקומות פנויים' : n === 1 ? 'מקום פנוי אחד' : `${n} מקומות פנויים`,
+  // ── The round area: one card, nine states ──
+  // Every line here is written for ONE state. The card never assembles a
+  // sentence out of fragments, because the fragments would have to be vague
+  // enough to fit every state and would end up saying nothing in all of them.
+  roundBadgeSpots: (n: number) =>
+    n === 1 ? 'מקום אחד נותר' : `${n} מקומות נותרו`,
+  roundBadgeSpotsOpen: 'מקומות פנויים',
+  roundBadgeRegistered: 'אתה רשום',
+  roundBadgeWaitlist: 'רשימת המתנה',
+  roundBadgePending: 'ממתין לאישור',
+  roundBadgeOpensSoon: 'טרם נפתח',
+  roundBadgeFull: 'המחזור מלא',
+  roundBadgeClosed: 'ההרשמה נסגרה',
+  roundBadgeToday: 'היום משחקים!',
+  roundBadgeLive: 'משחקים עכשיו',
+  roundBadgeCompleted: 'הסתיים',
+  // The occupancy line. Printed only when the game sets a maximum — without
+  // one, "12/0 נרשמו" is worse than saying nothing.
+  roundRegisteredOf: (n: number, cap: number) => `${n}/${cap} נרשמו`,
+  roundRegisteredPlain: (n: number) => (n === 1 ? 'נרשם אחד' : `${n} נרשמו`),
+  // Status panels — the sentence under the meta, one per state.
+  roundYouAreIn: 'אתה רשום למחזור',
+  roundYouAreInSub: 'מחכים לך על המגרש!',
+  roundWaitlistPlace: (n: number) => `מקום ${n} ברשימת המתנה`,
+  roundWaitlistNoPlace: 'אתה ברשימת המתנה',
+  roundWaitlistSub: 'אם יתפנה מקום, תקבל הודעה',
+  roundPendingTitle: 'בקשת ההצטרפות נשלחה',
+  roundPendingSub: 'מחכה לאישור מנהל המועדון',
+  roundOpensIn: 'ההרשמה תיפתח',
+  /** The whole sentence on ONE line — "ההרשמה תיפתח בעוד יום ו-19 שעות". */
+  roundOpensInLine: (when: string) => `ההרשמה תיפתח ${when}`,
+  roundOpensInDays: (d: number, h: number) =>
+    `בעוד ${d === 1 ? 'יום' : `${d} ימים`}${h > 0 ? ` ו-${h} שעות` : ''}`,
+  roundOpensInHours: (h: number, m: number) =>
+    h > 0 ? `בעוד ${h} שעות ו-${m} דקות` : `בעוד ${m} דקות`,
+  roundOpensAtDay: (dayDate: string, time: string) => `${dayDate} בשעה ${time}`,
+  roundOpeningNow: 'נפתחת עכשיו',
+  roundFullTitle: 'אין מקומות פנויים',
+  roundFullWaitlistCount: (n: number) =>
+    n === 1 ? 'שחקן אחד ברשימת המתנה' : `${n} שחקנים ברשימת המתנה`,
+  roundFullNoWaitlist: 'אפשר להצטרף לרשימת המתנה',
+  roundClosedTitle: 'ההרשמה נסגרה',
+  roundClosedSubOut: 'לא ניתן להצטרף בשלב זה',
+  // Countdown to kickoff. `mmss` is formatted by the caller from the same
+  // clock the card already renders with; no timer runs in the background.
+  // Said in words, not as a clock. "מתחילים בעוד 0:11" reads as a scoreline
+  // — a reader has to work out that the first digit is hours (Pulse, Eliran
+  // Tzabari). Minutes alone under an hour; hours and minutes above it.
+  roundStartsInMinutes: (m: number) =>
+    m <= 1 ? 'מתחילים עוד רגע' : `מתחילים בעוד ${m} דקות`,
+  roundStartsInHours: (h: number, m: number) => {
+    const hours = h === 1 ? 'שעה' : h === 2 ? 'שעתיים' : `${h} שעות`;
+    if (m === 0) return `מתחילים בעוד ${hours}`;
+    return `מתחילים בעוד ${hours} ו-${m} דקות`;
+  },
+  roundStartsInSub: 'כולם מחכים לך',
+  roundLiveTitle: 'המחזור מתקיים עכשיו',
+  roundLiveSub: 'המחזור כבר רץ',
+  // CTAs. One primary per state.
+  roundCtaJoin: 'הצטרף למחזור',
+  roundCtaWaitlist: 'הצטרף לרשימת המתנה',
+  roundCtaDetails: 'לפרטי המחזור',
+  roundCtaLive: 'למחזור',
+  roundCtaSummary: 'לסיכום המחזור',
+  roundCtaShare: 'שתף עם חבר',
+  // The round that just finished.
+  // The organiser's pinned note for this evening, surfaced on the home card
+  // so a player who is coming reads it without opening the game.
+  roundCoachNote: 'הודעה ממנהל המחזור',
+  roundCompletedTitle: 'המחזור האחרון הסתיים',
+  roundMetricRounds: 'משחקים',
+  roundMetricPlayers: 'שחקנים',
+  // No upcoming round — an invitation, not a blank.
+  roundEmptyTitle: 'אין לך מחזור קרוב',
+  roundEmptySub: 'בא לך לשחק השבוע?',
+  roundEmptyBody: 'אפשר לפתוח מחזור חדש או להצטרף למחזור קיים',
+  roundEmptyCtaOpen: 'פתח מחזור חדש',
+  roundEmptyCtaFind: 'מצא מחזור להצטרף',
   homeNoGameTitle: 'אין לך מחזור קרוב',
   homeNoGameBody: 'מצא מחזור פתוח או פתח מחזור חדש',
   homeNoGameCta: 'מצא מחזור',
@@ -2144,11 +2386,25 @@ export const he = {
   homeOpenCta: 'לפרטים והרשמה',
   // Recommended day to open a game (most available players nearby).
   homeRecommendedTitle: 'היום המומלץ לפתיחת מחזור',
+  // Same sentence as a LABEL, above the day it names. The colon is what makes
+  // the two lines one sentence instead of a heading and an orphan.
+  homeRecommendedTitleColon: 'היום המומלץ לפתיחת מחזור:',
   homeRecommendedLine: (day: string, n: number) => `יום ${day}׳ • ${n} פנויים`,
-  // Three action tiles.
+  // The unified availability panel: the week's counts and the opening
+  // recommendation in one card, so the recommended day is stated once.
+  homeAvailPanelTitle: 'זמינות השבוע והמלצת פתיחה',
+  homeAvailPanelSub: 'מבוסס על זמינות השחקנים',
+  homeAvailRecommendedBadge: 'מומלץ',
+  // Three action tiles. The second line says what the tile DOES — the titles
+  // are verbs and a verb alone leaves "סמן זמינות" meaning nothing to someone
+  // who has never marked any. Short, because three tiles share a phone's
+  // width; each is allowed two lines and shrinks before it truncates.
   homeActionOpenTitle: 'פתח מחזור',
+  homeActionOpenSub: 'ארגן מחזור חדש',
   homeActionAvailTitle: 'סמן זמינות',
+  homeActionAvailSub: 'עדכן את הימים שלך',
   homeActionJoinTitle: 'הצטרף למחזור',
+  homeActionJoinSub: 'מצא מחזורים נוספים',
   // "Available by (evening) window" — per-day evening counts.
   homeWindowsTitle: 'פנויים לידך',
   homeWindowsPlayersUnit: 'שחקנים',
@@ -3993,11 +4249,86 @@ export const he = {
   matchHeroNoLocation: 'אין מיקום',
   matchHeroTitle: 'פרטי מחזור',
   matchHeroCommunityPrefix: 'מועדון',
-  matchStatsPlayers: 'שחקנים',
+  // ── מסך פרטי מחזור: ארבעת הטאבים ─────────────────────────────────────
+  gdTabInfo: 'מידע',
+  gdTabGames: 'משחקים',
+  gdTabStats: 'סטטיסטיקות',
+  gdTabPlayers: 'שחקנים',
+  // טאב נעול. מחזור בלי המצב המורחב לא רושם משחקונים, ולכן אין לו מה להציג
+  // בשני הטאבים האלה — אבל הם נשארים גלויים כדי שיהיה ברור שהיכולת קיימת.
+  gdTabLockedToast: 'הטאב זמין רק במחזורים עם מצב משחק מורחב',
+  gdTabMembersToast: 'נתוני המחזור פתוחים לחברי המועדון בלבד',
+  // The teams pointer at the top of "מידע". The teams UI itself lives on the
+  // שחקנים tab — this card is the sign that says so, and the count is the
+  // reason to go: knowing how many are in is what decides whether it is worth
+  // splitting yet.
+  gdTeamsPointerTitle: (n: number) =>
+    n === 1 ? 'שחקן אחד נרשם' : `${n} שחקנים נרשמו`,
+  gdTeamsPointerCreateBody: 'אפשר ליצור כוחות למחזור',
+  gdTeamsPointerCreateCta: 'צור כוחות',
+  gdTeamsPointerManageBody: 'הכוחות למחזור כבר מוכנים',
+  gdTeamsPointerManageCta: 'נהל כוחות',
+  // Under the kickoff time once it has passed. The countdown vanishes at zero
+  // and left the hour standing alone, reading like a time still to come.
+  gdHeroStarted: 'המחזור התחיל',
+  gdInfoAbout: 'על המחזור',
+  gdInfoOrganizerNote: 'הודעות המארגן',
+  gdGamesCount: (n: number) => count(n, 'משחק אחד', 'משחקים'),
+  gdGamesFilterAll: 'הכל',
+  // "18 שחקנים · 2 תיקו · 1 הכרעה בפנדלים" — נבנה משורות שקיימות בלבד.
+  gdGamesSummaryPlayers: (n: number) => count(n, 'שחקן אחד', 'שחקנים'),
+  gdGamesSummaryTies: (n: number) => count(n, 'תיקו אחד', 'תיקו'),
+  gdGamesSummaryShootouts: (n: number) =>
+    count(n, 'הכרעה אחת בפנדלים', 'הכרעות בפנדלים'),
+  // ריק: המחזור טרם שוחק — הפיצ'ר זמין, פשוט אין עדיין תוכן.
+  gdGamesEmptyTitle: 'המחזור עוד לא שוחק',
+  gdGamesEmptyBody: 'כאן יופיעו המשחקים והתוצאות לאחר תחילת המחזור.',
+  gdStatsEmptyTitle: 'הסטטיסטיקות יופיעו אחרי שהמחזור יתחיל',
+  gdStatsEmptyBody: 'לאחר שיירשמו משחקים, הנתונים והסיכומים יופיעו כאן.',
+  // ⚠️ ריק מסוג אחר לגמרי: המחזור כן שוחק, אבל הוא קדם לאיסוף הנתונים. אסור
+  // לומר לו "עוד לא שוחק" — זה פשוט לא נכון.
+  gdGamesNoCoverageTitle: 'נתוני המשחקים אינם זמינים למחזור הזה',
+  gdGamesNoCoverageBody: 'המחזור שוחק לפני שהאפליקציה התחילה לתעד את המשחקים.',
+  gdStatsNoCoverageTitle: 'סטטיסטיקות מלאות אינן זמינות למחזור הזה',
+  gdStatsNoCoverageBody: 'המחזור שוחק לפני שהאפליקציה התחילה לתעד את הנתונים.',
+  gdStatsPersonalCta: 'סיכום מחזור אישי',
+  gdStatsNumbersTitle: 'המחזור במספרים',
+  gdStatsStarsTitle: 'כוכבי המחזור',
+  gdStatsTeamsTitle: 'הקבוצות במחזור',
+  gdStatsPairTitle: 'הצמד של הערב',
+  gdStatsEventsTitle: 'מה קרה הערב',
+  gdStatsNumGames: 'משחקים',
+  gdStatsNumGoals: 'שערים',
+  gdStatsNumAssists: 'בישולים',
+  gdStatsNumShootouts: 'הכרעות בפנדלים',
+  gdTeamMostWins: 'הכי הרבה ניצחונות',
+  gdTeamMostLosses: 'הכי הרבה הפסדים',
+  gdTeamWinsUnit: (n: number) => count(n, 'ניצחון אחד', 'ניצחונות'),
+  gdTeamLossesUnit: (n: number) => count(n, 'הפסד אחד', 'הפסדים'),
+  gdPlayersRegistered: 'רשומים',
+  gdPlayersWaiting: 'בהמתנה',
+  gdPlayersRosterTitle: 'הרכב המחזור',
+  gdPlayersShowAll: (n: number) => `הצג את כל ${n} השחקנים`,
+  gdPlayersShowLess: 'הצג פחות',
   matchStatsDuration: 'משך משחק',
-  matchStatsCommunity: 'מועדון',
   matchStatsWeather: 'מזג אוויר',
-  matchStatsMinutesShort: 'דק׳',
+  // The evening's duration and weather now read as two ordinary rows inside
+  // "פרטי המחזור" rather than as cards in a stats strip of their own — see
+  // `gdDetailWeather`. The duration spells "דקות" out here because a full row
+  // has the width for it, unlike the strip's three-across cell.
+  gdDetailDuration: (m: number) => `${m} דקות`,
+  // Weather as one compact line of metadata: degrees, the sky, and the rain
+  // chance only when it is worth mentioning. Never a card, never a placeholder.
+  gdDetailWeather: (tempC: number, sky: string, rainProb: number | null) =>
+    rainProb === null
+      ? `\u200E${tempC}° · ${sky}`
+      : `\u200E${tempC}° · ${sky} · ${rainProb}% גשם`,
+  gdSkyClear: 'בהיר',
+  gdSkyClouds: 'מעונן',
+  gdSkyRain: 'גשום',
+  gdSkyStorm: 'סוער',
+  gdSkySnow: 'שלג',
+  gdSkyFog: 'ערפילי',
   matchParticipantsTitle: 'ההרכב',
   matchParticipantStatusComing: 'מגיע',
   matchParticipantStatusArrived: 'הגיע',
@@ -4078,12 +4409,12 @@ export const he = {
   matchPlayersRemovedAgo: (text: string) => `הוסר ${text}`,
   // With the remover's name ("הוסר ע״י יוסי לפני שעה").
   matchPlayersRemovedByAgo: (name: string, text: string) =>
-    `הוסר ע״י ${name} ${text}`,
+    `הוסר ע״י ${iso(name)} ${text}`,
   // Admin removed themselves ("הסיר את עצמו לפני שעה").
   matchPlayersSelfRemovedAgo: (text: string) => `הסיר את עצמו ${text}`,
   // Wrap the name in a bidi isolate (FSI…PDI) so a Latin name ("Eliran Tzabari")
   // can't reorder the Hebrew around it — otherwise "אתה ו" + a LTR name jumbles.
-  pairStatsTitle: (name: string) => `אתה ו⁨${name}⁩`,
+  pairStatsTitle: (name: string) => `אתה ${prefixName('ו', name)}`,
   // Order matters — registration happens before attendance, so the
   // labels read more naturally in Hebrew when "נרשמתם" is the first
   // tile shown. The pair card uses this same order.
@@ -4150,8 +4481,11 @@ export const he = {
   // Community goals championship (community-scoped goals only).
   communityChampTitle: 'טבלת המועדון',
   communityChampNote: 'סיכום מצטבר של כל החברות במועדון · ממוין לפי ניצחונות, אז גולים, אז בישולים',
-  // Tapping the (i) next to the title explains the scoring + tie-breaks.
-  communityChampInfoTitle: 'איך מחושב הדירוג?',
+  // Tapping the (i) next to the title explains how the table is ordered.
+  // It used to be headed "איך מחושב הדירוג?" — a question about a rating the
+  // body never mentions. The tip belongs to the club table, so it carries the
+  // table's own name (reported).
+  communityChampInfoTitle: 'טבלת המועדון',
   communityChampInfoBody:
     'הטבלה ממוינת לפי כמות נצחונות בברירת מחדל, ניתן ללחוץ על כותרת אחרת כדי למיין לפיה.',
   communityChampTotalGoals: 'סך הגולים',
@@ -4293,6 +4627,12 @@ export const he = {
   fillerApplySentSub: 'הבקשה נשלחה. מנהל המחזור יחליט אם לאשר.',
   fillerApplySentChip: 'נשלח',
   fillerApplyError: 'לא הצלחנו לשלוח, נסו שוב',
+  // Said instead of the line above when the request never reached the server.
+  // Nine taps in one minute on 30.09 produced eighteen error records and one
+  // HTTP 200 — the person could not tell that the first eight simply had no
+  // network, because the screen gave the same "try again" to both. Naming the
+  // cause is what stops the ninth tap.
+  fillerApplyOffline: 'אין חיבור — הבקשה לא נשלחה. נסו שוב כשתהיה רשת',
   // Compact status helpers — used by MatchStatusCard
   matchStatusWaitingTitle: 'מחכים לשחקנים',
   matchStatusWaitingHelper: (n: number) => `חסרים עוד ${n} שחקנים`,

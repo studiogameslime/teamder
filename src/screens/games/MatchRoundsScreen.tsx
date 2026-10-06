@@ -18,7 +18,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import { RouteProp, useFocusEffect, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -96,8 +96,50 @@ interface Resolved {
   photoUrl?: string;
 }
 
-export function MatchRoundsScreen() {
-  const { gameId } = useRoute<Params>().params;
+export interface MatchRoundsScreenProps {
+  /**
+   * Rendered inside the match screen's "משחקים" tab instead of as a route.
+   *
+   * Embedded it drops its own SafeAreaView and ScreenHeader — the tab already
+   * sits under the match header — and takes the game id from a prop rather
+   * than from route params, which do not exist there. Everything else, and in
+   * particular `RoundCard` with all of its edge cases, is the same code.
+   */
+  gameId?: string;
+  embedded?: boolean;
+  /** Clears the sticky CTA when embedded. */
+  bottomInset?: number;
+  /** Colour filter chips above the list (the four-tab design). */
+  showFilter?: boolean;
+  /** Did the evening actually happen? Only used to pick the empty-state copy —
+   *  see the comment at `empty`. Undefined behaves as "not played". */
+  hasPlayed?: boolean;
+  /**
+   * Opened from the LIVE screen, while the evening is still running.
+   *
+   * Changes two things and nothing else: the title and the empty-state copy
+   * (an empty list mid-evening is a normal moment, not a missing record), and
+   * a refresh on focus so a mini-game committed while this screen sat in the
+   * back stack is there when the user returns to it.
+   *
+   * The LIST itself needs no filtering for this. `roundHistory` is written by
+   * `commitRoundStats` and by nothing else, so a round reaches it only when
+   * the admin ends it — the running mini-game is not in there, and neither is
+   * a future one.
+   */
+  live?: boolean;
+  /** Embedded only: the match screen's hero and tab bar. They ride inside THIS
+   *  list's scroll so the hero can leave the screen and the bar can stick —
+   *  the same arrangement the other three panes use. */
+  header?: React.ReactNode;
+  stickyHeader?: React.ReactNode;
+}
+
+export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
+  const route = useRoute<Params>();
+  const gameId = props.gameId ?? route.params?.gameId ?? '';
+  const embedded = props.embedded === true;
+  const live = props.live ?? route.params?.live === true;
   const players = useGameStore((s) => s.players);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
 
@@ -105,6 +147,26 @@ export function MatchRoundsScreen() {
   const [rounds, setRounds] = useState<RoundHistoryDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  /**
+   * Show only the mini-games one team played, or all of them.
+   *
+   * Filters on the ROUND's own colour indices, which is the only place the
+   * pairing is recorded. A round from before `teamAIndex` existed carries -1
+   * and belongs to no colour — it stays visible under "הכל" and disappears
+   * under any specific filter, which is the honest answer for a round whose
+   * teams were never written down.
+   */
+  const [colourFilter, setColourFilter] = useState<number | null>(null);
+
+  /** Bumped to re-run the loader. Live only — see `live`. */
+  const [reloadKey, setReloadKey] = useState(0);
+  useFocusEffect(
+    React.useCallback(() => {
+      // Skip the first focus: the mount effect below is already loading.
+      if (!live) return;
+      setReloadKey((k) => k + 1);
+    }, [live]),
+  );
 
   useEffect(() => {
     let alive = true;
@@ -148,7 +210,7 @@ export function MatchRoundsScreen() {
     return () => {
       alive = false;
     };
-  }, [gameId, hydratePlayers]);
+  }, [gameId, hydratePlayers, reloadKey]);
 
   const guestsById = useMemo(() => {
     const m = new Map<string, GameGuest>();
@@ -198,72 +260,207 @@ export function MatchRoundsScreen() {
     return [...fromRounds].sort((a, b) => a - b);
   }, [game?.draftTeams?.teams, rounds]);
 
+  const visible =
+    colourFilter === null
+      ? rounds
+      : rounds.filter(
+          (r) => r.teamAIndex === colourFilter || r.teamBIndex === colourFilter,
+        );
+
   if (loading) {
-    return (
+    const spinner = (
+      <View style={styles.center}>
+        <SoccerBallLoader />
+      </View>
+    );
+    return embedded ? (
+      spinner
+    ) : (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title={he.matchRoundsTitle} />
-        <View style={styles.center}>
-          <SoccerBallLoader />
-        </View>
+        <ScreenHeader title={live ? he.matchRoundsLiveTitle : he.matchRoundsTitle} />
+        {spinner}
       </SafeAreaView>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader title={he.matchRoundsTitle} />
-      {rounds.length === 0 ? (
+  // No rounds has two completely different causes, and the difference matters
+  // to the reader: an evening that has not been played yet WILL fill this list,
+  // while a finished evening with nothing recorded never will. Telling the
+  // second one "המחזור עוד לא שוחק" is simply false — it was played, the
+  // mini-games just were not logged; telling the first one "לא נשמרו פרטים"
+  // is equally false, since there is nothing to have saved yet.
+  //
+  // The list cannot tell them apart — it sees an empty query either way — so
+  // the caller says which, and `undefined` (the standalone route, which asks
+  // nothing) keeps the neutral wording that route has always shown.
+  const empty = live
+    ? {
+        icon: 'football-outline' as const,
+        title: he.matchRoundsLiveEmptyTitle,
+        body: he.matchRoundsLiveEmptySub,
+      }
+    : props.hasPlayed === true
+      ? {
+          icon: 'document-text-outline' as const,
+          title: he.gdGamesNoCoverageTitle,
+          body: he.gdGamesNoCoverageBody,
+        }
+      : props.hasPlayed === false
+        ? {
+            icon: 'football-outline' as const,
+            title: he.gdGamesEmptyTitle,
+            body: he.gdGamesEmptyBody,
+          }
+        : {
+            icon: 'football-outline' as const,
+            title: he.matchRoundsEmptyTitle,
+            body: he.matchRoundsEmptySub,
+          };
+  const pinned = props.header != null && props.stickyHeader != null;
+  const body =
+    rounds.length === 0 ? (
+      // Scrollable even with nothing in it: the header rides inside this view,
+      // and a plain <View> would leave the tab bar with nothing to stick to.
+      <ScrollView
+        style={styles.flex}
+        stickyHeaderIndices={pinned ? [1] : undefined}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Separate <View> wrappers, not a fragment — `stickyHeaderIndices`
+            counts the ScrollView's direct children. */}
+        <View>{props.header}</View>
+        <View>{props.stickyHeader}</View>
         <View style={styles.center}>
-          <Ionicons name="football-outline" size={46} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>{he.matchRoundsEmptyTitle}</Text>
-          <Text style={styles.emptySub}>{he.matchRoundsEmptySub}</Text>
+          <Ionicons name={empty.icon} size={46} color={colors.textMuted} />
+          <Text style={styles.emptyTitle}>{empty.title}</Text>
+          <Text style={styles.emptySub}>{empty.body}</Text>
         </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <View style={styles.summaryPill}>
-            <Ionicons name="list" size={15} color={colors.primary} />
-            <Text style={styles.summaryPillTx}>
-              {he.matchRoundsCount(rounds.length)}
-            </Text>
-          </View>
-          {/* All teams that played this cycle — a colour legend so the
-              "אדומה נגד כחולה" matchups below read at a glance (user request). */}
-          {cycleTeams.length > 0 ? (
-            <View style={styles.teamsLegend}>
-              {cycleTeams.map((idx) => (
-                <View key={idx} style={styles.teamsLegendChip}>
+      </ScrollView>
+    ) : (
+      <ScrollView
+        style={pinned ? styles.flex : undefined}
+        contentContainerStyle={
+          pinned
+            ? undefined
+            : [
+                styles.scroll,
+                props.bottomInset ? { paddingBottom: props.bottomInset + 16 } : null,
+              ]
+        }
+        stickyHeaderIndices={pinned ? [1] : undefined}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View>{props.header}</View>
+        <View>{props.stickyHeader}</View>
+        {/* The list's own padding moves inside when the header is present, so
+            the hero and the bar stay flush with the screen edges. */}
+        <View
+          style={
+            pinned
+              ? [
+                  styles.scroll,
+                  props.bottomInset ? { paddingBottom: props.bottomInset + 16 } : null,
+                ]
+              : undefined
+          }
+        >
+        <View style={styles.summaryPill}>
+          <Ionicons name="list" size={15} color={colors.primary} />
+          <Text style={styles.summaryPillTx}>
+            {colourFilter === null
+              ? he.matchRoundsCount(rounds.length)
+              : he.matchRoundsCountFiltered(visible.length, rounds.length)}
+          </Text>
+        </View>
+        {/* Colour filter. The legend it replaces named the teams; this names
+            them AND narrows the list, which is what the four-tab design asks
+            for. Shown only where there is something to choose between. */}
+        {props.showFilter && cycleTeams.length > 1 ? (
+          <View style={styles.filterRow}>
+            <Pressable
+              onPress={() => setColourFilter(null)}
+              style={[styles.filterChip, colourFilter === null && styles.filterChipOn]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: colourFilter === null }}
+            >
+              <Text
+                style={[
+                  styles.filterChipTx,
+                  colourFilter === null && styles.filterChipTxOn,
+                ]}
+              >
+                {he.gdGamesFilterAll}
+              </Text>
+            </Pressable>
+            {cycleTeams.map((idx) => {
+              const on = colourFilter === idx;
+              return (
+                <Pressable
+                  key={idx}
+                  onPress={() => setColourFilter(on ? null : idx)}
+                  style={[styles.filterChip, on && styles.filterChipOn]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                >
+                  {/* Dot first → rightmost under forceRTL, exactly as the
+                      legend drew it. */}
                   <View
                     style={[
                       styles.teamsLegendDot,
                       { backgroundColor: teamColor(idx, splitForColors) },
                     ]}
                   />
-                  <Text style={styles.teamsLegendName}>
+                  <Text style={[styles.filterChipTx, on && styles.filterChipTxOn]}>
                     {teamName(idx, splitForColors)}
                   </Text>
-                </View>
-              ))}
-            </View>
-          ) : null}
-          {rounds.map((r, idx) => (
-            <RoundCard
-              key={r.roundId || String(idx)}
-              round={r}
-              index={idx}
-              resolve={resolve}
-              teams={game?.draftTeams?.originalTeams ?? game?.draftTeams?.teams}
-              expanded={!!expanded[r.roundId || String(idx)]}
-              onToggle={() =>
-                setExpanded((s) => ({
-                  ...s,
-                  [r.roundId || String(idx)]:
-                    !s[r.roundId || String(idx)],
-                }))
-              }
-            />
-          ))}
-        </ScrollView>
-      )}
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : cycleTeams.length > 0 ? (
+          <View style={styles.teamsLegend}>
+            {cycleTeams.map((idx) => (
+              <View key={idx} style={styles.teamsLegendChip}>
+                <View
+                  style={[
+                    styles.teamsLegendDot,
+                    { backgroundColor: teamColor(idx, splitForColors) },
+                  ]}
+                />
+                <Text style={styles.teamsLegendName}>
+                  {teamName(idx, splitForColors)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+        {visible.map((r, idx) => (
+          <RoundCard
+            key={r.roundId || String(idx)}
+            round={r}
+            index={rounds.indexOf(r)}
+            resolve={resolve}
+            teams={game?.draftTeams?.originalTeams ?? game?.draftTeams?.teams}
+            expanded={!!expanded[r.roundId || String(idx)]}
+            onToggle={() =>
+              setExpanded((s) => ({
+                ...s,
+                [r.roundId || String(idx)]: !s[r.roundId || String(idx)],
+              }))
+            }
+          />
+        ))}
+        </View>
+      </ScrollView>
+    );
+
+  return embedded ? (
+    body
+  ) : (
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ScreenHeader title={live ? he.matchRoundsLiveTitle : he.matchRoundsTitle} />
+      {body}
     </SafeAreaView>
   );
 }
@@ -342,10 +539,16 @@ function RoundCard({
         <Text style={styles.scoreNum}>{round.scoreA}</Text>
         <Text style={styles.scoreSep}>:</Text>
         <Text style={styles.scoreNum}>{round.scoreB}</Text>
+        {/* Mirrored, not repeated.
+            Both halves used to be written `[swatch][name]`, and under forceRTL
+            that put A's swatch against the OUTER edge and B's against the
+            score — the two sides of one scoreboard leaning opposite ways.
+            B carries its swatch AFTER the name, so the row reads
+            🟦 name · score · name 🟩 whatever each half is aligned to. */}
         <View style={styles.scoreTeam}>
           <View style={styles.teamName}>
-            <View style={[styles.swatch, { backgroundColor: B.color }]} />
             <Text style={styles.teamNameTx}>{B.name}</Text>
+            <View style={[styles.swatch, { backgroundColor: B.color }]} />
           </View>
         </View>
       </View>
@@ -502,6 +705,7 @@ function RosterRow({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1 },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -534,6 +738,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   summaryPillTx: { ...typography.caption, color: colors.text, fontWeight: '700' },
+  // The chips sat almost against the count pill above them and the two rows
+  // read as one crowded block (owner report). They are separate controls —
+  // one states the total, the other narrows it — so they get real air.
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterChipTx: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
+  filterChipTxOn: { color: '#fff' },
   teamsLegend: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -605,7 +833,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingVertical: spacing.md,
   },
-  scoreTeam: { flex: 1 },
+  // Centred inside its own half, so each name sits midway between the score
+  // and the page edge instead of hugging the edge (reported). The mirroring
+  // still comes from the child ORDER, not from the alignment.
+  scoreTeam: { flex: 1, alignItems: 'center' },
   teamName: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   teamNameTx: { ...typography.caption, fontWeight: '800', color: colors.text },
   scoreNum: {

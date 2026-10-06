@@ -995,8 +995,17 @@ export function CommunityDetailsScreen() {
 
   return (
     <View style={styles.root}>
-      {celebrate ? (
-        <View pointerEvents="none" style={styles.celebrationLayer}>
+      {/* The overlay HOST stays mounted for the life of the screen and only
+          its content toggles. Mounting and unmounting a zIndex'd absoluteFill
+          View over a ScrollView leaves a stale native touch region on Fabric —
+          the taps land on a layer that is no longer drawn, and the screen
+          reads as dead until a scroll forces a re-hit-test. That is the shape
+          behind "אני לוחץ על כפתורים וכלום לא נלחץ"; the match screen was
+          changed to this form for the same reason and this screen was left
+          behind. `pointerEvents="none"` means the permanent host never takes a
+          touch itself. */}
+      <View pointerEvents="none" style={styles.celebrationLayer}>
+        {celebrate ? (
           <CelebrationOverlay
             onDone={() => {
               setCelebrate(false);
@@ -1005,8 +1014,8 @@ export function CommunityDetailsScreen() {
               if (celebrateOnArrival) setInvitePrompt(true);
             }}
           />
-        </View>
-      ) : null}
+        ) : null}
+      </View>
       {/* Mounted on FIRST visit, then kept — hidden, not destroyed.
        *
        *  It used to be a ternary: one tab alive, the other two gone. That is
@@ -1501,11 +1510,15 @@ export function CommunityDetailsScreen() {
         </Pressable>
       </Modal>
 
-      {busyLeave ? (
-        <View style={styles.busyOverlay} pointerEvents="none">
-          <SoccerBallLoader size={36} />
-        </View>
-      ) : null}
+      {/* Same shape as the celebration host above: permanently mounted,
+          `pointerEvents="none"`, content toggled. The white wash is painted
+          only while leaving. */}
+      <View
+        style={[styles.busyOverlay, !busyLeave && styles.overlayIdle]}
+        pointerEvents="none"
+      >
+        {busyLeave ? <SoccerBallLoader size={36} /> : null}
+      </View>
       <InviteMembersSheet
         visible={invitePrompt}
         clubName={group?.name ?? ''}
@@ -1821,6 +1834,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.6)',
   },
+  // The idle state of a permanently-mounted overlay host: no wash, nothing
+  // drawn. `opacity: 0` rather than `display: 'none'` so the native view keeps
+  // its place in the hierarchy — taking it out and putting it back is the
+  // thing that strands the touch region.
+  overlayIdle: { opacity: 0 },
   inviteBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(7,12,32,0.45)',

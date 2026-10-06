@@ -22,6 +22,14 @@ export interface FillRequestView {
   recommendedIds: string[];
   /** Exactly this many must be selected to confirm. */
   requiredCount: number;
+  /**
+   * The score of the round that just ended, and who took it.
+   *
+   * Present only on a ROUND TRANSITION — a mid-evening substitution keeps the
+   * clock and has no result to report, so it carries nothing and the line is
+   * absent. `winner` is null on a tie.
+   */
+  savedResult?: { a: number; b: number; winner: string | null };
 }
 
 interface Props {
@@ -73,6 +81,27 @@ export function FillerPickerModal({ request, onConfirm, onCancel }: Props) {
               <Ionicons name="close" size={24} color={colors.textMuted} />
             </Pressable>
           </View>
+          {/* What just happened, before what to do next. The board behind
+              this sheet has already been zeroed for the coming round — see
+              `fillPickerSavedResult` — so without this line the admin is
+              looking at 0:0 and being asked to pick a substitute. */}
+          {request?.savedResult ? (
+            <View style={styles.savedBanner}>
+              <Ionicons name="checkmark-circle" size={16} color="#15803D" />
+              <Text style={styles.savedText} numberOfLines={2}>
+                {request.savedResult.winner
+                  ? he.fillPickerSavedResult(
+                      request.savedResult.winner,
+                      request.savedResult.a,
+                      request.savedResult.b,
+                    )
+                  : he.fillPickerSavedResultTie(
+                      request.savedResult.a,
+                      request.savedResult.b,
+                    )}
+              </Text>
+            </View>
+          ) : null}
           <Text style={[styles.subtitle, ready ? styles.subtitleOk : null]}>
             {he.fillPickerSelectCount(selected.length, required)}
           </Text>
@@ -139,6 +168,25 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
     flex: 1,
+  },
+  // The "result saved" line. Green, quiet, and ABOVE the instruction — it
+  // answers a worry, it is not the task.
+  savedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#DCFCE7',
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    marginBottom: spacing.xs,
+  },
+  savedText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#15803D',
+    textAlign: RTL_LABEL_ALIGN,
   },
   subtitle: { ...typography.body, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   subtitleOk: { color: colors.success, fontWeight: '700' },

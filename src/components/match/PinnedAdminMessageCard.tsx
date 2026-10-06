@@ -342,10 +342,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     textAlignVertical: 'top',
-    textAlign: RTL_LABEL_ALIGN,
-    // Force RTL base direction so the placeholder + caret sit on the RIGHT for
-    // an empty multiline input (RN otherwise defaults an empty field to LTR,
-    // dropping the placeholder on the left — user report).
+    // ⚠️ These two have to agree, and they did not.
+    //
+    // `writingDirection: 'rtl'` is here on purpose: RN defaults an EMPTY
+    // multiline field to LTR, which drops the placeholder and the caret on
+    // the left (reported once before). But declaring the direction explicitly
+    // also makes `textAlign` physical — and `RTL_LABEL_ALIGN` is the string
+    // `'left'`, which only resolves to "right" while the direction is being
+    // inferred. Together they pushed the text to the physical LEFT, which is
+    // what the second report showed.
+    //
+    // So when the direction is stated, the alignment is stated in the same
+    // terms: `'right'` literally.
+    textAlign: 'right',
     writingDirection: 'rtl',
     color: colors.text,
     fontSize: 15,

@@ -7,7 +7,7 @@
 // A blue star badge marks a borrowed filler. Shared by both surfaces.
 
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { RTL_LABEL_ALIGN } from '@/theme';
@@ -155,19 +155,11 @@ export function TeamScore({
                 </View>
               </Blink>
             );
-            return (
-              <View key={m.id} style={styles.playerRow}>
-                {onPlayerPress ? (
-                  <MeasurablePressable
-                    onMeasured={(rect) => onPlayerPress(m, rect)}
-                    hitSlop={6}
-                    accessibilityLabel={m.name}
-                  >
-                    {avatar}
-                  </MeasurablePressable>
-                ) : (
-                  avatar
-                )}
+            // The name and the chip, WITHOUT the avatar — the pressable row
+            // takes the avatar as its own prop so it can measure just the
+            // face, and the static row puts the two back together itself.
+            const rowRest = (
+              <>
                 <Text style={styles.playerName} numberOfLines={1}>
                   {labelOf(m)}
                 </Text>
@@ -177,6 +169,21 @@ export function TeamScore({
                   <Ionicons name="football" size={11} color="#64748B" />
                   <Text style={styles.goalNum}>{goals}</Text>
                 </View>
+              </>
+            );
+            return onPlayerPress ? (
+              <PlayerRowPressable
+                key={m.id}
+                onPick={(rect) => onPlayerPress(m, rect)}
+                label={m.name}
+                avatar={avatar}
+              >
+                {rowRest}
+              </PlayerRowPressable>
+            ) : (
+              <View key={m.id} style={styles.playerRow}>
+                {avatar}
+                {rowRest}
               </View>
             );
           })}
@@ -252,6 +259,69 @@ export function TeamScore({
   );
 }
 
+/**
+ * A roster row that opens the player menu from ANYWHERE on it.
+ *
+ * The whole card is the target now — "כדי להחליף בין שחקן לשחקן צריך ללחוץ על
+ * האוואטר… אני רוצה שלחיצה על כל הכרטיס יעשה את זה". A 36-point circle at one
+ * end of a full-width row is a small thing to hit repeatedly during a game.
+ *
+ * The MENU still anchors to the AVATAR, not to the row. `PlayerActionMenu`
+ * centres its card on the anchor's midpoint, so measuring the full-width row
+ * would centre the popup on the screen and detach it from the person it is
+ * about. The press target and the anchor are deliberately different views:
+ * the outer Pressable takes the touch, the inner one is what gets measured.
+ */
+function PlayerRowPressable({
+  onPick,
+  label,
+  avatar,
+  children,
+}: {
+  onPick: (rect: MenuAnchor) => void;
+  label: string;
+  /** The avatar — taken SEPARATELY because it is what the menu anchors to. */
+  avatar: React.ReactNode;
+  /** Everything after it: the name and the goal chip. */
+  children: React.ReactNode;
+}) {
+  const avatarRef = useRef<View>(null);
+  return (
+    <Pressable
+      onPress={() => {
+        const node = avatarRef.current;
+        if (!node) return;
+        node.measureInWindow((x, y, w, h) => onPick({ x, y, width: w, height: h }));
+      }}
+      style={({ pressed }) => [styles.playerRow, pressed && styles.playerRowPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      {/* The avatar arrives as its OWN prop rather than being dug out of
+          `children`.
+          
+          It used to be `React.Children.toArray(children)[0]`, with the caller
+          passing a fragment — and `toArray` does not flatten a fragment. It
+          returned ONE element: the whole fragment. So the avatar, the name and
+          the goal chip all went inside the measuring View below, which has no
+          flexDirection and therefore stacks its children in a column, and
+          `slice(1)` contributed nothing. Every roster row became a tall pill
+          with its contents piled up at one edge — "למה העיצוב נראה ככה? הרסת
+          פה הכל של השורות" (owner, 30.09) — and the menu anchored to the whole
+          block instead of the face.
+
+          `collapsable={false}`: without it Android flattens a view that draws
+          nothing of its own out of the tree, and `measureInWindow` on a node
+          that is no longer there returns zeros — the menu would open in the
+          top-left corner. */}
+      <View ref={avatarRef} collapsable={false}>
+        {avatar}
+      </View>
+      {children}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   // shared
   name: { fontSize: 18, fontWeight: '800', color: TEAM_BLUE, textAlign: RTL_LABEL_ALIGN },
@@ -298,6 +368,7 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
     borderColor: '#1D4ED8',
   },
+  playerRowPressed: { opacity: 0.6 },
   playerRow: {
     flexDirection: 'row',
     alignItems: 'center',

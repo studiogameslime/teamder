@@ -72,6 +72,7 @@ import {
   type PlayableEvening,
 } from '@/utils/eveningPlayed';
 import { inSeason } from '@/utils/seasonScope';
+import { sortRounds } from '@/utils/roundHistoryOrder';
 import { tallyDelta, tallyWithout } from '@/utils/goalTally';
 import {
   buildEditNotice,
@@ -534,6 +535,7 @@ export type JoinSource =
   | 'notification'      // a push action button
   | 'filler_push'       // a shortage invitation to a non-member
   | 'quick_game'        // the quick-game flow
+  | 'home'              // the round card on the home screen
   | 'admin_added'       // an admin put them in
   | 'unknown';
 
@@ -1629,11 +1631,10 @@ export const gameService = {
           at: Number(x.at ?? 0),
         } as RoundHistoryDoc;
       });
-      // Chronological (mini-game 1 → N). `at` is the commit time; fall back to a
-      // numeric roundId when timestamps tie or are missing on legacy docs.
-      return arr.sort(
-        (a, b) => a.at - b.at || Number(a.roundId) - Number(b.roundId),
-      );
+      // Chronological (mini-game 1 → N). The rule lives in `sortRounds` so
+      // the recap and the live list cannot drift apart, and so it can be
+      // tested without Firestore.
+      return sortRounds(arr);
     } catch (err) {
       logError('getRoundHistory', err, { gameId });
       if (__DEV__) console.warn('[gameService] getRoundHistory failed', err);

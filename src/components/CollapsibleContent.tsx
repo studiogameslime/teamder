@@ -21,21 +21,28 @@ export function CollapsibleContent({
   const [expanded, setExpanded] = useState(false);
   const [fullHeight, setFullHeight] = useState(0);
   const overflows = fullHeight > collapsedHeight + 12;
-  // The WHOLE clamped block opens it, not the eight-point "קרא עוד" alone
-  // (owner, 28.09). The text is the thing a thumb lands on; the link under it
-  // was the only part that answered, so tapping the paragraph you are trying
-  // to read did nothing. Only while it is clamped: once open, the text is
-  // selectable content again and must not collapse under an accidental tap.
+  // The WHOLE block toggles, not the eight-point link alone (owner, 28.09 for
+  // opening and 29.09 for closing). The text is what a thumb lands on; the link
+  // under it used to be the only part that answered in EITHER direction, so
+  // first tapping the paragraph did nothing, and then — once that was fixed for
+  // opening only — tapping it again to close did nothing either.
   //
-  // `Pressable` with no press handler is still a view, so when the content
-  // fits there is nothing to open and nothing intercepts the touch.
+  // It toggles only while the content actually overflows. `Pressable` with no
+  // press handler is still a plain view, so a block short enough to fit has
+  // nothing to toggle and intercepts no touch.
   const clamped = !expanded && overflows;
   return (
     <View>
       <Pressable
-        onPress={clamped ? () => setExpanded(true) : undefined}
-        accessibilityRole={clamped ? 'button' : undefined}
-        accessibilityLabel={clamped ? he.communityReadMore : undefined}
+        onPress={overflows ? () => setExpanded((v) => !v) : undefined}
+        accessibilityRole={overflows ? 'button' : undefined}
+        accessibilityLabel={
+          overflows
+            ? expanded
+              ? he.communityReadLess
+              : he.communityReadMore
+            : undefined
+        }
         style={
           clamped ? { maxHeight: collapsedHeight, overflow: 'hidden' } : undefined
         }

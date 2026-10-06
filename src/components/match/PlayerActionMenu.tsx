@@ -19,6 +19,7 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '@/components/UserAvatar';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -96,36 +97,73 @@ export function PlayerActionMenu({
   items: PlayerMenuItem[];
   onClose: () => void;
 }) {
+  // Hooks BEFORE the early return — a hook below a conditional `return null`
+  // runs on the render after the menu opens and not on the one before, which
+  // is the count mismatch that tears a tree down.
+  const insets = useSafeAreaInsets();
+  // The card's REAL height, once it has laid out. The estimate below is a
+  // guess (items with a sublabel are taller than 52), and the owner's reports
+  // were both of a card whose last rows fell off the bottom — an estimate too
+  // small clamps the top too low and the overflow is invisible to the maths.
+  // First paint uses the estimate; `onLayout` then corrects it for good.
+  const [measuredH, setMeasuredH] = React.useState<number | null>(null);
+  const targetId = target?.player.id ?? null;
+  React.useEffect(() => {
+    // A new player = a new card. Drop the old measurement so the next open
+    // does not clamp against the previous menu's height.
+    setMeasuredH(null);
+  }, [targetId, items.length]);
+
   if (!target) return null;
 
-  const screen = Dimensions.get('window');
-  // Rough card height: header (~64) + each item (~52). Drives the flip decision
-  // and the on-screen clamp below. Capped to what the screen can show — a tall
-  // menu (card/timeline/yellow/red/remove) then scrolls instead of overflowing.
-  const maxH = screen.height - MARGIN * 2;
-  const estH = Math.min(64 + items.length * 52, maxH);
+  const win = Dimensions.get('window');
+  // ⚠️ `window` is the FULL window, and this app is edge-to-edge from API 35 —
+  // it INCLUDES the status bar and the gesture/navigation bar. Clamping to it
+  // put the bottom of the card underneath the system bar, which is precisely
+  // "הכרטיס למטה חתוך!" and "לא רואים את כל התפריט". The usable band is the
+  // window minus the insets.
+  const topLimit = insets.top + MARGIN;
+  const bottomLimit = win.height - insets.bottom - MARGIN;
+  const maxH = Math.max(160, bottomLimit - topLimit);
+  // Rough card height: header (~64) + each item (~52). Drives the flip
+  // decision until the real height arrives. Capped to what the band can show —
+  // a tall menu (card/timeline/yellow/red/remove) then scrolls instead of
+  // overflowing.
+  const estH = Math.min(measuredH ?? 64 + items.length * 52, maxH);
   const a = target.anchor;
   const centerX = a.x + a.width / 2;
   let left = centerX - CARD_W / 2;
-  left = Math.max(MARGIN, Math.min(left, screen.width - CARD_W - MARGIN));
+  left = Math.max(
+    insets.left + MARGIN,
+    Math.min(left, win.width - insets.right - CARD_W - MARGIN),
+  );
   const caretLeft = Math.max(18, Math.min(centerX - left, CARD_W - 18));
   // Prefer below the anchor, but flip above when there's more room there — a
   // player near the bottom of a long roster otherwise opened a menu that ran
   // off the bottom edge and clipped its last item(s).
-  const spaceBelow = screen.height - MARGIN - (a.y + a.height + 10);
-  const spaceAbove = a.y - 10 - MARGIN;
+  const spaceBelow = bottomLimit - (a.y + a.height + 10);
+  const spaceAbove = a.y - 10 - topLimit;
   const below = spaceBelow >= estH || spaceBelow >= spaceAbove;
   let top = below ? a.y + a.height + 10 : a.y - 10 - estH;
   // Final safety clamp: never let the card start off-screen or extend past the
   // bottom margin, regardless of the flip decision or an under-estimated height.
-  top = Math.max(MARGIN, Math.min(top, screen.height - MARGIN - estH));
+  top = Math.max(topLimit, Math.min(top, bottomLimit - estH));
 
   const stop = (e: GestureResponderEvent) => e.stopPropagation();
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.card, { width: CARD_W, top, left }]} onPress={stop}>
+        <Pressable
+          style={[styles.card, { width: CARD_W, top, left, maxHeight: maxH }]}
+          onPress={stop}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            // Only when it actually differs — setting state to the same number
+            // on every layout pass would re-render forever.
+            if (Math.abs(h - (measuredH ?? -1)) > 1) setMeasuredH(h);
+          }}
+        >
           {/* caret pointing at the avatar */}
           <View
             style={[
@@ -156,6 +194,9 @@ export function PlayerActionMenu({
               devices + a 5-item menu), so the last item is never clipped. */}
           <ScrollView
             style={{ maxHeight: maxH - 76 }}
+            // The list is the part that gives: the header names who was
+            // tapped and must stay put.
+            contentContainerStyle={{ flexGrow: 0 }}
             bounces={false}
             showsVerticalScrollIndicator={false}
           >

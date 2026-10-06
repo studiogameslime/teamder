@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { FieldType, GameFormat } from '@/types';
-import { formatDayDate, formatGameDay, formatTime,
+import { dayDiff, formatDayDate, formatGameDay, formatTime,
   gameFormatLabel,
 } from '@/utils/format';
 
@@ -215,9 +215,18 @@ export function NextGameCard({
   );
 }
 
-// "{day-long} HH:MM" — used inside the locked pill copy.
+/**
+ * The phrase that follows "ההרשמה תיפתח" — WITH its preposition when it needs
+ * one, and without when it does not.
+ *
+ * `formatGameDay` answers "היום" or "מחר" for the near days and a date for the
+ * rest, and only the date takes "ב-". The sentence used to carry the prefix
+ * itself, so a registration opening today read "ההרשמה תיפתח ב-היום 20:00".
+ */
 function formatLockTime(ms: number): string {
-  return `${formatGameDay(ms)} ${formatTime(ms)}`;
+  const diff = dayDiff(ms);
+  const near = diff === 0 || diff === 1;
+  return `${near ? '' : 'ב-'}${formatGameDay(ms)} ${formatTime(ms)}`;
 }
 
 const styles = StyleSheet.create({

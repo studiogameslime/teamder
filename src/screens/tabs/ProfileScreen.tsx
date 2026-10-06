@@ -27,6 +27,7 @@ import {
 } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useFocusEffect,
@@ -42,17 +43,24 @@ import { currentAuthProviderId } from '@/firebase/auth';
 // import { DisciplineRow } from '@/components/profile/DisciplineRow';
 import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
 import { NextGameCardEntrance } from '@/components/anim/game/NextGameCardEntrance';
+import { guestJoinGameRequest } from '@/services/guestJoin';
 import { AnimationLab } from '@/screens/dev/AnimationLab';
 import { AvailabilityPromptCard } from '@/components/home/AvailabilityPromptCard';
+import { HomeActionTiles } from '@/components/home/HomeDashboardParts';
+import { HomeAvailabilityPanel } from '@/components/home/HomeAvailabilityPanel';
+import { buildAvailabilityView } from '@/utils/homeAvailabilityView';
+import { HomeHero } from '@/components/home/HomeHero';
 import {
-  HomeTopBar,
-  HomeRecommendedDay,
-  HomeActionTiles,
-  HomeAvailabilityWindows,
-  type WindowDay,
-} from '@/components/home/HomeDashboardParts';
-import { HomeNextGameCard } from '@/components/home/HomeNextGameCard';
-import { AssistantCard } from '@/components/home/AssistantCard';
+  UpcomingRoundCard,
+  CompletedRoundCard,
+  NoRoundCard,
+  type RoundActions,
+} from '@/components/home/HomeRoundCards';
+import {
+  deriveRoundState,
+  isShowableUpcoming,
+  pickHomeRound,
+} from '@/utils/homeRoundState';
 import { notificationsService } from '@/services/notificationsService';
 import { ScreenEntrance } from '@/components/anim/ScreenEntrance';
 import { PressableScale } from '@/components/PressableScale';
@@ -67,7 +75,6 @@ import {
   invalidateAssistantInsights,
   type ClubInsight,
 } from '@/services/assistantInsightsService';
-import { UpcomingScheduledGameCard } from '@/components/home/UpcomingScheduledGameCard';
 import {
   availabilityFeedService,
   type AvailabilityCounts,
@@ -90,8 +97,11 @@ import {
   type NewlyUnlocked,
 } from '@/services/achievementsService';
 import { AchievementCelebration } from '@/components/AchievementCelebration';
+import { isUpdateGateOpen } from '@/services/updateService';
 import type { Game } from '@/types';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
+import { toast } from '@/components/Toast';
 import { deepLinkService } from '@/services/deepLinkService';
 import { createShortInviteUrl } from '@/services/inviteLinkService';
 import {
@@ -112,6 +122,12 @@ import { type User } from '@/types';
 // Support email + store URLs are remotely overridable via Remote Config
 // (keys support_email / store_url_ios / store_url_android, defaults in
 // remoteConfigService.RC_DEFAULTS). Read at point of use via rcString().
+
+// Marketing/QA screenshot layout — the same EXPO_PUBLIC_SCREENSHOT_MODE flag
+// the club screen and the mock banner already read. It hides dev chrome only;
+// nothing about the real screen changes.
+const SCREENSHOT_MODE =
+  (process.env.EXPO_PUBLIC_SCREENSHOT_MODE ?? '').trim() === '1';
 
 export function ProfileScreen() {
   useRemoteConfig(); // re-render when feature flags / config activate
@@ -201,6 +217,16 @@ export function ProfileScreen() {
   // drives the "איך היה אתמול?" card under the coach message. Null the rest of
   // the time, which is most of the week.
   const [justPlayed, setJustPlayed] = useState<Game | null>(null);
+  // Has the upcoming-games query answered yet? `homeDataReady` covers groups
+  // and counters, not this one — and without it the round area renders "no
+  // upcoming round" for the half second before the query returns one.
+  const [gamesLoaded, setGamesLoaded] = useState(false);
+  // The game whose join is in flight, so the button cannot double-fire.
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+  /** The coach line, held for the visit. See where it is filled, far below. */
+  const coachLatchRef = useRef<AssistantMessage | null>(null);
+  /** Pending re-read after a join, so the reconciler has time to seat us. */
+  const reconcileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // §22 — the "a season closed" notification, if this player has one from the
   // last 48 hours. Read once per focus from the notification doc itself. The
   // WINDOW is the dedupe now, not a read flag: nothing marks this one read,
@@ -368,6 +394,7 @@ export function ProfileScreen() {
           // first, otherwise the soonest upcoming. The first IS the game to show.
           setNextGame(mine[0] ?? null);
           setMyGames(mine);
+          setGamesLoaded(true);
           // Same list, filtered to the ones the user CREATED — powers
           // the "מחזורים שיצרתי" section. createdBy is set by the wizard.
           setCreatedGames(mine.filter((g) => g.createdBy === uid));
@@ -447,6 +474,26 @@ export function ProfileScreen() {
         alive = false;
       };
     }, [localUser?.id, myCommunities.length]),
+  );
+
+  // Cancel a pending post-join re-read on unmount, so it cannot fire into a
+  // screen that is gone.
+  useEffect(
+    () => () => {
+      if (reconcileTimerRef.current) clearTimeout(reconcileTimerRef.current);
+    },
+    [],
+  );
+
+  // Drop the coach's latched line when the tab loses focus, so the next visit
+  // picks a fresh one. Sits with the other focus effects — above every early
+  // return — because hook order has to be identical on every render.
+  useFocusEffect(
+    React.useCallback(() => {
+      return () => {
+        coachLatchRef.current = null;
+      };
+    }, []),
   );
 
   // Unified incoming-requests count for the top banner — refreshed on focus
@@ -609,7 +656,12 @@ export function ProfileScreen() {
       })
       .then(async (c) => {
         const fresh = await achievementsService.persistDerivedUnlocks(uid, c);
-        if (alive && fresh.length) setCelebrate(fresh);
+        // Never in front of a store gate. A forced update modal is the one
+        // thing on screen the user MUST be able to reach, and a celebration
+        // covering it leaves the app unusable until they guess to dismiss
+        // trophies first (Pulse). The unlocks are already persisted, so they
+        // are not lost — they simply wait for a visit with nothing in the way.
+        if (alive && fresh.length && !isUpdateGateOpen()) setCelebrate(fresh);
       })
       .catch(() => {
         // Best-effort — no celebration on a transient failure.
@@ -786,6 +838,165 @@ export function ProfileScreen() {
   const markedAvailability =
     (user.availability?.preferredDays?.length ?? 0) > 0;
 
+  // ── The round area ─────────────────────────────────────────────────────
+  // One decision, taken from data this screen already holds. `nextGame` is a
+  // game the viewer is IN (getMyLiveOrUpcomingGames); `heroGame` is the
+  // fallback from `pickHomeHero` — a game they could still join, else one
+  // whose registration has not opened. That order is unchanged.
+  const upcomingRound = isShowableUpcoming(nextGame)
+    ? nextGame
+    : isShowableUpcoming(heroGame)
+      ? heroGame
+      : null;
+  // `getJustFinishedGame` is the existing definition of "the round that just
+  // finished": the latest evening within 24 hours that the viewer actually
+  // played and that the server sealed as having happened. Reusing it means
+  // the completed card inherits a boundary the app already agreed on, and
+  // costs nothing — it reads the same cached window the query above warmed.
+  const roundLayout = pickHomeRound(upcomingRound, justPlayed);
+  // One clock for the whole area, taken at render. Countdowns move when the
+  // screen does (focus, pull-to-refresh) rather than on a background timer.
+  const nowMs = Date.now();
+  const roundState = roundLayout.upcoming
+    ? deriveRoundState(roundLayout.upcoming, user.id, nowMs)
+    : null;
+
+  const roundActions: RoundActions = {
+    onDetails: (gameId) => {
+      logEvent(AnalyticsEvent.HomeActionTileTapped, {
+        tile: 'round_details',
+        source: 'home_round',
+        state: roundState?.kind ?? 'none',
+      });
+      nav.navigate('MatchDetails', { gameId });
+    },
+    onSummary: (gameId) => {
+      logEvent(AnalyticsEvent.HomeActionTileTapped, {
+        tile: 'round_summary',
+        source: 'home_round',
+      });
+      // The match screen's STATISTICS tab, not the standalone personal
+      // summary. Asked for directly: from there the evening's numbers, the
+      // mini-games, the teams and everyone else's night are all one screen,
+      // and the personal card is still one tap away — whereas EveningSummary
+      // is only the personal card and leads nowhere else.
+      nav.navigate('MatchDetails', { gameId, initialTab: 'stats' });
+    },
+    onJoin: async (game) => {
+      // A guest is parked and resumed by the existing coordinator, exactly as
+      // the games feed does it — the sheet opens in place and the join is
+      // re-asked of the server afterwards, so a game that filled during the
+      // sign-in comes back as a waitlist rather than a success that never was.
+      if (localUser?.isGuest) {
+        void authAction.request(guestJoinGameRequest(game.id));
+        return;
+      }
+      if (joiningId) return;
+      setJoiningId(game.id);
+      try {
+        const { bucket } = await gameService.requestJoinGame(game.id, user.id, 'home');
+        toast.success(
+          bucket === 'waitlist'
+            ? he.toastGameJoinedWaitlist
+            : bucket === 'pending'
+              ? he.toastGameJoinedPending
+              : he.toastGameJoined,
+        );
+        // Show it IMMEDIATELY, then reconcile.
+        //
+        // The fair-queue reconciler seats the player server-side a second or
+        // two later (a Cloud Function), and this screen has no realtime
+        // listener. An immediate re-read therefore returns the PRE-seating
+        // snapshot and the card does not move — reported as "הצטרפתי מפה
+        // למחזור וזה לא התעדכן בלייב שהצטרפתי. רק לאחר רענון זה מתעדכן".
+        //
+        // So the card is patched in place from the bucket the server already
+        // told us, and the authoritative re-read follows once the reconciler
+        // has had time to commit. Same shape the games feed uses, and it
+        // costs no extra read — the patch is local.
+        const me = user.id;
+        const patch = (g: Game): Game => {
+          if (g.id !== game.id) return g;
+          if (
+            g.players.includes(me) ||
+            g.waitlist.includes(me) ||
+            (g.pending ?? []).includes(me)
+          ) {
+            return g; // the server already reflects it
+          }
+          const next: Game = {
+            ...g,
+            participantIds: Array.from(new Set([...(g.participantIds ?? []), me])),
+          };
+          if (bucket === 'players') next.players = [...g.players, me];
+          else if (bucket === 'waitlist') next.waitlist = [...g.waitlist, me];
+          else next.pending = [...(g.pending ?? []), me];
+          return next;
+        };
+        // The joined game may not be in `myGames` yet (it was a club game I
+        // was not in), so patch what we have AND make sure it leads.
+        setNextGame((prev) => (prev && prev.id === game.id ? patch(prev) : patch(game)));
+        setMyGames((prev) =>
+          prev.some((g) => g.id === game.id) ? prev.map(patch) : [patch(game), ...prev],
+        );
+        if (reconcileTimerRef.current) clearTimeout(reconcileTimerRef.current);
+        reconcileTimerRef.current = setTimeout(() => {
+          reconcileTimerRef.current = null;
+          void gameService
+            .getMyLiveOrUpcomingGames(me)
+            .then((mine) => {
+              setNextGame(mine[0] ?? null);
+              setMyGames(mine);
+            })
+            .catch(() => {
+              /* the optimistic patch already shows the right thing */
+            });
+        }, 2500);
+      } catch (err) {
+        const code =
+          typeof (err as { code?: unknown })?.code === 'string'
+            ? (err as { code: string }).code
+            : '';
+        if (code === 'REGISTRATION_CONFLICT') {
+          // The home card has no conflict modal — that lives on the feed and
+          // on the game screen, where there is room to resolve it. Say what
+          // happened and send them where it can be sorted out.
+          toast.info(he.registrationConflictTitle);
+          nav.navigate('MatchDetails', { gameId: game.id });
+        } else if (code === 'GAME_JOIN_REJECTED') {
+          toast.info(he.matchDetailsJoinRejected);
+        } else if (
+          code === 'GAME_NOT_OPEN' ||
+          code === 'GAME_STARTED' ||
+          code === 'GAME_LIVE'
+        ) {
+          // A stale card raced the game's lifecycle. Soft, not an error.
+          toast.info(he.gameNotJoinableToast);
+        } else {
+          logError('homeRoundJoin', err, { gameId: game.id, userId: user.id });
+          toast.error(he.summaryShareFailed);
+        }
+      } finally {
+        setJoiningId(null);
+      }
+    },
+    onShare: undefined,
+    onCreate: () => {
+      logEvent(AnalyticsEvent.HomeActionTileTapped, {
+        tile: 'create',
+        source: 'home_round_empty',
+      });
+      nav.navigate('GameTab', { screen: 'GamesList', params: { openCreate: true } });
+    },
+    onFind: () => {
+      logEvent(AnalyticsEvent.HomeActionTileTapped, {
+        tile: 'find_game',
+        source: 'home_round_empty',
+      });
+      nav.navigate('GameTab');
+    },
+  };
+
   // ── Availability-derived widgets (recommended day + evening podium) ──
   const availReady =
     !!availData &&
@@ -799,30 +1010,14 @@ export function ProfileScreen() {
         letter: he.availabilityDayLetter[new Date(d.dateMs).getDay()] ?? '',
       }))
     : [];
-  // "Closest strong days": pick from the NEAREST few days (not the whole week)
-  // so we surface soon-and-busy days, then rank those by availability.
-  const NEAR_WINDOW_DAYS = 5;
-  const nearDays = eveningDays.slice(0, NEAR_WINDOW_DAYS);
-  const eveningSorted = [...nearDays].sort((a, b) => b.count - a.count);
-  const anyEvening = eveningSorted.length > 0 && eveningSorted[0].count > 0;
-  // Recommended day = the day with the most evening availability nearby.
-  const recommended = anyEvening ? eveningSorted[0] : null;
-  // Podium: the top-3 evening days by availability, but displayed in
-  // CHRONOLOGICAL order (nearest first → visual-right under RTL) so the days
-  // read in order (user report). The busiest still gets the star.
-  const podium: WindowDay[] = (() => {
-    if (!anyEvening) return [];
-    const top = eveningSorted.slice(0, 3);
-    const bestMs = top[0].dateMs;
-    const mk = (d: (typeof top)[number]): WindowDay => ({
-      letter: d.letter,
-      count: d.count,
-      dateMs: d.dateMs,
-      best: d.dateMs === bestMs,
-    });
-    return top.map(mk).sort((a, b) => a.dateMs - b.dateMs);
-  })();
-  const podiumMax = podium.reduce((m, d) => Math.max(m, d.count), 0);
+  // Which days to show, which one to recommend, and in what order — all of it
+  // in one pure function so the ordering rule can be tested. Same arithmetic
+  // this screen used to do inline; see `homeAvailabilityView` for the rule.
+  const {
+    recommended,
+    days: podium,
+    maxCount: podiumMax,
+  } = buildAvailabilityView(eveningDays);
 
   // ── Smart contextual banner ──
   // ALWAYS a time-of-day greeting + name, then ONE contextual suffix chosen by
@@ -841,9 +1036,9 @@ export function ProfileScreen() {
   // and then bolt on a contextual suffix chosen by a hand-rolled if/else chain
   // in this component — two voices, and one of its branches printed
   // "המחזור שלך היום ב-20:00" which the next-match card already states in
-  // full. The coach's card now opens with the greeting itself, so the whole
-  // thing is one sentence in one voice. `greetWord` + `firstName` feed it.
-  const coachGreeting = firstName ? `${greetWord} ${firstName}` : greetWord;
+  // full. The hero now owns the greeting (`greetWord` + the name it derives
+  // itself) and the coach's line continues it directly underneath, so the
+  // whole thing is one sentence in one voice.
 
   // ── Teamder Assistant ──────────────────────────────────────────────────
   // Assemble everything the rules may look at, then let the resolver pick the
@@ -882,7 +1077,11 @@ export function ProfileScreen() {
       // change it here too, or the assistant starts echoing a card again.
       shown: {
         nextGameCard: !!nextGame,
-        recommendedDay: availCardEnabled && !!recommended,
+        // Both now live in ONE card, so both mirror its render condition.
+        // `recommendedDay` additionally needs a recommendation to exist: the
+        // panel omits that block when nobody is free, and reading `true`
+        // there let the coach stay silent about a day nothing had named.
+        recommendedDay: availCardEnabled && podium.length > 0 && !!recommended,
         availabilityPodium: availCardEnabled && podium.length > 0,
         openToJoinCard: !nextGame && openToJoin.length > 0,
         upcomingScheduledCard:
@@ -913,59 +1112,41 @@ export function ProfileScreen() {
     openToJoin.length,
   ]);
 
-  // The rules emit an intent; routing stays here so they remain pure.
-  const handleAssistantCta = (m: AssistantMessage) => {
-    const action = m.cta?.action;
-    if (!action) return;
-    logEvent(AnalyticsEvent.HomeAssistantCtaTapped, {
-      scenario: m.scenario,
-      id: m.id,
-    });
-    switch (action.kind) {
-      case 'openGame':
-        nav.navigate('MatchDetails', { gameId: action.gameId });
-        break;
-      case 'browseGames':
-        nav.navigate('GameTab');
-        break;
-      case 'createGame':
-        // With a slot attached this came from declared availability — a quick
-        // one-off match seeded with that day/window is exactly right.
-        //
-        // WITHOUT one it came from the club line ("השבוע עוד לא סגרתם מחזור"),
-        // and `quick: true` there would have skipped the community picker and
-        // created a match inside the hidden PERSONAL group — an orphan the
-        // club never sees, which is the opposite of what that line asks for.
-        // Send those to the normal chooser instead.
-        if (action.dateMs) {
-          nav.navigate('GameTab', {
-            screen: 'GameCreate',
-            params: {
-              quick: true,
-              prefillDateMs: action.dateMs,
-              ...(action.window ? { prefillWindow: action.window } : {}),
-              prefillCity: availData?.viewerCity ?? undefined,
-              inviteAvailable: true,
-            },
-          });
-        } else {
-          nav.navigate('GameTab', {
-            screen: 'GamesList',
-            params: { openCreate: true },
-          });
-        }
-        break;
-      case 'markAvailability':
-        nav.navigate('AvailabilityEdit');
-        break;
-      case 'discoverClubs':
-        nav.navigate('CommunitiesTab');
-        break;
-      case 'openStats':
-        nav.navigate('Statistics');
-        break;
-    }
-  };
+  /**
+   * The coach says ONE thing, once.
+   *
+   * The context above is assembled from seven async sources, and the memo
+   * re-ran as each landed: on first paint most were empty, a generic rule
+   * won, and a second later the real data arrived and a better rule replaced
+   * it on screen. From the outside that is a page that refreshes itself for
+   * no reason — reported exactly that way ("ההודעה מהמאמן מתחלפת לאחר שניה.
+   * יש רענון לא מוסבר לדף").
+   *
+   * So the line is not rendered until the sources the rules actually read
+   * have answered, and the first message chosen after that is LATCHED for
+   * the visit. Leaving the hero without a coach line for a moment is
+   * invisible; swapping the sentence under the reader's eye is not.
+   *
+   * Latched into a REF during render rather than with an effect, for two
+   * reasons: the hook would have to sit here, below this component's early
+   * return (the repo has a test for exactly that), and a setState would cost
+   * a second render to show a line we already have. The write is idempotent
+   * — it only ever fills an empty slot. `coachLatchRef` is cleared on blur
+   * by the focus effect up with the others, so a return to the tab
+   * recomputes against whatever is true then.
+   */
+  const coachReady = gamesLoaded && playedCount !== null && groupsHydrated;
+  if (coachReady && !coachLatchRef.current && assistantMessage) {
+    coachLatchRef.current = assistantMessage;
+  }
+  const coachMessage = coachReady ? coachLatchRef.current : null;
+
+  // `handleAssistantCta` is gone with the card that carried it.
+  //
+  // The coach's line is the hero's subtitle now — a sentence, not a surface —
+  // and a subtitle has nowhere to put a button. The rules still emit a `cta`
+  // and nothing reads it; that is deliberate rather than overlooked, so the
+  // rule set does not have to be rewritten if the card ever comes back.
 
   // The user's communities split into the ones they OPENED (founder) vs
   // Pre-compute the share invite handler once.
@@ -1197,7 +1378,7 @@ export function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    <View style={styles.root}>
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.scroll}
@@ -1211,9 +1392,12 @@ export function ProfileScreen() {
           />
         }
       >
-        {/* ① Top bar — menu + bell (leading), centered Teamder logo, avatar. */}
-        <HomeTopBar
+        {/* ① Hero — the controls that used to sit on a white strip, now on a
+            floodlit pitch, with the greeting and the coach's line on it. The
+            same menu / bell / logo / avatar, in the same places. */}
+        <HomeHero
           user={user}
+          greeting={greetWord}
           hasNotif={inboxCount > 0}
           onMenu={() => setMenuOpen(true)}
           onBell={() => {
@@ -1224,61 +1408,16 @@ export function ProfileScreen() {
             nav.navigate('Requests');
           }}
           onAvatar={() => nav.navigate('ProfileEdit')}
+          /* ② The coach's line IS the greeting's second row now.
+             It used to be a plate of its own under a static "מוכן למשחק הבא?",
+             so the hero carried a question that knows nothing stacked on a
+             sentence that does. The owner asked for the sentence to take the
+             question's place and for the plate to go; when no rule has
+             anything to say the static line is still the fallback. */
+          coachLine={coachMessage?.text ?? null}
         />
 
         <View style={styles.body}>
-          {/* ② "הודעה מהמאמן" — greeting + ONE contextual line, chosen by the
-              rule engine in utils/assistant. Replaces the old greeting banner
-              entirely (see the note where coachGreeting is built). Sits above
-              the data cards because it's the coach talking to the player, not
-              another readout; renders nothing when no rule has anything worth
-              saying. */}
-          <ScreenEntrance index={0}>
-            <AssistantCard
-              message={assistantMessage}
-              greeting={coachGreeting}
-              onCta={handleAssistantCta}
-            />
-          </ScreenEntrance>
-
-          {/* Straight after an evening the player PLAYED, a way back into its
-              summary — the one moment they want it, and until now the only
-              route was digging through the club's history. Lives for 24h and
-              then disappears on its own. */}
-          {justPlayed ? (
-            <ScreenEntrance index={1}>
-            <PressableScale
-              style={styles.justPlayedCard}
-              pressedScale={motion.press.cardScale}
-              haptic={false}
-              onPress={() => {
-                logEvent(AnalyticsEvent.HomeActionTileTapped, {
-                  tile: 'evening_summary',
-                  source: 'just_played',
-                });
-                // Match details, not straight to the personal summary. From
-                // there the summary is one tap away, along with the score, the
-                // teams and everyone else's evening — a user asked for the
-                // whole match back, not only their own card.
-                nav.navigate('MatchDetails', { gameId: justPlayed.id });
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={he.homeJustPlayedCta}
-            >
-              <View style={styles.justPlayedText}>
-                <Text style={styles.justPlayedTitle}>{he.homeJustPlayedTitle}</Text>
-                <Text style={styles.justPlayedBody}>{he.homeJustPlayedBody}</Text>
-                {/* Ball sits ON the link row, not as a card-level sibling of the
-                    whole text block — as a floating sibling it rendered on a
-                    line of its own under the link (report from Eliran). */}
-                <View style={styles.justPlayedCtaRow}>
-                  <Text style={styles.justPlayedCta}>{he.homeJustPlayedCta}</Text>
-                  <Text style={styles.justPlayedCtaEmoji}>⚽</Text>
-                </View>
-              </View>
-            </PressableScale>
-            </ScreenEntrance>
-          ) : null}
 
           {/* §22 — "your season ended". The one in-app place this is ever said.
               `announceSeasonClosed` has been writing a notification per
@@ -1334,83 +1473,48 @@ export function ProfileScreen() {
             </ScreenEntrance>
           ) : null}
 
-          {/* ③ Hero — exactly ONE card, in priority order (see pickHomeHero):
-              1. a game I'm registered to / created (always wins, even if it's
-                 further than a week out — a registered game beats everything);
-              2. else the closest community game I can still REGISTER to right
-                 now ("ההרשמה פתוחה") — this rung was missing, so at the moment
-                 registration opened the screen advertised next week instead;
-              3. else the closest one whose registration hasn't opened yet;
-              4. else nothing — the content below just tightens up to the top. */}
-          {nextGame ? (
-            <NextGameCardEntrance triggerKey={nextGame.id}>
-              <HomeNextGameCard
-                game={nextGame}
-                communityName={
-                  myCommunities.find((c) => c.id === nextGame.groupId)?.name
+          {/* ③ The round area — one decision, up to three cards.
+              `pickHomeRound` chooses the layout and `deriveRoundState` the
+              state inside the upcoming card; both are pure and tested. The
+              upcoming round always leads: a finished evening never outranks
+              one the player can still act on. */}
+          {roundLayout.upcoming && roundState ? (
+            <NextGameCardEntrance triggerKey={roundLayout.upcoming.id}>
+              <UpcomingRoundCard
+                game={roundLayout.upcoming}
+                state={roundState}
+                clubName={
+                  myCommunities.find((c) => c.id === roundLayout.upcoming!.groupId)?.name
                 }
-                onOpen={(gameId) => nav.navigate('MatchDetails', { gameId })}
-                onFind={() => {
-                  logEvent(AnalyticsEvent.HomeActionTileTapped, {
-                    tile: 'find_game',
-                    source: 'profile_next_game',
-                  });
-                  nav.navigate('GameTab');
-                }}
+                actions={roundActions}
+                busy={joiningId === roundLayout.upcoming.id}
+                now={nowMs}
               />
             </NextGameCardEntrance>
-          ) : heroGame ? (
-            // Same component for both: it reads `status` and switches between
-            // "ההרשמה פתוחה" (green, places left) and "מחזור בדרך" (grey,
-            // countdown to opening).
-            // The OTHER hero branch, NextGameCardEntrance, already carries a
-            // fade+rise keyed to the game id — wrapping it again would run two
-            // entrances on one card. This branch had none, so it gets the hero
-            // treatment here and the two now match.
-            <ScreenEntrance hero>
-              <UpcomingScheduledGameCard
-                game={heroGame}
-                communityName={
-                  myCommunities.find((c) => c.id === heroGame.groupId)?.name
+          ) : null}
+
+          {roundLayout.completed && roundLayout.completedRole ? (
+            <ScreenEntrance index={1}>
+              <CompletedRoundCard
+                game={roundLayout.completed}
+                clubName={
+                  myCommunities.find((c) => c.id === roundLayout.completed!.groupId)?.name
                 }
-                onOpen={(gameId) =>
-                  nav.navigate('MatchDetails', { gameId })
-                }
+                role={roundLayout.completedRole}
+                onSummary={roundActions.onSummary}
               />
             </ScreenEntrance>
           ) : null}
 
-          {/* ④ Recommended day to open a game — busiest evening nearby. */}
-          {availCardEnabled && recommended ? (
-            <HomeRecommendedDay
-              dayLetter={recommended.letter}
-              count={recommended.count}
-              onPress={() => {
-                logEvent(AnalyticsEvent.AvailabilityDayPicked, {
-                  dateMs: recommended.dateMs,
-                  window: 'evening',
-                  source: 'home_recommended',
-                  ...(availData?.viewerCity
-                    ? { city: availData.viewerCity }
-                    : {}),
-                });
-                (
-                  nav as { navigate: (s: string, p?: unknown) => void }
-                ).navigate('GameTab', {
-                  screen: 'GameCreate',
-                  params: {
-                    quick: true,
-                    prefillDateMs: recommended.dateMs,
-                    prefillWindow: 'evening',
-                    prefillCity: availData?.viewerCity ?? undefined,
-                    inviteAvailable: true,
-                  },
-                });
-              }}
-            />
+          {/* Shown only once the game queries have answered — otherwise the
+              screen flashes "no upcoming round" for the half second before
+              one arrives. */}
+          {roundLayout.showEmpty && gamesLoaded ? (
+            <NoRoundCard onCreate={roundActions.onCreate} onFind={roundActions.onFind} />
           ) : null}
 
-          {/* ⑤ Three action tiles. */}
+          {/* ④ Three action tiles — the quick actions, straight under the
+              hero card, because these are what most visits are for. */}
           <HomeActionTiles
             onOpen={() => {
               logEvent(AnalyticsEvent.HomeActionTileTapped, {
@@ -1438,13 +1542,42 @@ export function ProfileScreen() {
             }}
           />
 
-          {/* ⑥ Evening-availability podium. "הצג שבוע מלא" NAVIGATES to the
-              full-week screen (Pulse: no inline expand). */}
+          {/* ⑤ The week's availability AND the opening recommendation —
+              ONE card. They used to be two: a banner naming the busiest day,
+              and directly beneath it a podium in which that same day already
+              wore a star. One fact, stated once.
+
+              The recommendation keeps its day's CHRONOLOGICAL place in the
+              row; `best` buys it a colour and a badge, never a position. */}
           {availCardEnabled && podium.length > 0 ? (
-            <HomeAvailabilityWindows
+            <HomeAvailabilityPanel
               days={podium}
               maxCount={podiumMax}
+              recommended={recommended}
               onShowWeek={() => nav.navigate('AvailabilityWeek')}
+              onPressRecommended={() => {
+                if (!recommended) return;
+                logEvent(AnalyticsEvent.AvailabilityDayPicked, {
+                  dateMs: recommended.dateMs,
+                  window: 'evening',
+                  source: 'home_recommended',
+                  ...(availData?.viewerCity
+                    ? { city: availData.viewerCity }
+                    : {}),
+                });
+                (
+                  nav as { navigate: (s: string, p?: unknown) => void }
+                ).navigate('GameTab', {
+                  screen: 'GameCreate',
+                  params: {
+                    quick: true,
+                    prefillDateMs: recommended.dateMs,
+                    prefillWindow: 'evening',
+                    prefillCity: availData?.viewerCity ?? undefined,
+                    inviteAvailable: true,
+                  },
+                });
+              }}
               onPickDay={(dateMs) => {
                 logEvent(AnalyticsEvent.AvailabilityDayPicked, {
                   dateMs,
@@ -1498,15 +1631,25 @@ export function ProfileScreen() {
             onPress={handleShareInvite}
             style={({ pressed }) => [
               styles.inviteCta,
-              pressed && { opacity: 0.9 },
+              pressed && { opacity: 0.92 },
             ]}
             accessibilityRole="button"
             accessibilityLabel={he.profileInviteFriendsCta}
           >
-            <Ionicons name="share-social-outline" size={18} color="#FFFFFF" />
+            {/* Blue into violet, left to right. The only gradient CTA on the
+                screen, which is what lets it close the page without competing
+                with the next-game button above it. */}
+            <LinearGradient
+              colors={['#2563EB', '#6D28D9']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
             <Text style={styles.inviteCtaText}>
               {he.profileInviteFriendsCta}
             </Text>
+            <Ionicons name="share-social-outline" size={18} color="#FFFFFF" />
           </Pressable>
         </View>
       </ScrollView>
@@ -1531,7 +1674,7 @@ export function ProfileScreen() {
 
       {/* DEV-ONLY: animation lab (preview/record product animations). Never
           renders in a production build (__DEV__ is false there). */}
-      {__DEV__ ? (
+      {__DEV__ && !SCREENSHOT_MODE ? (
         <>
           <Pressable style={styles.labFab} onPress={() => setShowLab(true)}>
             <Text style={styles.labFabTxt}>🎬</Text>
@@ -1539,7 +1682,7 @@ export function ProfileScreen() {
           <AnimationLab visible={showLab} onClose={() => setShowLab(false)} />
         </>
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -1625,7 +1768,10 @@ async function openStore(): Promise<void> {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.bg,
+    // A very light cool blue rather than the app's neutral `bg`. Every card
+    // on this screen is white, and white on near-white leaves them with no
+    // edge of their own; this is the one screen whose ground is tinted.
+    backgroundColor: '#F2F6FC',
   },
   labFab: {
     position: 'absolute',
@@ -1662,7 +1808,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   scroll: {
-    paddingBottom: spacing.xxl,
+    // Clears the bottom tab bar so the invite CTA is never half-hidden
+    // behind it on a tall phone.
+    paddingBottom: spacing.xxxxl,
   },
   // Floating stats card — pulled UP via negative margin to overlap
   // the bottom edge of the hero gradient, then padded so its
@@ -1678,18 +1826,31 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: spacing.lg,
     gap: spacing.md,
+    // Pulled UP over the hero's bottom edge so the next-game card sits ON the
+    // pitch rather than below a seam. The hero carries matching bottom
+    // padding, so the overlap costs no content — it is the same gap, shared.
+    marginTop: -spacing.xxl,
   },
   // "איך היה אתמול?" — the 24h door back into the evening summary. Text first,
+  // Same radius and the same soft shadow as every other card on the screen —
+  // it used to be a flat tinted rectangle with a hard border, which read as a
+  // notice pinned over the page rather than part of it. The green stays: it
+  // is what says "this one is about an evening that already happened".
   justPlayedCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: '#ECFDF5',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#A7F3D0',
-    borderRadius: radius.lg,
+    borderRadius: 20,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 2,
   },
   justPlayedText: { flex: 1, gap: 2 },
   justPlayedTitle: {
@@ -1799,14 +1960,20 @@ const styles = StyleSheet.create({
   // profile palette) with a subtle shadow. Hand-rolled instead of
   // the brand-green Button so the screen's accent stays cohesive.
   inviteCta: {
-    // row-reverse puts the share icon on the LEFT of the label (QA: the
-    // icon read better on the leading-left side in this RTL layout).
-    flexDirection: 'row-reverse',
+    // Plain `row`, not `row-reverse`. Under forceRTL the first child lands on
+    // the visual RIGHT, so writing the label first and the icon second puts
+    // the icon on the LEFT — which is where it was, and where QA wanted it.
+    // The old `row-reverse` reversed an already-reversed row to reach the
+    // same place by going round twice.
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    height: 56,
+    height: 54,
     borderRadius: 999,
+    // Clips the absolutely-positioned gradient to the pill. The flat colour
+    // underneath is what shows if the gradient ever fails to draw.
+    overflow: 'hidden',
     backgroundColor: '#2563EB',
     marginTop: spacing.sm,
     shadowColor: '#1D4ED8',

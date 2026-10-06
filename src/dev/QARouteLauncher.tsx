@@ -111,7 +111,9 @@ const ROUTES: Array<
   ['MatchRounds', 'MatchRounds', 'ProfileTab', { gameId: 'game-1' }],
   ['GameEdit', 'GameEdit', 'ProfileTab', { gameId: 'game-1' }],
   ['LiveMatch', 'LiveMatch', 'ProfileTab', { gameId: 'game-1' }],
-  ['RoundSummary', 'RoundSummary', 'ProfileTab', { gameId: 'game-1' }],
+  // The evening's summary is the statistics TAB of the match screen now; the
+  // standalone RoundSummary screen is gone. Same destination, new address.
+  ['RoundSummary', 'MatchDetails', 'ProfileTab', { gameId: 'game-1', initialTab: 'stats' }],
   ['EveningSummary', 'EveningSummary', 'ProfileTab', { gameId: 'game-1' }],
   ['History', 'History', 'ProfileTab', { groupId: 'g1' }],
   ['— PROFILE / STATS —', '', ''],
@@ -122,7 +124,7 @@ const ROUTES: Array<
   ['SeasonTitles', 'SeasonTitles', 'ProfileTab'],
   ['SeasonSummary', 'SeasonSummary', 'ProfileTab', { groupId: 'g1' }],
   ['PlayerCard', 'PlayerCard', 'ProfileTab', { userId: 'p1' }],
-  ['PlayerCompare', 'PlayerCompare', 'ProfileTab', { userId: 'p1' }],
+  ['PlayerCompare', 'PlayerCompare', 'ProfileTab', { groupId: 'g1', otherUid: 'p1' }],
   ['PlayerTimeline', 'PlayerTimeline', 'ProfileTab', { userId: 'p1' }],
   ['AvailabilityEdit', 'AvailabilityEdit', 'ProfileTab'],
   ['AvailabilityWeek', 'AvailabilityWeek', 'ProfileTab'],

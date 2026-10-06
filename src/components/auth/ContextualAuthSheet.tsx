@@ -292,8 +292,12 @@ function ProviderButton({
         <ActivityIndicator color={ACCENT} />
       ) : (
         <>
-          <Ionicons name={icon} size={20} color={ACCENT} />
+          {/* Label FIRST in source order → rightmost under forceRTL, with the
+              provider mark closing the row on its left (owner, 26.09). The
+              icon used to lead, which put it on the right and pushed the
+              sentence away from the edge the eye starts at. */}
           <Text style={styles.ctaText}>{label}</Text>
+          <Ionicons name={icon} size={20} color={ACCENT} />
         </>
       )}
     </Pressable>

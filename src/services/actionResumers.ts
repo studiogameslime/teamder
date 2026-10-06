@@ -151,6 +151,20 @@ registerResumer('join_club', async (action: PendingAction): Promise<ActionResult
 
   // Already a member — what happens when a guest taps join and then signs into
   // an account that is already in the club. Terminal success, nothing to do.
+  //
+  // ⚠️ Only trustworthy once the store has HYDRATED. This resumer runs in the
+  // seconds right after a sign-in, which is exactly when the club list is
+  // still empty — and an empty list is not "no clubs", it is "not asked yet".
+  // Read as the former it sent a join request for a club the person was
+  // already in, which the rules deny, correctly, and which surfaced as
+  // `resumeJoinClub · permission-denied` from a member of the club he was
+  // "joining" (30.09). Wait for the answer before acting on it.
+  const groupState = useGroupStore.getState();
+  // Best-effort, and tolerant of a store that cannot answer: this is a guard
+  // against acting on a half-loaded list, not a dependency.
+  if (!groupState.hydrated && typeof groupState.hydrate === 'function') {
+    await groupState.hydrate(me.id).catch(() => {});
+  }
   if (useGroupStore.getState().groups.some((g) => g.id === groupId)) {
     return { outcome: 'joined', terminal: true };
   }
@@ -271,6 +285,22 @@ registerResumer('create_game', async (action: PendingAction): Promise<ActionResu
     navigateAfterCreate({ type: 'game', id: gameId });
     return { outcome: 'created', terminal: true };
   } catch (err) {
+    // A VALIDATION failure is not a failure of the resumer.
+    //
+    // `createGameFromValues` throws a plain Error with a Hebrew message when
+    // a required field is empty — "יש להזין שם המגרש" was logged to the error
+    // inbox as "פעולה נכשלה", which is the same mistake as filing a dropped
+    // network as a bug: it is a draft that needs one more field, and the
+    // person is right there to supply it.
+    //
+    // These errors carry no `code`, which is exactly what separates them from
+    // the Firestore / callable failures `fromError` is built to classify. So
+    // they take the same non-terminal path an expired draft already takes:
+    // the stash survives and the form reopens filled in.
+    const code = (err as { code?: string })?.code ?? '';
+    if (!code) {
+      return { outcome: 'created', terminal: false, reason: 'draft_expired' };
+    }
     return fromError(err, 'resumeCreateGame');
   }
 });

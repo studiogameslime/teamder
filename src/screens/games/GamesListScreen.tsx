@@ -1098,12 +1098,14 @@ export function GamesListScreen() {
                     ?.navigate('CommunitiesTab', { screen: 'CommunitiesCreate' });
                 }}
               >
-                <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+                {/* Label first → rightmost under forceRTL; the plus closes
+                    the row on its left, like every other CTA (owner, 02.10). */}
                 <Text style={createSheetStyles.createCommunityCtaText}>
                   {hasAnyCommunity
                     ? he.createGameCreateOwnCommunityCta
                     : he.createGameCreateCommunityCta}
                 </Text>
+                <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
               </Pressable>
             ) : null}
             <Pressable

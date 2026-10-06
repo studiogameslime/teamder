@@ -22,6 +22,8 @@ import {
   navigateInvite,
   navigatePersonalInvite,
   navigateEntryIntent,
+  currentRouteName,
+  ENTRY_INTENT_ROUTE,
 } from './navigationRef';
 import { colors } from '@/theme';
 import { adsService } from '@/services/adsService';
@@ -440,6 +442,53 @@ export function RootNavigator() {
       if (timer) clearTimeout(timer);
     };
   }, [entryOrganicCompleted, takePendingIntent]);
+
+  // ── Backing out of the intent's destination ─────────────────────────────
+  //
+  // Choosing a card flips the completion flag, because that is the only way
+  // the gate can unmount the entry stack and let the tabs mount. The cost is
+  // that the flag says "onboarding done" before the person has done anything:
+  // pressing back out of "הקמת מועדון" dropped a brand-new user straight into
+  // the app with the question unanswered (owner: "זה דילוג על הonboarding").
+  //
+  // So the destination is watched while they are still a GUEST. A guest who
+  // leaves it has backed out — put the question back. Anyone who actually
+  // finished is no longer a guest (creating a club requires an account), and
+  // is never re-armed by this.
+  const intentDestination = useEntryStore((s) => s.intentDestination);
+  const reopenIntent = useEntryStore((s) => s.reopenIntent);
+  const clearIntentDestination = useEntryStore((s) => s.clearIntentDestination);
+  const viewerIsGuest = currentUser?.isGuest === true;
+  useEffect(() => {
+    if (!intentDestination) return;
+    const want = ENTRY_INTENT_ROUTE[intentDestination];
+    if (!want) {
+      // A destination with no back button (the games feed). Nothing to watch.
+      clearIntentDestination();
+      return;
+    }
+    if (!viewerIsGuest) {
+      // They signed in somewhere inside the flow — that is a finish, not a
+      // back-out, whatever they do with the screen afterwards.
+      clearIntentDestination();
+      return;
+    }
+    let arrived = false;
+    const id = setInterval(() => {
+      const here = currentRouteName();
+      if (here === want) {
+        arrived = true;
+        return;
+      }
+      // Only meaningful once we have actually seen them on it: the first ticks
+      // fire while the navigation is still in flight.
+      if (arrived) {
+        clearInterval(id);
+        void reopenIntent();
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, [intentDestination, viewerIsGuest, reopenIntent, clearIntentDestination]);
 
   // Hydrate user store on mount + initialize side services.
   // Each side service is wrapped so a failure in one doesn't break boot.

@@ -211,6 +211,27 @@ export function navigatePersonalInvite(args: {
  * underneath, so backing out of a wizard lands on a screen rather than
  * closing the tab.
  */
+/**
+ * The route the user is looking at right now, or null before the navigator is
+ * ready. Used to notice that an entry-intent destination has been popped.
+ */
+export function currentRouteName(): string | null {
+  if (!navigationRef.isReady()) return null;
+  try {
+    return navigationRef.getCurrentRoute()?.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The screen each intent opens, for the back-out watcher in RootNavigator. */
+export const ENTRY_INTENT_ROUTE: Record<string, string> = {
+  create_club: 'CommunitiesCreate',
+  one_off_game: 'GameCreate',
+  // `find_game` lands on GamesList, a TAB ROOT — there is no back button to
+  // press and nothing to pop, so it is deliberately absent.
+};
+
 export function navigateEntryIntent(
   intent: 'create_club' | 'find_game' | 'one_off_game',
 ): boolean {

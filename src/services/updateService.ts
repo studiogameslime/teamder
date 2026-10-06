@@ -6,6 +6,27 @@ import { logError, isExpectedDenial } from '@/services/errorLog';
 
 export type UpdateKind = 'none' | 'optional' | 'force';
 
+/**
+ * Is a store-update gate on screen right now?
+ *
+ * Module state rather than context, because the only readers are screens that
+ * must NOT stack a modal of their own on top of it, and they would otherwise
+ * each need the whole app's update state threaded down to them.
+ *
+ * Set by App.tsx, which owns the gate. Read by anything that opens a modal
+ * from a tab — today the achievement celebration, which landed ON TOP of a
+ * FORCED update and left the user looking at trophies with no way to reach
+ * the button that unblocks the app ("מקבלים קודם את ההישגים לפני שאפשר
+ * ללחוץ על כפתור העדכן גרסה").
+ */
+let updateGateOpen = false;
+export function setUpdateGateOpen(open: boolean): void {
+  updateGateOpen = open;
+}
+export function isUpdateGateOpen(): boolean {
+  return updateGateOpen;
+}
+
 const ANDROID_PACKAGE = 'com.studiogameslime.soccerapp';
 // App Store Connect numeric app id (same value as `ascAppId` in eas.json).
 // Drives the iOS update deep-link itms-apps://…/app/id<ID>.

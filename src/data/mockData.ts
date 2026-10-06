@@ -811,6 +811,16 @@ export const mockGamesV2: Game[] = [
     jerseysHolderUserId: mockPlayers[3].id,
     status: 'finished',
     locked: true,
+    // The one finished mock evening that carries an advanced-mode record.
+    // Without the master flag the "משחקים" and "סטטיסטיקות" tabs are locked
+    // and mock mode can never show what is in them; with it, the three
+    // committed mini-games in `mockRoundHistory` below have somewhere to
+    // render. `endedBy: 'admin'` matters too — an admin pressing "סיים מחזור"
+    // IS the statement that the evening happened, and it is what makes
+    // `didEveningHappen` answer yes here instead of 'unverified'.
+    advancedMode: true,
+    endedBy: 'admin' as const,
+    committedRoundCount: 3,
     currentMatchIndex: 0,
     matches: [],
     weather: { tempC: 22, rainProb: 0 },

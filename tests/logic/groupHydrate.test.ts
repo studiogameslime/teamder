@@ -54,7 +54,8 @@ jest.mock('@/store/userStore', () => ({
 jest.mock('@/services/organiserSignals', () => ({
   reportOrganiserState: jest.fn(),
 }));
-jest.mock('@/services/errorLog', () => ({ logError: jest.fn() }));
+const logError = jest.fn();
+jest.mock('@/services/errorLog', () => ({ logError: (...a: unknown[]) => logError(...a) }));
 
 import { useGroupStore } from '@/store/groupStore';
 
@@ -184,5 +185,74 @@ describe('joining an open club retries the refresh before giving up', () => {
     expect(status).toBe('pending');
     expect(listForUser).not.toHaveBeenCalled();
     expect(useGroupStore.getState().pendingGroups.map((g) => g.id)).toEqual(['new']);
+  });
+});
+
+/**
+ * The same defence, against the failure that actually bypassed it.
+ *
+ * `isCurrentSession` was added on 28.09 to skip a group query whose uid no
+ * longer matches the session — but it RETURNED AN EMPTY LIST, which `hydrate`
+ * could only read as a successful "you are in no clubs". So the guard against
+ * destroying the user's clubs was defeated by the guard against querying for
+ * them, and the result reached production twice in one day: a member of five
+ * clubs shown the new-user activation checklist after signing back in, and a
+ * `resumeJoinClub · permission-denied` raised by someone already inside the
+ * club the resume tried to join.
+ *
+ * It throws now, which lands on the path above — keep what we had — and the
+ * throw is not a bug, so it must not be logged either.
+ */
+describe('a refresh overtaken by a session change', () => {
+  class StaleSessionError extends Error {
+    constructor() {
+      super('stale');
+      this.name = 'StaleSessionError';
+    }
+  }
+
+  it('keeps the clubs and the selection instead of emptying them', async () => {
+    useGroupStore.setState({
+      groups: [club('a'), club('b')],
+      currentGroupId: 'b',
+    });
+    getCurrentGroupId.mockResolvedValue('b');
+    listForUser.mockRejectedValue(new StaleSessionError());
+
+    await useGroupStore.getState().hydrate('guest-uid');
+
+    expect(useGroupStore.getState().groups.map((g) => g.id)).toEqual(['a', 'b']);
+    expect(useGroupStore.getState().currentGroupId).toBe('b');
+    // And the selection is NOT erased from disk — the step that made the
+    // damage outlast the session.
+    expect(setCurrentGroupId).not.toHaveBeenCalledWith(null);
+  });
+
+  it('still releases the splash gate', async () => {
+    listForUser.mockRejectedValue(new StaleSessionError());
+
+    await useGroupStore.getState().hydrate('guest-uid');
+
+    expect(useGroupStore.getState().hydrated).toBe(true);
+  });
+
+  it('is not written to the error inbox', async () => {
+    listForUser.mockRejectedValue(new StaleSessionError());
+
+    await useGroupStore.getState().hydrate('guest-uid');
+
+    expect(logError).not.toHaveBeenCalled();
+  });
+
+  it('but an ORDINARY failure still is', async () => {
+    listForUser.mockRejectedValue(new Error('unavailable'));
+
+    await useGroupStore.getState().hydrate('u1');
+
+    expect(logError).toHaveBeenCalledWith(
+      'groupHydrateListForUser',
+      expect.any(Error),
+      { userId: 'u1' },
+    );
   });
 });

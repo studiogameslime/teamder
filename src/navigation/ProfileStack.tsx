@@ -41,7 +41,6 @@ import { DraftSetupScreen } from '@/screens/games/DraftSetupScreen';
 import { DraftBoardScreen } from '@/screens/games/DraftBoardScreen';
 import { EveningSummaryScreen } from '@/screens/games/EveningSummaryScreen';
 import { SeasonSummaryScreen } from '@/screens/profile/SeasonSummaryScreen';
-import { RoundSummaryScreen } from '@/screens/games/RoundSummaryScreen';
 import { MatchRoundsScreen } from '@/screens/games/MatchRoundsScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
@@ -74,6 +73,10 @@ export type ProfileStackParamList = {
   NotificationsSettings: undefined;
   BlockedUsers: undefined;
   PlayerCard: { userId: string; groupId?: string };
+  // Registered HERE too, and that is the point: the player card reached from
+  // this stack now offers the two-player screen, and a route a stack hosts a
+  // link to but does not declare makes `navigate()` fail in silence — the
+  // gap this screen's own investigation found.
   PlayerCompare: { groupId: string; otherUid: string; otherName?: string };
   /** Admin-only per-community player timeline — reachable from
    *  CommunityPlayers (opened via a MatchDetails community-link). */
@@ -89,7 +92,12 @@ export type ProfileStackParamList = {
   // Match-detail chain — same routes as GameStack/CommunitiesStack,
   // duplicated so back returns to the screen the user came from
   // (typically History).
-  MatchDetails: { gameId: string };
+  // `initialTab` names which of the four tabs opens first. It exists because the
+  // statistics tab IS the evening's summary now — the standalone RoundSummary
+  // screen was removed — so anything that used to send a person to that summary
+  // sends them here instead. Absent → "מידע", which is what every existing
+  // caller passes and expects.
+  MatchDetails: { gameId: string; initialTab?: 'info' | 'games' | 'stats' | 'players' };
   // Draft Teams (חלוקת כוחות) — reachable from MatchDetails' "קביעת כוחות".
   DraftSetup: { gameId: string };
   DraftBoard: {
@@ -102,8 +110,10 @@ export type ProfileStackParamList = {
   EveningSummary: { gameId: string };
   /** `seasonId` omitted = the season currently running. */
   SeasonSummary: { groupId: string; seasonId?: string };
-  RoundSummary: { gameId: string };
-  MatchRounds: { gameId: string };
+  // `live` is set when the screen is opened from the live screen mid-evening.
+  // It changes the title and the empty-state copy and adds a refresh on
+  // focus; the list itself is the same committed round history either way.
+  MatchRounds: { gameId: string; live?: boolean };
   MatchPlayers: { gameId: string };
   AvailablePlayers: { gameId: string };
   AddMembers: { gameId: string };
@@ -236,7 +246,6 @@ export function ProfileStack() {
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
       <Stack.Screen name="SeasonSummary" component={SeasonSummaryScreen} />
-      <Stack.Screen name="RoundSummary" component={RoundSummaryScreen} />
       <Stack.Screen name="MatchRounds" component={MatchRoundsScreen} />
       <Stack.Screen name="AddMembers" component={AddMembersScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />

@@ -163,6 +163,11 @@ export type EfficiencySortKey =
  * a player with one appearance and one goal would sit above a regular on the
  * same rate, which is the complaint that started this table.
  */
+/** The last word, so the order is TOTAL. Same final key as `comparePoints`. */
+function byUid(a: { uid: string }, b: { uid: string }): number {
+  return a.uid.localeCompare(b.uid);
+}
+
 export function sortEfficiency(
   rows: readonly EfficiencyRow[],
   key: EfficiencySortKey,
@@ -170,11 +175,16 @@ export function sortEfficiency(
   return [...rows].sort((a, b) => {
     const av = a[key];
     const bv = b[key];
-    if (av === null && bv === null) return b.rounds - a.rounds;
+    if (av === null && bv === null) return b.rounds - a.rounds || byUid(a, b);
     if (av === null) return 1;
     if (bv === null) return -1;
     if (bv !== av) return bv - av;
-    return b.rounds - a.rounds;
+    // Equal rate AND equal sample used to return 0, which leaves the two in
+    // whatever order they arrived in — and for an all-time slice that order is
+    // map insertion, not a ranking. The ranking METHOD is untouched; this is
+    // only the last tie-break, and it is the same final key the club table
+    // uses, so a player cannot sit one way round here and another there.
+    return b.rounds - a.rounds || byUid(a, b);
   });
 }
 

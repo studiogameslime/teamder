@@ -470,9 +470,27 @@ export function ChatView({
           openProfile(uid);
         }}
       />
+      {/* Android needs a behaviour too — but only on the versions where the
+          manifest's `adjustResize` has stopped working.
+          
+          The app is edge-to-edge, and from API 35 the system no longer resizes
+          an edge-to-edge window for the IME: the app draws behind the keyboard
+          and must make room itself. With `behavior` left undefined this view
+          did nothing, so the keyboard covered half the conversation (owner
+          report). Below API 35 `adjustResize` still resizes the window, and
+          adding padding on top of that would lift the composer TWICE — so
+          those versions keep the old behaviour, which was never broken.
+          
+          `padding` rather than `height`: it pads the bottom by the keyboard's
+          own height from the keyboard events, without re-laying-out the list. */}
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={
+          Platform.OS === 'ios' ||
+          (Platform.OS === 'android' && Number(Platform.Version) >= 35)
+            ? 'padding'
+            : undefined
+        }
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
         {loading ? (

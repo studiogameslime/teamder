@@ -92,9 +92,37 @@ function formatJoinStamp(ms?: number): string {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)} · ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export function MatchPlayersScreen() {
+export interface MatchPlayersScreenProps {
+  /** Embedded: the caller supplies the id instead of the route. */
+  gameId?: string;
+  /** Drop the screen chrome (safe area + "שחקני המחזור" header) and let the
+   *  caller's layout own it — the match screen's שחקנים tab. */
+  embedded?: boolean;
+  /** Embedded only: the match screen's hero + tab bar, carried inside THIS
+   *  list's scroll so the hero can leave and the bar can stick. */
+  header?: React.ReactNode;
+  stickyHeader?: React.ReactNode;
+  /** Embedded only: rendered above the first section (the summary counters). */
+  leading?: React.ReactNode;
+  /** Embedded only: clears the sticky CTA at the bottom of the match screen. */
+  bottomInset?: number;
+}
+
+/**
+ * The evening's roster in full: who is in, who is waiting, who cancelled, who
+ * an admin removed — with the admin rating, the ⋮ menu and the join time on
+ * every row.
+ *
+ * It renders in two places from one definition. As a screen it is its own page;
+ * `embedded` makes it the body of the match screen's שחקנים tab, which is what
+ * let that tab stop being a three-row preview behind a "הצג הכל" link. Nothing
+ * here is duplicated in the tab — the tab IS this.
+ */
+export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
   const nav = useNavigation<Nav>();
-  const { gameId } = useRoute<Params>().params;
+  const route = useRoute<Params>();
+  const gameId = props.gameId ?? route.params?.gameId;
+  const embedded = props.embedded === true;
 
   const playersMap = useGameStore((s) => s.players);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
@@ -435,24 +463,38 @@ export function MatchPlayersScreen() {
     [game, persistGuests],
   );
 
-  if (loading && !game) {
-    return (
+  // Both early branches keep the header when embedded: the tab bar must stay
+  // reachable while the roster loads, or the tab looks like it lost its bar.
+  const chrome = (body: React.ReactNode) =>
+    embedded ? (
+      <ScrollView
+        style={styles.flex}
+        stickyHeaderIndices={props.header && props.stickyHeader ? [1] : undefined}
+        showsVerticalScrollIndicator={false}
+      >
+        <View>{props.header}</View>
+        <View>{props.stickyHeader}</View>
+        {body}
+      </ScrollView>
+    ) : (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.matchPlayersScreenTitle} />
-        <View style={styles.center}>
-          <SoccerBallLoader size={40} />
-        </View>
+        {body}
       </SafeAreaView>
+    );
+
+  if (loading && !game) {
+    return chrome(
+      <View style={styles.center}>
+        <SoccerBallLoader size={40} />
+      </View>,
     );
   }
   if (!game) {
-    return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title={he.matchPlayersScreenTitle} />
-        <View style={styles.center}>
-          <Text style={styles.emptyText}>{he.matchDetailsNotFound}</Text>
-        </View>
-      </SafeAreaView>
+    return chrome(
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>{he.matchDetailsNotFound}</Text>
+      </View>,
     );
   }
 
@@ -581,10 +623,31 @@ export function MatchPlayersScreen() {
       })()
     : [];
 
-  return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader title={he.matchPlayersScreenTitle} />
-      <ScrollView contentContainerStyle={styles.content}>
+  // One handler, both render paths. It used to be an inline arrow inside the
+  // embedded branch only, which left the standalone screen referencing a name
+  // that did not exist.
+  const onGuestChanged = (action: 'added' | 'updated', saved: GameGuest) => {
+            // Reflect the change IMMEDIATELY (don't wait for the reload) so an
+            // edited guest rating updates on the spot, then refresh in bg.
+            setGame((g) =>
+              g
+                ? {
+                    ...g,
+                    guests:
+                      action === 'added'
+                        ? [...(g.guests ?? []), saved]
+                        : (g.guests ?? []).map((x) =>
+                            x.id === saved.id ? saved : x,
+                          ),
+                  }
+                : g,
+            );
+            reload();
+          };
+
+  const sections = (
+    <>
+      {props.leading}
         {/* Unified registered list: real players first, then guests
             tagged "אורח" — earlier we split them into two distinct
             sections, which made it harder to gauge total roster
@@ -971,6 +1034,31 @@ export function MatchPlayersScreen() {
             </Card>
           </Section>
         ) : null}
+    </>
+  );
+
+  return embedded ? (
+    <>
+      <ScrollView
+        style={styles.flex}
+        stickyHeaderIndices={props.header && props.stickyHeader ? [1] : undefined}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Separate wrappers, never a fragment — `stickyHeaderIndices` counts
+            the ScrollView's own direct children. */}
+        <View>{props.header}</View>
+        <View>{props.stickyHeader}</View>
+        <View
+          style={[
+            styles.content,
+            props.bottomInset
+              ? { paddingBottom: props.bottomInset + 16 }
+              : null,
+          ]}
+        >
+          {sections}
+        </View>
       </ScrollView>
 
       {currentUser ? (
@@ -991,24 +1079,7 @@ export function MatchPlayersScreen() {
               : undefined
           }
           onClose={() => setEditingGuest(null)}
-          onChanged={(action, saved) => {
-            // Reflect the change IMMEDIATELY (don't wait for the reload) so an
-            // edited guest rating updates on the spot, then refresh in bg.
-            setGame((g) =>
-              g
-                ? {
-                    ...g,
-                    guests:
-                      action === 'added'
-                        ? [...(g.guests ?? []), saved]
-                        : (g.guests ?? []).map((x) =>
-                            x.id === saved.id ? saved : x,
-                          ),
-                  }
-                : g,
-            );
-            reload();
-          }}
+          onChanged={onGuestChanged}
           onRemoved={(removed) => {
             // Splice the guest out immediately (active or waitlisted), then
             // refresh in the background.
@@ -1030,6 +1101,39 @@ export function MatchPlayersScreen() {
         items={menuItems}
         onClose={() => setMenuTarget(null)}
       />
+    </>
+  ) : (
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ScreenHeader title={he.matchPlayersScreenTitle} />
+      <ScrollView contentContainerStyle={styles.content}>{sections}</ScrollView>
+
+      {currentUser ? (
+        <GuestModal
+          visible={!!editingGuest}
+          gameId={game.id}
+          callerId={currentUser.id}
+          existing={editingGuest}
+          isAdmin={isAdminViewer}
+          ratingEnabled={ratingEnabled}
+          addedByLabel={
+            editingGuest
+              ? he.guestAddedByLine(
+                  playersMap[editingGuest.addedBy]?.displayName ??
+                    he.communityDetailsAdminBadge,
+                  formatDateTimeFull(editingGuest.createdAt),
+                )
+              : undefined
+          }
+          onClose={() => setEditingGuest(null)}
+          onChanged={onGuestChanged}
+        />
+      ) : null}
+
+      <PlayerActionMenu
+        target={menuTarget}
+        items={menuItems}
+        onClose={() => setMenuTarget(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -1042,8 +1146,13 @@ function formatRelative(ts: number): string {
   if (mins < 1) return 'עכשיו';
   if (mins < 60) return `לפני ${mins} דק׳`;
   const hours = Math.floor(mins / 60);
+  // Hebrew has a form for one. "לפני 1 שעות" is the same mistake the i18n
+  // file opens by warning about, and the cancellations list printed "לפני 1
+  // ימים" for anyone who dropped out yesterday.
+  if (hours === 1) return 'לפני שעה';
   if (hours < 24) return `לפני ${hours} שע׳`;
   const days = Math.floor(hours / 24);
+  if (days === 1) return 'אתמול';
   return `לפני ${days} ימים`;
 }
 
@@ -1504,6 +1613,7 @@ function Tag({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: {
     padding: spacing.lg,
