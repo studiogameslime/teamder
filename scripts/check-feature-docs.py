@@ -9,6 +9,12 @@ from urllib.parse import unquote
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / 'docs/features'
 
+def source_digest(path, source):
+    data = path.read_bytes()
+    if source.get('hashMode') == 'text-lf':
+        data = data.replace(b'\r\n', b'\n')
+    return hashlib.sha256(data).hexdigest()
+
 def main():
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8')
@@ -36,13 +42,13 @@ def main():
         failures.append('historical source coverage must be 001–137')
     for source in sources:
         path = ROOT / source['path']
-        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != source['sha256']:
+        if not path.is_file() or source_digest(path, source) != source['sha256']:
             failures.append(f'historical source missing or changed: {source["key"]}')
     extra_path = BASE / 'additional-source-catalog.json'
     extras = json.loads(extra_path.read_text(encoding='utf-8')) if extra_path.exists() else []
     for source in extras:
         path = ROOT / source['path']
-        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != source['sha256']:
+        if not path.is_file() or source_digest(path, source) != source['sha256']:
             failures.append(f'additional source missing or changed: {source["path"]}')
         if not (BASE / source['review']).is_file():
             failures.append(f'additional source review missing: {source["review"]}')
