@@ -109,6 +109,9 @@ Two more that have each been fixed three times:
 
 ## 6. Releases
 
+The exact command sequence is in **[docs/RELEASING.md](./docs/RELEASING.md)**.
+The rules below are the ones that do not change.
+
 - **Test track first.** Ship to `internal`, promote to production ONLY on
   explicit approval.
 - `eas.json` has SEPARATE build and submit profile lists. On *submit*,
