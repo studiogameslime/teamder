@@ -1,0 +1,1695 @@
+[
+  {
+    "key": "001",
+    "path": "docs/תיעוד/אודיטים/Teamder-Audit-Migration-Planning-25.09.2026.pdf",
+    "pages": 18,
+    "image_pages": [],
+    "chars": 28767,
+    "sha256": "ddbbe5591885789e2453012ac58d0981ad71c1f1396f5544a2d8e3a13aee86c2",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "002",
+    "path": "docs/תיעוד/אודיטים/Teamder-Full-Audit.pdf",
+    "pages": 224,
+    "image_pages": [],
+    "chars": 693018,
+    "sha256": "f04b24efbf634b07b1011563a3b1b0974201f6dbccd733951bdaf7eca95a571b",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "003",
+    "path": "docs/תיעוד/אודיטים/Teamder-Full-UI-Architecture-Audit.pdf",
+    "pages": 10,
+    "image_pages": [
+      9,
+      10
+    ],
+    "chars": 10529,
+    "sha256": "02a04ae00ff6f51ab9695878ebc5d6e533935c31e0420df440a0b388ad1cb55f",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "004",
+    "path": "docs/תיעוד/אודיטים/TEAMDER_FULL_PRODUCT_TECH_AUDIT.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 740133,
+    "sha256": "a4046b09cd05facb38872723a4093e772f7ae0e4a3cf6e2cf4f88da3e3525ea2",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "005",
+    "path": "docs/תיעוד/ארכיטקטורה-ותכנון/ארכיטקטורת-היעד-Teamder.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 35895,
+    "sha256": "ff7c34ce8bef7bd7fb9d132bff50474a3a337dd3180e9fe8d5ba793d90449a36",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "006",
+    "path": "docs/תיעוד/ארכיטקטורה-ותכנון/הפריסה-Teamder.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 12609,
+    "sha256": "1fcf3e74e762c7ec56d6d20041c60fe69b0aebee26e03273eb479b2fea65a083",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "007",
+    "path": "docs/תיעוד/ארכיטקטורה-ותכנון/חמש-הפעולות-Teamder.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 19511,
+    "sha256": "d0ae35e4770a6cbfbf606ce9e584a31f347bd5e5a0201bcae6c368de86baa722",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "008",
+    "path": "docs/תיעוד/ארכיטקטורה-ותכנון/סבב-הגישה-Teamder.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 18461,
+    "sha256": "321646d780511546c855501caa53d7177b62ec0718067f2de84f95382b6df18e",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "009",
+    "path": "docs/תיעוד/ארכיטקטורה-ותכנון/סבב-התשתית-Teamder.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 21147,
+    "sha256": "9f530d4ce3ce74e9d008e96df317465f56b0db4a0232b3bf5e4eb7ef300f32c1",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "010",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-1.1.15-Android-Followup-Report.pdf",
+    "pages": 8,
+    "image_pages": [],
+    "chars": 12210,
+    "sha256": "0109227b769aa022c2ebef483c22b44dba384e74efd6a0c350da4a6a33c709bf",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "011",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-1.1.15-Final-Submission-Report.pdf",
+    "pages": 7,
+    "image_pages": [],
+    "chars": 10617,
+    "sha256": "939812c360cd762f699524eee40e5e52f4bd1864e59ebbef67ec41ad2a506491",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "012",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-1.1.15-Hotfix-Submission-Report.pdf",
+    "pages": 6,
+    "image_pages": [],
+    "chars": 9117,
+    "sha256": "fff3b82413e93a7e9ada8b64e08cddd8ced15dace7959062f67cf246e6bbbba1",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "013",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-1.1.15-Release-Report.pdf",
+    "pages": 12,
+    "image_pages": [],
+    "chars": 17458,
+    "sha256": "2806aaed31facbb211f6c661dcc625631c956e2e954a530844bbda4110970025",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "014",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-Filler-Fix-25.09.2026.pdf",
+    "pages": 10,
+    "image_pages": [
+      8
+    ],
+    "chars": 13403,
+    "sha256": "90f313655c337a652f2f561ff76b2b3a235bb42bc64fb1ff77ce64ca904e28cf",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "015",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-Filler-Server-Deploy-25.09.2026.pdf",
+    "pages": 6,
+    "image_pages": [],
+    "chars": 8531,
+    "sha256": "85a6cac13106f1714d1ab3025abc47dc2db17c416d04c06a8726e494463535af",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "016",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-iOS-QA-BLOCKED-25.09.2026.pdf",
+    "pages": 7,
+    "image_pages": [],
+    "chars": 10599,
+    "sha256": "bf4a0cb1ee5ec283ae8b73615983b9a8013c7e39ba6cd662a4ea06138e92b425",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "017",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-iOS-QA-BuildBlocked-25.09.2026.pdf",
+    "pages": 6,
+    "image_pages": [
+      2
+    ],
+    "chars": 7425,
+    "sha256": "9dc806d3644c93e7b4e73961d41b559148a278d86a1804ed9cec09e1519ba1e9",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "018",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-iOS-QA-Setup-25.09.2026.pdf",
+    "pages": 4,
+    "image_pages": [],
+    "chars": 6333,
+    "sha256": "a6306086e270bd91509f9bc9c03ac324701049074f74375de33d4728d6b740f0",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "019",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-iOS27-BuildFix-25.09.2026.pdf",
+    "pages": 6,
+    "image_pages": [],
+    "chars": 8962,
+    "sha256": "e44c4ce0b8c5499b2aa1c66950f3458c7693cd075168892f73f778e9527e5ce5",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "020",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-Reports-And-Fixes-26-09.pdf",
+    "pages": 4,
+    "image_pages": [],
+    "chars": 6778,
+    "sha256": "503db7ddb0e02cddbaec8013e0299ee825a5542d431720666fc3a72954e8aca4",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "021",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-Security-Hotfix-25.09.2026.pdf",
+    "pages": 10,
+    "image_pages": [],
+    "chars": 16410,
+    "sha256": "871af569d4836b214f53741396831ce366115b3798dcf3782f04c6eaa6deb1cf",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "022",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-Security-Hotfix-DEPLOYED-25.09.2026.pdf",
+    "pages": 8,
+    "image_pages": [],
+    "chars": 11056,
+    "sha256": "0b6ba3274c98e7f9dd616cd01751294cd66d46cc2364b5f11e7c554860767cfa",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "023",
+    "path": "docs/תיעוד/גרסאות-ו-QA/Teamder-Store-Release-Readiness-Audit.pdf",
+    "pages": 17,
+    "image_pages": [],
+    "chars": 24599,
+    "sha256": "c4e93742f210d20f16f8be0211767a18332a3743e33311fa40450bf48e9d3777",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "024",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder — Audit מסך הכוונה + חשבון קיים.pdf",
+    "pages": 3,
+    "image_pages": [],
+    "chars": 4737,
+    "sha256": "5e4c426505780a0353a262c70e8bc66ae079cba8ff0d6c51a155ed0d367651e8",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "025",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder — התחברות לחשבון קיים (מימוש).pdf",
+    "pages": 6,
+    "image_pages": [
+      5,
+      6
+    ],
+    "chars": 5249,
+    "sha256": "5c5041768f69c2e567e45fc13131ae71a694dab00c731c5e06981a006e8e7798",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "026",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder — קופי גיליון ההתחברות.pdf",
+    "pages": 5,
+    "image_pages": [
+      3,
+      4,
+      5
+    ],
+    "chars": 2107,
+    "sha256": "35119e162ed31917a03a826f60bcc7638f0af01bc1724ed2fca94a08483e701c",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "027",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Email-Auth-Audit.pdf",
+    "pages": 6,
+    "image_pages": [],
+    "chars": 7609,
+    "sha256": "1ab1177f1bc92b89d654276e7b4b55c22aea2cbf1e35c0111ba148e95094309a",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "028",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Email-Auth-Upgrade-Audit-25.09.2026.pdf",
+    "pages": 9,
+    "image_pages": [],
+    "chars": 13892,
+    "sha256": "c9999f13d3bcb8b08a5a730653d376cb3b6755b5d4a95d4e2f7bf6417365ac98",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "029",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Entry-Onboarding-Implementation.pdf",
+    "pages": 12,
+    "image_pages": [
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "chars": 13387,
+    "sha256": "b6ba12274261cdf8d0edb540b69c772b5b190370f3c56c00a0580870040c8978",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "030",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Entry-Onboarding-Plan.pdf",
+    "pages": 6,
+    "image_pages": [],
+    "chars": 6198,
+    "sha256": "b45997c14a9fd0872dc3fd90f551940da459fb06316451ce6babbd735c027dc6",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "031",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Entry-Onboarding-Visual-QA.pdf",
+    "pages": 11,
+    "image_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      9
+    ],
+    "chars": 10033,
+    "sha256": "eb204351947e49f3ce04f6cc57c4810751d9a76fbcdf8e425cb71cefb02d4d63",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "032",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Functional-Onboarding-Complete-25.09.2026.pdf",
+    "pages": 7,
+    "image_pages": [],
+    "chars": 9622,
+    "sha256": "9b0e52f6055a7d522d921883b47b6f119a8aca13f899327c6322625f4dbd6296",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "033",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Onboarding-Deploy-25.09.2026.pdf",
+    "pages": 3,
+    "image_pages": [],
+    "chars": 4180,
+    "sha256": "4cd8cdc0db7737541838396d525a6a3391406c6c93251e413d9dc624cbada76f",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "034",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Onboarding-Entry-Flow-Audit.pdf",
+    "pages": 13,
+    "image_pages": [],
+    "chars": 16634,
+    "sha256": "ec3ac7dc2d62a022151c98b3acd94e0da04e9de95c9be97849faf9d98d7af023",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "035",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Onboarding-Reference-Implementation.pdf",
+    "pages": 9,
+    "image_pages": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "chars": 10366,
+    "sha256": "9bc86448d0c695ea2430c88c201cd83b83e407f55aeb913076101d54683dd2f6",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "036",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Onboarding-Visual-Polish.pdf",
+    "pages": 7,
+    "image_pages": [
+      1,
+      3,
+      4,
+      5
+    ],
+    "chars": 5882,
+    "sha256": "6537d2f63c28508776b1c64483561693f13f419a1818286fc9693be04ab1b21b",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "037",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Phase-0.3-Auth-Upgrade-25.09.2026.pdf",
+    "pages": 3,
+    "image_pages": [],
+    "chars": 4225,
+    "sha256": "4eafe8c8c085c1e5b209dc6dda67ca79a92719a5dcb075a0242504bbe7ed8cf6",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "038",
+    "path": "docs/תיעוד/כניסה-והרשמה/Teamder-Phase-0.3B-Auth-Link-Probe-25.09.2026.pdf",
+    "pages": 3,
+    "image_pages": [],
+    "chars": 3387,
+    "sha256": "35061abd8932bcc05e71f59ca5b81ebfbad66a180c0cef5490040824e3662f76",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "039",
+    "path": "docs/תיעוד/כניסה-והרשמה/התחברות-בהקשר-Teamder.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 21358,
+    "sha256": "73cd09003aa7cde33ca6db7708785f9a83f78d4c727d1b94ec45c262a56dfba0",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "040",
+    "path": "docs/תיעוד/כניסה-והרשמה/כניסה-חדשה-Teamder.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 17959,
+    "sha256": "7fde946d79d5b252ea553e7cd5ee7b0eab44219038b76fe0a5a0d1ed3ba3ad99",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "041",
+    "path": "docs/תיעוד/כניסה-והרשמה/מפת-הכניסה-Teamder.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 17127,
+    "sha256": "8f088ce2952f77de972ef66f578c6770719310429f77a4681e8216e8baffc3d3",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "042",
+    "path": "docs/תיעוד/מדריך-למעצב/Teamder-מדריך-למעצב.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 6712,
+    "sha256": "08ee84d6cb0f8a71d1b8f0fd4d28af96e5ccad318a2b1b2d31b934c81bcf194f",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "043",
+    "path": "docs/תיעוד/מדריך-למעצב/Teamder-מדריך-למעצב.pdf",
+    "pages": 8,
+    "image_pages": [],
+    "chars": 6074,
+    "sha256": "669ad74862fe97dbb40af7c46177d44a57005bc642bdb83411823f09e14da93d",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "044",
+    "path": "docs/תיעוד/מועדון-ועונות/01-model.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 35097,
+    "sha256": "d0b0eb62fa1c03c1cb42fe397a1e3303ea3bb3083b47be0fa39c9ae8aeb54aac",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "045",
+    "path": "docs/תיעוד/מועדון-ועונות/02-enable.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 21753,
+    "sha256": "13a01819748b9cdb8afe623b9af8d6120ae17e8dccd25179ee89b2317655deb5",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "046",
+    "path": "docs/תיעוד/מועדון-ועונות/03-counting.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 28543,
+    "sha256": "3e57c436893c5a87b76cb18d266c5cb684987b40d956ba85a56a1484dcdf18bb",
+    "review": "reviews/archive-001-046.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "047",
+    "path": "docs/תיעוד/מועדון-ועונות/04-cadence.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 24448,
+    "sha256": "076f476ebb8d3baa742518362858838da536351bb15b50f8a8a50c72e6ec4b6a",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "048",
+    "path": "docs/תיעוד/מועדון-ועונות/05-close.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 29578,
+    "sha256": "80470775fc1d3e6915c46744064318fa823cbec7267cd42fe92eb4963f2db682",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "049",
+    "path": "docs/תיעוד/מועדון-ועונות/06-reopen.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 23288,
+    "sha256": "52846cac2fa27b2a21d02639ffccb53bb34597e3fb82c881cc403167419b8bfe",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "050",
+    "path": "docs/תיעוד/מועדון-ועונות/07-awards.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 24058,
+    "sha256": "0eab9e1da8028cdb9e5b38d19b740a39f3ada1efce169be2eb0f2f7822595cb3",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "051",
+    "path": "docs/תיעוד/מועדון-ועונות/08-scoping.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 25634,
+    "sha256": "2b545f1becbc83c62a51a89f09f07ffdb14b678fe79b1551b39407a320abc9d9",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "052",
+    "path": "docs/תיעוד/מועדון-ועונות/09-personal.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 24910,
+    "sha256": "256cdee46f7cbd67d89cfd68b5e8652e8e5394d3f2e772c5bc8248c92e040e94",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "053",
+    "path": "docs/תיעוד/מועדון-ועונות/10-screens.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 29414,
+    "sha256": "a9f296a6425fb7bdde716451d77cd35e177956a52afb715d64aeeea287b14133",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "054",
+    "path": "docs/תיעוד/מועדון-ועונות/11-plumbing.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 34868,
+    "sha256": "6f5b14b213213929df5e4ea7086b1532d537d4ed18e57142dd17de58a9889332",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "055",
+    "path": "docs/תיעוד/מועדון-ועונות/12-testing.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 32135,
+    "sha256": "fca429b14141d7912cd3eadcc4649420611e38fdef539a725bd8a4c210ed07e1",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "056",
+    "path": "docs/תיעוד/מועדון-ועונות/13-gaps.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 23618,
+    "sha256": "16c4df64db5b718081f301de877cb8d985c55d7a4ca96ffc4960116fa087b6ee",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "057",
+    "path": "docs/תיעוד/מועדון-ועונות/crit-1-40.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 2322,
+    "sha256": "6951b3f96dd07c5798d4e747a655f8a24fa3031dd291f38a9596f4c72b601853",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "058",
+    "path": "docs/תיעוד/מועדון-ועונות/crit-2-x.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 4483,
+    "sha256": "e3dfecc7ae93417961ab64c61b7db6f8b21097d1a848881a732f2fc46016d7de",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "059",
+    "path": "docs/תיעוד/מועדון-ועונות/crit-3-x.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 1935,
+    "sha256": "fb5a540207cfd64b1dbf131907e4da1fa2bd02675e4a9f84cdcaeaba5c5fe4bd",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "060",
+    "path": "docs/תיעוד/מועדון-ועונות/crit-4-x.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 6099,
+    "sha256": "d7f08922c0e8ee1934e87de55b58591313034372222d34ab003bcb3418212ea5",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "061",
+    "path": "docs/תיעוד/מועדון-ועונות/crit-5-the-empty-state-a-new-user-with-no-club-.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 5963,
+    "sha256": "c49e21a901357543334cf2ac1125c6dfb54aaa3377195e96198677a5bf7cb0bb",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "062",
+    "path": "docs/תיעוד/מועדון-ועונות/crit-6-x.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 4944,
+    "sha256": "8f1938c88a90661428dbfec06b89c16c138afa5af3f96e43dd991452e22f5136",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "063",
+    "path": "docs/תיעוד/מועדון-ועונות/crit-7-first-impression-and-trust-would-a-stran.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 10400,
+    "sha256": "9d0672de4da5e6fb7ebe96bd739465acc7be5c6380acaa47bd6450f787fb7423",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "064",
+    "path": "docs/תיעוד/מועדון-ועונות/crit-8-cta.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 6691,
+    "sha256": "ad82496dcae73c6f196cc0a9b30762db880df0b71fff192e1c8be90686fee25f",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "065",
+    "path": "docs/תיעוד/מועדון-ועונות/findings.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 8040,
+    "sha256": "026963042c67fedaca3996768795b655aaa88f63cb7f751dbf7e937aec40970f",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "066",
+    "path": "docs/תיעוד/מועדון-ועונות/JOURNEY.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 402702,
+    "sha256": "0298ed4205db3d4692e3f82262b81edf147cba5ce9856a698c1455f64bd73348",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "067",
+    "path": "docs/תיעוד/מועדון-ועונות/LEDGER.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 32107,
+    "sha256": "33ce175f8a0f2a225502c300aede141279464efb49fbd026d893b6dfc16be0f7",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "068",
+    "path": "docs/תיעוד/מועדון-ועונות/map-1-in-app-from-the-very-first-launch-of-a-f.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 50879,
+    "sha256": "4df283ce26d3b3d92fb6b8ff08c6259a6001b0cfba1e5c2423a882c5226295d1",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "069",
+    "path": "docs/תיעוד/מועדון-ועונות/map-2-acquisition-install-every-route-by-which.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 33632,
+    "sha256": "0c333c3f574bd68b8900b1254b6df08c413f55a4cdfa45b24475cbaaf8847812",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "070",
+    "path": "docs/תיעוד/מועדון-ועונות/map-3-what-happens-underneath-signup-auth-prov.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 55835,
+    "sha256": "53759bec36f97987b5704d76996f9f4a42e0784c1780e583e5dcf0c0127621f4",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "071",
+    "path": "docs/תיעוד/מועדון-ועונות/map-4-from-a-fresh-account-to-registered-for-a.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 64425,
+    "sha256": "bcd539732029f7d122a0e9bde6dbce7a0ba51279f8475dfa2f359ff13c9c6ecf",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "072",
+    "path": "docs/תיעוד/מועדון-ועונות/map-5-web-landing-pages-the-static-files-in-pu.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 39671,
+    "sha256": "34f478c4905c74c1402511f7cd94d25618f14945ecc112eddfa9354826216c13",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "073",
+    "path": "docs/תיעוד/מועדון-ועונות/narrative.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 26957,
+    "sha256": "53a9eae3f675edc9fdfea17b2f1e79073d9ecfb254084417f4faa606fea6189d",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "074",
+    "path": "docs/תיעוד/מועדון-ועונות/ROUND4.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 48244,
+    "sha256": "7049651251ffe82db8c4f8e9845e6017803fee4165aaf3cc7b033c1c9b898337",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "075",
+    "path": "docs/תיעוד/מועדון-ועונות/SEASONS.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 393991,
+    "sha256": "10b2409cb0c9d7a67ac88e91a9810643a559f2fbe2d65695c9887fde1b32ada7",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "076",
+    "path": "docs/תיעוד/מועדון-ועונות/summary-1.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 4055,
+    "sha256": "7b08b466d424453932c894e3994279eb37c49c373c30f3d1702dbb2c219a856b",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "077",
+    "path": "docs/תיעוד/מועדון-ועונות/summary.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 10031,
+    "sha256": "0cc8c17fa36a1a0d39d06a3427b8b5c52f4753593ff47deb1f7825df8640c73f",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "078",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-CountedRounds.pdf",
+    "pages": 6,
+    "image_pages": [
+      5,
+      6
+    ],
+    "chars": 4800,
+    "sha256": "77b15e54fbd5bdd3f1030bc5c23cf2fb9a4fb923af3d46b4e8ace9506925729d",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "079",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Interesting-Data.pdf",
+    "pages": 4,
+    "image_pages": [
+      4
+    ],
+    "chars": 4089,
+    "sha256": "9ab1b3ce64e57baee05f55a5aae467e87f33eb9106caf4894d513b3d38d0773f",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "080",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Leaders-Palette.pdf",
+    "pages": 7,
+    "image_pages": [
+      5,
+      6,
+      7
+    ],
+    "chars": 4975,
+    "sha256": "a86f05eff03dfa0b834f622d41a9ec8c8ecb75fca342e2ec7e76df71dff3cd37",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "081",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Mockup-Language.pdf",
+    "pages": 6,
+    "image_pages": [
+      4,
+      5,
+      6
+    ],
+    "chars": 3869,
+    "sha256": "8afaaf78e4691e43a7416a9edb22117de5910851e2e7b848e762934c48607a1e",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "082",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Records-Closing.pdf",
+    "pages": 5,
+    "image_pages": [
+      4,
+      5
+    ],
+    "chars": 3977,
+    "sha256": "e81498c2d620421332206d6d89653c704c95fd82c65a5b8cdfb34992adf937a2",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "083",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Records-Nav.pdf",
+    "pages": 5,
+    "image_pages": [
+      4,
+      5
+    ],
+    "chars": 4216,
+    "sha256": "cf6437478ee79105b0fb6ff9aeb01f0220190b48010af389e84643d0fda2c75e",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "084",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Screen-Gaps-for-GPT.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 5519,
+    "sha256": "cff650295541ea510b51f9ffaff513dd2a65866d5ae4e80da91732b769ccd2dd",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "085",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Screen-Gaps-for-GPT.pdf",
+    "pages": 3,
+    "image_pages": [],
+    "chars": 5199,
+    "sha256": "382c0cc2ab10a954c26298f484231ea2dd4c6ef6bcfed8b6fa544a952ec341a3",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "086",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Screen-Pass3.pdf",
+    "pages": 7,
+    "image_pages": [
+      5,
+      6
+    ],
+    "chars": 7119,
+    "sha256": "1721b3e96a54beb3c80d6cf8e1921f707ed51574e35a443c09aabc5061f1a9d9",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "087",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Screen-Pass4.pdf",
+    "pages": 7,
+    "image_pages": [
+      6,
+      7
+    ],
+    "chars": 6727,
+    "sha256": "e925a170e90d77d66d77457c07bc1db1b7b1ebcf5138be4d06e84b7fae52c8b7",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "088",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Screen-Pass5.pdf",
+    "pages": 9,
+    "image_pages": [
+      6,
+      7,
+      8
+    ],
+    "chars": 5275,
+    "sha256": "19479584fde4e2a1622ed6c98fa3e3b2298501d1237d8afd98366866e2613945",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "089",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Screen-Refactor.pdf",
+    "pages": 5,
+    "image_pages": [
+      5
+    ],
+    "chars": 6542,
+    "sha256": "01890c63d2e60b9661446c7ae3d52b5654925472ac72a4657965dcbef1f06cd0",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "090",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Screen-Visual-Pass.pdf",
+    "pages": 7,
+    "image_pages": [
+      6,
+      7
+    ],
+    "chars": 7783,
+    "sha256": "2c63023608de31e197dfeff984f4d0c9266a58fedcd9de118ea80198303c049e",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "091",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Club-Stats-Final.pdf",
+    "pages": 8,
+    "image_pages": [
+      6,
+      7,
+      8
+    ],
+    "chars": 5363,
+    "sha256": "a2599dadc150c70921887ce43edc37392fb5876ec3caca3742a65f07650c7263",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "092",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-First-Five-Minutes.pdf",
+    "pages": 133,
+    "image_pages": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      19,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26
+    ],
+    "chars": 374746,
+    "sha256": "9dee2ea22dcb22525b30926413a834c436bb5eb231d43fdb91b14033a57825c2",
+    "review": "reviews/archive-047-092.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "093",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Journey-1of5.pdf",
+    "pages": 10,
+    "image_pages": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "chars": 8684,
+    "sha256": "45548452a8240dbc6f5c92a34efa3c524276177eaa9975b7475d4644cc8f781e",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "094",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Journey-2of5.pdf",
+    "pages": 16,
+    "image_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      9,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "chars": 8427,
+    "sha256": "ea3d4e01c84dbd8b221ac6bca512bb1ae43c65f7a37ea0158968d93716260922",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "095",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Journey-3of5.pdf",
+    "pages": 32,
+    "image_pages": [],
+    "chars": 85641,
+    "sha256": "420c58ef0c27e392f4cf099307d95b3471b8710f3983d327c050d1548431656b",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "096",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Journey-4of5.pdf",
+    "pages": 55,
+    "image_pages": [],
+    "chars": 160460,
+    "sha256": "6eda2052f11993dd5f3245d923dd20650616d8dd1d7dbf7e30bdc4d0b8859938",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "097",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Journey-5of5.pdf",
+    "pages": 34,
+    "image_pages": [],
+    "chars": 111596,
+    "sha256": "180f9731c0f617a8687164330dce420198ee6982181db9eb540024409782aa53",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "098",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Seasons-1of3.pdf",
+    "pages": 32,
+    "image_pages": [],
+    "chars": 72019,
+    "sha256": "d530dc56cb66ed446c885494538e7c793f6d7038a97941149785f89c7bdf7323",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "099",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Seasons-2of3.pdf",
+    "pages": 59,
+    "image_pages": [],
+    "chars": 145602,
+    "sha256": "7ae3c5e17b42525e9b1b1609387d3ac79c10b420af0f91c62c6c700e2113040c",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "100",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Seasons-3of3.pdf",
+    "pages": 63,
+    "image_pages": [],
+    "chars": 157850,
+    "sha256": "5d66dc45ca1856da27467d08d2a2c6623859a5707321809728e3e0e1a8692d06",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "101",
+    "path": "docs/תיעוד/מועדון-ועונות/Teamder-Seasons.pdf",
+    "pages": 148,
+    "image_pages": [],
+    "chars": 355425,
+    "sha256": "3d2eb89568d18a7cea232c142253a45d60905b6b8a1aebd6150fac4983d615e2",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "102",
+    "path": "docs/תיעוד/מועדון-ועונות/TODO.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 1312,
+    "sha256": "15857bf7b006a01dcec1fe67a522064feab9ed16cd437f157e53ad32b1d89430",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "103",
+    "path": "docs/תיעוד/מועדון-ועונות/ביקורת-עונות.pdf",
+    "pages": 6,
+    "image_pages": [],
+    "chars": 9697,
+    "sha256": "8204e7f77ac751d8a66c734f8189210de8193d33849f346cd694dcd5182fcefa",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "104",
+    "path": "docs/תיעוד/מועדון-ועונות/סטטיסטיקות-בחילופים.pdf",
+    "pages": 10,
+    "image_pages": [],
+    "chars": 17067,
+    "sha256": "9f93797286873dce2c0be30a21432b5c025d19c7664b74dcb3cb8478fb0f72ba",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "105",
+    "path": "docs/תיעוד/מועדון-ועונות/עונות-בדיקה-3.pdf",
+    "pages": 3,
+    "image_pages": [],
+    "chars": 4014,
+    "sha256": "2406f75fe5e4dc449384415c8ec808b41c5d65fd43a8d5d24cc628010eaf9036",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "106",
+    "path": "docs/תיעוד/מועדון-ועונות/עונות-במועדון-הסבר.pdf",
+    "pages": 4,
+    "image_pages": [],
+    "chars": 3739,
+    "sha256": "a6e425b947683a04c494f4abebb3469f5b903e0a410f9a037603f1e6f33c7236",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "107",
+    "path": "docs/תיעוד/מסמכים-קודמים/00-מה-עדכני-ומה-לא.md",
+    "pages": 0,
+    "image_pages": [],
+    "chars": 1458,
+    "sha256": "fafb5abb54fada9a7f290915982d1f183b3fdadc890cf8c6fe0943beb2868cc1",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "108",
+    "path": "docs/תיעוד/מסמכים-קודמים/01-חקירה-לפני-השכתוב.pdf",
+    "pages": 7,
+    "image_pages": [],
+    "chars": 18833,
+    "sha256": "74eb5d3655917be02b41f483e599cc227949bda1275cd9760e8b4996c8fa29c7",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "109",
+    "path": "docs/תיעוד/מסמכים-קודמים/02-השכתוב.pdf",
+    "pages": 5,
+    "image_pages": [
+      2,
+      3,
+      4
+    ],
+    "chars": 5022,
+    "sha256": "d97dfddaad9197bb1f882544376bfece24884efb875991d2be447affb0379de2",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "110",
+    "path": "docs/תיעוד/מסמכים-קודמים/03-סבב-החידוד.pdf",
+    "pages": 8,
+    "image_pages": [
+      3,
+      4,
+      6,
+      7
+    ],
+    "chars": 6926,
+    "sha256": "6fc0245d1ac342af65e9f05c0187f128bd31ba76b0dec8e945710bbda4ad4198",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "111",
+    "path": "docs/תיעוד/עדכונים/Teamder — Joryio SDK update 28.09 (EN).pdf",
+    "pages": 2,
+    "image_pages": [],
+    "chars": 3509,
+    "sha256": "ea538891152986fd3bf36b4bf6b2d8f25e666bf12780ed97f374acf9a3c814de",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "112",
+    "path": "docs/תיעוד/עדכונים/Teamder — מעבר על תיבת הפיתוח 28.09.2026.pdf",
+    "pages": 3,
+    "image_pages": [],
+    "chars": 3618,
+    "sha256": "c30c614887047f72952bebaa46b2371a8615d2efcf991e57c75b10531aae7e7f",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "113",
+    "path": "docs/תיעוד/עדכונים/Teamder — סיווג פולס + גרסה פנימית 1.1.19.pdf",
+    "pages": 3,
+    "image_pages": [],
+    "chars": 2439,
+    "sha256": "6009b39e982bfe649a7086c31bfa7788a22a1fd272b02210371a286e21ee14c9",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "114",
+    "path": "docs/תיעוד/עדכונים/Teamder — עדכון Joryio SDK 28.09.pdf",
+    "pages": 2,
+    "image_pages": [],
+    "chars": 2707,
+    "sha256": "c434fcc53a6db6b4fbdf46e912ede6a363753178299786976bb5e65ae67d9ea3",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "115",
+    "path": "docs/תיעוד/עדכונים/Teamder — תיקון המכנה 0-0 ופנדלים.pdf",
+    "pages": 2,
+    "image_pages": [],
+    "chars": 2375,
+    "sha256": "34576d30d8495f71f9089c808d2a4df43f58077c394bf141aeb41c85eacfd0fa",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "116",
+    "path": "docs/תיעוד/שוטף/1.1.28-פנימית-ומסך-הגרסאות.pdf",
+    "pages": 3,
+    "image_pages": [
+      3
+    ],
+    "chars": 4535,
+    "sha256": "8a35b6b913a0e0d8a1f7b6273999acac3813f7955b4d1c1f001f61e726f1bf58",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "117",
+    "path": "docs/תיעוד/שוטף/QA-פריט-משחקים-בתפריט-הלייב.pdf",
+    "pages": 6,
+    "image_pages": [
+      2,
+      4,
+      5
+    ],
+    "chars": 1961,
+    "sha256": "e401d1853ad55159ca4224ba7f6806d79ce93e86200ff79f8b4d4d7c24dd1efa",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "118",
+    "path": "docs/תיעוד/שוטף/Teamder-1.1.23-פנימית-29.09.2026.pdf",
+    "pages": 3,
+    "image_pages": [
+      1,
+      2
+    ],
+    "chars": 2202,
+    "sha256": "1debc1b8fae4f03df6eeefa488e0a1d765e955cc012c64e4f453e6e2f35993a5",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "119",
+    "path": "docs/תיעוד/שוטף/Teamder-מסך-הבית-תיעוד-מלא.pdf",
+    "pages": 12,
+    "image_pages": [
+      8,
+      9,
+      10,
+      11
+    ],
+    "chars": 12138,
+    "sha256": "c4a230cf72ae12f0a7deb761d94c532ce638fa0ce9170ecc32b00a2a30ac53ec",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "120",
+    "path": "docs/תיעוד/שוטף/Teamder-פולס-29.09.2026.pdf",
+    "pages": 3,
+    "image_pages": [
+      1,
+      2
+    ],
+    "chars": 2453,
+    "sha256": "1e9a2ccefd9ce5a2977638dd8e55b8ada810bc3adf593d941cb5d5a18d8b74a3",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "121",
+    "path": "docs/תיעוד/שוטף/איחוד-אזור-הזמינות.pdf",
+    "pages": 6,
+    "image_pages": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "chars": 3926,
+    "sha256": "adbccd2e667653497335df012e0e3392a9b4cf8c97f8849be163a95317977d14",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "122",
+    "path": "docs/תיעוד/שוטף/איציק-לוי-תחקיר-התאפסות.pdf",
+    "pages": 3,
+    "image_pages": [],
+    "chars": 4521,
+    "sha256": "af8ca09eabca55268206050945b01ba18fddf26782cea6c72bb587c92cf8b053",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "123",
+    "path": "docs/תיעוד/שוטף/ביקורת-מדיניות-פרטיות-03.10.pdf",
+    "pages": 2,
+    "image_pages": [],
+    "chars": 3409,
+    "sha256": "370b3e1b7b6b4dfb4796007f43c59715cd942b2c5543801fbedf03abe68b89a1",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "124",
+    "path": "docs/תיעוד/שוטף/גרסה-פנימית-1.1.32.pdf",
+    "pages": 2,
+    "image_pages": [
+      2
+    ],
+    "chars": 1829,
+    "sha256": "2904c83565d0761c9b1ba27dc1bd3927b90a7b9f45194af47f13bf60c7581138",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "125",
+    "path": "docs/תיעוד/שוטף/חקירה-איחוד-השוואה-וצמדים.pdf",
+    "pages": 20,
+    "image_pages": [],
+    "chars": 38873,
+    "sha256": "4cad29c31ffbd81e515790f2201aa23a6f49414c0d1e412f599896d36233d2e6",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "126",
+    "path": "docs/תיעוד/שוטף/כרטיס-השיתוף-של-מסך-הצמד.pdf",
+    "pages": 3,
+    "image_pages": [
+      2
+    ],
+    "chars": 2672,
+    "sha256": "686d965b3caf938214e02057fdb12ef5717571849b4011d0a44dae37e0d0cec6",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "127",
+    "path": "docs/תיעוד/שוטף/מסך-הבית-ריפקטור-ויזואלי.pdf",
+    "pages": 4,
+    "image_pages": [
+      2,
+      3
+    ],
+    "chars": 4594,
+    "sha256": "ac143f850eccafef48c8e1eda24b49f78979595033aa5f908197de8326d1b1e7",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "128",
+    "path": "docs/תיעוד/שוטף/מסך-הצמד-POLISH-ויזואלי.pdf",
+    "pages": 7,
+    "image_pages": [
+      2,
+      3,
+      4,
+      6
+    ],
+    "chars": 6110,
+    "sha256": "14e1099714ed0ce4abd6e427f4fff27e1e2132660af5c8827c1bb9a3939e0fa8",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "129",
+    "path": "docs/תיעוד/שוטף/מסך-הצמד-המאוחד-בוצע.pdf",
+    "pages": 5,
+    "image_pages": [
+      1,
+      2,
+      3
+    ],
+    "chars": 5887,
+    "sha256": "a1c457d251f101246974a350d404745b8c0d5d810071a9054342ce0dc8ddc9e8",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "130",
+    "path": "docs/תיעוד/שוטף/משחקים-במסך-הלייב.pdf",
+    "pages": 3,
+    "image_pages": [
+      2
+    ],
+    "chars": 3793,
+    "sha256": "4a04c2d1b21c81eff5a79de22a759286f67b7760c3a33d74e0ccde251c440b08",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "131",
+    "path": "docs/תיעוד/שוטף/סבב-דיווחים-פולס.pdf",
+    "pages": 4,
+    "image_pages": [
+      1,
+      2,
+      3
+    ],
+    "chars": 2576,
+    "sha256": "96bbec1e7ffa216280701779ca39590638d741950ff232cc08c83d1abe66474d",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "132",
+    "path": "docs/תיעוד/שוטף/סבב-פולס-03.10.pdf",
+    "pages": 5,
+    "image_pages": [
+      2,
+      3
+    ],
+    "chars": 4443,
+    "sha256": "0af85db5cd924f7c6b0ab404dfd74a93d1a2b9329864f650f7ba417dc4eb850e",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "133",
+    "path": "docs/תיעוד/שוטף/סבב-פולס-1.1.29.pdf",
+    "pages": 4,
+    "image_pages": [
+      2
+    ],
+    "chars": 5029,
+    "sha256": "2f3c658909660fc4f88f5700bf8495b643133356377180158acd45e63aa9f5f2",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "134",
+    "path": "docs/תיעוד/שוטף/סבב-פולס-מלא-1.1.31.pdf",
+    "pages": 2,
+    "image_pages": [],
+    "chars": 3764,
+    "sha256": "6523dc149b9d070f1fe858de716c7d1b59f20b0a5eae836865337e272a552436",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "135",
+    "path": "docs/תיעוד/שוטף/קריסת-iOS-אבחנה-סופית.pdf",
+    "pages": 2,
+    "image_pages": [],
+    "chars": 3083,
+    "sha256": "adab1edbd85f1610d80997e103381b9b1a43e5a7bfcf4ca68556ba9a5238b9e7",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "136",
+    "path": "docs/תיעוד/שוטף/קריסת-iOS-בפתיחה.pdf",
+    "pages": 3,
+    "image_pages": [],
+    "chars": 4193,
+    "sha256": "e2dce14f8d72cb3247c0fe12273399572a6d4621a6edf8df41797261cd998ff6",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  },
+  {
+    "key": "137",
+    "path": "docs/תיעוד/שוטף/רכיב-המחזור-במסך-הבית.pdf",
+    "pages": 4,
+    "image_pages": [
+      2,
+      3,
+      4
+    ],
+    "chars": 4508,
+    "sha256": "ae7bcd854fbe61f98a787b4db5860f901fb2eaf358f6a63aecf6d4da4dfdb061",
+    "review": "reviews/archive-093-137.md",
+    "auditDate": "2026-10-07",
+    "note": "טקסט נגיש ותמונות לפי היקף הקריאה וההסתייגויות בסקירה; לא אישור תקינות טענות המקור"
+  }
+]

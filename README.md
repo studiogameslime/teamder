@@ -1,5 +1,7 @@
 # Footy ⚽ — neighborhood 5v5 manager
 
+> התיאור הישן בהמשך נשמר כהיסטוריה ואינו מפת המוצר הנוכחית. לפני עבודה קראו את [כללי הפרויקט](AGENTS.md) ואת [מפת המסכים והפיצ׳רים](docs/features/README.md), הכוללת מצבים, צילומים, מקורות קוד והצעות לשיפור. מצב הפצה לחנויות מתועד ביומן הגרסה, בנפרד מהתיעוד.
+
 React Native (Expo) app for organizing a fixed weekly football night up to 15 players.
 
 > **Status:** MVP with Firebase wiring. Onboarding → Google sign-in → group flow → bottom tabs all run

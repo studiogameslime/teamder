@@ -1,0 +1,832 @@
+[
+  {
+    "file": "CommunityDetails-players.jpg",
+    "source": "artifacts\\map-captures\\@CommunityDetails-players.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "e5f1539c1ba5c22ab96d4cb2f636798f969921531e547d945e135f288bc50639"
+  },
+  {
+    "file": "CommunityDetails-stats.jpg",
+    "source": "artifacts\\map-captures\\@CommunityDetails-stats.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "cf47512435d8a267fefdfbb361a562a302bdf1cbe47f8e91cad34fb54fc48d9d"
+  },
+  {
+    "file": "CommunityStats-settled.jpg",
+    "source": "artifacts\\map-captures\\@CommunityStats-settled.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "81fd33961971ef239ae6b0d1c54ca2301a70966eacd5dd3a60561de45bf3c385"
+  },
+  {
+    "file": "DraftBoard-valid.jpg",
+    "source": "artifacts\\map-captures\\@DraftBoard-valid.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "d0a7864318b87385aa0f6caf8240102690f5f492aeef2495ecda64a08376c862"
+  },
+  {
+    "file": "DraftSetup-captains.jpg",
+    "source": "artifacts\\map-captures\\@DraftSetup-captains.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "0d2058cd3b6be0a65c7829cf7928cf881067e3cd8a046f8f0155679d6d4f9973"
+  },
+  {
+    "file": "DraftSetup-order-options-bottom.jpg",
+    "source": "artifacts\\map-captures\\@DraftSetup-order-options-bottom.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "1e9082784d99385e323b0efef71aa320c8753a016c329856db335e932e37accc"
+  },
+  {
+    "file": "DraftSetup-order-options.jpg",
+    "source": "artifacts\\map-captures\\@DraftSetup-order-options.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "8a9ab26b403f3207df28536e681697349f6da62139cc133d2852abcc8c7eb808"
+  },
+  {
+    "file": "DraftSetup-order.jpg",
+    "source": "artifacts\\map-captures\\@DraftSetup-order.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "f1d1766d00625628ed54044b105d88ee19a9d111e8b75f25fe2f8bdda37439eb"
+  },
+  {
+    "file": "DraftSetup-valid.jpg",
+    "source": "artifacts\\map-captures\\@DraftSetup-valid.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "729ac0acaeede2fdd1231eafe7be3f368ea11caedbe6e02745b94bc4c07fea21"
+  },
+  {
+    "file": "LiveMatch-advanced.jpg",
+    "source": "artifacts\\map-captures\\@LiveMatch-advanced.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "שער הגנה לפני חלוקת כוחות; אינו צילום פנדלים"
+    ],
+    "sha256": "97b1e2fc36e277867d4b676b3cc4a11b769a887c9e542eded6bfd54c0c30d5a0"
+  },
+  {
+    "file": "MatchDetails-games.jpg",
+    "source": "artifacts\\map-captures\\@MatchDetails-games.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "db58161c13628233d67fb48ac72127faa83d07cde6c28aaa7490ac60600415fe"
+  },
+  {
+    "file": "MatchDetails-info.jpg",
+    "source": "artifacts\\map-captures\\@MatchDetails-info.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "bf1281dcfd912ed04d7af9e3b71be0def7ff0d1910f361282c5d54af3fae2167"
+  },
+  {
+    "file": "MatchDetails-players.jpg",
+    "source": "artifacts\\map-captures\\@MatchDetails-players.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "6f3a12fbce60eef9c708b68cd17b93aae9d2713daddd19b9dd9479777233986f"
+  },
+  {
+    "file": "MatchDetails-stats.jpg",
+    "source": "artifacts\\map-captures\\@MatchDetails-stats.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "37cf3db76251609e3a20eb52b7b0f14e565b504d17a19cfff8a0b4f6f3073854"
+  },
+  {
+    "file": "auth-account-upgrade.jpg",
+    "source": "artifacts\\map-captures\\_auth_account_upgrade.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "הרכבת רכיב במסלול בדיקה; אינה מסע התחברות מלא"
+    ],
+    "sha256": "3c152e783e1888dafd15537675ef84153b6b07d5962cd1f53047bc08f13bb54d"
+  },
+  {
+    "file": "auth-apply-filler.jpg",
+    "source": "artifacts\\map-captures\\_auth_apply_filler.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "הרכבת רכיב במסלול בדיקה; אינה מסע התחברות מלא"
+    ],
+    "sha256": "ace99c666e5f9473534808f4d69e5f4852ac3a8c61a24e0f3b7f9adbbc474984"
+  },
+  {
+    "file": "auth-create-club.jpg",
+    "source": "artifacts\\map-captures\\_auth_create_club.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "הרכבת רכיב במסלול בדיקה; אינה מסע התחברות מלא"
+    ],
+    "sha256": "f674d9b40ad58145dd3c9367cb3f25a5e3d5bf7a29cc0aa2feab8e1bf2472e79"
+  },
+  {
+    "file": "auth-create-game.jpg",
+    "source": "artifacts\\map-captures\\_auth_create_game.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "הרכבת רכיב במסלול בדיקה; אינה מסע התחברות מלא"
+    ],
+    "sha256": "584633d0742a3e4a6d1ceefcf979f70d296cb31c3a2d1194a35484de459ac322"
+  },
+  {
+    "file": "auth-join-club.jpg",
+    "source": "artifacts\\map-captures\\_auth_join_club.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "הרכבת רכיב במסלול בדיקה; אינה מסע התחברות מלא"
+    ],
+    "sha256": "e8d9c6f8b3f7685ef6b14dd1ecf5f0fbf7fe3900cd6bc8189c6b530df0c87daa"
+  },
+  {
+    "file": "auth-join-game.jpg",
+    "source": "artifacts\\map-captures\\_auth_join_game.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "הרכבת רכיב במסלול בדיקה; אינה מסע התחברות מלא"
+    ],
+    "sha256": "62db538b0c810c39025daf0ab837568f3e0c46cbdcdf48310c866f98d7b6f429"
+  },
+  {
+    "file": "auth-save-availability.jpg",
+    "source": "artifacts\\map-captures\\_auth_save_availability.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "הרכבת רכיב במסלול בדיקה; אינה מסע התחברות מלא"
+    ],
+    "sha256": "f14c9e1de947e782521e4e0ad048bc25186352b619308974a51f25dd331f206b"
+  },
+  {
+    "file": "Achievements.jpg",
+    "source": "artifacts\\map-captures\\Achievements.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "e6bf4205cc1d5a819f99b2d5a8aaa3136ccc5c6e62a7f644e84a73fee7c80aa4"
+  },
+  {
+    "file": "AddMembers.jpg",
+    "source": "artifacts\\map-captures\\AddMembers.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "מסלול בדיקה עם פרמטר חסר; אינו הוכחה לתקלה במסך הרגיל"
+    ],
+    "sha256": "77f21f6494448f491406ae4478effc50e1891786daedaee716c158d527eb9dc4"
+  },
+  {
+    "file": "AdminApproval.jpg",
+    "source": "artifacts\\map-captures\\AdminApproval.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "9454694a253123d1260fadcef6566dba459d383ebd938119d5be56a3cd5799d1"
+  },
+  {
+    "file": "AvailabilityEdit.jpg",
+    "source": "artifacts\\map-captures\\AvailabilityEdit.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "4f9fcfe3df5887d726046328f4ec1a04c78102aa4c555fa669d9849d4c5c66e3"
+  },
+  {
+    "file": "AvailabilityWeek.jpg",
+    "source": "artifacts\\map-captures\\AvailabilityWeek.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "9dcaf2a64dbf0c643de464781ea38e57dc639abde4b27d94d013dd5fb70ce669"
+  },
+  {
+    "file": "AvailablePlayers.jpg",
+    "source": "artifacts\\map-captures\\AvailablePlayers.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "מסלול בדיקה עם פרמטר חסר; אינו הוכחה לתקלה במסך הרגיל"
+    ],
+    "sha256": "fe42faf4190aa69788d4f2084b314f9d7309253a68ed54a869363f3a63190cb9"
+  },
+  {
+    "file": "BlockedUsers.jpg",
+    "source": "artifacts\\map-captures\\BlockedUsers.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "כשל בסביבת דמו; לא הוכחת כשל בייצור"
+    ],
+    "sha256": "b2eb37889a5845b846ea2b936d97a79ed68961c3653f7f16c966773bdc1a897b"
+  },
+  {
+    "file": "CommunitiesCreate.jpg",
+    "source": "artifacts\\map-captures\\CommunitiesCreate.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "258c6fe2ec087984f83f4a5ecb7f20f6ca5fdbc6a24f5eb130b387ecb7a98448"
+  },
+  {
+    "file": "CommunitiesFeed.jpg",
+    "source": "artifacts\\map-captures\\CommunitiesFeed.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "d4087bba8f27b9ee3f3b8057e852a9daa9d6b6f02b6557b4be0c9565e5685464"
+  },
+  {
+    "file": "CommunitiesMap.jpg",
+    "source": "artifacts\\map-captures\\CommunitiesMap.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "מסלול הבדיקה מציג מפת מחזורים; אינו הוכחה למפת מועדונים"
+    ],
+    "sha256": "822f3ab4905ba031c59f3622440bf31af81572f8f40c7838a84fc35bf1e883be"
+  },
+  {
+    "file": "CommunityDetails.jpg",
+    "source": "artifacts\\map-captures\\CommunityDetails.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "82d3b24766486d06045422d4075cfa5dfcf14f0484e4257a502255186689b557"
+  },
+  {
+    "file": "CommunityDetailsPublic.jpg",
+    "source": "artifacts\\map-captures\\CommunityDetailsPublic.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "39cf007b1fbf2e853e3eb0a66bb51a05c2221e92dfb139bb26d460039ee00bdd"
+  },
+  {
+    "file": "CommunityEdit.jpg",
+    "source": "artifacts\\map-captures\\CommunityEdit.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "bcd2ab19afe683e33e531442f5a6349c4bdfb1ace671fd9c626b53456acab5ad"
+  },
+  {
+    "file": "CommunityHistory.jpg",
+    "source": "artifacts\\map-captures\\CommunityHistory.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "3d0999c218003eda372c56613ded6be85f524d963ace28dcbaf28a870a4bb936"
+  },
+  {
+    "file": "CommunityPlayers.jpg",
+    "source": "artifacts\\map-captures\\CommunityPlayers.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "398d3189a27cfa14f0cd404fb2cff2376139537a6f5958964ec95180a852245f"
+  },
+  {
+    "file": "CommunityStats.jpg",
+    "source": "artifacts\\map-captures\\CommunityStats.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "צילום מוקדם במהלך הנפשת המונה; להשתמש ב-CommunityStats-settled"
+    ],
+    "sha256": "8b38a29b0978be21bf7f27cf52a6128c7c1457748ad6ec85c898ffd06f59fce2"
+  },
+  {
+    "file": "EmailAuth.jpg",
+    "source": "artifacts\\map-captures\\EmailAuth.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "הרכבת רכיב במסלול בדיקה; אינה מסע התחברות מלא"
+    ],
+    "sha256": "ece38f2d3a640760a0cba82e985108c9dba2513dc51dd7bc0c4d9f87a0f39301"
+  },
+  {
+    "file": "Feedback.jpg",
+    "source": "artifacts\\map-captures\\Feedback.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "1dd74fb23c3254d25ace9527d1c922fd17c4f941e2ef66ea093c8b35d1440446"
+  },
+  {
+    "file": "Friends.jpg",
+    "source": "artifacts\\map-captures\\Friends.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "9d43c82a16e2245797cfc7603f4cd8f726dda49238d622bae359926abb01b73d"
+  },
+  {
+    "file": "GameCreate.jpg",
+    "source": "artifacts\\map-captures\\GameCreate.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "8430b11f173a10bc87e6d030f5bd77c4abf7147b811ddf9bcab985c7b1496f51"
+  },
+  {
+    "file": "GamesList.jpg",
+    "source": "artifacts\\map-captures\\GamesList.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "eee7db2204d90c4935632aa399c5c4b0615ce73485f2017e13c03f4862a64e90"
+  },
+  {
+    "file": "GuestHome.jpg",
+    "source": "artifacts\\map-captures\\GuestHome.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [
+      "הרכבת רכיב במסלול בדיקה; אינה מסע התחברות מלא"
+    ],
+    "sha256": "3ce0bd27f5d1eb41771f60f76868740a124c2ceed8a119a87a066e69a2da69ec"
+  },
+  {
+    "file": "History.jpg",
+    "source": "artifacts\\map-captures\\History.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "a21db14736f3fd3ccb09bd44b4b27604cbedfe06ad9cf30380d8b9467c6f591f"
+  },
+  {
+    "file": "NotificationsSettings.jpg",
+    "source": "artifacts\\map-captures\\NotificationsSettings.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "125262dfe7550e15f55d9558f2f75c117f600c9e1e75e03824cb366bab48a064"
+  },
+  {
+    "file": "PersonalInvite.jpg",
+    "source": "artifacts\\map-captures\\PersonalInvite.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "6078cece777e8a2e1114719b7053d838d2c995fd67169812c9735b037fc34e59"
+  },
+  {
+    "file": "PlayerCard.jpg",
+    "source": "artifacts\\map-captures\\PlayerCard.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "f2aead93858b8e7d4c39300d6f08422f53ac17d61ce0d8f05aef000fcfefb946"
+  },
+  {
+    "file": "PlayerCompare.jpg",
+    "source": "artifacts\\map-captures\\PlayerCompare.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "4291d0e3ad575b0cb96a562c4c15d01e0a72a0501caf4e2e47f75726ded52694"
+  },
+  {
+    "file": "PlayerTimeline.jpg",
+    "source": "artifacts\\map-captures\\PlayerTimeline.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "8a453b3e6f92a6c1bdc9502c0965b89a1325995cc81e5a1e4de43a1d771ad28b"
+  },
+  {
+    "file": "Profile.jpg",
+    "source": "artifacts\\map-captures\\Profile.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "1132da2e2dfb8ec6bec286551063bda4e7361dac1a22987d89a8cdc39610c6b0"
+  },
+  {
+    "file": "ProfileEdit.jpg",
+    "source": "artifacts\\map-captures\\ProfileEdit.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "eac9045e13089232d5b985716e074f2e43a4fcfd606d417231f51b91e8865375"
+  },
+  {
+    "file": "Referrals.jpg",
+    "source": "artifacts\\map-captures\\Referrals.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "b36e74d81e9469e539200b05667f8a6658263c265b3715f777be6a579d872d75"
+  },
+  {
+    "file": "Requests.jpg",
+    "source": "artifacts\\map-captures\\Requests.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "5a181c61b9128028bf09bfd262fb243c238dd865caa8dd7d5fc686cb4b0c043c"
+  },
+  {
+    "file": "SeasonSummary.jpg",
+    "source": "artifacts\\map-captures\\SeasonSummary.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "db065618c085b34631cef8790a8190e4d48ef2a0061a4b9300cf80afbf4eed1e"
+  },
+  {
+    "file": "SeasonTitles.jpg",
+    "source": "artifacts\\map-captures\\SeasonTitles.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "03765f3acb40493a1ee000dcaa4fdb9ce50b5d0b97ef060fcdc666f5e0b8c7cf"
+  },
+  {
+    "file": "Statistics.jpg",
+    "source": "artifacts\\map-captures\\Statistics.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "3e989f841f7ed4b49b4add99045b3b5a1595594820d2f177cab450d5f0de80f3"
+  },
+  {
+    "file": "teamder-home-menu-new.jpg",
+    "source": "artifacts\\teamder-home-menu-new.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "98580303dd78af52370ad3c5cec96917794566b4ac43c522f0fca416bf8e309b"
+  },
+  {
+    "file": "teamder-home-menu-scroll.jpg",
+    "source": "artifacts\\teamder-home-menu-scroll.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "935b958c699a15dd76db5c6751250d97f04881cee152485bde8a2ce67c4ddfbe"
+  },
+  {
+    "file": "teamder-club-menu-new.jpg",
+    "source": "artifacts\\teamder-club-menu-new.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "9ee630d6967917ec4f9c5f9d0c892649362229e7dae1582be35b7c3de2423065"
+  },
+  {
+    "file": "teamder-match-details-menu.jpg",
+    "source": "artifacts\\teamder-match-details-menu.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "640d30f5c25c2ddffc054f537f9ea4b86d71776c4a20ef0aea389d44fc011ec4"
+  },
+  {
+    "file": "teamder-live-menu-new.jpg",
+    "source": "artifacts\\teamder-live-menu-new.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "384985c50db1c5b1a31577558d33d12da99bade202423390000ca07f0a51aab1"
+  },
+  {
+    "file": "teamder-player-menu-final.jpg",
+    "source": "artifacts\\teamder-player-menu-final.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "6f31b5da329bec7b4c29377c178d40e5d978926ec5e872c59f719ced0f28354b"
+  },
+  {
+    "file": "drag-fixed.jpg",
+    "source": "artifacts\\drag-fixed.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "72bc978e7c0a16e37d7775c551fbb7fc99ca7a719d8875c887b329cc4713aaa1"
+  },
+  {
+    "file": "drag-short-fixed.jpg",
+    "source": "artifacts\\drag-short-fixed.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "3824c6e8edc1c4362c5b634102900b27d00fc4b6065585162a0204ce76580d66"
+  },
+  {
+    "file": "teamder-home-tips-smooth.jpg",
+    "source": "artifacts\\teamder-home-tips-smooth.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "be7bc714dd24046112ffda8289e72dd75706664ed232f3881558b56caa66a1fd"
+  },
+  {
+    "file": "teamder-personal-history.jpg",
+    "source": "artifacts\\teamder-personal-history.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "19f599028f708d3672e6558efe0723c9b0749edb6ff29222c72820f707bb048c"
+  },
+  {
+    "file": "teamder-personal-history-played.jpg",
+    "source": "artifacts\\teamder-personal-history-played.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "9bd156b3f53b72c13d5a2aa2a66a9738fc53c685957373f351243efc39361a8b"
+  },
+  {
+    "file": "teamder-history.jpg",
+    "source": "artifacts\\teamder-history.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "2d22b2c091f932a502e3d15841c3df0fc13c86f963b4c2fbb9fcb7bbf1212842"
+  },
+  {
+    "file": "teamder-new-covers.jpg",
+    "source": "artifacts\\teamder-new-covers.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "108423c51e7777a7a0036415d4c3c1e737711cbb1def722dab98f2730dc87c4d"
+  },
+  {
+    "file": "teamder-new-avatars.jpg",
+    "source": "artifacts\\teamder-new-avatars.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "b7f9a6f72cc374984bd48d13c9925053c1012aa31ea0d9a6f1079244115859a8"
+  },
+  {
+    "file": "teamder-penalties-icons.jpg",
+    "source": "artifacts\\teamder-penalties-icons.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "8e1740a800fcc7be01f04e0bed171327a8aaba0870e59ad7cf0dc0b2c6025c71"
+  },
+  {
+    "file": "teamder-penalties-selected.jpg",
+    "source": "artifacts\\teamder-penalties-selected.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "bc6c3bc4f3e8f2acad5cf195bc0c4befec6dc3313381af438f1bbac527f3efae"
+  },
+  {
+    "file": "teamder-penalties-emphasis-goal.jpg",
+    "source": "artifacts\\teamder-penalties-emphasis-goal.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "ae56f8940660605291499412a71746e1c83339244f888c829dd73d8400167a6b"
+  },
+  {
+    "file": "teamder-penalties-shot.jpg",
+    "source": "artifacts\\teamder-penalties-shot.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "7ca3dc26bc23a9235fe9f0e0610f12db6a3e6a618a2a394af0570ccd7b168a5e"
+  },
+  {
+    "file": "teamder-guide-hidden.jpg",
+    "source": "artifacts\\teamder-guide-hidden.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "d85c466b2feac0b245e7aa3266cf0dcf30b70b2b442f3e382fde3d110b1bb9f8"
+  },
+  {
+    "file": "teamder-new-cover-selected.jpg",
+    "source": "artifacts\\teamder-new-cover-selected.png",
+    "platform": "Android",
+    "environment": "צילום אמולטור ממשימה קודמת; לא בדיקת בינארי החנות החדש",
+    "sourceCommit": null,
+    "captured": "2026-10-07",
+    "notes": [
+      "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
+    ],
+    "sha256": "aee92fcef84547728fd2ecb1fa56f9b19b7ee87e80c035b31f47511fbb08a898"
+  }
+]

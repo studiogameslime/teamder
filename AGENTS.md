@@ -11,6 +11,13 @@ Code reads `CLAUDE.md`, which points here). Keep one copy; edit this file.
 הוא כולל מפת קוד, מקורות היסטוריים ומסקנות שהוחלפו. בדוק קוד ומקור
 ממוקדים לפי המשימה; הסיכום אינו מחליף את הכללים כאן או בדיקה עדכנית.
 
+מפת הפיצ׳רים העדכנית נמצאת ב־[docs/features/README.md](docs/features/README.md).
+בכל שינוי בפיצ׳ר, עדכן באותה משימה את המסמך שלו: התנהגות, מצבים,
+מסלול נתונים, ניווט ובדיקות. שינוי חזותי דורש צילום עדכני ורישום מקור
+ומגבלות ב־docs/features/screenshots/manifest.json. אין לסמן מצב שנקרא
+בקוד כאילו הורץ. מסך חדש או מסך שהוסר מחייב עדכון של מפת הכיסוי.
+כללי התחזוקה: [docs/features/maintenance.md](docs/features/maintenance.md).
+
 ---
 
 ## 1. The owner
