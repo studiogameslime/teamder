@@ -139,6 +139,13 @@ The rules below are the ones that do not change.
 One inbox, several streams. "עבור על הפולס" means process all of them except
 parked ideas.
 
+Read it with **`python3 scripts/pulse-inbox.py`** (`--open --shots ./out` for
+the items in full plus their screenshots; `--close <id> --stream <s> --note`
+to close one). It needs `gcloud auth login`. Two traps it already handles and
+you would otherwise hit: `errors` is ordered by `lastSeen` and has no
+`createdAt`, and Firestore's REST `list` endpoint serves stale data here —
+always go through `documents:runQuery`.
+
 - Reports (`feedback`) **carry a screenshot** in an `image` field (base64
   JPEG) plus a `screen` field. **Decode it and look at it** before triaging.
   Never triage from the text alone.
