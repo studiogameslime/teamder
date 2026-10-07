@@ -1,0 +1,86 @@
+node_modules/
+.expo/
+dist/
+npm-debug.*
+
+# Local QA run artifacts (screenshots, PDF reports) — not part of the app.
+qa_run_*/
+# Raw emulator captures from a visual-QA run. The finished PDF goes to docs/;
+# the PNGs behind it are megabytes of run-specific evidence and stay local.
+artifacts/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+.DS_Store
+.env
+.env.local
+# Local-only secrets reference (keystore creds, API keys, build notes).
+LOCAL-SECRETS.md
+# google-services.json + GoogleService-Info.plist are NOT secrets — they
+# only carry public client identifiers + API keys. Firestore Rules + the
+# SHA-1 fingerprint registered in Firebase Console are the real security
+# boundary. Committing them lets EAS Build pick them up via git.
+/ios/
+# Anchored to the repo root ON PURPOSE. Unanchored `android/` matches a
+# directory of that name at ANY depth, which silently swallowed the whole
+# native SDK under vendor/joryio — the build then produced a clean, signed AAB
+# with no analytics in it.
+/android/
+
+# Claude Code session data + Firebase CLI cache (machine-local)
+.claude/
+.firebase/
+
+# Build artefacts — never commit binaries.
+*.aab
+*.apk
+public/downloads/
+
+# Generated at functions build time by scripts/copy-template.js. Kept
+# out of source control so the function-side copy never drifts from
+# public/c/index.html — the predeploy script regenerates it.
+functions/templates/
+
+# tsc's output for the Cloud Functions, and nothing else — `outDir: "lib"`,
+# `rootDir: "src"`. It was tracked, and a tracked build artefact is a build
+# artefact that goes stale: HEAD carried the compilation of an earlier commit,
+# the newest module (seasonCounters.js) was never added at all, and
+# functions/package.json points `main` at lib/index.js — so a clean checkout, a
+# `require('../functions/lib/...')` from scripts/, or an emulator run that skips
+# the build all exercised code two commits behind src/ while reporting green.
+# Production was never at risk (firebase.json's predeploy runs `npm run build`),
+# which is exactly why nobody noticed for as long as they didn't.
+#
+# The source of truth is functions/src/. Build before you run anything out of
+# lib/: npm --prefix functions run build
+functions/lib/
+credentials.json
+credentials/
+qa_emulator_run/
+firebase-debug.log
+
+# local junk
+firestore-debug.log
+AUDIT-REPORT*.md
+audit-screenshots/
+
+# iOS build artifacts
+*.ipa
+
+# Joryio SDK build outputs (the SOURCES under vendor/joryio are tracked —
+# eas build --local copies by git, so an untracked vendor/ silently ships an
+# app with no analytics).
+vendor/joryio/android/.gradle/
+vendor/joryio/android/build/
+vendor/joryio/**/build/
+vendor/joryio/react-native-sdk/node_modules/
+backups/
+
+# Local attachments and machine repair helper
+.codex-remote-attachments/
+store-repair.ps1
