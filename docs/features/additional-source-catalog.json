@@ -1,401 +1,401 @@
 [
   {
     "path": "docs/changes/2026-10-07-community-history.md",
+    "hashMode": "text-lf",
     "sha256": "c950e7237b5ab66c936b978bf9ed951c4603fcdd7700f59bbad245a0cd3e43ea",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/changes/2026-10-07-daylight-covers.md",
+    "hashMode": "text-lf",
     "sha256": "09dc558b06495b5f72cb27bbe3882e49efb0dac3165fb209e63dd0cffd1c0c4f",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/changes/2026-10-07-home-guide.md",
+    "hashMode": "text-lf",
     "sha256": "d654d9607514190e7459daece4f7f72889f0eb73eb0065ff8e4cdd7993fc1606",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/changes/2026-10-07-home-tips-carousel.md",
+    "hashMode": "text-lf",
     "sha256": "badb0f8dfbc6e7f9aa611f9d22db2e40146d07d0101f911b7d4b1d97ba7ec91c",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/changes/2026-10-07-internal-1.1.35.md",
-    "sha256": "797cd881b65340275f656302d821a2242c12b794bb4351283ce45bd4f57b1e3b",
+    "hashMode": "text-lf",
+    "sha256": "05acde6446a807e901cbc5f2a02cf3f8ee91535121f15ae9e1e43e10c3eee6a6",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/changes/2026-10-07-internal-release-1.1.34.md",
+    "hashMode": "text-lf",
     "sha256": "b3aaff989e0ae72125ea5063bd934430464e2c2aeb5b3604912e3fbcec41c8df",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/changes/2026-10-07-menu-redesign.md",
+    "hashMode": "text-lf",
     "sha256": "2125e7d42f9876502a48de5c87b1d64660fb332297d257f96defa052189f9d1b",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/changes/2026-10-07-penalty-animations.md",
+    "hashMode": "text-lf",
     "sha256": "4650dd224e66faba8ea00fc9b18e44d2717ea5148add5bf09f3b8b0f99254b14",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/changes/2026-10-07-personal-history.md",
+    "hashMode": "text-lf",
     "sha256": "507280c2df0d826d4acd09e2f549aa1402ab32278a8de218154f21dab049c408",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/changes/2026-10-07-profile-avatars.md",
+    "hashMode": "text-lf",
     "sha256": "5dc5060999686580108b0be5a25a2f1718f35600ac7235428f51c4d534994016",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/changes/2026-10-07-pulse-bugs.md",
+    "hashMode": "text-lf",
     "sha256": "1d578a82b7711e6bf6a1169a0f2140ed9233b55414bab5d75c1fab04513e67e7",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/flows.html",
+    "hashMode": "text-lf",
     "sha256": "6ed6919a8a673f978b486ac47a6a96a7e795a54c2a2fa8d360f4607c2c0cdf01",
     "review": "reviews/additional-product-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/gpt-scheduled-tasks.md",
+    "hashMode": "text-lf",
     "sha256": "8749112b95b0e5d1bad74b40246667c7dba15bbc7dee79572c82f141d0b2e78a",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-android-push-blocked.md",
+    "hashMode": "text-lf",
     "sha256": "a99f2557fbadd9698d00be74003d08eec12971ae14d8053d6445b7a172e0b189",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-android-push-blocked.pdf",
+    "hashMode": "raw",
     "sha256": "b509a9fde047ebbeaf877394ee747338de8e7a3151d2f7fb941b214f3d4f0aa7",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "raw"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-inapp/onboarding.html",
+    "hashMode": "text-lf",
     "sha256": "7dcbcab154000b7f6002265883e5e042c3ce7b2ccf87b2130d6974b1bcb66cd6",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-inapp/role-picker.html",
+    "hashMode": "text-lf",
     "sha256": "b166b613352eacfa6a01d4c599c9dbb37d2234abe6339c6a9f5117b0035f742e",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-inapp-findings.md",
+    "hashMode": "text-lf",
     "sha256": "40458ec7657593beffaa367dcddfdb2ce5f08dbb195941abc632b9c8f4483d18",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-inapp-findings.pdf",
+    "hashMode": "raw",
     "sha256": "d44e40f42c682f8b641856031343154e141f0c353403f095bbeecb781d029044",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "raw"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-ios-blockers.md",
+    "hashMode": "text-lf",
     "sha256": "36ea9b2380296cd37c8990e15956da082626e4e6acf8b33e98ad3ba68d44b797",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-journeys/inapp/onboarding-availability.html",
+    "hashMode": "text-lf",
     "sha256": "494393e7f39f530feaae46c6e60b7edb6ac698c9fbb4fa2201da69d8898617fa",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-reply-push-api.md",
+    "hashMode": "text-lf",
     "sha256": "1d22fb3b6876ff13883f92084fcf7942dbdafe8c32f7e0eb801c553340f9da93",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-reply-push-api.pdf",
+    "hashMode": "raw",
     "sha256": "f3636a94bb0e07a9e6ca1c6445eec6096c5b852f900909401797fde58a668ff0",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "raw"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-response-2.md",
+    "hashMode": "text-lf",
     "sha256": "6633fec7c316024daff0a3671a77847eb457d276d6a24529a7a45a8dd00d9e24",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/joryio-response-2.pdf",
+    "hashMode": "raw",
     "sha256": "1ec2e2bd58c77861ef861ff1239d71f77a3ffb444b2cf55c1e05c1c909151bde",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "raw"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/notifications-audit.md",
+    "hashMode": "text-lf",
     "sha256": "b9d729063a4408f74d8a1159cfe93946f33e835f6b2dac30b330ed167e82914d",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/notifications-audit.pdf",
+    "hashMode": "raw",
     "sha256": "11e5453d128a1129c6edeb77bf6920ae7476f279b9ae3ee55e61942514715ceb",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "raw"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/RELEASING.md",
+    "hashMode": "text-lf",
     "sha256": "6c3edf041888840df200d1d841538a587dd77b8912e2e49c39e6ffe3a352d622",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/seasons/אפיון-עונות-טכני.html",
+    "hashMode": "text-lf",
     "sha256": "4cafd650866a6b9f24860655af7d516e3166c866373134bc689f5c1d18722fd0",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/seasons/אפיון-עונות-פשוט.html",
+    "hashMode": "text-lf",
     "sha256": "91ed0920febb962944dc9dbca8b14109aac266886aebe966f6c73129f9059b94",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/seasons/עונות-במועדון-הסבר.pdf",
+    "hashMode": "raw",
     "sha256": "a6e425b947683a04c494f4abebb3469f5b903e0a410f9a037603f1e6f33c7236",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "raw"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/security/APP_CHECK_SETUP.md",
+    "hashMode": "text-lf",
     "sha256": "7ab722382e56290744d5f905dbff9ad1ab1320c6ecf118278df9feb11be1eb1c",
     "review": "reviews/additional-services-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/teamder-stats-and-teams-brief.md",
+    "hashMode": "text-lf",
     "sha256": "05522fce0c6ef540f011f8ced1c289b067a4abd2885ae9b533a3c60aa1b63f20",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/teamder-stats-prompt.md",
+    "hashMode": "text-lf",
     "sha256": "0e62f6998d90832a7f442820275fc9cc1253d3b1f99749dc241c1d8b68f8f74f",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/ux-audit.md",
+    "hashMode": "text-lf",
     "sha256": "ded3d1580777eee6643ccbae8320e996ae19740ec57f4362cfdd0efb90b062e2",
     "review": "reviews/additional-product-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/ux-audit.pdf",
+    "hashMode": "raw",
     "sha256": "4decb3fdecb9c2b3dee53910853e3b8837b814321221977c75822ecb0afcc9f4",
     "review": "reviews/additional-product-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "raw"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/visual-qa-guest-24.09.2026.pdf",
+    "hashMode": "raw",
     "sha256": "4d48fef2a0bbc1799a33490a35640952f5decc9a28c4c0becee1e8fbe9e7c96e",
     "review": "reviews/additional-product-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "raw"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/אפיון-Teamder.md",
+    "hashMode": "text-lf",
     "sha256": "18facf34494a97cda3df62499159273f17578ee8c6e48dedb3a1c22208a23548",
     "review": "reviews/additional-product-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "docs/הסבר-זרימה-וטפסי-משחק.pdf",
+    "hashMode": "raw",
     "sha256": "21d3ce1f1fc6a062d75d62463b48e30a2a6658056623f52bb8db05e899abd9c4",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "raw"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "דוח-בדיקה-עומק/אימות-חזותי-מוק.md",
+    "hashMode": "text-lf",
     "sha256": "9a51fee1334f75e4142ae62f5998c103722f889824a504d3f2055dba9d7bc6a4",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "דוח-בדיקה-עומק/אפיון מלא של אפליקציית Teamder.md",
+    "hashMode": "text-lf",
     "sha256": "fc39ddb13fd6e759ac25f7943e03a3d905b9914857ac9d29f8c0fdec2e72ac4d",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "דוח-בדיקה-עומק/דוח מסכם לבדיקת Teamder.md",
+    "hashMode": "text-lf",
     "sha256": "2362b7ce57806db05bc004662c48786a45c2d973948a10c648e2d2446929a6b3",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "דוח-בדיקה-עומק/הצעות לשיפור Teamder.md",
+    "hashMode": "text-lf",
     "sha256": "cd6fbcb52743459a11446eb679f8e90107e1b41d57b8da1ede7ab7829b3d9394",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "דוח-בדיקה-עומק/ממצאים-חדשים-סבב-2.md",
+    "hashMode": "text-lf",
     "sha256": "269b674aac7bd0a5a218b4079f93007f20eff98ec4d4e38d2ecb226e85227067",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "דוח-בדיקה-עומק/מעקב-בדיקה-פנימי.md",
+    "hashMode": "text-lf",
     "sha256": "6e3ffa33c67c145e6770ceca1762cb49b3fabe7f2274d0dcd5c44ad66f6a5c12",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "דוח-בדיקה-עומק/נושאים הדורשים החלטה או בדיקה נוספת.md",
+    "hashMode": "text-lf",
     "sha256": "b23c3426563a6238ff0acb546f31673a21029c86bfcc99c2e8bfda3be9f15741",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "דוח-בדיקה-עומק/סיכום בדיקות תקלות ותיקונים.md",
+    "hashMode": "text-lf",
     "sha256": "fbcd57b68ea45a3587c9a7b5042e9c6a9a4429f898a09dba213140e00040a7ea",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "דוח-בדיקה-עומק/תכנית בדיקות מלאה לאפליקציית Teamder.md",
+    "hashMode": "text-lf",
     "sha256": "1fa782e9fdf4d0ed419edc1b7063cfea371bc8a7d23078eb502f240b55c1566d",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "ממצאי-QA-Teamder.md",
+    "hashMode": "text-lf",
     "sha256": "a62461b030ee2b4bf39c20b8108806c322bec16d0eaa89f40a0914624d0b1b34",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "AGENTS.md",
+    "hashMode": "text-lf",
     "sha256": "b472dd5606a806502591d0d2f230ce1f8bd1ab381d84d1a31af5d638d167bdc0",
     "review": "reviews/additional-root-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "CLAUDE.md",
+    "hashMode": "text-lf",
     "sha256": "f045fcaa37b8acca371c190e4dc3b990bac1764d779ccd0f678ce8779df89b85",
     "review": "reviews/additional-root-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "README.md",
+    "hashMode": "text-lf",
     "sha256": "3b7f6e16798042ba2ceaacaa10eb9ad893a1cb92bf04d2283f247189714806e5",
     "review": "reviews/additional-root-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "app-store-metadata.md",
+    "hashMode": "text-lf",
     "sha256": "23fb15e84494170a3cc6308fa086e23ccd3b0aef7077ea51b0941d00620071e5",
     "review": "reviews/additional-root-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "privacy-nutrition-labels.md",
+    "hashMode": "text-lf",
     "sha256": "da3d8d2b51411d880f4f5616b1f716d08f406715440b0178a092bc29930af233",
     "review": "reviews/additional-root-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "features-ideas.md",
+    "hashMode": "text-lf",
     "sha256": "8000d40251bdcee90cc8a12a98f689b512e9c2d8040513b4bbbd125b72b5f312",
     "review": "reviews/additional-root-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "polish-fixes-summary.md",
+    "hashMode": "text-lf",
     "sha256": "53d864672982936b14cc94cc5fee03b7cd8b282a73bbdc0ac36a2a5572dea73f",
     "review": "reviews/additional-root-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   },
   {
     "path": "tests/rules/README.md",
+    "hashMode": "text-lf",
     "sha256": "255cca8d2aade834a61cd094c3d3594cfeb5d8117a5c86ea0aa482098dbda2e3",
     "review": "reviews/additional-root-sources.md",
-    "auditDate": "2026-10-07",
-    "hashMode": "text-lf"
+    "auditDate": "2026-10-07"
   }
 ]
