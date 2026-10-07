@@ -1,5 +1,15 @@
 [
   {
+    "file": "CommunitiesFeed-filters.jpg",
+    "source": "artifacts\\map-captures\\@CommunitiesFeed-filters.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "99805cb9d6eb458b4676c8229a44dd0732860a8ded84ee941dd1c4e42c98b4ac"
+  },
+  {
     "file": "CommunityDetails-players.jpg",
     "source": "artifacts\\map-captures\\@CommunityDetails-players.jpg",
     "platform": "Android",
@@ -20,6 +30,76 @@
     "sha256": "cf47512435d8a267fefdfbb361a562a302bdf1cbe47f8e91cad34fb54fc48d9d"
   },
   {
+    "file": "CommunityStats-bottom.jpg",
+    "source": "artifacts\\map-captures\\@CommunityStats-bottom.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "014d44fa64d0a34e07ce3eaad882434a64d55c6e0e8026a5b99d5e60f26a2f83"
+  },
+  {
+    "file": "CommunityStats-efficiency.jpg",
+    "source": "artifacts\\map-captures\\@CommunityStats-efficiency.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "de202414fcd6078e3265618b46a8c539e65f2d6564f23a43eebbe35203463de4"
+  },
+  {
+    "file": "CommunityStats-facts-and-table.jpg",
+    "source": "artifacts\\map-captures\\@CommunityStats-facts-and-table.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "fcaa59a18685e9caf8796e5b122c0aea16c63a90bfbbece96e8c6cc2736f2e1a"
+  },
+  {
+    "file": "CommunityStats-leaders-after-return.jpg",
+    "source": "artifacts\\map-captures\\@CommunityStats-leaders-after-return.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "26030ce501fa5dcd6dbaccf584c4e32b8b587518099f2d6c0b8ff576245b7d1a"
+  },
+  {
+    "file": "CommunityStats-leaders.jpg",
+    "source": "artifacts\\map-captures\\@CommunityStats-leaders.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "413ace45b06479a175c42cb6a20f7735235561ef7a616a4316f4896f4ee78e13"
+  },
+  {
+    "file": "CommunityStats-pair-after-drag.jpg",
+    "source": "artifacts\\map-captures\\@CommunityStats-pair-after-drag.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "c2e214d516f57d08614dfe11aad4256ca2a2f24c20576cdb9d8ea5f9208df9f1"
+  },
+  {
+    "file": "CommunityStats-pair-card.jpg",
+    "source": "artifacts\\map-captures\\@CommunityStats-pair-card.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "d3a6af95592cf7873c8d14d68a0a72820922b37cf11f15ce9f8d3f44fd4b5368"
+  },
+  {
     "file": "CommunityStats-settled.jpg",
     "source": "artifacts\\map-captures\\@CommunityStats-settled.jpg",
     "platform": "Android",
@@ -28,6 +108,16 @@
     "captured": "2026-10-07",
     "notes": [],
     "sha256": "81fd33961971ef239ae6b0d1c54ca2301a70966eacd5dd3a60561de45bf3c385"
+  },
+  {
+    "file": "CommunityStats-table.jpg",
+    "source": "artifacts\\map-captures\\@CommunityStats-table.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "b3c9dd76e5778fdc5d32d2d9c924bc0fea6dd33172c2f8566bbd0d4582677381"
   },
   {
     "file": "DraftBoard-valid.jpg",
@@ -88,6 +178,96 @@
     "captured": "2026-10-07",
     "notes": [],
     "sha256": "729ac0acaeede2fdd1231eafe7be3f368ea11caedbe6e02745b94bc4c07fea21"
+  },
+  {
+    "file": "GamesList-discovery.jpg",
+    "source": "artifacts\\map-captures\\@GamesList-discovery.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "6138301b67b324ca2624eaa02fe6b286219081126319e500d66874f5859f00af"
+  },
+  {
+    "file": "GamesList-filters-bottom.jpg",
+    "source": "artifacts\\map-captures\\@GamesList-filters-bottom.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "666c84d62041b22b9bfbcc80073911616b49ecdf471c06e5ff3a7169bfb78f2a"
+  },
+  {
+    "file": "GamesList-filters.jpg",
+    "source": "artifacts\\map-captures\\@GamesList-filters.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "e22d2134859b2a294ebac5731d4617d35862a523a54977add57604480795ae9c"
+  },
+  {
+    "file": "GamesList-middle.jpg",
+    "source": "artifacts\\map-captures\\@GamesList-middle.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "4d6cd3a6df9284609a0d510eae09f9a91b485d19d9ee95cf0dd45eb50473116e"
+  },
+  {
+    "file": "GamesList-public.jpg",
+    "source": "artifacts\\map-captures\\@GamesList-public.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "0190dc452f8e37e37c1e2c439308ea258cf0c03ffd6ed5fe05e73c520bdd80c6"
+  },
+  {
+    "file": "Home-bottom.jpg",
+    "source": "artifacts\\map-captures\\@Home-bottom.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "f43a32a623e578a1d896cf04d5d811a301b7b5f7cb9579f271ee4c3f02819710"
+  },
+  {
+    "file": "Home-middle.jpg",
+    "source": "artifacts\\map-captures\\@Home-middle.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "eb5775d828731a1b1abd26c156243c45280a92978916ea633751eb3627abf016"
+  },
+  {
+    "file": "Home-tips-and-invite.jpg",
+    "source": "artifacts\\map-captures\\@Home-tips-and-invite.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "4a11edb60e08ba8233886d4d8b4b971433fc2fda967267113f63bc8e1478d5cb"
+  },
+  {
+    "file": "Home-tips-personal.jpg",
+    "source": "artifacts\\map-captures\\@Home-tips-personal.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "d52c1e06b7c9962c7348e6038d21aa92a712d2d0fb52b86816627a2f1d233be5"
   },
   {
     "file": "LiveMatch-advanced.jpg",
@@ -319,7 +499,7 @@
     "sourceCommit": "8e8fde5",
     "captured": "2026-10-07",
     "notes": [],
-    "sha256": "d4087bba8f27b9ee3f3b8057e852a9daa9d6b6f02b6557b4be0c9565e5685464"
+    "sha256": "fe0411a51b353b6a8a255fdc59285be040a2a59a0e5f7dc30e29fbaf8eba5715"
   },
   {
     "file": "CommunitiesMap.jpg",
@@ -445,7 +625,17 @@
     "sourceCommit": "8e8fde5",
     "captured": "2026-10-07",
     "notes": [],
-    "sha256": "eee7db2204d90c4935632aa399c5c4b0615ce73485f2017e13c03f4862a64e90"
+    "sha256": "93deeb36807e9f804bbb69c64bdd2aa0234643ae1e063c4e64ac7fb097a7cb8f"
+  },
+  {
+    "file": "GamesMap.jpg",
+    "source": "artifacts\\map-captures\\GamesMap.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "8e8fde5",
+    "captured": "2026-10-07",
+    "notes": [],
+    "sha256": "589ecaa14a79769a49734ab81c003495f6ed1a87982346c301240f3ae7206aeb"
   },
   {
     "file": "GuestHome.jpg",
@@ -527,7 +717,7 @@
     "sourceCommit": "8e8fde5",
     "captured": "2026-10-07",
     "notes": [],
-    "sha256": "1132da2e2dfb8ec6bec286551063bda4e7361dac1a22987d89a8cdc39610c6b0"
+    "sha256": "1a3f5818c75256a9d91d086116f0c0acbd1df1ffe1b6ca069319eb619f3168c4"
   },
   {
     "file": "ProfileEdit.jpg",
