@@ -4,18 +4,21 @@ import hashlib
 import json
 import re
 import sys
+from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / 'docs/features'
 
 def main():
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
     failures = []
     docs = sorted(BASE.rglob('*.md'))
     content = {p: p.read_text(encoding='utf-8') for p in docs}
     for doc, body in content.items():
         for target in re.findall(r'!?\[[^\]]*\]\((<[^>]+>|[^)]+)\)', body):
             target = target.strip('<>').split('#')[0]
-            if target and not re.match(r'^[a-z]+:', target) and not (doc.parent / target).exists():
+            if target and not re.match(r'^[a-z]+:', target) and not (doc.parent / unquote(target)).exists():
                 failures.append(f'{doc.relative_to(ROOT)}: missing {target}')
     for source in sorted((ROOT / 'src/screens').rglob('*.tsx')):
         name = source.relative_to(ROOT).as_posix()
@@ -35,7 +38,16 @@ def main():
         path = ROOT / source['path']
         if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != source['sha256']:
             failures.append(f'historical source missing or changed: {source["key"]}')
-    result = dict(documents=len(docs), screenFiles=len(list((ROOT / 'src/screens').rglob('*.tsx'))), screenshots=len(shots), historicalSources=len(sources), failures=failures)
+    extra_path = BASE / 'additional-source-catalog.json'
+    extras = json.loads(extra_path.read_text(encoding='utf-8')) if extra_path.exists() else []
+    for source in extras:
+        path = ROOT / source['path']
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != source['sha256']:
+            failures.append(f'additional source missing or changed: {source["path"]}')
+        if not (BASE / source['review']).is_file():
+            failures.append(f'additional source review missing: {source["review"]}')
+    failures = list(dict.fromkeys(failures))
+    result = dict(documents=len(docs), screenFiles=len(list((ROOT / 'src/screens').rglob('*.tsx'))), screenshots=len(shots), historicalSources=len(sources), additionalSources=len(extras), failures=failures)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 1 if failures else 0
 
