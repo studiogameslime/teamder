@@ -84,3 +84,8 @@ backups/
 # Local attachments and machine repair helper
 .codex-remote-attachments/
 store-repair.ps1
+
+# The written documentation — 120 MB of PDFs. The build has no use for a
+# single byte of it, and without this line every `eas build` ships the lot
+# to the builder before it can start compiling.
+docs/תיעוד/
