@@ -1188,6 +1188,12 @@ export interface GameSummary {
   title?: string;
   fieldName?: string;
   format?: GameFormat;
+  /** Viewer-specific facets, populated for the community history screen. */
+  viewerPlayed?: boolean;
+  playerCount?: number;
+  /** null means no recorded statistic; it must not be displayed as zero. */
+  viewerGoals?: number | null;
+  viewerAssists?: number | null;
 }
 
 // ─── Player ──────────────────────────────────────────────────────────────

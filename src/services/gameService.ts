@@ -66,6 +66,7 @@ import { isStaleAfterStart, LATE_REG_GRACE_MS } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
 import { isAttendedGame } from '@/utils/playedGames';
+import { communityHistoryFacets } from '@/utils/communityHistory';
 import {
   eveningPlayState,
   didEveningHappen,
@@ -1743,8 +1744,17 @@ export const gameService = {
     }
   },
 
-  async getHistory(groupId: GroupId): Promise<GameSummary[]> {
-    if (USE_MOCK_DATA) return mockHistory;
+  async getHistory(groupId: GroupId, viewerId?: UserId): Promise<GameSummary[]> {
+    if (USE_MOCK_DATA) {
+      if (!viewerId) return mockHistory;
+      return mockGamesV2
+        .filter((g) => g.groupId === groupId && ['finished', 'cancelled'].includes(g.status))
+        .sort((a, b) => b.startsAt - a.startsAt)
+        .map((g) => ({
+          ...playedGameSummary(g),
+          ...communityHistoryFacets(g, g.matches ?? [], viewerId),
+        }));
+    }
 
     // Stage 2 lifecycle: history = terminal evenings only. 'locked' is
     // a mid-flow state (registration frozen, game not started) and
@@ -1777,6 +1787,24 @@ export const gameService = {
         const g = d.data();
         const rounds = await loadRoundsFor(g.id);
         const last = rounds[rounds.length - 1];
+        let stats: Record<string, unknown> | undefined;
+        // Read only THIS viewer's scoring row, only when they attended. Query
+        // includes gameId so rules can prove the same audience as the game;
+        // unlike GET on a missing doc it can also return an empty result.
+        if (viewerId && isAttendedGame(g, viewerId)) {
+          try {
+            const statSnap = await getDocs(query(
+              collection(getFirebase().db, 'gamePlayerStats'),
+              where('gameId', '==', g.id),
+              where('userId', '==', viewerId),
+              limit(1),
+            ));
+            stats = statSnap.docs[0]?.data();
+          } catch (err) {
+            logError('getHistoryStats', err, { gameId: g.id });
+            // Scoring is secondary: keep the history usable and render dashes.
+          }
+        }
         return {
           id: g.id,
           groupId: g.groupId,
@@ -1789,6 +1817,7 @@ export const gameService = {
           title: g.title,
           fieldName: g.fieldName,
           format: g.format,
+          ...(viewerId ? communityHistoryFacets(g, rounds, viewerId, stats) : {}),
           lastResult:
             last && last.winner
               ? { teamA: last.teamA, teamB: last.teamB, winner: last.winner }

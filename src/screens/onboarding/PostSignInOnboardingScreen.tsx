@@ -23,7 +23,7 @@ import { InputField } from '@/components/InputField';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
-import { AVATARS, pickRandomAvatarId } from '@/data/avatars';
+import { AVATARS, getAvatarById, pickRandomAvatarId } from '@/data/avatars';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -281,19 +281,12 @@ export function PostSignInOnboardingScreen() {
                 onPress={() => handlePickAvatar(a.id)}
                 style={[
                   styles.avatarCell,
-                  avatarId === a.id && !photoUrl && styles.avatarCellActive,
+                  getAvatarById(avatarId)?.id === a.id && !photoUrl && styles.avatarCellActive,
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={`avatar-${a.id}`}
               >
-                <View
-                  style={[
-                    styles.avatarDot,
-                    { backgroundColor: a.bg },
-                  ]}
-                >
-                  <Text style={styles.avatarGlyph}>{a.glyph}</Text>
-                </View>
+                <UserAvatar user={{ id: a.id, name: '', avatarId: a.id }} size={48} />
               </Pressable>
             ))}
           </View>

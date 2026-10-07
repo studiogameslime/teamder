@@ -14,7 +14,7 @@ import { getAvatarById } from '@/data/avatars';
 
 interface Props {
   /**
-   * Built-in avatar id. When set, the procedural avatar (color + glyph) is
+   * Built-in avatar id. When set, the bundled illustration is
    * rendered and `uri` is ignored. This is the modern path used for
    * /users/{uid}.avatarId.
    */
@@ -88,19 +88,11 @@ export function Avatar({
       ]}
     >
       {def ? (
-        <View
-          style={[
-            styles.fallback,
-            {
-              width: inner,
-              height: inner,
-              borderRadius: radius.pill,
-              backgroundColor: def.bg,
-            },
-          ]}
-        >
-          <Text style={{ fontSize: inner * 0.55 }}>{def.glyph}</Text>
-        </View>
+        <Image
+          source={def.source}
+          resizeMode="contain"
+          style={{ width: inner, height: inner, borderRadius: radius.pill, backgroundColor: '#fff' }}
+        />
       ) : uri ? (
         <Image
           source={{ uri }}

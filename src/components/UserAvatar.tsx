@@ -4,10 +4,10 @@
 //
 // Render priority:
 //   1. uploaded photo (user.photoUrl)  → <Image>
-//   2. chosen built-in avatar (user.avatarId) → colored disc + emoji
+//   2. chosen built-in avatar (user.avatarId) → bundled illustration
 //   3. fallback: deterministic auto-avatar from user.id, so every
 //      user — even legacy docs without avatarId/photoUrl — gets a
-//      stable colourful disc instead of a grey blank.
+//      stable illustrated avatar instead of a grey blank.
 //
 // All shapes are circular by virtue of `borderRadius: size / 2`.
 
@@ -15,7 +15,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Image,
   StyleSheet,
-  Text,
   View,
   type ImageStyle,
   type StyleProp,
@@ -73,45 +72,23 @@ export function UserAvatar({ user, size, style, ring }: Props) {
           width: size,
           height: size,
           borderRadius: radius,
-          backgroundColor: def.bg,
+          backgroundColor: '#FFFFFF',
         },
         ringStyle,
         style,
       ]}
     >
-      <Text
-        style={[
-          styles.glyph,
-          {
-            // 0.5, not 0.55, and with an explicit line box. An emoji's ink can
-            // stand taller than its em box, and Android's default font padding
-            // pushes the line down inside it — at 132px the top of the hair was
-            // being cut off by the disc. lineHeight sized ABOVE the glyph gives
-            // the ascent somewhere to go; includeFontPadding:false stops the
-            // extra padding from shifting it back down again.
-            fontSize: Math.max(14, size * 0.5),
-            lineHeight: Math.max(18, size * 0.66),
-          },
-        ]}
-        numberOfLines={1}
-      >
-        {def.glyph}
-      </Text>
+      <Image source={def.source} style={{ width: size, height: size }} resizeMode="contain" />
     </View>
   );
 }
 
 /**
  * Deterministic fallback so legacy users without avatarId/photoUrl
- * still render a colorful disc, and the same user always lands on
- * the same colour across sessions.
+ * still render a stable illustration across sessions.
  */
-// Gender-neutral subset of the palette: the sport icons (⚽🏆🎽🥅) plus
-// the neutral person (🧑). The deterministic auto-avatar picks ONLY from
-// these so a name never gets a wrong-gender face (e.g. a male name with a
-// 👩 glyph). Users who want a gendered/skin-toned face can still pick one
-// explicitly from the full AVATARS palette in profile edit.
-const NEUTRAL_AVATAR_IDS = ['a01', 'a02', 'a03', 'a04', 'a23'];
+// Automatic fallbacks use only sport objects, never infer a user's gender.
+const NEUTRAL_AVATAR_IDS = ['a01', 'a02', 'a03', 'a04'];
 const NEUTRAL_AVATARS = AVATARS.filter((a) => NEUTRAL_AVATAR_IDS.includes(a.id));
 
 function autoAvatarFor(uid: string): (typeof AVATARS)[number] {
@@ -129,10 +106,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-  },
-  glyph: {
-    textAlign: 'center',
-    includeFontPadding: false,
-    textAlignVertical: 'center',
   },
 });

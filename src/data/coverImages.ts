@@ -7,7 +7,7 @@
 //   2. Group.coverImageId   — a pick from THIS built-in gallery
 //   3. STADIUM_BG fallback  — when neither is set
 //
-// To add more covers: drop the image into src/assets/images/covers/ and
+// To add more covers: drop the image into src/assets/images/groupImages/ and
 // add an entry here. Keep the `id` stable forever (it's persisted on the
 // group doc). Images should be landscape (~16:9) for the hero.
 
@@ -34,6 +34,13 @@ export const COVER_IMAGES: CoverDef[] = [
   { id: 'c08', source: require('../assets/images/groupImages/7.png') },
   { id: 'c09', source: require('../assets/images/groupImages/8.png') },
   { id: 'c10', source: require('../assets/images/groupImages/9.png') },
+  // Bright daytime covers; append new ids without replacing persisted choices.
+  { id: 'c11', source: require('../assets/images/groupImages/daylight-pitch.jpg') },
+  { id: 'c12', source: require('../assets/images/groupImages/daylight-ball.jpg') },
+  { id: 'c13', source: require('../assets/images/groupImages/daylight-team.jpg') },
+  { id: 'c14', source: require('../assets/images/groupImages/daylight-match.jpg') },
+  { id: 'c15', source: require('../assets/images/groupImages/daylight-coast.jpg') },
+  { id: 'c16', source: require('../assets/images/groupImages/daylight-friends.jpg') },
 ];
 
 /** Resolve a cover id → its bundled image source, or null if unknown. */

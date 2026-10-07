@@ -7,6 +7,10 @@ has set. Every item below is something that cost real time or real users.
 Shared by every coding agent on this repo (Codex reads `AGENTS.md`, Claude
 Code reads `CLAUDE.md`, which points here). Keep one copy; edit this file.
 
+לפני משימת פיתוח או תיקון קרא גם את [מדריך הידע](docs/knowledge/README.md).
+הוא כולל מפת קוד, מקורות היסטוריים ומסקנות שהוחלפו. בדוק קוד ומקור
+ממוקדים לפי המשימה; הסיכום אינו מחליף את הכללים כאן או בדיקה עדכנית.
+
 ---
 
 ## 1. The owner

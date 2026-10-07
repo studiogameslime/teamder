@@ -4801,6 +4801,15 @@ export const he = {
 
   // History tab
   historyTitle: 'היסטוריית מחזורים',
+  historyFilterAll: 'הכול',
+  historyFilterPlayed: 'שיחקתי',
+  historyDidNotPlay: 'לא שיחקתי',
+  historyPlayedEmpty: 'לא שיחקת עדיין במחזורים האלה',
+  historyPlayersCount: (n: number) => `${n} שחקנים`,
+  historyGoalsCount: (n: number) => count(n, 'שער אחד', 'שערים'),
+  historyAssistsCount: (n: number) => count(n, 'בישול אחד', 'בישולים'),
+  historyGoalsUnavailable: '— שערים',
+  historyAssistsUnavailable: '— בישולים',
   historyEmpty: 'אין עדיין מחזורים קודמים',
   // An evening that ran a single משחקון is ordinary, and this row printed
   // "1 משחקים" for every one of them.
