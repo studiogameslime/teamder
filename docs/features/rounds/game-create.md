@@ -24,9 +24,9 @@
 
 [`src/screens/games/GameCreateScreen.tsx`](../../../src/screens/games/GameCreateScreen.tsx); [`src/screens/games/GameWizardForm.tsx`](../../../src/screens/games/GameWizardForm.tsx)
 
-src/services/gameCreation.ts: createGameFromValues → gameService.createGameV2; quick משתמש ensurePersonalGroupId. כותרת וקיבולת נגזרות מהטופס. שדות חייבים להיקרא גם ב־fromFirestoreGameDoc. הזמנות והתראות נלוות אינן הוכחה שהיצירה עצמה נכשלה.
+src/services/gameCreation.ts: createGameFromValues → gameService.createGameV2; quick משתמש ensurePersonalGroupId. כותרת וקיבולת נגזרות מהטופס. שדות חייבים להיקרא גם ב־gameDocConverter.fromFirestore. הזמנות והתראות נלוות אינן הוכחה שהיצירה עצמה נכשלה.
 
-ממיר המחזור: [`src/firebase/firestore.ts`](../../../src/firebase/firestore.ts), `fromFirestoreGameDoc`; סוגים: [`src/types`](../../../src/types). שינוי שדה דורש מעקב כתיבה → ממיר → שירות/חנות → רכיב. ניווט: [`GameStack.tsx`](../../../src/navigation/GameStack.tsx), ובמסכים משותפים גם המחסניות שמארחות אותם.
+ממיר המחזור: [`src/firebase/firestore.ts`](../../../src/firebase/firestore.ts), `gameDocConverter.fromFirestore`; סוגים: [`src/types`](../../../src/types). שינוי שדה דורש מעקב כתיבה → ממיר → שירות/חנות → רכיב. ניווט: [`GameStack.tsx`](../../../src/navigation/GameStack.tsx), ובמסכים משותפים גם המחסניות שמארחות אותם.
 
 ## בדיקות וראיות
 
@@ -41,3 +41,15 @@ tests/logic/gameCreation.test.ts; בדיקות שיקום טיוטה, תזמון
 ברירת מחדל למועד: חמישי הבא ב־20:00. בחירת זמן באשף אינה אישור שהמחזור התקיים; eveningPlayed קובע זאת בדיעבד.
 
 לפני שינוי פתח את הקוד המקושר ואת [כללי הפרויקט](../../../AGENTS.md). לאחר שינוי עדכן במסמך זה את התאריך, נקודת הקוד, המצבים שהתעדכנו, הבדיקות והצילום. אין לטעון שכל מצב/תפקיד נבדק רק משום שקיים צילום אחד.
+
+## פירוט טכני ממוקד: זרימה, חישוב ונקודות שינוי
+
+[הסבר פשוט למשתמש](game-create.simple.md)
+
+העמקה: 07.10.2026, מול קוד המקור שב־`8e8fde5`. בעת הכתיבה HEAD הוא `50d508f`; בדיקת ההפרש בין הנקודות ב־`src` וב־`functions` לא מצאה שינוי קוד. הסעיפים וההסתייגויות הקיימים נשמרו. זו קריאת קוד ותיעוד, בלי הרצת תרחישי כתיבה חדשים.
+
+[createGameFromValues](../../../src/services/gameCreation.ts) הוא מסלול עסקי משותף למסך ולחידוש פעולה אחרי התחברות: `resolveGroupId` מחזיר מועדון קיים או קורא `ensurePersonalGroupId` רק בזהות החשבון המלא. לאחר מכן `createGameV2` מקבל שדות מפורשים; אישורי תאריך עבר/חג והניווט נשארים במסך.
+
+הקיבולת היא `teamSizeFromFormat(format) × numberOfTeams`: פורמט 5 על 5 ושלוש קבוצות נותן 15 מקומות, ולא 10. משך מפוענח ב־`parseInt`; רק מספר חיובי וסופי נשלח. זמן אישור מקום מחושב `max(2,min(120,Number(value)||20))`: 1 הופך ל־2, 200 ל־120 וטקסט לא מספרי ל־20 דקות. שם ריק מקבל שם המועדון או ״מחזור חד־פעמי״.
+
+`registrationOpensAt` נשלח רק כשהמתג פועל והחותמת חיובית. `recurring` חסום בהקשר חד־פעמי; `publicOpenAt` שייך למחזור מועדון. אלה שדות נפרדים, ולא זמן אחד לכל הנראות. הזמנות החברים נשלחות לאחר יצירה ב־`Promise.all` עם כשל נבלע לכל הזמנה: מחזור שנוצר אינו נמחק בגלל הזמנה שנכשלה. האידמפוטנטיות של הקבוצה האישית אינה הבטחה שכל קריאת יצירת מחזור חוזרת בטוחה; בחידוש טיוטה יש לבדוק את מתאם הפעולות ואת מבחני `gameCreation`.

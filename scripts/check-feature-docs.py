@@ -30,6 +30,26 @@ def main():
         name = source.relative_to(ROOT).as_posix()
         if not any(name in body for doc, body in content.items() if 'reviews' not in doc.parts and doc.name != 'coverage.md'):
             failures.append(f'unmapped screen: {name}')
+    pair_file = BASE / 'document-pairs.json'
+    pairs = json.loads(pair_file.read_text(encoding='utf-8')) if pair_file.exists() else []
+    domains = {'entry', 'home', 'profile', 'clubs', 'rounds', 'statistics', 'chat', 'shared'}
+    technical_docs = {p.relative_to(BASE).as_posix() for p in docs
+                      if p.parent.name in domains and p.name != 'README.md'
+                      and not p.name.endswith('.simple.md')}
+    simple_docs = {p.relative_to(BASE).as_posix() for p in docs if p.name.endswith('.simple.md')}
+    if {p['technical'] for p in pairs} != technical_docs:
+        failures.append('document pairs do not cover every feature technical document')
+    if {p['simple'] for p in pairs} != simple_docs:
+        failures.append('document pairs do not cover every simple document')
+    if len({p['technical'] for p in pairs}) != len(pairs):
+        failures.append('duplicate document pairs')
+    for pair in pairs:
+        technical, simple = BASE / pair['technical'], BASE / pair['simple']
+        if not technical.is_file() or not simple.is_file():
+            failures.append(f'missing document pair: {pair["technical"]}')
+            continue
+        if f'({simple.name})' not in content[technical] or f'({technical.name})' not in content[simple]:
+            failures.append(f'document pair missing reciprocal links: {pair["technical"]}')
     shots = json.loads((BASE / 'screenshots/manifest.json').read_text(encoding='utf-8'))
     if len({s['file'] for s in shots}) != len(shots):
         failures.append('duplicate screenshot records')
@@ -53,7 +73,7 @@ def main():
         if not (BASE / source['review']).is_file():
             failures.append(f'additional source review missing: {source["review"]}')
     failures = list(dict.fromkeys(failures))
-    result = dict(documents=len(docs), screenFiles=len(list((ROOT / 'src/screens').rglob('*.tsx'))), screenshots=len(shots), historicalSources=len(sources), additionalSources=len(extras), failures=failures)
+    result = dict(documents=len(docs), featurePairs=len(pairs), screenFiles=len(list((ROOT / 'src/screens').rglob('*.tsx'))), screenshots=len(shots), historicalSources=len(sources), additionalSources=len(extras), failures=failures)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 1 if failures else 0
 

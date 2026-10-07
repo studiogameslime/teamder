@@ -24,7 +24,7 @@ MatchDetails → לייב → LiveMatch {gameId}
 
 gameService.getGameById/subscribeLiveMatch/markGameStarted/startTimer/pauseTimer/resetTimer/endEvening. eveningPlayed קובע אם המחזור התקיים; טיימר כשלעצמו אינו תנאי חדש במסך.
 
-ממיר המחזור: [`src/firebase/firestore.ts`](../../../src/firebase/firestore.ts), `fromFirestoreGameDoc`; סוגים: [`src/types`](../../../src/types). שינוי שדה דורש מעקב כתיבה → ממיר → שירות/חנות → רכיב. ניווט: [`GameStack.tsx`](../../../src/navigation/GameStack.tsx), ובמסכים משותפים גם המחסניות שמארחות אותם.
+ממיר המחזור: [`src/firebase/firestore.ts`](../../../src/firebase/firestore.ts), `gameDocConverter.fromFirestore`; סוגים: [`src/types`](../../../src/types). שינוי שדה דורש מעקב כתיבה → ממיר → שירות/חנות → רכיב. ניווט: [`GameStack.tsx`](../../../src/navigation/GameStack.tsx), ובמסכים משותפים גם המחסניות שמארחות אותם.
 
 ## בדיקות וראיות
 
@@ -39,3 +39,17 @@ gameService.getGameById/subscribeLiveMatch/markGameStarted/startTimer/pauseTimer
 אין קבוצות ותוצאה במימוש רגיל. צילום שלא מפעיל תהליך אינו הוכחת כתיבה או סנכרון.
 
 לפני שינוי פתח את הקוד המקושר ואת [כללי הפרויקט](../../../AGENTS.md). לאחר שינוי עדכן במסמך זה את התאריך, נקודת הקוד, המצבים שהתעדכנו, הבדיקות והצילום. אין לטעון שכל מצב/תפקיד נבדק רק משום שקיים צילום אחד.
+
+## פירוט טכני ממוקד: זרימה, חישוב ונקודות שינוי
+
+[הסבר פשוט למשתמש](live-timer.simple.md)
+
+העמקה: 07.10.2026, מול קוד המקור שב־`8e8fde5`. בעת הכתיבה HEAD הוא `50d508f`; בדיקת ההפרש בין הנקודות ב־`src` וב־`functions` לא מצאה שינוי קוד. הסעיפים וההסתייגויות הקיימים נשמרו. זו קריאת קוד ותיעוד, בלי הרצת תרחישי כתיבה חדשים.
+
+[useSyncedTimer](../../../src/services/useSyncedTimer.ts) משחזר זמן משלושה שדות: `timerRunning`, `timerLastStartedAt`, `timerAccumulatedMs`. בריצה: `displayMs=accumulated+max(0,serverNow()-lastStartedAt)`; בעצירה מוצג המצטבר בלבד. הווי מצייר כל 250 מילישניות ומבקש תיקון שעון בהצגה ובכל שתי דקות; השירות מבטל כפילות מדידות.
+
+לדוגמה 120000 מילישניות שנצברו ו־30000 מאז עוגן ההמשך נותנות 150000, כלומר 2:30. עצירה מקפלת את 30000 למצטבר ומאפסת את עוגן הריצה; המתנה של דקה במצב עצור אינה מוסיפה זמן. חזרה מרקע מחשבת לפי העוגן, לא לפי כמה טיקים קיבלה האפליקציה.
+
+`startTimer/pauseTimer/resetTimer` ב־`gameService` כותבים נתיבי שדות, לא את כל `liveMatch`; אירועי טיימר ומקטעי פעילות נשמרים בנפרד. התחלה שכבר רצה ועצירה שכבר עצורה הם פעולות ריקות לפי קריאת המצב; זו אינה טרנזקציה מלאה לשני מנהלים שפועלים בדיוק יחד. מחזור הסתיים/בוטל חסום בפעולות זמן.
+
+נקודות שינוי: נוסחה בווי, בסיס זמן ב־`serverClock`, כתיבה בשירות, ותצוגת זמן במסך/שעון. בדוק מכשירים בעלי סטיית שעון, שגיאה שנזרקת, פעולה כפולה ורקע. [שמירת המסך](../../../src/hooks/useScreenAwake.ts) מחוברת בשורש האפליקציה ושומרת חזית, לא רק מסך הטיימר.

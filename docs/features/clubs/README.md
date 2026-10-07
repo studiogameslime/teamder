@@ -4,18 +4,18 @@
 
 המיפוי מבוסס על קריאת הקוד ועל צילומי אמולטור **במצב נתוני דמה**. הפס הכתום, כפתור הבדיקה והתראות הפיתוח הם כלי סביבת הבדיקה. המספרים והתמונות בצילומים אינם נתוני הייצור ואינם הוכחה להרשאות השרת. שחרור פנימי נעקב בנפרד; התיעוד אינו מאשר שהבינארי כבר פורסם.
 
-| מסך או תחום | מסמך | נתיב ניווט |
-|---|---|---|
-| גילוי, חיפוש וסינון | [גילוי מועדונים](discovery.md) | `CommunitiesFeed` |
-| תצוגה ציבורית ובקשת הצטרפות | [תצוגה ציבורית](public-preview-and-join.md) | `CommunityDetailsPublic` |
-| יצירה ועריכה | [יצירה ועריכה](create-and-edit.md) | `CommunitiesCreate`, `CommunityEdit` |
-| פרטי מועדון וחלונות הפעולות | [פרטי מועדון](details.md) | `CommunityDetails` |
-| סגל ותפקידי ניהול | [סגל והרשאות](members-and-administration.md) | `CommunityPlayers` |
-| כרטיסים, ציוד, דירוג וציר אירועים | [כלי ניהול שחקן](player-management.md) | `PlayerTimeline` וחלונות בסגל |
-| בקשות ואישורים | [בקשות](requests-and-approvals.md) | `Requests`, `AdminApproval` |
-| רקעים והזמנות | [זהות ושיתוף](covers-and-invitations.md) | חלונות מתוך פרטי מועדון |
-| היסטוריית מחזורי מועדון | [היסטוריה](history.md) | `CommunityHistory` |
-| עונות: הגדרה, סגירה והמשך | [מחזור חיי עונה](seasons.md) | חלונות מתוך `CommunityEdit`, `CommunityDetails` |
+| מסך או תחום | הסבר פשוט | פירוט מעמיק | נתיב ניווט |
+|---|---|---|---|
+| גילוי, חיפוש וסינון | [קצר ופשוט](discovery.simple.md) | [גילוי מועדונים](discovery.md) | `CommunitiesFeed` |
+| תצוגה ציבורית ובקשת הצטרפות | [קצר ופשוט](public-preview-and-join.simple.md) | [תצוגה ציבורית](public-preview-and-join.md) | `CommunityDetailsPublic` |
+| יצירה ועריכה | [קצר ופשוט](create-and-edit.simple.md) | [יצירה ועריכה](create-and-edit.md) | `CommunitiesCreate`, `CommunityEdit` |
+| פרטי מועדון וחלונות הפעולות | [קצר ופשוט](details.simple.md) | [פרטי מועדון](details.md) | `CommunityDetails` |
+| סגל ותפקידי ניהול | [קצר ופשוט](members-and-administration.simple.md) | [סגל והרשאות](members-and-administration.md) | `CommunityPlayers` |
+| כרטיסים, ציוד, דירוג וציר אירועים | [קצר ופשוט](player-management.simple.md) | [כלי ניהול שחקן](player-management.md) | `PlayerTimeline` וחלונות בסגל |
+| בקשות ואישורים | [קצר ופשוט](requests-and-approvals.simple.md) | [בקשות](requests-and-approvals.md) | `Requests`, `AdminApproval` |
+| רקעים והזמנות | [קצר ופשוט](covers-and-invitations.simple.md) | [זהות ושיתוף](covers-and-invitations.md) | חלונות מתוך פרטי מועדון |
+| היסטוריית מחזורי מועדון | [קצר ופשוט](history.simple.md) | [היסטוריה](history.md) | `CommunityHistory` |
+| עונות: הגדרה, סגירה והמשך | [קצר ופשוט](seasons.simple.md) | [מחזור חיי עונה](seasons.md) | חלונות מתוך `CommunityEdit`, `CommunityDetails` |
 
 הסטטיסטיקה מפורטת ב[תחום הסטטיסטיקה](../statistics/README.md), השיחות ב[תחום הצ׳אט](../chat/README.md). [מפת מחזורים ומועדונים](../rounds/games-map.md) שייכת לתחום המחזורים; אין כאן מימוש נוסף שלה. כרטיס שחקן, תארים בפרופיל, חסומים והגדרות התראות מתועדים בתחום הפרופיל.
 

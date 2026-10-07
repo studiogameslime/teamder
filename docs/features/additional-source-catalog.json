@@ -345,7 +345,7 @@
   {
     "path": "AGENTS.md",
     "hashMode": "text-lf",
-    "sha256": "b472dd5606a806502591d0d2f230ce1f8bd1ab381d84d1a31af5d638d167bdc0",
+    "sha256": "813cdb5c9d311c8efbfe6c5f592f4b9b585d16005977d0d6ab226d8240a40b50",
     "review": "reviews/additional-root-sources.md",
     "auditDate": "2026-10-07"
   },

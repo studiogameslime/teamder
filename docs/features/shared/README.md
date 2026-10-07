@@ -1,12 +1,14 @@
 # רכיבים משותפים ופלטפורמות
 
-עודכן 7.10.2026 מול `8e8fde5`. פירוט מצבים וראיות בכל מסמך.
+לכל נושא שני מסמכים: הסבר קצר למשתמש ומסמך טכני שמפרט את המימוש והראיות.
 
-- [פרסומות ובקשת דירוג בחנות](ads-and-store-review.md)
-- [חוזי נתונים ומצבים משותפים](data-and-state-contracts.md)
-- [חלונות מערכת, עדכונים וכשלים](global-gates.md)
-- [תפריטים, חלונות ותנועה משותפת](menus-and-motion.md)
-- [שעונים, רכיבי בית, נתונים גופניים ומזג אוויר](native-integrations.md)
-- [הצעת התראות אחרי פעולה](notification-offer.md)
+| נושא | הסבר קצר | פירוט טכני |
+|---|---|---|
+| פרסומות ובקשת דירוג | [הסבר פשוט](ads-and-store-review.simple.md) | [מאחורי הקלעים](ads-and-store-review.md) |
+| איך המידע נשמר ומתעדכן | [הסבר פשוט](data-and-state-contracts.simple.md) | [מאחורי הקלעים](data-and-state-contracts.md) |
+| הודעות מערכת ועדכונים | [הסבר פשוט](global-gates.simple.md) | [מאחורי הקלעים](global-gates.md) |
+| תפריטים שנפתחים מלמטה | [הסבר פשוט](menus-and-motion.simple.md) | [מאחורי הקלעים](menus-and-motion.md) |
+| שעון, פעילות ומזג אוויר | [הסבר פשוט](native-integrations.simple.md) | [מאחורי הקלעים](native-integrations.md) |
+| הצעה לקבל התראות | [הסבר פשוט](notification-offer.simple.md) | [מאחורי הקלעים](notification-offer.md) |
 
 [חזרה למפת המוצר](../README.md)

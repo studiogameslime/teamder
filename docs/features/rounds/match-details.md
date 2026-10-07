@@ -25,9 +25,9 @@
 
 [`src/screens/games/MatchDetailsScreen.tsx`](../../../src/screens/games/MatchDetailsScreen.tsx)
 
-gameService ומסלולי gameLifecycle; cancelGameV2, requestJoin, confirmSpotOffer, publishDraft, notifyTeamsReady, setDraftFeedback. fromFirestoreGameDoc קורא את שדות המחזור. eveningPlayed הוא המקור למצב התקיים, ולא טיימר/שערים בנפרד.
+gameService ומסלולי gameLifecycle; cancelGameV2, requestJoin, confirmSpotOffer, publishDraft, notifyTeamsReady, setDraftFeedback. gameDocConverter.fromFirestore קורא את שדות המחזור. eveningPlayed הוא המקור למצב התקיים, ולא טיימר/שערים בנפרד.
 
-ממיר המחזור: [`src/firebase/firestore.ts`](../../../src/firebase/firestore.ts), `fromFirestoreGameDoc`; סוגים: [`src/types`](../../../src/types). שינוי שדה דורש מעקב כתיבה → ממיר → שירות/חנות → רכיב. ניווט: [`GameStack.tsx`](../../../src/navigation/GameStack.tsx), ובמסכים משותפים גם המחסניות שמארחות אותם.
+ממיר המחזור: [`src/firebase/firestore.ts`](../../../src/firebase/firestore.ts), `gameDocConverter.fromFirestore`; סוגים: [`src/types`](../../../src/types). שינוי שדה דורש מעקב כתיבה → ממיר → שירות/חנות → רכיב. ניווט: [`GameStack.tsx`](../../../src/navigation/GameStack.tsx), ובמסכים משותפים גם המחסניות שמארחות אותם.
 
 ## בדיקות וראיות
 
@@ -48,3 +48,17 @@ gameService ומסלולי gameLifecycle; cancelGameV2, requestJoin, confirmSpot
 הסדר הנוכחי: מידע, שחקנים, משחקים, סטטיסטיקה. במסמכים 109/110 הסדר שונה. RoundSummary הישן הוסר מהניווט; כניסה לסיכום מפנה לסטטיסטיקה.
 
 לפני שינוי פתח את הקוד המקושר ואת [כללי הפרויקט](../../../AGENTS.md). לאחר שינוי עדכן במסמך זה את התאריך, נקודת הקוד, המצבים שהתעדכנו, הבדיקות והצילום. אין לטעון שכל מצב/תפקיד נבדק רק משום שקיים צילום אחד.
+
+## פירוט טכני ממוקד: זרימה, חישוב ונקודות שינוי
+
+[הסבר פשוט למשתמש](match-details.simple.md)
+
+העמקה: 07.10.2026, מול קוד המקור שב־`8e8fde5`. בעת הכתיבה HEAD הוא `50d508f`; בדיקת ההפרש בין הנקודות ב־`src` וב־`functions` לא מצאה שינוי קוד. הסעיפים וההסתייגויות הקיימים נשמרו. זו קריאת קוד ותיעוד, בלי הרצת תרחישי כתיבה חדשים.
+
+המסך הוא מתאם בין הרשאות, נתוני מחזור וארבעה משטחי תוכן; אינו מחשב מחדש את כל הסטטיסטיקה. `initialTab` בוחר כניסה, ונתוני אירועים משותפים עוברים דרך `useGameEvents`. לשונית שטרם נפתחה שונה מלשונית שנטענה ונשארת מותקנת; שינוי טעינה צריך לשמר הבחנה זו כדי לא להקים ארבעה מנויים.
+
+תנאי פעולה אינם תחליף זה לזה: חברות במועדון, רישום למחזור, ניהול ומצב `active/finished/cancelled` הם צירים נפרדים. פרסום דרך `publishDraft` ושיגור `notifyTeamsReady` נפרדים משמירת חלוקה; בחירה שנשמרה עם `published:false` אינה הודעה שנשלחה.
+
+למשל מחזור של 15 מקומות עם 12 רשומים, 2 אורחים פעילים ו־3 בהמתנה מציג תפוסה 14/15; מספר השורות הכולל אינו 17/15. קביעת ״התקיים״ נשענת על [eveningPlayed](../../../src/utils/eveningPlayed.ts); לא על סך שערים, זמן או סיום סטטוס שנגזר מחדש במסך.
+
+נקודות שינוי: הממיר לקריאת שדה חדש, רכיב הלשונית לתוכן, השירות לפעולה ומחסניות הניווט לכניסה משותפת. סיכום שהוסר מהניווט אינו מוחזר רק מפני שקיים רכיב ישן. בדוק כניסה מכל הורה, מיקוד וחזרה, חבר לעומת מנהל, נתון חסר ומחזור רגיל לעומת מתקדם.

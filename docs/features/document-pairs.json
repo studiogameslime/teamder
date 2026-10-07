@@ -1,0 +1,434 @@
+[
+  {
+    "title": "התחברות וחלון הרשמה בהקשר הפעולה",
+    "domain": "entry",
+    "simple": "entry/authentication.simple.md",
+    "technical": "entry/authentication.md"
+  },
+  {
+    "title": "פתיחת האפליקציה ובחירת כוונה",
+    "domain": "entry",
+    "simple": "entry/boot-and-intent.simple.md",
+    "technical": "entry/boot-and-intent.md"
+  },
+  {
+    "title": "מסכי כניסה קודמים וכלי פיתוח מוסתרים",
+    "domain": "entry",
+    "simple": "entry/legacy-and-hidden.simple.md",
+    "technical": "entry/legacy-and-hidden.md"
+  },
+  {
+    "title": "פעולה ממתינה וטיוטה שחוזרת לאחר הרשמה",
+    "domain": "entry",
+    "simple": "entry/pending-actions.simple.md",
+    "technical": "entry/pending-actions.md"
+  },
+  {
+    "title": "הזמנה אישית — איפה המזמין משחק",
+    "domain": "entry",
+    "simple": "entry/personal-invite.simple.md",
+    "technical": "entry/personal-invite.md"
+  },
+  {
+    "title": "היכרות והשלמת פרופיל לאחר התחברות",
+    "domain": "entry",
+    "simple": "entry/profile-onboarding.simple.md",
+    "technical": "entry/profile-onboarding.md"
+  },
+  {
+    "title": "פנויים לידך וצעדי ההתחלה בבית",
+    "domain": "home",
+    "simple": "home/availability-preview.simple.md",
+    "technical": "home/availability-preview.md"
+  },
+  {
+    "title": "בית של משתמש מלא",
+    "domain": "home",
+    "simple": "home/dashboard.simple.md",
+    "technical": "home/dashboard.md"
+  },
+  {
+    "title": "בית אורח וגילוי ראשוני",
+    "domain": "home",
+    "simple": "home/guest-home.simple.md",
+    "technical": "home/guest-home.md"
+  },
+  {
+    "title": "תפריט הבית וחלונות החשבון",
+    "domain": "home",
+    "simple": "home/home-menu.simple.md",
+    "technical": "home/home-menu.md"
+  },
+  {
+    "title": "כרטיסי המחזור הקרוב והמחזור שהסתיים",
+    "domain": "home",
+    "simple": "home/round-cards.simple.md",
+    "technical": "home/round-cards.md"
+  },
+  {
+    "title": "קרוסלת הידעת",
+    "domain": "home",
+    "simple": "home/tips-carousel.simple.md",
+    "technical": "home/tips-carousel.md"
+  },
+  {
+    "title": "יציאה, חזרה לאורח ומחיקת חשבון",
+    "domain": "profile",
+    "simple": "profile/account-lifecycle.simple.md",
+    "technical": "profile/account-lifecycle.md"
+  },
+  {
+    "title": "ארון התארים וההישגים האישיים",
+    "domain": "profile",
+    "simple": "profile/achievements.simple.md",
+    "technical": "profile/achievements.md"
+  },
+  {
+    "title": "עריכת זמינות, מקום ורדיוס",
+    "domain": "profile",
+    "simple": "profile/availability-edit.simple.md",
+    "technical": "profile/availability-edit.md"
+  },
+  {
+    "title": "שבוע הפנויים",
+    "domain": "profile",
+    "simple": "profile/availability-week.simple.md",
+    "technical": "profile/availability-week.md"
+  },
+  {
+    "title": "משתמשים חסומים",
+    "domain": "profile",
+    "simple": "profile/blocked-users.simple.md",
+    "technical": "profile/blocked-users.md"
+  },
+  {
+    "title": "דיווח תקלה והצעת שיפור",
+    "domain": "profile",
+    "simple": "profile/feedback.simple.md",
+    "technical": "profile/feedback.md"
+  },
+  {
+    "title": "חברים ובקשות חברות",
+    "domain": "profile",
+    "simple": "profile/friends.simple.md",
+    "technical": "profile/friends.md"
+  },
+  {
+    "title": "הגדרות התראות והרשאת מכשיר",
+    "domain": "profile",
+    "simple": "profile/notification-settings.simple.md",
+    "technical": "profile/notification-settings.md"
+  },
+  {
+    "title": "היסטוריית המחזורים האישית",
+    "domain": "profile",
+    "simple": "profile/personal-history.simple.md",
+    "technical": "profile/personal-history.md"
+  },
+  {
+    "title": "כרטיס שחקן — עצמי, שחקן אחר ואורח",
+    "domain": "profile",
+    "simple": "profile/player-card.simple.md",
+    "technical": "profile/player-card.md"
+  },
+  {
+    "title": "עריכת כרטיס השחקן ותמונת הפרופיל",
+    "domain": "profile",
+    "simple": "profile/profile-edit.simple.md",
+    "technical": "profile/profile-edit.md"
+  },
+  {
+    "title": "שחקנים שהצטרפו דרכי",
+    "domain": "profile",
+    "simple": "profile/referrals.simple.md",
+    "technical": "profile/referrals.md"
+  },
+  {
+    "title": "בקשות ואישורים מאוחדים",
+    "domain": "profile",
+    "simple": "profile/requests.simple.md",
+    "technical": "profile/requests.md"
+  },
+  {
+    "title": "תארי עונה אישיים",
+    "domain": "profile",
+    "simple": "profile/season-titles.simple.md",
+    "technical": "profile/season-titles.md"
+  },
+  {
+    "title": "רקעי מועדון והזמנות",
+    "domain": "clubs",
+    "simple": "clubs/covers-and-invitations.simple.md",
+    "technical": "clubs/covers-and-invitations.md"
+  },
+  {
+    "title": "יצירה ועריכת מועדון",
+    "domain": "clubs",
+    "simple": "clubs/create-and-edit.simple.md",
+    "technical": "clubs/create-and-edit.md"
+  },
+  {
+    "title": "פרטי מועדון ולשוניותיו",
+    "domain": "clubs",
+    "simple": "clubs/details.simple.md",
+    "technical": "clubs/details.md"
+  },
+  {
+    "title": "גילוי מועדונים, חיפוש וסינון",
+    "domain": "clubs",
+    "simple": "clubs/discovery.simple.md",
+    "technical": "clubs/discovery.md"
+  },
+  {
+    "title": "היסטוריית מחזורי מועדון",
+    "domain": "clubs",
+    "simple": "clubs/history.simple.md",
+    "technical": "clubs/history.md"
+  },
+  {
+    "title": "סגל, תפקידים והרשאות ניהול",
+    "domain": "clubs",
+    "simple": "clubs/members-and-administration.simple.md",
+    "technical": "clubs/members-and-administration.md"
+  },
+  {
+    "title": "כרטיסים, ציוד, דירוג וציר אירועים",
+    "domain": "clubs",
+    "simple": "clubs/player-management.simple.md",
+    "technical": "clubs/player-management.md"
+  },
+  {
+    "title": "תצוגה ציבורית והצטרפות למועדון",
+    "domain": "clubs",
+    "simple": "clubs/public-preview-and-join.simple.md",
+    "technical": "clubs/public-preview-and-join.md"
+  },
+  {
+    "title": "בקשות ואישורים",
+    "domain": "clubs",
+    "simple": "clubs/requests-and-approvals.simple.md",
+    "technical": "clubs/requests-and-approvals.md"
+  },
+  {
+    "title": "עונות — הגדרה, סגירה, ארכיון והמשך",
+    "domain": "clubs",
+    "simple": "clubs/seasons.simple.md",
+    "technical": "clubs/seasons.md"
+  },
+  {
+    "title": "רישום חברי מועדון ושריון מקומות",
+    "domain": "rounds",
+    "simple": "rounds/add-members.simple.md",
+    "technical": "rounds/add-members.md"
+  },
+  {
+    "title": "איתור שחקנים זמינים והזמנות",
+    "domain": "rounds",
+    "simple": "rounds/available-players.simple.md",
+    "technical": "rounds/available-players.md"
+  },
+  {
+    "title": "לוח בחירה, החלפה ופרסום קבוצות",
+    "domain": "rounds",
+    "simple": "rounds/draft-board.simple.md",
+    "technical": "rounds/draft-board.md"
+  },
+  {
+    "title": "הגדרת חלוקת כוחות",
+    "domain": "rounds",
+    "simple": "rounds/draft-setup.simple.md",
+    "technical": "rounds/draft-setup.md"
+  },
+  {
+    "title": "מסירת כדור וחולצות בסיום",
+    "domain": "rounds",
+    "simple": "rounds/equipment.simple.md",
+    "technical": "rounds/equipment.md"
+  },
+  {
+    "title": "ממלאים, השאלה ורוטציה",
+    "domain": "rounds",
+    "simple": "rounds/fillers.simple.md",
+    "technical": "rounds/fillers.md"
+  },
+  {
+    "title": "יצירת מחזור והאשף",
+    "domain": "rounds",
+    "simple": "rounds/game-create.simple.md",
+    "technical": "rounds/game-create.md"
+  },
+  {
+    "title": "עריכת מחזור וסדרה",
+    "domain": "rounds",
+    "simple": "rounds/game-edit.simple.md",
+    "technical": "rounds/game-edit.md"
+  },
+  {
+    "title": "רשימת מחזורים וגילוי",
+    "domain": "rounds",
+    "simple": "rounds/games-list.simple.md",
+    "technical": "rounds/games-list.md"
+  },
+  {
+    "title": "מפת מחזורים ומועדונים",
+    "domain": "rounds",
+    "simple": "rounds/games-map.simple.md",
+    "technical": "rounds/games-map.md"
+  },
+  {
+    "title": "לייב מתקדם ורוטציה",
+    "domain": "rounds",
+    "simple": "rounds/live-advanced.simple.md",
+    "technical": "rounds/live-advanced.md"
+  },
+  {
+    "title": "לייב רגיל וטיימר מסונכרן",
+    "domain": "rounds",
+    "simple": "rounds/live-timer.simple.md",
+    "technical": "rounds/live-timer.md"
+  },
+  {
+    "title": "פרטי מחזור וארבע הלשוניות",
+    "domain": "rounds",
+    "simple": "rounds/match-details.simple.md",
+    "technical": "rounds/match-details.md"
+  },
+  {
+    "title": "שחקני המחזור, אורחים ותפריט שחקן",
+    "domain": "rounds",
+    "simple": "rounds/match-players.simple.md",
+    "technical": "rounds/match-players.md"
+  },
+  {
+    "title": "תוצאות משחקים בתוך מחזור",
+    "domain": "rounds",
+    "simple": "rounds/match-rounds.simple.md",
+    "technical": "rounds/match-rounds.md"
+  },
+  {
+    "title": "סטטיסטיקה וסיכום אישי של מחזור",
+    "domain": "rounds",
+    "simple": "rounds/match-stats.simple.md",
+    "technical": "rounds/match-stats.md"
+  },
+  {
+    "title": "הכרעת תיקו ופנדלים",
+    "domain": "rounds",
+    "simple": "rounds/penalties.simple.md",
+    "technical": "rounds/penalties.md"
+  },
+  {
+    "title": "הפיכת מחזור חד־פעמי למועדון",
+    "domain": "rounds",
+    "simple": "rounds/promote-orphan.simple.md",
+    "technical": "rounds/promote-orphan.md"
+  },
+  {
+    "title": "הרשמה, המתנה ואישור מקום",
+    "domain": "rounds",
+    "simple": "rounds/registration.simple.md",
+    "technical": "rounds/registration.md"
+  },
+  {
+    "title": "כימיה, שיאים ונתונים מעניינים",
+    "domain": "statistics",
+    "simple": "statistics/chemistry-and-records.simple.md",
+    "technical": "statistics/chemistry-and-records.md"
+  },
+  {
+    "title": "סטטיסטיקת מועדון — מונים, מובילים ואליפות",
+    "domain": "statistics",
+    "simple": "statistics/club-leaders-and-table.simple.md",
+    "technical": "statistics/club-leaders-and-table.md"
+  },
+  {
+    "title": "סטטיסטיקה אישית",
+    "domain": "statistics",
+    "simple": "statistics/personal-statistics.simple.md",
+    "technical": "statistics/personal-statistics.md"
+  },
+  {
+    "title": "השוואת שחקנים ושיתוף",
+    "domain": "statistics",
+    "simple": "statistics/player-compare.simple.md",
+    "technical": "statistics/player-compare.md"
+  },
+  {
+    "title": "טווחי סטטיסטיקה ומקורות הנתונים",
+    "domain": "statistics",
+    "simple": "statistics/scopes-and-data.simple.md",
+    "technical": "statistics/scopes-and-data.md"
+  },
+  {
+    "title": "סיכום עונה ותארים",
+    "domain": "statistics",
+    "simple": "statistics/season-summary.simple.md",
+    "technical": "statistics/season-summary.md"
+  },
+  {
+    "title": "רשימת שיחות ומונים",
+    "domain": "chat",
+    "simple": "chat/chats-list.simple.md",
+    "technical": "chat/chats-list.md"
+  },
+  {
+    "title": "הקשר שיחה, זהות והרשאות",
+    "domain": "chat",
+    "simple": "chat/conversation-scopes.simple.md",
+    "technical": "chat/conversation-scopes.md"
+  },
+  {
+    "title": "פעולות הודעה, חסימה ודיווח",
+    "domain": "chat",
+    "simple": "chat/message-actions.simple.md",
+    "technical": "chat/message-actions.md"
+  },
+  {
+    "title": "כתיבה, קריאה ומצבי חיבור",
+    "domain": "chat",
+    "simple": "chat/message-interface.simple.md",
+    "technical": "chat/message-interface.md"
+  },
+  {
+    "title": "התראות, הרשאה ומסירה",
+    "domain": "chat",
+    "simple": "chat/notification-delivery.simple.md",
+    "technical": "chat/notification-delivery.md"
+  },
+  {
+    "title": "פרסומות ובקשת דירוג בחנות",
+    "domain": "shared",
+    "simple": "shared/ads-and-store-review.simple.md",
+    "technical": "shared/ads-and-store-review.md"
+  },
+  {
+    "title": "חוזי נתונים ומצבים משותפים",
+    "domain": "shared",
+    "simple": "shared/data-and-state-contracts.simple.md",
+    "technical": "shared/data-and-state-contracts.md"
+  },
+  {
+    "title": "חלונות מערכת, עדכונים וכשלים",
+    "domain": "shared",
+    "simple": "shared/global-gates.simple.md",
+    "technical": "shared/global-gates.md"
+  },
+  {
+    "title": "תפריטים, חלונות ותנועה משותפת",
+    "domain": "shared",
+    "simple": "shared/menus-and-motion.simple.md",
+    "technical": "shared/menus-and-motion.md"
+  },
+  {
+    "title": "שעונים, רכיבי בית, נתונים גופניים ומזג אוויר",
+    "domain": "shared",
+    "simple": "shared/native-integrations.simple.md",
+    "technical": "shared/native-integrations.md"
+  },
+  {
+    "title": "הצעת התראות אחרי פעולה",
+    "domain": "shared",
+    "simple": "shared/notification-offer.simple.md",
+    "technical": "shared/notification-offer.md"
+  }
+]

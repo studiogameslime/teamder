@@ -24,7 +24,7 @@ MatchDetails → ניהול → AvailablePlayers {gameId}
 
 userService.findAvailablePlayers; gameService.getMyGames; notificationsService.inviteToGame; gameService.startFillerPulse; הישגים ואירועי מדידה. מועמדות לזמינות אינה רישום אוטומטי.
 
-ממיר המחזור: [`src/firebase/firestore.ts`](../../../src/firebase/firestore.ts), `fromFirestoreGameDoc`; סוגים: [`src/types`](../../../src/types). שינוי שדה דורש מעקב כתיבה → ממיר → שירות/חנות → רכיב. ניווט: [`GameStack.tsx`](../../../src/navigation/GameStack.tsx), ובמסכים משותפים גם המחסניות שמארחות אותם.
+ממיר המחזור: [`src/firebase/firestore.ts`](../../../src/firebase/firestore.ts), `gameDocConverter.fromFirestore`; סוגים: [`src/types`](../../../src/types). שינוי שדה דורש מעקב כתיבה → ממיר → שירות/חנות → רכיב. ניווט: [`GameStack.tsx`](../../../src/navigation/GameStack.tsx), ובמסכים משותפים גם המחסניות שמארחות אותם.
 
 ## בדיקות וראיות
 
@@ -41,3 +41,15 @@ userService.findAvailablePlayers; gameService.getMyGames; notificationsService.i
 getMyGames משתמש catch להחזרת רשימה ריקה; יש לבדוק אם כשל יכול לשנות סינון לפני כל שינוי, ולא להציג זאת כהוכחה למחיקת נתונים.
 
 לפני שינוי פתח את הקוד המקושר ואת [כללי הפרויקט](../../../AGENTS.md). לאחר שינוי עדכן במסמך זה את התאריך, נקודת הקוד, המצבים שהתעדכנו, הבדיקות והצילום. אין לטעון שכל מצב/תפקיד נבדק רק משום שקיים צילום אחד.
+
+## פירוט טכני ממוקד: זרימה, חישוב ונקודות שינוי
+
+[הסבר פשוט למשתמש](available-players.simple.md)
+
+העמקה: 07.10.2026, מול קוד המקור שב־`8e8fde5`. בעת הכתיבה HEAD הוא `50d508f`; בדיקת ההפרש בין הנקודות ב־`src` וב־`functions` לא מצאה שינוי קוד. הסעיפים וההסתייגויות הקיימים נשמרו. זו קריאת קוד ותיעוד, בלי הרצת תרחישי כתיבה חדשים.
+
+המסך טוען את המחזור, מחשב יום/עיר/שעה ופונה ל־`userService.findAvailablePlayers`; לאחר מכן מוציא משתמשים שכבר בהקשר המחזור. `notificationsService.inviteToGame` שולח הזמנה, ואוסף `invitedIds` המקומי מונע חזרה באותו מסך בלבד — אין להציג אותו כמפתח מניעת כפילות בשרת.
+
+`startFillerPulse` מפעיל מסלול חיפוש נפרד. `TOO_LATE`, `TOO_EARLY`, `GAME_FULL`, `NO_CITY`, `GAME_NOT_OPEN` צריכים לשמור הסבר מותאם; לא לאחד אותם ל״אין שחקנים״. מספר מועמדים מוצגים אינו מספר מקומות שנפתחו: 20 זמינים וקיבולת פנויה 2 אינם 20 הזמנות מאושרות.
+
+בכשל טעינת המחזורים יש לבחון סינון ולא להסיק שאין למשתמש מחזורים. שינוי התאמת זמנים צריך להצליב `preferredDays/preferredTimes` עם מסלול הפעימה בשרת, כי חיפוש ידני ופעימה אינם מובטחים להיות אותה שאילתה. הבדיקה המוצגת כיום היא טעינה בלבד; התאמה, פוש ואישור דורשים ראיות נפרדות.

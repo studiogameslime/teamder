@@ -27,7 +27,7 @@ LiveMatch של מחזור advancedMode
 
 src/services/gameService.ts, rotationEngine.ts, gameLifecycle.ts; functions/src/commitProtocol.ts, roundSummary.ts, statBatch.ts. snapshot של הרכב ותוצאת משחק חייב לשקף מי שיחק ולא רק סגל סופי. פרוטוקול אידמפוטנטי מונע כפילות בחזרה/לחיצה.
 
-ממיר המחזור: [`src/firebase/firestore.ts`](../../../src/firebase/firestore.ts), `fromFirestoreGameDoc`; סוגים: [`src/types`](../../../src/types). שינוי שדה דורש מעקב כתיבה → ממיר → שירות/חנות → רכיב. ניווט: [`GameStack.tsx`](../../../src/navigation/GameStack.tsx), ובמסכים משותפים גם המחסניות שמארחות אותם.
+ממיר המחזור: [`src/firebase/firestore.ts`](../../../src/firebase/firestore.ts), `gameDocConverter.fromFirestore`; סוגים: [`src/types`](../../../src/types). שינוי שדה דורש מעקב כתיבה → ממיר → שירות/חנות → רכיב. ניווט: [`GameStack.tsx`](../../../src/navigation/GameStack.tsx), ובמסכים משותפים גם המחסניות שמארחות אותם.
 
 ## בדיקות וראיות
 
@@ -42,3 +42,19 @@ rotationEngine/rotationFill/rotationDeep/rotationCounts, rotationQueueReorder, i
 הצילום הנוכחי מציג בפועל את שער ״עוד לא חולקו כוחות״; אין לכנותו הוכחה לכל הרוטציה. ארבע קבוצות ומעלה נדרשות ליציאת שתיהן כשיש שתי מחליפות.
 
 לפני שינוי פתח את הקוד המקושר ואת [כללי הפרויקט](../../../AGENTS.md). לאחר שינוי עדכן במסמך זה את התאריך, נקודת הקוד, המצבים שהתעדכנו, הבדיקות והצילום. אין לטעון שכל מצב/תפקיד נבדק רק משום שקיים צילום אחד.
+
+## פירוט טכני ממוקד: זרימה, חישוב ונקודות שינוי
+
+[הסבר פשוט למשתמש](live-advanced.simple.md)
+
+העמקה: 07.10.2026, מול קוד המקור שב־`8e8fde5`. בעת הכתיבה HEAD הוא `50d508f`; בדיקת ההפרש בין הנקודות ב־`src` וב־`functions` לא מצאה שינוי קוד. הסעיפים וההסתייגויות הקיימים נשמרו. זו קריאת קוד ותיעוד, בלי הרצת תרחישי כתיבה חדשים.
+
+[rotationEngine](../../../src/services/rotationEngine.ts) הוא מנוע טהור: `prepareStartRotation/recordWinnerSkeleton/recordTieSkeleton` מחשבים מצב לפני מילוי; שירות המחזור שומר. `canStart` דורש שתי קבוצות מאוישות, לא שתי קבוצות מלאות לפי הפורמט: 4 מול 3 אפשרי, קבוצה ריקה לא.
+
+במנצחת נשארת: `playing=[0,1]`, `waiting=[2,3]`, מנצחת 1 → `playing=[1,2]`, `waiting=[3,0]`; מספר ניצחונות 1 עולה. בלי ממתינות אותן שתי קבוצות נשארות. השאלות זמניות חוזרות כשהקבוצה הביתית נכנסת ומוסרות כשהקבוצה שקיבלה את ההשאלה יוצאת. בתיקו אין זקיפת ניצחון; יציאת שתיהן דורשת שתי מחליפות, ויש מסלול גיבוי כשנותרה אחת בלבד.
+
+סיום עובר `prepareRoundResult` ו־`_commitRoundStatsAndClear` לפני `commitFilledRotation`. [מפתח משחקון](../../../src/services/rotationEngine.ts), `roundCommitKey`, מעדיף `roundInstanceId` יציב; `resolveRoundInstance` מנפיק חדש רק למספר משחקון חדש. עדכון סדר תור/ממלא אינו צריך לייצר זקיפה חדשה לאותו משחקון.
+
+[commitRoundInOrder](../../../functions/src/commitProtocol.ts) קורא latch; אם טרם נזקף, כותב היסטוריה לפני אצוות הסטטיסטיקה. ה־latch נוצר באותה אצווה כמו ההגדלות. בחזרה שכבר נזקפה מתקנים היסטוריה חסרה באמצעות יצירה, ולא דורסים היסטוריה קיימת עם יומן חדש. לדוגמה שתי בקשות לאותו מזהה אמורות להגדיל ניצחון פעם אחת, גם אם התשובה הראשונה אבדה. אצווה והיסטוריה הן שתי כתיבות: אין לתאר את כולן כטרנזקציה יחידה.
+
+נקודות שינוי: חוקי התור במנוע, תיאום ובחירת ממלא במסך, אידמפוטנטיות בפרוטוקול, מכנים ב־statBatch. בדיקות `rotation*`, `idempotency` ו־`advancedMatchStats` חשובות לפני שינוי. צילום שער ההגנה בלבד אינו בדיקת הרוטציה הזאת.
