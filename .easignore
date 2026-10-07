@@ -89,3 +89,6 @@ store-repair.ps1
 # single byte of it, and without this line every `eas build` ships the lot
 # to the builder before it can start compiling.
 docs/תיעוד/
+
+# Feature documentation and screenshots are not app assets.
+docs/features/

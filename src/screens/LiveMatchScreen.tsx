@@ -22,6 +22,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { HamburgerMenu } from '@/components/profile/HamburgerMenu';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -800,58 +801,26 @@ function PlainLiveMatchScreen() {
       {/* Overflow menu — the only place this screen can end the evening from.
           Same shape as the advanced screen's, so the two live screens do not
           hide the same action behind two different gestures. */}
-      <Modal
+      <HamburgerMenu
         visible={menuOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuOpen(false)}
-      >
-        <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)}>
-          <Pressable style={styles.menuCard} onPress={() => undefined}>
-            {/* Same entry as the advanced screen's, so the two live screens
-                do not hide the same thing behind two different gestures. */}
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuOpen(false);
+        onClose={() => setMenuOpen(false)}
+        sections={[{ id: 'live', items: [
+          { id: 'liveMenuRounds', label: he.liveMenuRounds, icon: 'list', onPress: () => {
                 (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate(
                   'MatchRounds',
                   { gameId: game.id, live: true },
                 );
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={he.liveMenuRounds}
-            >
-              <Text style={styles.menuItemText}>{he.liveMenuRounds}</Text>
-              <Ionicons name="list" size={20} color="#1D4ED8" />
-            </Pressable>
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuOpen(false);
+              } },
+          { id: 'liveEndEvening', label: he.liveEndEvening, icon: 'flag-outline', tone: 'danger', onPress: () => {
                 logEvent(AnalyticsEvent.EndEveningPrompted, {
                   gameId: game.id,
                   source: 'menu',
                   elapsedSec: Math.round(timerMs / 1000),
                 });
                 setEndOpen(true);
-              }}
-              accessibilityRole="button"
-            >
-              {/* Label first: under forceRTL the first child renders rightmost,
-                  so the icon lands immediately to its LEFT rather than at the
-                  far edge of the sheet. */}
-              <Text style={[styles.menuItemText, styles.menuItemDanger]}>
-                {he.liveEndEvening}
-              </Text>
-              <Ionicons name="flag-outline" size={20} color="#DC2626" />
-            </Pressable>
-            <Pressable style={styles.menuCancel} onPress={() => setMenuOpen(false)}>
-              <Text style={styles.menuCancelText}>{he.cancel}</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+              } }
+        ] }]}
+      />
 
       {/* End-game confirm — shared destructive modal (with ack checkbox). */}
       <ConfirmDestructiveModal
@@ -1181,33 +1150,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingVertical: 18,
   },
-  menuBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 28,
-  },
-  menuCard: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 12,
-    gap: 4,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-  },
-  menuItemText: { fontSize: 16, fontWeight: '700', color: '#1D4ED8' },
-  menuItemDanger: { color: '#DC2626' },
-  menuCancel: { alignItems: 'center', paddingVertical: 14, marginTop: 4 },
-  menuCancelText: { fontSize: 15, fontWeight: '700', color: '#475569' },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.45)',

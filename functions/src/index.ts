@@ -32,6 +32,7 @@ import { StatBatch, MAX_ROUND_BATCH_OPS } from './statBatch';
 import { commitRoundInOrder } from './commitProtocol';
 import { eveningScoreServer } from './eveningScoreCore';
 import { occupancyOf, inFillerQuietHours } from './fillerRules';
+import { promoteWaitingGuests } from './guestPromotion';
 import { closeSeason, reopenSeason } from './seasonRollover';
 import { assertSeasonOpenForGame } from './seasonLock';
 import { buildRoundSides } from './roundSides';
@@ -2789,15 +2790,15 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
     const participantIds = Array.from(
       new Set([...players, ...waitlist, ...pending]),
     );
-    const update: Record<string, unknown> = {
+    const update = {
       players,
       waitlist,
       pending,
       participantIds,
       joinedAt,
+      ...(cancellationsChanged ? { cancellations } : {}),
       updatedAt: now,
     };
-    if (cancellationsChanged) update.cancellations = cancellations;
     tx.update(gameRef, update);
   });
 }
@@ -5672,12 +5673,15 @@ export const onGameRosterChanged = onDocumentWritten(
       (g) => !g?.waitlisted,
     ).length;
     const guestSeatFreed = afterActiveGuests < beforeActiveGuests;
+    const previousOfferUid = before?.pendingPromotion?.uid;
+    const guestOfferSeatFreed = typeof previousOfferUid === 'string' && previousOfferUid.length > 0 &&
+      !after.pendingPromotion?.uid && !afterPlayers.includes(previousOfferUid);
     const rosterShrank =
       JSON.stringify(beforePlayers) !== JSON.stringify(afterPlayers) ||
       JSON.stringify(before?.waitlist ?? []) !==
         JSON.stringify(after.waitlist ?? []) ||
       JSON.stringify(before?.pending ?? []) !== JSON.stringify(after.pending ?? []) ||
-      guestSeatFreed;
+      guestSeatFreed || guestOfferSeatFreed;
     // GameStatus is 'scheduled'|'open'|'locked'|'active'|'finished'|'cancelled'.
     // PRUNE a departed ghost from drawn teams / live rotation for any game still
     // in play (incl. 'locked' near kickoff AND 'active' live play) — a player
@@ -5727,7 +5731,7 @@ export const onGameRosterChanged = onDocumentWritten(
             ? [...(d.pending as string[])]
             : [];
           const guests = Array.isArray(d.guests)
-            ? (d.guests as { waitlisted?: boolean }[])
+            ? (d.guests as { waitlisted?: boolean; createdAt?: number }[])
             : [];
           const activeGuests = guests.filter((g) => !g?.waitlisted).length;
           const updates: Record<string, unknown> = {};
@@ -5743,6 +5747,7 @@ export const onGameRosterChanged = onDocumentWritten(
           const occupancy = players.length + activeGuests + (ppUid ? 1 : 0);
           if (
             promoteOk &&
+            [undefined, 'open', 'scheduled', 'locked'].includes(d.status as string | undefined) &&
             // Only backfill a seat freed by a REAL departure (cancel / no-show
             // / removal). An admin who MOVES a player players→waitlist via
             // adminReorderRoster leaves them in the waitlist, so they're NOT in
@@ -5776,6 +5781,19 @@ export const onGameRosterChanged = onDocumentWritten(
               };
             }
           }
+
+          // Guests never enter players[]: preserve their ids, attribution and
+          // ratings. The existing guestPromoted notification runs on re-fire.
+          // Use the transaction's current roster, including any admission above.
+          const promotedGuests = promoteWaitingGuests({
+            guests,
+            players,
+            waitlist,
+            pendingPromotion: (updates.pendingPromotion ?? d.pendingPromotion) as { uid?: string } | null | undefined,
+            maxPlayers: d.maxPlayers as number | undefined,
+            status: d.status,
+          }, departed.size > 0 || guestSeatFreed || guestOfferSeatFreed);
+          if (promotedGuests) updates.guests = promotedGuests;
 
           if (Object.keys(updates).length > 0) {
             updates.updatedAt = Date.now();

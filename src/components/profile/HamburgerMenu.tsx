@@ -15,18 +15,17 @@
 
 import React from 'react';
 import {
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
+import { DraggableMenuSheet } from '@/components/DraggableMenuSheet';
+import { MenuIcon } from '@/components/MenuIcon';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
 export interface HamburgerItem {
   /** Stable id for keys + a11y labels. */
@@ -74,62 +73,30 @@ interface Props {
 
 export function HamburgerMenu({ visible, onClose, sections }: Props) {
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        {/* The sheet itself swallows taps so a press inside the
-            sheet doesn't close it (React Native bubbles by default). */}
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <SafeAreaView edges={['bottom']} style={styles.safe}>
-            <View style={styles.handle} />
-            <View style={styles.headerRow}>
-              <Pressable
-                onPress={onClose}
-                hitSlop={10}
-                style={({ pressed }) => [
-                  styles.closeBtn,
-                  pressed && { opacity: 0.6 },
-                ]}
-                accessibilityLabel="סגור תפריט"
-              >
-                <Ionicons name="close" size={22} color={colors.text} />
-              </Pressable>
-            </View>
-            <ScrollView
-              contentContainerStyle={styles.scroll}
-              showsVerticalScrollIndicator={false}
-            >
-              {sections.map((section, idx) => (
-                <View key={section.id} style={styles.section}>
-                  {section.title ? (
-                    <Text style={styles.sectionTitle}>{section.title}</Text>
-                  ) : null}
-                  <View
-                    style={[
-                      styles.sectionCard,
-                      idx > 0 && { marginTop: spacing.sm },
-                    ]}
-                  >
-                    {section.items.map((item, i) => (
-                      <MenuRow
-                        key={item.id}
-                        item={item}
-                        showDivider={i > 0}
-                        onClose={onClose}
-                      />
-                    ))}
-                  </View>
-                </View>
+    <DraggableMenuSheet visible={visible} onClose={onClose}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {sections.map((section) => (
+          <View key={section.id} style={styles.section}>
+            {section.title ? (
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+            ) : null}
+            <View style={styles.sectionCard}>
+              {section.items.map((item, i) => (
+                <MenuRow
+                  key={item.id}
+                  item={item}
+                  showDivider={i > 0}
+                  onClose={onClose}
+                />
               ))}
-            </ScrollView>
-          </SafeAreaView>
-        </Pressable>
-      </Pressable>
-    </Modal>
+            </View>
+          </View>
+        ))}
+      </ScrollView>
+    </DraggableMenuSheet>
   );
 }
 
@@ -174,17 +141,8 @@ function MenuRow({
         isToggle ? { checked: !!item.toggle?.value } : undefined
       }
     >
-      <View
-        style={[
-          styles.iconWrap,
-          isDanger ? styles.iconWrapDanger : styles.iconWrapDefault,
-        ]}
-      >
-        <Ionicons
-          name={item.icon}
-          size={18}
-          color={isDanger ? colors.danger : colors.primary}
-        />
+      <View style={styles.iconWrap}>
+        <MenuIcon name={item.icon} size={24} color={isDanger ? colors.danger : colors.primaryDark} />
       </View>
       <View style={styles.rowBody}>
         <Text
@@ -223,49 +181,10 @@ function MenuRow({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '85%',
-    overflow: 'hidden',
-  },
-  safe: {
-    paddingTop: spacing.xs,
-    // flexShrink is what makes the list scroll. Without it this view sizes to
-    // its content, the ScrollView inside inherits an unbounded height and
-    // therefore never scrolls, and the sheet's maxHeight + overflow:hidden
-    // simply cuts the tail off — on a tall menu that meant "מחיקת חשבון" was
-    // permanently unreachable rather than merely below the fold. Reported from
-    // an iPhone, where the home-indicator inset pushed it just over the edge.
-    flexShrink: 1,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: spacing.md,
-  },
-  closeBtn: {
-    padding: spacing.xs,
-  },
   scroll: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
-    gap: spacing.sm,
+    gap: 18,
   },
   section: {
     gap: 6,
@@ -280,7 +199,9 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.divider,
     overflow: 'hidden',
   },
   row: {
@@ -288,7 +209,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingVertical: 13,
+    minHeight: 56,
   },
   rowDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -297,15 +219,8 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 32,
     height: 32,
-    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconWrapDefault: {
-    backgroundColor: colors.primaryLight,
-  },
-  iconWrapDanger: {
-    backgroundColor: '#FEE2E2',
   },
   rowBody: {
     flex: 1,

@@ -22,6 +22,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { HamburgerMenu } from '@/components/profile/HamburgerMenu';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -2248,79 +2249,29 @@ export function AdvancedLiveMatchScreen() {
           to be duplicated inline under the round controls, six pixels below
           "סיים משחק"; a coach reported that as a hazard and asked for it to live
           in the menu. The confirm dialog behind it is unchanged. */}
-      <Modal
+      <HamburgerMenu
         visible={menuOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuOpen(false)}
-      >
-        <Pressable style={styles.backdrop} onPress={() => setMenuOpen(false)}>
-          <Pressable style={styles.menuCard} onPress={() => undefined}>
-            {/* Reset lives here now, not in the round controls. It wipes the
-                running clock AND the round's goals, and it used to sit a
-                thumb-width from the two buttons pressed all evening. Its own
-                confirm dialog is unchanged. */}
-            {/* The mini-games already played tonight.
-                Opens the SAME screen the finished evening uses — same card,
-                same order, same data — with `live` only changing the title
-                and the empty-state wording. Nothing new is drawn: the round
-                history is written by `commitRoundStats`, so it already
-                contains exactly the games that have ended and nothing else. */}
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuOpen(false);
+        onClose={() => setMenuOpen(false)}
+        sections={[{ id: 'live', items: [
+          { id: 'liveMenuRounds', label: he.liveMenuRounds, icon: 'list', onPress: () => {
                 (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate(
                   'MatchRounds',
                   { gameId, live: true },
                 );
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={he.liveMenuRounds}
-            >
-              {/* Label first: under forceRTL the first child renders rightmost,
-                  so the icon lands immediately to its LEFT. */}
-              <Text style={styles.menuItemText}>{he.liveMenuRounds}</Text>
-              <Ionicons name="list" size={20} color="#1D4ED8" />
-            </Pressable>
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuOpen(false);
+              } },
+          { id: 'liveTimerResetCurrent', label: he.liveTimerResetCurrent, icon: 'refresh', onPress: () => {
                 onTimerReset();
-              }}
-            >
-              {/* Text first: under forceRTL the first child renders rightmost,
-                  so writing the label first puts the icon immediately to its
-                  LEFT — beside the word, not shoved to the far edge of the
-                  sheet (which is what `justifyContent: space-between` would
-                  have done). */}
-              <Text style={styles.menuItemText}>{he.liveTimerResetCurrent}</Text>
-              <Ionicons name="refresh" size={20} color="#1D4ED8" />
-            </Pressable>
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuOpen(false);
+              } },
+          { id: 'liveEndEvening', label: he.liveEndEvening, icon: 'flag-outline', tone: 'danger', onPress: () => {
                 logEvent(AnalyticsEvent.EndEveningPrompted, {
                   gameId,
                   source: 'menu',
                   elapsedSec: Math.round(timerMs / 1000),
                 });
                 setEndOpen(true);
-              }}
-            >
-              <Text style={[styles.menuItemText, styles.menuItemDanger]}>
-                {he.liveEndEvening}
-              </Text>
-              <Ionicons name="flag-outline" size={20} color="#DC2626" />
-            </Pressable>
-            <Pressable style={styles.menuCancel} onPress={() => setMenuOpen(false)}>
-              <Text style={styles.menuCancelText}>{he.cancel}</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+              } }
+        ] }]}
+      />
     </SafeAreaView>
   );
 }
@@ -2557,26 +2508,6 @@ const styles = StyleSheet.create({
   // Grey, not red: the evening is about to start, it is simply smaller than
   // the format planned for.
   hintText: { textAlign: 'center', color: '#6B7280', fontSize: 13, fontWeight: '600' },
-  menuCard: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 12,
-    gap: 4,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-  },
-  menuItemText: { fontSize: 16, fontWeight: '700', color: '#1D4ED8' },
-  menuItemDanger: { color: '#DC2626' },
-  menuCancel: { alignItems: 'center', paddingVertical: 14, marginTop: 4 },
-  menuCancelText: { fontSize: 15, fontWeight: '700', color: '#475569' },
   timerCardRunning: {
     borderColor: '#1D4ED8',
   },

@@ -19,6 +19,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Rect, Path, Circle } from 'react-native-svg';
 import {
   buildRoster,
   firstName,
@@ -33,8 +34,9 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import type { DraftTeamsResult, LiveMatchState, MatchRotation } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import {
+import Animated, {
   runOnJS,
+  useAnimatedStyle,
   useSharedValue,
   withDelay,
   withSequence,
@@ -119,6 +121,19 @@ interface Props {
 
 type Screen = 'first' | 'board' | 'entry';
 
+function KickOutcomeIcon({ scored }: { scored: boolean }) {
+  const tint = scored ? '#15803D' : '#B91C1C';
+  return (
+    <Svg width={44} height={44} viewBox="0 0 48 48" accessible={false}>
+      <Rect x={8} y={14} width={31} height={25} rx={2} stroke={tint} strokeWidth={2.5} fill="none" />
+      <Path d="M 16 15 V 38 M 24 15 V 38 M 32 15 V 38 M 9 22 H 38 M 9 30 H 38" stroke={tint} strokeWidth={1} opacity={0.35} />
+      {!scored && <Path d="M 22 25 L 38 7 M 31 7 H 38 V 14" stroke={tint} strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />}
+      <Circle cx={scored ? 24 : 39} cy={scored ? 27 : 7} r={7} fill="white" stroke={tint} strokeWidth={2} />
+      <Path d={scored ? 'M 24 23 L 28 26 L 26 30 H 22 L 20 26 Z' : 'M 39 3 L 43 6 L 41 10 H 37 L 35 6 Z'} fill={tint} />
+    </Svg>
+  );
+}
+
 export function Shootout({
   visible,
   gameId,
@@ -140,6 +155,7 @@ export function Shootout({
    *  the screen between choosing the players and saying what happened. */
   const [asking, setAsking] = useState(false);
   const [flying, setFlying] = useState(false);
+  const [kickResult, setKickResult] = useState<boolean | null>(null);
   /** A write is in flight (currently only the undo) — blocks a double tap. */
   const [busy, setBusy] = useState(false);
   /** In-sheet confirmation. It is NOT `appAlert`, and that is the point:
@@ -167,6 +183,7 @@ export function Shootout({
       setKickerPicking(false);
       setAsking(false);
       setFlying(false);
+      setKickResult(null);
       setBusy(false);
       setConfirm(null);
     }
@@ -273,39 +290,40 @@ export function Shootout({
       record(scored);
       return;
     }
+    setKickResult(scored);
     setFlying(true);
     const W = pitchW.current;
     // Aim at one post or the other. The goal mouth is 44% of the width, so a
     // corner is ±18% from the centre; wide is beyond the post at ±30%.
     const side = Math.random() < 0.5 ? -1 : 1;
-    const targetX = side * W * (scored ? 0.18 : 0.3);
+    const targetX = side * W * (scored ? 0.14 : 0.3);
     // The spot sits at 52% of the height and the goal mouth at ~13%, and the
     // pitch is 1.22 tall for every 1 wide.
-    const targetY = -W * (scored ? 0.44 : 0.5);
-    const t = { duration: 430, easing: Easing.out(Easing.quad) };
+    const targetY = -W * (scored ? 0.54 : 0.59);
+    const t = { duration: 800, easing: Easing.out(Easing.quad) };
 
-    ballX.value = withTiming(targetX, t);
-    ballY.value = withTiming(targetY, t);
+    ballX.value = withDelay(180, withTiming(targetX, t));
+    ballY.value = withDelay(180, withTiming(targetY, t));
     // Shrinking as it travels is the only depth cue a flat pitch can give.
-    ballScale.value = withTiming(0.62, t);
+    ballScale.value = withDelay(180, withTiming(0.72, t));
 
     // The keeper commits a beat after the ball is struck, as a real one does.
     // He goes the WRONG way on a goal — that is what being beaten looks like —
     // and towards the ball when it does not go in.
-    const dive = { duration: 340, easing: Easing.out(Easing.cubic) };
+    const dive = { duration: 450, easing: Easing.out(Easing.cubic) };
     // 0.2 of the width is exactly the post — the goal mouth is 40% wide, so
     // half of it is 20% either side of centre. Further than that and the
     // keeper ends up diving outside his own goal.
     const diveTo = side * W * (scored ? -0.2 : 0.2);
-    keeperX.value = withDelay(90, withTiming(diveTo, dive));
-    keeperY.value = withDelay(90, withTiming(W * 0.06, dive));
+    keeperX.value = withDelay(350, withTiming(diveTo, dive));
+    keeperY.value = withDelay(350, withTiming(W * 0.06, dive));
     keeperScale.value = withDelay(
-      90,
+      350,
       withSequence(
         withTiming(0.88, dive),
         // Held at full stretch, then handed back to JS to write the kick.
         withDelay(
-          280,
+          700,
           withTiming(0.88, { duration: 1 }, (done) => {
             if (done) runOnJS(record)(scored);
           }),
@@ -332,6 +350,7 @@ export function Shootout({
     setKickerId(null);
     setAsking(false);
     setFlying(false);
+    setKickResult(null);
     resetBall();
     setScreen('board');
   };
@@ -422,6 +441,14 @@ export function Shootout({
   };
 
   const canContinue = !!kickerId && !!facingKeeperId;
+  const readyScale = useSharedValue(1);
+  useEffect(() => {
+    readyScale.value = 1;
+    if (canContinue && screen === 'entry' && !reduced) {
+      readyScale.value = withSequence(withTiming(1.035, { duration: 180 }), withTiming(1, { duration: 240 }));
+    }
+  }, [canContinue, screen, reduced, readyScale]);
+  const readyStyle = useAnimatedStyle(() => ({ transform: [{ scale: readyScale.value }] }));
 
   // small building blocks
   const Avatar = ({ id, tint }: { id: string; tint: string }) => (
@@ -663,6 +690,11 @@ export function Shootout({
         <Text style={styles.qlabel}>{asking ? he.shResultQ : he.shPickBoth}</Text>
 
         <PenaltyPitch
+          keeperId={facingKeeperId}
+          kickerId={kickerId}
+          flying={flying}
+          result={kickResult}
+          resultLabel={kickResult === null ? undefined : kickResult ? he.shResultIn : he.shResultMiss}
           keeperLabel={he.shTapKeeper}
           kickerLabel={he.shTapKicker}
           keeperTint={colorOf(defendingTeam)}
@@ -690,29 +722,27 @@ export function Shootout({
               disabled={flying}
               onPress={() => takeKick(true)}
             >
+              <KickOutcomeIcon scored />
               <Text style={styles.rOkTxt}>{he.shResultIn}</Text>
-              <View style={styles.prowSpacer} />
-              <Text style={styles.rIcon}>✅</Text>
             </Pressable>
             <Pressable
               style={[styles.rbtn, styles.rNo, flying && styles.contDisabled]}
               disabled={flying}
               onPress={() => takeKick(false)}
             >
+              <KickOutcomeIcon scored={false} />
               <Text style={styles.rNoTxt}>{he.shResultMiss}</Text>
-              <View style={styles.prowSpacer} />
-              <Text style={styles.rIcon}>❌</Text>
             </Pressable>
           </View>
         ) : (
           <>
-            <Pressable
+            <Animated.View style={readyStyle}><Pressable
               style={[styles.contBtn, !canContinue && styles.contDisabled]}
               onPress={proceed}
               disabled={!canContinue}
             >
               <Text style={styles.contTxt}>{he.shTakeKick}</Text>
-            </Pressable>
+            </Pressable></Animated.View>
             {!canContinue ? <Text style={styles.contHint}>{he.shContinueHint}</Text> : null}
           </>
         )}
@@ -1063,9 +1093,10 @@ const styles = StyleSheet.create({
   resRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
   rbtn: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
-    paddingVertical: 22,
+    paddingVertical: 10,
+    gap: 4,
     paddingHorizontal: 16,
     borderRadius: 15,
     borderWidth: 2,

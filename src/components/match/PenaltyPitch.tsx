@@ -13,19 +13,21 @@
 // an avatar sits exactly on the spot and inside the goal mouth at every size.
 // Change a line and the slot follows it.
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Rect, Circle, Path, G } from 'react-native-svg';
 import Animated, {
   useAnimatedStyle,
+  useSharedValue, withTiming, withSpring, withRepeat, withSequence, withDelay, cancelAnimation,
   type SharedValue,
 } from 'react-native-reanimated';
 import { colors, radius } from '@/theme';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 
 // ── The geometry, once. Everything below reads from here, so the pitch and the
 //    things standing on it can never disagree about where the spot is. ──
-const VB = { w: 100, h: 122 };
+const VB = { w: 100, h: 102 };
 /** The goal line. Everything is measured from it, as on a real pitch. */
 const GOAL_LINE = 20;
 /** The goal, drawn ABOVE the line — we are looking at it from the spot. */
@@ -127,6 +129,11 @@ interface Props {
    *  was tried and is invisible on a round avatar — all it did was tilt the
    *  letter inside it, and drag the name plate round with it. */
   keeperDive: { x: SharedValue<number>; y: SharedValue<number>; scale: SharedValue<number> };
+  keeperId?: string | null;
+  kickerId?: string | null;
+  flying?: boolean;
+  result?: boolean | null;
+  resultLabel?: string;
 }
 
 export function PenaltyPitch({
@@ -140,19 +147,52 @@ export function PenaltyPitch({
   kickerTint,
   ball,
   keeperDive,
+  keeperId, kickerId, flying = false, result = null, resultLabel,
 }: Props) {
+  const reduced = useReducedMotion();
+  const idle = useSharedValue(0);
+  const keeperPop = useSharedValue(1);
+  const kickerPop = useSharedValue(1);
+  const shot = useSharedValue(0);
+  const net = useSharedValue(0);
+  useEffect(() => {
+    idle.value = 0;
+    if (!flying && !reduced) idle.value = withRepeat(withSequence(withTiming(1, { duration: 1050 }), withTiming(-1, { duration: 1050 })), -1, true);
+    return () => cancelAnimation(idle);
+  }, [flying, reduced, idle]);
+  useEffect(() => {
+    keeperPop.value = keeperId && !reduced ? 0.75 : 1;
+    if (keeperId && !reduced) keeperPop.value = withSpring(1, { damping: 12, stiffness: 190 });
+  }, [keeperId, reduced, keeperPop]);
+  useEffect(() => {
+    kickerPop.value = kickerId && !reduced ? 0.75 : 1;
+    if (kickerId && !reduced) kickerPop.value = withSpring(1, { damping: 12, stiffness: 190 });
+  }, [kickerId, reduced, kickerPop]);
+  useEffect(() => {
+    shot.value = 0;
+    net.value = 0;
+    if (flying && !reduced) {
+      shot.value = withTiming(1, { duration: 980 });
+      if (result) net.value = withDelay(960, withSequence(withTiming(1, { duration: 100 }), withTiming(-0.6, { duration: 100 }), withTiming(0.3, { duration: 110 }), withTiming(0, { duration: 130 })));
+    }
+    return () => { cancelAnimation(shot); cancelAnimation(net); };
+  }, [flying, reduced, result, shot, net]);
+  const netStyle = useAnimatedStyle(() => ({ transform: [{ translateX: net.value * 9 }, { scaleY: 1 + net.value * 0.15 }] }));
+  const resultStyle = useAnimatedStyle(() => ({ opacity: shot.value > 0.97 ? 1 : 0, transform: [{ scale: 0.9 + shot.value * 0.1 }] }));
+  const kickerStyle = useAnimatedStyle(() => ({ transform: [{ translateY: flying ? -Math.sin(shot.value * Math.PI) * 22 : idle.value }, { scale: kickerPop.value }] }));
   const ballStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: ball.x.value },
-      { translateY: ball.y.value },
+      { translateY: ball.y.value + (!flying && !reduced ? Math.abs(idle.value) * -4 : 0) },
       { scale: ball.scale.value },
+      { rotate: `${flying ? shot.value * 720 : idle.value * 25}deg` },
     ],
   }));
   const keeperStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: keeperDive.x.value },
+      { translateX: keeperDive.x.value + (keeperId && !flying ? idle.value * 18 : 0) },
       { translateY: keeperDive.y.value },
-      { scale: keeperDive.scale.value },
+      { scale: keeperDive.scale.value * keeperPop.value },
     ],
   }));
 
@@ -184,16 +224,6 @@ export function PenaltyPitch({
             fill="#FFFFFF"
             fillOpacity={0.16}
           />
-          <G stroke="#FFFFFF" strokeOpacity={0.45} strokeWidth={0.35}>
-            {[...Array(9)].map((_, i) => {
-              const x = GOAL.x + ((i + 1) * GOAL.w) / 10;
-              return <Path key={`v${i}`} d={`M ${x} ${GOAL.y} V ${GOAL.y + GOAL.h}`} />;
-            })}
-            {[...Array(4)].map((_, i) => {
-              const y = GOAL.y + ((i + 1) * GOAL.h) / 5;
-              return <Path key={`h${i}`} d={`M ${GOAL.x} ${y} H ${GOAL.x + GOAL.w}`} />;
-            })}
-          </G>
           {/* Posts and crossbar. The goal line itself closes the bottom. */}
           <Path
             d={`M ${GOAL.x} ${GOAL.y + GOAL.h} V ${GOAL.y} H ${GOAL.x + GOAL.w} V ${GOAL.y + GOAL.h}`}
@@ -205,6 +235,14 @@ export function PenaltyPitch({
         </G>
         <Circle cx={SPOT.x} cy={SPOT.y} r={1.1} fill="#FFFFFF" />
       </Svg>
+      <Animated.View pointerEvents="none" style={[styles.net, netStyle]}>
+        <Svg viewBox="0 0 40 16" style={StyleSheet.absoluteFill}>
+          <G stroke="#FFFFFF" strokeOpacity={0.5} strokeWidth={0.35}>
+            {Array.from({ length: 9 }, (_, i) => <Path key={`v${i}`} d={`M ${(i + 1) * 4} 0 V 16`} />)}
+            {Array.from({ length: 4 }, (_, i) => <Path key={`h${i}`} d={`M 0 ${(i + 1) * 3.2} H 40`} />)}
+          </G>
+        </Svg>
+      </Animated.View>
 
       {/* ── the two slots ── */}
       {/* The keeper IS the diving element rather than a copy of it: a separate
@@ -222,14 +260,18 @@ export function PenaltyPitch({
           style={styles.slotInner}
         />
       </Animated.View>
+      <Animated.View style={[styles.animSlot, PITCH_POS.kicker as ViewStyle, kickerStyle]}>
       <Slot
         testID="penalty-kicker-slot"
         placeholder={kickerLabel}
         filled={kickerNode}
         onPress={onPressKicker}
         tint={kickerTint}
-        style={{ ...PITCH_POS.kicker } as ViewStyle}
+        style={styles.slotInner}
       />
+      </Animated.View>
+
+      {!flying && <View pointerEvents="none" style={[styles.shadow, PITCH_POS.spot as ViewStyle]} />}
 
       <Animated.View
         pointerEvents="none"
@@ -239,9 +281,10 @@ export function PenaltyPitch({
             white disc read as a marker on the grass, not as something to
             kick. */}
         <View style={styles.ballDot}>
-          <Ionicons name="football" size={13} color="#111827" />
+          <Ionicons name="football" size={28} color="#111827" />
         </View>
       </Animated.View>
+      {flying && resultLabel ? <Animated.View pointerEvents="none" style={[styles.result, resultStyle, { backgroundColor: result ? '#15803D' : '#B91C1C' }]}><Text accessibilityLiveRegion="polite" style={styles.resultText}>{resultLabel}</Text></Animated.View> : null}
     </View>
   );
 }
@@ -249,6 +292,10 @@ export function PenaltyPitch({
 const SLOT = 52;
 
 const styles = StyleSheet.create({
+  net: { position: 'absolute', left: '30%', top: pct(GOAL.y, VB.h) as `${number}%`, width: '40%', height: pct(GOAL.h, VB.h) as `${number}%` },
+  shadow: { position: 'absolute', width: 24, height: 7, marginLeft: -12, marginTop: 10, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.22)' },
+  result: { position: 'absolute', top: '33%', alignSelf: 'center', paddingHorizontal: 22, paddingVertical: 8, borderRadius: 20 },
+  resultText: { color: '#FFFFFF', fontWeight: '900', fontSize: 22, textAlign: 'center' },
   wrap: {
     width: '100%',
     aspectRatio: VB.w / VB.h,
@@ -303,17 +350,17 @@ const styles = StyleSheet.create({
   slotInner: { position: 'relative', marginLeft: 0, marginTop: 0 },
   ball: {
     position: 'absolute',
-    width: 20,
-    height: 20,
-    marginLeft: -10,
-    marginTop: -10,
+    width: 36,
+    height: 36,
+    marginLeft: -18,
+    marginTop: -18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ballDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: colors.text,

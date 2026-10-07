@@ -1,121 +1,128 @@
-// DidYouKnowCard — the rotating "ידעת ש..." tip at the foot of the home
-// screen. Short benefit blurbs that advance on their own, a dots indicator,
-// and a tap that jumps to the feature the current tip is about.
-//
-// This is the ONE rotating surface on the screen, and it is allowed to be:
-// the tips are a set with no order and no urgency, so cycling them costs the
-// reader nothing. Everything else on this screen states a single fact and
-// gets a single card.
-//
-// The rotation itself is unchanged — same interval, same order, same tips
-// from the screen. Only the surface around it was redrawn.
-//
-// A faded clipboard glyph was tried in the trailing corner as texture. On the
-// device it read as a stray white shape rather than decoration, so it is not
-// here: the card is the lamp, the words and the dots.
-
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 export interface Tip {
+  title: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
   text: string;
   onPress?: () => void;
 }
-
 const ROTATE_MS = 6000;
 
 export function DidYouKnowCard({ tips }: { tips: Tip[] }) {
   const [idx, setIdx] = useState(0);
-  const idxRef = useRef(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [incoming, setIncoming] = useState<{ index: number; direction: number } | null>(null);
+  const focused = useIsFocused();
+  const progress = useRef(new Animated.Value(0)).current;
+  const moving = useRef(false);
+  const selectRef = useRef<(next: number) => void>(() => {});
+  const idxRef = useRef(idx);
   idxRef.current = idx;
-
   useEffect(() => {
-    if (tips.length <= 1) return;
-    const h = setInterval(() => {
-      setIdx((i) => (i + 1) % tips.length);
-    }, ROTATE_MS);
-    return () => clearInterval(h);
-  }, [tips.length]);
-
-  if (tips.length === 0) return null;
-  const tip = tips[Math.min(idx, tips.length - 1)];
-
+    let active = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((value) => { if (active) setReduceMotion(value); });
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => { active = false; subscription.remove(); };
+  }, []);
+  useEffect(() => {
+    if (!incoming) return;
+    // Both text layers have rendered before the native animation begins.
+    progress.setValue(0);
+    const animation = Animated.timing(progress, {
+      toValue: 1, duration: reduceMotion ? 0 : 380,
+      easing: Easing.inOut(Easing.cubic), useNativeDriver: true,
+    });
+    animation.start(({ finished }) => {
+      if (finished) { setIdx(incoming.index); setIncoming(null); }
+      moving.current = false;
+    });
+    return () => animation.stop();
+  }, [incoming, progress, reduceMotion]);
+  selectRef.current = (next) => {
+    if (!tips.length || moving.current) return;
+    const target = (next + tips.length) % tips.length;
+    if (target === idxRef.current) return;
+    if (reduceMotion) { setIdx(target); return; }
+    moving.current = true;
+    setIncoming({ index: target, direction: next > idxRef.current ? 1 : -1 });
+  };
+  const pan = useRef(PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 12 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
+    onPanResponderRelease: (_, gesture) => {
+      if (Math.abs(gesture.dx) > 35) selectRef.current(idxRef.current + (gesture.dx > 0 ? 1 : -1));
+    },
+  })).current;
+  useEffect(() => {
+    // Manual selection gets a full reading interval; no motion off-screen or with reduced motion.
+    if (tips.length <= 1 || !focused || reduceMotion) return;
+    const timer = setTimeout(() => selectRef.current(idxRef.current + 1), ROTATE_MS);
+    return () => clearTimeout(timer);
+  }, [idx, tips.length, focused, reduceMotion]);
+  if (!tips.length) return null;
+  const current = Math.min(idx, tips.length - 1);
+  const tip = tips[current];
+  const nextTip = incoming ? tips[incoming.index] : undefined;
+  const renderContent = (item: Tip) => <>
+    <View style={styles.iconDisc}><Ionicons name={item.icon} size={25} color="#FFFFFF" /></View>
+    <View style={styles.textWrap}>
+      <Text style={styles.title}>{item.title}</Text>
+      <Text style={styles.body}>{item.text}</Text>
+    </View>
+    {item.onPress ? <Ionicons name="chevron-back" size={21} color="#FFFFFF" /> : null}
+  </>;
   return (
-    <Pressable
-      onPress={tip.onPress}
-      style={({ pressed }) => [styles.card, pressed && tip.onPress && { opacity: 0.92 }]}
-      accessibilityRole={tip.onPress ? 'button' : 'summary'}
-      accessibilityLabel={`${he.homeDidYouKnowTitle} ${tip.text}`}
-    >
-      <LinearGradient
-        colors={['#EEF2FF', '#E7E9FE']}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-
-      {/* First child → visual RIGHT: the lamp, then the words, which is the
-          order a Hebrew reader takes them in. */}
-      <View style={styles.iconDisc}>
-        <Ionicons name="bulb" size={20} color="#6366F1" />
+    <View>
+      <View style={styles.heading}>
+        <Ionicons name="bulb-outline" size={20} color="#294EC3" />
+        <Text style={styles.headingText}>{he.homeDidYouKnowTitle}</Text>
       </View>
-
-      <View style={styles.textWrap}>
-        <Text style={styles.title}>{he.homeDidYouKnowTitle}</Text>
-        <Text style={styles.body} numberOfLines={2}>
-          {tip.text}
-        </Text>
-        {tips.length > 1 ? (
-          <View style={styles.dots}>
-            {tips.map((_, i) => (
-              <View key={i} style={[styles.dot, i === idx && styles.dotActive]} />
-            ))}
+      <View style={styles.viewport} {...pan.panHandlers}>
+        <Pressable onPress={() => { if (!moving.current) tip.onPress?.(); }} style={styles.card}
+          accessibilityRole={tip.onPress ? 'button' : 'summary'}
+          accessibilityLabel={`${tip.title}. ${tip.text}`}>
+          <LinearGradient colors={['#15317B', '#294EC3']} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <View style={styles.contentHost}>
+            <Animated.View style={[styles.content, incoming && {
+              opacity: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+              transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, 18 * incoming.direction] }) }],
+            }]}>{renderContent(tip)}</Animated.View>
+            {nextTip && incoming ? <Animated.View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
+              style={[styles.content, StyleSheet.absoluteFillObject, {
+                opacity: progress,
+                transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [-18 * incoming.direction, 0] }) }],
+              }]}>{renderContent(nextTip)}</Animated.View> : null}
           </View>
-        ) : null}
+        </Pressable>
       </View>
-    </Pressable>
+      {tips.length > 1 ? <View style={styles.dots}>
+        {tips.map((item, i) => <Pressable key={item.title} onPress={() => selectRef.current(i)}
+          style={styles.dotTarget} accessibilityRole="button" accessibilityLabel={item.title}
+          accessibilityState={{ selected: i === current }}>
+          <View style={[styles.dot, i === current && styles.dotActive]} />
+        </Pressable>)}
+      </View> : null}
+    </View>
   );
 }
-
 const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    borderRadius: 20,
-    overflow: 'hidden',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#D9DDFB',
-  },
-  iconDisc: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  textWrap: { flex: 1, minWidth: 0, gap: 2 },
-  title: {
-    ...typography.body,
-    color: '#4338CA',
-    fontWeight: '900',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  body: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  dots: { flexDirection: 'row', gap: 5, marginTop: 6, alignSelf: 'flex-start' },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#C7D2FE' },
-  dotActive: { backgroundColor: '#6366F1', width: 16 },
+  heading: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  headingText: { ...typography.body, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  viewport: { overflow: 'hidden' },
+  card: { minHeight: 112, borderRadius: 18, overflow: 'hidden', justifyContent: 'center', padding: spacing.md },
+  contentHost: { minHeight: 80, justifyContent: 'center' },
+  content: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconDisc: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#FFFFFF22', alignItems: 'center', justifyContent: 'center' },
+  textWrap: { flex: 1, minWidth: 0, gap: 5 },
+  title: { ...typography.body, fontWeight: '800', color: '#FFFFFF', textAlign: RTL_LABEL_ALIGN },
+  body: { ...typography.caption, color: '#E4ECFF', textAlign: RTL_LABEL_ALIGN, lineHeight: 21 },
+  dots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 2 },
+  dotTarget: { width: 32, height: 44, alignItems: 'center', justifyContent: 'center' },
+  dot: { width: 6, height: 6, borderRadius: 4, backgroundColor: '#CCD2E0' },
+  dotActive: { width: 21, backgroundColor: '#294EC3' },
 });

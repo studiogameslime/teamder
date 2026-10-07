@@ -23,6 +23,7 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MenuIcon } from '@/components/MenuIcon';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -628,11 +629,7 @@ export function ChatView({
                   {it.redCard ? (
                     <RedCardGlyph size={18} />
                   ) : (
-                    <Ionicons
-                      name={it.icon}
-                      size={18}
-                      color={it.danger ? colors.danger : colors.text}
-                    />
+                    <MenuIcon name={it.icon} size={24} color={it.danger ? colors.danger : colors.primaryDark} />
                   )}
                   <Text style={[styles.menuItemText, it.danger && { color: colors.danger }]}>
                     {it.label}
@@ -1015,11 +1012,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   // Floating context menu next to a message.
-  menuBackdrop: { flex: 1, backgroundColor: 'transparent' },
+  menuBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.18)' },
   actionMenu: {
     position: 'absolute',
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.divider,
     paddingVertical: 4,
     shadowColor: '#000',
     shadowOpacity: 0.2,
@@ -1031,14 +1030,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 11,
+    paddingVertical: 13,
+    minHeight: 50,
     paddingHorizontal: 14,
   },
   menuItemBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  menuItemText: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  menuItemText: { ...typography.body, fontWeight: '600', flexShrink: 1, color: colors.text, textAlign: RTL_LABEL_ALIGN },
   // "… מקליד" line just above the composer.
   typingWrap: { paddingHorizontal: spacing.md, paddingBottom: 2 },
   typingText: {

@@ -20,8 +20,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MenuIcon } from '@/components/MenuIcon';
 import { UserAvatar } from '@/components/UserAvatar';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
 export interface MenuAnchor {
   x: number;
@@ -201,7 +202,7 @@ export function PlayerActionMenu({
             showsVerticalScrollIndicator={false}
           >
             {items.map((it) => {
-              const tint = it.disabled ? colors.textMuted : it.color ?? colors.primary;
+              const tint = it.disabled ? colors.textMuted : it.color ?? colors.primaryDark;
               return (
                 <Pressable
                   key={it.key}
@@ -219,7 +220,7 @@ export function PlayerActionMenu({
                   {it.iconNode ? (
                     <View style={styles.iconSlot}>{it.iconNode}</View>
                   ) : it.icon ? (
-                    <Ionicons name={it.icon} size={20} color={tint} />
+                    <MenuIcon name={it.icon} size={24} color={tint} />
                   ) : null}
                   <View style={styles.itemTextWrap}>
                     <Text style={[styles.itemLabel, { color: it.disabled ? colors.textMuted : colors.text }]}>
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     direction: 'ltr',
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: 18,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
     borderWidth: 1,
@@ -273,8 +274,8 @@ const styles = StyleSheet.create({
   caretUp: { top: -8, borderBottomWidth: 8, borderBottomColor: colors.surface },
   caretDown: { bottom: -8, borderTopWidth: 8, borderTopColor: colors.surface },
   header: {
-    // direction:'ltr' card → row-reverse puts the avatar on the visual RIGHT.
-    flexDirection: 'row-reverse',
+    direction: 'rtl',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.xs,
@@ -286,8 +287,7 @@ const styles = StyleSheet.create({
     ...typography.bodyBold,
     color: colors.text,
     fontWeight: '800',
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
@@ -295,29 +295,29 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   item: {
-    flexDirection: 'row-reverse',
+    direction: 'rtl',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: 11,
+    paddingVertical: 13,
+    minHeight: 50,
     paddingHorizontal: spacing.xs,
     borderRadius: radius.md,
   },
   itemPressed: { backgroundColor: colors.surfaceMuted },
   // Fixed 20-wide slot so a custom glyph (referee card) lines up with the
   // Ionicons (size 20) used by the other rows.
-  iconSlot: { width: 20, alignItems: 'center', justifyContent: 'center' },
+  iconSlot: { width: 24, alignItems: 'center', justifyContent: 'center' },
   itemTextWrap: { flex: 1, minWidth: 0 },
   itemLabel: {
     ...typography.body,
     fontWeight: '700',
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
   },
   itemSub: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
     marginTop: 1,
   },
 });

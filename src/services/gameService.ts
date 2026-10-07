@@ -67,6 +67,7 @@ import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
 import { isAttendedGame } from '@/utils/playedGames';
 import { communityHistoryFacets } from '@/utils/communityHistory';
+import { isPersonalHistoryGame } from '@/utils/personalHistory';
 import {
   eveningPlayState,
   didEveningHappen,
@@ -331,6 +332,22 @@ function playedGameSummary(
     fieldName: g.fieldName,
     format: g.format,
   };
+}
+
+async function loadViewerHistoryStats(
+  game: Parameters<typeof isAttendedGame>[0] & { id: string },
+  viewerId: UserId,
+): Promise<Record<string, unknown> | undefined> {
+  if (!isAttendedGame(game, viewerId)) return undefined;
+  try {
+    const snap = await getDocs(query(collection(getFirebase().db, 'gamePlayerStats'),
+      where('gameId', '==', game.id), where('userId', '==', viewerId), limit(1)));
+    return snap.docs[0]?.data();
+  } catch (err) {
+    logError('getHistoryStats', err, { gameId: game.id });
+    // Secondary scoring can fail without hiding history; render dashes.
+    return undefined;
+  }
 }
 
 async function loadRoundsFor(gameId: string): Promise<MatchRound[]> {
@@ -1787,24 +1804,7 @@ export const gameService = {
         const g = d.data();
         const rounds = await loadRoundsFor(g.id);
         const last = rounds[rounds.length - 1];
-        let stats: Record<string, unknown> | undefined;
-        // Read only THIS viewer's scoring row, only when they attended. Query
-        // includes gameId so rules can prove the same audience as the game;
-        // unlike GET on a missing doc it can also return an empty result.
-        if (viewerId && isAttendedGame(g, viewerId)) {
-          try {
-            const statSnap = await getDocs(query(
-              collection(getFirebase().db, 'gamePlayerStats'),
-              where('gameId', '==', g.id),
-              where('userId', '==', viewerId),
-              limit(1),
-            ));
-            stats = statSnap.docs[0]?.data();
-          } catch (err) {
-            logError('getHistoryStats', err, { gameId: g.id });
-            // Scoring is secondary: keep the history usable and render dashes.
-          }
-        }
+        const stats = viewerId ? await loadViewerHistoryStats(g, viewerId) : undefined;
         return {
           id: g.id,
           groupId: g.groupId,
@@ -1827,20 +1827,34 @@ export const gameService = {
     );
   },
 
-  /**
-   * Games a user actually PLAYED — the personal "games played" feed that
-   * powers the Profile count, History, and Stats.
-   *
-   * Definition (unified 2026-06-21): a game counts as played iff it is a
-   * FINISHED, PAST game where the user is in the final `players[]` and was not
-   * marked `no_show` — `isAttendedGame`, the SAME predicate the Statistics
-   * screen and achievements use, so the "משחקים" count agrees everywhere.
-   * (Previously this used a stricter `draftTeams`-membership gate, which
-   * disagreed with the stats screen for any game where teams weren't drawn.)
-   *
-   * Query is the single-field `participantIds array-contains` (no composite
-   * index needed); the time + attendance filtering happens client-side.
-   */
+  /** Cross-club completed registrations, including non-attendance. Uses the
+   * existing participantIds/startsAt index; does not feed attendance totals. */
+  async getPersonalHistory(userId: UserId, max = 50): Promise<GameSummary[]> {
+    if (!userId) throw new Error('Personal history requires a user');
+    const now = Date.now();
+    if (USE_MOCK_DATA) {
+      return mockGamesV2.filter((g) => isPersonalHistoryGame(g, userId, now))
+        .sort((a, b) => b.startsAt - a.startsAt).slice(0, max)
+        .map((g) => ({ ...playedGameSummary(g),
+          ...communityHistoryFacets(g, g.matches ?? [], userId, undefined, now) }));
+    }
+    const snap = await getDocs(query(col.games(),
+      where('participantIds', 'array-contains', userId),
+      where('startsAt', '<', now), orderBy('startsAt', 'desc'), limit(max),
+    ));
+    return Promise.all(snap.docs.map((d) => d.data())
+      .filter((g) => isPersonalHistoryGame(g, userId, now))
+      .map(async (g) => {
+        const [rounds, stats] = await Promise.all([
+          loadRoundsFor(g.id), loadViewerHistoryStats(g, userId),
+        ]);
+        return { ...playedGameSummary(g),
+          ...communityHistoryFacets(g, rounds, userId, stats, now) };
+      }));
+  },
+
+  /** Actual attended evenings for profile/statistics callers. The canonical
+   * isAttendedGame predicate remains separate from registration history. */
   async getPlayedGames(userId: UserId, max = 50): Promise<GameSummary[]> {
     if (!userId) return [];
     if (USE_MOCK_DATA) {

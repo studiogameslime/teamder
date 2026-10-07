@@ -821,11 +821,13 @@ export function ProfileScreen() {
     playedCount !== null &&
     (localUser?.isGuest || referralCount !== null);
   const homeTips: Tip[] = [
-    { text: he.homeTipAutoTeams, onPress: () => nav.navigate('CommunitiesTab') },
-    { text: he.homeTipInternalRating, onPress: () => nav.navigate('CommunitiesTab') },
-    { text: he.homeTipAvailability, onPress: () => nav.navigate('AvailabilityEdit') },
-    { text: he.homeTipScheduled, onPress: () => nav.navigate('GameTab', { screen: 'GameCreate' }) },
-    { text: he.homeTipCommunity, onPress: () => nav.navigate('CommunitiesTab') },
+    { title: he.homeTipTeamsTitle, icon: 'people-outline', text: he.homeTipAutoTeams, onPress: () => nav.navigate('CommunitiesTab') },
+    { title: he.homeTipAvailabilityTitle, icon: 'calendar-outline', text: he.homeTipAvailability, onPress: () => nav.navigate('AvailabilityEdit') },
+    { title: he.homeTipHistoryTitle, icon: 'time-outline', text: he.homeTipHistory, onPress: () => nav.navigate('History') },
+    { title: he.homeTipStatsTitle, icon: 'stats-chart-outline', text: he.homeTipStats, onPress: () => nav.navigate('Statistics') },
+    { title: he.homeTipScheduledTitle, icon: 'alarm-outline', text: he.homeTipScheduled, onPress: () => nav.navigate('GameTab', { screen: 'GameCreate' }) },
+    { title: he.homeTipInviteTitle, icon: 'person-add-outline', text: he.homeTipInvite, onPress: () => nav.navigate('CommunitiesTab') },
+    { title: he.homeTipSeasonsTitle, icon: 'trophy-outline', text: he.homeTipSeasons, onPress: () => nav.navigate('CommunitiesTab') },
   ];
 
   // ── Home "hero" selection ──────────────────────────────────────────────
