@@ -401,21 +401,21 @@
   {
     "path": "docs/changes/2026-10-08-audit-fixes.md",
     "hashMode": "text-lf",
-    "sha256": "4f8902930e58b3684b044417a898b7c285840bba8466fed77c28e7614f33a1aa",
+    "sha256": "c2591732c1739f15533bf3042500c608eaf0937dd5fb05fde5b27f62076876fc",
     "review": "reviews/additional-rounds-sources.md",
     "auditDate": "2026-10-08"
   },
   {
     "path": "docs/changes/2026-10-08-motion-completion.md",
     "hashMode": "text-lf",
-    "sha256": "fec1dfdf4a444bd32442451fcbceee4a306582e80cdbca67d9619fb593f72ef3",
+    "sha256": "24683e1228546925811d1796e75232b285efaabf851f2c79271ae8f101cdf37c",
     "review": "reviews/additional-rounds-sources.md",
     "auditDate": "2026-10-08"
   },
   {
     "path": "docs/changes/2026-10-08-internal-1.1.36.md",
     "hashMode": "text-lf",
-    "sha256": "a10b7a34fa9c9046197589b46518c7abb085df71b4a94dba904603d05a628fa8",
+    "sha256": "4e942b6ae9fbe6aff4dabb4ea473b527a0c824333143546865b9b4ae1950f0ab",
     "review": "reviews/additional-rounds-sources.md",
     "auditDate": "2026-10-08"
   }
