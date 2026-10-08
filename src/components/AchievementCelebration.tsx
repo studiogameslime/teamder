@@ -8,7 +8,8 @@ import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 // a congrats line. Tap / button / auto advances to the next, then onDone.
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   cancelAnimation,

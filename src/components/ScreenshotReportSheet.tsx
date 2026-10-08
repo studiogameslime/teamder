@@ -7,13 +7,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as ScreenCapture from 'expo-screen-capture';
 import { captureScreen } from 'react-native-view-shot';

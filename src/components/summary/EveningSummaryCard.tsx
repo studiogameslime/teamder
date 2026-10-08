@@ -1,521 +1,163 @@
-// EveningSummaryCard — the shareable "סיכום המחזור" card, in the app's LIGHT
-// palette so it belongs inside Teamder (which is light). Wrapped in a forwardRef
-// View so the screen can hand the node to react-native-view-shot's captureRef.
-//
-// Every richer section renders only when its data exists on the model, so the
-// SAME component gracefully covers phase-1 (score+result+goals), phase-2
-// (contribution + held-the-pitch), phase-3 (physical panel) and phase-4
-// (heatmap + DNA radar). A player with no wearable just sees the game sections.
-
-import React, { forwardRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import type { EveningSummaryModel } from '@/services/eveningSummaryService';
-import type { InsightTone } from '@/utils/eveningNarrative';
-import { scoreBand } from '@/utils/eveningNarrative';
+import React, { forwardRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Path, Rect, Line } from 'react-native-svg';
+import { UserAvatar } from '@/components/UserAvatar';
+import { RTL_LABEL_ALIGN } from '@/theme/rtl';
 import { progressLines } from '@/utils/eveningProgress';
+import { eveningCount } from '@/utils/eveningHighlights';
+import type { EveningSummaryModel } from '@/services/eveningSummaryService';
+import type { User } from '@/types';
 
-const C = {
-  bg: '#F9FAFB',
-  surface: '#FFFFFF',
-  tint: '#F3F4F6',
-  line: '#E9EBEF',
-  line2: '#E5E7EB',
-  ink: '#111827',
-  muted: '#6B7280',
-  muted2: '#9CA3AF',
-  blue: '#2563EB',
-  blueDeep: '#1E40AF',
-  blueTint: '#EFF4FF',
-  blueSoft: '#3B5BB5',
-  green: '#16A34A',
-  greenTint: '#ECFDF3',
-  red: '#EF4444',
-  gold: '#CA8A04',
-  goldTint: '#FEF7E0',
-  goldDeep: '#B45309',
-  purple: '#7C3AED',
-  purpleTint: '#F5F1FE',
-  orange: '#EA580C',
-  cyan: '#0891B2',
-  cyanTint: '#E6F6FA',
-};
+const C = { ink: '#111C48', muted: '#69738B', blue: '#2469F4', green: '#178447',
+  red: '#E14850', gold: '#A56B00', purple: '#7D29CF', line: '#E7EBF2' };
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+const metricNames = { goals: 'שערים', assists: 'בישולים', wins: 'ניצחונות' };
+const metricSingular = { goals: 'שער', assists: 'בישול', wins: 'ניצחון' };
+const movement = (n: number) => `${n > 0 ? 'עלית' : 'ירדת'} ${eveningCount(Math.abs(n), 'מקום', 'מקומות')}`;
 
-// Per-tone colours for the adaptive insight strips.
-const TONE_STYLES: Record<InsightTone, { bg: string; border: string; text: string }> = {
-  gold: { bg: C.goldTint, border: '#FDE9AE', text: C.goldDeep },
-  lime: { bg: C.greenTint, border: '#C7EFD6', text: C.green },
-  blue: { bg: C.blueTint, border: '#CFE0FF', text: C.blueDeep },
-  purple: { bg: C.purpleTint, border: '#E7DBFB', text: C.purple },
-  rose: { bg: '#FFF1F2', border: '#FECDD3', text: '#E11D48' },
-};
-
-function initial(name: string): string {
-  const t = (name || '').trim();
-  return t ? Array.from(t)[0] : '⚽';
+function Boot({ color }: { color: string }) {
+  return <Svg width={27} height={27} viewBox="0 0 32 32"><Path
+    d="M24 5l-5 7-6 3-8 3c-3 1-3 6 1 7h22V13l-4-8zM11 16l3 3m2-5l3 3M5 25v3m7-3v3m7-3v3m7-3v3"
+    stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" /></Svg>;
 }
-
-
+function Pitch() {
+  return <View pointerEvents="none" style={StyleSheet.absoluteFill}><Svg width="100%" height="100%" viewBox="0 0 360 185" preserveAspectRatio="none">
+    <Rect x="17" y="17" width="326" height="151" rx="2" stroke="#FFFFFF" opacity={0.13} fill="none" />
+    <Line x1="180" y1="17" x2="180" y2="168" stroke="#FFFFFF" opacity={0.08} />
+    <Circle cx="180" cy="92" r="28" stroke="#FFFFFF" opacity={0.08} fill="none" />
+    <Path d="M17 46h37v93H17m0-68h15v44H17M343 46h-37v93h37m0-68h-15v44h15" stroke="#FFFFFF" strokeWidth={1.5} opacity={0.18} fill="none" />
+  </Svg></View>;
+}
+function Fact({ icon, title, detail, tone = 'blue' }: {
+  icon: IconName; title: string; detail?: string; tone?: 'blue' | 'gold' | 'purple' | 'green' | 'red';
+}) {
+  const colors = { blue: [C.ink, '#EDF5FF', '#D9E8FC'], gold: [C.gold, '#FFF9E8', '#F5E7BF'],
+    purple: [C.purple, '#F7F0FF', '#E9D9FA'], green: [C.green, '#EDF9F2', '#D8F0E2'], red: [C.red, '#FFF2F3', '#F8DBDF'] }[tone];
+  return <View style={[s.fact, { backgroundColor: colors[1], borderColor: colors[2] }]}>
+    <Ionicons name={icon} size={29} color={colors[0]} /><View style={s.flex}>
+      <Text style={[s.factTitle, { color: colors[0] }]}>{title}</Text>
+      {detail ? <Text style={s.factDetail}>{detail}</Text> : null}
+    </View></View>;
+}
 interface Props {
   model: EveningSummaryModel;
+  user?: Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'> | null;
+  onScoreInfo?: () => void;
+  captureMode?: boolean;
 }
-
-export const EveningSummaryCard = forwardRef<View, Props>(
-  function EveningSummaryCard({ model }, ref) {
-    // Header = the EVENING TOTAL mini-games (user request).
-    const roundsMeta = model.totalKnown ? `${model.totalRounds}` : `${model.rounds}`;
-    // Situational strips picked by this player's performance (replaces the old
-    // fixed held-pitch + "worked hard" lines that everyone saw identically).
-    const insights = model.insights ?? [];
-    // Seeded per game+player so one evening always shows the same line.
-    // The score's own colour. A 6.9 and a 9.4 used to share the same gold
-    // tint, so the card looked equally pleased with both.
-    const band = SCORE_BAND_STYLE[scoreBand(model.score)];
-    const progress = progressLines(
-      model.metrics,
-      model.score,
-      `${model.gameId}:${model.uid}`,
-    );
-    return (
-      <View ref={ref} collapsable={false} style={styles.card}>
-        {/* brand */}
-        <View style={styles.brand}>
-          <View style={styles.lockup}>
-            <View style={styles.logo}>
-              <Text style={styles.logoTxt}>⚽</Text>
-            </View>
-            <Text style={styles.brandName}>Teamder</Text>
-          </View>
-          <View style={styles.kicker}>
-            <Text style={styles.kickerTxt}>סיכום המחזור</Text>
-          </View>
-        </View>
-
-        {/* player */}
-        <View style={styles.who}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarTxt}>{initial(model.playerName)}</Text>
-          </View>
-          <View style={styles.whoText}>
-            <Text style={styles.playerName} numberOfLines={1}>
-              {model.playerName}
-            </Text>
-            {/* Club name on its OWN line so a long name isn't truncated
-               together with the counts (user report: "שם המועדון חתוך"). */}
-            <Text style={styles.meta} numberOfLines={1}>
-              {roundsMeta} משחקים · {model.dateLabel}
-            </Text>
-            <Text style={styles.metaClub} numberOfLines={1}>
-              {model.communityName}
-            </Text>
-          </View>
-        </View>
-
-        {/* score hero */}
-        {/* No comparison to the previous evening: it framed a good night as a
-            drop whenever the one before happened to be better, which is the
-            opposite of what this card is for. The score is placed against the
-            people who actually played tonight instead. */}
-        <View
-          style={[
-            styles.score,
-            { backgroundColor: band.bg, borderColor: band.border },
-          ]}
-        >
-          <View style={styles.scoreNumCol}>
-            <Text style={[styles.scoreNum, { color: band.ink }]}>
-              {model.score.toFixed(1)}
-            </Text>
-          </View>
-          <View style={styles.scoreText}>
-            <Text style={[styles.tier, { color: band.ink }]}>
-              {model.title} {model.titleEmoji}
-            </Text>
-            <Text style={styles.scoreLabel}>ציון המחזור שלך</Text>
-            <Text style={styles.scoreSub}>
-              {model.scoreRank != null && model.scoreTotal != null && model.scoreTotal > 1
-                ? `מקום ${model.scoreRank} מתוך ${model.scoreTotal} ששיחקו הערב`
-                : 'ניצחונות, גולים, בישולים ופנדלים'}
-            </Text>
-          </View>
-        </View>
-
-        {/* result band */}
-        <View style={styles.result}>
-          <View style={styles.resCell}>
-            <Text style={[styles.resNum, { color: C.green }]}>{model.wins}</Text>
-            <Text style={styles.resLabel}>ניצחונות</Text>
-          </View>
-          <View style={styles.resDivider} />
-          <View style={styles.resCell}>
-            <Text style={[styles.resNum, { color: C.red }]}>{model.losses}</Text>
-            <Text style={styles.resLabel}>הפסדים</Text>
-          </View>
-          <View style={styles.resDivider} />
-          <View style={styles.resCell}>
-            <Text style={[styles.resNum, { color: C.ink }]}>
-              {model.winRate}
-              <Text style={styles.resPct}>%</Text>
-            </Text>
-            <Text style={styles.resLabel}>אחוז ניצחון</Text>
-          </View>
-        </View>
-
-        {/* community-table standing + movement (computed end-of-evening) */}
-        {model.rank != null ? (
-          <View style={[styles.strip, styles.stripBlue]}>
-            <Text style={styles.stripIco}>🏆</Text>
-            <Text style={styles.stripTxt}>
-              מקום <Text style={styles.stripBoldBlue}>{model.rank}</Text>
-              {model.rankTotal ? ` מתוך ${model.rankTotal}` : ''} בטבלת המועדון
-              {model.rankDelta != null && model.rankDelta !== 0 ? (
-                <Text
-                  style={{
-                    color: model.rankDelta > 0 ? C.green : C.red,
-                    fontWeight: '900',
-                  }}
-                >
-                  {`  ${model.rankDelta > 0 ? '▲' : '▼'}${Math.abs(model.rankDelta)}`}
-                </Text>
-              ) : null}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* ── what moved tonight ────────────────────────────────────────
-            Sentences only. A three-row table of value/place/gap was the first
-            attempt and read like a spreadsheet on a card that is otherwise
-            about how the evening FELT — the owner asked for the sentences and
-            nothing else. The overall place still lives in the strip above. */}
-        {progress.length > 0 ? (
-          <View style={styles.progress}>
-            {progress.map((l) => {
-              const t = PROGRESS_TONE[l.tone];
-              return (
-                <View
-                  key={l.id}
-                  style={[
-                    styles.pRow,
-                    { backgroundColor: t.bg, borderColor: t.border },
-                  ]}
-                >
-                  <Text style={styles.pIco}>{l.icon}</Text>
-                  <Text style={[styles.pTxt, { color: t.text }]}>{l.text}</Text>
-                </View>
-              );
-            })}
-          </View>
-        ) : null}
-
-        {/* goals + assists */}
-        <View style={styles.grid}>
-          <View style={styles.gTile}>
-            <View style={[styles.chip, { backgroundColor: C.goldTint }]}>
-              <Text style={styles.chipTxt}>⚽</Text>
-            </View>
-            <View>
-              <Text style={[styles.gVal, { color: C.gold }]}>{model.goals}</Text>
-              <Text style={styles.gCap}>גולים</Text>
-            </View>
-          </View>
-          <View style={styles.gTile}>
-            <View style={[styles.chip, { backgroundColor: C.purpleTint }]}>
-              <Text style={styles.chipTxt}>🅰️</Text>
-            </View>
-            <View>
-              <Text style={[styles.gVal, { color: C.purple }]}>{model.assists}</Text>
-              <Text style={styles.gCap}>בישולים</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Adaptive insight strips — chosen by what THIS player did (goals,
-            assists, wins, held-pitch, penalties, streaks…). Different players
-            see different lines instead of the old fixed copy. */}
-        {insights.map((ins, i) => {
-          const t = TONE_STYLES[ins.tone];
-          return (
-            <View key={i} style={[styles.strip, { backgroundColor: t.bg, borderColor: t.border }]}>
-              <Text style={styles.stripIco}>{ins.icon}</Text>
-              <Text style={[styles.stripTxt, { color: t.text }]}>{ins.text}</Text>
-            </View>
-          );
-        })}
-
-      </View>
-    );
-  },
-);
-
-// Same visual family as the insight strips below, so the card reads as one
-// thing. The crown gets gold because it's the loudest event on it.
-// 6–7 red, 7–8 amber, 8–9 green, 9–10 blue. The hero is the first thing read;
-// its colour should agree with the number inside it before a word is.
-const SCORE_BAND_STYLE: Record<
-  string,
-  { bg: string; border: string; ink: string }
-> = {
-  low: { bg: '#FEF2F2', border: '#FBD5D5', ink: '#B91C1C' },
-  mid: { bg: '#FFF7ED', border: '#FDE1BE', ink: '#B45309' },
-  good: { bg: C.greenTint, border: '#C7EFD6', ink: '#15803D' },
-  great: { bg: C.blueTint, border: '#DCE6FF', ink: C.blueDeep },
-};
-
-const PROGRESS_TONE: Record<string, { bg: string; border: string; text: string }> = {
-  crown: { bg: C.goldTint, border: '#F7E7BC', text: C.goldDeep },
-  good: { bg: C.greenTint, border: '#C7EFD6', text: '#15803D' },
-  bad: { bg: '#FEF2F2', border: '#FBD5D5', text: '#B91C1C' },
-  snark: { bg: C.goldTint, border: '#F7E7BC', text: C.goldDeep },
-};
-
-const CARD_SHADOW = {
-  shadowColor: '#0F172A',
-  shadowOpacity: 0.06,
-  shadowRadius: 16,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
-} as const;
-
-const styles = StyleSheet.create({
-  // NO alignItems anywhere in here. The app runs under I18nManager.forceRTL,
-  // which mirrors flex — 'flex-end' is the physical LEFT and pinned every line
-  // to the wrong edge. Alignment comes from the global Text default that
-  // App.tsx sets on every Text, exactly like the strips around it.
-  progress: { gap: 6, marginBottom: 10 },
-  pRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  pIco: { fontSize: 17 },
-  pTxt: { flex: 1, fontSize: 13, lineHeight: 19, fontWeight: '700' },
-
-  card: {
-    width: '100%',
-    borderRadius: 28,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.line2,
-    padding: 18,
-    gap: 12,
-    ...CARD_SHADOW,
-  },
-  brand: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  lockup: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  logo: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    backgroundColor: C.blueDeep,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoTxt: { fontSize: 15 },
-  brandName: { color: C.ink, fontSize: 14, fontWeight: '800' },
-  kicker: {
-    backgroundColor: '#DBEAFE',
-    paddingVertical: 6,
-    paddingHorizontal: 11,
-    borderRadius: 999,
-  },
-  kickerTxt: { color: C.blueDeep, fontSize: 11, fontWeight: '800' },
-
-  who: { flexDirection: 'row', alignItems: 'center', gap: 13 },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: '#DBEAFE',
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarTxt: { color: C.blueDeep, fontSize: 20, fontWeight: '800' },
-  whoText: { flex: 1 },
-  playerName: { color: C.ink, fontSize: 21, fontWeight: '800' },
-  meta: { color: C.muted, fontSize: 12, fontWeight: '600', marginTop: 4 },
-  metaClub: { color: C.ink, fontSize: 12.5, fontWeight: '800', marginTop: 1 },
-
-  score: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    padding: 16,
-    borderRadius: 20,
-    backgroundColor: C.goldTint,
-    borderWidth: 1,
-    borderColor: '#FDE9AE',
-  },
-  scoreNum: { color: C.gold, fontSize: 46, fontWeight: '800' },
-  scoreText: { flex: 1 },
-  tier: { color: C.goldDeep, fontSize: 17, fontWeight: '800' },
-  scoreLabel: { color: C.blueDeep, fontSize: 12, fontWeight: '700', marginTop: 3 },
-  scoreSub: { color: C.muted, fontSize: 10, fontWeight: '600', marginTop: 3 },
-
-  result: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    padding: 14,
-    borderRadius: 20,
-    backgroundColor: C.tint,
-    borderWidth: 1,
-    borderColor: C.line,
-  },
-  resCell: { flex: 1, alignItems: 'center' },
-  resDivider: { width: 1, backgroundColor: C.line2, marginVertical: 2 },
-  resNum: { fontSize: 30, fontWeight: '800' },
-  resPct: { fontSize: 15, color: C.muted, fontWeight: '700' },
-  resLabel: { color: C.muted, fontSize: 11, fontWeight: '700', marginTop: 5 },
-
-  strip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    borderRadius: 14,
-    paddingVertical: 11,
-    paddingHorizontal: 13,
-    borderWidth: 1,
-  },
-  stripGold: { backgroundColor: C.goldTint, borderColor: '#FDE9AE' },
-  stripLime: { backgroundColor: C.greenTint, borderColor: '#C7EFD6' },
-  stripBlue: { backgroundColor: C.blueTint, borderColor: '#D8E4FF' },
-  stripIco: { fontSize: 20 },
-  stripTxt: { flex: 1, color: C.ink, fontSize: 13, fontWeight: '700' },
-  stripBoldGold: { color: C.goldDeep, fontWeight: '800' },
-  stripBoldLime: { color: C.green, fontWeight: '800' },
-  stripBoldBlue: { color: C.blueDeep, fontWeight: '900' },
-  scoreNumCol: { alignItems: 'center', gap: 2 },
-
-  contrib: {
-    padding: 15,
-    borderRadius: 20,
-    backgroundColor: C.blueTint,
-    borderWidth: 1,
-    borderColor: '#D8E4FF',
-  },
-  contribTop: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  contribLabel: { color: C.blueDeep, fontSize: 13, fontWeight: '800' },
-  contribBig: { color: C.blueDeep, fontSize: 30, fontWeight: '800' },
-  contribPct: { color: C.muted, fontSize: 15 },
-  bar: { height: 9, borderRadius: 99, backgroundColor: '#D8E4FF', marginTop: 11, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: 99, backgroundColor: C.blue },
-  contribSub: { color: '#5B6B8C', fontSize: 11, fontWeight: '600', marginTop: 9 },
-  contribSubStrong: { color: C.blueDeep, fontWeight: '800' },
-
-  grid: { flexDirection: 'row', gap: 11 },
-  gTile: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    padding: 13,
-    borderRadius: 16,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.line2,
-    ...CARD_SHADOW,
-  },
-  chip: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  chipTxt: { fontSize: 18 },
-  gVal: { fontSize: 24, fontWeight: '800' },
-  gCap: { color: C.muted, fontSize: 11, fontWeight: '700', marginTop: 3 },
-
-  watch: {
-    padding: 15,
-    borderRadius: 20,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.line2,
-    ...CARD_SHADOW,
-  },
-  watchHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  watchTitle: { color: C.ink, fontSize: 14, fontWeight: '800' },
-  wBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: C.cyanTint,
-    borderWidth: 1,
-    borderColor: '#C5EAF2',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-  },
-  wDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.cyan },
-  wBadgeTxt: { color: C.cyan, fontSize: 11, fontWeight: '800' },
-  watchBody: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  wMetrics: { flex: 1, flexDirection: 'row', flexWrap: 'wrap' },
-  wm: { width: '50%', paddingVertical: 6 },
-  wmLabel: { color: C.muted, fontSize: 10, fontWeight: '700' },
-  wmVal: { fontSize: 18, fontWeight: '800', marginTop: 2 },
-  wmUnit: { color: C.muted, fontSize: 10, fontWeight: '700' },
-
-  zones: { marginTop: 15 },
-  zbar: { flexDirection: 'row', height: 14, borderRadius: 99, overflow: 'hidden', gap: 2 },
-  zseg: { height: '100%' },
-  zLegend: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  zl: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  zlDot: { width: 7, height: 7, borderRadius: 3 },
-  zlTxt: { color: C.muted, fontSize: 9, fontWeight: '700' },
-
-  wFoot: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: C.line,
-  },
-  wf: { alignItems: 'center' },
-  wfVal: { color: C.ink, fontSize: 15, fontWeight: '800' },
-  wfLabel: { color: C.muted, fontSize: 10, fontWeight: '700', marginTop: 2 },
-
-  viz: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
-    padding: 15,
-    borderRadius: 20,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.line2,
-    ...CARD_SHADOW,
-  },
-  vizText: { flex: 1 },
-  vizTitle: { color: C.ink, fontSize: 13, fontWeight: '800' },
-  vChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 10 },
-  vChip: {
-    backgroundColor: C.blueTint,
-    borderWidth: 1,
-    borderColor: '#D8E4FF',
-    paddingVertical: 4,
-    paddingHorizontal: 9,
-    borderRadius: 999,
-  },
-  vChipTxt: { color: C.blueDeep, fontSize: 10, fontWeight: '800' },
-
-  fun: {
-    padding: 15,
-    borderRadius: 20,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.line2,
-    ...CARD_SHADOW,
-  },
-  funTitle: { color: C.ink, fontSize: 13, fontWeight: '800', marginBottom: 12 },
-  funRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    paddingVertical: 7,
-    borderTopWidth: 1,
-    borderTopColor: C.line,
-  },
-  funRowFirst: { borderTopWidth: 0 },
-  funIcon: { fontSize: 19, width: 26, textAlign: 'center' },
-  funTxt: { color: '#374151', fontSize: 13, fontWeight: '600' },
+export const EveningSummaryCard = forwardRef<View, Props>(function EveningSummaryCard({ model: m, user, onScoreInfo, captureMode = false }, ref) {
+  const [expanded, setExpanded] = useState(false);
+  const highlights = m.highlights ?? [];
+  const records = m.personalRecords ?? [];
+  const progress = progressLines(m.metrics, m.score, `${m.gameId}:${m.uid}`);
+  const outcomes = m.outcomes?.length === m.rounds ? m.outcomes : undefined;
+  const draws = outcomes?.filter((o) => o === 'draw').length ?? 0;
+  const pen = m.penalties;
+  const hasPen = !!pen && pen.scored + pen.saved + pen.missed + pen.conceded > 0;
+  const stats: Array<{ value: number; label: string; color: string; icon?: IconName }> = [
+    { value: m.rounds, label: 'משחקים', color: C.ink, icon: 'football-outline' },
+    { value: m.wins, label: 'ניצחונות', color: C.green, icon: 'trophy-outline' },
+    { value: m.goals, label: 'שערים', color: C.gold, icon: 'football-outline' },
+    { value: m.assists, label: 'בישולים', color: C.purple },
+  ];
+  return <View ref={ref} collapsable={false} style={s.root}>
+    <View style={s.identity}>
+      <UserAvatar user={user ?? { id: m.uid, name: m.playerName }} size={62} />
+      <View style={s.flex}><Text style={s.name}>{m.playerName}</Text>
+        <Text style={s.identityMeta}>{m.communityName}</Text><Text style={s.date}>{m.dateLabel}</Text></View>
+    </View>
+    <LinearGradient colors={['#2877FF', '#1459DE']} style={s.hero}>
+      <Pitch /><Text style={s.heroLabel}>ציון המחזור</Text><Text style={s.score}>{m.score.toFixed(1)}</Text>
+      <Text style={s.heroRank}>{m.scoreRank != null && m.scoreTotal != null && m.scoreTotal > 1
+        ? `מקום ${m.scoreRank} מתוך ${m.scoreTotal} שחקנים במחזור` : 'הביצועים שלך במחזור'}</Text>
+      {onScoreInfo && !captureMode ? <Pressable onPress={onScoreInfo} accessibilityRole="button" accessibilityLabel="איך מחושב ציון המחזור?" hitSlop={10} style={s.info}>
+        <Ionicons name="information-circle-outline" size={25} color="#FFFFFF" /></Pressable> : null}
+    </LinearGradient>
+    <View style={s.panel}><Text style={s.sectionTitle}>הערב שלך</Text><View style={s.stats}>
+      {stats.map((stat, i) => <View key={stat.label} style={[s.stat, i < 3 && s.statBorder]}>
+        <Text style={[s.statNumber, { color: stat.color }]}>{stat.value}</Text>
+        {stat.icon ? <Ionicons name={stat.icon} size={26} color={stat.color} /> : <Boot color={stat.color} />}
+        <Text style={[s.statLabel, { color: stat.color }]}>{stat.label}</Text></View>)}
+    </View><Text style={s.participation}>{m.totalKnown ? `שיחקת ב־${m.rounds} מתוך ${m.totalRounds} משחקים` : `שיחקת ב־${m.rounds} משחקים`}</Text></View>
+    <View style={s.panel}><Text style={s.sectionTitle}>תוצאות המשחקים שלך</Text>
+      <Text style={s.balance}><Text style={{ color: C.green }}>{eveningCount(m.wins, 'ניצחון', 'ניצחונות')}</Text>{' · '}
+        <Text style={{ color: C.red }}>{eveningCount(m.losses, 'הפסד', 'הפסדים')}</Text>{draws > 0 ? ` · ${draws} תיקו` : ''}</Text>
+      <View style={s.resultRow}><View style={s.rate}>
+        <Text style={s.rateNumber}>{m.wins + m.losses > 0 ? `${m.winRate}%` : '—'}</Text><Text style={s.rateLabel}>ניצחונות</Text>
+      </View><View style={s.flex}>
+        {outcomes ? <View style={s.outcomes}>{outcomes.map((o, i) => <View key={i} accessible
+          accessibilityLabel={`משחק ${i + 1}: ${o === 'win' ? 'ניצחון' : o === 'loss' ? 'הפסד' : 'תיקו'}`}
+          style={[s.outcome, { backgroundColor: o === 'win' ? '#DEF6E8' : o === 'loss' ? '#FFE3E6' : '#EEF0F5' }]}>
+          <Text style={[s.outcomeText, { color: o === 'win' ? C.green : o === 'loss' ? C.red : C.muted }]}>{o === 'win' ? 'נ' : o === 'loss' ? 'ה' : 'ת'}</Text>
+        </View>)}</View> : <View style={s.distribution} accessibilityLabel="חלוקת ניצחונות והפסדים, ללא סדר משחקים">
+          {m.wins > 0 ? <View style={{ flex: m.wins, backgroundColor: '#71CCA0' }} /> : null}
+          {m.losses > 0 ? <View style={{ flex: m.losses, backgroundColor: '#F4A9B0' }} /> : null}
+        </View>}
+        <Text style={s.resultNote}>{outcomes ? 'לפי סדר המשחקים ששיחקת' : 'מאזן המשחקים שהוכרעו'}</Text>
+      </View></View>
+      {draws > 0 ? <Text style={s.note}>אחוז הניצחונות מחושב מהמשחקים שהוכרעו, ללא תיקו.</Text> : null}
+      {m.teamGoalsKnown ? <Text style={s.teamGoals}>הקבוצות שלך: {m.teamGoalsFor} שערי זכות · {m.teamGoalsAgainst} שערי חובה</Text> : null}
+    </View>
+    {highlights.length > 0 || records.length > 0 || hasPen ? <View style={s.section}>
+      <Text style={s.sectionTitle}>רגעי הערב</Text>
+      {(expanded || captureMode ? highlights : highlights.slice(0, 2)).map((h) => <Fact key={h.id} {...h} />)}
+      {highlights.length > 2 && !captureMode ? <Pressable onPress={() => setExpanded(!expanded)} accessibilityRole="button" accessibilityLabel={expanded ? 'הצג פחות רגעי ערב' : 'הצג את כל רגעי הערב'}>
+        <Text style={s.more}>{expanded ? 'הצג פחות' : `הצג עוד ${highlights.length - 2}`}</Text></Pressable> : null}
+      {records.map((r) => <Fact key={r.metric} icon="medal-outline" tone="gold" title={r.kind === 'new' ? 'שיא אישי חדש' : 'השווית את השיא האישי'}
+        detail={`${eveningCount(r.value, metricSingular[r.metric], metricNames[r.metric])} במחזור אחד\n${r.kind === 'new' ? 'השיא הקודם' : 'השיא'} שלך במועדון: ${r.previous}`} />)}
+      {hasPen && pen ? <Fact icon="football-outline" title="הפנדלים שלך" tone="blue" detail={`${pen.scored} הבקעות · ${pen.saved} עצירות\n${pen.missed} החמצות · ${pen.conceded} ספיגות`} /> : null}
+    </View> : null}
+    {m.rank != null || progress.length > 0 ? <View style={s.panel}>
+      <Text style={s.sectionTitle}>המיקום שלך במועדון</Text>
+      {m.rank != null ? <View style={s.standing}><Ionicons name="trophy-outline" size={34} color={C.ink} /><View style={s.flex}>
+        <Text style={s.standingRank}>מקום {m.rank}{m.rankTotal ? ` מתוך ${m.rankTotal}` : ''}</Text>
+        <Text style={s.factDetail}>בטבלת העונה · נקודות משערים ובישולים</Text></View></View> : null}
+      {m.rankDelta != null && m.rankDelta !== 0 ? <Fact icon={m.rankDelta > 0 ? 'trending-up-outline' : 'trending-down-outline'}
+        tone={m.rankDelta > 0 ? 'green' : 'red'} title={`${movement(m.rankDelta)} בטבלה`} /> : null}
+      {progress.map((p) => <Fact key={p.id} icon={p.tone === 'crown' ? 'ribbon-outline' : p.tone === 'bad' ? 'trending-down-outline' : 'trending-up-outline'}
+        title={p.text} tone={p.tone === 'crown' ? 'gold' : p.tone === 'bad' ? 'red' : 'green'} />)}
+      {m.metrics.map((metric) => <View key={metric.key} style={s.metricLine}>
+        <Text style={s.metricTitle}>{metricNames[metric.key]} · מקום {metric.rank} · {metric.value} בעונה</Text>
+        {metric.delta !== 0 && metric.tonight != null && metric.value - metric.tonight > 0 ? <Text style={[s.note, { color: metric.delta > 0 ? C.green : C.red }]}>
+          {movement(metric.delta)}</Text> : null}
+        {metric.aheadName && metric.aheadGap != null && metric.aheadGap > 0 ? <Text style={s.note}>
+          עוד {eveningCount(metric.aheadGap, metricSingular[metric.key], metricNames[metric.key])} כדי להשתוות ל־{'\u2068'}{metric.aheadName}{'\u2069'}</Text> : null}
+      </View>)}
+    </View> : null}
+  </View>;
+});
+const s = StyleSheet.create({
+  root: { gap: 14, backgroundColor: '#F7F9FD', paddingBottom: 4 }, flex: { flex: 1 },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 6, paddingVertical: 6 },
+  name: { fontSize: 23, fontWeight: '800', color: C.ink, textAlign: RTL_LABEL_ALIGN },
+  identityMeta: { fontSize: 14, color: C.muted, textAlign: RTL_LABEL_ALIGN, marginTop: 3 },
+  date: { fontSize: 12, color: C.muted, textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
+  hero: { borderRadius: 23, paddingVertical: 20, paddingHorizontal: 24, alignItems: 'center', overflow: 'hidden' },
+  heroLabel: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
+  score: { fontSize: 72, lineHeight: 88, fontWeight: '800', color: '#FFFFFF', textAlign: 'center' },
+  heroRank: { fontSize: 14, color: '#FFFFFF', textAlign: 'center' }, info: { position: 'absolute', bottom: 14, end: 14 },
+  panel: { backgroundColor: '#FFFFFF', borderRadius: 21, padding: 16, gap: 10, shadowColor: '#102348', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  section: { gap: 9 }, sectionTitle: { fontSize: 19, fontWeight: '800', color: C.ink, textAlign: RTL_LABEL_ALIGN },
+  stats: { flexDirection: 'row', paddingVertical: 6 }, stat: { flex: 1, alignItems: 'center', gap: 6, paddingHorizontal: 2 },
+  statBorder: { borderEndWidth: 1, borderColor: C.line }, statNumber: { fontSize: 31, fontWeight: '800' },
+  statLabel: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  participation: { borderTopWidth: 1, borderColor: C.line, paddingTop: 11, fontSize: 13, color: C.muted, textAlign: 'center' },
+  balance: { fontSize: 15, fontWeight: '700', color: C.muted, textAlign: RTL_LABEL_ALIGN },
+  resultRow: { flexDirection: 'row', alignItems: 'center', gap: 13 },
+  rate: { minWidth: 68, alignItems: 'center', borderEndWidth: 1, borderColor: C.line, paddingEnd: 12 },
+  rateNumber: { fontSize: 29, fontWeight: '800', color: C.green }, rateLabel: { fontSize: 11, color: C.ink },
+  outcomes: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  outcome: { width: 27, height: 27, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, outcomeText: { fontSize: 12, fontWeight: '800' },
+  distribution: { height: 12, borderRadius: 6, overflow: 'hidden', backgroundColor: '#EEF0F5', flexDirection: 'row' },
+  resultNote: { fontSize: 10, color: C.muted, textAlign: RTL_LABEL_ALIGN, marginTop: 5 },
+  note: { fontSize: 12, lineHeight: 18, color: C.muted, textAlign: RTL_LABEL_ALIGN },
+  teamGoals: { borderTopWidth: 1, borderColor: C.line, paddingTop: 9, fontSize: 12, color: C.muted, textAlign: RTL_LABEL_ALIGN },
+  fact: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 12, borderWidth: 1, borderRadius: 16 },
+  factTitle: { fontSize: 14, lineHeight: 21, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  factDetail: { fontSize: 12, lineHeight: 19, marginTop: 2, color: C.muted, textAlign: RTL_LABEL_ALIGN },
+  more: { fontSize: 13, fontWeight: '700', color: C.blue, textAlign: 'center', padding: 7 },
+  standing: { flexDirection: 'row', alignItems: 'center', gap: 12 }, standingRank: { fontSize: 19, fontWeight: '800', color: C.ink, textAlign: RTL_LABEL_ALIGN },
+  metricLine: { borderTopWidth: 1, borderColor: C.line, paddingTop: 9, gap: 3 }, metricTitle: { fontSize: 13, fontWeight: '600', color: C.ink, textAlign: RTL_LABEL_ALIGN },
 });

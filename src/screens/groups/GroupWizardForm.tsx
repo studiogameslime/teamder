@@ -19,7 +19,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -27,6 +26,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeKeyboardAvoidingView as KeyboardAvoidingView } from '@/components/SafeKeyboardAvoidingView';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 import { appAlert } from '@/components/AppDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';

@@ -3,7 +3,8 @@
 // translates the wizard's GameFormValues into a `createGameV2` call.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';

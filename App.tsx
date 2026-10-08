@@ -201,7 +201,8 @@ try {
 import { NavigationContainer } from '@react-navigation/native';
 import { crumbNav, crumbTap } from '@/services/breadcrumbs';
 import * as Linking from 'expo-linking';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
+import { SystemSafeArea } from '@/components/SystemSafeArea';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import {
@@ -1045,11 +1046,12 @@ export default function App() {
     // boundary lives OUTSIDE NavigationContainer on purpose — a crash
     // inside the navigator itself still surfaces here.
     <ErrorBoundary onError={logRenderError}>
-    <SafeAreaProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <StatusBar
         barStyle={isDarkTheme ? 'light-content' : 'dark-content'}
         backgroundColor={colors.bg}
       />
+      <SystemSafeArea>
       <NavigationContainer
         theme={navTheme}
         ref={navigationRef}
@@ -1210,6 +1212,7 @@ export default function App() {
           !viewerIsGuest
         }
       />
+      </SystemSafeArea>
     </SafeAreaProvider>
     </ErrorBoundary>
   );

@@ -8,7 +8,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  Modal,
   PanResponder,
   Pressable,
   StyleSheet,
@@ -16,6 +15,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { captureRef } from 'react-native-view-shot';

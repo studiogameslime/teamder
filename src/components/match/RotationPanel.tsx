@@ -5,7 +5,8 @@
 // surface is display-only. All math lives in rotationEngine.
 
 import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';

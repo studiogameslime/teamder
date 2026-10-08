@@ -1459,5 +1459,159 @@
       "תצוגת הפריט והפעימה נבדקו; מסלול כניסה מתפריט שחקן במועדון וכשל שמירה לא הורצו."
     ],
     "sha256": "126ff444c3476f093ffd42b2383b9fdd7fa729bb14599fe46608d5c2d77d125c"
+  },
+  {
+    "file": "personal-summary-top.jpg",
+    "source": "artifacts\\personal-summary\\top-final.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "d57ccd7 עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "רכיב האפליקציה באמולטור; לא נתוני ייצור ולא אימות הרשאות.",
+      "השיא הוא נתון דמו מפורש; בדיקות ההיסטוריה מדמות תשובות מסד.",
+      "סימוני QA ומצב הפיתוח עשויים להופיע בצילום המסך; כרטיס השיתוף נוצר דרך captureRef ללא שליחה."
+    ],
+    "sha256": "e6be00209c435d4e2ce5378caed435ace2c17a03d7fd8299cf3a75a93df39cc7"
+  },
+  {
+    "file": "personal-summary-highlights.jpg",
+    "source": "artifacts\\personal-summary\\highlights-final.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "d57ccd7 עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "רכיב האפליקציה באמולטור; לא נתוני ייצור ולא אימות הרשאות.",
+      "השיא הוא נתון דמו מפורש; בדיקות ההיסטוריה מדמות תשובות מסד.",
+      "סימוני QA ומצב הפיתוח עשויים להופיע בצילום המסך; כרטיס השיתוף נוצר דרך captureRef ללא שליחה."
+    ],
+    "sha256": "cbd2584ffc43b09e6ea69a92c4bd7a3f44f6c3887013dc2ce291cf30fe204f46"
+  },
+  {
+    "file": "personal-summary-club.jpg",
+    "source": "artifacts\\personal-summary\\club-final.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "d57ccd7 עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "רכיב האפליקציה באמולטור; לא נתוני ייצור ולא אימות הרשאות.",
+      "השיא הוא נתון דמו מפורש; בדיקות ההיסטוריה מדמות תשובות מסד.",
+      "סימוני QA ומצב הפיתוח עשויים להופיע בצילום המסך; כרטיס השיתוף נוצר דרך captureRef ללא שליחה."
+    ],
+    "sha256": "fb1b347e2103b53e6e6380123296c32128a455b7b6756ac9f877796dc48c3bc4"
+  },
+  {
+    "file": "personal-summary-quiet.jpg",
+    "source": "artifacts\\personal-summary\\quiet.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "d57ccd7 עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "רכיב האפליקציה באמולטור; לא נתוני ייצור ולא אימות הרשאות.",
+      "השיא הוא נתון דמו מפורש; בדיקות ההיסטוריה מדמות תשובות מסד.",
+      "סימוני QA ומצב הפיתוח עשויים להופיע בצילום המסך; כרטיס השיתוף נוצר דרך captureRef ללא שליחה."
+    ],
+    "sha256": "c8812e7bf1c80bf4afc1e1fc78d0fcab5f7e8c08f87e29c4530c25dae7e591c1"
+  },
+  {
+    "file": "personal-summary-info.jpg",
+    "source": "artifacts\\personal-summary\\score-info.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "d57ccd7 עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "רכיב האפליקציה באמולטור; לא נתוני ייצור ולא אימות הרשאות.",
+      "השיא הוא נתון דמו מפורש; בדיקות ההיסטוריה מדמות תשובות מסד.",
+      "סימוני QA ומצב הפיתוח עשויים להופיע בצילום המסך; כרטיס השיתוף נוצר דרך captureRef ללא שליחה."
+    ],
+    "sha256": "71a4b8b0a4162934059793e34af7907a6d92663bb9ddbc8c8e8ba99eb401f29b"
+  },
+  {
+    "file": "personal-summary-share.jpg",
+    "source": "artifacts\\personal-summary\\share-card.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "d57ccd7 עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "רכיב האפליקציה באמולטור; לא נתוני ייצור ולא אימות הרשאות.",
+      "השיא הוא נתון דמו מפורש; בדיקות ההיסטוריה מדמות תשובות מסד.",
+      "סימוני QA ומצב הפיתוח עשויים להופיע בצילום המסך; כרטיס השיתוף נוצר דרך captureRef ללא שליחה."
+    ],
+    "sha256": "9584ed88b71ebdaa4a68589e944e8cae4c6fd2e8ab87a96504410de01debb7d5"
+  },
+  {
+    "file": "safe-area-home.jpg",
+    "source": "artifacts\\safe-area\\Profile.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; אמולטור 1080×2400",
+    "sourceCommit": "d57ccd7 עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "בית; מחוות",
+      "צילום אמיתי; סימוני כלי הבדיקה עשויים להופיע. לא נבדקו אייפון, טאבלט, מסך לרוחב או כל דגם מכשיר.",
+      "המרווח העליון כולל מגרעת אמולטור 128 פיקסלים; תחתון במחוות 63 ובכפתורים 126. החלפת ניווט בוצעה זמנית והוחזרה."
+    ],
+    "sha256": "9efed0e3845799c9647330179ecde1be8a6bf6d71e8ea878c37cdb533a9e9c20"
+  },
+  {
+    "file": "safe-area-menu-gestures.jpg",
+    "source": "artifacts\\safe-area\\home-menu.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; אמולטור 1080×2400",
+    "sourceCommit": "d57ccd7 עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "תפריט בית; מחוות",
+      "צילום אמיתי; סימוני כלי הבדיקה עשויים להופיע. לא נבדקו אייפון, טאבלט, מסך לרוחב או כל דגם מכשיר.",
+      "המרווח העליון כולל מגרעת אמולטור 128 פיקסלים; תחתון במחוות 63 ובכפתורים 126. החלפת ניווט בוצעה זמנית והוחזרה."
+    ],
+    "sha256": "b4308c51fa892b860420c2497b3c2978a1c0867d53e71a9a32916585dd813835"
+  },
+  {
+    "file": "safe-area-menu-buttons.jpg",
+    "source": "artifacts\\safe-area\\home-menu-buttons.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; אמולטור 1080×2400",
+    "sourceCommit": "d57ccd7 עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "תפריט בית; שלושה כפתורים",
+      "צילום אמיתי; סימוני כלי הבדיקה עשויים להופיע. לא נבדקו אייפון, טאבלט, מסך לרוחב או כל דגם מכשיר.",
+      "המרווח העליון כולל מגרעת אמולטור 128 פיקסלים; תחתון במחוות 63 ובכפתורים 126. החלפת ניווט בוצעה זמנית והוחזרה."
+    ],
+    "sha256": "a832dce2b31b54e6aca57f85225e10bcf4a03659e707b3168f2cc40dff435588"
+  },
+  {
+    "file": "safe-area-auth.jpg",
+    "source": "artifacts\\safe-area\\auth-sheet.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; אמולטור 1080×2400",
+    "sourceCommit": "d57ccd7 עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "חלון התחברות; ללא התחברות",
+      "צילום אמיתי; סימוני כלי הבדיקה עשויים להופיע. לא נבדקו אייפון, טאבלט, מסך לרוחב או כל דגם מכשיר.",
+      "המרווח העליון כולל מגרעת אמולטור 128 פיקסלים; תחתון במחוות 63 ובכפתורים 126. החלפת ניווט בוצעה זמנית והוחזרה."
+    ],
+    "sha256": "805bdfd5016a2c184a310fc9cc09a94152d4e184b23e7964c1aa79b17cdc8d5c"
+  },
+  {
+    "file": "safe-area-keyboard.jpg",
+    "source": "artifacts\\safe-area\\feedback-keyboard.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; אמולטור 1080×2400",
+    "sourceCommit": "d57ccd7 עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "טופס דיווח; מקלדת פתוחה וכפתור שליחה נראה; לא נשלח דיווח",
+      "צילום אמיתי; סימוני כלי הבדיקה עשויים להופיע. לא נבדקו אייפון, טאבלט, מסך לרוחב או כל דגם מכשיר.",
+      "המרווח העליון כולל מגרעת אמולטור 128 פיקסלים; תחתון במחוות 63 ובכפתורים 126. החלפת ניווט בוצעה זמנית והוחזרה."
+    ],
+    "sha256": "c30d2daf9cd57bb1fecea7bc69fcf557536fdeef010bc9181948a157018b92d2"
   }
 ]

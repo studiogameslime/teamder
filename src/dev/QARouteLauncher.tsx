@@ -44,13 +44,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   Linking,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 
 import { mockGamesV2 } from '@/data/mockData';
 import { MotionPreview } from './MotionPreview';
@@ -117,6 +117,7 @@ const ROUTES: Array<
   // standalone RoundSummary screen is gone. Same destination, new address.
   ['RoundSummary', 'MatchDetails', 'ProfileTab', { gameId: 'gv2-live', initialTab: 'stats' }],
   ['EveningSummary', 'EveningSummary', 'ProfileTab', { gameId: 'gv2-live' }],
+  ['EveningSummaryQuiet', 'EveningSummary', 'ProfileTab', { gameId: 'qa-summary-quiet' }],
   ['History', 'History', 'ProfileTab', { groupId: 'g1' }],
   ['— PROFILE / STATS —', '', ''],
   ['Profile', 'Profile', 'ProfileTab'],
@@ -198,7 +199,8 @@ function focusedTab(): string {
 }
 
 function navigateTo(route: string) {
-  const hit = ROUTES.find(([, r]) => r === route);
+  const hit = ROUTES.find(([label, r]) => r === route || label === route);
+  route = hit?.[1] || route;
   try {
     const nav = navigationRef as unknown as {
       navigate: (r: string, p?: object) => void;

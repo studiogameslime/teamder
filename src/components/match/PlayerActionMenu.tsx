@@ -9,8 +9,6 @@
 
 import React, { useRef } from 'react';
 import {
-  Dimensions,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,8 +16,9 @@ import {
   View,
   type GestureResponderEvent,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, useSafeAreaFrame } from 'react-native-safe-area-context';
 import { MenuIcon } from '@/components/MenuIcon';
 import { UserAvatar } from '@/components/UserAvatar';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -102,6 +101,7 @@ export function PlayerActionMenu({
   // runs on the render after the menu opens and not on the one before, which
   // is the count mismatch that tears a tree down.
   const insets = useSafeAreaInsets();
+  const win = useSafeAreaFrame();
   // The card's REAL height, once it has laid out. The estimate below is a
   // guess (items with a sublabel are taller than 52), and the owner's reports
   // were both of a card whose last rows fell off the bottom — an estimate too
@@ -117,12 +117,9 @@ export function PlayerActionMenu({
 
   if (!target) return null;
 
-  const win = Dimensions.get('window');
-  // ⚠️ `window` is the FULL window, and this app is edge-to-edge from API 35 —
-  // it INCLUDES the status bar and the gesture/navigation bar. Clamping to it
-  // put the bottom of the card underneath the system bar, which is precisely
-  // "הכרטיס למטה חתוך!" and "לא רואים את כל התפריט". The usable band is the
-  // window minus the insets.
+  // The frame is the already-protected viewport. Translate window-measured
+  // anchors into it before positioning the modal; system padding is not added
+  // again here. Keep the content margin and the measured-height clamp.
   const topLimit = insets.top + MARGIN;
   const bottomLimit = win.height - insets.bottom - MARGIN;
   const maxH = Math.max(160, bottomLimit - topLimit);
@@ -131,7 +128,7 @@ export function PlayerActionMenu({
   // a tall menu (card/timeline/yellow/red/remove) then scrolls instead of
   // overflowing.
   const estH = Math.min(measuredH ?? 64 + items.length * 52, maxH);
-  const a = target.anchor;
+  const a = { ...target.anchor, x: target.anchor.x - win.x, y: target.anchor.y - win.y };
   const centerX = a.x + a.width / 2;
   let left = centerX - CARD_W / 2;
   left = Math.max(

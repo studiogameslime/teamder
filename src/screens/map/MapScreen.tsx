@@ -16,7 +16,6 @@
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,6 +24,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';

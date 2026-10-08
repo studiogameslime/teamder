@@ -5,7 +5,8 @@
 // the bottom.
 
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import { SafeKeyboardAvoidingView as KeyboardAvoidingView } from '@/components/SafeKeyboardAvoidingView';
 import { appAlert } from '@/components/AppDialog';
 
 import { ScreenContainer } from '@/components/ScreenContainer';

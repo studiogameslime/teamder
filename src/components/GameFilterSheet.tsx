@@ -18,7 +18,6 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,6 +25,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';

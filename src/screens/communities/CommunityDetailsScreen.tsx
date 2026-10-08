@@ -15,7 +15,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Keyboard,
-  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -24,6 +23,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { appAlert } from '@/components/AppDialog';
 import {
   RouteProp,

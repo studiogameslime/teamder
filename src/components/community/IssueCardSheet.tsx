@@ -8,8 +8,6 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -17,6 +15,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeKeyboardAvoidingView as KeyboardAvoidingView } from '@/components/SafeKeyboardAvoidingView';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { RefereeCard } from '@/components/community/CardCountBadges';
 import { SpringSheet } from '@/components/anim/SpringSheet';
 import { Button } from '@/components/Button';

@@ -13,7 +13,8 @@
 // Mount <AppDialogHost /> exactly once at the app root (App.tsx).
 
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import { create } from 'zustand';
 import { Button } from '@/components/Button';

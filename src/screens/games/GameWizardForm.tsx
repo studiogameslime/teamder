@@ -18,8 +18,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
-  KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -28,6 +26,8 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeKeyboardAvoidingView as KeyboardAvoidingView } from '@/components/SafeKeyboardAvoidingView';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';

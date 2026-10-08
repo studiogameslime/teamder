@@ -17,7 +17,8 @@
 // kicks credit penalty stats through the round-end commit.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Rect, Path, Circle } from 'react-native-svg';
 import {

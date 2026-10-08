@@ -8,6 +8,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { captureRef } from 'react-native-view-shot';
+import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
@@ -73,6 +75,11 @@ export function EveningSummaryScreen() {
         });
       }
       setLoading(false);
+      // Optional history must not block the basic summary. Ignore stale replies.
+      if (m && m.rounds > 0) {
+        const personalRecords = await eveningSummaryService.getPersonalRecords(m);
+        if (alive) setModel({ ...m, personalRecords });
+      }
     })();
     return () => {
       alive = false;
@@ -83,6 +90,8 @@ export function EveningSummaryScreen() {
     if (!cardRef.current || sharing) return;
     setSharing(true);
     try {
+      // Let the capture-only layout commit: all highlights, no interactive controls.
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const uri = await captureRef(cardRef, {
         format: 'png',
         quality: 1,
@@ -122,7 +131,7 @@ export function EveningSummaryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title={he.summaryTitle} />
+      <ScreenHeader title="הסיכום שלי" />
       {loading ? (
         <View style={styles.center}>
           <SoccerBallLoader />
@@ -135,16 +144,21 @@ export function EveningSummaryScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
-          <EveningSummaryCard ref={cardRef} model={model} />
+          <EveningSummaryCard key={`${model.gameId}:${model.uid}`} ref={cardRef} model={model} user={currentUser} captureMode={sharing}
+            onScoreInfo={() => Alert.alert('איך מחושב הציון?',
+              'הציון נע בין 6 ל־10 ומשקלל ניצחונות, שערים ובישולים. לניצחונות המשקל הגבוה ביותר, עם התאמה למספר המשחקים ששיחקת. שערים ובישולים נמדדים מול נתוני המחזורים הקודמים במועדון. במועדון חדש משתמשים ביעדי ברירת מחדל. כשיש מעורבות בפנדלים, גם היא משפיעה.\n\nזהו מדד לנתונים שתועדו, ולא הערכה מלאה של היכולת שלך: הגנה, מסירות ומאמץ אינם נמדדים כאן.\n\nהמיקום במחזור מבוסס על הציון. טבלת העונה במועדון מבוססת על נקודות: שתי נקודות לכל שער ונקודה לכל בישול.', [{ text: 'הבנתי' }])}
+          />
           <Pressable
             style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.9 }]}
             onPress={onShare}
             disabled={sharing}
+            accessibilityRole="button"
+            accessibilityLabel="שתף את הסיכום"
           >
             {sharing ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.shareTxt}>{he.summaryShareCta}</Text>
+              <><Ionicons name="share-outline" size={22} color="#FFFFFF" /><Text style={styles.shareTxt}>שתף את הסיכום</Text></>
             )}
           </Pressable>
         </ScrollView>
@@ -154,12 +168,14 @@ export function EveningSummaryScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: '#F7F9FD' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { ...typography.body, color: colors.textMuted },
-  scroll: { padding: spacing.lg, gap: spacing.lg },
+  scroll: { padding: 16, gap: 16, paddingBottom: 28 },
   shareBtn: {
-    backgroundColor: '#1E40AF',
+    backgroundColor: '#2469F4',
+    flexDirection: 'row',
+    gap: 9,
     borderRadius: 16,
     paddingVertical: 15,
     alignItems: 'center',

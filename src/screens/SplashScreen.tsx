@@ -21,11 +21,11 @@
 // the bar and the button.
 
 import React, { useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ExpoSplash from 'expo-splash-screen';
 import { Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaFrame } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -104,7 +104,7 @@ export function SplashVisual({
    */
   finishMs?: number;
 }) {
-  const { width, height } = useWindowDimensions();
+  const { width, height } = useSafeAreaFrame();
 
   const grow = useSharedValue(0.04);
   const startedRef = useRef(false);

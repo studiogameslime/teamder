@@ -4,7 +4,8 @@
 // Matches the app's other bottom sheets (SpringSheet + Button).
 
 import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import { SpringSheet } from '@/components/anim/SpringSheet';
 import { Button } from '@/components/Button';

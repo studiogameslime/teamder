@@ -7,13 +7,13 @@
 
 import React, { useRef, useState } from 'react';
 import {
-  Dimensions,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
+import { useSafeAreaFrame } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
@@ -50,6 +50,7 @@ interface Anchor {
 }
 
 export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Props) {
+  const screen = useSafeAreaFrame();
   const ref = useRef<View>(null);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
 
@@ -64,7 +65,6 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
   const onCard = (h: number) => {
     setAnchor((a) => {
       if (!a || h <= 0) return a;
-      const screen = Dimensions.get('window');
       const maxTop = screen.height - MARGIN - h;
       const next = Math.max(MARGIN, Math.min(a.top, maxTop));
       return next === a.top ? a : { ...a, top: next };
@@ -74,8 +74,9 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
   const open = () => {
     const node = ref.current;
     if (!node) return;
-    node.measureInWindow((x, y, w, h) => {
-      const screen = Dimensions.get('window');
+    node.measureInWindow((windowX, windowY, w, h) => {
+      const x = windowX - screen.x;
+      const y = windowY - screen.y;
       const iconCenterX = x + w / 2;
       let left = iconCenterX - CARD_W / 2;
       left = Math.max(MARGIN, Math.min(left, screen.width - CARD_W - MARGIN));

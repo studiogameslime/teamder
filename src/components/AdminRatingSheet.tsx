@@ -4,7 +4,8 @@
 // caller (groupService.setAdminRating); this component only collects the value.
 
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { colors, spacing, typography } from '@/theme';
 import { RatingSlider } from '@/components/RatingSlider';
 import { he } from '@/i18n/he';

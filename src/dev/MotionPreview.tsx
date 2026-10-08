@@ -1,6 +1,7 @@
 // DEV + QA_ROUTES + FORCE_MOCK only. Real UI components, local state, no service writes.
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { ManageEquipmentSheet } from '@/components/community/ManageEquipmentSheet';
 import { EquipmentHandoffModal } from '@/components/match/EquipmentHandoffModal';
 import { FillerInterestsSection } from '@/components/match/FillerInterestsSection';

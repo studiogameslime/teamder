@@ -16,7 +16,6 @@ import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
-  Modal,
   Pressable,
   ScrollView,
   Share,
@@ -25,6 +24,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {

@@ -31,6 +31,9 @@ import {
   type RoundHistoryDoc,
 } from '@/utils/eveningStats';
 import type { UserId } from '@/types';
+import { eveningHighlights, type EveningHighlight, type PersonalEveningRecord } from '@/utils/eveningHighlights';
+import { readPersonalEveningRecords } from '@/services/eveningRecordService';
+import { eveningPlayState } from '@/utils/eveningPlayed';
 
 export { eveningScore } from '@/utils/eveningScore';
 
@@ -158,6 +161,13 @@ export interface EveningSummaryModel {
   heldPitch: number;
   teamGoalsFor: number;
   teamGoalsAgainst: number;
+  highlights?: EveningHighlight[];
+  personalRecords?: PersonalEveningRecord[];
+  /** Exact committed outcomes, only when every played round is present. */
+  outcomes?: Array<'win' | 'loss' | 'draw'>;
+  teamGoalsKnown?: boolean;
+  penalties?: NarrativeStats['pen'];
+  recordScope?: { groupId: string; startsAt: number };
 }
 
 const WEEKDAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -179,6 +189,8 @@ interface GameStatRow {
   /** whether gamePlayerStats carried the authoritative team-goals fields (they
    *  were added with this feature; older per-game docs lack them). */
   hasTeamGoals: boolean;
+  pen: NarrativeStats['pen'];
+  hasPenaltyStats: boolean;
 }
 
 function readStatRow(data: Record<string, unknown> | undefined): GameStatRow {
@@ -191,11 +203,21 @@ function readStatRow(data: Record<string, unknown> | undefined): GameStatRow {
     rounds: n(data?.rounds),
     teamGoalsFor: n(data?.teamGoalsFor),
     teamGoalsAgainst: n(data?.teamGoalsAgainst),
-    hasTeamGoals: typeof data?.teamGoalsFor === 'number',
+    hasTeamGoals: ['teamGoalsFor', 'teamGoalsAgainst'].every((k) => typeof data?.[k] === 'number' && Number.isFinite(data[k])),
+    pen: { scored: n(data?.penScored), saved: n(data?.penSaved), missed: n(data?.penMissed), conceded: n(data?.penConceded) },
+    hasPenaltyStats: ['penScored', 'penSaved', 'penMissed', 'penConceded'].some((k) => typeof data?.[k] === 'number'),
   };
 }
 
 function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
+  if (__DEV__ && gameId === 'qa-summary-quiet') {
+    return { gameId, uid, playerName: 'אלירן צברי', communityName: 'כדורגל אנשים טובים', dateLabel: 'יום רביעי, 7.10',
+      rounds: 3, totalRounds: 8, totalKnown: true, wins: 1, losses: 2, winRate: 33, goals: 0, assists: 0,
+      score: eveningScore({ goals: 0, assists: 0, wins: 1, gamesPlayed: 3, pen: { scored: 0, saved: 0, missed: 0, conceded: 0 } }),
+      title: '', titleEmoji: '', insights: [], scoreDelta: null, rank: null, rankTotal: null, rankDelta: null,
+      scoreRank: null, scoreTotal: null, metrics: [], heldPitch: 0, teamGoalsFor: 0, teamGoalsAgainst: 0,
+      highlights: [], personalRecords: [], outcomes: ['loss', 'win', 'loss'], teamGoalsKnown: false };
+  }
   const goals = 4;
   const assists = 3;
   const wins = 5;
@@ -260,6 +282,11 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     heldPitch: 5,
     teamGoalsFor: 17,
     teamGoalsAgainst: 9,
+    highlights: eveningHighlights(mockNarrative, true),
+    personalRecords: [{ metric: 'goals', value: goals, previous: 3, kind: 'new' }],
+    outcomes: ['win', 'win', 'loss', 'win', 'loss', 'win', 'win'],
+    teamGoalsKnown: true,
+    penalties: mockNarrative.pen,
   };
 }
 
@@ -367,7 +394,7 @@ export const eveningSummaryService = {
         heldPitch: rs.heldPitch,
         scoringStreak: rs.scoringStreak,
         bestMiniGame: rs.bestMiniGame,
-        pen: rs.pen,
+        pen: row.hasPenaltyStats ? row.pen : rs.pen,
       };
       const seed = `${gameId}:${uid}`;
       // Prefer the score the SERVER stored. It is the one that ranked this
@@ -384,7 +411,7 @@ export const eveningSummaryService = {
         gamesPlayed: row.rounds,
         goalsFor10,
         assistsFor10,
-        pen: rs.pen,
+        pen: narrative.pen,
       });
       const storedScore = numOrNull(stand?.score);
       const score = storedScore ?? localScore;
@@ -449,6 +476,27 @@ export const eveningSummaryService = {
           : beforeGoals * 2 + beforeAssists;
       const movementReal = beforePoints == null || beforePoints > 0;
 
+      const historyComplete = totalKnown && rs.playedRounds === row.rounds;
+      const detailedHighlights = eveningHighlights(narrative, historyComplete);
+      if (!historyComplete && row.hasPenaltyStats) {
+        // Atomically committed penalty totals do not require a complete event log.
+        const penaltyFacts = eveningHighlights(narrative, true).filter((h) => h.id === 'saved' || h.id === 'penalty');
+        detailedHighlights.push(...penaltyFacts);
+      }
+      const exactTeamGoals = historyComplete && rounds.every((r) => Number.isFinite(r.scoreA) && Number.isFinite(r.scoreB))
+        ? rounds.reduce((sum, r) => {
+          const side = r.teamA?.includes(uid) ? 'A' : r.teamB?.includes(uid) ? 'B' : null;
+          if (side) { sum.for += side === 'A' ? r.scoreA : r.scoreB; sum.against += side === 'A' ? r.scoreB : r.scoreA; }
+          return sum;
+        }, { for: 0, against: 0 }) : undefined;
+      const outcomes = historyComplete ? [...rounds].sort((a, b) => a.at - b.at)
+        .filter((r) => r.teamA?.includes(uid) || r.teamB?.includes(uid))
+        .map((r): 'win' | 'loss' | 'draw' => {
+          if (r.winnerSide === 'tie') return 'draw';
+          const side = r.teamA?.includes(uid) ? 'A' : 'B';
+          return r.winnerSide === side ? 'win' : 'loss';
+        }) : undefined;
+
       return {
         gameId,
         uid,
@@ -475,12 +523,31 @@ export const eveningSummaryService = {
         scoreTotal: numOrNull(stand?.scoreTotal),
         metrics,
         heldPitch: rs.heldPitch,
-        teamGoalsFor,
-        teamGoalsAgainst,
+        teamGoalsFor: row.hasTeamGoals ? teamGoalsFor : exactTeamGoals?.for ?? teamGoalsFor,
+        teamGoalsAgainst: row.hasTeamGoals ? teamGoalsAgainst : exactTeamGoals?.against ?? teamGoalsAgainst,
+        teamGoalsKnown: row.hasTeamGoals || exactTeamGoals != null,
+        highlights: detailedHighlights,
+        personalRecords: [],
+        recordScope: clubRanked && game?.groupId && game.startsAt && eveningPlayState(game) === 'happened'
+          ? { groupId: game.groupId, startsAt: game.startsAt } : undefined,
+        penalties: row.hasPenaltyStats ? row.pen : historyComplete ? rs.pen : undefined,
+        // Reject inconsistent history instead of presenting it as an exact sequence.
+        outcomes: outcomes && outcomes.filter((o) => o === 'win').length === row.wins
+          && outcomes.filter((o) => o === 'loss').length === row.losses ? outcomes : undefined,
       };
     } catch (err) {
       logError('getEveningSummary', err, { gameId, uid });
       return null;
+    }
+  },
+  async getPersonalRecords(model: EveningSummaryModel): Promise<PersonalEveningRecord[]> {
+    if (USE_MOCK_DATA) return model.personalRecords ?? [];
+    if (!model.recordScope || model.rounds <= 0) return [];
+    try {
+      return await readPersonalEveningRecords(model.recordScope.groupId, model.uid, model.recordScope.startsAt, model);
+    } catch (err) {
+      logError('readPersonalEveningRecords', err, { gameId: model.gameId, uid: model.uid });
+      return [];
     }
   },
 };

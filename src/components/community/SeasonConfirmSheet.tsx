@@ -13,13 +13,13 @@
 
 import React from 'react';
 import {
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 
 import { Button } from '@/components/Button';
 import { formatCalendarDate } from '@/utils/seasonDates';

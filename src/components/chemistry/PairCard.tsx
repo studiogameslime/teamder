@@ -10,7 +10,8 @@
 // all considered and left out: the pair either has a story in eight numbers or
 // it does not have one at all.
 import React, { useMemo } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 
 import { UserAvatar } from '@/components/UserAvatar';
 import {

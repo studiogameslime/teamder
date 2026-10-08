@@ -7,7 +7,6 @@
 
 import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
@@ -15,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeKeyboardAvoidingView as KeyboardAvoidingView } from '@/components/SafeKeyboardAvoidingView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '@/components/ScreenHeader';

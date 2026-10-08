@@ -11,7 +11,8 @@
 // screen stays exactly where it was.
 
 import React from 'react';
-import { Modal, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import { SpringSheet } from '@/components/anim/SpringSheet';
 import { PressableScale } from '@/components/PressableScale';

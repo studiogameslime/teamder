@@ -20,13 +20,13 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Linking,
-  Modal,
   Pressable,
   Share,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { joryio } from '@/services/joryio';
 import { HtmlMessageView } from '@/components/joryio/HtmlMessageView';
 import { onboardingService } from '@/services/onboardingService';

@@ -5,7 +5,8 @@
 // campaignService). Fails silent — never blocks the app.
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';

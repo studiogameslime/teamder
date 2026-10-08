@@ -12,7 +12,6 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,6 +19,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
 import { InfoTip } from './InfoTip';

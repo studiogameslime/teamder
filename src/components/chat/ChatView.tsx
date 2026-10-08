@@ -13,10 +13,7 @@ import { useArrivalTracker } from '@/hooks/animations/useArrivalTracker';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   FlatList,
-  KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -25,7 +22,9 @@ import {
   View,
   type GestureResponderEvent,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeKeyboardAvoidingView as KeyboardAvoidingView } from '@/components/SafeKeyboardAvoidingView';
+import { SafeModal as Modal } from '@/components/SafeModal';
+import { SafeAreaView, useSafeAreaFrame } from 'react-native-safe-area-context';
 import { MenuIcon } from '@/components/MenuIcon';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -60,7 +59,7 @@ import { useGameStore } from '@/store/gameStore';
 import type { ChatStackParamList } from '@/navigation/ChatStack';
 import type { ChatMessage, ChatScope } from '@/types';
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+
 const MENU_W = 200;
 
 interface Props {
@@ -120,6 +119,9 @@ export function ChatView({
   // FlatList a fresh `data` reference every render and re-rendered the list.
   const chatRows = useMemo(() => buildChatRows(messages), [messages]);
   const lastTypingWriteRef = useRef(0);
+  const viewport = useSafeAreaFrame();
+  const SCREEN_W = viewport.width;
+  const SCREEN_H = viewport.height;
   const [menu, setMenu] = useState<{ message: ChatMessage; x: number; y: number } | null>(null);
   const [showTerms, setShowTerms] = useState(false);
   // Bumped to re-subscribe after a TRANSIENT listener error (network /
@@ -410,7 +412,7 @@ export function ChatView({
       mine: m.senderId === me?.id,
       canModerate,
     });
-    setMenu({ message: m, x: pageX, y: pageY });
+    setMenu({ message: m, x: pageX - viewport.x, y: pageY - viewport.y });
   };
 
   // The actions available for the menu's target message.

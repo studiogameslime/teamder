@@ -4,7 +4,8 @@
 // live state. Guarded by __DEV__ at the call site; never shipped to production.
 // One animation on screen at a time, with «הפעל שוב» + prev/next.
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeModal as Modal } from '@/components/SafeModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
