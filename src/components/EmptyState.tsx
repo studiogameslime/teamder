@@ -1,3 +1,4 @@
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // EmptyState — the app's single "nothing here yet" block: a centered
 // icon-in-a-circle + title + optional hint, with an optional CTA button.
 //
@@ -50,6 +51,7 @@ export function EmptyState({
 }: Props) {
   return (
     <View style={[fill ? styles.fill : styles.inline, style]}>
+      <ChangeMotion triggerKey={icon ?? title} enter duration={550}>
       {illustration ? (
         illustration
       ) : icon ? (
@@ -57,6 +59,7 @@ export function EmptyState({
           <Ionicons name={icon} size={30} color={tint} />
         </View>
       ) : null}
+      </ChangeMotion>
       <Text style={styles.title}>{title}</Text>
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
       {ctaLabel && onCtaPress ? (

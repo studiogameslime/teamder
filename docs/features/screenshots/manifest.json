@@ -1018,5 +1018,446 @@
       "הצילום מוכיח את המצב המוצג בלבד; ייתכנו הבדלים מול המקור הנוכחי"
     ],
     "sha256": "aee92fcef84547728fd2ecb1fa56f9b19b7ee87e80c035b31f47511fbb08a898"
+  },
+  {
+    "file": "motion-history-all.jpg",
+    "source": "artifacts/motion-20261008/history-all.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "6450d5345bc8e14a9df64be204f76ecb93e9c9ab9a86955bb6006bd98fce3b97"
+  },
+  {
+    "file": "motion-history-played.jpg",
+    "source": "artifacts/motion-20261008/history-played.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "4b0b9fd3f9064720440f8780119d80c566417f3356507d7a7388e49e8be023ca"
+  },
+  {
+    "file": "motion-club-history.jpg",
+    "source": "artifacts/map-captures/@motion-club-history-verified.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "2a680ded38f7f48f28ed2b0213cb7b8147c968e3fbc1bee9b3eb4f06d1fb3a75"
+  },
+  {
+    "file": "motion-live-paused.jpg",
+    "source": "artifacts/motion-20261008/live-paused.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "89976699be7592e63a0b01ad59103d6bffbd3f786f09fbc20418629586eebdf1"
+  },
+  {
+    "file": "motion-live-running.jpg",
+    "source": "artifacts/motion-20261008/live-running.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "3051321f4bed05e28270848c19a4c8088136fd430c3934c24dcf8ca04a716fdf"
+  },
+  {
+    "file": "motion-requests-confirmed.jpg",
+    "source": "artifacts/map-captures/Requests.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "4dc84f9a5153364805ab72d10fb602ce3d2407bb4505471ea6ec769c8a038cc2"
+  },
+  {
+    "file": "motion-draft-picked.jpg",
+    "source": "artifacts/map-captures/@motion-draft-picked.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "e4aaf10522199fea398605408183e7b2810ba61b9b8a2f4bb25f28f55bd80265"
+  },
+  {
+    "file": "motion-availability-selected.jpg",
+    "source": "artifacts/motion-20261008/availability-selected.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "7c38611a5715d76ba8cbda43ca5ae4dd077c1892b9e34030119060a7641cc2a0"
+  },
+  {
+    "file": "motion-cover-changed.jpg",
+    "source": "artifacts/motion-20261008/cover-changed.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "b5e4ffd3de10c79901e983fa21e3bbfed033b17e9fe68ccc7ec336e425bdbed8"
+  },
+  {
+    "file": "motion-cover-picker.jpg",
+    "source": "artifacts/map-captures/@motion-cover-picker.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "41049d7b8d14bca4058b61303e268335a33d82575fdeb0248a601ba7726724e5"
+  },
+  {
+    "file": "motion-stats-no-duplicate.jpg",
+    "source": "artifacts/map-captures/@motion-stats-proof.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "f9ec1490603e81399445f0d2c70576054df3e956306a340ba87e7106372fa3e2"
+  },
+  {
+    "file": "motion-match-players.jpg",
+    "source": "artifacts/map-captures/@motion-sticky-before.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "e9fc812ec5ed6ef37a511a3b6981a4ef359b1dbc2207ab73eb42fb9f8003bd02"
+  },
+  {
+    "file": "motion-achievements-list.jpg",
+    "source": "artifacts/map-captures/Achievements.jpg",
+    "platform": "Android",
+    "environment": "נתוני דמו בפיתוח; ללא כתיבה לנתוני משתמשים",
+    "sourceCommit": "9ec0dfd + שינויים מקומיים לא מקומטים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך מרונדר; אינו אימות גרסת החנות או שרת הייצור",
+      "צילום סטטי אינו מוכיח רציפות תנועה; ההקלטות נשמרו ב־artifacts/motion-20261008"
+    ],
+    "sha256": "97e4457b0164838dc2edd8ae583c1987e819bf0802319287f012ce9ca5ed9cf6"
+  },
+  {
+    "file": "audit-fix-BlockedUsers.jpg",
+    "source": "artifacts\\map-captures\\BlockedUsers.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "כשל הקמת מנוי בדמו; אין בדיקת חסימות ייצור. נצפתה הודעת ניסיון חוזר במקום רשימה ריקה.",
+      "קיצור מסלולי בדיקה בלבד; ללא פעולה בחשבון ייצור."
+    ],
+    "sha256": "bfd49d22b9aee37bedd572aa90c2e6c960fde42e5aafa94064bc902ff8bedfc1"
+  },
+  {
+    "file": "audit-fix-Requests.jpg",
+    "source": "artifacts\\map-captures\\Requests.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "רשימת פניות רגילה בדמו; מצב כשל המקור ושם חסר נבדקו מבודד, ולא בצילום זה.",
+      "קיצור מסלולי בדיקה בלבד; ללא פעולה בחשבון ייצור."
+    ],
+    "sha256": "a10901e92b6640645f798d1c7fcd48f7f3fe46066b8ab24e0bf6ca60dc7ee1fd"
+  },
+  {
+    "file": "audit-fix-NotificationsSettings.jpg",
+    "source": "artifacts\\map-captures\\NotificationsSettings.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מתגים רגילים בדמו; טעינה מאוחרת וכשל קריאה לא הורצו במסך.",
+      "קיצור מסלולי בדיקה בלבד; ללא פעולה בחשבון ייצור."
+    ],
+    "sha256": "e9528ac0176bab8084bc020d82e89b437cb49238cff27d50ea33ad1e4668cb6d"
+  },
+  {
+    "file": "audit-fix-DraftSetup.jpg",
+    "source": "artifacts\\map-captures\\DraftSetup.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "תפריט שיטות החלוקה בדמו; קפטן בהמתנה ושינוי סגל נבדקו בשירות מבודד.",
+      "קיצור מסלולי בדיקה בלבד; ללא פעולה בחשבון ייצור."
+    ],
+    "sha256": "097e06c2440d4b942e7559302c9170b4982ad59ac9fc52f59ce58d2590d34f96"
+  },
+  {
+    "file": "audit-fix-PlayerCompare.jpg",
+    "source": "artifacts\\map-captures\\PlayerCompare.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מצב יחד בדמו; כלל פחות הפסדים נבדק במודל ולא מוצג בחלק המצולם.",
+      "קיצור מסלולי בדיקה בלבד; ללא פעולה בחשבון ייצור."
+    ],
+    "sha256": "89414cf4835d89e9c46517ddbda39c1bca915634734ca34ed21892403656f6ae"
+  },
+  {
+    "file": "audit-fix-Shootout.jpg",
+    "source": "artifacts\\map-captures\\@audit-shootout-saved.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "בדמו: 2:2, פתיחת פנדלים, אלין בועט מול רון, סימון נכנס; הלוח חזר עם בעיטה אחת ושער אחד לאדומים. כשל שרת וניסיון חוזר נבדקו מבודד בלבד. לא סוים מחזור אמיתי."
+    ],
+    "sha256": "231c57682f111b6bff5f0456d7245afa9951c8c48274a54d05deb243d0c93bd7"
+  },
+  {
+    "file": "audit-fix-Requests-error.jpg",
+    "source": "artifacts\\map-captures\\Requests.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; כשל קריאה יזום",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "כשל קריאה יזום בשירות הפניות בדמו. נצפתה הודעת ניסיון חוזר ולא רשימה ריקה. הזרקת הכשל הוסרה והמקור הוחזר במדויק.",
+      "ללא פעולות בחשבון ייצור."
+    ],
+    "sha256": "1018619255ebfb69c0e917e158cf0954692603a82ff05d1ad96d5c12cf286b2c"
+  },
+  {
+    "file": "audit-fix-Unverified.jpg",
+    "source": "artifacts\\map-captures\\CommunityDetails.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; כשל קריאה יזום",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "כשל קריאה יזום בשירות אימות המחזורים בדמו. כרטיס השגיאה נשאר גלוי. מצב צילום הפרסומת כובה זמנית במסך כדי להציג את תצוגת המוצר הרגילה; המקור וכל הזרקת הכשל הוחזרו במדויק.",
+      "ללא פעולות בחשבון ייצור."
+    ],
+    "sha256": "edc3469cda49e673c9b87619bbc8ff3dc830df88c735b4b6f586f03370af1b95"
+  },
+  {
+    "file": "audit-fix-Cover.jpg",
+    "source": "artifacts\\map-captures\\CommunityDetails.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; כשל קריאה יזום",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "רקע נטען בתצוגת המוצר הרגילה בדמו. כשל קריאה יזום בכרטיס אימות המחזורים אינו כשל תמונה; טעינה מרוחקת וכשל תמונה אינם מוכחים בצילום זה.",
+      "ללא פעולות בחשבון ייצור."
+    ],
+    "sha256": "edc3469cda49e673c9b87619bbc8ff3dc830df88c735b4b6f586f03370af1b95"
+  },
+  {
+    "file": "motion-completion-registration.jpg",
+    "source": "artifacts/motion-completion/registration-avatar.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתונים מקומיים בלבד",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "תצוגת רכיב ההרשמה המקורי בתוך חלונית בדיקת הנפשות. האישור מקומי בלבד, ללא הרשמה לשרת. התמונה מראה את האווטאר בזמן התנועה; היעד אינו תא סגל מדוד.",
+      "צילום אמולטור אמיתי; אינו אישור בדיקה באייפון או במכשיר חלש."
+    ],
+    "sha256": "8f77852204b9880b2dfbba1629d75f81b490f20056cce212b7a2fcffb228c1d9"
+  },
+  {
+    "file": "motion-completion-roster.jpg",
+    "source": "artifacts/motion-completion/registration-button.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתונים מקומיים בלבד",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "TeamScore המקורי לאחר הוספת השחקן השלישי במצב מקומי. אין כאן אישור שירות או הוכחה לממיר מסד. הסרטון מתעד את שינוי ההרכב.",
+      "צילום אמולטור אמיתי; אינו אישור בדיקה באייפון או במכשיר חלש."
+    ],
+    "sha256": "f5b3176b1207bfb6374003f5a636d26e74d5e6cd9a427465b24983f8522d8ff9"
+  },
+  {
+    "file": "motion-completion-waitlist.jpg",
+    "source": "artifacts/motion-completion/waitlist.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתונים מקומיים בלבד",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "UpcomingRoundCard המקורי: המשתמש ראשון בתור בדמו מקומי. לא בוצעה הצטרפות למחזור אמיתי.",
+      "צילום אמולטור אמיתי; אינו אישור בדיקה באייפון או במכשיר חלש."
+    ],
+    "sha256": "7525fa400961b078ea2a38945d020d64c997d133cf99527dd832b037933a66d7"
+  },
+  {
+    "file": "motion-completion-equipment.jpg",
+    "source": "artifacts/motion-completion/equipment-selected.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתונים מקומיים בלבד",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "EquipmentHandoffModal המקורי עם בחירת כמה מחזיקים בדמו. הכדור והחולצות מסומנים בנפרד; לא נשמרה מסירה אמיתית.",
+      "צילום אמולטור אמיתי; אינו אישור בדיקה באייפון או במכשיר חלש."
+    ],
+    "sha256": "b0d33a5c070163f5975eba0ae70b717395780260fb36827703711f4457599ecb"
+  },
+  {
+    "file": "motion-completion-reduced.jpg",
+    "source": "artifacts/motion-completion/reduced-equipment.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתונים מקומיים בלבד",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "בחירת כדור בחלונית הציוד עם animator_duration_scale=0 במערכת. ההגדרה המקורית הייתה חסרה והוחזרה במחיקת הערך. ההקלטה מוכיחה בחירה ללא אייקון מעופף; אין אימות כל רכיבי האפליקציה במצב זה.",
+      "צילום אמולטור אמיתי; אינו אישור בדיקה באייפון או במכשיר חלש."
+    ],
+    "sha256": "47e41b3c28ad9e74766bb5e1d6b990a558164bfea79973c9cd84d2d5eaf22132"
+  },
+  {
+    "file": "motion-completion-scopes.jpg",
+    "source": "artifacts/motion-completion/scope-current.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתונים מקומיים בלבד",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "בורר הטווח פתוח במסך סטטיסטיקת מועדון בדמו. התווית שנבחרה היא כל הזמנים, למרות שם קובץ המקור; צילום זה אינו אימות נכונות המספרים או עונה נוכחית.",
+      "צילום אמולטור אמיתי; אינו אישור בדיקה באייפון או במכשיר חלש."
+    ],
+    "sha256": "17d0db19d6f629167d779b75b921a42c15e6606a4f27da6265bde4d3723504dd"
+  },
+  {
+    "file": "motion-completion-compare.jpg",
+    "source": "artifacts/motion-completion/player-compare.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתונים מקומיים בלבד",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מסך השוואת צמד בדמו במצב יחד, עונה נוכחית. צילום מצב יציב אינו הוכחת החלפת טווח או כשל טעינה.",
+      "צילום אמולטור אמיתי; אינו אישור בדיקה באייפון או במכשיר חלש."
+    ],
+    "sha256": "d23dd83963da018c88614fdb61a0a2305e74685df54691bdf0c3b73febf2f982"
+  },
+  {
+    "file": "motion-completion-chat.jpg",
+    "source": "artifacts/motion-completion/chat-arrivals.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתונים מקומיים בלבד",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "ChatView המקורי עם מנוי זמני שסיפק שלוש הודעות מקומיות. כל ההודעות שייכות למזהה הצופה; אין הוכחה לקבלת הודעה מאדם אחר, למסירה לשרת או לקריאה. המנוי הזמני הוסר והמקור הוחזר במדויק.",
+      "צילום אמולטור אמיתי; אינו אישור בדיקה באייפון או במכשיר חלש."
+    ],
+    "sha256": "ae81e4cae94fea4973447764f29b67822c8fd588fb17e5cdd1c58dc3104fb420"
+  },
+  {
+    "file": "motion-completion-filler.jpg",
+    "source": "artifacts/motion-completion/filler-approved.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתונים מקומיים בלבד",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "FillerInterestsSection המקורי אחרי תשובת הצלחה מדומה. קדמה לה תשובת כשל יזומה שהשאירה את המועמד. הזרקת שתי התשובות הוסרה והמקור הוחזר במדויק; לא אושר ממלא במועדון אמיתי.",
+      "צילום אמולטור אמיתי; אינו אישור בדיקה באייפון או במכשיר חלש."
+    ],
+    "sha256": "cd6513e42c9cc19df7264f6e44f360f0ca7784d677fc586bee8b241c771ba128"
+  },
+  {
+    "file": "motion-completion-filler-failed.jpg",
+    "source": "artifacts/motion-completion/filler-failed.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתונים מקומיים בלבד",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מועמד עדיין ברשימה לאחר כשל אישור יזום בדמו. אין שורת הצלחה. הודעת השגיאה אינה גלויה בצילום זה; לא הוכחה נראות ההודעה מעל החלונית.",
+      "צילום אמולטור אמיתי; אינו אישור בדיקה באייפון או במכשיר חלש."
+    ],
+    "sha256": "6fec6e752b938e4e017329911f1bb99b847d0be010507ea5f2046398a66db30b"
+  },
+  {
+    "file": "motion-completion-map.jpg",
+    "source": "artifacts/motion-completion/map-selected.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתונים מקומיים בלבד",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "MapWebView ו־MapScreen המקוריים עם שני סמנים בדמו ובחירת סמן אחד. אריחי הרקע לא נטענו באימולטור ולכן הוחלפו זמנית בסגנון מקומי ריק לצילום; הסגנון המקורי הוחזר במדויק. אין הוכחה לטעינת מפה מרוחקת או שכבה משנית.",
+      "צילום אמולטור אמיתי; אינו אישור בדיקה באייפון או במכשיר חלש."
+    ],
+    "sha256": "f996b5ca6035d2039cd0c5ca72e2b2c48b593899af82307467c03f8c94be9f40"
+  },
+  {
+    "file": "motion-completion-manage-equipment.jpg",
+    "source": "artifacts/motion-completion/manage-equipment.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; חלונית בדיקה מקומית",
+    "sourceCommit": "9ec0dfd עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "ManageEquipmentSheet המקורית בתוך חלונית בדיקה עם initial מקומי. נבחר מתג כדור; בהקלטה גם מתג גופיות. לא נלחץ שמור ולא בוצעה כתיבת שירות.",
+      "תצוגת הפריט והפעימה נבדקו; מסלול כניסה מתפריט שחקן במועדון וכשל שמירה לא הורצו."
+    ],
+    "sha256": "126ff444c3476f093ffd42b2383b9fdd7fa729bb14599fe46608d5c2d77d125c"
   }
 ]

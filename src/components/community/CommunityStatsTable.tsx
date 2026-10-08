@@ -1,3 +1,4 @@
+import { ReorderMotion } from '@/components/anim/ChangeMotion';
 // CommunityStatsTable — the club's cumulative per-player stats table, shown in
 // community details. One row per player: גולים · משחקים · ניצחונות · הפסדים ·
 // בישולים, accumulated over the player's whole time in the club (never resets).
@@ -359,8 +360,8 @@ export function CommunityStatsTable({
           {rows.map((r, i) => {
             const p = people[r.uid];
             return (
+              <ReorderMotion key={r.uid} index={i} rowHeight={ROW_H}>
               <Pressable
-                key={r.uid}
                 style={styles.nameCell}
                 onPress={() => openCard(r.uid)}
                 accessibilityRole="button"
@@ -379,6 +380,7 @@ export function CommunityStatsTable({
                   {p ? firstName(p.name) : '—'}
                 </Text>
               </Pressable>
+              </ReorderMotion>
             );
           })}
         </View>
@@ -412,8 +414,8 @@ export function CommunityStatsTable({
                 );
               })}
             </View>
-            {rows.map((r) => (
-              <View key={r.uid} style={[styles.gridRow, styles.dataRow]}>
+            {rows.map((r, i) => (
+              <ReorderMotion key={r.uid} index={i} rowHeight={ROW_H} style={[styles.gridRow, styles.dataRow]}>
                 {cols.map((c) => (
                   <Text
                     key={c.key}
@@ -426,7 +428,7 @@ export function CommunityStatsTable({
                     {c.cell(r)}
                   </Text>
                 ))}
-              </View>
+              </ReorderMotion>
             ))}
           </View>
         </ScrollView>

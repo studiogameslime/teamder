@@ -500,7 +500,7 @@ export const notificationsService = {
       return prefs ?? null;
     } catch (err) {
       logError('loadNotificationPreferences', err, { uid });
-      return null;
+      throw err;
     }
   },
 

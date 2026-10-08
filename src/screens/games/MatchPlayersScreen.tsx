@@ -13,6 +13,9 @@
 //
 // Tap → PlayerCard.
 
+import { ArrivalMotion } from '@/components/anim/ArrivalMotion';
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
+import { useArrivalTracker } from '@/hooks/animations/useArrivalTracker';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   type GestureResponderEvent,
@@ -129,6 +132,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
   const groups = useGroupStore((s) => s.groups);
   const currentUser = useUserStore((s) => s.currentUser);
 
+  const { arrivals, observe: observeRoster } = useArrivalTracker(gameId ?? '');
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyOffer, setBusyOffer] = useState(false);
@@ -147,6 +151,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
     setLoading(true);
     try {
       const g = await gameService.getGameById(gameId);
+      if (g) observeRoster(g.players);
       setGame(g);
       if (g) {
         const uids = Array.from(
@@ -175,7 +180,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
     } finally {
       setLoading(false);
     }
-  }, [gameId, hydratePlayers]);
+  }, [gameId, hydratePlayers, observeRoster]);
 
   useEffect(() => {
     reload();
@@ -194,6 +199,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
   useGameEvents(gameId, {
     onUpdate: useCallback(
       (g: Game) => {
+        observeRoster(g.players);
         setGame((prev) => (prev ? g : prev));
         const uids = Array.from(
           new Set([
@@ -208,7 +214,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
         );
         if (uids.length > 0) hydratePlayers(uids);
       },
-      [hydratePlayers],
+      [hydratePlayers, observeRoster],
     ),
   });
 
@@ -666,6 +672,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
                 <PlayerRow
                   key={e.user.id}
                   entry={e}
+                  arrivalAt={arrivals[e.user.id]}
                   showDivider={i > 0}
                   metaLine={
                     e.joinedAt
@@ -1182,6 +1189,7 @@ function Empty() {
 
 function PlayerRow({
   entry,
+  arrivalAt,
   showDivider,
   onPress,
   toneRight,
@@ -1199,6 +1207,7 @@ function PlayerRow({
   metaLine,
 }: {
   entry: RosterEntry;
+  arrivalAt?: number;
   showDivider: boolean;
   /** Row-body tap. Omitted for registered players (⋮ is the only interaction). */
   onPress?: () => void;
@@ -1252,7 +1261,7 @@ function PlayerRow({
         accessibilityRole={onPress ? 'button' : undefined}
         accessibilityLabel={user.name}
       >
-        <PlayerIdentity user={user} size="sm" />
+<ChangeMotion triggerKey={`${!!holdsBall}:${!!holdsJerseys}`} pulse><ArrivalMotion at={arrivalAt}><PlayerIdentity user={user} size="sm" /></ArrivalMotion></ChangeMotion>
         <View style={styles.rowBody}>
           <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>

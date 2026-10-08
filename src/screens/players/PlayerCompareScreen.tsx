@@ -21,6 +21,7 @@
 // The pairing never changes between sections: a colour that meant "you" in the
 // hero cannot mean the opponent four cards down.
 
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -235,6 +236,7 @@ export function PlayerCompareScreen() {
           }}
         />
 
+        <ChangeMotion triggerKey={`${scope.k}:${scope.k === 'season' ? scope.id : ''}:${loading}`} duration={220} style={{ gap: BLOCK }}>
         {loading ? (
           <View style={styles.center}>
             <SoccerBallLoader />
@@ -248,6 +250,7 @@ export function PlayerCompareScreen() {
         ) : (
           <HeadToHeadTab model={model} />
         )}
+        </ChangeMotion>
       </ScrollView>
 
       {/* The share asset, rendered off-screen.

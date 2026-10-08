@@ -64,6 +64,7 @@ import { serverNow } from '@/services/serverClock';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult, teamSizeFromFormat } from '@/types';
 import { RotationPanel } from '@/components/match/RotationPanel';
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import { WinnerPickerModal } from '@/components/match/WinnerPickerModal';
 import { Shootout, TieDecisionModal } from '@/components/match/Shootout';
 import { LiveScoreboardCard } from '@/components/match/LiveScoreboardCard';
@@ -1900,7 +1901,8 @@ export function AdvancedLiveMatchScreen() {
               title). Show the panel only when the start-control ISN'T up:
               live rounds, or a non-admin viewer in preview. */}
           {!showStartCtrl ? (
-            <RotationPanel
+            <ChangeMotion triggerKey={rotation?.round ?? 0} duration={280}>
+             <RotationPanel
               draftTeams={draftTeams ?? undefined}
               rotation={rotation ?? previewRotation ?? undefined}
               playersMap={playersMap}
@@ -1924,6 +1926,7 @@ export function AdvancedLiveMatchScreen() {
               onMovePlayer={onMovePlayer}
               perTeam={perTeam}
             />
+            </ChangeMotion>
           ) : null}
         </View>
       </ScrollView>

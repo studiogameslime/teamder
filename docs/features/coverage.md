@@ -184,3 +184,7 @@
 | `CommunityStats` | [ProfileStack.tsx](../../src/navigation/ProfileStack.tsx) | `CommunityStatsScreen` |
 | `CommunityHistory` | [ProfileStack.tsx](../../src/navigation/ProfileStack.tsx) | `CommunityHistoryScreen` |
 | `GameCreate` | [ProfileStack.tsx](../../src/navigation/ProfileStack.tsx) | `GameCreateScreen` |
+
+## חלונית בדיקת הנפשות — 8.10.2026
+
+`src/dev/MotionPreview.tsx` נפתחת דרך QARouteLauncher ב־`footy://qa/_motion` ורק עם __DEV__, QA_ROUTES=1 ו־FORCE_MOCK=1. אינה מסך מוצר או מסלול רשום במחסניות הלקוח; מציגה את רכיבי ההרשמה, ההמתנה, TeamScore וחלוניות הציוד עם מצבים מקומיים. פירוט ומגבלות: [תשתית תנועה](shared/menus-and-motion.md), [יומן ההשלמה](../changes/2026-10-08-motion-completion.md). אין לראות אותה כהוכחת כתיבת שירות או כניסה למסכי המוצר המלאים.

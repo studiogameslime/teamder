@@ -71,6 +71,10 @@ export function UnverifiedEveningsCard({
 }) {
   const [items, setItems] = useState<UnverifiedEvening[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
+
+  useEffect(() => { setItems(null); }, [groupId, isAdmin]);
 
   const load = useCallback(() => {
     if (!isAdmin) {
@@ -78,13 +82,14 @@ export function UnverifiedEveningsCard({
       return;
     }
     let alive = true;
+    setLoadFailed(false);
     void eveningVerifyService.listUnverified(groupId).then((r) => {
       if (alive) setItems(r);
-    });
+    }).catch(() => { if (alive) setLoadFailed(true); });
     return () => {
       alive = false;
     };
-  }, [groupId, isAdmin]);
+  }, [groupId, isAdmin, retryTick]);
 
   useEffect(() => load(), [load]);
 
@@ -101,17 +106,18 @@ export function UnverifiedEveningsCard({
 
   // Nothing while loading, and nothing when there is nothing to ask — which is
   // the normal state of every club.
-  if (!isAdmin || !items || items.length === 0) return null;
+  if (!isAdmin || (!loadFailed && (!items || items.length === 0))) return null;
 
   return (
     <Card style={styles.card}>
+      {loadFailed && <Pressable accessibilityRole="button" onPress={() => setRetryTick((n) => n + 1)}><Text style={styles.body}>לא ניתן לטעון מחזורים לאימות. {he.retry}</Text></Pressable>}
       <View style={styles.headerRow}>
         <Ionicons name="help-circle-outline" size={18} color={colors.warning} />
         <Text style={styles.title}>{he.unverifiedEveningsTitle}</Text>
       </View>
       <Text style={styles.body}>{he.unverifiedEveningsBody}</Text>
 
-      {items.map((it) => (
+      {(items ?? []).map((it) => (
         <View key={it.id} style={styles.row}>
           <Text style={styles.when} numberOfLines={1}>
             {rowLabel(it.startsAt, it.title, groupName)}

@@ -15,7 +15,33 @@ import { PlayerCompareScreen } from '@/screens/players/PlayerCompareScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
 import { CommunityDetailsPublicScreen } from '@/screens/communities/CommunityDetailsPublicScreen';
 
-export type ChatStackParamList = {
+import type { CommunitiesStackParamList } from './CommunitiesStack';
+import { EmailAuthScreen } from '@/screens/auth/EmailAuthScreen';
+import { PublicGroupsFeedScreen } from '@/screens/communities/PublicGroupsFeedScreen';
+import { RequestsScreen } from '@/screens/RequestsScreen';
+import { CreateGroupScreen } from '@/screens/groups/CreateGroupScreen';
+import { CommunityEditScreen } from '@/screens/communities/CommunityEditScreen';
+import { CommunityPlayersScreen } from '@/screens/communities/CommunityPlayersScreen';
+import { CommunityStatsScreen } from '@/screens/communities/CommunityStatsScreen';
+import { CommunityHistoryScreen } from '@/screens/communities/CommunityHistoryScreen';
+import { PlayerTimelineScreen } from '@/screens/players/PlayerTimelineScreen';
+import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
+import { DraftSetupScreen } from '@/screens/games/DraftSetupScreen';
+import { DraftBoardScreen } from '@/screens/games/DraftBoardScreen';
+import { EveningSummaryScreen } from '@/screens/games/EveningSummaryScreen';
+import { SeasonSummaryScreen } from '@/screens/profile/SeasonSummaryScreen';
+import { MatchRoundsScreen } from '@/screens/games/MatchRoundsScreen';
+import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
+import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
+import { AddMembersScreen } from '@/screens/games/AddMembersScreen';
+import { GameEditScreen } from '@/screens/games/GameEditScreen';
+import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
+import { AdminApprovalScreen } from '@/screens/groups/AdminApprovalScreen';
+import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
+import { GameCreateScreen } from '@/screens/games/GameCreateScreen';
+import { MapScreen, type MapScreenParams } from '@/screens/map/MapScreen';
+
+export type ChatStackParamList = CommunitiesStackParamList & {
   ChatsList: undefined;
   GameChat: { gameId: string };
   CommunityChat: { groupId: string };
@@ -49,6 +75,30 @@ export function ChatStack() {
         name="CommunityDetailsPublic"
         component={CommunityDetailsPublicScreen}
       />
+      <Stack.Screen name="CommunitiesFeed" component={PublicGroupsFeedScreen} />
+      <Stack.Screen name="Requests" component={RequestsScreen} />
+      <Stack.Screen name="CommunitiesMap" component={MapScreen} />
+      <Stack.Screen name="CommunitiesCreate" component={CreateGroupScreen} />
+      <Stack.Screen name="EmailAuth" component={EmailAuthScreen} />
+      <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />
+      <Stack.Screen name="CommunityPlayers" component={CommunityPlayersScreen} />
+      <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
+      <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
+      <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
+      <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
+      <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
+      <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
+      <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
+      <Stack.Screen name="SeasonSummary" component={SeasonSummaryScreen} />
+      <Stack.Screen name="MatchRounds" component={MatchRoundsScreen} />
+      <Stack.Screen name="AddMembers" component={AddMembersScreen} />
+      <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />
+      <Stack.Screen name="AvailablePlayers" component={AvailablePlayersScreen} />
+      <Stack.Screen name="GameEdit" component={GameEditScreen} />
+      <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />
+      <Stack.Screen name="AdminApproval" component={AdminApprovalScreen} />
+      <Stack.Screen name="History" component={HistoryScreen} />
+      <Stack.Screen name="GameCreate" component={GameCreateScreen} />
     </Stack.Navigator>
   );
 }

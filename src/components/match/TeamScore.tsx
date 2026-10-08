@@ -6,6 +6,8 @@
 //     a 3-up avatar grid with names.
 // A blue star badge marks a borrowed filler. Shared by both surfaces.
 
+import { ArrivalMotion } from '@/components/anim/ArrivalMotion';
+import { useArrivalTracker } from '@/hooks/animations/useArrivalTracker';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -103,6 +105,9 @@ export function TeamScore({
   openSlots = 0,
   onOpenSlotPress,
 }: Props) {
+  const { arrivals, observe } = useArrivalTracker(`team:${teamIdx}`);
+  const rosterKey = JSON.stringify(roster.map(m => m.id));
+  useEffect(() => { observe(JSON.parse(rosterKey) as string[]); }, [observe, rosterKey]);
   const star = (
     <View style={styles.star}>
       <Ionicons name="star" size={11} color="#FFFFFF" />
@@ -145,14 +150,14 @@ export function TeamScore({
             const isSource = swapMode && m.id === swapSourceId;
             const avatar = (
               <Blink active={!!swapMode && !isSource}>
-                <View style={isSource ? styles.swapSource : undefined}>
+                <ArrivalMotion at={arrivals[m.id]}><View style={isSource ? styles.swapSource : undefined}>
                   <UserAvatar
                     user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
                     size={size}
                     ring
                   />
                   {m.isFiller ? star : null}
-                </View>
+                </View></ArrivalMotion>
               </Blink>
             );
             // The name and the chip, WITHOUT the avatar — the pressable row

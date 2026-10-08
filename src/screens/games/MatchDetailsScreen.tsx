@@ -1,3 +1,5 @@
+import { HeightReveal } from '@/components/anim/HeightReveal';
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // MatchDetailsScreen — read-mostly view of a single match.
 //
 // Five vertical bands, all left-aligned to the same 16dp gutter:
@@ -234,7 +236,7 @@ function teamsValidity(game: Game): {
   }
   const validIds = new Set<UserId>([
     ...game.players,
-    ...(game.guests ?? []).map((g) => toGuestRosterId(g.id)),
+    ...(game.guests ?? []).filter((g) => !g.waitlisted).map((g) => toGuestRosterId(g.id)),
   ]);
   const cleaned: Record<UserId, LiveMatchZone> = {};
   let hasPlacement = false;
@@ -3077,6 +3079,15 @@ export function MatchDetailsScreen() {
             refreshing={refreshing}
             onRefresh={() => reload({ pullToRefresh: true })}
           >
+            <HeightReveal visible={status === 'waitlist'}>
+              {status === 'waitlist' ? <View style={[styles.teamsPointer, { backgroundColor: '#FFF3E6' }]}>
+                <Ionicons name="hourglass-outline" size={24} color="#C2410C" />
+                <View style={styles.teamsPointerText}>
+                  <Text style={styles.teamsPointerTitle}>{user && game.waitlist.indexOf(user.id) >= 0 ? he.roundWaitlistPlace(game.waitlist.indexOf(user.id) + 1) : he.roundWaitlistNoPlace}</Text>
+                  <Text style={styles.teamsPointerBody}>{he.roundWaitlistSub}</Text>
+                </View>
+              </View> : null}
+            </HeightReveal>
             {/* The teams pointer.
                 
                 The teams UI moved to the שחקנים tab, where the roster it
@@ -3629,8 +3640,8 @@ export function MatchDetailsScreen() {
                       {[...splitTeams]
                         .sort((a, b) => a.index - b.index)
                         .map((t) => (
+                          <ChangeMotion key={t.index} triggerKey={`${game.id}:${teamsAreDraft}:${t.playerIds.join(',')}`} enter duration={300} delay={Math.min(t.index, 3) * 50}>
                           <DraftTeamCard
-                            key={t.index}
                             index={t.index}
                             colorKey={t.colorKey}
                             captain={resolveDraftUser(t.captainId)}
@@ -3644,6 +3655,7 @@ export function MatchDetailsScreen() {
                               });
                             }}
                           />
+                          </ChangeMotion>
                         ))}
                     </View>
                     {isAdmin && teamsAreDraft ? (

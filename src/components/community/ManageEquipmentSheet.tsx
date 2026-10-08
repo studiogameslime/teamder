@@ -7,6 +7,7 @@
 // Mirrors IssueCardSheet's structure (SpringSheet + shared Button) so the
 // community sheets share one animation + button language.
 
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -132,7 +133,7 @@ function ToggleRow({
       accessibilityLabel={label}
     >
       <View style={[styles.toggleIcon, { backgroundColor: iconColor + '18' }]}>
-        <Ionicons name={icon} size={18} color={iconColor} />
+        <ChangeMotion triggerKey={value} pulse><Ionicons name={icon} size={18} color={iconColor} /></ChangeMotion>
       </View>
       <Text style={styles.toggleLabel}>{label}</Text>
       <Switch

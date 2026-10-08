@@ -1,0 +1,143 @@
+[
+  {
+    "id": "B01",
+    "actual": {
+      "allThreeReadsRejected": true,
+      "returned": {
+        "friends": [],
+        "communities": [],
+        "games": [],
+        "total": 0
+      }
+    }
+  },
+  {
+    "id": "B02",
+    "actual": {
+      "badge": 1,
+      "inbox": 0,
+      "pendingUidStillExists": true
+    }
+  },
+  {
+    "id": "B03",
+    "actual": {
+      "account": "B",
+      "beforeLateResponse": "clubB",
+      "afterLateResponse": "clubA"
+    }
+  },
+  {
+    "id": "B04",
+    "actual": {
+      "newIntent": "open_club:B",
+      "afterOlderJoinFinishes": null
+    }
+  },
+  {
+    "id": "B05",
+    "actual": {
+      "lossesA": 10,
+      "lossesB": 2,
+      "winner": "a"
+    }
+  },
+  {
+    "id": "B06",
+    "actual": {
+      "read": [
+        "k1",
+        "k2"
+      ],
+      "concurrentAppend": "k3",
+      "afterUndo": [
+        "k1"
+      ],
+      "lost": 2
+    }
+  },
+  {
+    "id": "B07",
+    "actual": {
+      "sameRoundId": true,
+      "statsPayload": "A",
+      "historyPayload": "B",
+      "statisticsAppliedOnce": true
+    }
+  },
+  {
+    "id": "B08",
+    "actual": {
+      "sampleAt": 3000,
+      "window": [
+        1000,
+        5000
+      ],
+      "steps": 100,
+      "counted": 0
+    }
+  },
+  {
+    "id": "B09",
+    "actual": {
+      "onlyAssignedGuestIsWaitlisted": true,
+      "result": "valid"
+    }
+  },
+  {
+    "id": "B10",
+    "actual": {
+      "primaryAndFallbackFailed": true,
+      "returned": []
+    }
+  },
+  {
+    "id": "B11",
+    "actual": {
+      "previousBlockedCount": 1,
+      "listenerFailed": true,
+      "afterError": 0
+    }
+  },
+  {
+    "id": "B12",
+    "actual": {
+      "host": "ChatStack",
+      "missingRoutes": [
+        "MatchDetails",
+        "CommunityHistory",
+        "CommunityEdit",
+        "AdminApproval"
+      ],
+      "communityDetailsRegistered": true
+    }
+  },
+  {
+    "id": "B13",
+    "actual": {
+      "waitingGuestSelectableAsCaptain": true,
+      "participants": [
+        "p",
+        "guest:w"
+      ]
+    }
+  },
+  {
+    "id": "B14",
+    "actual": {
+      "serverAcceptFailed": true,
+      "friends": [
+        "p"
+      ],
+      "remainingIncoming": 0,
+      "errorShown": true
+    }
+  },
+  {
+    "id": "B15",
+    "actual": {
+      "writeStillPending": true,
+      "screenBeforeWriteCompletes": "board"
+    }
+  }
+]

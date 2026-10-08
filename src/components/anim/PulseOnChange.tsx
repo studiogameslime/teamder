@@ -6,12 +6,15 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, type ViewStyle } from 'react-native';
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 
 interface Props {
   children: React.ReactNode;
@@ -36,6 +39,7 @@ export function PulseOnChange({
   skipInitial = true,
   style,
 }: Props) {
+  const reduced = useReducedMotion();
   const scale = useSharedValue(1);
   const mounted = React.useRef(false);
 
@@ -44,12 +48,15 @@ export function PulseOnChange({
       mounted.current = true;
       if (skipInitial) return;
     }
+    cancelAnimation(scale);
+    if (reduced) { scale.value = 1; return; }
     const half = durationMs / 2;
     scale.value = withSequence(
       withTiming(peakScale, { duration: half, easing: Easing.out(Easing.quad) }),
       withTiming(1, { duration: half, easing: Easing.inOut(Easing.quad) }),
     );
-  }, [triggerKey, scale, peakScale, durationMs, skipInitial]);
+    return () => cancelAnimation(scale);
+  }, [triggerKey, scale, peakScale, durationMs, skipInitial, reduced]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

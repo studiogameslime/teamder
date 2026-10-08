@@ -10,6 +10,8 @@
 // Deliberately NOT a data loader. This is the control and the vocabulary; what
 // each scope MEANS for a given screen's numbers is that screen's business.
 
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
+import { HeightReveal } from '@/components/anim/HeightReveal';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -73,7 +75,7 @@ export function SeasonScopeBar({
         accessibilityState={{ expanded: open }}
         accessibilityLabel={he.communityStatsScopeLabel}
       >
-        <Ionicons name="calendar" size={20} color={clubAccent.blue} />
+        <ChangeMotion triggerKey={title ?? titleOf(options)} pulse><Ionicons name="calendar" size={20} color={clubAccent.blue} /></ChangeMotion>
         <Text style={styles.current} numberOfLines={1}>
           {title ?? titleOf(options)}
         </Text>
@@ -83,7 +85,7 @@ export function SeasonScopeBar({
           color={clubAccent.blue}
         />
       </Pressable>
-      {open ? (
+      <HeightReveal visible={open}>
         <View style={styles.menu}>
           {options.map((o, idx) => (
             <Pressable
@@ -106,7 +108,7 @@ export function SeasonScopeBar({
             </Pressable>
           ))}
         </View>
-      ) : null}
+      </HeightReveal>
     </View>
   );
 }

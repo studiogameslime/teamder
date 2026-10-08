@@ -30,7 +30,7 @@ export interface InboxRequests {
 
 /** Groups the user ADMINS that have at least one pending join request. */
 async function myAdminGroupsWithPending(userId: UserId): Promise<Group[]> {
-  const groups = await groupService.listForUser(userId).catch(() => [] as Group[]);
+  const groups = await groupService.listForUser(userId);
   return groups.filter(
     (g) => (g.adminIds ?? []).includes(userId) && (g.pendingPlayerIds ?? []).length > 0,
   );
@@ -39,8 +39,7 @@ async function myAdminGroupsWithPending(userId: UserId): Promise<Group[]> {
 /** Games the user CREATED that have at least one pending join request. */
 async function myGamesWithPending(userId: UserId): Promise<Game[]> {
   const games = await gameService
-    .getMyLiveOrUpcomingGames(userId)
-    .catch(() => [] as Game[]);
+    .getMyLiveOrUpcomingGames(userId);
   return games.filter(
     (g) => g.createdBy === userId && (g.pending ?? []).length > 0,
   );
@@ -52,14 +51,14 @@ async function resolveUsers(uids: UserId[]): Promise<User[]> {
   const users = await Promise.all(
     unique.map((id) => userService.getUserById(id).catch(() => null)),
   );
-  return users.filter((u): u is User => !!u);
+  return users.map((u, index) => u ?? ({ id: unique[index], name: 'משתמש', stats: {} } as User));
 }
 
 /** Cheap count for the header badge — no user-name resolution. */
 export async function getInboxCount(userId: UserId): Promise<number> {
   if (!userId) return 0;
   const [friends, groups, games] = await Promise.all([
-    friendsService.listIncomingRequests(userId).catch(() => []),
+    friendsService.listIncomingRequests(userId),
     myAdminGroupsWithPending(userId),
     myGamesWithPending(userId),
   ]);
@@ -73,7 +72,7 @@ export async function getInboxRequests(userId: UserId): Promise<InboxRequests> {
   const empty: InboxRequests = { friends: [], communities: [], games: [], total: 0 };
   if (!userId) return empty;
   const [friends, groups, games] = await Promise.all([
-    friendsService.listIncomingRequests(userId).catch(() => []),
+    friendsService.listIncomingRequests(userId),
     myAdminGroupsWithPending(userId),
     myGamesWithPending(userId),
   ]);

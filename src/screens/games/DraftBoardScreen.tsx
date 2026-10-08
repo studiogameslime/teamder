@@ -82,6 +82,17 @@ export function DraftBoardScreen() {
             return;
           }
         }
+        if (g && !readOnly) {
+          const active = new Set([
+            ...(g.players ?? []),
+            ...(g.guests ?? []).filter((guest) => !guest.waitlisted).map((guest) => toGuestRosterId(guest.id)),
+          ]);
+          if (new Set(captainIds).size !== captainIds.length || captainIds.some((id) => !active.has(id))) {
+            appAlert(he.error, 'הסגל השתנה. יש לחזור לבחירת הקפטנים ולחלק מחדש.');
+            if (nav.canGoBack()) nav.goBack();
+            return;
+          }
+        }
         setGame(g);
         if (readOnly) {
           logEvent(AnalyticsEvent.TeamsViewed, {
@@ -101,7 +112,7 @@ export function DraftBoardScreen() {
           // (B19).
           const live = new Set<string>([
             ...(g.players ?? []),
-            ...(g.guests ?? []).map((gu) => toGuestRosterId(gu.id)),
+            ...(g.guests ?? []).filter((gu) => !gu.waitlisted).map((gu) => toGuestRosterId(gu.id)),
           ]);
           setPicks(reconstructPicks(g.draftTeams).filter((id) => live.has(id)));
           // Restore any colours chosen on the saved draft.
@@ -280,7 +291,13 @@ export function DraftBoardScreen() {
     };
     setSaving(true);
     try {
-      await gameService.saveDraftTeams(gameId, result);
+      const fresh = await gameService.getGameById(gameId);
+      const activeIds = new Set([...(fresh?.players ?? []), ...(fresh?.guests ?? []).filter((g) => !g.waitlisted).map((g) => toGuestRosterId(g.id))]);
+      if (new Set(captainIds).size !== captainIds.length || captainIds.some((id) => !activeIds.has(id)) || picks.some((id) => !activeIds.has(id))) {
+        appAlert(he.draftTitle, 'הסגל השתנה. יש לחזור לבחירת הקפטנים ולחלק מחדש.');
+        return;
+      }
+      await gameService.saveDraftTeams(gameId, result, undefined, true);
       logEvent(AnalyticsEvent.TeamsSaved, {
         gameId,
         numTeams,
@@ -299,7 +316,7 @@ export function DraftBoardScreen() {
     // teamColors MUST be here — the summary screen sets colours AFTER this
     // callback was memoised, so without it `finish` saved the stale (empty)
     // colours and the user's picks silently vanished.
-  }, [currentUser, method, numTeams, captainIds, membersOf, gameId, nav, teamColors]);
+  }, [currentUser, method, numTeams, captainIds, membersOf, gameId, nav, teamColors, picks]);
 
   // ── Summary view ────────────────────────────────────────────────────
   if (done) {

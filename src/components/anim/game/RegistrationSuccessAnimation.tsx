@@ -1,6 +1,9 @@
+import { UserAvatar } from '@/components/UserAvatar';
+import { useUserStore } from '@/store/userStore';
 import React, { useEffect } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
@@ -65,7 +68,7 @@ const REDUCED_TOTAL = ANIM.duration.reducedFade + 1200 + 220;
  * Anim 1 (+3) — the post-registration flourish, rendered as a NON-interactive
  * overlay so it never blocks the screen behind it. Triggered ONLY after the
  * server-confirmed bucket is known (the caller gates this). A confirmed seat
- * rolls a ball up toward the roster counter; taking the final seat instead
+ * moves the current user avatar toward the roster counter; taking the final seat instead
  * shoots that ball into a drawn goal and pops the "last spot" badge inside it.
  * Waitlist/pending get nothing here — no celebration of a seat that wasn't
  * secured.
@@ -81,6 +84,7 @@ export function RegistrationSuccessAnimation({
   onComplete,
 }: Props) {
   const reduced = useReducedMotion();
+  const currentUser = useUserStore(s => s.currentUser);
   const ballX = useSharedValue(0);
   const ballY = useSharedValue(0);
   const ballO = useSharedValue(0);
@@ -165,7 +169,7 @@ export function RegistrationSuccessAnimation({
         withDelay(LAST_SPOT.hold, withTiming(0, { duration: LAST_SPOT.out })),
       );
     } else if (celebrate) {
-      // A normal confirmed seat: the ball rolls up toward the roster counter.
+      // A normal confirmed seat: the current user avatar moves upward.
       ballO.value = withSequence(
         withTiming(1, { duration: 120 }),
         withDelay(320, withTiming(0, { duration: 160 })),
@@ -178,9 +182,9 @@ export function RegistrationSuccessAnimation({
     }
 
     const t = setTimeout(() => onComplete?.(), totalMs + 120);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); [ballX, ballY, ballO, scrim, goal, msg].forEach(cancelAnimation); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  }, [visible, reduced]);
 
   const ballStyle = useAnimatedStyle(() => ({
     opacity: ballO.value,
@@ -218,7 +222,9 @@ export function RegistrationSuccessAnimation({
         <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, scrimStyle]} />
       ) : null}
       {visible && variant === 'registered' && !reduced ? (
-        <Animated.View style={[styles.ball, ballStyle]} />
+        <Animated.View style={[styles.ball, !isLastSpot && styles.playerArrival, ballStyle]}>
+          {!isLastSpot ? <UserAvatar user={currentUser} size={40} ring /> : null}
+        </Animated.View>
       ) : null}
       {visible && isLastSpot ? (
         <View style={styles.centerWrap}>
@@ -268,6 +274,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 2 },
   },
+  playerArrival: { width: 44, height: 44, borderRadius: 22, borderColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
   // One centred stack instead of a pill pinned at 44% of the screen, which is
   // what used to land half on top of the weather/occupancy card.
   centerWrap: {

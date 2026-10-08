@@ -2,7 +2,8 @@
 // the redesigned CommunityDetailsScreen. Solid blue → deeper blue
 // gradient with a centered share icon + "שתף הזמנה למועדון" label.
 
-import React from 'react';
+import React, { useState } from 'react';
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,9 +15,10 @@ interface Props {
 }
 
 export function CommunityShareInviteCta({ onPress }: Props) {
+  const [shareTap, setShareTap] = useState(0);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => { setShareTap((n) => n + 1); onPress(); }}
       style={({ pressed }) => [
         styles.wrap,
         pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
@@ -31,7 +33,9 @@ export function CommunityShareInviteCta({ onPress }: Props) {
         style={StyleSheet.absoluteFill}
       />
       <View style={styles.content}>
-        <Ionicons name="share-social" size={20} color="#FFFFFF" />
+        <ChangeMotion triggerKey={shareTap} pulse duration={220}>
+          <Ionicons name="share-social" size={20} color="#FFFFFF" />
+        </ChangeMotion>
         <Text style={styles.label}>{he.communityMenuShareInvite}</Text>
       </View>
     </Pressable>

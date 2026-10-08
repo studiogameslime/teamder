@@ -1,0 +1,120 @@
+{
+  "head": "9ec0dfd94db151a35deb50eab198843ecf2e33d9",
+  "localChanges": true,
+  "date": "2026-10-08",
+  "hashMode": "text-lf",
+  "files": [
+    {
+      "file": "src/services/requestsService.ts",
+      "sha256": "1fe393de937d56dab21082e73b0a590260a01bccc393c2decb023e49b5bab52c"
+    },
+    {
+      "file": "src/screens/RequestsScreen.tsx",
+      "sha256": "82a2f0dd468dca41ba44c886fbd4ab8aa4458ff90f2e7ffba5d13e7b519a66cd"
+    },
+    {
+      "file": "src/store/groupStore.ts",
+      "sha256": "654146b05f127fd7c44d140ac77852785acff0a2b3521f837137b160e2e33b9b"
+    },
+    {
+      "file": "src/services/actionCoordinator.ts",
+      "sha256": "9e9c6968910d4944293f5c6413ae32f561b21363c449ff4a4548a7bc3b537b93"
+    },
+    {
+      "file": "src/services/pendingAction.ts",
+      "sha256": "33c98778f6343408352fb73285f5a34f5d72f1e2456b53c6ded6aeaa7dfa44d9"
+    },
+    {
+      "file": "src/services/draftStore.ts",
+      "sha256": "ab39f87d0e680731a1144aec884e229a3a13aea9852c6d74c35fd34feda594d6"
+    },
+    {
+      "file": "src/services/pairCompareService.ts",
+      "sha256": "6d6742796473b6bbb809e2f66f7f86036b930b42fe2295d5cdc3487302f4a3f1"
+    },
+    {
+      "file": "src/data/mockPairCompare.ts",
+      "sha256": "604ec84f24b0272901d2f7052e13f7b1246a667dcff2fd3287d2850dfea4958e"
+    },
+    {
+      "file": "src/services/gameService.ts",
+      "sha256": "1accb3d0693b20ba4143283954e4ac71c00f736a218c8ff4825a88bcbaac91b8"
+    },
+    {
+      "file": "functions/src/index.ts",
+      "sha256": "54f5abff36e930c55b0c0dc149e9648992907bfc7776b5e12ad5ab7ea319815b"
+    },
+    {
+      "file": "src/services/healthService.ts",
+      "sha256": "330a2a2f997e5f7824a75596c9ffc7a106b32d7122c93d1846ad381540ddfe14"
+    },
+    {
+      "file": "src/screens/games/MatchDetailsScreen.tsx",
+      "sha256": "5d44f2cd58551a010e7d55585fbfda5882c716626904900993aef2a4dfe22925"
+    },
+    {
+      "file": "src/screens/games/DraftSetupScreen.tsx",
+      "sha256": "c7db0aeb35055c904b7fcf363161bd2b2085a4d0cde47ddc15040e3eb023ab56"
+    },
+    {
+      "file": "src/screens/games/DraftBoardScreen.tsx",
+      "sha256": "d1a25c0078f14040f8e6232446c2c312a8104f2f67a48edee02cebba5e1a8001"
+    },
+    {
+      "file": "src/services/eveningVerifyService.ts",
+      "sha256": "708e24085370eba2dac2395b94fb91759fd58b76a1a4f700bbedd6b073e0506f"
+    },
+    {
+      "file": "src/components/community/UnverifiedEveningsCard.tsx",
+      "sha256": "dffacc3055c3dc39b0fd5b5060a43f7a1f13afab16f2a4e2419308b4b80364f5"
+    },
+    {
+      "file": "src/services/chatService.ts",
+      "sha256": "6bdb8f4f45f9de0f7b829890b68337e4d324e17664211efcd783d4e2655ec60f"
+    },
+    {
+      "file": "src/components/chat/ChatView.tsx",
+      "sha256": "73b12f507d4cbd3f084b6a33ac13f24a55d0081d9f3ce8809822cabc49013cd9"
+    },
+    {
+      "file": "src/screens/profile/BlockedUsersScreen.tsx",
+      "sha256": "6454573dfb012284dc964b7f72dbee1ab0154c6ca3462b78ee526d806c19defb"
+    },
+    {
+      "file": "src/navigation/ChatStack.tsx",
+      "sha256": "97926a51bf9ded38d7e41f5b873eb9cf3957e6628fd3a410a40336b4369dfa3b"
+    },
+    {
+      "file": "src/screens/profile/FriendsScreen.tsx",
+      "sha256": "616584c4132096785f32fab4ced028fb986767eecf36baaf51b0c98c5b9fb055"
+    },
+    {
+      "file": "src/components/match/Shootout.tsx",
+      "sha256": "4e5c597f5a42830fa054dfc3ccdd26c152c112e9e2e5883b9d99193d785a934e"
+    },
+    {
+      "file": "src/components/anim/CoverCrossfade.tsx",
+      "sha256": "91a9b5134ee988f3e7678effee165e0ae86c83c98d5909c7ce835db7d45e5275"
+    },
+    {
+      "file": "src/screens/profile/NotificationsSettingsScreen.tsx",
+      "sha256": "f7a18496bdda0d2058c0937cf2846da71b00cafac4f977834b54ee5708855512"
+    },
+    {
+      "file": "src/services/notificationsService.ts",
+      "sha256": "934c63e922104ee90db09993c5b973076dc02fe11f0c80ee50958d24f96b1c83"
+    },
+    {
+      "file": "tests/logic/groupHydrate.test.ts",
+      "sha256": "d8b1f43fcbda10f26add51af7795a01379bc0faa9455521814aa2187592d2666"
+    },
+    {
+      "file": "tests/logic/actionCoordinator.test.ts",
+      "sha256": "6cc1d9c86953bfe187985fc7955ef6345bd3484a2d100a4da981de1aa4c4b52c"
+    },
+    {
+      "file": "tests/logic/auditRegressions.test.ts",
+      "sha256": "254f7fb869a2cdbe9a004432d4d163b92a8a3738a9f68a78dcdc675b9517ed1f"
+    }
+  ]
+}

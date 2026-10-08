@@ -22,13 +22,13 @@
 import {
   readPendingAction,
   writePendingAction,
-  clearPendingAction,
+  clearPendingActionIfMatches,
   isOpenKind,
   type PendingAction,
   type PendingActionKind,
   type ActionOrigin,
 } from '@/services/pendingAction';
-import { draftStore, type DraftKind } from '@/services/draftStore';
+import { draftStore, type DraftKind, type Draft } from '@/services/draftStore';
 import { useUserStore } from '@/store/userStore';
 import { announceOfferFor } from '@/services/actionOfferBridge';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -118,8 +118,12 @@ export async function requestAction(req: ActionRequest): Promise<RequestOutcome>
   if (!isGuest) {
     inFlight.add(key);
     try {
+      const pending = await readPendingAction();
+      const expected = pending && pending.kind === req.kind && targetOf(pending) === req.targetId ? pending : null;
+      const storedDraft = req.draft ? await draftStore.read(req.draft.kind) : null;
+      const draft = storedDraft?.id === req.draft?.id ? storedDraft : null;
       const result = await run(req.kind, req.execute);
-      if (result.terminal) await clearAll(req);
+      if (result.terminal) await clearAll(req, expected, draft);
       // AFTER the outcome is terminal and the stash is cleaned. See
       // `actionOfferBridge` — this announces, it does not present, it is not
       // awaited, and it cannot make a completed join report failure.
@@ -232,9 +236,12 @@ export async function resumePendingAction(): Promise<
     is_guest: false,
   });
   try {
+    const draftRef = draftRefOf(action);
+    const storedDraft = draftRef ? await draftStore.read(draftRef.kind) : null;
+    const draft = storedDraft && 'draftId' in action && storedDraft.id === action.draftId ? storedDraft : null;
     const result = await fn(action);
     if (result.terminal) {
-      await clearAll({ kind: action.kind, draft: draftRefOf(action) });
+      await clearAll({ kind: action.kind, draft: draftRef }, action, draft);
       // Same ordering as the direct path above: the resumed join has already
       // happened and its stash is gone before anybody is asked anything.
       announceOfferFor(action.kind, result);
@@ -279,15 +286,15 @@ async function run(kind: PendingActionKind, execute: ActionExecutor): Promise<Ac
  * and not when a network request merely started. Those all succeed while the
  * thing the person actually asked for has not happened yet.
  */
-async function clearAll(req: { kind: PendingActionKind; draft?: { kind: DraftKind } }): Promise<void> {
+async function clearAll(req: { kind: PendingActionKind; draft?: { kind: DraftKind } }, expected: PendingAction | null, draft: Draft | null): Promise<void> {
   try {
-    await clearPendingAction();
+    if (expected) await clearPendingActionIfMatches(expected);
   } catch (err) {
     logError('actionClearPending', err, { kind: req.kind });
   }
   if (req.draft) {
     try {
-      await draftStore.consume(req.draft.kind);
+      if (draft) await draftStore.consume(req.draft.kind, draft);
     } catch (err) {
       logError('actionConsumeDraft', err, { kind: req.kind });
     }

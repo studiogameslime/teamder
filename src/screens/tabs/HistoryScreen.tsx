@@ -1,3 +1,4 @@
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import React, { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -107,6 +108,7 @@ export function HistoryScreen() {
           {!playedOnly && <Text style={styles.emptyHint}>{he.historyEmptyHint}</Text>}
         </View>
       ) : (
+        <ChangeMotion triggerKey={playedOnly} style={{ flex: 1 }}>
         <FlatList
           contentContainerStyle={{ padding: spacing.md, gap: spacing.sm }}
           data={visibleItems}
@@ -115,6 +117,7 @@ export function HistoryScreen() {
             <CommunityHistoryRow item={item} onPress={() => openDetails(item.id)} />
           )}
         />
+        </ChangeMotion>
       )}
     </SafeAreaView>
   );

@@ -410,6 +410,7 @@ export const healthService = {
           if (!t) return sum;
           const v = valOf(r);
           if (!(typeof v === 'number') || !(v >= 0)) return sum;
+          if (t.s === t.e) return sum + (windows.some((w) => t.s >= w.from && t.s < w.to) ? v : 0);
           const ov = overlapMs(t.s, t.e, windows);
           if (ov <= 0) return sum;
           const dur = t.e - t.s;

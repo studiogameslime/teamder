@@ -983,6 +983,7 @@ export const gameService = {
      * into season 1 played those nights in it.
      */
     season?: { currentId: string; currentNo: number },
+    strict = false,
   ): Promise<{
     totalFinished: number;
     totalCancelled: number;
@@ -1140,7 +1141,7 @@ export const gameService = {
     try {
       snap = await getDocs(q);
     } catch (err) {
-      if (isPermissionDenied(err)) return empty; // deleted group / non-member
+      if (isPermissionDenied(err) && !strict) return empty; // deleted group / non-member
       logError('getCommunityStats', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityStats failed', err);
       throw err;
@@ -1291,6 +1292,7 @@ export const gameService = {
     // When given, EVERY member appears in the table — members with no stats yet
     // get a zero row (user request: show everyone, not just who has data).
     memberIds?: string[],
+    strict = false,
   ): Promise<{
     totalGoals: number;
     totalRounds: number;
@@ -1428,6 +1430,7 @@ export const gameService = {
     } catch (err) {
       logError('getCommunityChampionship', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityChampionship failed', err);
+      if (strict) throw err;
       return empty;
     }
   },
@@ -3500,8 +3503,17 @@ export const gameService = {
      *  parameters can later be calibrated from real weeks. Omitted for a manual
      *  captain draft — there is no algorithm to measure there. */
     meta?: Game['teamBalanceMeta'],
+    validateActiveRoster = false,
   ): Promise<void> {
     if (!gameId) return;
+    const validateRoster = (game: Pick<Game, 'players' | 'guests'>) => {
+      if (!validateActiveRoster || !draft) return;
+      const active = new Set([...(game.players ?? []), ...(game.guests ?? []).filter((guest) => !guest.waitlisted).map((guest) => toGuestRosterId(guest.id))]);
+      const captains = draft.teams.map((team) => team.captainId);
+      if (new Set(captains).size !== captains.length || captains.some((id) => !active.has(id)) || draft.teams.some((team) => team.playerIds.some((id) => !active.has(id)))) {
+        throw new Error('DRAFT_ROSTER_CHANGED');
+      }
+    };
     // Freeze the split as first drawn so the post-game "הכוחות שחולקו" record
     // survives go-home / removals — those mutate `teams` directly and never
     // reach this function, so the snapshot is safe from them either way.
@@ -3537,13 +3549,14 @@ export const gameService = {
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
       if (m) {
+        validateRoster(m);
         m.draftTeams = withOriginal ?? undefined;
         m.teamsEditedManually = !!draft;
         if (meta) m.teamBalanceMeta = meta;
       }
       return;
     }
-    await updateGameDoc(gameId, {
+    const patch = {
       draftTeams: withOriginal ?? null,
       ...(meta ? { teamBalanceMeta: meta } : {}),
       // Any client-side save is a deliberate human split (manual draft or the
@@ -3552,7 +3565,18 @@ export const gameService = {
       // so a later scheduled generation can run again.
       teamsEditedManually: draft ? true : false,
       updatedAt: Date.now(),
-    });
+    };
+    if (validateActiveRoster) {
+      const ref = docs.game(gameId);
+      await runTransaction(getFirebase().db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error('GAME_NOT_FOUND');
+        validateRoster(snap.data());
+        tx.update(ref, stripUndefined(patch));
+      });
+    } else {
+      await updateGameDoc(gameId, patch);
+    }
   },
 
   /**
@@ -4113,11 +4137,11 @@ export const gameService = {
   /** Record one shootout kick (kicker + keeper + scored). Appended in order. */
   async recordShootoutKick(
     gameId: string,
-    opts: { team: 'A' | 'B'; kickerId: UserId; keeperId: UserId; scored: boolean },
+    opts: { team: 'A' | 'B'; kickerId: UserId; keeperId: UserId; scored: boolean; id?: string },
   ): Promise<void> {
     if (!gameId || !opts.kickerId) return;
     const kick = {
-      id: `pk_${Date.now()}_${Math.floor(Math.random() * 1e9).toString(36)}`,
+      id: opts.id ?? `pk_${Date.now()}_${Math.floor(Math.random() * 1e9).toString(36)}`,
       kickerId: opts.kickerId,
       keeperId: opts.keeperId,
       team: opts.team,
@@ -4128,16 +4152,19 @@ export const gameService = {
       const m =
         mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
       if (m?.liveMatch?.shootout) {
-        m.liveMatch.shootout.kicks = [...(m.liveMatch.shootout.kicks ?? []), kick];
+        if (!(m.liveMatch.shootout.kicks ?? []).some((k) => k.id === kick.id)) m.liveMatch.shootout.kicks = [...(m.liveMatch.shootout.kicks ?? []), kick];
       }
       return;
     }
-    const cur = await readTimerState(gameId);
-    if (!cur?.liveMatch?.shootout) return;
-    if (cur.status === 'finished' || cur.status === 'cancelled') return;
-    await updateDoc(docs.game(gameId), {
-      'liveMatch.shootout.kicks': arrayUnion(kick),
-      updatedAt: Date.now(),
+    const { db } = getFirebase();
+    await runTransaction(db, async (tx) => {
+      const ref = docs.game(gameId);
+      const snap = await tx.get(ref);
+      const cur = snap.data();
+      const so = cur?.liveMatch?.shootout;
+      if ((so?.kicks ?? []).some((k: { id: string }) => k.id === kick.id)) return;
+      if (!so || cur?.status === 'finished' || cur?.status === 'cancelled') throw new Error('SHOOTOUT_CLOSED');
+      tx.update(ref, { 'liveMatch.shootout.kicks': [...(so.kicks ?? []), kick], updatedAt: Date.now() });
     });
   },
 
@@ -4150,28 +4177,31 @@ export const gameService = {
    *  Rewrites the whole array rather than `arrayRemove`: two kicks can be
    *  identical in every field a person sees, and only the generated `id` tells
    *  them apart — `arrayRemove` on a value the caller reconstructed could take
-   *  the wrong one. Reading the array first also means an undo raced against a
-   *  concurrent kick from another admin drops the newest, which is the one the
-   *  admin is looking at. */
-  async undoLastShootoutKick(gameId: string): Promise<void> {
+   *  the wrong one. A transaction checks the expected last id and rejects
+   *  stale undo requests when another administrator appended a kick. */
+  async undoLastShootoutKick(gameId: string, expectedId?: string): Promise<void> {
     if (!gameId) return;
     if (USE_MOCK_DATA) {
       const m =
         mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
       const so = m?.liveMatch?.shootout;
+      if (expectedId && so?.kicks?.at(-1)?.id !== expectedId) throw new Error('SHOOTOUT_CHANGED');
       if (so?.kicks?.length) so.kicks = so.kicks.slice(0, -1);
       // The mock live subscription polls the game's `updatedAt`; without this
       // bump the undo never reaches the screen in demo mode.
       if (m) m.updatedAt = Date.now();
       return;
     }
-    const cur = await readTimerState(gameId);
-    const kicks = cur?.liveMatch?.shootout?.kicks;
-    if (!cur || !kicks?.length) return;
-    if (cur.status === 'finished' || cur.status === 'cancelled') return;
-    await updateDoc(docs.game(gameId), {
-      'liveMatch.shootout.kicks': kicks.slice(0, -1),
-      updatedAt: Date.now(),
+    const { db } = getFirebase();
+    await runTransaction(db, async (tx) => {
+      const ref = docs.game(gameId);
+      const snap = await tx.get(ref);
+      const cur = snap.data();
+      const kicks = cur?.liveMatch?.shootout?.kicks;
+      if (!cur || !kicks?.length) return;
+      if (expectedId && kicks[kicks.length - 1].id !== expectedId) throw new Error('SHOOTOUT_CHANGED');
+      if (cur.status === 'finished' || cur.status === 'cancelled') throw new Error('SHOOTOUT_CLOSED');
+      tx.update(ref, { 'liveMatch.shootout.kicks': kicks.slice(0, -1), updatedAt: Date.now() });
     });
   },
 

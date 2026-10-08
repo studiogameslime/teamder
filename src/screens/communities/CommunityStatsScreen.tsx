@@ -12,6 +12,7 @@
 //     active-member counts.
 // No new collection needed — everything here is derived client-side.
 
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -618,12 +619,11 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     //
     // Mirrors the per-row test below: a measure counts when it has a
     // percentage, or a bare count worth stating on its own. With none of the
-    // four, the section is a heading over four dashes and it does not render.
+    // three, the section is a heading over three dashes and it does not render.
     const funRowCount =
       (totalGoals > 0 && totalAssists > 0 ? 1 : 0) +
       (countedRounds > 0 || scorelessRounds > 0 ? 1 : 0) +
-      (penTakenTotal > 0 ? 1 : 0) +
-      (countedRounds > 0 || shootoutRounds > 0 ? 1 : 0);
+      (penTakenTotal > 0 ? 1 : 0);
     // `players` is ranked by POINTS (goals*2+assists), so players[0] is NOT
     // necessarily the top scorer — pick the max-goals player explicitly.
     const topScorer = players.length
@@ -912,7 +912,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             hint={he.communityStatsEmptyBody}
           />
         ) : (
-          <>
+          <ChangeMotion triggerKey={`${groupId}:${scope.k}:${scope.k === 'season' ? scope.id : ''}:${scopeLoading}`} duration={220} style={{ gap: spacing.sm }}>
           {/* בורר התצוגה. מופיע לכל מועדון שמנהל עונות — גם לפני שנסגרה
               עונה ראשונה, כי בלעדיו אי אפשר לדעת שהמספרים על המסך הם של
               העונה ולא של כל הזמנים. זו בדיוק השאלה שנשאלה. */}
@@ -1271,9 +1271,9 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           <SectionTitle icon="sparkles" text={he.communityStatsSectionFun} />
           <Card style={styles.funCard}>
             {(() => {
-              // Four measures, in this order — but only the ones that have
+              // Three measures, in this order — but only the ones that have
               // something to say (owner, 28.09). A row reading "—" beside
-              // "טרם נאספו מספיק נתונים" is a promise, not a fact, and four
+              // "טרם נאספו מספיק נתונים" is a promise, not a fact, and three
               // promises make a section that looks broken rather than young.
               //
               // "Something to say" is a percentage OR a bare count: 20 games
@@ -1306,15 +1306,6 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   tint: clubAccent.purple,
                   pct: derived.penTakenTotal > 0 ? derived.penAccuracyPct : null,
                   text: he.funPenaltyRate,
-                },
-                {
-                  key: 'shootout',
-                  icon: 'disc' as const,
-                  tint: clubAccent.red,
-                  pct: sampled ? derived.shootoutPct : null,
-                  count: derived.shootoutRounds,
-                  countText: he.funShootoutCount,
-                  text: he.funShootout,
                 },
               ].filter(
                 (r) =>
@@ -1387,7 +1378,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             // prints this exact number as "מחזורים".
             clubEvenings={eveningsInScope}
           />
-          </>
+          </ChangeMotion>
         )}
       </ScrollView>
     </SafeAreaView>

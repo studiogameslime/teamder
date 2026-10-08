@@ -1,0 +1,124 @@
+[
+  {
+    "id": "B01",
+    "actual": {
+      "failuresPropagated": true
+    }
+  },
+  {
+    "id": "B02",
+    "actual": {
+      "badge": 1,
+      "inbox": 1,
+      "pendingUidStillExists": true
+    }
+  },
+  {
+    "id": "B03",
+    "actual": {
+      "account": "B",
+      "beforeLateResponse": "clubB",
+      "afterLateResponse": "clubB"
+    }
+  },
+  {
+    "id": "B04",
+    "actual": {
+      "newIntent": "open_club:B",
+      "afterOlderJoinFinishes": {
+        "kind": "open_club",
+        "targetId": "B"
+      }
+    }
+  },
+  {
+    "id": "B05",
+    "actual": {
+      "lossesA": 10,
+      "lossesB": 2,
+      "winner": "b"
+    }
+  },
+  {
+    "id": "B06",
+    "actual": {
+      "concurrentKickPreserved": true
+    }
+  },
+  {
+    "id": "B07",
+    "actual": {
+      "statsPayload": "A",
+      "historyPayload": "A",
+      "statisticsAppliedOnce": true
+    }
+  },
+  {
+    "id": "B08",
+    "actual": {
+      "sampleAt": 3000,
+      "window": [
+        1000,
+        5000
+      ],
+      "steps": 100,
+      "counted": 100
+    }
+  },
+  {
+    "id": "B09",
+    "actual": {
+      "onlyAssignedGuestIsWaitlisted": true,
+      "result": "invalid"
+    }
+  },
+  {
+    "id": "B10",
+    "actual": {
+      "primaryAndFallbackFailuresPropagated": true
+    }
+  },
+  {
+    "id": "B11",
+    "actual": {
+      "previousBlockedCount": 1,
+      "listenerFailed": true,
+      "afterError": 1
+    }
+  },
+  {
+    "id": "B12",
+    "actual": {
+      "host": "ChatStack",
+      "missingRoutes": [],
+      "communityDetailsRegistered": true
+    }
+  },
+  {
+    "id": "B13",
+    "actual": {
+      "waitingGuestSelectableAsCaptain": false,
+      "participants": [
+        "p"
+      ],
+      "transactionRejectsWaitingCaptain": true
+    }
+  },
+  {
+    "id": "B14",
+    "actual": {
+      "serverAcceptFailed": true,
+      "friends": [],
+      "remainingIncoming": 1,
+      "errorShown": true
+    }
+  },
+  {
+    "id": "B15",
+    "actual": {
+      "writeStillPending": true,
+      "screenBeforeWriteCompletes": "entry"
+    },
+    "retryUsesSameKickId": true
+  }
+]

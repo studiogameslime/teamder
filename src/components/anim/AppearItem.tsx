@@ -8,12 +8,15 @@
 import React, { useEffect } from 'react';
 import { type ViewStyle } from 'react-native';
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
+
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 
 interface Props {
   children: React.ReactNode;
@@ -40,9 +43,12 @@ export function AppearItem({
   durationMs = 360,
   style,
 }: Props) {
+  const reduced = useReducedMotion();
   const progress = useSharedValue(0);
 
   useEffect(() => {
+    cancelAnimation(progress);
+    if (reduced) { progress.value = 1; return; }
     const delay = Math.min(index * stepMs, capMs);
     progress.value = withDelay(
       delay,
@@ -51,7 +57,8 @@ export function AppearItem({
         easing: Easing.out(Easing.cubic),
       }),
     );
-  }, [progress, index, stepMs, capMs, durationMs]);
+    return () => cancelAnimation(progress);
+  }, [progress, index, stepMs, capMs, durationMs, reduced]);
 
   const animStyle = useAnimatedStyle(() => ({
     opacity: progress.value,

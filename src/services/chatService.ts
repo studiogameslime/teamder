@@ -374,8 +374,14 @@ export const chatService = {
 
   // ── Block list (store-safety) ──────────────────────────────────────────
 
-  subscribeBlocked(uid: UserId, cb: (ids: Set<string>) => void): () => void {
-    return onSnapshot(
+  subscribeBlocked(uid: UserId, cb: (ids: Set<string>) => void, onError?: (err: unknown) => void): () => void {
+    const reportError = (err: unknown) => {
+      logError('subscribeBlocked', err, { uid });
+      if (__DEV__) console.warn('[chatService] subscribeBlocked error', err);
+      onError?.(err);
+    };
+    try {
+      return onSnapshot(
       col.userBlocked(uid),
       (snap) => {
         cb(new Set(snap.docs.map((d) => d.id)));
@@ -383,13 +389,15 @@ export const chatService = {
       (err) => {
         // Without an error handler a transient rules/permission failure
         // leaves the success callback unfired forever, hanging the
-        // BlockedUsersScreen on its loader. Emit an empty set so the
-        // screen resolves to its (correct) empty state instead.
-        logError('subscribeBlocked', err, { uid });
-        if (__DEV__) console.warn('[chatService] subscribeBlocked error', err);
-        cb(new Set());
+        // BlockedUsersScreen on its loader. Report the error without erasing
+        // the last confirmed block list.
+        reportError(err);
       },
     );
+    } catch (err) {
+      reportError(err);
+      return () => {};
+    }
   },
 
   async blockUser(uid: UserId, blockedUid: string): Promise<void> {

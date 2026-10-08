@@ -104,6 +104,17 @@ interface GroupStore {
 // Live-groups listener handle. Module-level (not store state) so toggling
 // it never triggers a re-render; lifecycle owned by RootNavigator.
 let groupsUnsub: (() => void) | null = null;
+let accountId: UserId | null = null;
+let accountGeneration = 0;
+let hydrateGeneration = 0;
+let selectionQueue: Promise<unknown> = Promise.resolve();
+function persistSelection(id: GroupId | null, isCurrent: () => boolean): Promise<void> {
+  const next = selectionQueue.then(async () => {
+    if (isCurrent()) await storage.setCurrentGroupId(id);
+  });
+  selectionQueue = next.catch(() => {});
+  return next;
+}
 
 /**
  * Refresh the user's clubs after an OPEN club let them straight in, and make
@@ -138,11 +149,17 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
   pendingGroups: [],
 
   subscribe: (userId) => {
+    if (accountId !== userId) {
+      if (accountId !== null) get().reset();
+      accountId = userId;
+    }
+    const generation = accountGeneration;
     if (groupsUnsub) {
       groupsUnsub();
       groupsUnsub = null;
     }
     groupsUnsub = groupService.subscribeForUser(userId, (groups) => {
+      if (generation !== accountGeneration || accountId !== userId) return;
       // Only the member-groups array is live (covers admins watching their
       // own communities' pending queues). currentGroupId / pendingGroups
       // stay as the initial hydrate set them; selectors tolerate a missing
@@ -158,15 +175,19 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
       // list may wait on it or fail because of it.
       void reportOrganiserState(userId, groups);
     });
+    const ownUnsub = groupsUnsub;
     return () => {
-      if (groupsUnsub) {
-        groupsUnsub();
+      ownUnsub?.();
+      if (groupsUnsub === ownUnsub) {
         groupsUnsub = null;
       }
     };
   },
 
   reset: () => {
+    accountId = null;
+    accountGeneration += 1;
+    hydrateGeneration += 1;
     if (groupsUnsub) {
       groupsUnsub();
       groupsUnsub = null;
@@ -175,6 +196,13 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
   },
 
   hydrate: async (userId) => {
+    if (accountId !== userId) {
+      if (accountId !== null) get().reset();
+      accountId = userId;
+    }
+    const generation = ++hydrateGeneration;
+    const account = accountGeneration;
+    const isCurrent = () => generation === hydrateGeneration && account === accountGeneration && accountId === userId;
     // Each fetch wrapped individually so a single failure doesn't
     // reject the whole Promise.all and leave `hydrated: false`
     // forever — RootNavigator gates the splash on this flag, so a
@@ -223,21 +251,24 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
         return null;
       }),
     ]);
-    const groups = groupsRes.value;
-    const pendingGroups = pendingRes.value;
+    if (!isCurrent()) return;
+    const groups = groupsRes.ok ? groupsRes.value : get().groups;
+    const pendingGroups = pendingRes.ok ? pendingRes.value : get().pendingGroups;
     let currentGroupId = groupsRes.ok ? savedId : (before.currentGroupId ?? savedId);
     if (groupsRes.ok) {
       if (currentGroupId && !groups.find((g) => g.id === currentGroupId)) {
         currentGroupId = null;
-        await storage.setCurrentGroupId(null).catch((err) => {
+        await persistSelection(null, isCurrent).catch((err) => {
           logError('groupHydrateSetCurrentGroupId', err, { userId });
         });
+        if (!isCurrent()) return;
       }
       if (!currentGroupId && groups.length > 0) {
         currentGroupId = groups[0].id;
-        await storage.setCurrentGroupId(currentGroupId).catch((err) => {
+        await persistSelection(currentGroupId, isCurrent).catch((err) => {
           logError('groupHydrateSetCurrentGroupId', err, { userId, currentGroupId });
         });
+        if (!isCurrent()) return;
       }
     }
     set({ hydrated: true, groups, pendingGroups, currentGroupId });
@@ -265,8 +296,10 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
   },
 
   setCurrentGroup: async (groupId) => {
-    await storage.setCurrentGroupId(groupId);
-    set({ currentGroupId: groupId });
+    const generation = accountGeneration;
+    const isCurrent = () => generation === accountGeneration;
+    await persistSelection(groupId, isCurrent);
+    if (isCurrent()) set({ currentGroupId: groupId });
   },
 
   createGroup: async (input) => {

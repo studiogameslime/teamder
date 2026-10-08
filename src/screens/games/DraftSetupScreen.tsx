@@ -133,7 +133,7 @@ export function DraftSetupScreen() {
     // other surface) uses. With the raw id, a guest picked as captain didn't
     // match DraftBoard's prefixed roster: their name showed blank in the
     // captain slot AND they leaked back into the player pool (user report).
-    const guests = (game.guests ?? []).map((g) => ({
+    const guests = (game.guests ?? []).filter((g) => !g.waitlisted).map((g) => ({
       id: toGuestRosterId(g.id),
       name: g.name,
     }));

@@ -12,7 +12,7 @@
 // the top, BEFORE the toggles, and let the user grant (or, if blocked,
 // jump to Settings) first.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -115,6 +115,8 @@ export function NotificationsSettingsScreen() {
     ...(user?.notificationPrefs ?? {}),
   });
   const [busy, setBusy] = useState(false);
+  const [prefsReady, setPrefsReady] = useState(false);
+  const edited = useRef(new Set<keyof NotificationPrefs>());
 
   // OS-level push permission. `null` = unknown/not-checked (e.g. Expo Go,
   // mock mode) — we hide the gate entirely so we never show a misleading
@@ -155,14 +157,23 @@ export function NotificationsSettingsScreen() {
   // store so the isDirty comparison baseline matches what's persisted.
   useEffect(() => {
     if (!user) return;
+    edited.current.clear();
+    setPrefsReady(false);
     let cancelled = false;
     (async () => {
-      const saved = await notificationsService.loadPreferences(user.id);
-      if (cancelled || !saved) return;
+      let saved;
+      try {
+        saved = await notificationsService.loadPreferences(user.id);
+      } catch {
+        if (!cancelled) appAlert(he.error, 'לא ניתן לטעון את הגדרות ההתראות. יש לפתוח את המסך מחדש ולנסות שוב.');
+        return;
+      }
+      if (cancelled) return;
       const merged = { ...defaultNotificationPrefs, ...saved };
-      setPrefs(merged);
+      setPrefs((prev) => Object.fromEntries(Object.entries(merged).map(([key, value]) => [key, edited.current.has(key as keyof NotificationPrefs) ? prev[key as keyof NotificationPrefs] : value])) as unknown as NotificationPrefs);
+      setPrefsReady(true);
       useUserStore.setState((s) =>
-        s.currentUser
+        s.currentUser?.id === user.id
           ? { currentUser: { ...s.currentUser, notificationPrefs: merged } }
           : {},
       );
@@ -209,7 +220,8 @@ export function NotificationsSettingsScreen() {
     }
   };
 
-  const toggle = (k: keyof NotificationPrefs) =>
+  const toggle = (k: keyof NotificationPrefs) => {
+    edited.current.add(k);
     setPrefs((p) => {
       const nextVal = !p[k];
       lightHaptic();
@@ -222,6 +234,7 @@ export function NotificationsSettingsScreen() {
       });
       return { ...p, [k]: nextVal };
     });
+  };
 
   // Applies on the spot rather than waiting for "שמור": the save button
   // persists OUR prefs document, and this writes nothing there. Leaving it to
@@ -241,9 +254,11 @@ export function NotificationsSettingsScreen() {
   };
 
   const save = async () => {
+    if (!prefsReady || busy) return;
     setBusy(true);
     try {
       await notificationsService.savePreferences(user.id, prefs);
+      if (useUserStore.getState().currentUser?.id !== user.id) return;
       // Only on a real change — the marketing switch is the one preference our
       // own backend does not enforce, so this call IS the unsubscribe.
       const wasSubscribed = user.notificationPrefs?.marketingPush !== false;
@@ -251,9 +266,9 @@ export function NotificationsSettingsScreen() {
       if (wasSubscribed !== nowSubscribed) joryio.setMarketingPush(nowSubscribed);
       // Mirror locally so subsequent screens read the saved state without
       // a round-trip to Firestore.
-      useUserStore.setState({
-        currentUser: { ...user, notificationPrefs: prefs },
-      });
+      useUserStore.setState((state) => ({
+        currentUser: state.currentUser ? { ...state.currentUser, notificationPrefs: prefs } : null,
+      }));
       logEvent(AnalyticsEvent.NotificationsToggled, {
         enabledCount: String(Object.values(prefs).filter(Boolean).length),
       });
@@ -395,6 +410,7 @@ export function NotificationsSettingsScreen() {
           size="lg"
           fullWidth
           loading={busy}
+          disabled={!prefsReady || busy}
           onPress={save}
         />
       </View>

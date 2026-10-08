@@ -1,3 +1,4 @@
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // LiveMatchScreen — pure match timer.
 //
 // Deliberately minimal: NO teams, NO "כוחות"/balancing, NO formations,
@@ -619,12 +620,12 @@ function PlainLiveMatchScreen() {
             </Text>
           </Animated.View>
         )}
-        <View style={[styles.statusPill, timerRunning ? styles.statusPillRunning : null]}>
+        <ChangeMotion triggerKey={timerRunning} pulse duration={190} style={[styles.statusPill, timerRunning ? styles.statusPillRunning : null]}>
           {timerRunning ? <View style={styles.dot} /> : null}
           <Text style={[styles.statusText, timerRunning ? styles.statusTextRunning : null]}>
             {statusLabel}
           </Text>
-        </View>
+        </ChangeMotion>
         {showController ? (
           <View style={styles.controllerChip}>
             <Ionicons name="person-circle" size={14} color={colors.primary} />

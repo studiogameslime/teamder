@@ -35,7 +35,7 @@ import type { DraftTeamsResult, LiveMatchState, MatchRotation } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import Animated, {
-  runOnJS,
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -158,6 +158,14 @@ export function Shootout({
   const [kickResult, setKickResult] = useState<boolean | null>(null);
   /** A write is in flight (currently only the undo) — blocks a double tap. */
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const writing = useRef(false);
+  const visibleRef = useRef(visible);
+  const uiEpoch = useRef(0);
+  if (visibleRef.current !== visible) uiEpoch.current += 1;
+  visibleRef.current = visible;
+  const attempt = useRef<Parameters<typeof gameService.recordShootoutKick>[1] | null>(null);
+  useEffect(() => () => { uiEpoch.current += 1; }, []);
   /** In-sheet confirmation. It is NOT `appAlert`, and that is the point:
    *  `AppDialogHost` lives at the app root and renders its own <Modal>, so
    *  asking from in here means presenting a modal on top of an already-
@@ -186,6 +194,8 @@ export function Shootout({
       setKickResult(null);
       setBusy(false);
       setConfirm(null);
+      attempt.current = null;
+      setSaveError(false);
     }
   }, [visible]);
 
@@ -251,9 +261,8 @@ export function Shootout({
   // ── the kick itself ──────────────────────────────────────────────────────
   //
   // Ball and keeper are shared values driven from here rather than from inside
-  // the pitch, because the animation has to FINISH before the kick is written:
-  // recording flips back to the board, and a ball still in the air when the
-  // screen changes reads as a bug rather than a flourish.
+  // the pitch. Persistence starts immediately; the board waits for the write
+  // acknowledgement and the visual interval. Animation completion never writes.
   //
   // Units are pitch-widths, converted to pixels once the sheet has measured —
   // the geometry is proportional, so the same numbers work on any phone.
@@ -274,6 +283,12 @@ export function Shootout({
     keeperY.value = 0;
     keeperScale.value = 1;
   }, [ballX, ballY, ballScale, keeperX, keeperY, keeperScale]);
+  useEffect(() => {
+    if (!visible) {
+      [ballX, ballY, ballScale, keeperX, keeperY, keeperScale].forEach(cancelAnimation);
+    }
+    return () => { [ballX, ballY, ballScale, keeperX, keeperY, keeperScale].forEach(cancelAnimation); };
+  }, [visible, ballX, ballY, ballScale, keeperX, keeperY, keeperScale]);
 
   const proceed = () => {
     if (kickerId && facingKeeperId) setAsking(true);
@@ -285,9 +300,10 @@ export function Shootout({
    *  a lie, and a keeper diving away from a goal is the one case where going
    *  the WRONG way is the truth, so that is the only place it is used. */
   const takeKick = (scored: boolean) => {
-    if (flying) return;
+    if (flying || writing.current) return;
+    scored = attempt.current?.scored ?? scored;
+    void record(scored);
     if (reduced) {
-      record(scored);
       return;
     }
     setKickResult(scored);
@@ -324,37 +340,59 @@ export function Shootout({
         // Held at full stretch, then handed back to JS to write the kick.
         withDelay(
           700,
-          withTiming(0.88, { duration: 1 }, (done) => {
-            if (done) runOnJS(record)(scored);
-          }),
+          withTiming(0.88, { duration: 1 }),
         ),
       ),
     );
   };
-  const record = (scored: boolean) => {
-    if (!kickerId || !facingKeeperId) return;
-    void gameService.recordShootoutKick(gameId, {
+  const record = async (scored: boolean) => {
+    if (!kickerId || !facingKeeperId || writing.current) return;
+    writing.current = true;
+    const epoch = uiEpoch.current;
+    const isCurrent = () => visibleRef.current && uiEpoch.current === epoch;
+    setBusy(true);
+    setFlying(true);
+    setSaveError(false);
+    const pending = attempt.current ?? {
+      id: `pk_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       team: kickingTeam,
       kickerId,
       keeperId: facingKeeperId,
       scored,
-    });
+    };
+    attempt.current = pending;
+    try {
+    await Promise.all([gameService.recordShootoutKick(gameId, pending), new Promise((resolve) => setTimeout(resolve, reduced ? 0 : 1500))]);
+    if (isCurrent()) attempt.current = null;
     logEvent(AnalyticsEvent.ShootoutKickRecorded, {
       gameId,
-      team: kickingTeam,
-      scored,
+      team: pending.team,
+      scored: pending.scored,
       kickIndex: kicks.length,
       scoredA: scoredOf('A'),
       scoredB: scoredOf('B'),
     });
+    if (!isCurrent()) return;
     setKickerId(null);
     setAsking(false);
     setFlying(false);
     setKickResult(null);
     resetBall();
     setScreen('board');
+    } catch {
+      if (isCurrent()) {
+        setSaveError(true);
+        setFlying(false);
+        setKickResult(null);
+        resetBall();
+      }
+    } finally {
+      writing.current = false;
+      if (isCurrent()) setBusy(false);
+    }
   };
   const finish = () => {
+    if (writing.current || busy || flying || attempt.current) return;
     const sa = scoredOf('A');
     const sb = scoredOf('B');
     logEvent(AnalyticsEvent.ShootoutFinished, {
@@ -403,8 +441,8 @@ export function Shootout({
           scored: last.scored,
         });
         gameService
-          .undoLastShootoutKick(gameId)
-          .catch(() => {})
+          .undoLastShootoutKick(gameId, last.id)
+          .catch(() => setSaveError(true))
           .finally(() => setBusy(false));
       },
     });
@@ -415,7 +453,7 @@ export function Shootout({
     // whole shootout mid-flow (user report: back kicked me out entirely).
     // A kick in flight owns the screen until it lands; letting back interrupt
     // it would leave the ball mid-air and the kick unrecorded.
-    if (flying) return;
+    if (flying || writing.current || attempt.current) return;
     if (confirm) {
       setConfirm(null);
       return;
@@ -770,6 +808,7 @@ export function Shootout({
             },
           ]}
         >
+          {saveError && <Pressable accessibilityRole="button" disabled={busy} onPress={() => attempt.current ? takeKick(attempt.current.scored) : setSaveError(false)}><Text style={styles.q}>השמירה לא אושרה. {he.retry}</Text></Pressable>}
           {body}
         </View>
 

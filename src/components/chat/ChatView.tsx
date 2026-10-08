@@ -7,6 +7,9 @@
 // listener is denied (e.g. the user lost membership mid-session) we fall
 // to a "no access" state rather than showing a broken empty list.
 
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
+import { ArrivalMotion } from '@/components/anim/ArrivalMotion';
+import { useArrivalTracker } from '@/hooks/animations/useArrivalTracker';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -88,6 +91,7 @@ export function ChatView({
   adminIds = [],
   official = false,
 }: Props) {
+  const reduced = useReducedMotion();
   const me = useUserStore((s) => s.currentUser);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
   const playersMap = useGameStore((s) => s.players);
@@ -99,6 +103,7 @@ export function ChatView({
       groupId: scope === 'community' ? parentId : undefined,
     });
   };
+  const { arrivals, observe: observeMessages } = useArrivalTracker(`${scope}:${parentId}:${me?.id ?? ''}`);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
@@ -106,6 +111,7 @@ export function ChatView({
   const [sending, setSending] = useState(false);
   const [muted, setMuted] = useState(false);
   const [blocked, setBlocked] = useState<Set<string>>(new Set());
+  const [blocksKnown, setBlocksKnown] = useState(false);
   const [readers, setReaders] = useState<ChatReader[]>([]);
   const [typers, setTypers] = useState<ChatTyper[]>([]);
   const [, setTick] = useState(0); // forces typing freshness re-eval
@@ -143,6 +149,7 @@ export function ChatView({
       scope,
       parentId,
       (msgs) => {
+        observeMessages(msgs.map(m => m.id));
         setMessages(msgs);
         setLoading(false);
         setDenied(false);
@@ -177,13 +184,15 @@ export function ChatView({
       if (retryTimer) clearTimeout(retryTimer);
       unsub();
     };
-  }, [scope, parentId, retryTick]);
+  }, [scope, parentId, retryTick, observeMessages]);
 
   // Per-chat mute state, my block list, read positions, and who's typing.
   useEffect(() => {
     if (!me) return;
     const unsubM = chatService.subscribeMuted(me.id, scope, parentId, setMuted);
-    const unsubB = chatService.subscribeBlocked(me.id, setBlocked);
+    setBlocksKnown(false);
+    setBlocked(new Set());
+    const unsubB = chatService.subscribeBlocked(me.id, (ids) => { setBlocked(ids); setBlocksKnown(true); });
     const unsubR = chatService.subscribeReads(scope, parentId, setReaders);
     const unsubT = chatService.subscribeTyping(scope, parentId, setTypers);
     // Re-evaluate typing freshness every couple of seconds so a stale
@@ -231,10 +240,10 @@ export function ChatView({
   useEffect(() => {
     if (messages.length === 0 || !nearBottomRef.current) return;
     const t = setTimeout(() => {
-      listRef.current?.scrollToEnd({ animated: true });
+      listRef.current?.scrollToEnd({ animated: !reduced });
     }, 80);
     return () => clearTimeout(t);
-  }, [messages.length]);
+  }, [messages.length, reduced]);
 
   const send = async () => {
     const text = draft.trim();
@@ -265,7 +274,7 @@ export function ChatView({
     // nearBottomRef) skips your just-sent message and it lands off-screen,
     // looking like the send failed.
     nearBottomRef.current = true;
-    listRef.current?.scrollToEnd({ animated: true });
+    listRef.current?.scrollToEnd({ animated: !reduced });
     lastTypingWriteRef.current = 0;
     chatService.setTyping(scope, parentId, { id: me.id, name: me.name }, false).catch(() => {});
     // Fire-and-forget — do NOT await the server ack. Firestore durably queues
@@ -517,18 +526,20 @@ export function ChatView({
             renderItem={({ item }) =>
               item.kind === 'date' ? (
                 <DateDivider label={item.label} />
-              ) : blocked.has(item.message.senderId) ? (
+              ) : (!blocksKnown && item.message.senderId !== me?.id) || blocked.has(item.message.senderId) ? (
                 // Blocked sender: keep a collapsed placeholder in place (instead
                 // of vanishing the message) so replies around it still have
                 // context — no more "ghost" threads.
                 <BlockedRow name={item.message.senderName} />
               ) : (
+                <ArrivalMotion at={nearBottomRef.current ? arrivals[item.message.id] : undefined}>
                 <MessageRow
                   message={item.message}
                   mine={item.message.senderId === me?.id}
                   onOpenMenu={(e) => openMenu(item.message, e)}
                   onOpenProfile={() => openProfile(item.message.senderId)}
                 />
+                </ArrivalMotion>
               )
             }
             onScroll={(e) => {

@@ -14737,7 +14737,7 @@ export const commitRoundStats = onCall(
     // quadratic pair writes and the caps on goals/penalties bound the rest, so
     // this should be unreachable — which is exactly why it must shout if it
     // ever isn't, instead of silently overflowing.
-    if (sb.opCount > MAX_ROUND_BATCH_OPS) {
+    if (sb.opCount + (roundHistoryDoc ? 1 : 0) > MAX_ROUND_BATCH_OPS) {
       console.error(
         `[commitRoundStats] batch too large: ${sb.opCount} ops ` +
           `(A=${A.length} B=${B.length} goals=${cappedGoals.length} pens=${pens.length})`,
@@ -14748,10 +14748,8 @@ export const commitRoundStats = onCall(
       );
     }
 
-    // ── Round history FIRST, then the latched stats batch ───────────────────
-    // The ordering, and the reasoning behind it, live in ./commitProtocol —
-    // where they are unit-tested against every failure window rather than only
-    // described in a comment here.
+    // History, statistics and the create-only latch commit atomically.
+    // commitProtocol handles retries and legacy missing-history repair.
     const roundHistoryRef = roundHistoryDoc
       ? db
           .collection('games')
@@ -14773,14 +14771,12 @@ export const commitRoundStats = onCall(
       isAlreadyCommitted: latchRef
         ? async () => (await latchRef.get()).exists
         : undefined,
-      writeHistory:
-        roundHistoryRef && roundHistoryDoc
-          ? async () => {
-              await roundHistoryRef.set(roundHistoryDoc);
-            }
-          : undefined,
       commitStats: async () => {
-        await sb.build(db.batch(), inc).commit();
+        // History, increments and the create-only latch must have one winner.
+        // A losing concurrent payload cannot overwrite the winning history.
+        const batch = sb.build(db.batch(), inc);
+        if (roundHistoryRef && roundHistoryDoc) batch.set(roundHistoryRef, roundHistoryDoc);
+        await batch.commit();
       },
       healHistory:
         roundHistoryRef && roundHistoryDoc
@@ -14795,8 +14791,9 @@ export const commitRoundStats = onCall(
                   gameId,
                   roundId,
                 );
-              } catch {
-                // Already there — the normal case for a duplicate press.
+              } catch (err) {
+                const code = (err as { code?: unknown })?.code;
+                if (code !== 6 && code !== 'already-exists') throw err;
               }
             }
           : undefined,
@@ -15263,71 +15260,14 @@ export const removeRetroGoal = onCall(
   },
 );
 
-// ── Reports → the Pulse task list ────────────────────────────────────────
-//
-// Every in-app report a tester files becomes a task the moment it's written,
-// so the owner's work list is complete without Pulse having to scan the
-// `feedback` collection on every open. That scan is exactly what the tasks
-// screen replaced: one collection read instead of four.
-//
-// The task carries the reporter's own category (they picked it in the sheet)
-// but NOT a priority — urgency is the owner's call, so everything lands at
-// 'normal' and gets promoted by hand in Pulse.
+// Reports belong only to Pulse's feedback inbox. Keep the trigger exported
+// so a targeted deployment replaces the previously deployed task copier;
+// removing the export alone would require deleting the remote function.
+// Existing copied tasks are historical data and are not deleted by this trigger.
 export const onFeedbackCreated = onDocumentCreated(
   'feedback/{feedbackId}',
-  async (event) => {
-    const d = event.data?.data() as
-      | {
-          message?: string;
-          screen?: string;
-          image?: string;
-          category?: string;
-          userName?: string;
-          userId?: string;
-          appVersion?: string;
-          type?: string;
-        }
-      | undefined;
-    if (!d) return;
-
-    const feedbackId = event.params.feedbackId;
-    // Deterministic id: a retry of this trigger (Cloud Functions guarantees
-    // at-least-once, not exactly-once) rewrites the SAME doc instead of
-    // creating a second task for one report.
-    const taskId = `fb-${feedbackId}`;
-    const ref = db.collection('tasks').doc(taskId);
-    if ((await ref.get()).exists) return;
-
-    const category =
-      d.category === 'ui' || d.category === 'feature' ? d.category : 'bug';
-    const title = (d.message ?? '').trim().slice(0, 200) || 'דיווח מהאפליקציה';
-    const now = Date.now();
-    const who = (d.userName ?? '').trim();
-    const version = (d.appVersion ?? '').trim();
-    // Provenance goes in the body, not the title — the title is what the list
-    // shows, and "מ־דני · 1.0.91" in every row would crowd out the actual report.
-    const notes = [who && `דיווח מ${who}`, version && `גרסה ${version}`]
-      .filter(Boolean)
-      .join(' · ');
-
-    await ref.set({
-      title,
-      notes,
-      category,
-      status: 'new',
-      priority: 'normal',
-      source: 'teamder',
-      images: typeof d.image === 'string' && d.image ? [d.image] : [],
-      screen: typeof d.screen === 'string' ? d.screen : '',
-      sourceId: feedbackId,
-      // WHO reported. Without this the task is a dead end — you can read the
-      // complaint but have no way to get back to the person who filed it.
-      reporterId: typeof d.userId === 'string' ? d.userId : '',
-      reporterName: who,
-      createdAt: now,
-      updatedAt: now,
-      doneAt: 0,
-    });
+  async () => {
+    // Intentionally no writes: the original feedback document is the report.
   },
 );
 

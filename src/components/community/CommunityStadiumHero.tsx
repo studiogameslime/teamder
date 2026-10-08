@@ -15,7 +15,6 @@
 import React from 'react';
 import {
   ActivityIndicator,
-  ImageBackground,
   Pressable,
   StyleSheet,
   Text,
@@ -28,6 +27,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing } from '@/theme';
 import { he } from '@/i18n/he';
 import { getCoverSource } from '@/data/coverImages';
+import { CoverCrossfade } from '@/components/anim/CoverCrossfade';
 
 interface Props {
   name: string;
@@ -77,11 +77,8 @@ export function CommunityStadiumHero({
     : getCoverSource(coverImageId) ?? STADIUM_BG;
   return (
     <View style={styles.wrap}>
-      <ImageBackground
-        source={source}
-        style={styles.bg}
-        resizeMode="cover"
-      >
+      <View style={styles.bg}>
+        <CoverCrossfade source={source} imageKey={coverUrl || coverImageId || 'default'} />
         <LinearGradient
           // The reference photo stays bright: the darkening is a scrim behind
           // the TEXT, not a wash over the whole image. The old stops
@@ -188,7 +185,7 @@ export function CommunityStadiumHero({
             ) : null}
           </View>
         </SafeAreaView>
-      </ImageBackground>
+      </View>
     </View>
   );
 }

@@ -1,3 +1,4 @@
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // "מצא לי משחקים" — the user marks when/where they want to play so the
 // matcher can offer them open games with shortages nearby.
 //
@@ -608,11 +609,13 @@ export function AvailabilityEditScreen() {
                         pressed && { opacity: 0.85 },
                       ]}
                     >
+                      <ChangeMotion triggerKey={on} pulse duration={180}>
                       <Ionicons
                         name={on ? 'checkmark' : 'add'}
                         size={on ? 20 : 19}
                         color={on ? '#fff' : colors.textMuted}
                       />
+                      </ChangeMotion>
                     </Pressable>
                   );
                 })}

@@ -1,3 +1,5 @@
+import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 // RequestsScreen — the unified "Requests" inbox reached from the header bell.
 // Three sections, each with "approve all": friend requests, community-join
 // requests (communities I admin), game-join requests (games I created).
@@ -47,13 +49,16 @@ export function RequestsScreen() {
   const [data, setData] = useState<InboxRequests>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null); // per-item or per-section key
 
   const load = useCallback(async () => {
     if (!me) return;
     try {
       setData(await getInboxRequests(me.id));
+      setLoadFailed(false);
     } catch (err) {
+      setLoadFailed(true);
       logError('RequestsScreen.load', err, { uid: me.id });
     } finally {
       setLoading(false);
@@ -130,7 +135,8 @@ export function RequestsScreen() {
           />
         }
       >
-        {empty ? (
+        {loadFailed && <Pressable accessibilityRole="button" onPress={() => load()}><Text style={styles.sectionTitle}>לא ניתן לטעון את הפניות. {he.retry}</Text></Pressable>}
+        {empty && !loadFailed ? (
           <EmptyState
             icon="checkmark-done-circle-outline"
             title={he.requestsEmpty}
@@ -269,8 +275,9 @@ function Row({
   onDecline: () => void;
   onOpenProfile?: () => void;
 }) {
+  const reduced = useReducedMotion();
   return (
-    <View style={styles.row}>
+    <Animated.View collapsable={false} layout={LinearTransition.duration(reduced ? 0 : 220)} exiting={reduced ? undefined : FadeOut.duration(180)} style={styles.row}>
       {/* Avatar + name open the player's card (user report: they should be
           tappable). Falls back to a plain View when we have no user id. */}
       <Pressable
@@ -294,7 +301,7 @@ function Row({
           </Pressable>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 

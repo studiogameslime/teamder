@@ -16,7 +16,8 @@
 // from a "filler interest received" push — that navigation triggers
 // a fresh mount so the latest interests are pulled.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import { ArrivalMotion } from '@/components/anim/ArrivalMotion';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -61,6 +62,9 @@ export function FillerInterestsSection({
   acceptsFillers,
 }: Props) {
   const [rows, setRows] = useState<CandidateRow[] | null>(null);
+  const [approved, setApproved] = useState<{ row: CandidateRow; at: number } | null>(null);
+  const activeGame = useRef<string | null>(gameId);
+  useEffect(() => { activeGame.current = gameId; setApproved(null); return () => { activeGame.current = null; }; }, [gameId]);
   const [busyUid, setBusyUid] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -126,6 +130,7 @@ export function FillerInterestsSection({
   }, [load]);
   useFocusEffect(
     useCallback(() => {
+      setApproved(null);
       load();
     }, [load]),
   );
@@ -140,7 +145,7 @@ export function FillerInterestsSection({
       </Card>
     );
   }
-  if (rows.length === 0) return null;
+  if (rows.length === 0 && !approved) return null;
 
   const handleApprove = async (candidateUid: string) => {
     setBusyUid(candidateUid);
@@ -150,6 +155,10 @@ export function FillerInterestsSection({
       const { functions } = getFirebase();
       const fn = httpsCallable(functions, 'approveFiller');
       await fn({ gameId, candidateUid });
+      if (activeGame.current === gameId) {
+        const row = rows.find(r => r.uid === candidateUid);
+        if (row) setApproved({ row, at: Date.now() });
+      }
       toast.success(he.fillerApproveSuccess);
       await load();
     } catch (err) {
@@ -215,6 +224,14 @@ export function FillerInterestsSection({
 
   return (
     <Card style={styles.card}>
+      {approved ? <ArrivalMotion at={approved.at}>
+        <View style={[styles.row, { backgroundColor: '#ECFDF3', borderRadius: 12, paddingHorizontal: spacing.sm }]} accessibilityLiveRegion="polite">
+          <Avatar avatarId={approved.row.user?.avatarId} uri={approved.row.user?.photoUrl} name={approved.row.user?.name ?? ''} size={40} />
+          <View style={styles.rowBody}><Text style={styles.rowName}>{approved.row.user?.name ?? he.fillerDefaultName}</Text><Text style={styles.subtitle}>{he.fillerApproveSuccess}</Text></View>
+          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+        </View>
+      </ArrivalMotion> : null}
+      {rows.length > 0 ? <>
       <View style={styles.headerRow}>
         <Ionicons name="people-outline" size={18} color={colors.primary} />
         <Text style={styles.title}>{he.fillerSectionTitle}</Text>
@@ -271,6 +288,7 @@ export function FillerInterestsSection({
           </View>
         </View>
       ))}
+      </> : null}
     </Card>
   );
 }

@@ -113,7 +113,7 @@ export function mockPairCompare(input: PairCompareInput): PairCompareModel {
     b,
     format,
     winner:
-      unscored || a === null || b === null || a === b ? 'tie' : a > b ? 'a' : 'b',
+      unscored || a === null || b === null || a === b ? 'tie' : (key === 'losses' ? a < b : a > b) ? 'a' : 'b',
     unscored,
   });
   const gpg = (r: ChampionshipRow) =>

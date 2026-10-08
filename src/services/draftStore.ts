@@ -188,6 +188,7 @@ export async function writeDraft(
   values: Record<string, unknown>,
   now: number = Date.now(),
 ): Promise<Draft> {
+  return serializeDraft(async () => {
   const existing = await readRaw(kind);
   const createdAt = existing && existing.id === id ? existing.createdAt : now;
   const draft: Draft = {
@@ -200,6 +201,14 @@ export async function writeDraft(
   };
   await AsyncStorage.setItem(keyFor(kind), JSON.stringify(draft));
   return draft;
+  });
+}
+
+let draftQueue: Promise<unknown> = Promise.resolve();
+function serializeDraft<T>(fn: () => Promise<T>): Promise<T> {
+  const next = draftQueue.then(fn, fn);
+  draftQueue = next.catch(() => {});
+  return next;
 }
 
 /**
@@ -257,8 +266,11 @@ export async function discardDraft(kind: DraftKind): Promise<void> {
  * the club existing), they are reported differently, and a future change to one
  * must not silently apply to the other.
  */
-export async function consumeDraft(kind: DraftKind): Promise<void> {
-  await discardDraft(kind);
+export async function consumeDraft(kind: DraftKind, expected?: Draft): Promise<void> {
+  await serializeDraft(async () => {
+    if (expected && JSON.stringify(await readRaw(kind)) !== JSON.stringify(expected)) return;
+    await discardDraft(kind);
+  });
 }
 
 async function readRaw(kind: DraftKind): Promise<Draft | null> {

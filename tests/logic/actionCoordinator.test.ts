@@ -59,7 +59,7 @@ import {
   __resetCoordinatorForTests,
   type ActionResult,
 } from '@/services/actionCoordinator';
-import { readPendingAction } from '@/services/pendingAction';
+import { readPendingAction, writePendingAction } from '@/services/pendingAction';
 import { draftStore } from '@/services/draftStore';
 
 const GUEST = { id: 'anon1', isGuest: true };
@@ -289,6 +289,26 @@ describe('resume', () => {
 // ─── cleanup ──────────────────────────────────────────────────────────────
 
 describe('what survives, and what does not', () => {
+  it('preserves a newer intent and revised draft when an older execution finishes', async () => {
+    currentUser = GUEST;
+    await requestAction({ kind: 'create_club', draft: { kind: 'club', id: 'd1', values: { name: 'old' } }, execute: async () => ok() });
+    currentUser = REAL;
+    let release!: () => void;
+    let started!: () => void;
+    const entered = new Promise<void>((resolve) => { started = resolve; });
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    registerResumer('create_club', async () => { started(); await gate; return { outcome: 'created', terminal: true }; });
+    const running = resumePendingAction();
+    await entered;
+    currentUser = GUEST;
+    await draftStore.write('club', 'd1', { name: 'new' });
+    await writePendingAction({ version: 2, kind: 'create_club', draftId: 'd1', createdAt: Date.now(), origin: 'in_app' });
+    currentUser = REAL;
+    release();
+    await running;
+    expect(await readPendingAction()).toMatchObject({ kind: 'create_club', draftId: 'd1' });
+    expect(await draftStore.read('club')).toMatchObject({ values: { name: 'new' } });
+  });
   const park = async (kind: 'create_club' | 'join_game') => {
     currentUser = GUEST;
     await requestAction(

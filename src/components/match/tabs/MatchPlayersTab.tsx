@@ -1,3 +1,4 @@
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // The two summary counters at the top of the "שחקנים" tab.
 //
 // This file used to be the whole tab — a three-row roster preview behind a
@@ -28,7 +29,7 @@ export function MatchPlayerCounters({
   waiting: number;
 }) {
   return (
-    <View style={styles.counters}>
+    <ChangeMotion triggerKey={`${registered}:${waiting}`} pulse style={styles.counters}>
       <Counter
         icon="people"
         tint={clubAccent.blue}
@@ -41,7 +42,7 @@ export function MatchPlayerCounters({
         value={String(waiting)}
         label={he.gdPlayersWaiting}
       />
-    </View>
+    </ChangeMotion>
   );
 }
 

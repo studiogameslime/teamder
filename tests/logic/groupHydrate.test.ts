@@ -69,6 +69,7 @@ const club = (id: string) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  useGroupStore.getState().reset();
   getCurrentGroupId.mockResolvedValue(null);
   setCurrentGroupId.mockResolvedValue(undefined);
   listPendingForUser.mockResolvedValue([]);
@@ -77,6 +78,25 @@ beforeEach(() => {
     groups: [],
     pendingGroups: [],
     currentGroupId: null,
+  });
+});
+
+describe('late responses after an account switch', () => {
+  it.each(['success', 'failure', 'stale'])('ignores an old %s response', async (outcome) => {
+    let resolve!: (value: never[]) => void;
+    let reject!: (reason: Error) => void;
+    const old = new Promise<never[]>((r, j) => { resolve = r; reject = j; });
+    listForUser.mockImplementation((uid: string) => uid === 'A' ? old : Promise.resolve([club('new')]));
+    const pending = useGroupStore.getState().hydrate('A');
+    useGroupStore.getState().reset();
+    await useGroupStore.getState().hydrate('B');
+    setCurrentGroupId.mockClear();
+    if (outcome === 'success') resolve([club('old')]);
+    else reject(Object.assign(new Error('late'), { name: outcome === 'stale' ? 'StaleSessionError' : 'Error' }));
+    await pending;
+    expect(useGroupStore.getState().groups.map((g) => g.id)).toEqual(['new']);
+    expect(useGroupStore.getState().currentGroupId).toBe('new');
+    expect(setCurrentGroupId).not.toHaveBeenCalled();
   });
 });
 

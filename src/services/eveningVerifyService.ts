@@ -118,7 +118,7 @@ export const eveningVerifyService = {
         return out.sort((a, b) => a.startsAt - b.startsAt).slice(0, MAX_SHOWN);
       } catch (err2) {
         logError('listUnverifiedEveningsFallback', err2, { groupId });
-        return [];
+        throw err2;
       }
     }
   },

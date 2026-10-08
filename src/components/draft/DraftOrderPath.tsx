@@ -1,3 +1,4 @@
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // DraftOrderPath — the "מסלול הבחירה" visualization.
 //
 // Renders the pick sequence as connected circles. Each circle shows the
@@ -65,6 +66,7 @@ export function DraftOrderPath({ order, activeIndex, compact, captains }: Props)
                 isActive && { transform: [{ scale: 1.14 }] },
               ]}
             >
+              <ChangeMotion triggerKey={isActive} pulse duration={260}>
               {cap ? (
                 <UserAvatar user={cap} size={dim - 6} />
               ) : (
@@ -79,6 +81,7 @@ export function DraftOrderPath({ order, activeIndex, compact, captains }: Props)
                   {teamLetter(team)}
                 </Text>
               )}
+              </ChangeMotion>
             </View>
           </View>
         );

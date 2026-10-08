@@ -5,6 +5,7 @@
 // (liberty tiles, beige buildings, white roads, #2563EB accent) so all the
 // app's maps look identical. Works on iOS + Android with nothing to configure.
 
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
@@ -22,6 +23,7 @@ export interface MapMarker {
 
 interface Props {
   markers: MapMarker[];
+  selectedId?: string | null;
   center: { lat: number; lng: number };
   zoom?: number;
   onMarkerPress?: (id: string) => void;
@@ -54,6 +56,7 @@ interface Props {
 
 export function MapWebView({
   markers,
+  selectedId = null,
   center,
   zoom = 11,
   onMarkerPress,
@@ -66,6 +69,9 @@ export function MapWebView({
   pinEmoji = '⚽',
 }: Props) {
   const ref = useRef<WebView>(null);
+  const reduced = useReducedMotion();
+  const selectionScript = `window.selectMarker && window.selectMarker(${JSON.stringify(selectedId)}, ${reduced}); true;`;
+  useEffect(() => { ref.current?.injectJavaScript(selectionScript); }, [selectionScript]);
   // `pickable` changes the baked-in script, so it's a memo dep. `pin` is
   // NOT — it's moved imperatively below so a tap never reloads the map.
   const html = useMemo(
@@ -77,11 +83,9 @@ export function MapWebView({
   useEffect(() => {
     if (!focusOn) return;
     ref.current?.injectJavaScript(
-      `window.tmap && window.tmap.flyTo([${focusOn.lat}, ${focusOn.lng}], ${
-        focusOn.zoom ?? 13
-      }); true;`,
+      `window.tmap && window.tmap.flyTo({ center: [${focusOn.lng}, ${focusOn.lat}], zoom: ${focusOn.zoom ?? 13}, duration: ${reduced ? 0 : 250} }); true;`,
     );
-  }, [focusOn]);
+  }, [focusOn, reduced]);
 
   // Place / move the picker pin imperatively (no reload). Clearing it
   // (pin → null) removes the marker.
@@ -135,6 +139,7 @@ export function MapWebView({
       source={{ html }}
       style={styles.web}
       onMessage={handleMessage}
+      onLoadEnd={() => ref.current?.injectJavaScript(selectionScript)}
       javaScriptEnabled
       domStorageEnabled
       androidLayerType="hardware"
@@ -211,10 +216,22 @@ function buildHtml(
         attributionControl: false
       });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
-      // RN flies the camera here via injectJavaScript: window.tmap.flyTo([lat,lng], z).
-      window.tmap = { flyTo: function (ll, z) { map.flyTo({ center: [ll[1], ll[0]], zoom: z || 13 }); } };
+      // Native MapLibre options carry the duration, including reduced-motion zero.
+      window.tmap = { flyTo: function (options) { map.flyTo(options); } };
 
       var markers = ${markersJson};
+      var selectedMarker = null, selectionReduced = false, selectionFrame = null;
+      window.selectMarker = function(id, reduced) {
+        selectedMarker = id; selectionReduced = reduced;
+        if (!map.getLayer('selected-point')) return;
+        map.setFilter('selected-point', ['all', ['!', ['has', 'point_count']], ['==', ['get', 'id'], id || '']]);
+        map.setPaintProperty('selected-point', 'circle-radius-transition', { duration: reduced ? 0 : 220 });
+        if (selectionFrame !== null) cancelAnimationFrame(selectionFrame);
+        map.setPaintProperty('selected-point', 'circle-radius', reduced ? 23 : 16);
+        if (!reduced) selectionFrame = requestAnimationFrame(function() {
+          selectionFrame = null; map.setPaintProperty('selected-point', 'circle-radius', 23);
+        });
+      };
 
       map.on('load', function () {
         // Same warm palette as the availability map.
@@ -264,6 +281,12 @@ function buildHtml(
               'icon-allow-overlap': true, 'icon-ignore-placement': true } });
         } catch (e) {}`
           : ''}
+
+        map.addLayer({ id: 'selected-point', type: 'circle', source: 'pts',
+          filter: ['==', ['get', 'id'], ''],
+          paint: { 'circle-color': '#2563EB', 'circle-opacity': 0.16,
+            'circle-radius': 16, 'circle-stroke-width': 2, 'circle-stroke-color': '#2563EB' } }, 'point');
+        window.selectMarker(selectedMarker, selectionReduced);
 
         if (markers.length > 1) {
           var b = new maplibregl.LngLatBounds();

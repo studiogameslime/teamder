@@ -4,7 +4,7 @@
 // the person's messages reappear in chats again.
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -29,35 +29,44 @@ export function BlockedUsersScreen() {
   const playersMap = useGameStore((s) => s.players);
 
   const [ids, setIds] = useState<string[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   // The list is live, so the subscription fires on every change — only the
   // first emission is the "screen opened" event.
   const loggedOpenRef = useRef(false);
 
+  useEffect(() => {
+    setIds(null);
+    loggedOpenRef.current = false;
+  }, [me?.id]);
+
   // Live block list — so unblocking elsewhere (or here) reflects instantly.
   useEffect(() => {
     if (!me) return;
+    setLoadFailed(false);
+    let received = false;
     const unsub = chatService.subscribeBlocked(me.id, (set) => {
+      received = true;
       const list = Array.from(set);
       setIds(list);
+      setLoadFailed(false);
       if (!loggedOpenRef.current) {
         loggedOpenRef.current = true;
         logEvent(AnalyticsEvent.ChatBlockedListOpened, { count: list.length });
       }
       if (list.length > 0) hydratePlayers(list);
-    });
-    // Fallback: subscribeBlocked swallows a listener error internally and never
-    // calls back, which left `ids` null and the loader spinning forever. If
-    // nothing emits shortly, fall to the empty state instead of hanging.
+    }, () => setLoadFailed(true));
+    // A silent connection must show a retryable error, never an empty list.
     const t = setTimeout(
-      () => setIds((cur) => (cur === null ? [] : cur)),
+      () => { if (!received) setLoadFailed(true); },
       6000,
     );
     return () => {
       unsub();
       clearTimeout(t);
     };
-  }, [me?.id, hydratePlayers]);
+  }, [me?.id, hydratePlayers, retryTick]);
 
   const onUnblock = (uid: string, name: string) => {
     if (!me) return;
@@ -88,9 +97,10 @@ export function BlockedUsersScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.blockedTitle} />
+      {loadFailed && <Pressable accessibilityRole="button" onPress={() => setRetryTick((n) => n + 1)}><Text style={styles.intro}>לא ניתן לטעון את החסימות. {he.retry}</Text></Pressable>}
       {ids === null ? (
         <View style={styles.center}>
-          <SoccerBallLoader size={40} />
+          {!loadFailed && <SoccerBallLoader size={40} />}
         </View>
       ) : ids.length === 0 ? (
         <EmptyState

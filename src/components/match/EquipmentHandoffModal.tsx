@@ -5,7 +5,9 @@
 // members are selectable — a holder is a community-member state (guests excluded
 // upstream). "דלג" leaves the current holders unchanged.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
+import { TransferIcon, type IconFlight } from '@/components/anim/TransferIcon';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -125,51 +127,9 @@ export function EquipmentHandoffModal({ visible, players, initial, lastTaken, on
           </View>
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listInner}>
-            {orderedPlayers.map((p) => {
-              const ballOn = ball.includes(p.id);
-              const jerseyOn = jerseys.includes(p.id);
-              return (
-                <View key={p.id} style={styles.row}>
-                  <UserAvatar user={p} size={34} />
-                  <View style={styles.nameCol}>
-                    <Text style={styles.name} numberOfLines={1}>
-                      {p.name}
-                    </Text>
-                    <Text style={styles.lastTook} numberOfLines={1}>
-                      {lastTakenHint(lastTaken?.[p.id])}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => toggle(setBall, p.id)}
-                    style={[styles.toggle, ballOn && styles.toggleBallOn]}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: ballOn }}
-                    accessibilityLabel={he.equipmentBall}
-                    hitSlop={6}
-                  >
-                    <Ionicons
-                      name={ballOn ? 'football' : 'football-outline'}
-                      size={20}
-                      color={ballOn ? '#FFFFFF' : colors.textMuted}
-                    />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => toggle(setJerseys, p.id)}
-                    style={[styles.toggle, jerseyOn && styles.toggleJerseyOn]}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: jerseyOn }}
-                    accessibilityLabel={he.equipmentJerseys}
-                    hitSlop={6}
-                  >
-                    <Ionicons
-                      name={jerseyOn ? 'shirt' : 'shirt-outline'}
-                      size={20}
-                      color={jerseyOn ? '#FFFFFF' : colors.textMuted}
-                    />
-                  </Pressable>
-                </View>
-              );
-            })}
+            {orderedPlayers.map(p => <EquipmentChoiceRow key={p.id} player={p} hint={lastTakenHint(lastTaken?.[p.id])}
+              ballOn={ball.includes(p.id)} jerseyOn={jerseys.includes(p.id)}
+              onBall={() => toggle(setBall, p.id)} onJerseys={() => toggle(setJerseys, p.id)} />)}
           </ScrollView>
 
           <View style={styles.footer}>
@@ -192,6 +152,39 @@ export function EquipmentHandoffModal({ visible, players, initial, lastTaken, on
       </View>
     </Modal>
   );
+}
+
+function EquipmentChoiceRow({ player, hint, ballOn, jerseyOn, onBall, onJerseys }: {
+  player: Props['players'][number]; hint: string; ballOn: boolean; jerseyOn: boolean; onBall: () => void; onJerseys: () => void;
+}) {
+  const [flight, setFlight] = useState<IconFlight | null>(null);
+  const points = useRef<Record<string, { x: number; y: number }>>({});
+  const measure = (key: string) => (e: import('react-native').LayoutChangeEvent) => {
+    const { x, y, width, height } = e.nativeEvent.layout;
+    points.current[key] = { x: x + width / 2, y: y + height / 2 };
+  };
+  const select = (icon: 'football' | 'shirt', wasSelected: boolean, action: () => void) => {
+    if (!wasSelected && points.current[icon] && points.current.avatar) {
+      setFlight({ key: Date.now(), icon, from: points.current[icon], to: points.current.avatar });
+    }
+    action(); // This is a draft selection; only Save persists holders.
+  };
+  return <View style={styles.row}>
+    <View onLayout={measure('avatar')}><ChangeMotion triggerKey={`${ballOn}:${jerseyOn}`} pulse><UserAvatar user={player} size={34} /></ChangeMotion></View>
+    <View style={styles.nameCol}>
+      <Text style={styles.name} numberOfLines={1}>{player.name}</Text>
+      <Text style={styles.lastTook} numberOfLines={1}>{hint}</Text>
+    </View>
+    <Pressable onLayout={measure('football')} onPress={() => select('football', ballOn, onBall)}
+      style={[styles.toggle, ballOn && styles.toggleBallOn]} accessibilityRole="checkbox" accessibilityState={{ checked: ballOn }} accessibilityLabel={he.equipmentBall} hitSlop={6}>
+      <Ionicons name={ballOn ? 'football' : 'football-outline'} size={20} color={ballOn ? '#FFFFFF' : colors.textMuted} />
+    </Pressable>
+    <Pressable onLayout={measure('shirt')} onPress={() => select('shirt', jerseyOn, onJerseys)}
+      style={[styles.toggle, jerseyOn && styles.toggleJerseyOn]} accessibilityRole="checkbox" accessibilityState={{ checked: jerseyOn }} accessibilityLabel={he.equipmentJerseys} hitSlop={6}>
+      <Ionicons name={jerseyOn ? 'shirt' : 'shirt-outline'} size={20} color={jerseyOn ? '#FFFFFF' : colors.textMuted} />
+    </Pressable>
+    <TransferIcon flight={flight} />
+  </View>;
 }
 
 const styles = StyleSheet.create({
@@ -218,8 +211,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   hint: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
-  legendRow: { flexDirection: 'row-reverse', gap: spacing.lg, paddingHorizontal: spacing.xs },
-  legendItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4 },
+  legendRow: { flexDirection: 'row', gap: spacing.lg, paddingHorizontal: spacing.xs },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendText: { ...typography.caption, color: colors.textMuted, fontWeight: '700' },
   list: { alignSelf: 'stretch' },
   listInner: { gap: spacing.xs, paddingVertical: spacing.xs },

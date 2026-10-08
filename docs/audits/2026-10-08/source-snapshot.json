@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-08",
+  "head": "9ec0dfd94db151a35deb50eab198843ecf2e33d9",
+  "workingTree": true,
+  "hashMode": "bytes",
+  "files": [
+    {
+      "file": "src/services/requestsService.ts",
+      "sha256": "2806e6b8477d9e477a3a178f8eb4c205043c491d6a22454e4a4ed98729f515f3"
+    },
+    {
+      "file": "src/store/groupStore.ts",
+      "sha256": "735c24278c6386fb565bee3efc156d6f7a68086d60e53159765d3be673e53efc"
+    },
+    {
+      "file": "src/services/actionCoordinator.ts",
+      "sha256": "c3a967de030c7dd36589d3678473212ee886328fdcde5918c688d447f2dee36d"
+    },
+    {
+      "file": "src/services/pendingAction.ts",
+      "sha256": "38f8b7b0c0415581f2837c51e15d80e28969b48667727ab2e71688e7b05b7335"
+    },
+    {
+      "file": "src/services/pairCompareService.ts",
+      "sha256": "9468f18c81941cd59587771034dabab53ac5f639c51c4bbb7382b7d831d9b0a5"
+    },
+    {
+      "file": "src/services/gameService.ts",
+      "sha256": "f0394c6c21fe8d5bb3851e6668aeca8994022c44af8674831274da2790819e42"
+    },
+    {
+      "file": "functions/src/commitProtocol.ts",
+      "sha256": "b28ca71cadf0ae6f14b6457c48b97ec22fb34978da14faf6a3ae31a850f14ae3"
+    },
+    {
+      "file": "functions/src/index.ts",
+      "sha256": "473100788a3f6e75eef3829757c61b48446a863a7c3c6caa439aeb6328409e25"
+    },
+    {
+      "file": "src/services/healthService.ts",
+      "sha256": "9dcd2314af247c60689572beb2accdb9ec36674cf68791455ac082e1d572aa07"
+    },
+    {
+      "file": "src/screens/games/MatchDetailsScreen.tsx",
+      "sha256": "437c0fbcb1676f30411f0766b27eebf1a099746f07ad2620d6309f02455e4d9b"
+    },
+    {
+      "file": "src/services/eveningVerifyService.ts",
+      "sha256": "5d861870402125c11118f0084e281ae96412ddd2cb86aace8f1fd9cee79b1e8e"
+    },
+    {
+      "file": "src/services/chatService.ts",
+      "sha256": "d44f5785a7c972b1d47499c45dfb6eae2940715c8204b32e6e10f0dad8227908"
+    },
+    {
+      "file": "src/components/chat/ChatView.tsx",
+      "sha256": "42531829e7057a3b8aee384792ec09c4998932e239bbf558f37ebce0ee59aacb"
+    },
+    {
+      "file": "src/navigation/ChatStack.tsx",
+      "sha256": "19dfaaa09080d9bbc33fcdcd883b2e29c98c780e183e450f39c01906504704c1"
+    },
+    {
+      "file": "src/navigation/RootNavigator.tsx",
+      "sha256": "12ffacfe3fea82854fb7b393cf580aee6b8e9c420053b450640ed7df1d411781"
+    },
+    {
+      "file": "src/screens/communities/CommunityDetailsScreen.tsx",
+      "sha256": "64d7219b9090771910ebeb7372dbe2c399a1c4c8140db29db5953245d1008d4d"
+    },
+    {
+      "file": "src/screens/games/DraftSetupScreen.tsx",
+      "sha256": "ce582282e9725240f5519b2647085977f601ca7736456f83682c4b9bfb621f9b"
+    },
+    {
+      "file": "src/screens/games/DraftBoardScreen.tsx",
+      "sha256": "cc80318afd08f815a54ba4188138106e0673734930d183b94999eb9fcbe536be"
+    },
+    {
+      "file": "src/screens/profile/FriendsScreen.tsx",
+      "sha256": "830e4af2a4358573e31c33b6347ce99b75f8f47bd1e6c33fc77bf08f5fa1d839"
+    },
+    {
+      "file": "src/components/match/Shootout.tsx",
+      "sha256": "242e780bc590130b71b4734cd9aa79cd1dd1f09d8d2ddd4b893ccac03a950c3f"
+    },
+    {
+      "file": "src/components/anim/CoverCrossfade.tsx",
+      "sha256": "99c113b61171a3775267c2758e686ffa26998448ffcbb3cae2855f4ea7051c66"
+    },
+    {
+      "file": "src/screens/profile/NotificationsSettingsScreen.tsx",
+      "sha256": "89876d005e1ea021d50ad23574a6357e7ca2ac3a26749c0ec4161e498165217b"
+    },
+    {
+      "file": "src/services/notificationsService.ts",
+      "sha256": "b26618a4b89b1d62a49cd8126d5fdd21875702fd572385ead3ac45b1e21fd4d4"
+    },
+    {
+      "file": "src/services/authUpgrade.ts",
+      "sha256": "9fc6ad6824774dfefcfaf4c32ca8f6352ccd4f5e7e499d0f3560165be265c5eb"
+    },
+    {
+      "file": "src/services/joinFairness.ts",
+      "sha256": "2b2e9bdc5efb7d5fc864f715ebf840b06a6c86e993023ccb6fe1b3b75419b473"
+    },
+    {
+      "file": "src/services/serverClock.ts",
+      "sha256": "02b48c872993ce26f53b22f1dec28204e608e0fe6d6be26604a413a4fb1cf719"
+    },
+    {
+      "file": "functions/src/seasonLock.ts",
+      "sha256": "010d0b5a08a103e6a8c253ec79088a9ac225b7d67cce1673a9c6d030c852bb45"
+    },
+    {
+      "file": "functions/src/seasonRollover.ts",
+      "sha256": "c40d2be24cac367cd8446e0bd33a00c3dfcc2b7565c535a837dc2c76fd831ce6"
+    },
+    {
+      "file": "tests/logic/commitProtocol.test.ts",
+      "sha256": "e8ce2e27cd2790d01121f7a3f5c1d5c0c4ac315fabec8cd01ca6098b903d6ee2"
+    }
+  ]
+}

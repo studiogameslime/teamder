@@ -52,6 +52,8 @@ import {
   View,
 } from 'react-native';
 
+import { mockGamesV2 } from '@/data/mockData';
+import { MotionPreview } from './MotionPreview';
 import { appAlert } from '@/components/AppDialog';
 import {
   ContextualAuthSheet,
@@ -78,7 +80,7 @@ export const QA_ROUTES_ENABLED =
  * Where a route is registered in several stacks the first one wins; the census
  * only needs one working way in.
  *
- * Params point at mock fixtures — `g1` is the mock club, `game-1` a mock game,
+ * Params point at mock fixtures — `g1` is the mock club, `gv2-live` a mock game,
  * `p1`/`p7` mock players. In mock mode these resolve; in real mode the screen
  * shows its own not-found state, which is itself worth seeing.
  */
@@ -88,8 +90,8 @@ const ROUTES: Array<
   ['— CREATION —', '', ''],
   ['CommunitiesCreate', 'CommunitiesCreate', 'ProfileTab'],
   ['GameCreate', 'GameCreate', 'ProfileTab'],
-  ['DraftSetup', 'DraftSetup', 'ProfileTab', { gameId: 'game-1' }],
-  ['DraftBoard', 'DraftBoard', 'ProfileTab', { gameId: 'game-1', captainIds: ['p1', 'p7'], method: 'snake', readOnly: false }],
+  ['DraftSetup', 'DraftSetup', 'ProfileTab', { gameId: 'gv2-live' }],
+  ['DraftBoard', 'DraftBoard', 'ProfileTab', { gameId: 'gv2-live', captainIds: ['p1', 'p7'], method: 'snake', readOnly: false }],
   ['— CLUB —', '', ''],
   ['CommunitiesFeed', 'CommunitiesFeed', 'CommunitiesTab'],
   ['CommunityDetails', 'CommunityDetails', 'ProfileTab', { groupId: 'g1' }],
@@ -102,19 +104,19 @@ const ROUTES: Array<
   ['AddMembers', 'AddMembers', 'ProfileTab', { groupId: 'g1' }],
   ['AdminApproval', 'AdminApproval', 'ProfileTab', { groupId: 'g1' }],
   ['AvailablePlayers', 'AvailablePlayers', 'ProfileTab', { groupId: 'g1' }],
-  ['PromoteOrphan', 'PromoteOrphan', 'GameTab', { gameId: 'game-1' }],
+  ['PromoteOrphan', 'PromoteOrphan', 'GameTab', { gameId: 'gv2-live' }],
   ['— GAME —', '', ''],
   ['GamesList', 'GamesList', 'GameTab'],
-  ['GamesMap', 'GamesMap', 'GameTab'],
-  ['MatchDetails', 'MatchDetails', 'ProfileTab', { gameId: 'game-1' }],
-  ['MatchPlayers', 'MatchPlayers', 'ProfileTab', { gameId: 'game-1' }],
-  ['MatchRounds', 'MatchRounds', 'ProfileTab', { gameId: 'game-1' }],
-  ['GameEdit', 'GameEdit', 'ProfileTab', { gameId: 'game-1' }],
-  ['LiveMatch', 'LiveMatch', 'ProfileTab', { gameId: 'game-1' }],
+  ['GamesMap', 'GamesMap', 'GameTab', { mode: 'games', items: mockGamesV2.filter(g => g.fieldLat && g.fieldLng).slice(0, 2).map((g, i) => ({ id: g.id, lat: g.fieldLat! + i * 0.025, lng: g.fieldLng! + i * 0.025, title: g.title, subtitle: g.fieldName, kind: 'game', dateBucket: 'today', timeLabel: 'היום · 20:00' })) }],
+  ['MatchDetails', 'MatchDetails', 'ProfileTab', { gameId: 'gv2-live' }],
+  ['MatchPlayers', 'MatchPlayers', 'ProfileTab', { gameId: 'gv2-live' }],
+  ['MatchRounds', 'MatchRounds', 'ProfileTab', { gameId: 'gv2-live' }],
+  ['GameEdit', 'GameEdit', 'ProfileTab', { gameId: 'gv2-live' }],
+  ['LiveMatch', 'LiveMatch', 'ProfileTab', { gameId: 'gv2-live' }],
   // The evening's summary is the statistics TAB of the match screen now; the
   // standalone RoundSummary screen is gone. Same destination, new address.
-  ['RoundSummary', 'MatchDetails', 'ProfileTab', { gameId: 'game-1', initialTab: 'stats' }],
-  ['EveningSummary', 'EveningSummary', 'ProfileTab', { gameId: 'game-1' }],
+  ['RoundSummary', 'MatchDetails', 'ProfileTab', { gameId: 'gv2-live', initialTab: 'stats' }],
+  ['EveningSummary', 'EveningSummary', 'ProfileTab', { gameId: 'gv2-live' }],
   ['History', 'History', 'ProfileTab', { groupId: 'g1' }],
   ['— PROFILE / STATS —', '', ''],
   ['Profile', 'Profile', 'ProfileTab'],
@@ -131,7 +133,7 @@ const ROUTES: Array<
   ['— CHAT —', '', ''],
   ['ChatsList', 'ChatsList', 'ChatTab'],
   ['CommunityChat', 'CommunityChat', 'ChatTab', { groupId: 'g1' }],
-  ['GameChat', 'GameChat', 'ChatTab', { gameId: 'game-1' }],
+  ['GameChat', 'GameChat', 'ChatTab', { gameId: 'gv2-live' }],
   ['DirectChat', 'DirectChat', 'ChatTab', { convId: 'c1' }],
   ['— SOCIAL / SETTINGS —', '', ''],
   ['Friends', 'Friends', 'ProfileTab'],
@@ -282,6 +284,7 @@ const ALERTS: Record<string, () => void> = {
 
 export function QARouteLauncher(): React.ReactElement | null {
   const [open, setOpen] = useState(false);
+  const [motionPreview, setMotionPreview] = useState(false);
   const [authKind, setAuthKind] = useState<AuthPromptReason | null>(null);
   // Which route is actually on screen, printed so a `uiautomator dump` can
   // read it. Comparing rendered TEXT between two screens was the alternative
@@ -296,6 +299,7 @@ export function QARouteLauncher(): React.ReactElement | null {
       const target = routeFromUrl(url);
       if (!target) return;
       setOpen(false);
+      if (target === '_motion') { setMotionPreview(true); return; }
       if (target.startsWith('_auth_')) {
         setAuthKind(target.slice(6) as AuthPromptReason);
         return;
@@ -335,6 +339,7 @@ export function QARouteLauncher(): React.ReactElement | null {
 
   return (
     <>
+      {motionPreview ? <MotionPreview onClose={() => setMotionPreview(false)} /> : null}
       <Pressable style={s.fab} onPress={() => setOpen(true)} testID="qa-fab">
         <Text style={s.fabTxt}>QA</Text>
       </Pressable>

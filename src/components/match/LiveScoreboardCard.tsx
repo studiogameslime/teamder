@@ -20,6 +20,7 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { toast } from '@/components/Toast';
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 
 // Wrap a sign/punctuation-bearing numeric in a bidi isolate so it can't be
 // reordered by the surrounding RTL paragraph (e.g. "+01:23" rendering as
@@ -254,12 +255,12 @@ export function LiveScoreboardCard(props: Props) {
           {props.overtimeText ? (
             <Text style={styles.overtime}>{ltr(`+${props.overtimeText}`)}</Text>
           ) : null}
-          <View style={styles.statusRow}>
+          <ChangeMotion triggerKey={props.running} pulse duration={190} style={styles.statusRow}>
             {props.running ? <View style={styles.redDot} /> : null}
             <Text style={[styles.statusWord, props.running && styles.statusRunning]}>
               {props.statusLabel}
             </Text>
-          </View>
+          </ChangeMotion>
           <Pressable onPress={props.onStoppages} hitSlop={6} style={styles.stoppages}>
             <Ionicons name="stopwatch-outline" size={13} color={colors.textMuted} />
             <Text style={styles.stoppagesText} numberOfLines={1}>

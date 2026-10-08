@@ -135,7 +135,7 @@ function row(
   unscored = false,
 ): CompareRow {
   const winner: CompareRow['winner'] =
-    unscored || a === null || b === null || a === b ? 'tie' : a > b ? 'a' : 'b';
+    unscored || a === null || b === null || a === b ? 'tie' : (key === 'losses' ? a < b : a > b) ? 'a' : 'b';
   return { key, label, a, b, format, winner, unscored };
 }
 
@@ -172,7 +172,7 @@ async function readLivePair(
     };
   } catch (err) {
     if (!isExpectedDenial(err)) logError('pairCompareLivePair', err, { groupId });
-    return null;
+    throw err;
   }
 }
 
@@ -243,7 +243,7 @@ export const pairCompareService = {
         // numbers that were already agreed.
         const [livePair, champ, archives, sinceAt] = await Promise.all([
           readLivePair(groupId, viewerId, otherId),
-          gameService.getCommunityChampionship(groupId).catch(() => null),
+          gameService.getCommunityChampionship(groupId, undefined, true),
           Promise.all(
             pastSeasonIds.map((id) => seasonHistoryService.table(groupId, id)),
           ),
@@ -294,8 +294,8 @@ export const pairCompareService = {
             : undefined;
         const [livePair, champ, stats, sinceAt] = await Promise.all([
           readLivePair(groupId, viewerId, otherId),
-          gameService.getCommunityChampionship(groupId).catch(() => null),
-          gameService.getCommunityStats(groupId, seasonArg).catch(() => null),
+          gameService.getCommunityChampionship(groupId, undefined, true),
+          gameService.getCommunityStats(groupId, seasonArg, true),
           readChemistrySince(groupId),
         ]);
         pairTotals = livePair;

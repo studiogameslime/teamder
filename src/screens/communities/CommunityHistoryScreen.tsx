@@ -1,3 +1,4 @@
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // CommunityHistoryScreen — the full list of a community's finished games
 // (evenings). Reachable from the community actions (hamburger) menu. Each row
 // opens that game's MatchDetails. Mirrors the inline preview that used to live
@@ -86,6 +87,7 @@ export function CommunityHistoryScreen() {
           hint={playedOnly ? undefined : he.communityHistoryEmptyBody}
         />
       ) : (
+        <ChangeMotion triggerKey={playedOnly} style={{ flex: 1 }}>
         <FlatList
           data={visibleGames}
           extraData={userId}
@@ -99,6 +101,7 @@ export function CommunityHistoryScreen() {
             />
           )}
         />
+        </ChangeMotion>
       )}
     </SafeAreaView>
   );

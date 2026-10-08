@@ -1,3 +1,4 @@
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 // AchievementCelebration — the full-screen "you earned a title" moment.
 //
 // Pass a queue of newly-unlocked tiers; it shows them one at a time over a
@@ -77,6 +78,7 @@ function CelebrationCard({
   item: NewlyUnlocked;
   onCta: () => void;
 }) {
+  const reduced = useReducedMotion();
   const tierColor = TIER_META[item.tier].color;
 
   const cardScale = useSharedValue(0.7);
@@ -86,7 +88,7 @@ function CelebrationCard({
   const textIn = useSharedValue(0);
   const rayspin = useSharedValue(0);
   const glow = useSharedValue(0.6);
-  // Two shockwave rings + a couple of sparkles, all looping.
+  // Two shockwave rings + a couple of sparkles, with a finite burst.
   const wave1 = useSharedValue(0);
   const wave2 = useSharedValue(0);
   const spark = useSharedValue(0);
@@ -96,6 +98,12 @@ function CelebrationCard({
 
   useEffect(() => {
     successHaptic();
+    if (reduced) {
+      [cardScale, cardOpacity, badgeScale, textIn].forEach((v) => { v.value = 1; });
+      [badgeSpin, rayspin, wave1, wave2, spark].forEach((v) => { v.value = 0; });
+      glow.value = 0.6;
+      return;
+    }
     // Card pops in.
     cardOpacity.value = withTiming(1, { duration: 160 });
     cardScale.value = withSpring(1, { damping: 11, stiffness: 140 });
@@ -112,17 +120,17 @@ function CelebrationCard({
             withTiming(1.05, { duration: 900, easing: Easing.inOut(Easing.quad) }),
             withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
           ),
-          -1,
+          1,
           false,
         ),
       ),
     );
     // Text rises in after the medal lands.
     textIn.value = withDelay(260, withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) }));
-    // Rays rotate forever.
+    // Rays rotate once.
     rayspin.value = withRepeat(
       withTiming(1, { duration: 9000, easing: Easing.linear }),
-      -1,
+      1,
       false,
     );
     // Glow breathes.
@@ -131,14 +139,14 @@ function CelebrationCard({
         withTiming(1, { duration: 700, easing: Easing.inOut(Easing.quad) }),
         withTiming(0.55, { duration: 700, easing: Easing.inOut(Easing.quad) }),
       ),
-      -1,
+      1,
       true,
     );
     // Shockwave rings, staggered.
-    wave1.value = withRepeat(withTiming(1, { duration: 1500, easing: Easing.out(Easing.quad) }), -1, false);
+    wave1.value = withRepeat(withTiming(1, { duration: 1500, easing: Easing.out(Easing.quad) }), 1, false);
     wave2.value = withDelay(
       750,
-      withRepeat(withTiming(1, { duration: 1500, easing: Easing.out(Easing.quad) }), -1, false),
+      withRepeat(withTiming(1, { duration: 1500, easing: Easing.out(Easing.quad) }), 1, false),
     );
     // Sparkle twinkle.
     spark.value = withRepeat(
@@ -146,7 +154,7 @@ function CelebrationCard({
         withTiming(1, { duration: 600, easing: Easing.inOut(Easing.quad) }),
         withTiming(0.2, { duration: 600, easing: Easing.inOut(Easing.quad) }),
       ),
-      -1,
+      1,
       true,
     );
 
@@ -157,12 +165,11 @@ function CelebrationCard({
       clearTimeout(h);
       clearTimeout(h2);
       clearTimeout(b);
-      // Stop the infinite loops on unmount / queue advance (matches the
-      // codebase convention; avoids stray work after the card is gone).
-      [badgeScale, rayspin, glow, wave1, wave2, spark].forEach(cancelAnimation);
+      // Cancel pending movement on unmount / queue advance.
+      [cardScale, cardOpacity, badgeScale, badgeSpin, textIn, rayspin, glow, wave1, wave2, spark].forEach(cancelAnimation);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reduced]);
 
   const cardStyle = useAnimatedStyle(() => ({
     opacity: cardOpacity.value,
@@ -220,8 +227,8 @@ function CelebrationCard({
     <Animated.View style={[styles.stageCard, cardStyle]} pointerEvents="box-none">
       {/* Confetti + flying balls fill the whole screen, not a box. */}
       <View style={styles.burst} pointerEvents="none">
-        <CelebrationOverlay ballCount={12} spread={320} durationMs={1800} />
-        {secondBurst ? (
+        {!reduced && <CelebrationOverlay ballCount={12} spread={320} durationMs={1800} />}
+        {secondBurst && !reduced ? (
           <CelebrationOverlay ballCount={9} spread={260} durationMs={1500} />
         ) : null}
       </View>

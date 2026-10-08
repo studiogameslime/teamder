@@ -99,6 +99,7 @@ const DRAFTED_KINDS: ReadonlySet<string> = new Set<DraftedKind>([
 ]);
 
 interface Base {
+  intentId?: string;
   version: number;
   createdAt: number;
   origin: ActionOrigin;
@@ -237,6 +238,7 @@ export function parsePendingAction(raw: unknown): PendingAction | null {
     createdAt: o.createdAt,
     origin: o.origin as ActionOrigin,
   };
+  if (typeof o.intentId === 'string') base.intentId = o.intentId;
   // Same defensive cleanup as `storage.getPendingInvite`: a malformed inviter
   // drops out rather than failing the whole read, because the rest of the
   // action is still actionable without somebody to credit.
@@ -315,6 +317,8 @@ export async function readPendingAction(
  * a referral at worst, not the action itself.
  */
 export async function writePendingAction(action: PendingAction): Promise<void> {
+  return serializePending(async () => {
+  action.intentId ??= `${Date.now()}_${Math.random().toString(36).slice(2)}`;
   await AsyncStorage.setItem(KEY, JSON.stringify(action));
   try {
     const legacy = toLegacyInvite(action);
@@ -323,10 +327,31 @@ export async function writePendingAction(action: PendingAction): Promise<void> {
   } catch (err) {
     if (__DEV__) console.warn('[pendingAction] legacy projection failed', err);
   }
+  });
+}
+
+let pendingQueue: Promise<unknown> = Promise.resolve();
+function serializePending<T>(fn: () => Promise<T>): Promise<T> {
+  const next = pendingQueue.then(fn, fn);
+  pendingQueue = next.catch(() => {});
+  return next;
+}
+
+/** Compare and clear inside the same queue as writes, so a new intent survives. */
+export function clearPendingActionIfMatches(expected: PendingAction): Promise<boolean> {
+  return serializePending(async () => {
+    const current = await readPendingAction(expected.createdAt);
+    if (JSON.stringify(current) !== JSON.stringify(parsePendingAction(expected))) return false;
+    await clearPendingKeys();
+    return true;
+  });
 }
 
 /** Remove both keys. Idempotent. */
 export async function clearPendingAction(): Promise<void> {
+  return serializePending(clearPendingKeys);
+}
+async function clearPendingKeys(): Promise<void> {
   try {
     await AsyncStorage.removeItem(KEY);
   } catch (err) {
@@ -351,7 +376,7 @@ export async function consumePendingAction(
   now: number = Date.now(),
 ): Promise<PendingAction | null> {
   const action = await readPendingAction(now);
-  if (action) await clearPendingAction();
+  if (action) await clearPendingActionIfMatches(action);
   return action;
 }
 

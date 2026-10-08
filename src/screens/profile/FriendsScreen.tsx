@@ -95,6 +95,8 @@ export function FriendsScreen() {
     // "0 friends" until the next refresh (user report y9qW). Mirrors the
     // optimistic splice in handleRemove.
     const accepted = incoming.find((r) => r.request.fromUserId === fromUserId)?.user;
+    const acceptedRequest = incoming.find((r) => r.request.fromUserId === fromUserId);
+    const wasFriend = friends.some((f) => f.id === fromUserId);
     if (accepted) {
       setFriends((prev) =>
         prev.some((f) => f.id === accepted.id) ? prev : [...prev, accepted],
@@ -107,6 +109,8 @@ export function FriendsScreen() {
       toast.success(he.friendsAccepted);
       await load();
     } catch (e) {
+      if (accepted && !wasFriend) setFriends((prev) => prev.filter((f) => f.id !== accepted.id));
+      if (acceptedRequest) setIncoming((prev) => prev.some((r) => r.request.fromUserId === fromUserId) ? prev : [...prev, acceptedRequest]);
       if (__DEV__) console.warn('[friends] accept failed', e);
       appAlert(he.error, he.friendsActionFailed);
     } finally {

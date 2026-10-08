@@ -1,3 +1,4 @@
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // CoverImagePicker — full-screen modal to choose a community cover:
 // either a built-in image from our curated gallery, or upload one from
 // the device. Mirrors the player-avatar picker pattern.
@@ -97,7 +98,9 @@ export function CoverImagePicker({
                   <Image source={c.source} style={styles.thumb} resizeMode="cover" />
                   {active ? (
                     <View style={styles.checkBadge}>
-                      <Ionicons name="checkmark" size={16} color="#fff" />
+                      <ChangeMotion triggerKey={c.id} pulse enter duration={220}>
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      </ChangeMotion>
                     </View>
                   ) : null}
                 </Pressable>

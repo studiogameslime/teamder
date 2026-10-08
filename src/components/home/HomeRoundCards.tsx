@@ -23,6 +23,7 @@
 // instantly, and three heads say less about "can I still get in" than
 // "12/15" does.
 
+import { HeightReveal } from '@/components/anim/HeightReveal';
 import React from 'react';
 import {
   ImageBackground,
@@ -422,9 +423,9 @@ function StatusPanel({
     }
   })();
 
-  if (!body) return null;
   return (
-    <View style={[styles.panel, { backgroundColor: tone.wash }]}>
+    <HeightReveal visible={!!body}>
+    {body ? <View style={[styles.panel, { backgroundColor: tone.wash }]}>
       <View style={[styles.panelIcon, { backgroundColor: '#FFFFFF' }]}>
         <Ionicons name={body.icon} size={16} color={tone.ink} />
       </View>
@@ -438,7 +439,8 @@ function StatusPanel({
           </Text>
         ) : null}
       </View>
-    </View>
+    </View> : null}
+    </HeightReveal>
   );
 }
 

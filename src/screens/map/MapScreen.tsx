@@ -13,6 +13,7 @@
 // loaded it (plus an optional overlay set for the toggle), so the map never
 // re-fetches and works in mock mode identically.
 
+import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
@@ -122,6 +123,7 @@ export function MapScreen() {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [openOnly, setOpenOnly] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
   const [selected, setSelected] = useState<MapItem | null>(null);
   const [clusterItems, setClusterItems] = useState<MapItem[] | null>(null);
   const [focusOn, setFocusOn] = useState<{
@@ -224,6 +226,7 @@ export function MapScreen() {
   }, [filtered, showOverlay, overlay]);
 
   const onMarkerPress = (id: string) => {
+    setSelectedMarkerId(id);
     const isOverlay = id.startsWith('ov:');
     const realId = isOverlay ? id.slice(3) : id;
     const pool = isOverlay && overlay ? overlay : items;
@@ -374,6 +377,7 @@ export function MapScreen() {
         <MapWebView
           onClusterPress={onClusterPress}
           markers={markers}
+          selectedId={selected ? selectedMarkerId : null}
           center={center}
           focusOn={focusOn}
           onMarkerPress={onMarkerPress}
@@ -447,7 +451,7 @@ export function MapScreen() {
 
       {/* Bottom detail card. */}
       {selected ? (
-        <View style={styles.card}>
+        <ChangeMotion triggerKey={selected.id} enter duration={240} style={styles.card}>
           <Pressable
             onPress={() => setSelected(null)}
             hitSlop={10}
@@ -494,7 +498,7 @@ export function MapScreen() {
           >
             <Text style={styles.cardCtaText}>{he.mapOpenDetails}</Text>
           </Pressable>
-        </View>
+        </ChangeMotion>
       ) : null}
 
       {/* Cluster sheet — every pin inside a tapped cluster, scrollable on
