@@ -76,7 +76,7 @@
       inviteTargetId: id || undefined,
       invitedBy: invitedBy || undefined,
       inviteCode: (parts[0] === 'i' ? (parts[1] || '') : qp('code')) || undefined,
-      campaignSource: (qp('b') ? b64d(qp('b')) : (qp('s') || qp('utm_source'))) || undefined,
+      campaignSource: (b64d(qp('b')) || qp('s') || qp('utm_source')) || undefined,
       campaign: (qp('c') || qp('utm_campaign')) || undefined,
       linkId: qp('l') || undefined,
       referrer: document.referrer || undefined,

@@ -267,10 +267,10 @@ export function PostSignInOnboardingScreen() {
             accessibilityRole="button"
             accessibilityLabel={he.profilePhotoUpload}
           >
-            <Ionicons name="image-outline" size={18} color={ACCENT} />
             <Text style={styles.uploadBtnText}>
               {photoUrl ? he.profilePhotoChange : he.profilePhotoUpload}
             </Text>
+            <Ionicons name="image-outline" size={18} color={ACCENT} />
           </Pressable>
 
           <Text style={styles.label}>{he.profileAvatarLabel}</Text>

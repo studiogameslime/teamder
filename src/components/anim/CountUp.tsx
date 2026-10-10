@@ -11,6 +11,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Text, type TextStyle } from 'react-native';
+import { useScrollActivity } from '@/components/ScrollSurface';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 
 interface Props {
   to: number;
@@ -26,6 +28,7 @@ interface Props {
   suffix?: string;
   style?: TextStyle | TextStyle[];
   allowFontScaling?: boolean;
+  maxFontSizeMultiplier?: number;
 }
 
 export function CountUp({
@@ -36,16 +39,25 @@ export function CountUp({
   prefix = '',
   suffix = '',
   style,
-  allowFontScaling = false,
+  allowFontScaling = true,
+  maxFontSizeMultiplier = 1.8,
 }: Props) {
   const initial = from ?? to;
-  const [value, setValue] = useState(initial);
+  const moving = useScrollActivity();
+  const reducedMotion = useReducedMotion();
+  // Store the displayed text, not an invisible fractional intermediate value.
+  const [value, setValue] = useState(initial.toFixed(decimals));
   const fromRef = useRef(initial);
   const rafRef = useRef<number | null>(null);
   const startRef = useRef(0);
 
   useEffect(() => {
     const from = fromRef.current;
+    if (moving || reducedMotion || durationMs <= 0 || from.toFixed(decimals) === to.toFixed(decimals)) {
+      fromRef.current = to;
+      setValue(to.toFixed(decimals));
+      return;
+    }
     if (from === to) return;
     startRef.current = Date.now();
     const tick = () => {
@@ -53,7 +65,8 @@ export function CountUp({
       // easeOutCubic — fast at the start, eases into the target.
       const eased = 1 - Math.pow(1 - t, 3);
       const next = from + (to - from) * eased;
-      setValue(next);
+      fromRef.current = next;
+      setValue(next.toFixed(decimals));
       if (t < 1) {
         rafRef.current = requestAnimationFrame(tick);
       } else {
@@ -67,13 +80,12 @@ export function CountUp({
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
-      fromRef.current = to;
     };
-  }, [to, durationMs]);
+  }, [to, durationMs, decimals, moving, reducedMotion]);
 
-  const text = `${prefix}${value.toFixed(decimals)}${suffix}`;
+  const text = `${prefix}${value}${suffix}`;
   return (
-    <Text style={style} allowFontScaling={allowFontScaling}>
+    <Text style={style} allowFontScaling={allowFontScaling} maxFontSizeMultiplier={maxFontSizeMultiplier}>
       {text}
     </Text>
   );

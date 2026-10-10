@@ -93,6 +93,7 @@ export function NewClubSeasons({
           "מועדון פתוח", "דירוג פנימי" and "כרטיסים" sitting directly above it.
           Reported by the owner with the row circled. */}
       <Pressable
+        accessible={false}
         style={styles.toggleCard}
         onPress={() => set({ enabled: !value.enabled })}
       >
@@ -106,6 +107,7 @@ export function NewClubSeasons({
           <Text style={styles.hint}>{he.newClubSeasonsHint}</Text>
         </View>
         <BallSwitch
+          accessibilityLabel={he.seasonsToggleLabel}
           value={value.enabled}
           onValueChange={(enabled) => set({ enabled })}
           trackColor={{ false: colors.border, true: colors.primary }}

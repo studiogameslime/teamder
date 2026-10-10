@@ -61,10 +61,9 @@ export function ClubTabs<K extends string = ClubTabKey>({
   onLockedPress,
   flush = false,
 }: ClubTabsProps<K>) {
-  // Four tabs split the same width three used to, and "סטטיסטיקות" is ten
-  // characters — at the three-tab size it truncates on a narrow phone. The bar
-  // steps the type down instead of letting a label lose its last letters, and
-  // `adjustsFontSizeToFit` absorbs whatever the step does not.
+  // Four tabs share less room. Keep their compact base size, but let labels
+  // wrap and the whole row grow when the user's font scale needs more room.
+  // A fixed height or shrink-to-fit would defeat that accessibility setting.
   const dense = tabs.length > 3;
   return (
     <View style={[styles.bar, flush && styles.barFlush]}>
@@ -98,9 +97,6 @@ export function ClubTabs<K extends string = ClubTabKey>({
                 isActive && styles.labelActive,
                 t.locked && styles.labelLocked,
               ]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.85}
             >
               {t.label}
             </Text>
@@ -128,13 +124,19 @@ const styles = StyleSheet.create({
   // `flush` — the caller owns the overlap; see the prop's note.
   barFlush: { marginTop: 0 },
   tab: {
-    flex: 1,
+    // Share spare room after measuring each label, instead of assigning four
+    // identical boxes that split a long Hebrew word despite room elsewhere.
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    height: 52,
-    paddingHorizontal: 2,
+    minHeight: 52,
+    minWidth: 0,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     // The active underline sits ON the strip's bottom edge, so the tab owns
     // the full height and paints the bar itself.
     borderBottomWidth: 3,
@@ -146,6 +148,8 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.6 },
   lock: { opacity: 0.85 },
   label: {
+    flexShrink: 1,
+    minWidth: 0,
     fontSize: 15,
     fontWeight: '700',
     color: colors.textMuted,

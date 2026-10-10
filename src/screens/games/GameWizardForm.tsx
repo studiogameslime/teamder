@@ -1218,7 +1218,7 @@ function buildSchedule(v: GameFormValues): SchedItem[] {
   if (v.scheduledRegEnabled && v.registrationOpensAt > 0)
     timed.push({ icon: 'timer-outline', text: `ההרשמה תיפתח ${when(v.registrationOpensAt)}`, ms: v.registrationOpensAt });
   if (v.publicOpenAt > 0)
-    timed.push({ icon: 'globe-outline', text: `המשחק ייפתח לכל האפליקציה ${when(v.publicOpenAt, true)}`, ms: v.publicOpenAt });
+    timed.push({ icon: 'globe-outline', text: `המחזור ייפתח לכל האפליקציה ${when(v.publicOpenAt, true)}`, ms: v.publicOpenAt });
   if (v.guestsOpenAt > 0)
     timed.push({ icon: 'person-add-outline', text: `אפשר יהיה להוסיף אורחים ${when(v.guestsOpenAt, true)}`, ms: v.guestsOpenAt });
   if (v.autoTeamsAt > 0) {
@@ -1233,8 +1233,8 @@ function buildSchedule(v: GameFormValues): SchedItem[] {
   const anchor: SchedItem = {
     icon: 'football',
     text: rec
-      ? `המשחק יתקיים כל ${day(v.startsAt)} בשעה ${formatTime(v.startsAt)}`
-      : `המשחק יתקיים ב${day(v.startsAt)}, ${formatDateShort(v.startsAt)} בשעה ${formatTime(v.startsAt)}`,
+      ? `המחזור יתקיים כל ${day(v.startsAt)} בשעה ${formatTime(v.startsAt)}`
+      : `המחזור יתקיים ב${day(v.startsAt)}, ${formatDateShort(v.startsAt)} בשעה ${formatTime(v.startsAt)}`,
   };
   return [anchor, ...timed.map(({ icon, text }) => ({ icon, text }))];
 }
@@ -1405,6 +1405,9 @@ function Pill({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active, checked: active }}
       style={({ pressed }) => [
         styles.pill,
         active && styles.pillActive,
@@ -1471,18 +1474,20 @@ function ToggleRow({
     <View style={styles.toggleRow}>
       <View style={{ flex: 1 }}>
         <View style={styles.toggleLabelRow}>
-          <Pressable onPress={() => flip(!value)} hitSlop={6}>
+          <Pressable accessible={false} onPress={() => flip(!value)} hitSlop={6}>
             <Text style={styles.toggleLabel}>{label}</Text>
           </Pressable>
           {info ? <InfoTip title={info.title} text={info.text} /> : null}
         </View>
         {hint ? (
-          <Pressable onPress={() => flip(!value)} hitSlop={6}>
+          <Pressable accessible={false} onPress={() => flip(!value)} hitSlop={6}>
             <Text style={styles.hint}>{hint}</Text>
           </Pressable>
         ) : null}
       </View>
       <BallSwitch
+        accessibilityLabel={label}
+        accessibilityHint={hint}
         value={value}
         onValueChange={flip}
         trackColor={{ false: colors.border, true: colors.primary }}

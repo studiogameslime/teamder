@@ -1,3 +1,7 @@
+// LEGACY, retained outside the active App.tsx import graph (2026-10-10).
+// Current comparison screens use pairCompareService.ts and communityPairStats.
+// The historical comments below do not describe the current comparison pipeline.
+// See docs/features/entry/legacy-and-hidden.md before reusing or removing this file.
 // playerCompareService — builds the comparison model for two players within a
 // single community. STRICTLY per-community: every figure comes from that club's
 // own rollup, never the player's app-wide totals.

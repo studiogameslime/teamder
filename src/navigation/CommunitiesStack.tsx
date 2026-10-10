@@ -1,3 +1,4 @@
+import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
 // Stack inside the Communities tab. The feed is the landing screen; from
 // there the user can:
 //   • create a community (CommunitiesCreate)
@@ -68,6 +69,7 @@ export type CommunitiesStackParamList = {
   CommunityDetailsPublic: { groupId: string };
   CommunityEdit: { groupId: string };
   CommunityPlayers: { groupId: string };
+  ManagerDashboard: { groupId: string; initialTab?: 'overview' | 'club' | 'ratings' | 'equipment'; initialFilter?: 'all' | 'up' | 'down' };
   CommunityStats: { groupId: string };
   CommunityHistory: { groupId: string };
   PlayerCard: { userId: string; groupId?: string };
@@ -151,6 +153,7 @@ export function CommunitiesStack() {
         name="CommunityPlayers"
         component={CommunityPlayersScreen}
       />
+      <Stack.Screen name="ManagerDashboard" component={ManagerDashboardScreen} />
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />

@@ -15,6 +15,12 @@ import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { useUserStore } from '@/store/userStore';
 import { logError } from '@/services/errorLog';
 import { formatTrail } from '@/services/breadcrumbs';
+import { diagnosticAttachment, diagnosticReportScreen, diagnosticOwner } from './diagnosticJournal';
+import { readPreviousDiagnosticJournal } from './diagnosticStorage';
+export type FeedbackDiagnostics={journal:string;trail:string;screen?:string;owner?:string|null};
+export function captureFeedbackDiagnostics(screen?:string):FeedbackDiagnostics {
+ return {journal:diagnosticAttachment(),trail:formatTrail().slice(-6000),screen:screen==='Feedback'?diagnosticReportScreen():screen,owner:diagnosticOwner()};
+}
 
 export type FeedbackType = 'bug' | 'suggestion';
 
@@ -50,9 +56,13 @@ export async function submitFeedback(
   /** How the reporter classified it. Defaults to 'bug' — the report sheet
    *  opens on a screenshot, which is nearly always something broken. */
   category: FeedbackCategory = 'bug',
+  diagnostics?:FeedbackDiagnostics,
 ): Promise<void> {
   const text = message.trim().slice(0, 2000);
   if (text.length === 0) throw new Error('submitFeedback: empty message');
+  const captured=diagnostics??captureFeedbackDiagnostics(screen);
+  const {journal,trail}=captured;
+  screen=captured.screen??screen;
 
   // Mock mode — no Firebase. Resolve so the UI flow still works in dev.
   if (USE_MOCK_DATA) return;
@@ -61,6 +71,9 @@ export async function submitFeedback(
     const { db, auth } = getFirebase();
     const fbUser = auth.currentUser;
     if (!fbUser) throw new Error('submitFeedback: not signed in');
+    if(captured.owner!==undefined&&captured.owner!==fbUser.uid)throw new Error('submitFeedback: session changed');
+    const previousJournal=await readPreviousDiagnosticJournal(fbUser.uid);
+    if(auth.currentUser?.uid!==fbUser.uid)throw new Error('submitFeedback: session changed');
 
     // Prefer the app's profile name (kept current in the user store);
     // fall back to the auth displayName which is often empty post-onboarding.
@@ -79,19 +92,16 @@ export async function submitFeedback(
     // with the same id and comes back `already-exists`. The report was saved;
     // telling the user it failed only makes them send it twice. Swallow that one
     // code — every other failure still surfaces.
-    // The last ~50 steps before the report was written: taps with their
-    // coordinates, screens, actions, failures. Attached because the owner
-    // asked for it on 02.10 while filing a report he knew could not be
-    // reproduced — this is what turns "פתאום זה לא לוחץ" into a readable
-    // sequence, and in particular it is the only place a tap that triggered
-    // NOTHING ever shows up. Capped so a long session cannot crowd out the
-    // screenshot in the same document.
-    const trail = formatTrail().slice(0, 4000);
+    // A frozen structured session plus a short legacy text trail. Capture at
+    // screenshot/form opening, before the reporting UI changes the context.
+    // Size bounds preserve room for the screenshot in the same document.
 
     await addDoc(collection(db, 'feedback'), {
       type,
       message: text,
       ...(trail ? { trail } : {}),
+      journal,
+      ...(previousJournal?{previousJournal}:{}),
       userId: fbUser.uid,
       userName,
       ...(screen ? { screen } : {}),

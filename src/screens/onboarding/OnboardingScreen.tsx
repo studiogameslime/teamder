@@ -1,3 +1,6 @@
+// LEGACY, not registered in the current RootNavigator (2026-10-10).
+// Active entry: IntentScreen and PostSignupOnboarding. Keep this historical
+// presentation separate; see docs/features/entry/legacy-and-hidden.md.
 // Pre-sign-in onboarding — 3 quick slides over a full-screen blue
 // gradient (matching the Matches / Communities tabs the user lands
 // on after signing in). The earlier 4-slide green palette didn't

@@ -10,13 +10,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   FlatList,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
   type GestureResponderEvent,
+  type ScrollViewProps,
 } from 'react-native';
+import { ScrollSurface } from '@/components/ScrollSurface';
 import { appAlert } from '@/components/AppDialog';
 import { successHaptic, warningHaptic } from '@/utils/haptics';
 import { AdminRatingSheet } from '@/components/AdminRatingSheet';
@@ -89,6 +90,12 @@ export interface CommunityPlayersScreenProps {
 
 /** Stable empty list — a fresh [] each render would churn FlatList. */
 const EMPTY_ROWS: User[] = [];
+
+// Replace the list's one native scroll surface; do not nest another scroll view
+// around it. VirtualizedList still owns the cells, windowing and scroll ref.
+function renderRosterScroll(props: ScrollViewProps) {
+  return <ScrollSurface {...props} keyboardShouldPersistTaps="handled" />;
+}
 
 export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) {
   const nav = useNavigation<Nav>();
@@ -332,33 +339,21 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
     async (target: User, flags: EquipmentFlags) => {
       if (!group || !me) return;
       setSavingEquip(true);
-      const ballWas = (group.ballHolderIds ?? []).includes(target.id);
-      const jerseysWas = (group.jerseysHolderIds ?? []).includes(target.id);
-      const toggle = (arr: UserId[] | undefined, on: boolean): UserId[] => {
-        const set = new Set(arr ?? []);
-        if (on) set.add(target.id);
-        else set.delete(target.id);
-        return Array.from(set);
-      };
-      const ballHolderIds = toggle(group.ballHolderIds, flags.ball);
-      const jerseysHolderIds = toggle(group.jerseysHolderIds, flags.jerseys);
       try {
-        await groupService.setEquipmentHolders(group.id, {
-          ballHolderIds,
-          jerseysHolderIds,
-        });
+        const { ballHolderIds, jerseysHolderIds, ballChanged, jerseysChanged } =
+          await groupService.setPlayerEquipment(group.id, target.id, flags);
         // Record each actual change on the player's timeline — received when
         // marked, returned when cleared. Best-effort: a timeline write failure
         // shouldn't undo the (already-saved) holder change.
         const logs: Promise<void>[] = [];
-        if (flags.ball !== ballWas) {
+        if (ballChanged) {
           logs.push(
             communityEventsService.logEquipmentChange(
               group.id, target.id, 'ball', me.id, !flags.ball,
             ),
           );
         }
-        if (flags.jerseys !== jerseysWas) {
+        if (jerseysChanged) {
           logs.push(
             communityEventsService.logEquipmentChange(
               group.id, target.id, 'jerseys', me.id, !flags.jerseys,
@@ -544,6 +539,7 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
        *  spreading FlatList contents through ListHeaderComponent + the
        *  renderItem; the visual matches the old ScrollView + map. */}
       <FlatList
+          renderScrollComponent={renderRosterScroll}
           data={group && ordered.length > 0 ? visible : EMPTY_ROWS}
           keyExtractor={(u) => u.id}
           contentContainerStyle={[

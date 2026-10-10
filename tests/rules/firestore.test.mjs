@@ -39,7 +39,7 @@ before(async () => {
   testEnv = await initializeTestEnvironment({
     projectId,
     firestore: {
-      rules: readFileSync(join(__dirname, '..', '..', 'firestore.rules'), 'utf8'),
+      rules: readFileSync(process.env.RULES_FILE || join(__dirname, '..', '..', 'firestore.rules'), 'utf8'),
       host: '127.0.0.1',
       port: 8080,
     },
@@ -176,10 +176,10 @@ test('users: name longer than 60 chars is rejected', async () => {
 
 // ── /games/{id} — self-join branch ─────────────────────────────────────
 
-test('games: self can join an open community game', async () => {
+test('games: direct legacy self-join is denied; current per-user join request is allowed', async () => {
   await seedGroup();
   await seedGame();
-  await assertSucceeds(
+  await assertFails(
     updateDoc(doc(db(BOB), 'games', GAME_ID), {
       players: [ALICE, BOB],
       waitlist: [],
@@ -188,6 +188,9 @@ test('games: self can join an open community game', async () => {
       updatedAt: Date.now(),
     }),
   );
+  await assertSucceeds(setDoc(doc(db(BOB), 'games', GAME_ID, 'joinRequests', BOB), {
+    uid: BOB, tappedAt: Date.now(), requestedAt: serverTimestamp(), state: 'queued',
+  }));
 });
 
 test('games: cannot register a different user (no proxy joins)', async () => {
@@ -329,8 +332,8 @@ test('groups: cannot mutate creatorId after create', async () => {
 
 // ── /groupsPublic/{gid} ────────────────────────────────────────────────
 
-test('groupsPublic: cannot create unless canonical /groups exists', async () => {
-  // No matching /groups doc — the create must be denied.
+test('groupsPublic: cannot create an oversized mirror without a canonical club', async () => {
+  // A count of 999 violates the creation cap; this does not test ownership.
   await assertFails(
     setDoc(doc(db(ALICE), 'groupsPublic', 'forged_id'), {
       name: 'Spam Group',
@@ -339,14 +342,18 @@ test('groupsPublic: cannot create unless canonical /groups exists', async () => 
   );
 });
 
-test('groupsPublic: admin of canonical group can create the public mirror', async () => {
+test('groupsPublic: oversized initial mirror is denied; admin can create a valid one-member mirror', async () => {
   await seedGroup();
-  await assertSucceeds(
+  await assertFails(
     setDoc(doc(db(ALICE), 'groupsPublic', GROUP_ID), {
       name: 'Test Group',
       memberCount: 2,
     }),
   );
+  await seedGroup({ playerIds: [ALICE] });
+  await assertSucceeds(setDoc(doc(db(ALICE), 'groupsPublic', GROUP_ID), {
+    name: 'Test Group', memberCount: 1,
+  }));
 });
 
 // ── /notifications/{id} ────────────────────────────────────────────────

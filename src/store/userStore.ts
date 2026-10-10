@@ -27,6 +27,8 @@ interface UserStore {
    * boot it stays false.
    */
   guestInitFailed: boolean;
+  /** Existing identity restored, but its profile could not be read. */
+  profileRestoreFailed: boolean;
 
   // Onboarding
   onboardingDone: boolean;
@@ -47,7 +49,7 @@ interface UserStore {
    * the GUEST object. `useIsGuest()` stayed true, and the gate that had just
    * been satisfied opened the sheet again on the next press. Round and round.
    */
-  refreshFromSession: () => Promise<void>;
+  refreshFromSession: (expectedUid?: string) => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
@@ -138,6 +140,14 @@ async function removeDeviceTokenBeforeAuthTeardown(uid: string): Promise<void> {
  * Best-effort on each key. A failure here must not stop a sign-out.
  */
 async function clearSignedOutUserState(): Promise<void> {
+  // Invalidate before clearing device drafts: even a quick return to the same
+  // account must not receive a pre-sign-out availability response.
+  try {
+    const { availabilityFeedService } = await import('@/services/availabilityFeedService');
+    availabilityFeedService.invalidate();
+  } catch (err) {
+    logError('clearSignedOutAvailability', err, {});
+  }
   // Imported lazily, not at module scope. A static import here pulls
   // pendingAction's and draftStore's native dependency chain into every module
   // that touches the user store, and that broke `silentGuest.test.ts` on an
@@ -218,6 +228,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
   onboardingDone: false,
   currentUser: null,
   guestInitFailed: false,
+  profileRestoreFailed: false,
 
   hydrate: async () => {
     // Defensive: each branch wrapped so a single failure (transient
@@ -225,6 +236,8 @@ export const useUserStore = create<UserStore>((set, get) => ({
     // doesn't leave `hydrated: false` forever. RootNavigator gates
     // the splash on this flag — silent rejections meant a perma-
     // splash that was unrecoverable without a force-close.
+    set({ profileRestoreFailed: false });
+    let profileReadFailed = false;
     const [onboardingDone, user] = await Promise.all([
       storage.getOnboardingDone().catch((err) => {
         logError('userHydrateGetOnboardingDone', err, {});
@@ -235,9 +248,14 @@ export const useUserStore = create<UserStore>((set, get) => ({
         logError('userHydrateGetCurrentUser', err, {});
         logEvent(AnalyticsEvent.BootHydrateFailed, { source: 'user_read' });
         if (__DEV__) console.warn('[userStore.hydrate] getCurrentUser', err);
+        profileReadFailed = true;
         return null;
       }),
     ]);
+    if (profileReadFailed) {
+      set({ hydrated: true, onboardingDone, guestInitFailed: false, profileRestoreFailed: true });
+      return;
+    }
     if (user) {
       set({ hydrated: true, onboardingDone, currentUser: user, guestInitFailed: false });
       return;
@@ -284,17 +302,20 @@ export const useUserStore = create<UserStore>((set, get) => ({
     logEvent(AnalyticsEvent.SignInSuccess, { method: 'guest' });
   },
 
-  refreshFromSession: async () => {
-    // `getCurrentUser` reads the live session and its /users document, which
-    // is exactly what every other sign-in path sets. If it comes back null the
-    // session is gone — leave what we have rather than blanking the tree from
-    // under a screen; the navigator's own guards handle a missing session.
+  refreshFromSession: async (expectedUid) => {
     try {
       const user = await userService.getCurrentUser();
-      if (user) set({ currentUser: user, guestInitFailed: false });
+      if (!user || user.isGuest === true || (expectedUid && user.id !== expectedUid)) {
+        throw new Error('Authenticated profile is not available for the expected account');
+      }
+      set({ currentUser: user, guestInitFailed: false, profileRestoreFailed: false });
     } catch (err) {
+      // Provider authentication succeeded, but profile restore did not. Stop
+      // the pending action and let the root retry without manufacturing a guest.
+      set({ currentUser: null, guestInitFailed: false, profileRestoreFailed: true });
       logError('refreshFromSession', err, {});
       if (__DEV__) console.warn('[userStore] refreshFromSession failed', err);
+      throw err;
     }
   },
 
@@ -363,6 +384,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
       await removeDeviceTokenBeforeAuthTeardown(uid);
     }
     await userService.deleteOwnAccount(password);
+    clearTrail();
     set({ currentUser: null });
     useGroupStore.getState().reset();
     useGameStore.getState().reset();

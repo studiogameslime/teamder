@@ -99,6 +99,8 @@ interface Props {
   hasDraft?: boolean;
   /** Backed out. The caller keeps the pending action and stays put. */
   onCancel: () => void;
+  /** Close only the sheet; keep the authentication journey active. */
+  onEmailTransition?: () => void;
   /** Authenticated. `isNewAccount` decides whether a profile confirmation is
    *  owed before the action resumes. */
   onAuthenticated: (r: { uid: string; isNewAccount: boolean }) => void;
@@ -110,6 +112,7 @@ export function ContextualAuthSheet({
   copy: copyOverride,
   hasDraft,
   onCancel,
+  onEmailTransition,
   onAuthenticated,
 }: Props) {
   const nav = useNavigation<{ navigate: (s: string) => void }>();
@@ -144,7 +147,7 @@ export function ContextualAuthSheet({
     // action is already persisted, so the resume happens when that screen's
     // sign-in lands — the sheet's job is done the moment it hands over.
     if (method === 'email') {
-      onCancel();
+      (onEmailTransition ?? onCancel)();
       nav.navigate('EmailAuth');
       return;
     }

@@ -1,0 +1,285 @@
+{
+  "date": "2026-10-10",
+  "entry": "App.tsx",
+  "sourceCount": 531,
+  "reachable": 479,
+  "limitation": "Static literal imports, including types; does not prove absence of test/tool/native/dynamic consumers.",
+  "retained": [
+    {
+      "file": "src/components/anim/AnimatedTabIcon.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/anim/AnimatedWeatherIcon.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/anim/LightSweep.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": [
+        "src/components/community/SeasonPoster.tsx"
+      ]
+    },
+    {
+      "file": "src/components/anim/MorphButton.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/anim/PulseOnChange.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": [
+        "src/components/match/MatchParticipantsSection.tsx"
+      ]
+    },
+    {
+      "file": "src/components/anim/RollInView.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": [
+        "src/components/match/MatchParticipantsSection.tsx"
+      ]
+    },
+    {
+      "file": "src/components/community/ChampionshipTable.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/community/CommunityCard.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/community/PlayersPreview.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/community/SeasonPoster.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/DisciplineCards.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/home/HomeGreetingHeader.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/home/HomeGuideOverlay.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/match/GameHistoryRow.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/match/MatchHeroStrip.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/match/MatchManageSection.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/match/MatchNotesRow.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/match/MatchParticipantsSection.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/match/MatchPlayersPreview.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/match/MatchStatusCard.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/match/MatchStatusCTACard.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/match/QuickActionsRow.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/players/WinLossRing.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/profile/AchievementsRail.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/profile/DisciplineRow.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/profile/HeroStatsCard.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/profile/ProfileActivityCard.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/profile/ProfileAvailabilityCard.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/profile/ProfileCollectionCard.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/profile/ProfileHeader.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/profile/ProfileHeroCard.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/profile/ProfileLocationMap.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": [
+        "src/components/profile/ProfileAvailabilityCard.tsx"
+      ]
+    },
+    {
+      "file": "src/components/profile/ProfileNextGameCard.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/profile/ReferralCard.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/profile/StatCard.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": [
+        "src/components/profile/StatsGrid.tsx"
+      ]
+    },
+    {
+      "file": "src/components/profile/StatsGrid.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/RadiusSelector.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/RatingScale.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/SectionTitle.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/components/StatTile.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/screens/onboarding/OnboardingPreviews.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": [
+        "src/screens/onboarding/OnboardingScreen.tsx"
+      ]
+    },
+    {
+      "file": "src/screens/onboarding/OnboardingScreen.tsx",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/services/healthService.ts",
+      "decision": "retain-outside-active-app",
+      "referencedBy": [
+        "src/services/physicalSyncService.ts"
+      ]
+    },
+    {
+      "file": "src/services/physicalSyncService.ts",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/services/playerCompareService.ts",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/utils/cleanSheets.ts",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/utils/clubLevel.ts",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/utils/physical.ts",
+      "decision": "retain-outside-active-app",
+      "referencedBy": [
+        "src/services/healthService.ts"
+      ]
+    },
+    {
+      "file": "src/utils/seasonCardVariant.ts",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/utils/seasonLifecycle.ts",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/utils/seasonParticipants.ts",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    },
+    {
+      "file": "src/utils/seasonSeed.ts",
+      "decision": "retain-outside-active-app",
+      "referencedBy": []
+    }
+  ]
+}

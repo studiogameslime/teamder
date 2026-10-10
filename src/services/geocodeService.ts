@@ -192,8 +192,9 @@ export async function reverseGeocode(
   }
 }
 
-export async function geocodeCity(
+async function lookupCity(
   name: string,
+  signal: AbortSignal,
 ): Promise<{ lat: number; lng: number } | null> {
   const trimmed = name.trim();
   if (!trimmed) return null;
@@ -207,16 +208,15 @@ export async function geocodeCity(
       `&limit=1` +
       `&countrycodes=il`;
     const res = await fetch(url, {
+      signal,
       headers: {
         'User-Agent': USER_AGENT,
         Accept: 'application/json',
       },
     });
-    if (!res.ok) {
-      memo.set(trimmed, null);
-      return null;
-    }
+    if (!res.ok) return null; // A network/service failure remains retryable.
     const data = (await res.json()) as Array<{ lat?: string; lon?: string }>;
+    if (signal.aborted) return null;
     const hit = Array.isArray(data) ? data[0] : null;
     const lat = hit?.lat ? parseFloat(hit.lat) : NaN;
     const lng = hit?.lon ? parseFloat(hit.lon) : NaN;
@@ -228,9 +228,24 @@ export async function geocodeCity(
     memo.set(trimmed, out);
     return out;
   } catch (err) {
-    logError('geocodeCity', err, { name: trimmed });
+    if (!signal.aborted) logError('geocodeCity', err, { name: trimmed });
     if (__DEV__) console.warn('[geocode] failed', err);
-    memo.set(trimmed, null);
     return null;
+  }
+}
+
+/** Optional location enrichment never holds profile completion indefinitely. */
+export async function geocodeCity(name: string): Promise<{ lat: number; lng: number } | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const controller = new AbortController();
+  try {
+    return await Promise.race([
+      lookupCity(name, controller.signal),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => { controller.abort(); resolve(null); }, 4000);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }

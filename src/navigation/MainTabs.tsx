@@ -1,12 +1,11 @@
-import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Keyboard, Platform, View } from 'react-native';
 import {
   BottomTabBar,
   BottomTabBarProps,
   createBottomTabNavigator,
 } from '@react-navigation/bottom-tabs';
 import { CommonActions } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 
 import { GameStack } from './GameStack';
 import { ProfileStack } from './ProfileStack';
@@ -14,13 +13,14 @@ import { CommunitiesStack } from './CommunitiesStack';
 import { ChatStack } from './ChatStack';
 import { BannerAd } from '@/services/adsService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { AnimatedTabIcon } from '@/components/anim/AnimatedTabIcon';
+import { DockHighlight, DockIcon, DockIndexContext } from '@/components/NavigationDock';
 import { chatService } from '@/services/chatService';
 import { useChatStore, totalUnread } from '@/store/chatStore';
 import { useUserStore } from '@/store/userStore';
 import { tabRootFor } from '@/navigation/homeRouting';
 import { colors } from '@/theme';
 import { he } from '@/i18n/he';
+import { recordDiagnostic } from '@/services/diagnosticJournal';
 import { maybeInterceptTabLeave } from '@/navigation/tabLeaveGuard';
 import {
   planTabPress,
@@ -28,9 +28,7 @@ import {
   type InFlight,
 } from '@/navigation/tabTransition';
 
-// 3-tab layout. RTL flips flexDirection automatically, so array index 0 →
-// rightmost on screen, last index → leftmost. v2 order:
-//   right: Communities → center: Games (primary) → left: Profile
+// Under RTL, source order is right to left: Home, Clubs, Rounds, Chats.
 export type MainTabsParamList = {
   CommunitiesTab: undefined;
   GameTab: undefined;
@@ -55,15 +53,26 @@ function leafRouteName(state: BottomTabBarProps['state']): string | undefined {
 const NO_ADS_ROUTES = new Set<string>(['LiveMatch']);
 
 function TabBarWithBanner(props: BottomTabBarProps) {
+  const [keyboardShown, setKeyboardShown] = useState(Keyboard.isVisible());
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardShown(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardShown(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   const showBanner = !NO_ADS_ROUTES.has(leafRouteName(props.state) ?? '');
   // `width: '100%'` is load-bearing — `ANCHORED_ADAPTIVE_BANNER` (and
   // even some fixed sizes) need a measurable width on the parent or
   // the native ad request never fires. Without it the banner mounts
   // into a 0-width View and AdMob shows 0 requests in the console.
+  if (keyboardShown) return null;
   return (
-    <View style={{ width: '100%' }}>
+    <View style={{ width: '100%', backgroundColor: colors.bg }}>
       {showBanner ? <BannerAd /> : null}
-      <BottomTabBar {...props} />
+      <View style={{ paddingTop: 8, paddingBottom: 10 + props.insets.bottom, paddingHorizontal: 16 + Math.max(props.insets.left, props.insets.right) }}>
+        <DockIndexContext.Provider value={{ index: props.state.index, count: props.state.routes.length }}>
+          <BottomTabBar {...props} insets={{ top: 0, bottom: 0, left: 0, right: 0 }} />
+        </DockIndexContext.Provider>
+      </View>
     </View>
   );
 }
@@ -100,30 +109,20 @@ export function MainTabs() {
         // opens — so a chat input sits flush on the keyboard instead of
         // floating above the bar / an empty banner strip.
         tabBarHideOnKeyboard: true,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: '#2463EB',
+        tabBarInactiveTintColor: '#667085',
+        tabBarLabelPosition: 'below-icon',
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700', lineHeight: 16 },
+        tabBarIconStyle: { width: 42, height: 42 },
+        tabBarItemStyle: { paddingTop: 6, paddingBottom: 6 },
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.divider,
+          height: 70, backgroundColor: '#FFFFFF', borderWidth: 1,
+          borderColor: '#DCE7FA', borderTopColor: '#DCE7FA', borderRadius: 16,
+          shadowColor: '#18335B', shadowOpacity: 0.1, shadowRadius: 12,
+          shadowOffset: { width: 0, height: 4 }, elevation: 4,
         },
-        tabBarIcon: ({ color, size, focused }) => {
-          const icon: keyof typeof Ionicons.glyphMap = (() => {
-            switch (route.name) {
-              case 'ProfileTab':      return 'home-outline';
-              case 'CommunitiesTab':  return 'globe-outline';
-              case 'GameTab':         return 'football-outline';
-              case 'ChatTab':         return 'chatbubble-outline';
-            }
-          })();
-          return (
-            <AnimatedTabIcon
-              name={icon}
-              focused={focused}
-              color={color}
-              size={size}
-            />
-          );
-        },
+        tabBarBackground: () => <DockHighlight />,
+        tabBarIcon: ({ focused }) => <DockIcon tab={route.name} color={focused ? '#FFFFFF' : '#667085'} />,
       })}
     >
       {/* Home — the leading (right under RTL) tab + the app's landing screen. */}
@@ -212,6 +211,7 @@ function resetTabToRoot(
   tabName: string,
   isGuest: boolean,
 ) {
+  recordDiagnostic('press','main_tab',{tab:tabName});
   const state = navigation.getState() as {
     index?: number;
     routes: Array<{

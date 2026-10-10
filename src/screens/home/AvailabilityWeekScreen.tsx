@@ -34,6 +34,7 @@ export function AvailabilityWeekScreen() {
         showsVerticalScrollIndicator={false}
       >
         <AvailabilityCalendarCard
+          fullScreen
           onCreateGame={(dateMs, window, city) => {
             logEvent(AnalyticsEvent.AvailabilityDayPicked, {
               dateMs,

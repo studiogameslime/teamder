@@ -1,3 +1,4 @@
+import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
 // ChatStack — the "צ'אטים" tab. A list of my chats, plus the two chat
 // screens (game + community). The same chat screens are ALSO reachable
 // from inside the game / community details screens, which navigate here
@@ -82,6 +83,7 @@ export function ChatStack() {
       <Stack.Screen name="EmailAuth" component={EmailAuthScreen} />
       <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />
       <Stack.Screen name="CommunityPlayers" component={CommunityPlayersScreen} />
+      <Stack.Screen name="ManagerDashboard" component={ManagerDashboardScreen} />
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
       <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />

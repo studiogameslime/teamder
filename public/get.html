@@ -48,6 +48,12 @@
   </div>
   <script>
     (function () {
+      // A tracked download must use the invitation landing handoff, including
+      // clipboard permission on Apple. Plain /get retains its simple behavior.
+      var tracking = new URLSearchParams(location.search);
+      if (['b','s','utm_source','c','utm_campaign','l','invitedBy','g','code'].some(function(k){return !!tracking.get(k);})) {
+        location.replace('/go'+location.search);return;
+      }
       var IOS = 'https://apps.apple.com/app/id6775178022';
       var ANDROID = 'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
       var ua = navigator.userAgent || navigator.vendor || '';

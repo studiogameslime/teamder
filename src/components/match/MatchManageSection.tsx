@@ -74,13 +74,17 @@ export function MatchManageSection({
                 pressed && { opacity: 0.85 },
               ]}
               accessibilityRole="switch"
-              accessibilityState={{ checked: visibilityIsPublic }}
+              accessibilityLabel={he.matchVisibilityToggle}
+              accessibilityState={{ checked: visibilityIsPublic, disabled: busy }}
             >
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>{he.matchVisibilityToggle}</Text>
                 <Text style={styles.rowHelper}>{he.matchVisibilityHelper}</Text>
               </View>
               <BallSwitch
+        accessible={false}
+        importantForAccessibility="no"
+                accessibilityLabel={he.matchVisibilityToggle}
                 value={visibilityIsPublic}
                 disabled={busy}
                 onValueChange={onToggleVisibility}

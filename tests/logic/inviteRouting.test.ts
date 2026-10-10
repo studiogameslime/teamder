@@ -103,8 +103,8 @@ describe('a club link', () => {
   // /c/{id} is the SERVER-rendered showcase. The app has no branch for it and
   // must not grow one silently — if it ever should open in the app, that is a
   // deliberate change to both the parser and the AASA, not an accident.
-  it('leaves /c/* to the server', () => {
-    expect(parseInviteUrl(`${HOST}/c/c9`)).toBeNull();
+  it('opens the community showcase alias in the app', () => {
+    expect(parseInviteUrl(`${HOST}/c/c9`)).toEqual({type:'team',id:'c9'});
   });
 });
 

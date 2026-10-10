@@ -14,7 +14,7 @@
 // switches it replaces.
 
 import React, { useEffect } from 'react';
-import { Platform, Pressable, StyleSheet, type ViewStyle } from 'react-native';
+import { Platform, Pressable, StyleSheet, type ViewStyle, type AccessibilityProps } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -25,8 +25,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SoccerBall } from '../SoccerBall';
 import { colors } from '@/theme';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 
-interface Props {
+interface Props extends AccessibilityProps {
   value: boolean;
   onValueChange: (next: boolean) => void;
   trackColor?: { false?: string; true?: string };
@@ -56,18 +57,20 @@ export function BallSwitch({
   trackColor,
   disabled,
   style,
+  ...accessibilityProps
 }: Props) {
+  const reducedMotion = useReducedMotion();
   // 0 = off (ball right), 1 = on (ball left). Spring gives the ball a
   // little overshoot as it settles — like it bumps the goalpost.
   const p = useSharedValue(value ? 1 : 0);
 
   useEffect(() => {
-    p.value = withSpring(value ? 1 : 0, {
+    p.value = reducedMotion ? (value ? 1 : 0) : withSpring(value ? 1 : 0, {
       damping: 14,
       stiffness: 170,
       mass: 0.7,
     });
-  }, [value, p]);
+  }, [value, p, reducedMotion]);
 
   const offColor = trackColor?.false ?? colors.border;
   const onColor = trackColor?.true ?? colors.primary;
@@ -89,6 +92,7 @@ export function BallSwitch({
 
   return (
     <Pressable
+      {...accessibilityProps}
       onPress={() => {
         if (disabled) return;
         // The spring runs in the useEffect when `value` flips. Just report.
@@ -96,7 +100,7 @@ export function BallSwitch({
       }}
       disabled={disabled}
       accessibilityRole="switch"
-      accessibilityState={{ checked: value, disabled: !!disabled }}
+      accessibilityState={{ ...accessibilityProps.accessibilityState, checked: value, disabled: !!disabled }}
       hitSlop={8}
       style={[disabled && { opacity: 0.5 }, style]}
     >

@@ -403,6 +403,9 @@ export function DraftBoardScreen() {
                   return (
                     <Pressable
                       key={c.key}
+                      accessibilityRole="radio"
+                      accessibilityLabel={`${c.plural}${taken ? ' · הצבע כבר בשימוש' : ''}`}
+                      accessibilityState={{ selected, checked: selected, disabled: taken }}
                       disabled={taken}
                       onPress={() => {
                         if (pickerTeam === null) return;
@@ -532,7 +535,9 @@ export function DraftBoardScreen() {
                     {u.name}
                   </Text>
                 </View>
-                <PressableScale style={styles.pickBtn} onPress={() => pick(uid)}>
+                <PressableScale style={styles.pickBtn} onPress={() => pick(uid)} accessibilityRole="button"
+                  accessibilityLabel={`${he.draftPick} ${u.name}`}
+                  accessibilityHint={currentTeam === null ? undefined : `הוסף לקבוצה של ${resolve(captainIds[currentTeam]).name}`}>
                   <Text style={styles.pickBtnText}>{he.draftPick}</Text>
                 </PressableScale>
               </View>

@@ -23,7 +23,7 @@
 //     in an undefined state during the crash).
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
@@ -81,6 +81,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     if (!this.state.hasError) return this.props.children;
     return (
       <View style={styles.root} accessibilityRole="alert">
+        <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
         <View style={styles.iconWrap}>
           <Ionicons name="alert-circle-outline" size={56} color={colors.danger} />
         </View>

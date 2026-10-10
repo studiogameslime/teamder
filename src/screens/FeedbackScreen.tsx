@@ -20,7 +20,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { toast } from '@/components/Toast';
-import { submitFeedback, type FeedbackType } from '@/services/feedbackService';
+import { submitFeedback, captureFeedbackDiagnostics, type FeedbackType } from '@/services/feedbackService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { he } from '@/i18n/he';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -30,6 +30,7 @@ const MAX_LEN = 2000;
 export function FeedbackScreen() {
   const nav = useNavigation<any>(); // eslint-disable-line @typescript-eslint/no-explicit-any
   const route = useRoute();
+  const [diagnostics]=useState(()=>captureFeedbackDiagnostics(route.name));
   // When opened from a dedicated menu entry ("דיווח על תקלה" / "הצעת שיפור"),
   // the type is preset and the toggle is hidden — a focused single-type form.
   const presetType = (route.params as { type?: FeedbackType } | undefined)?.type;
@@ -45,7 +46,7 @@ export function FeedbackScreen() {
     if (!canSubmit) return;
     setSending(true);
     try {
-      await submitFeedback(type, trimmed, route.name);
+      await submitFeedback(type, trimmed, diagnostics.screen??route.name,undefined,type==='bug'?'bug':'feature',diagnostics);
       logEvent(AnalyticsEvent.FeedbackSubmitted, {
         type,
         length: trimmed.length,

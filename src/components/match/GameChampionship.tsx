@@ -1,17 +1,18 @@
 // GameChampionship — the leaderboard for a SINGLE finished game.
 //
-// Goals + assists each player tallied IN THIS game, ranked by score
-// (goal = 2 pts, assist = 1 pt). Rendered on MatchDetails only after the
+// Per-game counters (default ranking: sealed evening rating) plus the
+// sealed evening rating in its own sortable column. Rendered only after the
 // game is finished. Renders nothing until there's data (e.g. games that
 // finished before per-game stats were tracked).
 
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CommunityStatsTable } from '@/components/community/CommunityStatsTable';
 import { gameService } from '@/services';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { ChampionshipRow } from '@/utils/championship';
+import { getGameEveningScores } from '@/services/gameEveningScores';
 
 export function GameChampionship({
   gameId,
@@ -31,10 +32,19 @@ export function GameChampionship({
   guests?: import('@/types').GameGuest[];
 }) {
   const [players, setPlayers] = useState<ChampionshipRow[] | null>(null);
+  const [scores, setScores] = useState<Record<string, number>>({});
+  const [scoresFailed, setScoresFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   const attendedKey = (attendedUids ?? []).join(',');
 
   useEffect(() => {
     let alive = true;
+    setPlayers(null);
+    setScores({});
+    setScoresFailed(false);
+    getGameEveningScores(gameId).then(values => {
+      if (alive) setScores(values);
+    }).catch(() => { if (alive) setScoresFailed(true); });
     gameService
       .getGameChampionship(gameId, attendedUids)
       .then((d) => {
@@ -47,7 +57,7 @@ export function GameChampionship({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, refreshKey, attendedKey]);
+  }, [gameId, refreshKey, attendedKey, retry]);
 
   if (!players || players.length === 0) return null;
 
@@ -61,7 +71,7 @@ export function GameChampionship({
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>{he.gameChampTitle}</Text>
-      {/* Tap any column header to sort by it (default: wins). Same table as the
+      {/* Tap any column header to sort by it (default: evening score). Same table as the
           community view, minus the appearances column. The scoring-formula note
           was removed per user feedback — the numbers speak for themselves. */}
       <CommunityStatsTable
@@ -69,7 +79,11 @@ export function GameChampionship({
         groupId={groupId}
         hideAppearances
         guestNames={guestNames}
+        eveningScores={scores}
       />
+      {scoresFailed ? <Pressable accessibilityRole="button" onPress={() => setRetry(n => n + 1)}>
+        <Text style={styles.note}>לא ניתן לטעון את ציוני המחזור. לחץ לניסיון נוסף.</Text>
+      </Pressable> : null}
     </View>
   );
 }
@@ -77,4 +91,5 @@ export function GameChampionship({
 const styles = StyleSheet.create({
   wrap: { gap: spacing.sm, marginTop: spacing.md },
   title: { ...typography.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  note: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
 });

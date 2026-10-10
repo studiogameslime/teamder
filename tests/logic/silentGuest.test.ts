@@ -238,18 +238,18 @@ describe('mock mode', () => {
 // ─── the read itself failing ──────────────────────────────────────────────
 
 describe('when the user read throws', () => {
-  // The existing defence: a transient failure on /users must not wedge the
-  // boot. It now also must not be mistaken for "no account" forever — a guest
-  // session is created, which is the same thing this device would get on a
-  // genuinely fresh install, and the real account returns on the next launch.
-  it('still boots, as a guest', async () => {
+  // A read failure does not mean the auth session is absent.
+  it('keeps restored identity and offers profile retry instead of guest auth', async () => {
     getCurrentUser.mockRejectedValue(new Error('read timeout'));
     signInAsGuest.mockResolvedValue(GUEST);
     await useUserStore.getState().hydrate();
 
     const s = useUserStore.getState();
     expect(s.hydrated).toBe(true);
-    expect(s.currentUser).toEqual(GUEST);
+    expect(s.currentUser).toBeNull();
+    expect(s.profileRestoreFailed).toBe(true);
+    expect(s.guestInitFailed).toBe(false);
+    expect(signInAsGuest).not.toHaveBeenCalled();
     expect(fired('BootHydrateFailed').map((c) => c[1])).toEqual([
       { source: 'user_read' },
     ]);

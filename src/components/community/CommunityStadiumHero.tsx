@@ -27,9 +27,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing } from '@/theme';
 import { he } from '@/i18n/he';
 import { getCoverSource } from '@/data/coverImages';
+import { clubDefaultCoverId } from '@/utils/clubDefaultCoverId';
 import { CoverCrossfade } from '@/components/anim/CoverCrossfade';
 
 interface Props {
+  groupId?: string;
   name: string;
   /** Number of approved community members. Drives the pill badge. */
   memberCount: number;
@@ -57,9 +59,9 @@ interface Props {
   onChatPress?: () => void;
 }
 
-const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
 
 export function CommunityStadiumHero({
+  groupId,
   name,
   memberCount,
   coverUrl,
@@ -74,11 +76,11 @@ export function CommunityStadiumHero({
   // Priority: uploaded photo → built-in gallery pick → bundled default.
   const source: ImageSourcePropType = coverUrl
     ? { uri: coverUrl }
-    : getCoverSource(coverImageId) ?? STADIUM_BG;
+    : getCoverSource(coverImageId) ?? getCoverSource(clubDefaultCoverId(groupId))!;
   return (
     <View style={styles.wrap}>
       <View style={styles.bg}>
-        <CoverCrossfade source={source} imageKey={coverUrl || coverImageId || 'default'} />
+        <CoverCrossfade source={source} imageKey={coverUrl || coverImageId || clubDefaultCoverId(groupId)} />
         <LinearGradient
           // The reference photo stays bright: the darkening is a scrim behind
           // the TEXT, not a wash over the whole image. The old stops

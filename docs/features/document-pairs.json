@@ -430,5 +430,41 @@
     "domain": "shared",
     "simple": "shared/notification-offer.simple.md",
     "technical": "shared/notification-offer.md"
+  },
+  {
+    "technical": "shared/navigation-dock.md",
+    "simple": "shared/navigation-dock.simple.md",
+    "title": "שורת הניווט הראשית",
+    "domain": "shared"
+  },
+  {
+    "title": "לוח מנהל",
+    "domain": "clubs",
+    "simple": "clubs/manager-dashboard.simple.md",
+    "technical": "clubs/manager-dashboard.md"
+  },
+  {
+    "title": "רצף פעולות מקומי לשחזור תקלות",
+    "domain": "shared",
+    "simple": "shared/diagnostic-journal.simple.md",
+    "technical": "shared/diagnostic-journal.md"
+  },
+  {
+    "title": "דף הנחיתה והזמנות",
+    "domain": "entry",
+    "simple": "entry/landing-and-links.simple.md",
+    "technical": "entry/landing-and-links.md"
+  },
+  {
+    "title": "קישורי פולס וספירת ייחוס",
+    "domain": "shared",
+    "simple": "shared/pulse-links.simple.md",
+    "technical": "shared/pulse-links.md"
+  },
+  {
+    "title": "דפי מדיניות, תקנון ופרטי חשבון באתר",
+    "domain": "entry",
+    "simple": "entry/legal-pages.simple.md",
+    "technical": "entry/legal-pages.md"
   }
 ]

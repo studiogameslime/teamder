@@ -85,8 +85,9 @@ export function DirectChatScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
+      <View style={styles.root}>
+        <ScreenHeader title={headerName || he.dmTitle} />
+        <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
       </View>
     );
   }

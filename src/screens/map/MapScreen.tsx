@@ -440,6 +440,7 @@ export function MapScreen() {
         {!isGames && overlay && overlay.length > 0 ? (
           <View style={styles.toggle}>
             <BallSwitch
+              accessibilityLabel={he.mapShowGames}
               value={showOverlay}
               onValueChange={setShowOverlay}
               trackColor={{ true: colors.primary, false: '#CBD5E1' }}

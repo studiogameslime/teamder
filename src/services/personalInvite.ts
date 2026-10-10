@@ -103,14 +103,13 @@ export async function resolveInviter(
 /**
  * The public activity worth showing beside the invitation.
  *
- * Throws nothing. A failure here returns empty lists and the caller renders
- * the "nothing to show yet" state — the invitation itself does not depend on
- * whether a discovery query answered.
+ * Discovery failure is propagated so the caller offers a retry instead of
+ * claiming there is no activity. The independently resolved inviter survives.
  */
 export async function resolveInviteActivity(
   invitedBy: string | undefined,
   viewerId: UserId,
-): Promise<{ games: Game[]; clubs: GroupPublic[] }> {
+): Promise<{ games: Game[]; clubs: GroupPublic[]; clubsUnavailable?: boolean }> {
   if (!invitedBy) return { games: [], clubs: [] };
   let games: Game[] = [];
   try {
@@ -121,7 +120,7 @@ export async function resolveInviteActivity(
     games = open.filter((g) => isPlaying(g, invitedBy)).slice(0, MAX_GAMES);
   } catch (err) {
     logError('resolveInviteGames', err, {});
-    return { games: [], clubs: [] };
+    throw err;
   }
 
   // Clubs behind those matches — deduped, capped, and each one a document the
@@ -131,16 +130,22 @@ export async function resolveInviteActivity(
     MAX_CLUBS,
   );
   let clubs: GroupPublic[] = [];
+  let clubsUnavailable = false;
   try {
     const found = await Promise.all(
-      groupIds.map((id) => groupService.getPublic(id).catch(() => null)),
+      groupIds.map((id) => groupService.getPublic(id).catch((err) => {
+        clubsUnavailable = true;
+        logError('resolveInviteClubs', err, { groupId: id });
+        return null;
+      })),
     );
     clubs = found.filter((g): g is GroupPublic => !!g);
   } catch (err) {
     // Games survive a club failure. They are separate sections on the screen
     // and there is no reason for one to take the other down.
     logError('resolveInviteClubs', err, {});
+    clubsUnavailable = true;
     clubs = [];
   }
-  return { games, clubs };
+  return { games, clubs, ...(clubsUnavailable ? { clubsUnavailable: true } : {}) };
 }

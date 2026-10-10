@@ -82,8 +82,9 @@ function buildMock(): AvailabilityCounts {
 // server call without the numbers ever feeling stale (availability changes on
 // the order of hours, not seconds). Cleared on a fresh app launch.
 const CACHE_TTL_MS = 15 * 60 * 1000;
+let ownerUid: string | null = null;
 let cached: { at: number; value: AvailabilityCounts } | null = null;
-let inFlight: Promise<AvailabilityCounts> | null = null;
+let inFlight: { uid: string; epoch: number; promise: Promise<AvailabilityCounts> } | null = null;
 // Bumped by invalidate(). An in-flight request captures the epoch at start and
 // only writes to `cached` if it hasn't changed — so a save that lands mid-fetch
 // doesn't re-cache the now-stale result for another full TTL.
@@ -92,13 +93,24 @@ let epoch = 0;
 export const availabilityFeedService = {
   async getAvailabilityCounts(): Promise<AvailabilityCounts> {
     if (USE_MOCK_DATA) return buildMock();
+    const uid = getFirebase().auth.currentUser?.uid ?? null;
+    if (ownerUid !== uid) {
+      ownerUid = uid;
+      cached = null;
+      inFlight = null;
+      epoch++;
+    }
+    // A missing identity is a retryable read failure, never a "no location"
+    // answer. Do not borrow a cached city from the previous account.
+    if (!uid) return { radiusKm: 0, hasLocation: false, days: [], error: true };
     const now = Date.now();
     if (cached && now - cached.at < CACHE_TTL_MS) return cached.value;
     // De-dupe concurrent callers (e.g. two screens mounting at once) onto a
     // single in-flight request.
-    if (inFlight) return inFlight;
+    if (inFlight?.uid === uid && inFlight.epoch === epoch) return inFlight.promise;
     const startEpoch = epoch;
-    inFlight = (async () => {
+    const request = { uid, epoch: startEpoch, promise: null as unknown as Promise<AvailabilityCounts> };
+    request.promise = (async () => {
       try {
         const { functions } = getFirebase();
         const fn = httpsCallable(functions, 'availabilityCounts');
@@ -106,6 +118,11 @@ export const availabilityFeedService = {
         // with `functions/unauthenticated` if it fires before the ID token has
         // attached, which is what put this in the production error log.
         const res = await withAuthRaceRetry(() => fn({}));
+        // A changed account or edited availability invalidates both the cache
+        // AND this result. It must not reach the earlier caller as valid data.
+        if (epoch !== startEpoch || getFirebase().auth.currentUser?.uid !== uid) {
+          return { radiusKm: 0, hasLocation: false, days: [], error: true };
+        }
         const value = res.data as AvailabilityCounts;
         // Only cache if no invalidate() raced in while we were fetching.
         if (epoch === startEpoch) cached = { at: Date.now(), value };
@@ -122,17 +139,20 @@ export const availabilityFeedService = {
         // an already-located user). Not cached — a transient error shouldn't
         // suppress the card for a full TTL.
         return { radiusKm: 0, hasLocation: false, days: [], error: true };
-      } finally {
-        inFlight = null;
       }
-    })();
-    return inFlight;
+    })().finally(() => {
+      // An old account's finally must not detach a newer account's request.
+      if (inFlight === request) inFlight = null;
+    });
+    inFlight = request;
+    return request.promise;
   },
   /** Drop the cache — call after the viewer edits their availability so the
    *  radius/counts refresh on the next home open. Also invalidates any
    *  in-flight request so it won't re-cache a pre-edit result. */
   invalidate() {
     cached = null;
+    inFlight = null;
     epoch += 1;
   },
 };

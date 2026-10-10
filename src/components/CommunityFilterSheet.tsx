@@ -357,6 +357,7 @@ function SwitchRow({
   return (
     <Pressable
       onPress={() => onChange(!value)}
+      accessibilityRole="switch" accessibilityLabel={label} accessibilityState={{ checked: value }}
       style={styles.switchRow}
     >
       <View style={{ flex: 1 }}>
@@ -364,6 +365,9 @@ function SwitchRow({
         {caption ? <Text style={styles.switchCaption}>{caption}</Text> : null}
       </View>
       <BallSwitch
+        accessible={false}
+        importantForAccessibility="no"
+        accessibilityLabel={label}
         value={value}
         onValueChange={onChange}
         trackColor={{ false: colors.border, true: colors.primary }}

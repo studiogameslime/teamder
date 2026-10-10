@@ -366,6 +366,7 @@ export function CommunityDetailsPublicScreen() {
             tapping one explains what opens it. */}
         <View style={styles.heroBlock}>
           <CommunityStadiumHero
+            groupId={group.id}
             name={group.name}
             memberCount={group.memberCount}
             coverUrl={group.coverPhotoUrl}

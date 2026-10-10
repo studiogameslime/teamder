@@ -1,28 +1,4 @@
-/**
- * Who Joryio thinks is using the app.
- *
- * Four things can go wrong here and each one is asserted below, because three
- * of them are silent in production and the fourth corrupts data that cannot be
- * un-corrupted:
- *
- *   1. identifying a Firebase ANONYMOUS uid. This was the live bug — every
- *      guest became a nameless person record, and the real account they signed
- *      up with became a second, unconnected one.
- *   2. identifying the same person twice. `onAuthStateChanged` re-emits on
- *      token refresh, and each identify is a network call plus a `$identify`
- *      event.
- *   3. aliasing on a plain cold-start restore, which claims the current
- *      anonymous id for somebody who was already bound on a previous launch.
- *   4. aliasing across a sign-out. If this install's anonymous history belongs
- *      to person A, aliasing it to person B MERGES TWO PEOPLE into one profile.
- *
- * `alias` is the call that matters on iOS specifically: Android's
- * `IdentifyRequest` carries an `anonymousId` and can stitch on its own, but
- * iOS's request model (`Models/User.swift`) has no such field and its network
- * client adds no header carrying one. So on iOS `identify` alone strands every
- * pre-sign-in event. Both platforms run the same code here, which is what makes
- * the behaviour consistent.
- */
+/** Official SDK: identify links anonymous history; reset separates accounts. */
 
 jest.mock(
   'react-native',
@@ -109,20 +85,18 @@ describe('a guest', () => {
 // ─── the upgrade ──────────────────────────────────────────────────────────
 
 describe('guest → account, in one session', () => {
-  it('aliases THEN identifies, in that order', async () => {
+  it('identifies once using the official anonymous linking flow', async () => {
     await bindIdentity(GUEST);
     expect(await bindIdentity(ALICE)).toBe('aliased');
-    expect(callOrder()).toEqual(['alias(uid-alice)', 'identify(uid-alice)']);
+    expect(callOrder()).toEqual(['identify(uid-alice)']);
   });
 
-  // The SDK supplies its OWN anonymousId to v1/alias. We pass the REAL uid —
-  // handing it the Firebase anonymous uid would bind a throwaway to a person.
-  it('passes the REAL uid to alias, never the anonymous one', async () => {
+  it('passes the real uid to identify, never the Firebase anonymous uid', async () => {
     await bindIdentity(GUEST);
     await bindIdentity(ALICE);
-    expect(sdk.alias).toHaveBeenCalledTimes(1);
-    expect(sdk.alias).toHaveBeenCalledWith('uid-alice');
-    expect(sdk.alias).not.toHaveBeenCalledWith('anon-abc');
+    expect(sdk.identify).toHaveBeenCalledTimes(1);
+    expect(sdk.identify).toHaveBeenCalledWith('uid-alice');
+    expect(sdk.identify).not.toHaveBeenCalledWith('anon-abc');
   });
 
   it('carries the profile attributes through identify', async () => {
@@ -137,7 +111,7 @@ describe('guest → account, in one session', () => {
   it('aliases once even after a long anonymous run', async () => {
     for (let i = 0; i < 10; i++) await bindIdentity(GUEST);
     await bindIdentity(ALICE);
-    expect(sdk.alias).toHaveBeenCalledTimes(1);
+    expect(sdk.identify).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -196,7 +170,7 @@ describe('sign out, then somebody else signs in', () => {
   it('does not alias Bob onto the session that was Alice', async () => {
     await bindIdentity(GUEST);
     await bindIdentity(ALICE);
-    expect(sdk.alias).toHaveBeenCalledTimes(1);
+    expect(sdk.identify).toHaveBeenCalledTimes(1);
 
     resetIdentity();
     sdk.alias.mockReset();
@@ -223,7 +197,8 @@ describe('sign out, then somebody else signs in', () => {
     sdk.alias.mockReset();
     await bindIdentity(GUEST);
     expect(await bindIdentity(BOB)).toBe('aliased');
-    expect(sdk.alias).toHaveBeenCalledWith('uid-bob');
+    expect(sdk.identify).toHaveBeenLastCalledWith('uid-bob');
+    expect(sdk.alias).not.toHaveBeenCalled();
   });
 });
 

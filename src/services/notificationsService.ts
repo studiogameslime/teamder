@@ -7,20 +7,14 @@
 //                                                  FCM server key)
 //                       ↓
 //                  recipient device(s)            (via fcmTokens on the
-//                                                  user doc)
+//                                                  private/push doc)
 //
-// The Cloud Function is NOT in this repo. It's expected to:
-//   1. onCreate /notifications/{id}
-//   2. read /users/{recipientId}.fcmTokens + .notificationPrefs
-//   3. respect the per-type pref (skip if false)
-//   4. for type === 'newGameInCommunity' also fan out to every user
-//      where /users/{uid}.newGameSubscriptions includes payload.groupId
-//   5. send via firebase-admin messaging.sendEachForMulticast
-//   6. update /notifications/{id} with delivered=true, deliveredAt=now
-//
-// Until the function is deployed, dispatch() writes accumulate in the
-// collection but no actual push is sent. That's fine — the client UX
-// (prefs screen, per-community toggle) works regardless.
+// The backend lives in functions/src/index.ts: onNotificationCreated and
+// sendNotificationToUsers resolve private/push tokens and preferences,
+// honour false per-type preferences, then send through firebase-admin.
+// approved/rejected share approvedRejected; friendRequestAccepted shares
+// friendRequest. Community subscriptions and per-chat mute are independent
+// gates. The settings catalogue covers every current backend type.
 
 import {
   arrayRemove,

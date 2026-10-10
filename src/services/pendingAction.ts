@@ -330,6 +330,32 @@ export async function writePendingAction(action: PendingAction): Promise<void> {
   });
 }
 
+/** Explicit links replace navigation; deferred sources only fill an empty slot.
+ * Business actions/drafts retain their pointer and acquire credit separately. */
+export function receivePendingInvite(
+  invite: PendingInvite,
+  origin: 'deep_link' | 'deferred_deep_link' = 'deep_link',
+): Promise<boolean> {
+  return serializePending(async () => {
+    const current = await readPendingAction();
+    const oldLegacy = await storage.getPendingInvite();
+    if (oldLegacy) await storage.rememberInviteAttribution(oldLegacy);
+    await storage.rememberInviteAttribution(invite);
+    if (origin === 'deferred_deep_link' && current && isOpenKind(current.kind)) return false;
+    if (current && !isOpenKind(current.kind)) return false;
+    const action = { ...fromLegacyInvite(invite, Date.now()), origin,
+      intentId: `${Date.now()}_${Math.random().toString(36).slice(2)}` };
+    await AsyncStorage.setItem(KEY, JSON.stringify(action));
+    await storage.setPendingInvite(invite);
+    return true;
+  });
+}
+
+export async function pendingActionMatches(expected: PendingAction): Promise<boolean> {
+  const current = await readPendingAction(expected.createdAt);
+  return JSON.stringify(current) === JSON.stringify(parsePendingAction(expected));
+}
+
 let pendingQueue: Promise<unknown> = Promise.resolve();
 function serializePending<T>(fn: () => Promise<T>): Promise<T> {
   const next = pendingQueue.then(fn, fn);
@@ -342,6 +368,8 @@ export function clearPendingActionIfMatches(expected: PendingAction): Promise<bo
   return serializePending(async () => {
     const current = await readPendingAction(expected.createdAt);
     if (JSON.stringify(current) !== JSON.stringify(parsePendingAction(expected))) return false;
+    const legacy = toLegacyInvite(current!);
+    if (legacy) await storage.rememberInviteAttribution(legacy);
     await clearPendingKeys();
     return true;
   });

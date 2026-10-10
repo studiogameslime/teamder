@@ -1,3 +1,6 @@
+// LEGACY previews for the unregistered OnboardingScreen (2026-10-10).
+// These assets are not evidence of the current entry flow.
+// See docs/features/entry/legacy-and-hidden.md.
 // In-app "screenshots" for the pre-sign-in onboarding. These are REAL
 // captures of the live app (games feed, club detail, game detail with its
 // filling roster), cropped to app content and shown inside a clean phone

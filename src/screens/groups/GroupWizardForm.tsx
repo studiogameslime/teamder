@@ -529,6 +529,7 @@ function ToggleCard({
 }) {
   return (
     <Pressable
+      accessible={false}
       onPress={() => onValueChange(!value)}
       style={styles.toggleCard}
     >
@@ -546,6 +547,7 @@ function ToggleCard({
         ) : null}
       </View>
       <BallSwitch
+        accessibilityLabel={label}
         value={value}
         onValueChange={onValueChange}
         trackColor={{ false: colors.border, true: ACCENT }}

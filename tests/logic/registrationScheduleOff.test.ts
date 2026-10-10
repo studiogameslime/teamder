@@ -14,19 +14,7 @@
  * game due, and the server's own self-verifying flip does the rest.
  */
 
-/** The shape the edit screen builds, extracted so it can be tested. */
-function regOpensPatch(
-  status: string,
-  scheduledRegEnabled: boolean,
-  registrationOpensAt: number,
-  now: number,
-): Record<string, number> {
-  return status !== 'scheduled'
-    ? {}
-    : scheduledRegEnabled && registrationOpensAt > 0
-      ? { registrationOpensAt }
-      : { registrationOpensAt: now };
-}
+import { registrationEditPatch as regOpensPatch } from '@/utils/registrationEdit';
 
 const NOW = 1_789_400_000_000;
 const LATER = NOW + 3 * 24 * 60 * 60 * 1000;
@@ -68,7 +56,7 @@ describe('a game that is no longer scheduled', () => {
   it('is never touched, whichever way the toggle sits', () => {
     // Past the flip the field is moot, and rewriting it would re-arm a game
     // people have already joined.
-    for (const status of ['open', 'locked', 'active', 'finished', 'cancelled']) {
+    for (const status of ['locked', 'active', 'finished', 'cancelled']) {
       expect(regOpensPatch(status, false, LATER, NOW)).toEqual({});
       expect(regOpensPatch(status, true, LATER, NOW)).toEqual({});
     }

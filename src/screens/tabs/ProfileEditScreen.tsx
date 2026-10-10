@@ -42,6 +42,7 @@ export function ProfileEditScreen() {
   const [avatarId, setAvatarId] = useState<string | undefined>(user?.avatarId);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [avatarGridWidth, setAvatarGridWidth] = useState(0);
 
   // The screen is kept alive by the stack navigator between visits,
   // so the useState initializers above only run once. After a save +
@@ -305,10 +306,10 @@ export function ProfileEditScreen() {
           accessibilityRole="button"
           accessibilityLabel={he.profilePhotoUpload}
         >
-          <Ionicons name="image-outline" size={18} color={ACCENT} />
           <Text style={styles.uploadBtnText}>
             {photoUrl ? he.profilePhotoChange : he.profilePhotoUpload}
           </Text>
+          <Ionicons name="image-outline" size={18} color={ACCENT} />
         </Pressable>
 
         {/* Visual "OR" divider: a thin line through the row with the
@@ -321,7 +322,7 @@ export function ProfileEditScreen() {
           <Text style={styles.orDividerText}>{he.profileAvatarLabel}</Text>
           <View style={styles.orDividerLine} />
         </View>
-        <View style={styles.avatarGrid}>
+        <View style={styles.avatarGrid} onLayout={event => setAvatarGridWidth(event.nativeEvent.layout.width)}>
           {AVATARS.map((a) => (
             <Pressable
               key={a.id}
@@ -333,7 +334,7 @@ export function ProfileEditScreen() {
               accessibilityRole="button"
               accessibilityLabel={`avatar-${a.id}`}
             >
-              <UserAvatar user={{ id: a.id, name: '', avatarId: a.id }} size={48} />
+              <UserAvatar user={{ id: a.id, name: '', avatarId: a.id }} size={avatarGridWidth ? Math.min(48, Math.max(24, avatarGridWidth / 5 - 10)) : 40} />
             </Pressable>
           ))}
         </View>
@@ -437,10 +438,14 @@ const styles = StyleSheet.create({
   avatarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    rowGap: spacing.sm,
     justifyContent: 'flex-start',
   },
   avatarCell: {
+    width: '20%',
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 3,
     borderRadius: 999,
     borderWidth: 2,

@@ -1,14 +1,8 @@
 // joryio — Joryio integration for Teamder.
 //
-// Backed by the real SDK (@joryio/react-native-sdk), vendored under
-// vendor/joryio because the package is not published to npm and its pods are
-// not on CocoaPods. Native modules live in vendor/joryio/android and are wired
-// into the Gradle build by plugins/withJoryioSdk.js.
-//
-// This file stays as the ONLY thing the rest of the app talks to. All 300+
-// logEvent() call sites go through analyticsService, which calls track() here —
-// so the SDK can be swapped for the published package (or back to a plain HTTP
-// client) by editing this file alone.
+// Installed from npm: @joryio/react-native-sdk@1.3.0-beta.1.
+// Native beta dependencies are wired by plugins/withJoryioSdk.js.
+// Historical sources under vendor/joryio are no longer linked.
 //
 // The SDK degrades to a warning + no-ops when the native module is not linked,
 // so a JS-only environment (jest, Expo Go) will not crash.
@@ -211,50 +205,8 @@ export function resetUser(): void {
   Joryio.reset();
 }
 
-/**
- * Attribute this install's anonymous history to a person.
- *
- * We pass only the real uid — the SDK supplies its OWN `anonymousId` from
- * `identityManager.getAnonymousId()` and posts the pair to `v1/alias`. That is
- * the important distinction: the anonymous id here is Joryio's install id, NOT
- * the Firebase anonymous uid, which must never be sent as an identity.
- *
- * WHY THIS IS NEEDED AT ALL, given `identify` exists: the two SDKs disagree.
- * Android's `Joryio.identify` posts `IdentifyRequest(userId, anonymousId,
- * attributes)`, so the backend can stitch the anonymous run on its own. iOS
- * posts `IdentifyRequest(userId:attributes:)` — its request model has no
- * `anonymousId` field at all, and the network client adds no header carrying
- * one. So on iOS `identify` alone strands every pre-sign-in event on a separate
- * record. `alias` is the only call that carries the pair on both platforms,
- * which is what makes the behaviour consistent.
- */
-export async function alias(userId: string): Promise<void> {
-  if (USE_MOCK_DATA || !userId) return;
-  if (!started) await initJoryio();
-  Joryio.alias(userId);
-}
-
-// ─── Identity binding ─────────────────────────────────────────────────────
-//
-// One place that decides what to tell Joryio about who is using the app, so
-// the four ways to get this wrong are each ruled out once instead of at every
-// call site:
-//
-//   • identifying a Firebase ANONYMOUS uid — that creates a person record for
-//     a throwaway session, and it was the live bug: `waitForAuthRestore` called
-//     identify on the first auth emission whatever it was, so a guest became a
-//     nameless "person" and the real account they signed up with later became a
-//     SECOND, unconnected one.
-//   • identifying the same uid twice — `onAuthStateChanged` fires again on
-//     token refresh, and each identify is a network call plus a `$identify`
-//     event.
-//   • aliasing on a plain cold-start restore — the install was already bound on
-//     the launch where they signed up; re-aliasing claims the current anonymous
-//     id for them again for no reason.
-//   • aliasing across a sign-out — if this install's anonymous history belonged
-//     to person A, aliasing it to person B MERGES TWO PEOPLE. That is what
-//     `resetIdentity` prevents: sign-out starts a fresh anonymous session, so
-//     there is never stale history to mis-attribute.
+// Official identify() binds anonymous history itself. The removed alias(userId)
+// API must not be replaced with addAlias(label, value), which has different semantics.
 
 /** Who the SDK currently believes is using the app, per process. */
 let identifiedUid: string | null = null;
@@ -269,8 +221,8 @@ export interface IdentitySubject {
 }
 
 /**
- * Called on every auth emission. Decides between "do nothing", "identify" and
- * "alias then identify".
+ * Called on every auth emission. The official identify() links anonymous history.
+ * 'aliased' is our upgrade event classification, not a separate SDK method.
  *
  * Returns what it did, for the caller to report. Never throws.
  */
@@ -282,8 +234,7 @@ export async function bindIdentity(
 
     if (subject.isAnonymous) {
       // Deliberately nothing. The SDK stays anonymous and keeps accumulating
-      // events against its own anonymous id, which is exactly what `alias`
-      // will later hand to the real account.
+      // events against its own anonymous id; identify later names that person.
       unclaimedAnonymousRun = true;
       return 'none';
     }
@@ -292,12 +243,7 @@ export async function bindIdentity(
     if (identifiedUid === subject.uid) return 'none';
 
     const shouldAlias = unclaimedAnonymousRun;
-    if (shouldAlias) {
-      // BEFORE identify: alias is the call that carries the anonymous id, and
-      // identify is what flips the SDK's local identity. Reversed, the alias
-      // would post an anonymous id the SDK has already moved on from.
-      await alias(subject.uid);
-    }
+    // The official SDK handles anonymous-to-person linking in identify().
     await identify(subject.uid, {
       email: subject.email,
       name: subject.name,
@@ -335,72 +281,33 @@ export function __resetIdentityStateForTests(): void {
   unclaimedAnonymousRun = false;
 }
 
-/**
- * How long to wait before asking the SDK whether the registration blew up.
- * `registerPushToken` is fire-and-forget on both platforms — it hands the token
- * to a coroutine and returns — so there is nothing to await. Four seconds is
- * comfortably past a normal round-trip without holding anything up: the check
- * runs detached.
- */
-const REGISTER_VERIFY_DELAY_MS = 4000;
-
-/**
- * Report a push registration that failed.
- *
- * This exists because the failure was previously INVISIBLE. The SDK's only
- * response to a rejected registration is `logger.error`, and every SDK log is
- * gated behind `enableDebug` — which we set to `__DEV__`. So in a store build a
- * device could fail to register on every single launch and nothing anywhere
- * would say so. That is exactly what happened: a real phone sat in Joryio with
- * full device details and no push token, and it took a manual comparison of
- * their device rows against our own token store to notice.
- *
- * `getDiagnostics()` is the only signal reachable from React Native.
- * `lastError` is global rather than per-call, so we compare its timestamp
- * against the moment we registered and only report an error stamped after it.
- *
- * DELETE THIS once the bridge catches up. Native 1.2.0 added
- * `registerPushToken(token, onResult:)` returning success / message /
- * isUnauthorized / isRetryable on both platforms — but the React Native module
- * still declares `registerPushToken(token)` at every layer (Kotlin, Swift,
- * the ObjC macro, and the TypeScript wrapper) and drops the result. Reported.
- */
-async function verifyPushRegistration(startedAt: number, token: string): Promise<void> {
-  await new Promise((r) => setTimeout(r, REGISTER_VERIFY_DELAY_MS));
-  try {
-    const diag = await Joryio.getDiagnostics();
-    const err = diag?.lastError;
-    if (!err || typeof err.at !== 'number' || err.at < startedAt) return;
-    logUnexpected('joryioRegisterPushToken', {
-      message: err.message,
-      isUnauthorized: err.isUnauthorized === true,
-      tokenPrefix: token.slice(0, 12),
-      apiEndpoint: diag.apiEndpoint ?? undefined,
-    });
-  } catch {
-    // The diagnostic call itself failing tells us nothing about the
-    // registration — stay quiet rather than report a phantom failure.
-  }
-}
-
+/** Teamder stores FCM for its own sender; Joryio requires APNs on iOS. */
 export async function registerPushToken(token: string): Promise<boolean> {
   if (USE_MOCK_DATA || !token) return false;
+  if (Platform.OS === 'ios') {
+    try {
+      const messaging = require('@react-native-firebase/messaging').default;
+      token = await messaging().getAPNSToken();
+    } catch {
+      return false;
+    }
+    if (!token || !/^[0-9a-f]{64}$/i.test(token)) return false;
+  }
   if (!started) await initJoryio();
-  const startedAt = Date.now();
-  Joryio.registerPushToken(token);
-  void verifyPushRegistration(startedAt, token);
-  // The SDK used to stamp `push_permission` once at init and never refresh it,
-  // so a user who granted permission after that first launch stayed
-  // 'not_determined' in Joryio and dropped out of every push-targeted segment.
-  // It now refreshes the attribute inside `registerPushToken` itself (we
-  // reported the bug and re-vendored the fix), so this is belt-and-braces —
-  // kept because it costs one local call and it is the only part of the chain
-  // we control.
+  const result = await Joryio.registerPushToken(token);
+  if (!result.success) {
+    logUnexpected('joryioRegisterPushToken', {
+      message: result.message ?? 'Push registration failed',
+      isUnauthorized: result.isUnauthorized === true,
+      isRetryable: result.isRetryable === true,
+    });
+    return false;
+  }
   try {
     const status = await Joryio.getPushPermissionStatus();
-    Joryio.setAttribute('push_permission', status ?? 'granted');
+    if (status) Joryio.setAttribute('push_permission', status);
   } catch {
-    Joryio.setAttribute('push_permission', 'granted');
+    // Permission diagnostics must not turn a confirmed registration into failure.
   }
   return true;
 }
@@ -550,7 +457,6 @@ export const joryio = {
   init: initJoryio,
   track,
   identify,
-  alias,
   bindIdentity,
   resetIdentity,
   setAttributes,

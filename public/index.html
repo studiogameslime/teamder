@@ -1,604 +1,178 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Teamder — מארגנים משחקי כדורגל בלי בלגן</title>
-  <meta name="description" content="Teamder היא האפליקציה לארגון משחקי כדורגל שכונתיים: קבוצות, רישום, בחירת קבוצות חיה ודירוג חברים — הכול במקום אחד." />
-  <meta property="og:title" content="Teamder — מארגנים משחקי כדורגל בלי בלגן" />
-  <meta property="og:description" content="קבוצות, רישום למשחק, בחירת קבוצות חיה ודירוגים. הכול במקום אחד." />
-  <meta property="og:image" content="https://teamderfc.web.app/logo.png" />
-  <link rel="icon" type="image/png" href="/logo.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --blue-dark: #1D4ED8;
-      --blue: #3B82F6;
-      --blue-light: #60A5FA;
-      --bg: #ffffff;
-      --bg-soft: #f8fafc;
-      --text: #0f172a;
-      --muted: #64748b;
-      --border: #e2e8f0;
-      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-      --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
-      --shadow-lg: 0 24px 48px rgba(29, 78, 216, 0.22);
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: "Heebo", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-      line-height: 1.65;
-      -webkit-font-smoothing: antialiased;
-    }
-    img { max-width: 100%; display: block; }
-    a { color: var(--blue-dark); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+<!doctype html><html lang="he" dir="rtl"><head><script>if(location.search||location.hash)location.replace('/app'+location.search+location.hash);</script>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Teamder · הכדורגל שלכם. הסדר שלנו.</title>
+<meta name="description" content="מארגנים מחזורים, מחלקים כוחות ומשחקים בראש שקט. הרשמה, מועדונים, צ׳אט וסטטיסטיקות במקום אחד."/>
+<meta property="og:type" content="website"/><meta property="og:title" content="Teamder · הכדורגל שלכם. הסדר שלנו."/>
+<meta property="og:description" content="פחות התעסקות. יותר כדורגל. כל המועדון והמחזור הבא במקום אחד."/>
+<meta property="og:image" content="https://teamderfc.web.app/logo.png"/><meta property="og:locale" content="he_IL"/>
+<meta name="twitter:card" content="summary_large_image"/><meta name="theme-color" content="#1263ff"/>
+<link rel="icon" href="/logo.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/landing.css"/>
+</head><body><svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><defs>
+<symbol id="football" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 7 5 3-2 6H9l-2-6 5-3Z M12 2v5 M2.5 9l4.5 1 M5.5 19 9 16 M18.5 19 15 16 M21.5 9 17 10"/></symbol>
+<symbol id="people" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M6 21v-3a6 6 0 0 1 12 0v3H6ZM18 4a3 3 0 0 1 0 6m3 10v-3a5 5 0 0 0-3-4M6 4a3 3 0 0 0 0 6m-3 10v-3a5 5 0 0 1 3-4"/></symbol>
+<symbol id="calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 2v6m10-6v6M3 11h18m-14 4h3m4 0h3m-10 3h3"/></symbol>
+<symbol id="clipboard" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="18" rx="3"/><rect x="8" y="2" width="8" height="5" rx="2" fill="white"/><path d="m8 14 3 3 6-6"/></symbol>
+<symbol id="chart" viewBox="0 0 24 24"><path d="M3 21V11h4v10H3Zm7 0V6h4v15h-4Zm7 0V2h4v19h-4Z"/></symbol>
+<symbol id="pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+<symbol id="cup" viewBox="0 0 24 24"><path d="M7 3h10v6a5 5 0 0 1-10 0V3Zm10 1h4v3a5 5 0 0 1-5 5M7 4H3v3a5 5 0 0 0 5 5m4 2v7m-5 0h10"/></symbol>
+<symbol id="boot" viewBox="0 0 24 24"><path d="M21 15v4H3v-5l7-3 3-8 4 1v7l4 4ZM5 19v3m5-3v3m6-3v3m4-3v3m-8-11 3 1m-2-4 3 1"/></symbol>
+<symbol id="chat" viewBox="0 0 24 24"><path d="M21 11a9 9 0 0 1-9 9 12 12 0 0 1-5-1l-5 3 2-6a9 9 0 1 1 17-5Z"/><path d="M7 11h.01M12 11h.01M17 11h.01"/></symbol>
+<symbol id="external" viewBox="0 0 24 24"><path d="M14 3h7v7m0-7L10 14m0-10H4v16h16v-6"/></symbol>
+<symbol id="apple" viewBox="0 0 24 24"><path d="M15 5c1-1 2-3 1-4-2 0-4 2-4 4m0 3C6 3 2 9 4 15c1 4 4 8 6 6 2-1 2-1 4 0 3 2 6-3 7-6-5-2-5-6-1-8-2-3-5-3-8 1Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="android" viewBox="0 0 24 24"><path d="m7 2 2 3m8-3-2 3M5 10a7 7 0 0 1 14 0H5Zm0 2h14v8H5Zm-2 0v7m18-7v7M8 20v3m8-3v3"/><path d="M9 7h.01M15 7h.01"/></symbol>
+</defs></svg>
+<header class="hd"><div class="cw"><a class="brand" href="/" aria-label="Teamder — עמוד הבית"><img class="brand-logo" src="/logo.png" alt="" width="44" height="44"/><span>Teamder</span></a>
+<nav class="nav-links" aria-label="ניווט באתר"><a href="#features">מה באפליקציה</a><a href="#how">איך מתחילים</a><button class="dl" id="hdrBtn" type="button">פתיחה באפליקציה <svg class="icon" aria-hidden="true"><use href="#external"/></svg></button></nav></div></header>
+<main><section class="hero"><div class="scene" aria-hidden="true"></div><div class="swoosh" aria-hidden="true"></div><div class="cw hero-grid">
+<div class="hero-copy"><div class="inviter-summary" id="inviterSummary"><img id="inviterPortrait" alt="" hidden/><div><span>הזמנה אישית</span><b id="inviterName"></b></div></div>
+<span class="badge" id="badge"><span class="dot"></span><span id="badgeTxt">ברוכים הבאים ל־Teamder</span></span>
+<h1 id="title">הכדורגל שלכם.
+הסדר שלנו.</h1><p class="lead" id="subtitle">מארגנים מחזורים, מחלקים כוחות ומשחקים בראש שקט.</p>
+<button class="cta" id="ctaBtn" type="button">מתחילים לשחק</button><p class="trust">חינם · באנדרואיד ובאייפון</p>
+<div class="ctxNote" id="ctxNote" role="status" aria-live="polite">הקישור כבר לא זמין או שלא ניתן לטעון את ההזמנה כרגע. אפשר לנסות שוב או לפנות למי ששלח.</div><button class="retry" id="retryContext" type="button">נסה שוב</button></div>
+<div class="hero-visual"><div class="phone-stage"><div class="phone" aria-label="המחשת סיכום מחזור אישי"><div class="notch"></div><div class="phone-brand"><svg class="icon" aria-hidden="true"><use href="#football"/></svg> Teamder</div><span class="demo-label">להמחשה</span>
+<div class="phone-profile"><img src="/landing/avatar-01.jpg" alt=""/><div><b>הסיכום שלי</b><small>כל הרגעים מהמחזור האחרון</small></div></div>
+<div class="score"><span>ציון המחזור</span><strong dir="ltr">9.4</strong><span class="star">אתה מצטיין המחזור!</span><small>מקום 1 מתוך 15 שחקנים במחזור</small></div>
+<h3>הערב שלך</h3><div class="mini-stats"><div><svg class="icon" aria-hidden="true"><use href="#football"/></svg><strong>7</strong><span>משחקים</span></div><div class="green"><svg class="icon" aria-hidden="true"><use href="#cup"/></svg><strong>5</strong><span>ניצחונות</span></div><div class="gold"><svg class="icon" aria-hidden="true"><use href="#football"/></svg><strong>4</strong><span>שערים</span></div><div class="purple"><svg class="icon" aria-hidden="true"><use href="#boot"/></svg><strong>3</strong><span>בישולים</span></div></div><div class="phone-footer">רואים את ההתקדמות, מחזור אחרי מחזור</div></div>
+<div class="floating f1"><svg class="icon" aria-hidden="true"><use href="#clipboard"/></svg><span>הרשמה<br/>מסודרת</span></div><div class="floating f2"><svg class="icon" aria-hidden="true"><use href="#people"/></svg><span>חלוקת<br/>כוחות</span></div></div>
+<div class="context-loading" id="contextLoading" role="status">טוענים את פרטי ההזמנה…</div>
+<article class="ctxCard" id="ctxCard" aria-label="פרטי ההזמנה"><div class="ctx-heading" id="ctxHeading"><svg class="icon" aria-hidden="true"><use href="#calendar"/></svg><span id="ctxKind">הזמנה למחזור</span></div><div class="t" id="ctxTitle"></div><img class="club-thumb" id="clubThumb" src="/landing/team.jpg" alt=""/>
+<div class="row" id="ctxTags"></div><div class="capacity" id="capacity"><div class="track" role="progressbar" id="capacityProgress" aria-label="תפוסת המחזור"><div class="fill" id="capacityFill"></div></div><span id="capacityText" dir="ltr"></span></div><div class="pills" id="ctxPills"></div>
+<div class="inviter" id="inviter"><img id="ctxInviterPortrait" alt="" hidden/><span id="ctxInviterName"></span></div><div class="context-actions"><button class="cta" id="contextCta" type="button">לפרטי המחזור</button></div></article>
+<div class="personal-cards" id="personalCards"></div>
+</div></div></section>
+<section class="benefits cw" id="features"><h2 class="under-title">פחות התעסקות. יותר כדורגל.</h2><div class="benefit-grid">
+<div class="benefit platforms"><span>חינם באנדרואיד ובאייפון</span><svg class="icon" aria-hidden="true"><use href="#android"/></svg> <svg class="icon" aria-hidden="true"><use href="#apple"/></svg></div>
+<div class="benefit"><svg class="icon" aria-hidden="true"><use href="#clipboard"/></svg><span id="benefit1">הרשמה<br/>למחזורים</span></div><div class="benefit"><svg class="icon" aria-hidden="true"><use href="#people"/></svg><span id="benefit2">קבוצות<br/>ומועדונים</span></div><div class="benefit"><svg class="icon" aria-hidden="true"><use href="#chart"/></svg><span id="benefit3">סטטיסטיקות<br/>מתקדמות</span></div>
+</div></section>
+<section class="steps-section cw" id="how"><h2 class="section-heading">מהקבוצה בטלפון — למגרש</h2><p class="section-sub">כל מה שצריך למחזור הבא, במקום אחד.</p><div class="steps" id="prob">
+<article class="step"><span class="num">1</span><h3>מוצאים את החבר׳ה</h3><p>מצטרפים למועדון, מקבלים הזמנה או פותחים מועדון משלכם.</p></article>
+<article class="step"><span class="num">2</span><h3>נרשמים למחזור</h3><p>רואים מתי ואיפה משחקים, כמה נרשמו ומה מצב רשימת ההמתנה.</p></article>
+<article class="step"><span class="num">3</span><h3>פשוט משחקים</h3><p>מחלקים כוחות, מנהלים את המשחקים ורואים סיכום אישי וסטטיסטיקות.</p></article>
+</div></section>
+<section class="final cw" id="download"><h2 id="finalTitle">פחות התעסקות.
+יותר כדורגל.</h2><p>המחזור הבא מתחיל כאן.</p><div class="stores" id="stores">
+<a class="store" id="storeAndroid" href="https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp" aria-label="הורדה לאנדרואיד"><svg class="icon" aria-hidden="true"><use href="#android"/></svg><span><small>הורדה בחנות</small><b>Google Play</b></span></a>
+<a class="store" id="storeApple" href="https://apps.apple.com/app/id6775178022" aria-label="הורדה לאייפון"><svg class="icon" aria-hidden="true"><use href="#apple"/></svg><span><small>הורדה בחנות</small><b>App Store</b></span></a></div></section></main>
+<footer class="foot"><div class="cw"><span>© Teamder</span><a href="/privacy">מדיניות פרטיות</a><a href="/terms">תנאי שימוש</a><a href="/delete-account">מחיקת חשבון</a></div></footer>
+<div class="sticky" id="sticky" aria-hidden="true"><button id="stickyBtn" tabindex="-1" type="button">מתחילים לשחק</button></div><div id="railBall" hidden></div>
+<script>(function(){
+  "use strict";
+  var _s={}; function track(n,e){try{(window.dataLayer=window.dataLayer||[]).push(Object.assign({event:n},window.__AB__||{},e||{}));if(typeof window.gtag==='function')window.gtag('event',n,e||{});}catch(_){}}
+  function once(n,e){if(_s[n])return;_s[n]=1;track(n,e);}
+  var INV=window.__INVITE__||{}; var parts=location.pathname.split('/').filter(Boolean);
+  var code=parts[0]==='i'?(parts[1]||''):'';
+  var type=INV.type?INV.type:parts[0]==='session'?'session':(parts[0]==='team'||parts[0]==='c')?'team':(parts[0]==='app'||parts[0]==='get'||!parts.length)?'app':parts[0]==='go'?'go':null;
+  var id=INV.id||INV.targetId||((parts[0]==='session'||parts[0]==='team'||parts[0]==='c')?(parts[1]||''):'');try{if(!INV.id&&!INV.targetId)id=decodeURIComponent(id);}catch(_){id='';}
+  var qp=new URLSearchParams(location.search); if(!code)code=(qp.get('code')||'').trim();
+  var invitedBy=(typeof INV.invitedBy==='string'?INV.invitedBy:(qp.get('invitedBy')||'')).trim();
+  function b64d(t){try{var b=String(t||'').replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';return decodeURIComponent(escape(atob(b)));}catch(_){return '';}}
+  var source=(typeof INV.source==='string'?INV.source:(b64d(qp.get('b'))||qp.get('s')||qp.get('utm_source')||'')).trim();
+  var campaign=(typeof INV.campaign==='string'?INV.campaign:(qp.get('c')||qp.get('utm_campaign')||'')).trim(); var gameTarget=(typeof INV.gameTarget==='string'?INV.gameTarget:(qp.get('g')||'')).trim(); var linkId=(typeof INV.linkId==='string'?INV.linkId:(qp.get('l')||'')).trim();
+  var visitTracked=false;
+  function trackVisit(){if(visitTracked||INV.clickTracked)return;visitTracked=true;if(source||linkId||invitedBy){try{var bc='/track-click?l='+encodeURIComponent(linkId)+'&s='+encodeURIComponent(source)+'&inviter='+encodeURIComponent(invitedBy);if(navigator.sendBeacon)navigator.sendBeacon(bc);else fetch(bc,{mode:'no-cors',keepalive:true});}catch(_){}}}
+  if(!code||INV.type)trackVisit();
+  if(!type&&invitedBy)type='app';
+  var isApp=type==='app'||type==='go'; var valid=!!type&&(isApp||!!id);
+  if(!code)window.__INVITE__=Object.assign({},INV,{type:type,id:id,invitedBy:invitedBy});
+  var pathPart=type==='go'?'go':isApp?'app':(type?type+'/'+encodeURIComponent(id):'app');
+  var wasGameLink=(type==='session'), wasCommLink=(type==='team');
+  var ctxType='generic'; if(type==='session')ctxType='game';else if(type==='team')ctxType='community';else if(invitedBy)ctxType='personal_invite';else if(source||campaign)ctxType='campaign';
+  window.__AB__={context_type:ctxType,campaign_source:source||undefined,platform:/Android/i.test(navigator.userAgent)?'android':/iPhone|iPad|iPod/i.test(navigator.userAgent)?'ios':'web',has_inviter:!!invitedBy,has_game:type==='session',has_community:type==='team'};
+  once('landing_view');
+  function appQuery(includeGame){var p=[];if(invitedBy)p.push('invitedBy='+encodeURIComponent(invitedBy));if(source)p.push('s='+encodeURIComponent(source));if(campaign)p.push('c='+encodeURIComponent(campaign));if(gameTarget&&includeGame!==false)p.push('g='+encodeURIComponent(gameTarget));if(linkId)p.push('l='+encodeURIComponent(linkId));return p.length?'?'+p.join('&'):'';}
+  window.getLandingShareQuery=function(){return appQuery(false);};
+  var resolutionReady=!code||!!INV.type;var resolvePromise=Promise.resolve();
+  function deepLink(){if(!resolutionReady||!valid)return null;return 'footy://'+pathPart+appQuery();}
+  function clipUrl(){if(!resolutionReady&&code)return 'https://teamderfc.web.app/i/'+encodeURIComponent(code)+location.search;if(!valid)return null;return 'https://teamderfc.web.app/'+pathPart+appQuery();}
+  // Re-point the deep link + store referrer at the entity the code resolved to,
+  // so the CTA opens the RIGHT game/community even when __INVITE__ wasn't
+  // injected (e.g. the /app?code= path). No-op without an id.
+  function retarget(t,i){if(t!=='app'&&!i)return;type=t;id=i||'';isApp=t==='app';valid=true;pathPart=isApp?'app':type+'/'+encodeURIComponent(id);
+    storeHref=buildStoreHref();
+    var sa=document.getElementById('storeAndroid'); if(sa)sa.href=storeHref; }
+  if(valid){try{var cc=isApp?{type:'app'}:{type:type,id:id};if(invitedBy)cc.invitedBy=invitedBy;localStorage.setItem('pendingInvite',JSON.stringify(cc));}catch(_){}}
+  var storeHref='https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
+  function buildStoreHref(){var u=['target_type='+encodeURIComponent(isApp?'app':type)];if(!isApp)u.push('target_id='+encodeURIComponent(id));if(source)u.push('utm_source='+encodeURIComponent(source));if(campaign)u.push('utm_campaign='+encodeURIComponent(campaign));if(gameTarget)u.push('g='+encodeURIComponent(gameTarget));if(linkId)u.push('l='+encodeURIComponent(linkId));if(invitedBy&&resolutionReady)u.push('by='+encodeURIComponent(invitedBy));if(!resolutionReady&&code)u.push('invite_url='+encodeURIComponent('https://teamderfc.web.app/i/'+encodeURIComponent(code)+location.search));return 'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp'+((valid||(!resolutionReady&&code))?'&referrer='+encodeURIComponent(u.join('&')):'');}
+  storeHref=buildStoreHref();var sa=document.getElementById('storeAndroid');if(sa)sa.href=storeHref;
+  if(sa)sa.addEventListener('click',async function(event){event.preventDefault();await resolvePromise;location.href=storeHref;});
+  var isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent||'')||(/Macintosh/.test(navigator.userAgent||'')&&navigator.maxTouchPoints>1);
+  var isAndroid=/Android/i.test(navigator.userAgent||'');
+  async function installIOS(){await resolvePromise;var preserve=!!(code||invitedBy||source||campaign||gameTarget||linkId||wasGameLink||wasCommLink);var timer;var copied=false;try{var cu=clipUrl();if(preserve&&cu&&navigator.clipboard&&navigator.clipboard.writeText){await Promise.race([navigator.clipboard.writeText(cu),new Promise(function(_,reject){timer=setTimeout(function(){reject(new Error('copy timeout'));},1200);})]);copied=true;}}catch(_){}finally{clearTimeout(timer);}if(!copied&&preserve&&!window.confirm('לא ניתן לשמור את ההזמנה אוטומטית. לאחר ההתקנה חזור לקישור המקורי ופתח את האפליקציה. להמשיך לחנות?'))return;once('landing_store_click');location.href='https://apps.apple.com/app/id6775178022';}
+  document.querySelectorAll('a[href*="apps.apple.com"]').forEach(function(e){e.addEventListener('click',function(event){event.preventDefault();void installIOS();});});
+  var cancelAppAttempt=null;
+  function openSmart(url,fallback){
+    if(cancelAppAttempt)cancelAppAttempt();
+    var finished=false,timer;
+    function cleanup(){clearTimeout(timer);document.removeEventListener('visibilitychange',visibility);if(window.removeEventListener)window.removeEventListener('pagehide',hidden);if(cancelAppAttempt===cancel)cancelAppAttempt=null;}
+    function cancel(){if(finished)return;finished=true;cleanup();}
+    function hidden(){cancel();}
+    function visibility(){if(document.hidden)cancel();}
+    cancelAppAttempt=cancel;
+    document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',hidden);
+    timer=setTimeout(function(){if(finished)return;finished=true;cleanup();fallback();},1500);
+    track('landing_app_open_attempt');location.href=url;
+  }
+  async function primary(){await resolvePromise;once('landing_primary_cta_click');var url=deepLink();if(!isAndroid&&!isIOS){once('landing_store_click');var st=document.getElementById('stores');if(st&&st.scrollIntoView)st.scrollIntoView({behavior:window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});return;}var store=storeHref;function fallback(){if(isIOS){void installIOS();return;}once('landing_store_click');location.href=store;}if(!url){fallback();return;}openSmart(url,fallback);}
+  ['ctaBtn','stickyBtn','hdrBtn','contextCta'].forEach(function(i){var e=document.getElementById(i);if(e)e.addEventListener('click',primary);});
+  var V={personal_invite:{badge:'הזמנה אישית',cta:'הצטרף ל־Teamder',final:'הצטרף לחברים שלך ב־Teamder',shot:'/shot-home.jpg',title:'הוזמנת ל־Teamder',sub:'האפליקציה שמארגנת את הכדורגל כדי שאתם רק תגיעו לשחק.'},
+    game:{badge:'הזמנה למחזור',cta:'לפרטי המחזור',final:'המשחק הבא שלך כבר מחכה',shot:'/shot-match.jpg',title:'נפגשים על המגרש',sub:'משחק שכונתי מחכה לך. ראה מי מגיע והצטרף בלחיצה אחת.'},
+    community:{badge:'הזמנה למועדון',cta:'לפרטי המועדון',final:'הצטרף למועדון דרך Teamder',shot:'/shot-games.jpg',title:'הקבוצה שלך\nמחכה לך כאן',sub:'יותר מחברים למשחק. קהילה של אנשים שאוהבים כדורגל.'},
+    generic:{badge:'ברוכים הבאים ל־Teamder',cta:'מתחילים לשחק',final:'פחות הודעות.<br>יותר כדורגל.',shot:'/shot-match.jpg',title:'הכדורגל שלכם.\nהסדר שלנו.',sub:'מארגנים מחזורים, מחלקים כוחות ומשחקים בראש שקט.'},
+    campaign:{badge:'ברוכים הבאים ל־Teamder',cta:'מתחילים לשחק',final:'פחות הודעות.<br>יותר כדורגל.',shot:'/shot-match.jpg',title:'הכדורגל שלכם.\nהסדר שלנו.',sub:'מארגנים מחזורים, מחלקים כוחות ומשחקים בראש שקט.'}};
+  function applyV(t,nm){if(document.body&&document.body.setAttribute)document.body.setAttribute('data-variant',t);if(typeof window!=='undefined'&&window.updateLandingVariant)window.updateLandingVariant(t,nm);var who=nm?'⁨'+nm+'⁩':null;var v=V[t]||V.generic;document.getElementById('badgeTxt').textContent=(t==='personal_invite'&&nm)?(who+' הזמין אותך'):v.badge;document.getElementById('title').textContent=(t==='personal_invite'&&nm)?(who+' מזמין אותך\nלשחק'):v.title;document.getElementById('subtitle').textContent=v.sub;document.getElementById('ctaBtn').textContent=v.cta;document.getElementById('stickyBtn').textContent=v.cta;document.getElementById('finalTitle').innerHTML=v.final;var hs=document.getElementById('heroShot');if(hs&&v.shot)hs.src=v.shot;}
+  applyV(ctxType);window.__LANDING_VARIANT__=ctxType;
+  function fD(ms){try{return new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'numeric'}).format(new Date(ms));}catch(_){return '';}}
+  function fT(ms){try{return new Intl.DateTimeFormat('he-IL',{hour:'2-digit',minute:'2-digit'}).format(new Date(ms));}catch(_){return '';}}
+  function ctxCard(t,tags){var c=document.getElementById('ctxCard');document.getElementById('ctxTitle').textContent=t||'';var b=document.getElementById('ctxTags');b.innerHTML='';(tags||[]).forEach(function(x){if(x&&x.txt){var s=document.createElement('span');s.className='tg'+(x.cls?' '+x.cls:'');s.textContent=x.txt;b.appendChild(s);}});c.classList.add('on');}
+  function toGeneric(note){renderContext({type:'generic'});ctxType='generic';applyV(ctxType);document.getElementById('ctxCard').classList.remove('on');if(note)document.getElementById('ctxNote').classList.add('on');once('landing_context_failed');}
+  function renderContext(d){window.__LANDING_PREVIEW__=d;Promise.resolve().then(function(){if(window.renderLandingContext)window.renderLandingContext(d);});}
+  function preview(d){
+    // A presentation response can never redirect a canonical invitation.
+    var expected=type==='session'?'game':type==='team'?'community':gameTarget?'game':null;
+    var expectedId=gameTarget&&isApp?gameTarget:id;
+    if(d&&d.type!=='generic'&&expected&&(d.type!==expected||(d.id&&d.id!==expectedId)))d={type:'generic'};
+    renderContext(d);if(!d||d.type==='generic'){/* A short code that resolved to nothing is a DEAD invite, exactly like an unresolvable /session or /team link. Without `code` here the page silently rendered as an ordinary Teamder landing and the person was never told the invitation had expired. */toGeneric(wasGameLink||wasCommLink||!!code);return;}
+    if(d.type==='game'){ctxType='game';applyV('game');var tg=[];if(d.status==='finished')tg.push({txt:'המחזור הסתיים'});else if(d.status==='cancelled')tg.push({txt:'המחזור בוטל'});if(typeof d.startsAt==='number'){tg.push({txt:fD(d.startsAt)});tg.push({txt:fT(d.startsAt)});}if(d.fieldName)tg.push({txt:d.fieldName});else if(d.city)tg.push({txt:d.city});if(d.communityName)tg.push({txt:d.communityName});if(typeof d.availableSpots==='number'&&d.availableSpots>0)tg.push({txt:d.availableSpots+' מקומות פנויים',cls:'free'});ctxCard(d.gameTitle||'משחק כדורגל',tg);once('landing_context_loaded');}
+    else if(d.type==='community'){ctxType='community';applyV('community');var ct=[];if(d.city)ct.push({txt:d.city});if(typeof d.communityMembersCount==='number')ct.push({txt:d.communityMembersCount+' חברים'});ctxCard(d.communityName||'מועדון כדורגל',ct);once('landing_context_loaded');}
+    else if(d.type==='personal'){ctxType='personal_invite';applyV('personal_invite',d.inviterName);once('landing_context_loaded');}
+    else toGeneric(wasGameLink||wasCommLink);
+  }
+  function loadPreview(query){var timer;return Promise.race([fetch('/invite-preview?'+query).then(function(r){if(!r.ok)throw new Error('preview failed');return r.json();}),new Promise(function(resolve){timer=setTimeout(function(){resolve({type:'generic'});},4000);})]).then(preview).catch(function(){toGeneric(wasGameLink||wasCommLink||!!code);}).finally(function(){clearTimeout(timer);});}
+  if(code){
+    // Resolving an alias and an early CTA share this bounded promise. An offline
+    // store handoff carries the unresolved canonical URL instead of losing it.
+    var resolverTimer;
+    var resolveRequest=resolutionReady?Promise.resolve(INV):fetch('/i/'+encodeURIComponent(code)+'?resolve=1').then(function(r){if(!r.ok)throw new Error('unresolved');return r.json();});
+    resolvePromise=Promise.race([resolveRequest,new Promise(function(resolve){resolverTimer=setTimeout(function(){resolve(null);},4000);})]).then(function(d){
+      if(!d||['app','team','session'].indexOf(d.type)<0||(d.type!=='app'&&!d.id)){toGeneric(true);return;}
+      resolutionReady=true;invitedBy=typeof d.invitedBy==='string'?d.invitedBy:'';gameTarget='';
+      retarget(d.type,d.id);window.__INVITE__={type:d.type,id:d.id,invitedBy:invitedBy,clickTracked:!!INV.clickTracked};
+      trackVisit();
+      void loadPreview('code='+encodeURIComponent(code));
+    }).catch(function(){toGeneric(true);}).finally(function(){clearTimeout(resolverTimer);});
+  }else if(valid){
+    var previewType=isApp?(gameTarget?'session':'app'):type;var previewTarget=isApp?gameTarget:id;
+    if(previewTarget||invitedBy)void loadPreview('type='+encodeURIComponent(previewType)+'&id='+encodeURIComponent(previewTarget||'')+'&invitedBy='+encodeURIComponent(invitedBy)+(parts[0]==='c'?'&showcase=1':''));
+    else renderContext({type:'generic'});
+  }
 
-    /* Page container */
-    .container {
-      max-width: 1080px;
-      margin: 0 auto;
-      padding: 0 24px;
-    }
-
-    /* Top nav */
-    nav.topnav {
-      padding: 20px 0;
-      border-bottom: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: saturate(180%) blur(8px);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    .topnav .row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .brand img { height: 32px; }
-    .nav-links {
-      display: flex;
-      gap: 24px;
-      align-items: center;
-      font-size: 14px;
-      color: var(--muted);
-    }
-    .nav-links a { color: var(--muted); font-weight: 500; }
-    .nav-links a:hover { color: var(--text); text-decoration: none; }
-
-    /* Hero */
-    section.hero {
-      padding: 80px 0 60px;
-      background: linear-gradient(180deg, #EFF6FF 0%, #ffffff 100%);
-      text-align: center;
-    }
-    .hero-logo {
-      height: clamp(120px, 18vw, 180px);
-      width: auto;
-      margin: 0 auto 40px;
-    }
-    .hero h1 {
-      font-size: clamp(36px, 6vw, 64px);
-      line-height: 1.1;
-      font-weight: 800;
-      margin: 0 auto 20px;
-      max-width: 820px;
-      letter-spacing: -0.02em;
-    }
-    .hero h1 .line {
-      display: block;
-    }
-    .hero h1 .accent {
-      background: linear-gradient(120deg, var(--blue-dark), var(--blue-light));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
-    .hero p.lead {
-      font-size: clamp(17px, 2vw, 20px);
-      color: var(--muted);
-      max-width: 620px;
-      margin: 0 auto 40px;
-    }
-    .hero-ctas {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .hero-free {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 24px;
-      padding: 8px 16px;
-      border-radius: 999px;
-      background: #DBEAFE;
-      color: var(--blue-dark);
-      font-size: 14px;
-      font-weight: 600;
-      border: 1px solid #BFDBFE;
-    }
-    .hero-free svg { width: 16px; height: 16px; }
-
-    /* Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 14px 24px;
-      border-radius: 14px;
-      font-weight: 700;
-      font-size: 16px;
-      transition: transform 0.15s, box-shadow 0.15s;
-      cursor: pointer;
-      border: 0;
-      font-family: inherit;
-    }
-    .btn:hover { text-decoration: none; transform: translateY(-1px); }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--blue-dark), var(--blue));
-      color: #fff;
-      box-shadow: var(--shadow-lg);
-    }
-    .btn-primary:hover { box-shadow: 0 28px 56px rgba(29, 78, 216, 0.32); }
-    .btn-secondary {
-      background: #fff;
-      color: var(--text);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-sm);
-    }
-    .btn-secondary:hover { border-color: var(--blue); color: var(--blue-dark); }
-    .btn .icon { width: 20px; height: 20px; }
-
-    /* Features grid */
-    section.features {
-      padding: 80px 0;
-    }
-    .section-eyebrow {
-      color: var(--blue-dark);
-      font-weight: 700;
-      font-size: 14px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      margin: 0 0 12px;
-    }
-    .section-title {
-      font-size: clamp(28px, 4vw, 40px);
-      font-weight: 800;
-      margin: 0 0 16px;
-      letter-spacing: -0.01em;
-    }
-    .section-sub {
-      color: var(--muted);
-      font-size: 18px;
-      max-width: 620px;
-      margin: 0 0 56px;
-    }
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 20px;
-    }
-    .feature {
-      padding: 28px;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      background: #fff;
-      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-    }
-    .feature:hover {
-      transform: translateY(-3px);
-      box-shadow: var(--shadow-md);
-      border-color: transparent;
-    }
-    .feature-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #DBEAFE, #E0E7FF);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--blue-dark);
-      margin-bottom: 18px;
-    }
-    .feature-icon svg { width: 26px; height: 26px; }
-    .feature h3 {
-      font-size: 19px;
-      font-weight: 700;
-      margin: 0 0 8px;
-    }
-    .feature p {
-      color: var(--muted);
-      margin: 0;
-      font-size: 15px;
-      line-height: 1.6;
-    }
-
-    /* How it works */
-    section.how {
-      padding: 80px 0;
-      background: var(--bg-soft);
-    }
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 24px;
-      margin-top: 40px;
-    }
-    .step {
-      position: relative;
-      padding: 32px 28px;
-      border-radius: 20px;
-      background: #fff;
-      border: 1px solid var(--border);
-    }
-    .step-num {
-      position: absolute;
-      top: -20px;
-      inset-inline-start: 28px;
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, var(--blue-dark), var(--blue-light));
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 18px;
-      box-shadow: var(--shadow-md);
-    }
-    .step h3 {
-      margin: 8px 0 8px;
-      font-size: 19px;
-      font-weight: 700;
-    }
-    .step p {
-      color: var(--muted);
-      margin: 0;
-      font-size: 15px;
-    }
-
-    /* Beta CTA */
-    section.beta {
-      padding: 80px 0;
-    }
-    .beta-card {
-      background: linear-gradient(135deg, #0F172A 0%, #1E40AF 50%, #3B82F6 100%);
-      color: #fff;
-      border-radius: 28px;
-      padding: 56px 40px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    .beta-card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(circle at 20% 20%, rgba(96, 165, 250, 0.30), transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.28), transparent 50%);
-      pointer-events: none;
-    }
-    .beta-card > * { position: relative; z-index: 1; }
-    .beta-badge {
-      display: inline-block;
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.15);
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 20px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    .beta-card h2 {
-      font-size: clamp(28px, 4vw, 40px);
-      margin: 0 0 16px;
-      font-weight: 800;
-      letter-spacing: -0.01em;
-    }
-    .beta-card p {
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 18px;
-      max-width: 580px;
-      margin: 0 auto 32px;
-    }
-    .beta-card .btn-primary {
-      background: #fff;
-      color: var(--blue-dark);
-      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.2);
-    }
-    .beta-card .btn-primary:hover {
-      background: #f8fafc;
-      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.24);
-    }
-    .beta-ctas {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .beta-card .btn-ghost {
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-    }
-    .beta-card .btn-ghost:hover {
-      background: rgba(255, 255, 255, 0.18);
-    }
-    .beta-note {
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 14px;
-      margin-top: 20px;
-    }
-
-    /* Footer */
-    footer.site {
-      border-top: 1px solid var(--border);
-      padding: 48px 0 32px;
-      background: var(--bg-soft);
-    }
-    .footer-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 24px;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .footer-brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-    .footer-brand img { height: 24px; }
-    .footer-links {
-      display: flex;
-      gap: 24px;
-      flex-wrap: wrap;
-      font-size: 14px;
-    }
-    .footer-links a { color: var(--muted); font-weight: 500; }
-    .footer-links a:hover { color: var(--text); text-decoration: none; }
-    .footer-copy {
-      color: var(--muted);
-      font-size: 13px;
-      text-align: center;
-      margin-top: 24px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-    }
-
-    @media (max-width: 640px) {
-      .nav-links { display: none; }
-      section.hero { padding: 56px 0 48px; }
-      section.features, section.how, section.beta { padding: 56px 0; }
-      .beta-card { padding: 40px 24px; }
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Top nav -->
-  <nav class="topnav">
-    <div class="container row">
-      <div class="brand">
-        <img src="/logo2.png" alt="Teamder" />
-      </div>
-      <div class="nav-links">
-        <a href="#features">פיצ׳רים</a>
-        <a href="#how">איך זה עובד</a>
-        <a href="#beta">הצטרפות לבטא</a>
-      </div>
-    </div>
-  </nav>
-
-  <!-- Hero -->
-  <section class="hero">
-    <div class="container">
-      <img src="/logo2.png" alt="Teamder" class="hero-logo" />
-      <h1>
-        <span class="line">מארגנים משחק כדורגל</span>
-        <span class="line accent">בלי בלגן</span>
-      </h1>
-      <p class="lead">
-        קבוצה אחת, רישום למשחק בקליק, בחירת קבוצות חיה על המגרש ודירוג חברים.
-        הכול במקום אחד — בלי קבוצות וואטסאפ אינסופיות.
-      </p>
-      <div class="hero-ctas">
-        <a href="#beta" class="btn btn-primary">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
-          </svg>
-          הצטרפו כבודקי בטא
-        </a>
-        <a href="#features" class="btn btn-secondary">
-          מה יש באפליקציה
-        </a>
-      </div>
-      <div class="hero-free">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
-        חינמי לחלוטין
-      </div>
-    </div>
-  </section>
-
-  <!-- Features -->
-  <section class="features" id="features">
-    <div class="container">
-      <p class="section-eyebrow">פיצ׳רים</p>
-      <h2 class="section-title">כל מה שצריך כדי לארגן משחק</h2>
-      <p class="section-sub">סוף ל"מי שיחק שבוע שעבר?" ול"אין לי מספיק שחקנים".</p>
-
-      <div class="features-grid">
-
-        <div class="feature">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-          </div>
-          <h3>קהילות סגורות</h3>
-          <p>פותחים קבוצה לחבר׳ה הקבועים, מזמינים בקוד, ובלי זרים. אדמין מאשר חברים חדשים.</p>
-        </div>
-
-        <div class="feature">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <path d="M16 2v4M8 2v4M3 10h18"/>
-              <path d="m9 16 2 2 4-4"/>
-            </svg>
-          </div>
-          <h3>רישום למשחק בקליק</h3>
-          <p>אתה רואה את המשחק הבא, נרשם, ויודע אם אתה ברשימה הראשית או בהמתנה. בלי לעקוב אחרי וואטסאפ.</p>
-        </div>
-
-        <div class="feature">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 6v6l4 2"/>
-            </svg>
-          </div>
-          <h3>בחירת קבוצות חיה</h3>
-          <p>על המגרש: גוררים שחקנים בין קבוצות, מסמנים שוערים, ו־shuffle אוטומטי כשרוצים לערבב — מותאם 5v5/6v6/7v7.</p>
-        </div>
-
-        <div class="feature">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </div>
-          <h3>דירוגים בקהילה</h3>
-          <p>כל חבר מדרג את האחרים בסקייל 1–5. הממוצעים אנונימיים, ועוזרים לאזן קבוצות אוטומטית.</p>
-        </div>
-
-        <div class="feature">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
-              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
-            </svg>
-          </div>
-          <h3>התראות חכמות</h3>
-          <p>תזכורת שעה לפני, התראה כשמישהו מבטל ואתה ראשון בהמתנה, וכשפותחים משחק חדש בקבוצה שלך.</p>
-        </div>
-
-        <div class="feature">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="8" r="6"/>
-              <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
-            </svg>
-          </div>
-          <h3>הישגים וסטטיסטיקות</h3>
-          <p>כמה משחקים שיחקת, אחוז נוכחות, רצפים — וכרטיסי הישגים שמתפתחים עם השנים.</p>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- How it works -->
-  <section class="how" id="how">
-    <div class="container">
-      <p class="section-eyebrow">איך זה עובד</p>
-      <h2 class="section-title">מהורדה למשחק — שלוש דקות</h2>
-
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <h3>פותחים קבוצה</h3>
-          <p>שם, מגרש, תדירות. שולחים קוד הזמנה לחבר׳ה — ובאמת זה הכול.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <h3>פותחים משחק</h3>
-          <p>בוחרים תאריך, שעה, פורמט (5v5/6v6/7v7), והאפליקציה דואגת לרישום ולתזכורות.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <h3>מגיעים ומשחקים</h3>
-          <p>על המגרש פותחים את מסך ה־Live, מחלקים קבוצות בכמה שניות, ומתחילים. הסטטיסטיקות נשמרות אוטומטית.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Beta tester CTA -->
-  <section class="beta" id="beta">
-    <div class="container">
-      <div class="beta-card">
-        <div class="beta-badge">בטא פתוחה · מקומות מוגבלים</div>
-        <h2>רוצה להיות מהראשונים לנסות?</h2>
-        <p>
-          שלחו לי את כתובת המייל שלכם (זו שמחוברת לחשבון Google של המכשיר).
-          אוסיף אתכם לרשימת הבודקים ותקבלו קישור להורדה.
-        </p>
-        <div class="beta-ctas">
-          <a href="https://wa.me/972546986121?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A0%D7%99%20%D7%A8%D7%95%D7%A6%D7%94%20%D7%9C%D7%94%D7%A6%D7%98%D7%A8%D7%A3%20%D7%9C%D7%91%D7%98%D7%90%20%D7%A9%D7%9C%20Teamder.%0A%D7%94%D7%9E%D7%99%D7%99%D7%9C%20%D7%A9%D7%9C%D7%99%3A%20" class="btn btn-primary" target="_blank" rel="noopener">
-            <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.002-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413"/>
-            </svg>
-            שלחו את המייל בוואטסאפ
-          </a>
-          <a href="mailto:studiogameslime@gmail.com?subject=%D7%94%D7%A6%D7%98%D7%A8%D7%A4%D7%95%D7%AA%20%D7%9C%D7%91%D7%98%D7%90%20Teamder&body=%D7%94%D7%9E%D7%99%D7%99%D7%9C%20%D7%A9%D7%9C%D7%99%3A%20" class="btn btn-ghost">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="4" width="20" height="16" rx="2"/>
-              <path d="m22 7-10 5L2 7"/>
-            </svg>
-            או שליחה במייל
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="site">
-    <div class="container">
-      <div class="footer-row">
-        <div class="footer-brand">
-          <img src="/logo2.png" alt="Teamder" />
-          <span>· מארגנים משחקי כדורגל בלי בלגן</span>
-        </div>
-        <div class="footer-links">
-          <a href="/privacy">מדיניות פרטיות</a>
-          <a href="/terms">תנאי שימוש</a>
-          <a href="/delete-account">מחיקת חשבון</a>
-          <a href="mailto:studiogameslime@gmail.com">צור קשר</a>
-        </div>
-      </div>
-      <div class="footer-copy">
-        © Studio Games Lime · כל הזכויות שמורות
-      </div>
-    </div>
-  </footer>
-
-<script src="/js/joryio.js" defer></script>
-</body>
-</html>
+  // one-shot in-view
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add(e.target.classList.contains('step')?'seen':'in');io.unobserve(e.target);}});},{threshold:.28});
+  var prob=document.getElementById('prob'); if(prob)io.observe(prob);
+  Array.prototype.forEach.call(document.querySelectorAll('.step'),function(s){io.observe(s);});
+  // rail ball follows scroll
+  var ball=document.getElementById('railBall'), depth={};
+  function tick(){ if(!reduce){ var h=document.body.scrollHeight-window.innerHeight; var p=h>0?Math.min(1,Math.max(0,window.scrollY/h)):0; ball.style.top=(window.scrollY+window.innerHeight*0.5)+'px'; if(ball.offsetTop>document.body.scrollHeight-40)ball.style.top=(document.body.scrollHeight-40)+'px'; }
+    var y=window.scrollY,vh=window.innerHeight,dh=document.body.scrollHeight,pct=Math.round((y+vh)/dh*100);
+    [25,50,75,100].forEach(function(m){if(pct>=m&&!depth[m]){depth[m]=1;track('landing_scroll_depth',{depth:m});}});
+    var hero=document.querySelector('.hero'),fin=document.getElementById('download'),st=document.getElementById('sticky');
+    var shown=hero.getBoundingClientRect().bottom<0 && fin.getBoundingClientRect().top>vh*0.85;if(shown)st.classList.add('show');else st.classList.remove('show');st.setAttribute('aria-hidden',shown?'false':'true');document.getElementById('stickyBtn').tabIndex=shown?0:-1;
+  }
+  window.addEventListener('scroll',tick,{passive:true}); tick();
+})();
+</script><script src="/js/landing-presentation.js" defer></script><script src="/js/joryio.js" defer></script></body></html>

@@ -22,7 +22,7 @@
 // about the club's games beyond the activity badge — no title, date, pitch or
 // headcount. A club's fixtures are private to its members.
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Image,
   ImageBackground,
@@ -30,7 +30,6 @@ import {
   StyleSheet,
   Text,
   View,
-  type ImageSourcePropType,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -38,17 +37,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AttentionPulse, INFINITE } from '@/components/anim/AttentionPulse';
 import { PressableScale } from '@/components/PressableScale';
 import { getCoverSource } from '@/data/coverImages';
+import { clubDefaultCoverId } from '@/utils/clubDefaultCoverId';
 import { he } from '@/i18n/he';
-import { spacing } from '@/theme';
+import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import type { ClubCardViewModel } from '@/utils/clubCard';
-
-const STADIUM_BG: ImageSourcePropType =
-  require('../../assets/images/stadium-bg.png');
 
 const CTA_STYLE = {
   member: { bg: 'transparent', border: '#15803D', fg: '#15803D', icon: 'checkmark' },
   join: { bg: '#1E40AF', border: '#1E40AF', fg: '#FFFFFF', icon: 'person-add' },
-  request: { bg: 'transparent', border: '#EA8C1F', fg: '#C2710C', icon: 'time-outline' },
+  request: { bg: 'transparent', border: '#2563EB', fg: '#1D4ED8', icon: 'time-outline' },
   requested: { bg: 'transparent', border: '#EA8C1F', fg: '#C2710C', icon: 'time-outline' },
 } as const;
 
@@ -62,12 +59,13 @@ const CTA_LABEL: Record<string, string> = {
 const ACTIVITY = {
   veryActive: { dot: '#22C55E', label: he.clubCardVeryActive },
   active: { dot: '#22C55E', label: he.clubCardActive },
-  inactive: { dot: '#EF4444', label: he.clubCardInactive },
+  inactive: { dot: '#D97706', label: he.clubCardInactive },
 } as const;
 
 interface Props {
   vm: ClubCardViewModel;
   name: string;
+  groupId?: string;
   /** City ONLY. No pitch, no address, no distance. */
   city?: string;
   coverPhotoUrl?: string;
@@ -81,6 +79,7 @@ interface Props {
 export function ClubCard({
   vm,
   name,
+  groupId,
   city,
   coverPhotoUrl,
   coverImageId,
@@ -88,6 +87,8 @@ export function ClubCard({
   onCtaPress,
   ctaBusy,
 }: Props) {
+  const [failedPhoto, setFailedPhoto] = useState(false);
+  useEffect(() => setFailedPhoto(false), [coverPhotoUrl]);
   const cta = CTA_STYLE[vm.cta];
   const activity = vm.activity ? ACTIVITY[vm.activity] : null;
   // The member state is a status, not an action — tapping it should open the
@@ -97,6 +98,7 @@ export function ClubCard({
   return (
     <PressableScale
       onPress={onPress}
+      diagnosticName="open_club"
       style={styles.card}
       haptic={false}
       accessibilityRole="button"
@@ -146,68 +148,35 @@ export function ClubCard({
             ) : null}
           </View>
 
-          {/* A member has nothing to press. Rendering their state as a
-              full-width outlined button made "חבר במועדון" read as an action
-              — people tap it and nothing happens. It's a STATUS, so it's a
-              small filled chip that hugs its text and never spans the card;
-              the shape itself says "label", not "button". */}
-          {ctaActs ? (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                onCtaPress?.();
-              }}
-              disabled={ctaBusy}
-              style={({ pressed }) => [
-                styles.cta,
-                { backgroundColor: cta.bg, borderColor: cta.border },
-                (pressed || ctaBusy) && { opacity: 0.85 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={CTA_LABEL[vm.cta]}
-            >
-              {/* Text first: the row is flipped under RTL, so the FIRST child
-                  lands on the right. Icon-then-text put the clock to the right
-                  of "בקש להצטרף"; it belongs on the left, like every other CTA
-                  in the app. */}
-              <Text style={[styles.ctaTxt, { color: cta.fg }]}>
-                {CTA_LABEL[vm.cta]}
-              </Text>
-              <Ionicons name={cta.icon as never} size={16} color={cta.fg} />
-            </Pressable>
-          ) : (
-            <View style={styles.statusRow}>
-              <View
-                style={[
-                  styles.status,
-                  vm.cta === 'requested' && { backgroundColor: '#FFF7ED' },
-                ]}
-              >
-                {/* Same order as the CTA above, for the same reason. */}
-                <Text
-                  style={[
-                    styles.statusTxt,
-                    { color: vm.cta === 'requested' ? '#C2710C' : '#15803D' },
-                  ]}
-                >
-                  {CTA_LABEL[vm.cta]}
-                </Text>
-                <Ionicons
-                  name={cta.icon as never}
-                  size={14}
-                  color={vm.cta === 'requested' ? '#C2710C' : '#15803D'}
-                />
+          {activity ? (
+            // Only "פעיל מאוד" breathes. It is the one activity level that is
+            // an invitation rather than a fact — "פעיל" and "לא פעיל" are just
+            // the club's state and pulsing them would make the whole feed
+            // twitch, which tells the eye nothing about where to look.
+            //
+            // It breathes CONTINUOUSLY. Two breaths was the original call and
+            // it was wrong here: the feed scrolls, so a finite pulse burned
+            // itself out below the fold and the badge you actually looked at
+            // never moved. Owner's call, 2026-08-29.
+            <AttentionPulse active={vm.activity === 'veryActive'} cycles={INFINITE}>
+              <View style={styles.activityBadge}>
+                <View style={[styles.dot, { backgroundColor: activity.dot }]} />
+                <Text style={[styles.activityTxt, { color: activity.dot }]}>{activity.label}</Text>
               </View>
-            </View>
+            </AttentionPulse>
+          ) : (
+            <View />
           )}
         </View>
         <ImageBackground
           source={
-            coverPhotoUrl
+            coverPhotoUrl && !failedPhoto
               ? { uri: coverPhotoUrl }
-              : (getCoverSource(coverImageId) ?? STADIUM_BG)
+              : (getCoverSource(coverImageId) ?? getCoverSource(clubDefaultCoverId(groupId))!)
           }
           style={styles.cover}
+          imageStyle={{ borderRadius: 18, width: '100%', height: '100%' }}
+          onError={() => setFailedPhoto(true)}
           resizeMode="cover"
         >
           <LinearGradient
@@ -231,35 +200,47 @@ export function ClubCard({
             <View />
           )}
 
-          {activity ? (
-            // Only "פעיל מאוד" breathes. It is the one activity level that is
-            // an invitation rather than a fact — "פעיל" and "לא פעיל" are just
-            // the club's state and pulsing them would make the whole feed
-            // twitch, which tells the eye nothing about where to look.
-            //
-            // It breathes CONTINUOUSLY. Two breaths was the original call and
-            // it was wrong here: the feed scrolls, so a finite pulse burned
-            // itself out below the fold and the badge you actually looked at
-            // never moved. Owner's call, 2026-08-29.
-            <AttentionPulse active={vm.activity === 'veryActive'} cycles={INFINITE}>
-              <View style={styles.activityBadge}>
-                <Text style={styles.activityTxt}>{activity.label}</Text>
-                <View style={[styles.dot, { backgroundColor: activity.dot }]} />
-              </View>
-            </AttentionPulse>
-          ) : (
-            <View />
-          )}
         </ImageBackground>
 
+      </View>
+      <View style={styles.footer}>
+        {ctaActs ? (
+          <View style={[styles.detailsAction, { flex: 1 }]}>
+            <Text style={styles.preview}>{he.clubCardPreview}</Text>
+            <Ionicons name="chevron-back" size={16} color="#1D4ED8" />
+          </View>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <View style={styles.statusRow}>
+              <View style={[styles.status, vm.cta === 'requested' && { backgroundColor: '#FFF7ED' }]}>
+                <Text style={[styles.statusTxt, { color: vm.cta === 'requested' ? '#C2710C' : '#15803D' }]}>{CTA_LABEL[vm.cta]}</Text>
+                <Ionicons name={cta.icon} size={14} color={vm.cta === 'requested' ? '#C2710C' : '#15803D'} />
+              </View>
+            </View>
+          </View>
+        )}
+        {ctaActs ? (
+          <Pressable onPress={(e) => { e.stopPropagation(); onCtaPress?.(); }} disabled={ctaBusy} hitSlop={6}
+            accessibilityRole="button" accessibilityLabel={CTA_LABEL[vm.cta]}
+            accessibilityState={{ disabled: !!ctaBusy, busy: !!ctaBusy }}
+            style={({ pressed }) => [styles.cta, { maxWidth: '58%', backgroundColor: cta.bg, borderColor: cta.border }, (pressed || ctaBusy) && { opacity: 0.65 }]}>
+            <Text style={[styles.ctaTxt, { color: cta.fg }]}>{CTA_LABEL[vm.cta]}</Text>
+            <Ionicons name={cta.icon} size={14} color={cta.fg} />
+          </Pressable>
+        ) : (
+          <View style={styles.detailsAction}><Text style={styles.preview}>{he.clubCardDetails}</Text><Ionicons name="chevron-back" size={16} color="#1D4ED8" /></View>
+        )}
       </View>
     </PressableScale>
   );
 }
 
-const COVER = 132;
+const COVER = 104;
 
 const styles = StyleSheet.create({
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 0, borderTopWidth: 1, borderTopColor: '#EDF1F7' },
+  preview: { color: '#1D4ED8', fontSize: 12, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  detailsAction: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40 },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -282,7 +263,8 @@ const styles = StyleSheet.create({
   // cover simply inherits the card's corners instead of fighting them.
   row: { flexDirection: 'row', alignItems: 'stretch' },
   cover: {
-    width: COVER,
+    width: '41.5%',
+    borderRadius: 18,
     alignSelf: 'stretch',
     minHeight: COVER,
     justifyContent: 'space-between',
@@ -309,20 +291,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    alignSelf: 'flex-end',
-    backgroundColor: 'rgba(15,23,42,0.82)',
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    margin: 7,
+    alignSelf: 'flex-start',
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    margin: 0,
     borderRadius: 99,
   },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  activityTxt: { color: '#FFF', fontSize: 10.5, fontWeight: '700' },
+  activityTxt: { color: '#FFF', fontSize: 12, fontWeight: '700' },
 
-  body: { flex: 1, justifyContent: 'center', gap: 6, padding: 12 },
-  name: { fontSize: 17.5, fontWeight: '800', color: '#0F172A' },
+  body: { flex: 1, justifyContent: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8 },
+  name: { fontSize: 16, fontWeight: '800', color: '#0F172A', textAlign: RTL_LABEL_ALIGN },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  metaTxt: { fontSize: 14, color: '#475569', fontWeight: '600' },
+  metaTxt: { fontSize: 13, color: '#475569', fontWeight: '600', textAlign: RTL_LABEL_ALIGN, flexShrink: 1 },
 
   friends: { flexDirection: 'row', alignItems: 'center', marginRight: 'auto' },
   avatarWrap: { borderRadius: 14, borderWidth: 2, borderColor: '#FFFFFF' },
@@ -340,27 +322,29 @@ const styles = StyleSheet.create({
   },
   moreTxt: { fontSize: 10.5, fontWeight: '800', color: '#475569' },
 
-  statusRow: { flexDirection: 'row', marginTop: 6 },
+  statusRow: { flexDirection: 'row' },
   status: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#ECFDF3',
     paddingHorizontal: 11,
-    paddingVertical: 7,
+    paddingVertical: 5,
     borderRadius: 99,
   },
-  statusTxt: { fontSize: 13.5, fontWeight: '800' },
+  statusTxt: { fontSize: 11, fontWeight: '800' },
 
   cta: {
-    marginTop: 4,
+    marginVertical: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingVertical: 10,
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 9,
+    minHeight: 32,
   },
-  ctaTxt: { fontSize: 14.5, fontWeight: '800' },
+  ctaTxt: { flexShrink: 1, textAlign: 'center', fontSize: 11, fontWeight: '800' },
 });

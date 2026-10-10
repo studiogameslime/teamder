@@ -55,6 +55,7 @@ export function UserAvatar({ user, size, style, ring }: Props) {
     ];
     return (
       <Image
+        resizeMethod="resize"
         source={{ uri: user.photoUrl }}
         style={imageStyle}
         onError={() => setPhotoFailed(true)}
@@ -78,7 +79,7 @@ export function UserAvatar({ user, size, style, ring }: Props) {
         style,
       ]}
     >
-      <Image source={def.source} style={{ width: size, height: size }} resizeMode="contain" />
+      <Image source={def.source} style={{ width: size, height: size }} resizeMode="contain" resizeMethod="resize" />
     </View>
   );
 }

@@ -30,6 +30,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 
 interface Props {
   /** Drives the entry/exit animation. Pass the same flag you'd give
@@ -62,11 +63,18 @@ export function SpringSheet({
   panelStyle,
   position = 'bottom',
 }: Props) {
+  const reducedMotion = useReducedMotion();
   const backdrop = useSharedValue(0);
   const translateY = useSharedValue(fromOffsetY);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
+    if (reducedMotion) {
+      backdrop.value = visible ? 1 : 0;
+      opacity.value = visible ? 1 : 0;
+      translateY.value = 0;
+      return;
+    }
     if (visible) {
       backdrop.value = withTiming(1, {
         duration: 220,
@@ -86,7 +94,7 @@ export function SpringSheet({
         easing: Easing.in(Easing.cubic),
       });
     }
-  }, [visible, backdrop, opacity, translateY, fromOffsetY]);
+  }, [visible, backdrop, opacity, translateY, fromOffsetY, reducedMotion]);
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdrop.value,

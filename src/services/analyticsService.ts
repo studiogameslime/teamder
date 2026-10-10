@@ -692,7 +692,7 @@ export function logEvent(
   // source means a new event is on the trail the day it is written. Screen
   // views are excluded: the navigation hook in App.tsx already records them,
   // and recording both doubles every screen change.
-  if (name !== AnalyticsEvent.ScreenView) crumbAct(name);
+  if (name !== AnalyticsEvent.ScreenView) crumbAct(name,undefined,params);
 
   if (__DEV__) console.log('[analytics]', name, cleaned);
   if (USE_MOCK_DATA) return;

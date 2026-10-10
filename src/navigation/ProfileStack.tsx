@@ -1,3 +1,4 @@
+import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
 // Stack inside the Profile tab. The Profile screen is the landing; Stats,
 // History, Edit, Availability, Admin Approval, and PlayerCard are all
 // pushable from there.
@@ -148,6 +149,7 @@ export type ProfileStackParamList = {
   EmailAuth: undefined;
   CommunityEdit: { groupId: string };
   CommunityPlayers: { groupId: string };
+  ManagerDashboard: { groupId: string; initialTab?: 'overview' | 'club' | 'ratings' | 'equipment'; initialFilter?: 'all' | 'up' | 'down' };
   CommunityStats: { groupId: string };
   CommunityHistory: { groupId: string };
   // CommunityDetails' "צור מחזור שבועי" opens the game-create wizard.
@@ -255,6 +257,7 @@ export function ProfileStack() {
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
       <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />
       <Stack.Screen name="CommunityPlayers" component={CommunityPlayersScreen} />
+      <Stack.Screen name="ManagerDashboard" component={ManagerDashboardScreen} />
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
       <Stack.Screen name="GameCreate" component={GameCreateScreen} />

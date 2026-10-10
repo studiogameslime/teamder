@@ -12,7 +12,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -23,6 +22,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { ScrollSurface } from '@/components/ScrollSurface';
+import { TabScroll } from '@/components/match/tabs/MatchTabShell';
 import { UserAvatar } from '@/components/UserAvatar';
 import { gameService } from '@/services/gameService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -274,7 +275,11 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
       </View>
     );
     return embedded ? (
-      spinner
+      <TabScroll header={props.header} stickyHeader={props.stickyHeader} bottomInset={props.bottomInset}>
+        <View style={{ minHeight: 160, alignItems: 'center', justifyContent: 'center' }}>
+          <SoccerBallLoader />
+        </View>
+      </TabScroll>
     ) : (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={live ? he.matchRoundsLiveTitle : he.matchRoundsTitle} />
@@ -321,7 +326,7 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
     rounds.length === 0 ? (
       // Scrollable even with nothing in it: the header rides inside this view,
       // and a plain <View> would leave the tab bar with nothing to stick to.
-      <ScrollView
+      <ScrollSurface
         style={styles.flex}
         stickyHeaderIndices={pinned ? [1] : undefined}
         showsVerticalScrollIndicator={false}
@@ -335,9 +340,9 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
           <Text style={styles.emptyTitle}>{empty.title}</Text>
           <Text style={styles.emptySub}>{empty.body}</Text>
         </View>
-      </ScrollView>
+      </ScrollSurface>
     ) : (
-      <ScrollView
+      <ScrollSurface
         style={pinned ? styles.flex : undefined}
         contentContainerStyle={
           pinned
@@ -452,7 +457,7 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
           />
         ))}
         </View>
-      </ScrollView>
+      </ScrollSurface>
     );
 
   return embedded ? (

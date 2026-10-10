@@ -1,3 +1,5 @@
+import { ScrollSurface } from '@/components/ScrollSurface';
+import { recordDiagnostic } from '@/services/diagnosticJournal';
 // CommunityDetailsScreen — premium "stadium-style" community page.
 //
 // Layout (top → bottom, RTL):
@@ -17,7 +19,6 @@ import {
   Keyboard,
   Pressable,
   RefreshControl,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -144,6 +145,7 @@ export function CommunityDetailsScreen() {
    */
   const [seen, setSeen] = useState<Set<ClubTabKey>>(() => new Set<ClubTabKey>(['info']));
   const showTab = (k: ClubTabKey) => {
+    recordDiagnostic('press','club_tab',{tab:k,groupId});
     setTab(k);
     setSeen((prev) => (prev.has(k) ? prev : new Set(prev).add(k)));
   };
@@ -799,6 +801,12 @@ export function CommunityDetailsScreen() {
         ...(isAdmin
           ? [
               {
+                id: 'manager-dashboard',
+                label: 'לוח מנהל',
+                icon: 'stats-chart-outline' as const,
+                onPress: () => (nav as { navigate: (s: string, p: unknown) => void }).navigate('ManagerDashboard', { groupId: group.id }),
+              },
+              {
                 id: 'edit',
                 label: he.communityEditTitle,
                 icon: 'create-outline' as const,
@@ -953,6 +961,7 @@ export function CommunityDetailsScreen() {
     <>
         {/* ① Stadium hero */}
         <CommunityStadiumHero
+          groupId={group.id}
           name={group.name}
           memberCount={group.playerIds?.length ?? 0}
           coverUrl={group.coverPhotoUrl}
@@ -1035,7 +1044,7 @@ export function CommunityDetailsScreen() {
        *  state and its listeners but occupies no layout and paints nothing. */}
       {seen.has('info') ? (
       <View style={tab === 'info' ? styles.tabPane : styles.tabPaneHidden}>
-      <ScrollView
+      <ScrollSurface
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         // "I press buttons and nothing is pressed, and after I scroll the
@@ -1407,7 +1416,7 @@ export function CommunityDetailsScreen() {
           </>
           )}
         </View>
-      </ScrollView>
+      </ScrollSurface>
       </View>
       ) : null}
       {seen.has('players') ? (

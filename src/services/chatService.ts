@@ -31,6 +31,14 @@ export const MAX_MESSAGE_LEN = 1000;
 /** How many recent messages we keep live in the screen. */
 const WINDOW = 100;
 
+// Demo has no chat backend. Never imply that an unsupported action reached
+// another person, and never fall through to production Firebase from demo UI.
+function rejectDemoChatWrite(): void {
+  if (USE_MOCK_DATA) {
+    throw Object.assign(new Error('chat: writing is unavailable in demo mode'), { code: 'chat/demo-read-only' });
+  }
+}
+
 /** Stable per-chat key used across chatUnread / chatSettings docs. */
 export function chatKeyFor(scope: ChatScope, parentId: string): string {
   return `${scope}__${parentId}`;
@@ -87,15 +95,14 @@ export const chatService = {
     onMessages: (messages: ChatMessage[]) => void,
     onError?: (err: unknown) => void,
   ): () => void {
+    if (USE_MOCK_DATA) {
+      onMessages([]);
+      return () => {};
+    }
     // Window the MOST-RECENT messages: order newest→oldest at the query so
     // `limit` keeps the latest WINDOW (asc+limit would pin the oldest WINDOW
     // and a busy chat would never show recent messages), then reverse to
     // oldest→newest for rendering.
-    const q = query(
-      messagesCol(scope, parentId),
-      orderBy('createdAt', 'desc'),
-      limit(WINDOW),
-    );
     // Don't open the listener until auth is RESTORED. Right after an app
     // update the persisted session is still loading, so a listener opened now
     // carries no `request.auth` → the rules deny it → the screen sticks on
@@ -103,19 +110,22 @@ export const chatService = {
     // Wait for restore, then subscribe. Returned fn cancels either phase.
     let real: (() => void) | null = null;
     let cancelled = false;
-    (async () => {
-      const user =
-        getFirebase().auth.currentUser ?? (await waitForAuthRestore());
-      if (cancelled) return;
-      if (!user) {
-        onError?.(new Error('chat: not signed in'));
-        return;
+    void (async () => {
+      try {
+        // Query construction can fail synchronously; auth restoration can
+        // reject asynchronously. Both belong to the listener's error state.
+        const q = query(messagesCol(scope, parentId), orderBy('createdAt', 'desc'), limit(WINDOW));
+        const user = getFirebase().auth.currentUser ?? (await waitForAuthRestore());
+        if (cancelled) return;
+        if (!user) throw new Error('chat: not signed in');
+        real = onSnapshot(
+          q,
+          (snap) => { if (!cancelled) onMessages(snap.docs.map((d) => d.data()).reverse()); },
+          (err) => { if (!cancelled) onError?.(err); },
+        );
+      } catch (err) {
+        if (!cancelled) onError?.(err);
       }
-      real = onSnapshot(
-        q,
-        (snap) => onMessages(snap.docs.map((d) => d.data()).reverse()),
-        (err) => onError?.(err),
-      );
     })();
     return () => {
       cancelled = true;
@@ -134,6 +144,7 @@ export const chatService = {
     sender: Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>,
     rawText: string,
   ): Promise<string> {
+    rejectDemoChatWrite();
     const text = rawText.trim().slice(0, MAX_MESSAGE_LEN);
     if (!text) throw new Error('chat: empty message');
     const message: ChatMessage = {
@@ -217,6 +228,7 @@ export const chatService = {
     parentId: string,
     messageId: string,
   ): Promise<void> {
+    rejectDemoChatWrite();
     await deleteDoc(doc(messagesCol(scope, parentId), messageId));
   },
 
@@ -257,6 +269,7 @@ export const chatService = {
 
   /** Mark a chat read — resets my unread counter for it to 0. */
   async markChatRead(uid: UserId, scope: ChatScope, parentId: string): Promise<void> {
+    if (USE_MOCK_DATA) return;
     await setDoc(
       doc(col.userChatUnread(uid), chatKeyFor(scope, parentId)),
       { count: 0, lastReadAt: Date.now() },
@@ -272,6 +285,7 @@ export const chatService = {
     parentId: string,
     user: Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>,
   ): Promise<void> {
+    if (USE_MOCK_DATA) return;
     await setDoc(
       doc(readsCol(scope, parentId), user.id),
       {
@@ -294,6 +308,7 @@ export const chatService = {
     user: Pick<User, 'id' | 'name'>,
     isTyping: boolean,
   ): Promise<void> {
+    if (USE_MOCK_DATA) return;
     const ref = doc(typingCol(scope, parentId), user.id);
     if (isTyping) {
       const first = (user.name ?? '').trim().split(/\s+/)[0] || (user.name ?? '');
@@ -309,6 +324,7 @@ export const chatService = {
     parentId: string,
     cb: (typers: ChatTyper[]) => void,
   ): () => void {
+    if (USE_MOCK_DATA) { cb([]); return () => {}; }
     return onSnapshot(typingCol(scope, parentId), (snap) => {
       cb(
         snap.docs.map((d) => {
@@ -329,6 +345,7 @@ export const chatService = {
     parentId: string,
     cb: (readers: ChatReader[]) => void,
   ): () => void {
+    if (USE_MOCK_DATA) { cb([]); return () => {}; }
     return onSnapshot(readsCol(scope, parentId), (snap) => {
       cb(
         snap.docs.map((d) => {
@@ -353,6 +370,7 @@ export const chatService = {
     parentId: string,
     cb: (muted: boolean) => void,
   ): () => void {
+    if (USE_MOCK_DATA) { cb(false); return () => {}; }
     return onSnapshot(
       doc(col.userChatSettings(uid), chatKeyFor(scope, parentId)),
       (snap) => cb(snap.exists() && snap.data()?.muted === true),
@@ -365,6 +383,7 @@ export const chatService = {
     parentId: string,
     muted: boolean,
   ): Promise<void> {
+    rejectDemoChatWrite();
     await setDoc(
       doc(col.userChatSettings(uid), chatKeyFor(scope, parentId)),
       { muted, scope, parentId },
@@ -375,6 +394,7 @@ export const chatService = {
   // ── Block list (store-safety) ──────────────────────────────────────────
 
   subscribeBlocked(uid: UserId, cb: (ids: Set<string>) => void, onError?: (err: unknown) => void): () => void {
+    if (USE_MOCK_DATA) { cb(new Set()); return () => {}; }
     const reportError = (err: unknown) => {
       logError('subscribeBlocked', err, { uid });
       if (__DEV__) console.warn('[chatService] subscribeBlocked error', err);
@@ -401,10 +421,12 @@ export const chatService = {
   },
 
   async blockUser(uid: UserId, blockedUid: string): Promise<void> {
+    rejectDemoChatWrite();
     await setDoc(doc(col.userBlocked(uid), blockedUid), { at: Date.now() });
   },
 
   async unblockUser(uid: UserId, blockedUid: string): Promise<void> {
+    rejectDemoChatWrite();
     await deleteDoc(doc(col.userBlocked(uid), blockedUid));
   },
 
@@ -416,7 +438,7 @@ export const chatService = {
     parentId: string,
     message: ChatMessage,
   ): Promise<void> {
-    if (USE_MOCK_DATA) return;
+    rejectDemoChatWrite();
     // IDs only — the server loads the real message and writes the report with
     // its authoritative text/author. Sending client-supplied messageText /
     // senderId would let a reporter frame an innocent user with fabricated

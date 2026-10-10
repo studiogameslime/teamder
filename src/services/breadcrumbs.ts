@@ -20,10 +20,13 @@
 // A tap with nothing after it is a dead tap. That is the whole trick.
 //
 // ⚠️ This is a DIAGNOSTIC trail, not analytics. It never leaves the device on
-// its own: it is read when a person submits a report, and at no other time.
-// Keep it that way — see `format()` for what it is allowed to contain.
+// its own: snapshots accompany a submitted report or a captured error only.
+// This 50-step text trail is retained for older Pulse readers. The structured
+// diagnosticJournal separately keeps the session, allowlisted entity ids,
+// gestures and offsets. Neither records typed text or sends ordinary actions.
 
 /** What kind of step this is. Kept to one short word so the trail stays legible. */
+import { diagnosticRoute, recordDiagnostic, resetDiagnosticJournal } from './diagnosticJournal';
 export type CrumbKind = 'tap' | 'nav' | 'act' | 'err' | 'scroll';
 
 interface Crumb {
@@ -51,6 +54,7 @@ const TAP_DEDUPE_MS = 120;
 
 const ring: Crumb[] = [];
 let lastTapAt = 0;
+let touchStart:{x:number;y:number;at:number}|undefined;
 
 function push(kind: CrumbKind, label: string): void {
   ring.push({ kind, label, at: Date.now() });
@@ -64,15 +68,25 @@ function push(kind: CrumbKind, label: string): void {
  * trying to work out WHICH control was under the finger, and a decimal place
  * helps nobody.
  */
-export function crumbTap(x: number, y: number): void {
+export function crumbTap(x: number, y: number, target?: number|string): void {
   const now = Date.now();
+  touchStart={x,y,at:now};
+  recordDiagnostic('tap','touch_start',{x,y,target});
   if (now - lastTapAt < TAP_DEDUPE_MS) return;
   lastTapAt = now;
   push('tap', `${Math.round(x)},${Math.round(y)}`);
 }
 
+/** One summary per completed drag, never a per-frame scroll listener. */
+export function crumbGestureEnd(x:number,y:number):void {
+ const start=touchStart;touchStart=undefined;if(!start)return;
+ const dx=x-start.x,dy=y-start.y;
+ if(Math.abs(dx)>20||Math.abs(dy)>20)recordDiagnostic('gesture','drag',{dx,dy,x,y});
+}
+
 /** A screen change. */
-export function crumbNav(screen: string): void {
+export function crumbNav(screen: string, params?: unknown): void {
+  diagnosticRoute(screen,params);
   // Re-entering the screen you are already on is navigation noise — a tab bar
   // re-press, a state change that re-reports the route.
   const last = ring[ring.length - 1];
@@ -81,13 +95,15 @@ export function crumbNav(screen: string): void {
 }
 
 /** Something the app actually DID — an analytics event, a submit, a toggle. */
-export function crumbAct(name: string, detail?: string): void {
+export function crumbAct(name: string, detail?: string, data?: unknown): void {
   push('act', detail ? `${name}(${detail})` : name);
+  recordDiagnostic('act',name,data);
 }
 
 /** A failure. The operation name only — the error itself goes to `errorLog`. */
 export function crumbErr(operation: string): void {
   push('err', operation);
+  recordDiagnostic('err',operation);
 }
 
 /**
@@ -118,6 +134,8 @@ export function formatTrail(): string {
 export function clearTrail(): void {
   ring.length = 0;
   lastTapAt = 0;
+  touchStart=undefined;
+  resetDiagnosticJournal();
 }
 
 /** How many steps are held right now. For tests. */

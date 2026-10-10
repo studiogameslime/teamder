@@ -837,19 +837,19 @@ export const he = {
   pairWinsTogether: 'ניצחונות',
   pairLossesTogether: 'הפסדים',
   pairTiesTogetherNote: (n: number) =>
-    n === 1 ? 'ועוד משחקון אחד שהסתיים בתיקו' : `ועוד ${n} משחקונים שהסתיימו בתיקו`,
+    n === 1 ? 'מתוכם משחק אחד שהסתיים בתיקו' : `מתוכם ${n} משחקים שהסתיימו בתיקו`,
   pairTogetherFormTitle: 'איך הלך לכם יחד',
   pairWinPctTogether: 'אחוז ניצחון',
   // Said instead of "0%" when nothing was decided. 0% is a claim about a pair
   // that lost; a pair who have only drawn have not made it.
-  pairWinPctUndecided: 'עוד לא הוכרע משחקון שבו שיחקתם יחד',
+  pairWinPctUndecided: 'עוד לא הוכרע משחק שבו שיחקתם יחד',
   pairCleanSheetsTogether: 'שערים נקיים',
   pairCleanSheetsValue: (n: number) =>
     n === 1 ? 'שער נקי אחד' : `${n} שערים נקיים`,
   // The unit only — the count is the big number beside it, and printing it
   // twice in one card is the number saying nothing the second time.
   pairAssistsUnit: (n: number) => (n === 1 ? 'בישול' : 'בישולים'),
-  pairCleanSheetPct: (pct: number) => `${pct}% מהמשחקונים שלכם`,
+  pairCleanSheetPct: (pct: number) => `${pct}% מהמשחקים שלכם`,
   pairAssistsTitle: 'בישולים ישירים ביניכם',
   pairAssistDirection: (from: string, to: string) =>
     `${iso(from)} בישל ${prefixName('ל', to)}`,
@@ -992,11 +992,12 @@ export const he = {
     `כבר קיים מחזור "${title}" ב-${when}. לא ניתן ליצור שני מחזורים באותו חלון זמן.`,
   // Scheduled registration-open (separate from the recurring toggle)
   wizardScheduledRegToggle: 'תזמון פתיחת הרשמה',
+  editGameLockedRegistration: 'המחזור נעול. יש לפתוח את הנעילה לפני תזמון מחדש של ההרשמה.',
   wizardScheduledRegHint:
-    'במקום שההרשמה תיפתח מיד — בחר מתי המשחק יופיע בפיד וההרשמה תיפתח. עד אז המשחק נסתר. מתאים גם למשחק חד-פעמי וגם למחזור שבועי.',
+    'בחר מתי תיפתח הרשמה חדשה למחזור. עד אז אי אפשר להצטרף. מי שכבר רשום יישאר רשום, והממתינים יישארו ברשימת ההמתנה.',
   wizardRegOpensLabel: 'פתיחת הרשמה',
   wizardRegOpensHint:
-    'במועד שתבחר המחזור יופיע בפיד וההרשמה תיפתח. עד אז הוא נסתר מכולם וחברי המועדון יקבלו התראה כשהוא נפתח.',
+    'במועד שתבחר תיפתח ההרשמה. עד אז המחזור יוצג כבקרוב. הרשומים, הממתינים והבקשות הקיימות נשמרים. פתיחה חוזרת אינה שולחת שוב את התראת הפתיחה שכבר נשלחה.',
   wizardRegOpensHintPast:
     'מועד שבחרת כבר עבר — חברי המועדון יקבלו התראה והמחזור יופיע בפיד מיד עם השמירה.',
   wizardRegOpensRequired: 'יש לבחור מועד פתיחת הרשמה',
@@ -1590,8 +1591,13 @@ export const he = {
   communitiesSectionAdmin: 'מועדונים שאני מנהל',
   communitiesSectionMember: 'המועדונים שלי',
   communitiesSectionPending: 'ממתינים לאישור',
-  communitiesSectionOpen: 'מועדונים פתוחים',
-  communitiesHeroSubtitle: 'כל המועדונים במקום אחד',
+  communitiesSectionOpen: 'מועדונים שאפשר להצטרף אליהם',
+  communitiesDiscoverSubtitle: 'מצאו את הקבוצה הבאה שלכם',
+  communitiesHeroSubtitle: 'הקבוצה שלך מתחילה כאן',
+  communitiesCreateShort: 'מועדון חדש',
+  clubCardPreview: 'צפה במועדון',
+  clubCardMemberShort: 'חבר',
+  clubCardDetails: 'למועדון',
   communitiesCardMemberBadge: 'אתה בסגל',
   // Inline CTA on the community card — surfaced only when the viewer
   // is NOT a member / admin / pending. Maps to the same requestJoin
@@ -3706,7 +3712,7 @@ export const he = {
   profileSectionNotifications: 'התראות',
   profileSectionBlocked: 'משתמשים חסומים',
   blockedTitle: 'משתמשים חסומים',
-  blockedIntro: 'משתמשים שחסמת לא רואים אותך בצ׳אט ואתה לא רואה אותם. אפשר לבטל חסימה בכל רגע.',
+  blockedIntro: 'הודעות מאנשים שחסמת מוסתרות אצלך, ולא תקבל מהם התראות בצ׳אט. חסימה אינה מסתירה מהם את ההודעות שלך בשיחות משותפות. אפשר לבטל חסימה בכל רגע.',
   blockedEmptyTitle: 'אין משתמשים חסומים',
   blockedEmptyHint: 'כשתחסום מישהו בצ׳אט הוא יופיע כאן.',
   blockedUnblockCta: 'בטל חסימה',
@@ -3802,6 +3808,16 @@ export const he = {
     n === 1 ? 'בקשה אחת ממתינה' : `${n} בקשות ממתינות`,
 
   // Compact match card on the Matches list
+  roundFeedRegistered: 'אתה רשום',
+  roundFeedWaiting: 'בהמתנה',
+  roundFeedDetails: 'לפרטי המחזור',
+  roundFeedAll: 'הכול',
+  roundFeedClubs: 'המועדונים שלי',
+  roundFeedNearby: 'באזור שלי',
+  roundFeedSubtitle: 'הכדורגל שלך, במקום אחד',
+  roundFeedCreate: 'מחזור חדש',
+  roundFeedPlayers: (n: number, max: number) => `${n} מתוך ${max} שחקנים`,
+  roundFeedSpaces: (n: number) => n === 0 ? 'המחזור מלא' : n === 1 ? 'מקום אחד פנוי' : `${n} מקומות פנויים`,
   matchCardJoin: 'אני מגיע',
   matchCardWaitlist: 'המתנה',
   matchCardWaitlistCta: 'הצטרף לרשימת המתנה',
@@ -3828,6 +3844,8 @@ export const he = {
   matchStatusPending: 'ממתין לאישור',
   // Visibility tag on the games list card
   matchTagOpenToAll: 'פתוח לכולם',
+  matchTagClosed: 'סגור',
+  matchTagClosedRound: 'מחזור סגור',
   matchTagCommunityOnly: 'סגור למועדון',
   matchTagQuickClosed: 'מחזור מהיר',
   // Registration is no longer open (locked by an admin, or the late-join

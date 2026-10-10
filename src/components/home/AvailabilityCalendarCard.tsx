@@ -6,7 +6,7 @@
 // renders a gentle prompt or nothing — it must never crash the home screen.
 
 import React, { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
@@ -18,6 +18,7 @@ import {
 import type { TimeBucket } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { useUserStore } from '@/store/userStore';
 
 const WINDOW_LABEL: Record<TimeBucket, string> = {
   morning: he.availabilityTimeMorning,
@@ -44,6 +45,7 @@ function dayLabel(dateMs: number, isToday: boolean): { top: string; date: string
 export function AvailabilityCalendarCard({
   onCreateGame,
   onSetAvailability,
+  fullScreen = false,
 }: {
   /** Start a quick game for a given day + window, seeded with the viewer's
    *  city so the pulse engine can find nearby players. */
@@ -54,9 +56,17 @@ export function AvailabilityCalendarCard({
   ) => void;
   /** Viewer hasn't set a home location yet → send them to the availability screen. */
   onSetAvailability: () => void;
+  /** A dedicated screen must explain loading/failure instead of disappearing. */
+  fullScreen?: boolean;
 }) {
-  const [data, setData] = useState<AvailabilityCounts | null>(null);
-  const [failed, setFailed] = useState(false);
+  const viewerId = useUserStore((state) => state.currentUser?.id ?? null);
+  const [snapshot, setSnapshot] = useState<{ viewerId: string | null; data: AvailabilityCounts } | null>(null);
+  // Never render the previous account's location/counts, even for the render
+  // before the focus effect cleans up its old request.
+  const data = snapshot?.viewerId === viewerId ? snapshot.data : null;
+  const [failedFor, setFailedFor] = useState<string | null | undefined>(undefined);
+  const failed = failedFor === viewerId;
+  const [retry, setRetry] = useState(0);
 
   // Refetch on every focus (not just first mount) so that returning from the
   // availability screen — which calls invalidate() on save — refreshes the
@@ -64,19 +74,35 @@ export function AvailabilityCalendarCard({
   useFocusEffect(
     useCallback(() => {
       let alive = true;
+      setFailedFor(undefined);
       availabilityFeedService
         .getAvailabilityCounts()
-        .then((d) => alive && setData(d))
-        .catch(() => alive && setFailed(true));
+        .then((d) => {
+          if (!alive) return;
+          if (d.error) setFailedFor(viewerId);
+          else setSnapshot({ viewerId, data: d });
+        })
+        .catch(() => alive && setFailedFor(viewerId));
       return () => {
         alive = false;
       };
-    }, []),
+    }, [retry, viewerId]),
   );
 
-  if (failed) return null; // never crash the home screen
-  if (!data) return null; // still loading — no skeleton needed, it's below the fold
-  if (data.error) return null; // transient fetch error — hide, don't mis-prompt
+  if (failed && !data) {
+    if (!fullScreen) return null;
+    return <Card style={styles.promptCard}>
+      <Text accessibilityRole="alert" style={styles.promptBody}>לא ניתן לטעון כרגע את הזמינות לידך.</Text>
+      <Pressable accessibilityRole="button" style={styles.promptBtn} onPress={() => {
+        availabilityFeedService.invalidate();
+        setRetry((n) => n + 1);
+      }}><Text style={styles.promptBtnText}>נסה שוב</Text></Pressable>
+    </Card>;
+  }
+  if (!data) return fullScreen ? <Card style={styles.promptCard}>
+    <ActivityIndicator color={colors.primary} />
+    <Text accessibilityLiveRegion="polite" style={styles.promptBody}>טוען זמינות לידך…</Text>
+  </Card> : null;
 
   // No location set → gentle prompt instead of an empty grid.
   if (!data.hasLocation) {
@@ -102,6 +128,9 @@ export function AvailabilityCalendarCard({
 
   return (
     <Card style={styles.card}>
+      {failed && fullScreen ? <Pressable accessibilityRole="button" onPress={() => { availabilityFeedService.invalidate(); setRetry((n) => n + 1); }}>
+        <Text style={styles.promptBody}>העדכון נכשל. הנתונים הקודמים מוצגים — נסה שוב</Text>
+      </Pressable> : null}
       <View style={styles.head}>
         <Text style={styles.title}>{he.availFeedTitle}</Text>
         <View style={styles.radiusChip}>

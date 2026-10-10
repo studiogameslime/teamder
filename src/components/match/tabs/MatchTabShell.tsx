@@ -1,3 +1,4 @@
+import { ScrollSurface } from '@/components/ScrollSurface';
 // Shared scaffolding for the four match tabs.
 //
 // Each tab owns its own ScrollView, and the header travels INSIDE it: the hero
@@ -17,7 +18,7 @@
 // React rebuilt it on every switch.
 
 import React from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -51,7 +52,7 @@ export function TabScroll({
 }) {
   const pinned = header != null && stickyHeader != null;
   return (
-    <ScrollView
+    <ScrollSurface
       style={styles.flex}
       contentContainerStyle={
         pinned
@@ -100,7 +101,7 @@ export function TabScroll({
             </View>,
           ]
         : children}
-    </ScrollView>
+    </ScrollSurface>
   );
 }
 

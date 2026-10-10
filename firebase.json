@@ -18,6 +18,7 @@
       "cleanUrls": true,
       "trailingSlash": false,
       "rewrites": [
+        { "source": "/play/**", "function": { "functionId": "serveAdLink", "region": "us-central1" } },
         { "source": "/session/**", "destination": "/invite.html" },
         { "source": "/app", "destination": "/invite.html" },
         { "source": "/go", "destination": "/invite.html" },
@@ -56,6 +57,7 @@
       "cleanUrls": true,
       "trailingSlash": false,
       "rewrites": [
+        { "source": "/play/**", "function": { "functionId": "serveAdLink", "region": "us-central1" } },
         { "source": "/session/**", "destination": "/invite.html" },
         { "source": "/app", "destination": "/invite.html" },
         { "source": "/go", "destination": "/invite.html" },

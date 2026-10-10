@@ -255,7 +255,7 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     rank: 3,
     rankTotal: 24,
     rankDelta: 2,
-    scoreRank: 3,
+    scoreRank: __DEV__ && gameId === 'qa-summary-top' ? 1 : 3,
     scoreTotal: 15,
     metrics: [
       // `tonight` matches the goals/assists/wins this mock player scored above,

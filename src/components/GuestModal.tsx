@@ -301,6 +301,7 @@ export function GuestModal({
               {canEditRating ? (
                 <>
                   <RatingSlider
+                    accessibilityLabel={`${he.guestRatingLabel} · ${name}`}
                     value={rating ?? 0}
                     onChange={(n) => setRating(n === 0 ? null : n)}
                   />

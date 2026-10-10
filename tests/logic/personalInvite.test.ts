@@ -141,12 +141,9 @@ describe('the inviter\'s matches', () => {
     expect(games).toHaveLength(MAX_GAMES);
   });
 
-  it('a failed query is empty lists, not a throw', async () => {
+  it('a failed query remains retryable rather than a false empty result', async () => {
     getOpenGames.mockRejectedValue(new Error('denied'));
-    await expect(resolveInviteActivity(ELIRAN, 'viewer')).resolves.toEqual({
-      games: [],
-      clubs: [],
-    });
+    await expect(resolveInviteActivity(ELIRAN, 'viewer')).rejects.toThrow('denied');
     expect(logError).toHaveBeenCalled();
   });
 

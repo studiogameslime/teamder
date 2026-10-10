@@ -689,10 +689,9 @@ export function SeasonsSettings({
   return (
     <View style={styles.section}>
       <Pressable
+        accessible={false}
         style={styles.toggleRow}
         onPress={() => onToggle(!open)}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: open }}
       >
         <View style={styles.toggleText}>
           <View style={styles.toggleTitleRow}>
@@ -707,6 +706,7 @@ export function SeasonsSettings({
           <Text style={styles.toggleHint}>{he.seasonsToggleHint}</Text>
         </View>
         <BallSwitch
+          accessibilityLabel={he.seasonsToggleLabel}
           value={open}
           onValueChange={onToggle}
           trackColor={{ false: colors.border, true: colors.primary }}

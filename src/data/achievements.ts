@@ -96,7 +96,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'maxWinsWithPlayer',
     titleHe: 'צמד מנצח',
     nounHe: 'נצחונות עם אותו שחקן',
-    howHe: 'נצח מחזורים יחד עם אותו שחקן',
+    howHe: 'נצח משחקים באותה קבוצה עם אותו שחקן',
     icon: 'trophy',
     tiers: tiered(3, 10, 25),
   },

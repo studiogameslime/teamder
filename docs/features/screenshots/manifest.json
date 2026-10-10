@@ -1613,5 +1613,2230 @@
       "המרווח העליון כולל מגרעת אמולטור 128 פיקסלים; תחתון במחוות 63 ובכפתורים 126. החלפת ניווט בוצעה זמנית והוחזרה."
     ],
     "sha256": "c30d2daf9cd57bb1fecea7bc69fcf557536fdeef010bc9181948a157018b92d2"
+  },
+  {
+    "file": "cover-layout-club.jpg",
+    "source": "artifacts/cover-layout/proof-club.jpg",
+    "platform": "Android",
+    "environment": "אמולטור 1080×2400; נתוני דמו בפיתוח; ללא מצב פרסום",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מידע במועדון; התמונה תחומה לכותרת",
+      "צילום אמיתי שנצפה; אין אימות נתוני ייצור, הרשאות, אייפון או כל שילובי המצבים.",
+      "פס הדמו, תג המסלול, כפתור הבדיקה והתרעות הפיתוח אינם רכיבי גרסת החנות."
+    ],
+    "sha256": "0d69910b3a099f44f3562568431e8c729705aefa35aa63f195c4b6fce72d40db"
+  },
+  {
+    "file": "cover-layout-players.jpg",
+    "source": "artifacts/cover-layout/proof-club-players.jpg",
+    "platform": "Android",
+    "environment": "אמולטור 1080×2400; נתוני דמו בפיתוח; ללא מצב פרסום",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "לשונית שחקנים; הכותרת נשארת תחומה",
+      "צילום אמיתי שנצפה; אין אימות נתוני ייצור, הרשאות, אייפון או כל שילובי המצבים.",
+      "פס הדמו, תג המסלול, כפתור הבדיקה והתרעות הפיתוח אינם רכיבי גרסת החנות."
+    ],
+    "sha256": "e8b3fd92947f5a663202e4c54a0f4a8ef9a9cfaa3f3496de635585c30e451022"
+  },
+  {
+    "file": "cover-layout-scroll.jpg",
+    "source": "artifacts/cover-layout/proof-club-scrolled.jpg",
+    "platform": "Android",
+    "environment": "אמולטור 1080×2400; נתוני דמו בפיתוח; ללא מצב פרסום",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "גלילת המידע; אין תמונה מאחורי הכרטיסים",
+      "צילום אמיתי שנצפה; אין אימות נתוני ייצור, הרשאות, אייפון או כל שילובי המצבים.",
+      "פס הדמו, תג המסלול, כפתור הבדיקה והתרעות הפיתוח אינם רכיבי גרסת החנות."
+    ],
+    "sha256": "9752d38d06c460f7ff3562fb73bdddc643738835444f7391e98328bdf93fc170"
+  },
+  {
+    "file": "cover-layout-public.jpg",
+    "source": "artifacts/cover-layout/proof-public.jpg",
+    "platform": "Android",
+    "environment": "אמולטור 1080×2400; נתוני דמו בפיתוח; ללא מצב פרסום",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "תצוגה ציבורית; ללא בקשת הצטרפות",
+      "צילום אמיתי שנצפה; אין אימות נתוני ייצור, הרשאות, אייפון או כל שילובי המצבים.",
+      "פס הדמו, תג המסלול, כפתור הבדיקה והתרעות הפיתוח אינם רכיבי גרסת החנות."
+    ],
+    "sha256": "6f28542ad3bda0a7dce67ae854dbcc4b5aef73694a60e812734a6a719d15b233"
+  },
+  {
+    "file": "cover-layout-public-buttons.jpg",
+    "source": "artifacts/cover-layout/proof-public-buttons.jpg",
+    "platform": "Android",
+    "environment": "אמולטור 1080×2400; נתוני דמו בפיתוח; ללא מצב פרסום",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "תצוגה ציבורית עם שלושה כפתורי מערכת; הדמו הופעל מחדש אחרי החלפת מצב הניווט, שהוחזר למחוות בסיום",
+      "צילום אמיתי שנצפה; אין אימות נתוני ייצור, הרשאות, אייפון או כל שילובי המצבים.",
+      "פס הדמו, תג המסלול, כפתור הבדיקה והתרעות הפיתוח אינם רכיבי גרסת החנות."
+    ],
+    "sha256": "37263210b3874ca3fb5b791ebfd5cc228120e0d0f46e34cfe346c4760352f247"
+  },
+  {
+    "file": "cover-layout-audit-1.jpg",
+    "source": "artifacts/cover-layout/sheet-1.jpg",
+    "platform": "Android",
+    "environment": "אמולטור 1080×2400; נתוני דמו בפיתוח; ללא מצב פרסום",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "גיליון סקירה 1; כולל מצבים חלקיים וכלי פיתוח; ראיות ומגבלות במסמך הסקירה",
+      "צילום אמיתי שנצפה; אין אימות נתוני ייצור, הרשאות, אייפון או כל שילובי המצבים.",
+      "פס הדמו, תג המסלול, כפתור הבדיקה והתרעות הפיתוח אינם רכיבי גרסת החנות."
+    ],
+    "sha256": "5bea7c13b8fec1ec532ecac9a8f15c7d194cfed69d2ae861992b7dbf87968776"
+  },
+  {
+    "file": "cover-layout-audit-2.jpg",
+    "source": "artifacts/cover-layout/sheet-2.jpg",
+    "platform": "Android",
+    "environment": "אמולטור 1080×2400; נתוני דמו בפיתוח; ללא מצב פרסום",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "גיליון סקירה 2; כולל מצבים חלקיים וכלי פיתוח; ראיות ומגבלות במסמך הסקירה",
+      "צילום אמיתי שנצפה; אין אימות נתוני ייצור, הרשאות, אייפון או כל שילובי המצבים.",
+      "פס הדמו, תג המסלול, כפתור הבדיקה והתרעות הפיתוח אינם רכיבי גרסת החנות."
+    ],
+    "sha256": "ac506644fac96aafc107ee8dd85654ad7c858e3b418fb8430800d704068b2f14"
+  },
+  {
+    "file": "cover-layout-audit-3.jpg",
+    "source": "artifacts/cover-layout/sheet-3.jpg",
+    "platform": "Android",
+    "environment": "אמולטור 1080×2400; נתוני דמו בפיתוח; ללא מצב פרסום",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "גיליון סקירה 3; כולל מצבים חלקיים וכלי פיתוח; ראיות ומגבלות במסמך הסקירה",
+      "צילום אמיתי שנצפה; אין אימות נתוני ייצור, הרשאות, אייפון או כל שילובי המצבים.",
+      "פס הדמו, תג המסלול, כפתור הבדיקה והתרעות הפיתוח אינם רכיבי גרסת החנות."
+    ],
+    "sha256": "5561f06cbd4ec44226225f9110a28cb38b409b4c6ebb999a7512097b5c8b9afe"
+  },
+  {
+    "file": "cover-layout-audit-4.jpg",
+    "source": "artifacts/cover-layout/sheet-4.jpg",
+    "platform": "Android",
+    "environment": "אמולטור 1080×2400; נתוני דמו בפיתוח; ללא מצב פרסום",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "גיליון סקירה 4; כולל מצבים חלקיים וכלי פיתוח; ראיות ומגבלות במסמך הסקירה",
+      "צילום אמיתי שנצפה; אין אימות נתוני ייצור, הרשאות, אייפון או כל שילובי המצבים.",
+      "פס הדמו, תג המסלול, כפתור הבדיקה והתרעות הפיתוח אינם רכיבי גרסת החנות."
+    ],
+    "sha256": "31a6b4e8fc1c0ca5929fa05f1fcf2da1873b86fdc66a0c378f78702256cd717f"
+  },
+  {
+    "file": "cover-layout-audit-5.jpg",
+    "source": "artifacts/cover-layout/sheet-5.jpg",
+    "platform": "Android",
+    "environment": "אמולטור 1080×2400; נתוני דמו בפיתוח; ללא מצב פרסום",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "גיליון סקירה 5; כולל מצבים חלקיים וכלי פיתוח; ראיות ומגבלות במסמך הסקירה",
+      "צילום אמיתי שנצפה; אין אימות נתוני ייצור, הרשאות, אייפון או כל שילובי המצבים.",
+      "פס הדמו, תג המסלול, כפתור הבדיקה והתרעות הפיתוח אינם רכיבי גרסת החנות."
+    ],
+    "sha256": "cd1ea214bf6441ed3688d8f009924dfc533a650f7bf8dd973d1e8102ee4e4ab9"
+  },
+  {
+    "file": "cover-layout-audit-6.jpg",
+    "source": "artifacts/cover-layout/sheet-6.jpg",
+    "platform": "Android",
+    "environment": "אמולטור 1080×2400; נתוני דמו בפיתוח; ללא מצב פרסום",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "גיליון סקירה 6; כולל מצבים חלקיים וכלי פיתוח; ראיות ומגבלות במסמך הסקירה",
+      "צילום אמיתי שנצפה; אין אימות נתוני ייצור, הרשאות, אייפון או כל שילובי המצבים.",
+      "פס הדמו, תג המסלול, כפתור הבדיקה והתרעות הפיתוח אינם רכיבי גרסת החנות."
+    ],
+    "sha256": "21a3101f8fad1749ecb287904aa547dd26b98fb83d2139abc8e0f89ac507ed6f"
+  },
+  {
+    "file": "rounds-redesign-top.jpg",
+    "source": "artifacts/rounds-redesign/top.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "כותרת, המחזורים שלי, תמונה צמודה ותגיות; מחזורים מלאים.",
+      "צילום אמולטור עם סמן דמו וכלי פיתוח. לא אייפון, לא נתוני ייצור, ללא בדיקת תמונה שהועלתה מרחוק או פעולת רישום."
+    ],
+    "sha256": "50f7ada6ad0df518e1a437e2ffd4e256284f231004fb72d3bf67e16be34e5bd5"
+  },
+  {
+    "file": "rounds-redesign-scroll-4.jpg",
+    "source": "artifacts/rounds-redesign/scroll-4.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "תפוסה חלקית 13 מתוך 21, פס מימין לשמאל ופעולת הצטרפות למחזור חד־פעמי.",
+      "צילום אמולטור עם סמן דמו וכלי פיתוח. לא אייפון, לא נתוני ייצור, ללא בדיקת תמונה שהועלתה מרחוק או פעולת רישום."
+    ],
+    "sha256": "997ebe3bf2ccf4a2a227ac2be7a24bdb79a18516fc380eb0c2db0e0ad0a2f12b"
+  },
+  {
+    "file": "rounds-redesign-scroll-6.jpg",
+    "source": "artifacts/rounds-redesign/scroll-6.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מצב רשום ומצב המתנה, בלי הפעלת הרשמה.",
+      "צילום אמולטור עם סמן דמו וכלי פיתוח. לא אייפון, לא נתוני ייצור, ללא בדיקת תמונה שהועלתה מרחוק או פעולת רישום."
+    ],
+    "sha256": "0459af88941b09c13d62ae1c0461dce63e80b4bf18079b854a60508dfc59d553"
+  },
+  {
+    "file": "rounds-redesign-clubs-filter.jpg",
+    "source": "artifacts/rounds-redesign/clubs-filter.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "סינון המועדונים שלי פעיל; המחזורים החד־פעמיים הוסתרו.",
+      "צילום אמולטור עם סמן דמו וכלי פיתוח. לא אייפון, לא נתוני ייצור, ללא בדיקת תמונה שהועלתה מרחוק או פעולת רישום."
+    ],
+    "sha256": "0994c83abed650b6469e1402f3fa60ec100ebab1cfa732f1316b9003f5d18be5"
+  },
+  {
+    "file": "rounds-redesign-reset.jpg",
+    "source": "artifacts/rounds-redesign/reset.jpg",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "איפוס מסנן המועדונים מתוך החלון: הכול נבחר מחדש ומחזור חד־פעמי חוזר לרשימה. תפוסה 7 מתוך 10 ו־13 מתוך 21 מתחילה מימין.",
+      "ללא הרשמה, ללא בדיקת אייפון או כתיבות ייצור. כלי פיתוח נראים בצילום."
+    ],
+    "sha256": "37a6cfe392e76cfedc51572797260c2458ef7ac9ff25cb072e293e9da5d6ad1c"
+  },
+  {
+    "file": "rounds-card-polish.jpg",
+    "source": "artifacts/rounds-card-polish-join.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "תמונה מעוגלת מבפנים, רווח לפני פס תפוסה, תגית פתוח לכולם וסגור למועדון, כפתורי הצטרפות ורשימת המתנה קומפקטיים.",
+      "כיוון המילוי מימין לשמאל נצפה בפועל. לא הופעלו כפתורי הרשמה. לא אייפון או כתיבות ייצור."
+    ],
+    "sha256": "ac40bbdcb45f39335a0c7e30fd56944ee16a2f417bb75993eae257bcb44f41fd"
+  },
+  {
+    "file": "rounds-compact.jpg",
+    "source": "artifacts/rounds-compact-scroll.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "כרטיס נמוך, תפוסה ומקומות פנויים בשורה אחת, אייקון תגית משמאל לטקסט.",
+      "גלילה בלבד; ללא הרשמה. סימוני פיתוח בצילום. אייפון וגופנים מוגדלים לא הורצו."
+    ],
+    "sha256": "32790fae00f1f303f273c09c07047973e4383f10622cf0fa563f2cfec54d5bd3"
+  },
+  {
+    "file": "rounds-scroll-gap.jpg",
+    "source": "artifacts/rounds-scroll-gap.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מרווח קבוע של 12 נקודות מתחת למסננים מחוץ לאזור הגלילה.",
+      "גלילה בלבד; סימוני פיתוח בצילום; אייפון לא הורץ."
+    ],
+    "sha256": "61d9fc7282eaccc3b85a86d1294b593da4c85ef16e254ff8984529b1d58cbd9e"
+  },
+  {
+    "file": "history-no-filter.jpg",
+    "source": "artifacts/history-no-filter.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "היסטוריה אישית ללא מסנן; כל רשימת השירות נשמרת.",
+      "ללא כתיבה; סימוני פיתוח בצילום; אייפון לא הורץ."
+    ],
+    "sha256": "83fdf95824f836e435d3dd2d2400a53052e496ccd9ceab13d7216804e284d806"
+  },
+  {
+    "file": "club-feed-redesign.jpg",
+    "source": "artifacts/club-feed-redesign.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "כותרות משותפות עם רקעים שונים; מועדונים עם שורת פעולה וחץ משמאל.",
+      "בלי כתיבות או הצטרפות; סימוני פיתוח בצילום. אייפון וגופן מוגדל לא הורצו."
+    ],
+    "sha256": "8b5fc7ce61924448820916b02ee74d98861b144dbd4f1f4aa3ada6b23c7636e3"
+  },
+  {
+    "file": "rounds-hero-redesign.jpg",
+    "source": "artifacts/rounds-hero-redesign.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "כותרות משותפות עם רקעים שונים; מועדונים עם שורת פעולה וחץ משמאל.",
+      "בלי כתיבות או הצטרפות; סימוני פיתוח בצילום. אייפון וגופן מוגדל לא הורצו."
+    ],
+    "sha256": "212c77ef44967259384e1abb57952dc9b3c4a8d0ae454200f577f0a6131ef242"
+  },
+  {
+    "file": "club-card-proportions.jpg",
+    "source": "artifacts/club-card-proportions.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "תמונה ברוחב 41.5%, כרטיס נמוך ושורת פעולות דקה; החץ משמאל.",
+      "פעילות חסרה בדמו; אייפון וגופן מוגדל לא נבדקו; סימוני פיתוח בצילום."
+    ],
+    "sha256": "733f9081294c4e02e32e55bf217c8241bc52857d7f1d20eb17f4b887b683df07"
+  },
+  {
+    "file": "club-cta-spacing.jpg",
+    "source": "artifacts/club-cta-spacing.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "רווח של 5 נקודות מעל ומתחת לכפתור הצטרפות, מסגרת דקה; החץ משמאל.",
+      "פעילות חסרה בדמו; אייפון וגופן מוגדל לא נבדקו; סימוני פיתוח בצילום."
+    ],
+    "sha256": "516007566f779709555186a2cf135d141cc57dff8bffbd803aa5b3b2abdab46c"
+  },
+  {
+    "file": "club-cta-compact.jpg",
+    "source": "artifacts/club-cta-compact.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "כפתור קטן בגובה מינימלי32, טקסט11 ואזור לחיצה מורחב; החץ משמאל.",
+      "פעילות חסרה בדמו; אייפון וגופן מוגדל לא נבדקו; סימוני פיתוח בצילום."
+    ],
+    "sha256": "ee93875d02473337ec7da99d7f8bbd749bb029b7a0a4dd1dbf7d7235650b8f56"
+  },
+  {
+    "file": "hero-plus-left-clubs.jpg",
+    "source": "artifacts/hero-plus-left-clubs.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "הפלוס משמאל לטקסט בכפתור היצירה.",
+      "סימוני פיתוח בצילום; ללא כתיבות. אייפון וגופן מוגדל לא נבדקו."
+    ],
+    "sha256": "7841449817b6af7a8ef43288231d61bf0d5cf2604558a09c6515a4c347ec1183"
+  },
+  {
+    "file": "hero-plus-left-rounds.jpg",
+    "source": "artifacts/hero-plus-left-rounds.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "הפלוס משמאל לטקסט בכפתור היצירה.",
+      "סימוני פיתוח בצילום; ללא כתיבות. אייפון וגופן מוגדל לא נבדקו."
+    ],
+    "sha256": "241e1d12c107acb37a4baac906c05b5c5c0ef1ab3f8f0e3bae1fe0bd4c1656c5"
+  },
+  {
+    "file": "navigation-dock-clubs.jpg",
+    "source": "artifacts/navigation-dock-clubs.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "שורת ניווט חדשה עם רקע כחול נע; מקלדת כתב יד מסתירה את השורה.",
+      "ארבע לשוניות נלחצו בדמו. אייפון, גופן מוגדל והפחתת תנועה לא הורצו."
+    ],
+    "sha256": "18ca9fe47dcdfe684d3e7f353d5e215e15c1f318335db1f3c89e4876600be9a6"
+  },
+  {
+    "file": "navigation-dock-keyboard.jpg",
+    "source": "artifacts/navigation-dock-keyboard.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "שורת ניווט חדשה עם רקע כחול נע; מקלדת כתב יד מסתירה את השורה.",
+      "ארבע לשוניות נלחצו בדמו. אייפון, גופן מוגדל והפחתת תנועה לא הורצו."
+    ],
+    "sha256": "1f03a7587603f9cb0c575d0703cacaceaec7d6f42bfdb2d09980580f5b9fbbc1"
+  },
+  {
+    "file": "pulse-summary-top.jpg",
+    "source": "artifacts/pulse-summary-top.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f + local changes",
+    "captured": "2026-10-08",
+    "notes": [
+      "נתוני דמו, לא חשבון אמיתי.",
+      "סביבת הפיתוח כוללת בועת בדיקה ומודעת פיתוח.",
+      "לא נבדק באייפון."
+    ],
+    "sha256": "362793816d5f9ad45b663af204c6262b85e85e92f6ec7a02132e270b0a924e46"
+  },
+  {
+    "file": "pulse-summary-results.jpg",
+    "source": "artifacts/pulse-summary-results.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f + local changes",
+    "captured": "2026-10-08",
+    "notes": [
+      "נתוני דמו, לא חשבון אמיתי.",
+      "סביבת הפיתוח כוללת בועת בדיקה ומודעת פיתוח.",
+      "לא נבדק באייפון."
+    ],
+    "sha256": "aa1e598bc9511b26be3f56a571d28b36f5ecab5024c7e1ce06129d5c214feb04"
+  },
+  {
+    "file": "pulse-summary-share.jpg",
+    "source": "artifacts/pulse-summary-share.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f + local changes",
+    "captured": "2026-10-08",
+    "notes": [
+      "נתוני דמו, לא חשבון אמיתי.",
+      "סביבת הפיתוח כוללת בועת בדיקה ומודעת פיתוח.",
+      "לא נבדק באייפון."
+    ],
+    "sha256": "44fec589b9e1f2d2ec746b7f51e37b6066e9955aeb772c576422fa25d1e3d092"
+  },
+  {
+    "file": "evening-score-table.jpg",
+    "source": "artifacts/evening-score-table.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f + local changes",
+    "captured": "2026-10-08",
+    "notes": [
+      "טבלת המחזור הקיימת נפתחה באמצעות קיצור בדיקה.",
+      "ציוני דמו; אין הוכחה לקריאת שרת חי.",
+      "אייפון לא נבדק."
+    ],
+    "sha256": "9a01eeffc07de2a5dd7d7f3930a2efdf4b750173705a86cb5a2879663f860d28"
+  },
+  {
+    "file": "evening-score-table-sorted.jpg",
+    "source": "artifacts/evening-score-table-sorted.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f + local changes",
+    "captured": "2026-10-08",
+    "notes": [
+      "טבלת המחזור הקיימת נפתחה באמצעות קיצור בדיקה.",
+      "ציוני דמו; אין הוכחה לקריאת שרת חי.",
+      "אייפון לא נבדק."
+    ],
+    "sha256": "369cf7a2a87cf1971b2cd1a69089b5f46c16dc8e0e38efd1897d1bc19135e24a"
+  },
+  {
+    "file": "evening-score-table-default.jpg",
+    "source": "artifacts/evening-score-table-default.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f + local changes",
+    "captured": "2026-10-08",
+    "notes": [
+      "פתיחה חדשה ללא לחיצה על כותרת הציון; מיון ברירת מחדל יורד, ציון מימין לניצחונות.",
+      "ציוני דמו; קריאת שרת חי ואייפון לא נבדקו."
+    ],
+    "sha256": "f912438fdfb1cbe913951682f2f0c68224953c4aadc1ba71c3b70bd61c8e69e3"
+  },
+  {
+    "file": "club-covers-refresh-top.jpg",
+    "source": "artifacts/club-covers-gallery-top.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "גלריה נצפתה בפועל; ללא בחירת רקע או כתיבה לייצור.",
+      "אזהרת פיתוח מכסה חלק מתחתית המסך; לא נבדק אייפון."
+    ],
+    "sha256": "113a504e8f44fca55f7403bfd5da2502f959ea6ab462e2915d35c2ae4880e0f1"
+  },
+  {
+    "file": "club-covers-refresh-bottom.jpg",
+    "source": "artifacts/club-covers-gallery-bottom.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "גלריה נצפתה בפועל; ללא בחירת רקע או כתיבה לייצור.",
+      "אזהרת פיתוח מכסה חלק מתחתית המסך; לא נבדק אייפון."
+    ],
+    "sha256": "fd2b0024fcd4e752099c9a1cc28ff43e509be2a40ac5df28deb69378e476968c"
+  },
+  {
+    "file": "evening-top-player.jpg",
+    "source": "artifacts/evening-top-player.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מקום ראשון מתוך 15 נצפה בפועל; אזהרת פיתוח בתחתית המסך.",
+      "לא נבדק באייפון או בסיכום חי; מסלול השיתוף משתמש באותו רכיב אך לא נשלחה תמונה."
+    ],
+    "sha256": "efbff5cd0c727361d0ffccb7d58f7583f1e2896f7a8767862e76d4d358f70622"
+  },
+  {
+    "file": "evening-top-crown.jpg",
+    "source": "artifacts/evening-top-crown.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "כתר נצפה משמאל לטקסט המצטיין; אזהרת פיתוח מכסה תחתית המסך.",
+      "לא נבדק באייפון או בשיתוף חיצוני."
+    ],
+    "sha256": "f2235a1aa0731a061a3ea4766e61f54362ba27d1504ee0ebba41cefec759ca97"
+  },
+  {
+    "file": "evening-score-info.jpg",
+    "source": "artifacts/evening-score-info.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "חלון ההסבר נפתח ונצפה בפועל; אזהרת פיתוח מכסה את כפתור הבנתי.",
+      "לא נבדק באייפון, בהגדלת גופן או במכשיר קטן."
+    ],
+    "sha256": "45322b8d28183c6a9eac11ee292a483dae09d7550462fe1112fd3e81b31a68ce"
+  },
+  {
+    "file": "onboarding-entry-fixed.jpg",
+    "source": "artifacts/onboarding-entry-fixed.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח — רכיב כניסה אמיתי בתצוגה לקריאה בלבד",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "מזמין p1 מנתוני דמו; הכרטיס מוצג מעל שלוש האפשרויות.",
+      "אין כאן מסע התקנה מהחנות או הוכחת הרשאת הדבקה באייפון.",
+      "אזהרת פיתוח מכסה חלק מהכרטיס התחתון; לא הוסתרה בצילום."
+    ],
+    "sha256": "5b29ef8b42a3e609c7909af8ad959019fe2143e38310df572e150df2757af75b"
+  },
+  {
+    "file": "onboarding-invite-store-fixed.jpg",
+    "source": "artifacts/onboarding-invite-store-fixed.png",
+    "platform": "דפדפן — פריסה צרה ברוחב 390",
+    "environment": "תבנית מקומית אמיתית עם נתוני מזמין דמו והדמיית זיהוי אייפון",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "הצילום נוצר בדפדפן מותקן ללא חלון, לא באייפון או בחנות.",
+      "בקשות חיצוניות נחסמו; גופני רשת עשויים להיות מוחלפים בגופן חלופי.",
+      "רינדור אזור הכפתורים בלבד; אינו הוכחת העתקה או פתיחה במכשיר."
+    ],
+    "sha256": "a2081dbdff1e6b94f37fc189cd0fe39b924fe06ada943b5c5ad20743e54a61c2"
+  },
+  {
+    "file": "onboarding-name-markup-audit.jpg",
+    "source": "artifacts/onboarding-second-audit/name-markup-rendered.png",
+    "platform": "דפדפן — פריסה צרה ברוחב 390",
+    "environment": "תבנית מקומית אמיתית, שם בדיקה וסימון עיצוב בלתי פעיל; בקשות חיצוניות חסומות",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-08",
+    "notes": [
+      "שם המזמין פורש כסימון עיצוב ונצפה כאלמנט em בדפדפן.",
+      "אין קוד פעיל, אין שינוי נתוני ייצור ואין בדיקה באייפון.",
+      "צילום חתוך לכותרת; גופני רשת חסומים וגופן חלופי עשוי לגרום לחיתוך הטקסט."
+    ],
+    "sha256": "d2b7ae174fe2911758b0e08db294b9522acc1779785ccfdc76e60b67e8332dfb"
+  },
+  {
+    "file": "onboarding-expanded-invite.jpg",
+    "source": "artifacts\\onboarding-expanded\\visual-refined-hebrew-390-font1-viewport.png",
+    "platform": "Edge",
+    "environment": "דפדפן מקומי, נתוני דמו ובקשות חיצוניות חסומות",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-09",
+    "notes": [
+      "דפדפן מקומי ברוחב390, מזמין דמו; אינו אייפון או התקנה מהחנות",
+      "מקור invite.html: 3b721289ae8deeb3971502030f2f053c1cfb58ff668eb4a509ffee4ac906893e",
+      "אין צילום מקורי עדכני של מסך הכניסה באפליקציה"
+    ],
+    "sha256": "61524fe7c30bca5a2bf755aeddafd26272f14982d615808a316d01a2a4555a5d"
+  },
+  {
+    "file": "onboarding-expanded-large-font.jpg",
+    "source": "artifacts\\onboarding-expanded\\visual-refined-mixed-320-font2-viewport.png",
+    "platform": "Edge",
+    "environment": "דפדפן מקומי, נתוני דמו ובקשות חיצוניות חסומות",
+    "sourceCommit": "a348b9f עם שינויים מקומיים",
+    "captured": "2026-10-09",
+    "notes": [
+      "דפדפן מקומי ברוחב320 וגופן כפול עם שם מעורב; התוכן ממשיך בגלילה; אינו הגדלת גופן מערכתית",
+      "מקור invite.html: 3b721289ae8deeb3971502030f2f053c1cfb58ff668eb4a509ffee4ac906893e",
+      "אין צילום מקורי עדכני של מסך הכניסה באפליקציה"
+    ],
+    "sha256": "16e3e4e7f2a139645adb6979a84cdd6fc89abd761b4dd364fff025fa817d5cb3"
+  },
+  {
+    "file": "scroll-fix-CommunityDetails-2026-10-09.jpg",
+    "source": "artifacts/scroll-audit/verification/CommunityDetails-top.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; אימולטור",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני דמו, מחוון דמו וכלי בדיקה גלויים",
+      "לא נבדקו טלפון פיזי, אייפון או צילום שיתוף מלא",
+      "צילום התצוגה אינו מדידת קצב ציור"
+    ],
+    "sha256": "1d5c6fd2cf756bcfab85506863528b58adfb01535ee4d894594fbffc182f06c4"
+  },
+  {
+    "file": "scroll-fix-CommunityStats-2026-10-09.jpg",
+    "source": "artifacts/scroll-audit/verification/CommunityStats-top.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; אימולטור",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני דמו, מחוון דמו וכלי בדיקה גלויים",
+      "לא נבדקו טלפון פיזי, אייפון או צילום שיתוף מלא",
+      "צילום התצוגה אינו מדידת קצב ציור"
+    ],
+    "sha256": "9adbb262e29b115195d40916c677b49d3c1f5ca2da0e491668b48a402d766d9e"
+  },
+  {
+    "file": "scroll-fix-EveningSummaryTop-2026-10-09.jpg",
+    "source": "artifacts/scroll-audit/verification/EveningSummaryTop-top.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; אימולטור",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני דמו, מחוון דמו וכלי בדיקה גלויים",
+      "לא נבדקו טלפון פיזי, אייפון או צילום שיתוף מלא",
+      "צילום התצוגה אינו מדידת קצב ציור"
+    ],
+    "sha256": "d16e3b5e694d7e79361da660b75d6a3c8ac472195a9ba20221b21f394392062a"
+  },
+  {
+    "file": "scroll-fix-FinishedMatchStats-2026-10-09.jpg",
+    "source": "artifacts/scroll-audit/verification/FinishedMatchStats-top.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; אימולטור",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני דמו, מחוון דמו וכלי בדיקה גלויים",
+      "לא נבדקו טלפון פיזי, אייפון או צילום שיתוף מלא",
+      "צילום התצוגה אינו מדידת קצב ציור"
+    ],
+    "sha256": "a9029847fd05e13d29b799ef6e8c6951fe9ab77886c838405123beac6fb3117d"
+  },
+  {
+    "file": "scroll-fix-overview-2026-10-09.jpg",
+    "source": "artifacts/scroll-audit/verification/*-top.png + *-scrolled.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; אימולטור",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני דמו, מחוון דמו וכלי בדיקה גלויים",
+      "לא נבדקו טלפון פיזי, אייפון או צילום שיתוף מלא",
+      "צילום התצוגה אינו מדידת קצב ציור"
+    ],
+    "sha256": "04417a6c380909a20f19d638ce6535279dd82c91d9580b7af5a3210943190d17"
+  },
+  {
+    "file": "round-cover-pending-2026-10-09.jpg",
+    "source": "artifacts/round-cover-fix/pending.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "עיכוב זמני 25 שניות ורקע גלריה מדומה בתשובת getPublic; השירות הוחזר במדויק לאחר הצילום",
+      "הצילום מציג נתוני דמו, מחוון פיתוח ואזהרת פיתוח בתחתית",
+      "לא נבדקו אייפון, רשת ייצור או תמונה שהועלתה במכשיר"
+    ],
+    "sha256": "6826ac7b5588af91c666d0664624e49927795d5e89de7240129a75465cd2e285"
+  },
+  {
+    "file": "round-cover-loaded-2026-10-09.jpg",
+    "source": "artifacts/round-cover-fix/loaded.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "עיכוב זמני 25 שניות ורקע גלריה מדומה בתשובת getPublic; השירות הוחזר במדויק לאחר הצילום",
+      "הצילום מציג נתוני דמו, מחוון פיתוח ואזהרת פיתוח בתחתית",
+      "לא נבדקו אייפון, רשת ייצור או תמונה שהועלתה במכשיר"
+    ],
+    "sha256": "2f3b888dc8c56f6b3b8f3f1755fd2ff89423a94689d280c8d4385fcd41ddbe27"
+  },
+  {
+    "file": "manager-ratings-up-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/ratings-up.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני managerDashboardDemo סינתטיים, רק במצב דמו עם שער בדיקה; אינם נתוני ייצור",
+      "מוצגים פס דמו, מחוון בדיקה וניווט קיים",
+      "חלון עריכת דירוג נפתח אך לא נשמר; לא נשלחה התראה אמיתית",
+      "לא נבדקו אייפון, מכשיר פיזי, שמירת דירוג בייצור או דחיפה לשרת חי"
+    ],
+    "sha256": "f16b2cfaac73d60f91fdf5778362de4f6605d063ee473ee1b5320173880a7853"
+  },
+  {
+    "file": "manager-ratings-down-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/ratings-down.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני managerDashboardDemo סינתטיים, רק במצב דמו עם שער בדיקה; אינם נתוני ייצור",
+      "מוצגים פס דמו, מחוון בדיקה וניווט קיים",
+      "חלון עריכת דירוג נפתח אך לא נשמר; לא נשלחה התראה אמיתית",
+      "לא נבדקו אייפון, מכשיר פיזי, שמירת דירוג בייצור או דחיפה לשרת חי"
+    ],
+    "sha256": "4ec3b626da21618da4eb451ef39d6529b35d33edfa31ba7f71e69ae68a6c7efe"
+  },
+  {
+    "file": "manager-overview-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/overview.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני managerDashboardDemo סינתטיים, רק במצב דמו עם שער בדיקה; אינם נתוני ייצור",
+      "מוצגים פס דמו, מחוון בדיקה וניווט קיים",
+      "חלון עריכת דירוג נפתח אך לא נשמר; לא נשלחה התראה אמיתית",
+      "לא נבדקו אייפון, מכשיר פיזי, שמירת דירוג בייצור או דחיפה לשרת חי"
+    ],
+    "sha256": "a2bbc344dafe695102e892e4de893ae1ce4295d605d9eecac0cf52b0cb946ca8"
+  },
+  {
+    "file": "manager-equipment-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/equipment.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני managerDashboardDemo סינתטיים, רק במצב דמו עם שער בדיקה; אינם נתוני ייצור",
+      "מוצגים פס דמו, מחוון בדיקה וניווט קיים",
+      "חלון עריכת דירוג נפתח אך לא נשמר; לא נשלחה התראה אמיתית",
+      "לא נבדקו אייפון, מכשיר פיזי, שמירת דירוג בייצור או דחיפה לשרת חי"
+    ],
+    "sha256": "ebfad1bdba6093730dd74a3b3fe74cb986bd6dca95e433f6328115150fe5e186"
+  },
+  {
+    "file": "manager-rating-details-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/details.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני managerDashboardDemo סינתטיים, רק במצב דמו עם שער בדיקה; אינם נתוני ייצור",
+      "מוצגים פס דמו, מחוון בדיקה וניווט קיים",
+      "חלון עריכת דירוג נפתח אך לא נשמר; לא נשלחה התראה אמיתית",
+      "לא נבדקו אייפון, מכשיר פיזי, שמירת דירוג בייצור או דחיפה לשרת חי"
+    ],
+    "sha256": "5a7a8854e6e760b02cfce9f606847b7ec381eb686dce7a1d4e3c4c9c3a1171e6"
+  },
+  {
+    "file": "manager-rating-editor-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/rating-editor.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני managerDashboardDemo סינתטיים, רק במצב דמו עם שער בדיקה; אינם נתוני ייצור",
+      "מוצגים פס דמו, מחוון בדיקה וניווט קיים",
+      "חלון עריכת דירוג נפתח אך לא נשמר; לא נשלחה התראה אמיתית",
+      "לא נבדקו אייפון, מכשיר פיזי, שמירת דירוג בייצור או דחיפה לשרת חי"
+    ],
+    "sha256": "ae7c301343aad090ae3912bccccac8920e1e213219689c2a9172fa938d25d93e"
+  },
+  {
+    "file": "manager-ratings-scrolled-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/ratings-scrolled.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט; טרם פורסמו",
+      "נתוני managerDashboardDemo סינתטיים, רק במצב דמו עם שער בדיקה; אינם נתוני ייצור",
+      "מוצגים פס דמו, מחוון בדיקה וניווט קיים",
+      "חלון עריכת דירוג נפתח אך לא נשמר; לא נשלחה התראה אמיתית",
+      "לא נבדקו אייפון, מכשיר פיזי, שמירת דירוג בייצור או דחיפה לשרת חי"
+    ],
+    "sha256": "84ee457ab9300d0dd1534a421c7a59cf2635e040faad70cc04eecd8d47576cd4"
+  },
+  {
+    "file": "manager-load-fix-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/fix-loaded.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "צילום לוח טעון לאחר תיקון מקומי; הנתונים סינתטיים ואינם מאמתים שאילתה או הרשאות ייצור",
+      "בנפרד נבדקו שאילתות חיות בחשבון שירות: הישנה נכשלה בדרישת אינדקס; המתוקנת החזירה 17 מחזורים",
+      "הודעת הכשל המעודכנת לא צולמה; טקסט ההבחנה נבדק בבדיקת יחידה",
+      "לא נבדקו התקנה מהחנות או אייפון"
+    ],
+    "sha256": "9ed41a2916003a1a5591be0df97feaa20cc81720d8ffa0301c3dd6c28869ea57"
+  },
+  {
+    "file": "manager-rtl-ratings-up-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/rtl-ratings-up.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "בדיקת כיווניות ואייקונים לאחר תיקון מקומי; נתוני הדגמה בלבד",
+      "הגרף מציג ישן מימין וחדש משמאל; יחסי ציונים נשמרים בבידוד דו־כיווני",
+      "עורך הדירוג נפתח ללא שמירה; לא נשלחה תזכורת; לא נבדק אייפון",
+      "מסכי סגל אחרים המשתמשים בעורך המשותף לא נבדקו שוב"
+    ],
+    "sha256": "429cc28440fee16aec76bcc5c4b1438e6727f0d2bd77ee877538f23e37bd53a6"
+  },
+  {
+    "file": "manager-rtl-ratings-down-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/rtl-ratings-down.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "בדיקת כיווניות ואייקונים לאחר תיקון מקומי; נתוני הדגמה בלבד",
+      "הגרף מציג ישן מימין וחדש משמאל; יחסי ציונים נשמרים בבידוד דו־כיווני",
+      "עורך הדירוג נפתח ללא שמירה; לא נשלחה תזכורת; לא נבדק אייפון",
+      "מסכי סגל אחרים המשתמשים בעורך המשותף לא נבדקו שוב"
+    ],
+    "sha256": "4d70893504032934d5657333d6afffe934272d81f10137d9f3392b5384f76137"
+  },
+  {
+    "file": "manager-rtl-overview-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/rtl-overview.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "בדיקת כיווניות ואייקונים לאחר תיקון מקומי; נתוני הדגמה בלבד",
+      "הגרף מציג ישן מימין וחדש משמאל; יחסי ציונים נשמרים בבידוד דו־כיווני",
+      "עורך הדירוג נפתח ללא שמירה; לא נשלחה תזכורת; לא נבדק אייפון",
+      "מסכי סגל אחרים המשתמשים בעורך המשותף לא נבדקו שוב"
+    ],
+    "sha256": "680ccffe44785dda90a00fe003a2fe3aa861535ad276f9921fcc86e0f33787c6"
+  },
+  {
+    "file": "manager-rtl-equipment-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/rtl-equipment.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "בדיקת כיווניות ואייקונים לאחר תיקון מקומי; נתוני הדגמה בלבד",
+      "הגרף מציג ישן מימין וחדש משמאל; יחסי ציונים נשמרים בבידוד דו־כיווני",
+      "עורך הדירוג נפתח ללא שמירה; לא נשלחה תזכורת; לא נבדק אייפון",
+      "מסכי סגל אחרים המשתמשים בעורך המשותף לא נבדקו שוב"
+    ],
+    "sha256": "6e101bb97406cc8944f49920417c531d272637fa5fc08608195dbd05df10e7c5"
+  },
+  {
+    "file": "manager-rtl-details-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/rtl-details.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "בדיקת כיווניות ואייקונים לאחר תיקון מקומי; נתוני הדגמה בלבד",
+      "הגרף מציג ישן מימין וחדש משמאל; יחסי ציונים נשמרים בבידוד דו־כיווני",
+      "עורך הדירוג נפתח ללא שמירה; לא נשלחה תזכורת; לא נבדק אייפון",
+      "מסכי סגל אחרים המשתמשים בעורך המשותף לא נבדקו שוב"
+    ],
+    "sha256": "da2508b414da985498f2f1cddc4794b3f5d83ec32e40d23b7a213bbd6aaaf87b"
+  },
+  {
+    "file": "manager-rtl-rating-editor-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/rtl-rating-editor.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "בדיקת כיווניות ואייקונים לאחר תיקון מקומי; נתוני הדגמה בלבד",
+      "הגרף מציג ישן מימין וחדש משמאל; יחסי ציונים נשמרים בבידוד דו־כיווני",
+      "עורך הדירוג נפתח ללא שמירה; לא נשלחה תזכורת; לא נבדק אייפון",
+      "מסכי סגל אחרים המשתמשים בעורך המשותף לא נבדקו שוב"
+    ],
+    "sha256": "57179496f6475dd1a7fc3ea3908c60d937c4a5618a203e0740917b7beb4c2757"
+  },
+  {
+    "file": "manager-rtl-ratings-scrolled-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/rtl-ratings-scrolled.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "בדיקת כיווניות ואייקונים לאחר תיקון מקומי; נתוני הדגמה בלבד",
+      "הגרף מציג ישן מימין וחדש משמאל; יחסי ציונים נשמרים בבידוד דו־כיווני",
+      "עורך הדירוג נפתח ללא שמירה; לא נשלחה תזכורת; לא נבדק אייפון",
+      "מסכי סגל אחרים המשתמשים בעורך המשותף לא נבדקו שוב"
+    ],
+    "sha256": "a52e111eff2fa0282a7f8df22abb5028bf68926f447ff8504f3f5e2f06ec0634"
+  },
+  {
+    "file": "pulse-overview-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/pulse-overview.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "תיקונים מקומיים לדיווחי פולס; נתוני הדגמה בלבד; לא גרסה שפורסמה",
+      "לא נשלחה תזכורת ולא נשמר פרופיל או דירוג; אייפון לא נבדק"
+    ],
+    "sha256": "4087dd5b50040f4323831655a21caf42d8be0858c09df88c118d9567417d837b"
+  },
+  {
+    "file": "pulse-ratings-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/pulse-ratings.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "תיקונים מקומיים לדיווחי פולס; נתוני הדגמה בלבד; לא גרסה שפורסמה",
+      "לא נשלחה תזכורת ולא נשמר פרופיל או דירוג; אייפון לא נבדק"
+    ],
+    "sha256": "8252ac64690c5a31fccd2661633060934d921ba6fc6106151fde2aa40636b047"
+  },
+  {
+    "file": "pulse-avatars-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/pulse-avatars.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "תיקונים מקומיים לדיווחי פולס; נתוני הדגמה בלבד; לא גרסה שפורסמה",
+      "לא נשלחה תזכורת ולא נשמר פרופיל או דירוג; אייפון לא נבדק"
+    ],
+    "sha256": "5d3df61f604b0a38952d5dd54c160aec31ad1bedd5eb4e527f2fc8ff3c05cf94"
+  },
+  {
+    "file": "manager-refined-overview-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/refined-overview.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינוי מקומי לאחר הקומיט המצוין; נתוני הדגמה בלבד.",
+      "לא נשלחה הודעה ולא נשמר דירוג. אייפון לא נבדק.",
+      "פס ההדגמה ומחוון הבדיקה שייכים לסביבת הפיתוח."
+    ],
+    "sha256": "4cc5a1c6e968a3fed181a5df96bc40601e34ad93618dedff8f3e29657f018fa1"
+  },
+  {
+    "file": "manager-refined-overview-lower-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/refined-overview-lower.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינוי מקומי לאחר הקומיט המצוין; נתוני הדגמה בלבד.",
+      "לא נשלחה הודעה ולא נשמר דירוג. אייפון לא נבדק.",
+      "פס ההדגמה ומחוון הבדיקה שייכים לסביבת הפיתוח."
+    ],
+    "sha256": "0db05381c4ad2fb13ab994fb6e810b723f02bec464be4bb7a258a23550c1a44c"
+  },
+  {
+    "file": "manager-refined-ratings-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/refined-ratings.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינוי מקומי לאחר הקומיט המצוין; נתוני הדגמה בלבד.",
+      "לא נשלחה הודעה ולא נשמר דירוג. אייפון לא נבדק.",
+      "פס ההדגמה ומחוון הבדיקה שייכים לסביבת הפיתוח."
+    ],
+    "sha256": "ad6532c62ce73b41b75d2352b9568975c8e37a53b882b0667e4fb8202a019268"
+  },
+  {
+    "file": "manager-refined-ratings-neutral-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/refined-ratings-neutral.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינוי מקומי לאחר הקומיט המצוין; נתוני הדגמה בלבד.",
+      "לא נשלחה הודעה ולא נשמר דירוג. אייפון לא נבדק.",
+      "פס ההדגמה ומחוון הבדיקה שייכים לסביבת הפיתוח."
+    ],
+    "sha256": "f93b4d48e07422f9ce78f9864b4c0380713cd03e6564912281ae7ac6776bd7d9"
+  },
+  {
+    "file": "manager-refined-equipment-2026-10-09.jpg",
+    "source": "artifacts/manager-dashboard/refined-equipment.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינוי מקומי לאחר הקומיט המצוין; נתוני הדגמה בלבד.",
+      "לא נשלחה הודעה ולא נשמר דירוג. אייפון לא נבדק.",
+      "פס ההדגמה ומחוון הבדיקה שייכים לסביבת הפיתוח."
+    ],
+    "sha256": "6001dbb74df52f44c4228b50b9e9f8226350e436fe0cf1b720e2c5e95c96b1fb"
+  },
+  {
+    "file": "Pulse-diagnostic-timeline-legacy.jpg",
+    "source": "artifacts\\pulse-diagnostics\\Pulse-diagnostic-timeline.png",
+    "platform": "Android",
+    "environment": "פולס 1.0.88 בנייה 95 באמולטור; קריאת דיווח קיים בלבד",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "נראה רכיב הרצף פתוח עם עקבות מהגרסה הישנה; אין יומן מובנה בפריט זה",
+      "לא נשלח דיווח בדיקה ולא נגרמה קריסה; בדיקת המסלול החי נדחתה לבקשת הבעלים",
+      "המקור המקומי כולל שינויים לא מקומיטים; מקור רכיב הפולס נשמר ב-scripts/pulse-ui"
+    ],
+    "sha256": "5551e8f3cf93ad0b662bab36443622a623f4eec34d6cb4b1add7dc52ecc9a256"
+  },
+  {
+    "file": "pulse-round2-clubs-2026-10-09.jpg",
+    "source": "artifacts\\pulse-round2\\clubs.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "נתוני דמו באנדרואיד בלבד; שינויים מקומיים מעל הקומיט המצוין. אייפון לא נבדק.",
+      "פס הדגמה, מחוון בדיקה ואזהרת פיתוח קיימת עשויים להופיע; אינם ממשק הייצור."
+    ],
+    "sha256": "d28bd28f21bf7deecbb6988acfcc937f51b56719c25fb9a81dc3249ad3d2a239"
+  },
+  {
+    "file": "pulse-round2-rounds-2026-10-09.jpg",
+    "source": "artifacts\\pulse-round2\\rounds.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "נתוני דמו באנדרואיד בלבד; שינויים מקומיים מעל הקומיט המצוין. אייפון לא נבדק.",
+      "פס הדגמה, מחוון בדיקה ואזהרת פיתוח קיימת עשויים להופיע; אינם ממשק הייצור."
+    ],
+    "sha256": "fb298d17a372b9c57db66d0920a40235b0e613c0e40a02f0333cd6491dcedd2a"
+  },
+  {
+    "file": "pulse-round2-round-details-2026-10-09.jpg",
+    "source": "artifacts\\pulse-round2\\round-details.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "נתוני דמו באנדרואיד בלבד; שינויים מקומיים מעל הקומיט המצוין. אייפון לא נבדק.",
+      "פס הדגמה, מחוון בדיקה ואזהרת פיתוח קיימת עשויים להופיע; אינם ממשק הייצור."
+    ],
+    "sha256": "4908f99ecb72533c19c159538e4ddd00779a95d5be0de4b0856bb6c1a9d6d8c3"
+  },
+  {
+    "file": "pulse-round2-club-details-2026-10-09.jpg",
+    "source": "artifacts\\pulse-round2\\club-details.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "נתוני דמו באנדרואיד בלבד; שינויים מקומיים מעל הקומיט המצוין. אייפון לא נבדק.",
+      "פס הדגמה, מחוון בדיקה ואזהרת פיתוח קיימת עשויים להופיע; אינם ממשק הייצור."
+    ],
+    "sha256": "d47f1bd110471cd73676748faaa293d50c7abab6d5cd38eaba9f2c903bdb0bc9"
+  },
+  {
+    "file": "pulse-round2-ratings-2026-10-09.jpg",
+    "source": "artifacts\\pulse-round2\\search-cleared.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "נתוני דמו באנדרואיד בלבד; שינויים מקומיים מעל הקומיט המצוין. אייפון לא נבדק.",
+      "פס הדגמה, מחוון בדיקה ואזהרת פיתוח קיימת עשויים להופיע; אינם ממשק הייצור."
+    ],
+    "sha256": "588c107fcd0c11805d71b40c7a86b5dddb5540c3c650eda6007ad176784f3d94"
+  },
+  {
+    "file": "pulse-round2-games-loading-2026-10-09.jpg",
+    "source": "artifacts\\pulse-round2\\games-loading-later.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "נתוני דמו באנדרואיד בלבד; שינויים מקומיים מעל הקומיט המצוין. אייפון לא נבדק.",
+      "פס הדגמה, מחוון בדיקה ואזהרת פיתוח קיימת עשויים להופיע; אינם ממשק הייצור.",
+      "ענף הטעינה האמיתי הוחזק בהשהיית קריאת דמו 15 שניות זמנית; ההשהיה הוסרה והמקור שוחזר בדיוק."
+    ],
+    "sha256": "63afe2dd8f8f94d14e4d5ff87d0727ffb7dfc354f76c547058e083ffd59e058f"
+  },
+  {
+    "file": "pulse-round2-search-empty-2026-10-09.jpg",
+    "source": "artifacts\\pulse-round2\\search-keyboard.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "נתוני דמו באנדרואיד בלבד; שינויים מקומיים מעל הקומיט המצוין. אייפון לא נבדק.",
+      "פס הדגמה, מחוון בדיקה ואזהרת פיתוח קיימת עשויים להופיע; אינם ממשק הייצור.",
+      "הקלדת zzz החזירה מצב ריק; המקלדת הצפה היא ממשק מערכת האימולטור."
+    ],
+    "sha256": "a0ff18b21923a8ba98345c31b1a1ac1ccdb13b9a6a55ed99711526d0c0540efb"
+  },
+  {
+    "file": "manager-seven-overview-2026-10-09.jpg",
+    "source": "artifacts\\pulse-round2\\manager-seven-overview.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שינויים מקומיים מעל הקומיט המצוין; שני מדדים בלבד וסף קבוע של 7 מתוך 10.",
+      "אומת כיוון ימין לשמאל באנדרואיד. אייפון ונתוני ייצור לא נבדקו.",
+      "פס הדגמה ומחוון בדיקה קיימים רק בסביבת הפיתוח."
+    ],
+    "sha256": "fae909f8c6621c4ba961d126fe4fc85d9c167c06e1f1fe211b16c8b7f116cff4"
+  },
+  {
+    "file": "manager-club-top-2026-10-09.jpg",
+    "source": "artifacts\\manager-club\\top.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "לשונית תמונת מועדון; שינויים מקומיים מעל הקומיט המצוין.",
+      "נבדקו כיווניות ותצוגה באנדרואיד בלבד, לא נתוני ייצור או אייפון.",
+      "פס הדגמה ומחוון בדיקה קיימים רק בפיתוח; המחוון עשוי להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "8fcf3a1cc59d0a2d0875082b222fd5b6a22d961f5d5dc38a38aef25c8de904b8"
+  },
+  {
+    "file": "manager-club-balance-2026-10-09.jpg",
+    "source": "artifacts\\manager-club\\balance.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "לשונית תמונת מועדון; שינויים מקומיים מעל הקומיט המצוין.",
+      "נבדקו כיווניות ותצוגה באנדרואיד בלבד, לא נתוני ייצור או אייפון.",
+      "פס הדגמה ומחוון בדיקה קיימים רק בפיתוח; המחוון עשוי להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "e88101b1603e7559a329a6236e3b7cf79d4712a97dd7e8eb214f2b1c49e6ad55"
+  },
+  {
+    "file": "manager-club-newcomers-2026-10-09.jpg",
+    "source": "artifacts\\manager-club\\newcomers.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "לשונית תמונת מועדון; שינויים מקומיים מעל הקומיט המצוין.",
+      "נבדקו כיווניות ותצוגה באנדרואיד בלבד, לא נתוני ייצור או אייפון.",
+      "פס הדגמה ומחוון בדיקה קיימים רק בפיתוח; המחוון עשוי להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "a5673730f0533e3f3265f0b14b01855358197c22192cfd79588ade2c46a4596d"
+  },
+  {
+    "file": "manager-club-details-2026-10-09.jpg",
+    "source": "artifacts\\manager-club\\details.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "לשונית תמונת מועדון; שינויים מקומיים מעל הקומיט המצוין.",
+      "נבדקו כיווניות ותצוגה באנדרואיד בלבד, לא נתוני ייצור או אייפון.",
+      "פס הדגמה ומחוון בדיקה קיימים רק בפיתוח; המחוון עשוי להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "8b0eb28a5ac0289f5f1308fed4d40f6a78e0a514ee78b7f14a37ebc11226ced6"
+  },
+  {
+    "file": "manager-extras-attention-2026-10-09.jpg",
+    "source": "artifacts\\manager-extras\\attention.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שני כרטיסים חדשים בלשונית תמונת מועדון; שינויים מקומיים מעל הקומיט.",
+      "אנדרואיד בלבד, ללא בדיקת אייפון או שמירה בייצור.",
+      "מחוון בדיקה עשוי להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "9a121218969950d2b4e286342cce5b387937a942042f0a954f86c0e6e8ed6809"
+  },
+  {
+    "file": "manager-extras-ratings-2026-10-09.jpg",
+    "source": "artifacts\\manager-extras\\ratings.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שני כרטיסים חדשים בלשונית תמונת מועדון; שינויים מקומיים מעל הקומיט.",
+      "אנדרואיד בלבד, ללא בדיקת אייפון או שמירה בייצור.",
+      "מחוון בדיקה עשוי להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "44dfa0233a1bb21787a100893b25353d777d222b1c71d2afad183a4f66f67c95"
+  },
+  {
+    "file": "manager-extras-numbers-full-2026-10-09.jpg",
+    "source": "artifacts\\manager-extras\\numbers-full.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "שני כרטיסים חדשים בלשונית תמונת מועדון; שינויים מקומיים מעל הקומיט.",
+      "אנדרואיד בלבד, ללא בדיקת אייפון או שמירה בייצור.",
+      "מחוון בדיקה עשוי להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "746949d770e04b95d134cbee03c966c16b4aac17ddab5dc0827b772abe273d7d"
+  },
+  {
+    "file": "manager-extras-verify-2026-10-09.jpg",
+    "source": "artifacts\\manager-extras\\verify.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "פתיחת כרטיס אימות מחזורים קיים מתוך הנושא החדש.",
+      "ללא לחיצה על התקיים או לא התקיים; ללא שמירה.",
+      "אנדרואיד בלבד; מחוון בדיקה מסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "0a02e79a3d0650f5b1862a3d249d6690e93f1c91de26b9a3b09a212e9d3d336f"
+  },
+  {
+    "file": "manager-extras-wording-2026-10-09.jpg",
+    "source": "artifacts\\manager-extras\\wording.jpg",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-09",
+    "notes": [
+      "עדכון כיתוב לשחקנים שונים; ללא שינוי חישוב.",
+      "אנדרואיד בלבד; שינויים מקומיים."
+    ],
+    "sha256": "8e40c0b3990e08e7f62655640f2a412f64f68938fa290b07a71449ca97cd7751"
+  },
+  {
+    "file": "pre-release-home-2026-10-10.png",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/Home-final.png",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח, מעטפת 1.1.33/1 וקוד מעודכן",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "בית: אייקונים משמאל לטקסט בכרטיסי המחזור; הסיכום והתפוסה נשמרו.",
+      "שינויים מקומיים מעל הקומיט; אין הוכחת בינארי פנימי חדש.",
+      "אנדרואיד בלבד; ללא כתיבה חיה, קורא מסך או בדיקת אייפון.",
+      "מחווני כלי הבדיקה עשויים להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "e4e8c1eb8870bf0abeda913ad8d4e6c303d75710e31b4bc68dacaaf1f4958d7d"
+  },
+  {
+    "file": "pre-release-manager-ratings-2026-10-10.png",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/ManagerRatings-stable.png",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח, מעטפת 1.1.33/1 וקוד מעודכן",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "דירוגי מנהל: מלל 13, פעולות 14 ויעדי מגע 48; חמש נקודות גרף.",
+      "שינויים מקומיים מעל הקומיט; אין הוכחת בינארי פנימי חדש.",
+      "אנדרואיד בלבד; ללא כתיבה חיה, קורא מסך או בדיקת אייפון.",
+      "מחווני כלי הבדיקה עשויים להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "fd25686a494a65ac5fed7778a89f22c80e02b30ed9dadd50e83a8f5b58ba82e0"
+  },
+  {
+    "file": "pre-release-profile-edit-2026-10-10.png",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/ProfileEdit.png",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח, מעטפת 1.1.33/1 וקוד מעודכן",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "עריכת פרופיל: שדה עברי מימין ואייקונים משמאל.",
+      "שינויים מקומיים מעל הקומיט; אין הוכחת בינארי פנימי חדש.",
+      "אנדרואיד בלבד; ללא כתיבה חיה, קורא מסך או בדיקת אייפון.",
+      "מחווני כלי הבדיקה עשויים להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "2430b16ec9cf95366aee2941b337e503cd1ea234cb99b72281264a3b33be870d"
+  },
+  {
+    "file": "pre-release-player-card-2026-10-10.png",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/PlayerCard.png",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח, מעטפת 1.1.33/1 וקוד מעודכן",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "כרטיס שחקן: אייקונים משמאל לפעולות חברות והודעה.",
+      "שינויים מקומיים מעל הקומיט; אין הוכחת בינארי פנימי חדש.",
+      "אנדרואיד בלבד; ללא כתיבה חיה, קורא מסך או בדיקת אייפון.",
+      "מחווני כלי הבדיקה עשויים להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "ab2d1e66eaf933ae4a3d2ede37f3c21d95d00e732bc570fc47c123094aab6107"
+  },
+  {
+    "file": "pre-release-notifications-top-2026-10-10.png",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/Notifications-top-fixed.png",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח, מעטפת 1.1.33/1 וקוד מעודכן",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "התראות: הרשאת מערכת חסומה, שורה נגישה יחידה; הכרטיס אינו מעומעם עם הצללה.",
+      "שינויים מקומיים מעל הקומיט; אין הוכחת בינארי פנימי חדש.",
+      "אנדרואיד בלבד; ללא כתיבה חיה, קורא מסך או בדיקת אייפון.",
+      "מחווני כלי הבדיקה עשויים להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "17701d2bc1c7be320995efbed1e6083a26506f0c373fe1ebd467cc126a2b3a7d"
+  },
+  {
+    "file": "pre-release-notifications-additional-2026-10-10.png",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/Notifications-additional-fixed.png",
+    "platform": "Android",
+    "environment": "אימולטור, נתוני הדגמה בפיתוח, מעטפת 1.1.33/1 וקוד מעודכן",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "מתגי התראות חדשים למחזור; תיאור ממוקד לכל סוג.",
+      "שינויים מקומיים מעל הקומיט; אין הוכחת בינארי פנימי חדש.",
+      "אנדרואיד בלבד; ללא כתיבה חיה, קורא מסך או בדיקת אייפון.",
+      "מחווני כלי הבדיקה עשויים להסתיר חלק קטן מהתוכן."
+    ],
+    "sha256": "c12fbaf8cf4adbdd811efa10c779aa8b6968c3233fef87d652dde29b4f1865ae"
+  },
+  {
+    "source": "artifacts/pre-release-2026-10-10/native-ra01/font130-match-tabs-final.png",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834+dirty",
+    "file": "MatchDetails-font130-2026-10-10.png",
+    "notes": [
+      "גופן130%; הגופן הוחזר1.0 לאחר הצילום",
+      "תלויות מקוריות נבנו מחדש ב־Gradle ל־x86_64; ללאprebuild",
+      "לא נבדק באייפון או במכשיר פיזי; ללא כתיבה חיה",
+      "אינו בינארי הגרסה הפנימית מהחנות"
+    ],
+    "captured": "2026-10-10",
+    "platform": "Android",
+    "sha256": "a48c3a13749609dfe9965e861907e736bbe9017705c89608262f878131492eaf",
+    "environment": "דמו בפיתוח; APK מקומי חדש עם תווית1.1.33/1"
+  },
+  {
+    "file": "landing-generic-390-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/generic-390.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "844df877c7b2ba37e6647723353edada1bd4161b847a1bed0ef4c3e08805332e"
+  },
+  {
+    "file": "landing-generic-1440-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/generic-1440.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "6cdb764717cbadc5c8d712bbd01e2e75f8b235d6b6610ccdc26bcd57962820c9"
+  },
+  {
+    "file": "landing-personal-390-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/personal-390.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "132230dbbc54034dc63f920a1624b682b22d89d519cf176769fe6f54c4bcf13f"
+  },
+  {
+    "file": "landing-personal-1440-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/personal-1440.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "0a4051e7bfdbe2e39f791d0af030d32a401910584c58200fbe9f1ae3457f1eb9"
+  },
+  {
+    "file": "landing-game-390-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/game-390.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "092b5f473638aeb9fc1f1430a730e34894e20eb010478506cf7cf9859870e2f8"
+  },
+  {
+    "file": "landing-game-1440-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/game-1440.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "6010945a37d74ed1c86a17a6e776031cdbdd3dacab8332b8c058768a3233d90e"
+  },
+  {
+    "file": "landing-community-390-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/community-390.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "5f8af7313ae2c39c0ae0fe4c50c86ee24a74cc77c3e558dbb3e2b8254a26139c"
+  },
+  {
+    "file": "landing-community-1440-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/community-1440.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "4e868d540a1982f7a5dbab807e8d31bcf52b5bdcb61920d30a3783985ec9f292"
+  },
+  {
+    "file": "landing-edge-personal-long-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/second-personal-long.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "80cf4bfecab0403b643d884179f147c0b48dd616b32704405e3ab5446a763e76"
+  },
+  {
+    "file": "landing-edge-personal-no-name-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/second-personal-no-name.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "027b37a3fb6bcb0dacd81b312a559fef591a471a4c56d14f3ca368b2185301a3"
+  },
+  {
+    "file": "landing-edge-live-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/second-live.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "f6d122799353c9073ae857ebf7abe6a9810038d5e308881bd2d9995721ff30fb"
+  },
+  {
+    "file": "landing-edge-failed-preview-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/landing-shots/second-failed-preview.png",
+    "platform": "Edge",
+    "environment": "אתר מקומי עם תשובות שרת מבוקרות",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "נתוני ההזמנה מדומים ורישום ביקורים חסום; לא הוכחת התקנה או מעבר אמיתי מחנות לאפליקציה.",
+      "צמצום תנועה פעיל בצילום; ההנפשה נבדקה בנפרד."
+    ],
+    "sha256": "68331b16a5c8f31a3cbcb92b0251abe209d8a60596352c06efb871c9abf9e95e"
+  },
+  {
+    "file": "pre-release-player-compare-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/copy-shots/PlayerCompare-metrics-final.png",
+    "platform": "Android",
+    "environment": "דמו מקומי במעטפת פיתוח 1.1.33/1",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי."
+    ],
+    "sha256": "c6ab0313bbc6cdedf990cc34f3e49c6d3a838b564d113a464d2f60d909651c10"
+  },
+  {
+    "file": "pre-release-duo-achievement-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/copy-shots/Achievements-duo.png",
+    "platform": "Android",
+    "environment": "דמו מקומי במעטפת פיתוח 1.1.33/1",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי."
+    ],
+    "sha256": "10985d2fd703b1d8d6bf8adaea497a6638c52a66be96703e741a83f823cb4a47"
+  },
+  {
+    "file": "pre-release-home-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/Home-final.png",
+    "platform": "Android",
+    "environment": "דמו מקומי במעטפת פיתוח 1.1.33/1",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי."
+    ],
+    "sha256": "2bacf2ae1148d75a054d979122853d3811bce6bee7f23112f6d3cc48cc6d2a35"
+  },
+  {
+    "file": "pre-release-manager-ratings-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/ManagerRatings-stable.png",
+    "platform": "Android",
+    "environment": "דמו מקומי במעטפת פיתוח 1.1.33/1",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי.",
+      "שכבת כלי הבדיקה מכסה חלק מפעולת הנתונים."
+    ],
+    "sha256": "da2f6d8a6968183a736f9635a6661dd266cb1728e33125737a36132d120f7e38"
+  },
+  {
+    "file": "pre-release-profile-edit-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/ProfileEdit.png",
+    "platform": "Android",
+    "environment": "דמו מקומי במעטפת פיתוח 1.1.33/1",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי."
+    ],
+    "sha256": "ba8ee4ceca9407ee5c5336b6c852bd623d7d1e0418819e1d44c78bf06fe05a39"
+  },
+  {
+    "file": "pre-release-player-card-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/PlayerCard.png",
+    "platform": "Android",
+    "environment": "דמו מקומי במעטפת פיתוח 1.1.33/1",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי."
+    ],
+    "sha256": "dea8174ab91f8b7de1fefa8b5fdef362070078d36a5b84b755ef787bd95e9a3a"
+  },
+  {
+    "file": "pre-release-notifications-top-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/Notifications-top-fixed.png",
+    "platform": "Android",
+    "environment": "דמו מקומי במעטפת פיתוח 1.1.33/1",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי."
+    ],
+    "sha256": "a0336cef3c11b5cd8cdf134ba49455833c255dff22508678cb2924a654dc7fc7"
+  },
+  {
+    "file": "pre-release-notifications-additional-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/design-shots/Notifications-additional-fixed.png",
+    "platform": "Android",
+    "environment": "דמו מקומי במעטפת פיתוח 1.1.33/1",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי."
+    ],
+    "sha256": "3e30697809226f75498ac7c90f386e2e86072e399eb451806db9c7d03f0c1540"
+  },
+  {
+    "file": "pre-release-tabs-font130-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/native-ra01/font130-match-tabs-final.png",
+    "platform": "Android",
+    "environment": "מעטפת בדיקה מקורית חדשה מקומית, נתוני דמו, גופן130%",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי.",
+      "APK נבנה מחדש מהתלויות הנוכחיות עם Fabric/Hermes, x86_64 בלבד. תווית הגרסה שנוצרה נותרה1.1.33/1; אין prebuild ואין הוכחת בינארי חנות. פרטי המקור ב־native-ra01/provenance.json."
+    ],
+    "sha256": "9312f89e77b4297d27bd1d8340cd4aba3d26875b6ec3d1f79fc0b27a056f45aa"
+  },
+  {
+    "file": "pre-release-chat-demo-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/native-ra01/guard-chat-normal.png",
+    "platform": "Android",
+    "environment": "מעטפת בדיקה מקורית חדשה מקומית, נתוני דמו, גופן100%",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי.",
+      "APK נבנה מחדש מהתלויות הנוכחיות עם Fabric/Hermes, x86_64 בלבד. תווית הגרסה שנוצרה נותרה1.1.33/1; אין prebuild ואין הוכחת בינארי חנות. פרטי המקור ב־native-ra01/provenance.json."
+    ],
+    "sha256": "f486bf72d1f94c18a8f30f8459b0ec91ea321ce1d2808d25e36ac37e6dfa02d0"
+  },
+  {
+    "file": "pre-release-error-after-retry-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/native-ra01/candidate-c-valid-after-retry.png",
+    "platform": "Android",
+    "environment": "אותו תהליך חזר לבית בלחיצה על נסה שוב אחרי שגיאה מבוקרת בדמו",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי.",
+      "APK נבנה מחדש מהתלויות הנוכחיות עם Fabric/Hermes, x86_64 בלבד. תווית הגרסה שנוצרה נותרה1.1.33/1; אין prebuild ואין הוכחת בינארי חנות. פרטי המקור ב־native-ra01/provenance.json.",
+      "הבדיקה הזריקה שגיאה בפיתוח ובנתוני דמו בלבד. ההזרקה הוסרה מהמקור לאחר הצילום; אין זה מסך או נתוני כשל מייצור."
+    ],
+    "sha256": "94d3052e7426de15d3a1c09d5fd7fb9b6c16d448101d21d1f1794d8696e7f4eb"
+  },
+  {
+    "file": "pre-release-error-recovery-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/native-ra01/fallback-rn-statusbar-visible.png",
+    "platform": "Android",
+    "environment": "מסך התאוששות משגיאה יזומה בדמו עם שורת מצב כהה דרך ממשק React Native הקיים באפליקציה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום רינדור בפועל; מקור a348b9f עם שינויים מקומיים. לא אתר שפורסם ולא בינארי חנות חדש.",
+      "Metro מעודכן, נתוני דמו ללא Firebase. אין פעולות כתיבה לחשבון אמיתי.",
+      "APK נבנה מחדש מהתלויות הנוכחיות עם Fabric/Hermes, x86_64 בלבד. תווית הגרסה שנוצרה נותרה1.1.33/1; אין prebuild ואין הוכחת בינארי חנות. פרטי המקור ב־native-ra01/provenance.json.",
+      "הבדיקה הזריקה שגיאה בפיתוח ובנתוני דמו בלבד. ההזרקה הוסרה מהמקור לאחר הצילום; אין זה מסך או נתוני כשל מייצור."
+    ],
+    "sha256": "669899fa38af6ecdc8b3cc940a02a5c065eaa30e6dbe484c6a42fc1cd3bdbd21"
+  },
+  {
+    "file": "MatchDetails-stale-end-controlled-2026-10-10.png",
+    "source": "artifacts\\pre-release-2026-10-10\\scroll-press\\repaired-round-first-tap.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח — ניסוי end חסר מבוקר",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "מעטפת Gradle מקומית 1.1.33/1, RN0.79.6, Screens4.11.1, Fabric, Metro8083; אינו בינארי חנות.",
+      "אירוע סיום תנופה הושמט בכוונה בספריית RN לצורך A/B, והוסר לאחר הניסוי.",
+      "לחיצה אמיתית יחידה החליפה לשונית לאחר גלילה; XML ויומן נמצאים לצד מקור הצילום.",
+      "אין הוכחה לסיבת השורש במכשיר המדווח או לאייפון; אין כתיבה בחשבון או בפולס."
+    ],
+    "sha256": "9b5869ccf459c4bb45b04ad909030701db92a8e57e7188008a2113313af2a53b"
+  },
+  {
+    "file": "CommunityDetails-stale-end-controlled-2026-10-10.png",
+    "source": "artifacts\\pre-release-2026-10-10\\scroll-press\\repaired-club-first-tap.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח — ניסוי end חסר מבוקר",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "מעטפת Gradle מקומית 1.1.33/1, RN0.79.6, Screens4.11.1, Fabric, Metro8083; אינו בינארי חנות.",
+      "אירוע סיום תנופה הושמט בכוונה בספריית RN לצורך A/B, והוסר לאחר הניסוי.",
+      "לחיצה אמיתית יחידה החליפה לשונית לאחר גלילה; XML ויומן נמצאים לצד מקור הצילום.",
+      "אין הוכחה לסיבת השורש במכשיר המדווח או לאייפון; אין כתיבה בחשבון או בפולס."
+    ],
+    "sha256": "46416bf07ef62ef59104756269fc8dc0d9c0089fd9a1d6223c56818e19478ff1"
+  },
+  {
+    "file": "CommunityPlayers-stale-end-controlled-2026-10-10.png",
+    "source": "artifacts\\pre-release-2026-10-10\\scroll-press\\roster-repaired-first-tap.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח — ניסוי end חסר מבוקר",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "מעטפת Gradle מקומית 1.1.33/1, RN0.79.6, Screens4.11.1, Fabric, Metro8083; אינו בינארי חנות.",
+      "אירוע סיום תנופה הושמט בכוונה בספריית RN לצורך A/B, והוסר לאחר הניסוי.",
+      "לחיצה אמיתית יחידה החליפה לשונית לאחר גלילה; XML ויומן נמצאים לצד מקור הצילום.",
+      "אין הוכחה לסיבת השורש במכשיר המדווח או לאייפון; אין כתיבה בחשבון או בפולס."
+    ],
+    "sha256": "6c7cd4698f2df049ff91ff74a0339cfe9a64e7877032c0fc67507c8dc0f31523"
+  },
+  {
+    "file": "MatchDetails-scroll-first-tap-clean-2026-10-10.png",
+    "source": "artifacts\\pre-release-2026-10-10\\scroll-press\\clean-round-first-tap.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח — מקור נקי לאחר הסרת ניסוי",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "מעטפת Gradle מקומית 1.1.33/1, RN0.79.6, Screens4.11.1, Fabric, Metro8083; אינו בינארי חנות.",
+      "RN שוחזר בבתים ובחתימה, ותצרף נקי מסימני הזרקה הוכח לפני הרצה זו.",
+      "גלילה לעומק וחזרה/עצירה ואז לחיצה יחידה עברה לסטטיסטיקות; נבדק צילום ו־XML selected.",
+      "מחזור בדיקת12משחקונים מציג סטטיסטיקות לא זמינות בכוונה לפי נתוני הדמו; הבדיקה היא תגובת הלשונית בלבד.",
+      "אין הוכחה לסיבת השורש בטלפון המדווח או לאייפון; שני הדיווחים נשארים פתוחים."
+    ],
+    "sha256": "eab222a6807e391fc350d48ca4822b09a81a177be2d2f08b4769dfb20e3d1a1d"
+  },
+  {
+    "file": "CommunityPlayers-scroll-first-tap-clean-2026-10-10.png",
+    "source": "artifacts\\pre-release-2026-10-10\\scroll-press\\clean-roster-first-tap.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח — מקור נקי לאחר הסרת ניסוי",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "מעטפת Gradle מקומית 1.1.33/1, RN0.79.6, Screens4.11.1, Fabric, Metro8083; אינו בינארי חנות.",
+      "RN שוחזר בבתים ובחתימה, ותצרף נקי מסימני הזרקה הוכח לפני הרצה זו.",
+      "גלילה לעומק וחזרה/עצירה ואז לחיצה יחידה עברה לסטטיסטיקות; נבדק צילום ו־XML selected.",
+      "אין הוכחה לסיבת השורש בטלפון המדווח או לאייפון; שני הדיווחים נשארים פתוחים."
+    ],
+    "sha256": "261740269d20945c71cd35214282dc0a587487923f24a5ad61a25776904349da"
+  },
+  {
+    "file": "pulse-link-counts-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/pulse-link-counts/pulse-link-counts-2026-10-10.png",
+    "platform": "Android",
+    "environment": "פולס1.0.89/96 — חבילת שחרור מקומית חתומה, קריאה חיה בלבד באימולטור",
+    "sourceCommit": "0c67078164b8f0995c37ebef8b271fbafe21ef85+dirty",
+    "captured": "2026-10-10",
+    "notes": [
+      "עדכון install-r מעל1.0.88/95, מועד ההתקנה הראשון והנתונים נשמרו",
+      "קישורU5tUXbaG: ארבע פתיחות ואפס חשבונות מיוחסים; שמונה היסטוריים ברקע דוח המקור בלבד",
+      "ללא יצירת קישור, שיתוף, מחיקה או שינוי יזום לנתוני מסד",
+      "גופן מערכת1.0, אמולטור1080x2400; אין בדיקת מכשיר פיזי או אייפון"
+    ],
+    "sha256": "d5223cac5c781d0db631103cae4b01456da08ace2c688e9d6edecb2d1e80c514"
+  },
+  {
+    "file": "pre-release-scroll-tap-recovery-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/scroll-press/clean-roster-first-tap.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח — מקור נקי לאחר הסרת ניסוי",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "מעטפת Gradle מקומית 1.1.33/1, RN0.79.6, Screens4.11.1, Fabric, Metro8083; אינו בינארי חנות.",
+      "RN שוחזר בבתים ובחתימה, ותצרף נקי מסימני הזרקה הוכח לפני הרצה זו.",
+      "גלילה לעומק וחזרה/עצירה ואז לחיצה יחידה עברה לסטטיסטיקות; נבדק צילום ו־XML selected.",
+      "אין הוכחה לסיבת השורש בטלפון המדווח או לאייפון; שני הדיווחים נשארים פתוחים."
+    ],
+    "sha256": "fb96c5c0e4d5b14271a3bab801e8b4480a85efc03cd0c1a2cb699a88666362fd"
+  },
+  {
+    "file": "landing-smart-cta-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/live-landing/generic-390.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "לוגו מקורי בכותרת וכפתור ראשי חכם יחיד; כפתור כבר התקנתם הוסר לפי בקשת הבעלים.",
+      "צילום תצוגה; פתיחת אפליקציה/חלופה נבדקו בנפרד בקוד ובמשטח דפדפן מבוקר."
+    ],
+    "sha256": "003df68d53bebed2ee52a51f2ec9011bd58f47fefb13f3197cec7a59ff210be7"
+  },
+  {
+    "file": "legal-privacy-390-top-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/privacy-390-top.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "06bb054626d96817430ac848ec4c5b26ed094968f04589936d9967e51933088b"
+  },
+  {
+    "file": "legal-privacy-390-section-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/privacy-390-section.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "55a2b0e5ddc24c5e1a55bfb026bfe7d40c3480e159c5b1f4208d529de4dc1685"
+  },
+  {
+    "file": "legal-privacy-390-footer-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/privacy-390-footer.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "785bec5b5c85ed6735a942fa8bdfb85271de332c6ac0c7739013ba00270c74b8"
+  },
+  {
+    "file": "legal-privacy-1440-top-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/privacy-1440-top.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "da70627363f2502533baa6a206a16fb24d4230d14040c6e32705856cb5bc957a"
+  },
+  {
+    "file": "legal-privacy-1440-section-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/privacy-1440-section.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "0f8b4abee110f26ad60d6f75dad07f00a11d7d9de65c8054503aeb9cc40b37de"
+  },
+  {
+    "file": "legal-privacy-1440-footer-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/privacy-1440-footer.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "14b3163371fc3c18bbfd905d819f94f008f268244e5c0956f079b4c8142994b8"
+  },
+  {
+    "file": "legal-terms-390-top-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/terms-390-top.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "94c57c3340e00b9af98109feca85a5d4eeb960b6399ae1a844ced8c79fc978a9"
+  },
+  {
+    "file": "legal-terms-390-section-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/terms-390-section.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "0ea7d1401c608b914e9b5860a5779db129b59061f870746a6394935b9987582e"
+  },
+  {
+    "file": "legal-terms-390-footer-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/terms-390-footer.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "602fb34ae0f5dda530375506d098d64427aa1829c835ab8fdaa85dd8565212f5"
+  },
+  {
+    "file": "legal-terms-1440-top-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/terms-1440-top.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "e6c571570913fd48275a987514bc4580b8a55c3d21fdc178866432138c5e9975"
+  },
+  {
+    "file": "legal-terms-1440-section-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/terms-1440-section.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "d28f365f328f4ead4f7be9bbd4f7f4428c257e217096523fe214ad5a2f973322"
+  },
+  {
+    "file": "legal-terms-1440-footer-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/terms-1440-footer.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "17857eddb8813cfa470d5767bb42e5559a8f4a4d57c945693872df1999492879"
+  },
+  {
+    "file": "legal-delete-account-390-top-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/delete-account-390-top.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "567f1c81445038f9296f271024754476ffe8495a0836d3565c24212b9d24a00e"
+  },
+  {
+    "file": "legal-delete-account-390-section-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/delete-account-390-section.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "0c8d87eafdc85c23a84b862d442961fccb698e9662f8c190a01289d2d250433f"
+  },
+  {
+    "file": "legal-delete-account-390-footer-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/delete-account-390-footer.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "215af7a467c1f9880ad574c5c0e0c296a126019e0225cfdda6d4bfea93849cb3"
+  },
+  {
+    "file": "legal-delete-account-1440-top-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/delete-account-1440-top.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "f551c99fffaa611fb4737b3cf15e7fe56dc60c71dae67423971dff03ff6441fe"
+  },
+  {
+    "file": "legal-delete-account-1440-section-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/delete-account-1440-section.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "c33ec110233ee19a9e53e71eb34e2fec0b54f51152b6b42df22b950403160676"
+  },
+  {
+    "file": "legal-delete-account-1440-footer-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/legal-live/delete-account-1440-footer.png",
+    "platform": "Web",
+    "environment": "אתר חי — Edge, תנועה מצומצמת; ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום אתר חי בכתובת teamderfc; שתי הכתובות נבדקו ברוחבים320/390/768/1440.",
+      "כל מלל המדיניות המקורי נשמר בהשוואת תוכן; תאריכי התוכן לא הוחלפו בתאריך העיצוב.",
+      "נבדקו קישורים ותוכן עניינים; אין טענה לאימות משפטי, ולא בוצעה מחיקת חשבון."
+    ],
+    "sha256": "c33ec110233ee19a9e53e71eb34e2fec0b54f51152b6b42df22b950403160676"
+  },
+  {
+    "file": "landing-live-generic-390-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/live-landing/generic-390.png",
+    "platform": "Web",
+    "environment": "אתר חי — דפדפן Edge, תנועה מצומצמת, ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום בפועל מ־https://teamderfc.web.app ברוחב 390; נתוני תצוגה ציבוריים מהשרת",
+      "ארבעה מצבים נבדקו גם בכתובת השנייה; זוהי תצוגת דפדפן, ללא התקנה מחנות",
+      "קריאות מדידה נחסמו כדי לשמור את מוני הקישורים; קוד הזמנה תקף נפתר בקריאה בלבד",
+      "תמונות אווירה חדשות באותה שפה; אין טענת זהות פיקסלים לסקיצה"
+    ],
+    "sha256": "003df68d53bebed2ee52a51f2ec9011bd58f47fefb13f3197cec7a59ff210be7"
+  },
+  {
+    "file": "landing-live-generic-1440-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/live-landing/generic-1440.png",
+    "platform": "Web",
+    "environment": "אתר חי — דפדפן Edge, תנועה מצומצמת, ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום בפועל מ־https://teamderfc.web.app ברוחב 1440; נתוני תצוגה ציבוריים מהשרת",
+      "ארבעה מצבים נבדקו גם בכתובת השנייה; זוהי תצוגת דפדפן, ללא התקנה מחנות",
+      "קריאות מדידה נחסמו כדי לשמור את מוני הקישורים; קוד הזמנה תקף נפתר בקריאה בלבד",
+      "תמונות אווירה חדשות באותה שפה; אין טענת זהות פיקסלים לסקיצה"
+    ],
+    "sha256": "9a635eeb068a845eafd0bb644a6300c6e76b933fe04c86c891b87cc70220e787"
+  },
+  {
+    "file": "landing-live-personal-390-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/live-landing/personal-390.png",
+    "platform": "Web",
+    "environment": "אתר חי — דפדפן Edge, תנועה מצומצמת, ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום בפועל מ־https://teamderfc.web.app ברוחב 390; נתוני תצוגה ציבוריים מהשרת",
+      "ארבעה מצבים נבדקו גם בכתובת השנייה; זוהי תצוגת דפדפן, ללא התקנה מחנות",
+      "קריאות מדידה נחסמו כדי לשמור את מוני הקישורים; קוד הזמנה תקף נפתר בקריאה בלבד",
+      "תמונות אווירה חדשות באותה שפה; אין טענת זהות פיקסלים לסקיצה"
+    ],
+    "sha256": "808f8a62704b9d4de27fc9750b36af7041e7d9f71203dffd9d8fabdc43d989cd"
+  },
+  {
+    "file": "landing-live-personal-1440-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/live-landing/personal-1440.png",
+    "platform": "Web",
+    "environment": "אתר חי — דפדפן Edge, תנועה מצומצמת, ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום בפועל מ־https://teamderfc.web.app ברוחב 1440; נתוני תצוגה ציבוריים מהשרת",
+      "ארבעה מצבים נבדקו גם בכתובת השנייה; זוהי תצוגת דפדפן, ללא התקנה מחנות",
+      "קריאות מדידה נחסמו כדי לשמור את מוני הקישורים; קוד הזמנה תקף נפתר בקריאה בלבד",
+      "תמונות אווירה חדשות באותה שפה; אין טענת זהות פיקסלים לסקיצה"
+    ],
+    "sha256": "694b00bdf126f100829d7b4f4cb65075d2812a962b98f9a578314b1f7dc672dd"
+  },
+  {
+    "file": "landing-live-game-390-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/live-landing/game-390.png",
+    "platform": "Web",
+    "environment": "אתר חי — דפדפן Edge, תנועה מצומצמת, ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום בפועל מ־https://teamderfc.web.app ברוחב 390; נתוני תצוגה ציבוריים מהשרת",
+      "ארבעה מצבים נבדקו גם בכתובת השנייה; זוהי תצוגת דפדפן, ללא התקנה מחנות",
+      "קריאות מדידה נחסמו כדי לשמור את מוני הקישורים; קוד הזמנה תקף נפתר בקריאה בלבד",
+      "תמונות אווירה חדשות באותה שפה; אין טענת זהות פיקסלים לסקיצה"
+    ],
+    "sha256": "7dde1c379acae77ba3b23a25bedd51951c9a72a87eb84ec26a7a5929f04cf3a4"
+  },
+  {
+    "file": "landing-live-game-1440-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/live-landing/game-1440.png",
+    "platform": "Web",
+    "environment": "אתר חי — דפדפן Edge, תנועה מצומצמת, ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום בפועל מ־https://teamderfc.web.app ברוחב 1440; נתוני תצוגה ציבוריים מהשרת",
+      "ארבעה מצבים נבדקו גם בכתובת השנייה; זוהי תצוגת דפדפן, ללא התקנה מחנות",
+      "קריאות מדידה נחסמו כדי לשמור את מוני הקישורים; קוד הזמנה תקף נפתר בקריאה בלבד",
+      "תמונות אווירה חדשות באותה שפה; אין טענת זהות פיקסלים לסקיצה"
+    ],
+    "sha256": "0e6aa15e95ddec8f2c409a07973b23bacb9572bd6f4712c1e55ec8884fa47f4e"
+  },
+  {
+    "file": "landing-live-community-390-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/live-landing/community-390.png",
+    "platform": "Web",
+    "environment": "אתר חי — דפדפן Edge, תנועה מצומצמת, ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום בפועל מ־https://teamderfc.web.app ברוחב 390; נתוני תצוגה ציבוריים מהשרת",
+      "ארבעה מצבים נבדקו גם בכתובת השנייה; זוהי תצוגת דפדפן, ללא התקנה מחנות",
+      "קריאות מדידה נחסמו כדי לשמור את מוני הקישורים; קוד הזמנה תקף נפתר בקריאה בלבד",
+      "תמונות אווירה חדשות באותה שפה; אין טענת זהות פיקסלים לסקיצה"
+    ],
+    "sha256": "94595b9ebf983bbe4e8a0e6d484a0b3c771f1167279867d15d6f6afda3bf5966"
+  },
+  {
+    "file": "landing-live-community-1440-2026-10-10.jpg",
+    "source": "artifacts/pre-release-2026-10-10/live-landing/community-1440.png",
+    "platform": "Web",
+    "environment": "אתר חי — דפדפן Edge, תנועה מצומצמת, ללא אירועי מדידה",
+    "sourceCommit": "a348b9f235f1e1433497600555303231512a0834 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום בפועל מ־https://teamderfc.web.app ברוחב 1440; נתוני תצוגה ציבוריים מהשרת",
+      "ארבעה מצבים נבדקו גם בכתובת השנייה; זוהי תצוגת דפדפן, ללא התקנה מחנות",
+      "קריאות מדידה נחסמו כדי לשמור את מוני הקישורים; קוד הזמנה תקף נפתר בקריאה בלבד",
+      "תמונות אווירה חדשות באותה שפה; אין טענת זהות פיקסלים לסקיצה"
+    ],
+    "sha256": "7b52e829e6ac7ddb287a052aad73e8eb4d20494cdef49fb4a076d9638dc74957"
   }
 ]

@@ -211,6 +211,9 @@ export function ChatView({
     };
   }, [me?.id, scope, parentId]);
 
+  // The query keeps a sliding window of 100: count alone stops changing.
+  const latestMessageId = messages[messages.length - 1]?.id;
+
   // Opening the chat (and reading new messages while open) clears my
   // unread counter for it — which also re-arms the "one push" for the
   // next message — and stamps my read position so others see I'm caught up.
@@ -218,7 +221,7 @@ export function ChatView({
     if (!me || denied) return;
     chatService.markChatRead(me.id, scope, parentId).catch(() => {});
     chatService.writeReadReceipt(scope, parentId, me).catch(() => {});
-  }, [me?.id, scope, parentId, denied, messages.length]);
+  }, [me?.id, scope, parentId, denied, latestMessageId]);
 
   // Mark this chat as the foreground-active one while it's focused, so an
   // incoming push for THIS chat is suppressed (no banner for the conversation
@@ -245,7 +248,7 @@ export function ChatView({
       listRef.current?.scrollToEnd({ animated: !reduced });
     }, 80);
     return () => clearTimeout(t);
-  }, [messages.length, reduced]);
+  }, [latestMessageId, reduced]);
 
   const send = async () => {
     const text = draft.trim();

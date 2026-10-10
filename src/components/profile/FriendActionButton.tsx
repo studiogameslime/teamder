@@ -149,6 +149,19 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
         rel === 'outgoing' ? he.friendsCancelRequest : label
       }
     >
+      <Text
+        numberOfLines={1}
+        style={[
+          styles.label,
+          rel === 'outgoing'
+            ? styles.labelPending
+            : interactive
+              ? styles.labelActive
+              : styles.labelMuted,
+        ]}
+      >
+        {label}
+      </Text>
       {busy ? (
         <ActivityIndicator
           size="small"
@@ -173,19 +186,6 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
           }
         />
       )}
-      <Text
-        numberOfLines={1}
-        style={[
-          styles.label,
-          rel === 'outgoing'
-            ? styles.labelPending
-            : interactive
-              ? styles.labelActive
-              : styles.labelMuted,
-        ]}
-      >
-        {label}
-      </Text>
     </Pressable>
   );
 }

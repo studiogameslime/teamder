@@ -149,7 +149,8 @@ describe('choosing something other than the invitation', () => {
 
   it('suppresses the auto-consume that would drag them to the target', () => {
     expect(store).toContain("suppressAutoConsume: intent !== 'invite'");
-    expect(nav).toContain('useEntryStore.getState().suppressAutoConsume');
+    expect(nav).toContain('if (suppressAutoConsume)');
+    expect(nav).toContain('canNavigateInvitation(currentUser.id, viewerIsGuest)');
   });
 
   it('but leaves the stash alone, so attribution still lands at signup', () => {

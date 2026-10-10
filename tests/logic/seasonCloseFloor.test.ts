@@ -12,12 +12,9 @@
 // season was created and not when it was sealed, so it was only ever a
 // suggestion about the future.
 
-// `seasonService` reaches react-native through errorLog. Same stub the other
-// logic tests that cross a service boundary use.
-jest.mock('react-native', () => ({ Appearance: {}, Platform: { OS: 'android' } }), {
-  virtual: true,
-});
-jest.mock('expo-constants', () => ({ default: { expoConfig: {} } }), { virtual: true });
+// Test refusal wording, not native error delivery/storage. Stub that boundary
+// rather than creating a virtual copy of the installed react-native module.
+jest.mock('@/services/errorLog', () => ({ logError: jest.fn() }));
 
 import { MIN_SEASON_ROUNDS } from '@/utils/seasonActivation';
 import { seasonRefusalText } from '@/services/seasonService';

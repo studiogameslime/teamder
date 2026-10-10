@@ -1,3 +1,5 @@
+import { publicInviterFields, publicGameFields, publicCover, previewId } from './invitePreviewFields';
+import { clubReminderEligibility } from './clubRegistrationReminder';
 // Cloud Functions consumer for the /notifications outbound queue + a
 // scheduled reminder job for upcoming games.
 //
@@ -30,7 +32,10 @@ import {
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { StatBatch, MAX_ROUND_BATCH_OPS } from './statBatch';
 import { commitRoundInOrder } from './commitProtocol';
+import { liveRoundKey, matchesLiveRound } from './liveRoundCommit';
+import { decideSpotOffer } from './spotOfferDecision';
 import { eveningScoreServer } from './eveningScoreCore';
+import { readGameEveningScores, EveningScoresAccessError } from './gameEveningScores';
 import { occupancyOf, inFillerQuietHours } from './fillerRules';
 import { promoteWaitingGuests } from './guestPromotion';
 import { closeSeason, reopenSeason } from './seasonRollover';
@@ -1568,15 +1573,9 @@ async function deliverBatch(
   // toggle — without this map a user who turned that toggle OFF still got the
   // pushes (the gate looked up a non-existent 'approved'/'rejected' key).
   //
-  // 'seasonSummary' and 'eveningSummary' take the 1:1 branch, i.e. the keys
-  // `seasonSummary` and `eveningSummary`. That is the contract the client must
-  // ship the toggles under — and it is not honoured end-to-end yet: neither key
-  // is in `defaultNotificationPrefs`, and `readNotificationPrefs` rebuilds the
-  // object from that list, so a stored `seasonSummary: false` is dropped on
-  // read and can never be written back. Until those land, the gate below is
-  // dead for both — which matters most for seasonSummary, the one type that
-  // deliberately ignores the dormant cutoff and so pushes people who have not
-  // opened the app in three weeks with no switch anywhere in the app.
+  // seasonSummary/eveningSummary use their own preference keys, now present
+  // in the client defaults, converter and settings toggles. Keep these keys
+  // aligned with the client so an explicitly stored false remains effective.
   const prefKey =
     type === 'approved' || type === 'rejected'
       ? 'approvedRejected'
@@ -4752,11 +4751,27 @@ async function isPersonalGroup(groupId: string): Promise<boolean> {
   return personal;
 }
 
+/** Bind season-scoped writes to the season read at the last possible moment.
+ *  A concurrent season close changes the group update time and rejects the
+ *  whole batch. A retry can never credit an old evening to a new season. */
+async function guardFinishSeasonBatch(
+  batch: admin.firestore.WriteBatch,
+  groupId: string,
+  seasonId?: string,
+): Promise<void> {
+  const ref = db.collection('groups').doc(groupId);
+  const snapshot = await ref.get();
+  if (!snapshot.exists) throw new HttpsError('not-found', 'community missing');
+  assertSeasonOpenForGame(snapshot.data(), { seasonId });
+  batch.update(ref, { updatedAt: Date.now() }, { lastUpdateTime: snapshot.updateTime! });
+}
+
 async function rollUpClubPairs(args: {
   gameId: string;
   groupId: string;
   at: number;
   rounds: ChemistryRound[];
+  seasonId?: string;
 }): Promise<number> {
   const { gameId, groupId, at, rounds } = args;
   if (!groupId || rounds.length === 0) return 0;
@@ -4776,26 +4791,26 @@ async function rollUpClubPairs(args: {
   }
 
   const pairs = pairsFromRounds(rounds);
-  const entries = Object.entries(pairs);
+  const entries = Object.entries(pairs).sort(([a], [b]) => a.localeCompare(b));
   if (entries.length === 0) return 0;
 
   const inc = admin.firestore.FieldValue.increment;
   const now = Date.now();
-  // 450, not 500: the marker rides in the first chunk and Firestore counts
-  // every operation, so leaving headroom is cheaper than discovering the
+  // 450, not 500: each chunk carries its own marker and season-version guard.
+  // Every operation counts, so leaving headroom is cheaper than discovering the
   // ceiling on the one evening a club fields eleven a side.
   const CHUNK = 450;
   for (let i = 0; i < entries.length; i += CHUNK) {
+    const chunkRef = markerRef.collection('chunks').doc(String(i / CHUNK));
+    if ((await chunkRef.get()).exists) continue;
     const batch = db.batch();
-    if (i === 0) {
-      batch.create(markerRef, {
+      batch.create(chunkRef, {
         groupId,
         gameId,
         at,
         pairs: entries.length,
         createdAt: now,
       });
-    }
     for (const [key, v] of entries.slice(i, i + CHUNK)) {
       const [a, b] = pairMembers(key);
       batch.set(
@@ -4818,7 +4833,12 @@ async function rollUpClubPairs(args: {
         { merge: true },
       );
     }
-    await batch.commit();
+    await guardFinishSeasonBatch(batch, groupId, args.seasonId);
+    try { await batch.commit(); }
+    catch (error) {
+      const code = (error as { code?: unknown }).code;
+      if (code !== 6 && code !== 'already-exists') throw error;
+    }
   }
 
   // The window these counters cover, held in ONE place so every pair card in
@@ -4834,6 +4854,13 @@ async function rollUpClubPairs(args: {
   const since = cs2.data()?.chemistrySince;
   if (typeof since !== 'number' || since <= 0 || at < since) {
     await csRef2.set({ chemistrySince: at, updatedAt: now }, { merge: true });
+  }
+  // This is a completion marker, never a marker for just the FIRST chunk.
+  // Each chunk's increments are already protected by its own atomic create.
+  try { await markerRef.create({ groupId, gameId, at, pairs: entries.length, createdAt: now }); }
+  catch (error) {
+    const code = (error as { code?: unknown }).code;
+    if (code !== 6 && code !== 'already-exists') throw error;
   }
 
   console.log(
@@ -4851,10 +4878,9 @@ async function rollUpClubPairs(args: {
  * read away; the judgement — what counts as a record, what is worth telling —
  * lives in `roundSummary.ts`, which the phone shares byte-for-byte.
  *
- * WRITE ORDER MATTERS. The summary is written FIRST and the record baseline
- * only afterwards: the summary asks "is this better than what came before", and
- * raising the baseline first would make every record look like it had merely
- * been equalled.
+ * Compute against the PREVIOUS baseline, then write the summary and new
+ * baseline/counters in one create-latched batch. Updating the baseline before
+ * computing the story would turn a new record into merely an equal one.
  */
 /**
  * The club's season block, as the seal and the close-on-seal check read it.
@@ -5221,17 +5247,14 @@ async function sealRoundSummary(args: {
     now: Date.now(),
   });
 
-  await summaryRef.create({
-    ...(summary as unknown as admin.firestore.DocumentData),
-    // Carried on the document so the screen can say why the evening has no
-    // records and no movement, instead of reading as a night where nothing
-    // happened. Nothing renders it yet — see the note in the handover.
-    ...(lateConfirmation ? { lateConfirmation: true } : {}),
-  });
-
-  // ── and only NOW does the baseline move ──
+  // Summary, baseline, season mirror and player bests are ONE create-latched
+  // batch. A failure leaves none of them written; a retry can finish safely.
   const next = nextRecordBaseline(baseline, summary, players);
   const batch = db.batch();
+  batch.create(summaryRef, {
+    ...(summary as unknown as admin.firestore.DocumentData),
+    ...(lateConfirmation ? { lateConfirmation: true } : {}),
+  });
   batch.set(
     db.collection('clubRecords').doc(groupId),
     {
@@ -5251,8 +5274,8 @@ async function sealRoundSummary(args: {
       // club playing two games in a night, or draining a backlog after an
       // outage, hits exactly this.
       //
-      // Safe to increment because `summaryRef.create()` above throws if the
-      // evening was already sealed, so this batch runs at most once per game.
+      // The summary's create-only write is INSIDE this same batch: a second
+      // seal rejects the increments too, without an inter-write crash window.
       eveningsSealed: admin.firestore.FieldValue.increment(1),
       since: typeof rec.since === 'number' ? rec.since : args.at,
       // The newest evening the club has SEALED, by when it was played rather
@@ -5312,7 +5335,14 @@ async function sealRoundSummary(args: {
       { merge: true },
     );
   }
-  await batch.commit();
+  await guardFinishSeasonBatch(batch, groupId, args.seasonId);
+  try {
+    await batch.commit();
+  } catch (error) {
+    const code = (error as { code?: unknown }).code;
+    if (code === 6 || code === 'already-exists') return;
+    throw error;
+  }
   console.log(
     `[roundSummary] sealed ${gameId}: ${summary.stats.rounds} mini-games, ` +
       `${summary.stats.goals} goals, ${summary.events.length} event(s)`,
@@ -5355,7 +5385,7 @@ async function sealRoundSummary(args: {
 }
 
 export const onGameRosterChanged = onDocumentWritten(
-  'games/{gameId}',
+  { document: 'games/{gameId}', retry: true },
   async (event) => {
     const before = event.data?.before?.data() as
       | {
@@ -5947,13 +5977,19 @@ export const onGameRosterChanged = onDocumentWritten(
     const wasHappened = didEveningHappen(before as PlayableEvening | undefined);
     const isHappened = didEveningHappen(after as PlayableEvening);
     if (
-      !wasHappened &&
       isHappened &&
       after.groupId &&
       Array.isArray(after.players) &&
-      after.players.length > 0
+      after.players.length > 0 &&
+      (!wasHappened || !(await event.data!.after.ref.collection('finishStages').doc('complete').get()).exists)
     ) {
       const gid = after.groupId;
+      const attendanceAlreadyDone = (await event.data!.after.ref.collection('finishCredited').doc('once').get()).exists;
+      if (!attendanceAlreadyDone) {
+        // A genuinely new credit may never land in a subsequently opened
+        // season. Recovery of already committed stages remains read/idempotent.
+        assertSeasonOpenForGame((await groupOnce()).data(), after as unknown as Record<string, unknown>);
+      }
       // Exclude no-shows — the same rule the attendance‑based counts use
       // (isAttendedGame / avgAttendance / attendedTogether). Without this, the
       // community "games played" column + the 'הכי נאמן' (most‑loyal) leader
@@ -5961,13 +5997,8 @@ export const onGameRosterChanged = onDocumentWritten(
       // the player's own Statistics screen (which strips no‑shows).
       const arrivals =
         (after.arrivals as Record<string, string> | undefined) ?? {};
-      // Latched so the evening-standings block below runs EXACTLY once per
-      // game (a redelivered finish event fails the games batch on the
-      // finishCredited latch → creditedNow stays false → standings skip,
-      // avoiding a double `lastEveningScore` overwrite that would zero the
-      // next delta). Declared OUTSIDE the games try so the standings block
-      // after the catch can still read gid/arrivals/creditedNow.
-      let creditedNow = false;
+      // Each additive stage owns its atomic latch. Attendance being done must
+      // never prevent an unfinished standings/summary/pairs stage from retrying.
       try {
         const batch = db.batch();
         for (const uid of after.players) {
@@ -5995,8 +6026,11 @@ export const onGameRosterChanged = onDocumentWritten(
             .doc('once'),
           { at: Date.now() },
         );
+        if (!attendanceAlreadyDone) {
+          await guardFinishSeasonBatch(batch, gid,
+            (after as { seasonId?: string }).seasonId || stampedSeasonId || undefined);
+        }
         await batch.commit();
-        creditedNow = true;
       } catch (err) {
         const code = (err as { code?: number | string }).code;
         if (code === 6 || code === 'already-exists') {
@@ -6004,21 +6038,24 @@ export const onGameRosterChanged = onDocumentWritten(
             '[onGameRosterChanged] games already credited — skip (redelivery)',
             event.params.gameId,
           );
-        } else
-        console.error(
-          '[onGameRosterChanged] games tally failed',
-          event.params.gameId,
-          err,
-        );
+        } else {
+          console.error(
+            '[onGameRosterChanged] games tally failed',
+            event.params.gameId,
+            err,
+          );
+          throw err;
+        }
       }
 
       // ── Evening standings: score delta + community rank movement ─────
-      // Runs ONCE per game (creditedNow), AFTER the games credit — the ranking
-      // metric (points = goals×2 + assists) is already final from
+      // Runs after attendance. Its own create-only batch latch keeps ranking
+      // increments exactly once while allowing the following stages to resume.
+      // The ranking metric (points = goals×2 + assists) is already final from
       // commitRoundStats, so ranks read here are the finalised ones (the user's
       // timing requirement). Stored per player at eveningStandings/{game__uid}
       // so the summary card reads ONE doc instead of re-ranking client-side.
-      if (creditedNow) {
+      {
         try {
           const num = (v: unknown) =>
             typeof v === 'number' && Number.isFinite(v) ? v : 0;
@@ -6358,6 +6395,27 @@ export const onGameRosterChanged = onDocumentWritten(
               : Date.now();
 
           const standingBatch = db.batch();
+          const standingsLatch = event.data!.after.ref.collection('finishStages').doc('standings');
+          let standingsAlreadyDone = (await standingsLatch.get()).exists;
+          if (!standingsAlreadyDone) {
+            // Older deployments wrote standings atomically but had no stage
+            // marker. Recognise those rows without applying sums a second time.
+            const legacyRows = await Promise.all(attendees.map(userId =>
+              db.collection('eveningStandings').doc(`${event.params.gameId}__${userId}`).get()));
+            if (legacyRows.length > 0 && legacyRows.every(row => row.exists)) {
+              try { await standingsLatch.create({ at: Date.now(), legacy: true, hadPointsTable }); }
+              catch (error) {
+                const code = (error as { code?: unknown }).code;
+                if (code !== 6 && code !== 'already-exists') throw error;
+              }
+              standingsAlreadyDone = true;
+            }
+          }
+          if (!standingsAlreadyDone) {
+            const seasonGroup = await groupOnce();
+            assertSeasonOpenForGame(seasonGroup.data(), after as unknown as Record<string, unknown>);
+          }
+          standingBatch.create(standingsLatch, { at: Date.now(), hadPointsTable });
           for (const uid of attendees) {
             const e = evStat[uid];
             const score = eveningScore(
@@ -6508,8 +6566,72 @@ export const onGameRosterChanged = onDocumentWritten(
             },
             { merge: true },
           );
-          await standingBatch.commit();
+          if (!standingsAlreadyDone) {
+            try {
+              await guardFinishSeasonBatch(standingBatch, gid,
+                (after as { seasonId?: string }).seasonId || stampedSeasonId || undefined);
+              await standingBatch.commit();
+            } catch (error) {
+              const code = (error as { code?: unknown }).code;
+              if (code !== 6 && code !== 'already-exists') throw error;
+            }
+          }
+          // On recovery, use the ORIGINAL immutable score/rank/delta rows,
+          // not values recalculated from a table that already includes them.
+          const sealedStandings = await Promise.all(attendees.map(async userId => {
+            const row = await db.collection('eveningStandings').doc(`${event.params.gameId}__${userId}`).get();
+            const value = row.data()!;
+            return { userId, score: value.score as number, rank: value.rank as number | null,
+              rankTotal: value.rankTotal as number | null, rankDelta: value.rankDelta as number | null };
+          }));
 
+          // ── Club chemistry: fold the evening into the pair rollup ───────
+          // Separate try and separate batches from everything above: this is
+          // the one write path whose size grows with the SQUARE of the team,
+          // and it must never be able to take the round's statistics with it.
+          try {
+            const rhSnap2 = await db
+              .collection('games')
+              .doc(event.params.gameId)
+              .collection('roundHistory')
+              .get();
+            const rounds2: ChemistryRound[] = rhSnap2.docs
+              .map((d) => d.data() as Record<string, unknown>)
+              .map((r) => ({
+                teamA: Array.isArray(r.teamA) ? (r.teamA as string[]) : [],
+                teamB: Array.isArray(r.teamB) ? (r.teamB as string[]) : [],
+                scoreA: num(r.scoreA),
+                scoreB: num(r.scoreB),
+                winnerSide:
+                  r.winnerSide === 'A' || r.winnerSide === 'B'
+                    ? r.winnerSide
+                    : ('tie' as const),
+                goals: Array.isArray(r.goals)
+                  ? (r.goals as Record<string, unknown>[]).map((g) => ({
+                      scorerId: typeof g.scorerId === 'string' ? g.scorerId : null,
+                      assisterId:
+                        typeof g.assisterId === 'string' ? g.assisterId : null,
+                      ownGoal: g.ownGoal === true,
+                    }))
+                  : [],
+              }));
+            await rollUpClubPairs({
+              gameId: event.params.gameId,
+              groupId: gid,
+              at: typeof after.startsAt === 'number' ? after.startsAt : Date.now(),
+              rounds: rounds2,
+              seasonId: (after as { seasonId?: string }).seasonId || stampedSeasonId || undefined,
+            });
+          } catch (err) {
+            console.error(
+              '[onGameRosterChanged] club pair rollup failed',
+              event.params.gameId,
+              err,
+            );
+            throw err;
+          }
+          // Seal LAST: reaching the season target may close/zero the season.
+          // Every season-scoped pair and standings increment must precede it.
           // ── Round summary: the club's story of the evening ──────────────
           // Sealed HERE, once, and never recomputed. Whether tonight was a
           // club record depends on what the club had done before tonight, and
@@ -6551,17 +6673,7 @@ export const onGameRosterChanged = onDocumentWritten(
               // club summary's own guard covers the first evening of a season;
               // it does not cover the timer-only club, whose table is all
               // zeros every week of its life.
-              standings: hadPointsTable
-                ? attendees.map((uid) => ({
-                    userId: uid,
-                    score: scoreOf.get(uid) ?? 0,
-                    rank: nowRanked.findIndex((c) => c.uid === uid) + 1 || null,
-                    rankTotal: nowRanked.length || null,
-                    rankDelta:
-                      beforeRanked.findIndex((c) => c.uid === uid) -
-                      nowRanked.findIndex((c) => c.uid === uid),
-                  }))
-                : [],
+              standings: (await standingsLatch.get()).get('hadPointsTable') ? sealedStandings : [],
             });
           } catch (err) {
             console.error(
@@ -6569,59 +6681,20 @@ export const onGameRosterChanged = onDocumentWritten(
               event.params.gameId,
               err,
             );
+            throw err;
           }
 
-          // ── Club chemistry: fold the evening into the pair rollup ───────
-          // Separate try and separate batches from everything above: this is
-          // the one write path whose size grows with the SQUARE of the team,
-          // and it must never be able to take the round's statistics with it.
-          try {
-            const rhSnap2 = await db
-              .collection('games')
-              .doc(event.params.gameId)
-              .collection('roundHistory')
-              .get();
-            const rounds2: ChemistryRound[] = rhSnap2.docs
-              .map((d) => d.data() as Record<string, unknown>)
-              .map((r) => ({
-                teamA: Array.isArray(r.teamA) ? (r.teamA as string[]) : [],
-                teamB: Array.isArray(r.teamB) ? (r.teamB as string[]) : [],
-                scoreA: num(r.scoreA),
-                scoreB: num(r.scoreB),
-                winnerSide:
-                  r.winnerSide === 'A' || r.winnerSide === 'B'
-                    ? r.winnerSide
-                    : ('tie' as const),
-                goals: Array.isArray(r.goals)
-                  ? (r.goals as Record<string, unknown>[]).map((g) => ({
-                      scorerId: typeof g.scorerId === 'string' ? g.scorerId : null,
-                      assisterId:
-                        typeof g.assisterId === 'string' ? g.assisterId : null,
-                      ownGoal: g.ownGoal === true,
-                    }))
-                  : [],
-              }));
-            await rollUpClubPairs({
-              gameId: event.params.gameId,
-              groupId: gid,
-              at: typeof after.startsAt === 'number' ? after.startsAt : Date.now(),
-              rounds: rounds2,
-            });
-          } catch (err) {
-            console.error(
-              '[onGameRosterChanged] club pair rollup failed',
-              event.params.gameId,
-              err,
-            );
-          }
         } catch (err) {
           console.error(
             '[onGameRosterChanged] evening standings failed',
             event.params.gameId,
             err,
           );
+          throw err;
         }
       }
+
+      await event.data!.after.ref.collection('finishStages').doc('complete').set({ at: Date.now() });
 
       // ── Evening-summary push ────────────────────────────────────────
       // The night is over → hand each player who actually showed up a
@@ -9189,6 +9262,25 @@ export const getServerTime = onCall(
   },
 );
 
+/** Only the sealed score, for the same audience as the game's statistics.
+ * Private ranks, deltas and club comparisons never cross this endpoint. */
+export const getGameEveningScores = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    try {
+      return await readGameEveningScores(request.auth?.uid, request.data?.gameId, {
+        game: async id => (await db.collection('games').doc(id).get()).data(),
+        group: async id => (await db.collection('groups').doc(id).get()).data(),
+        scores: async id => (await db.collection('eveningStandings')
+          .where('gameId', '==', id).select('userId', 'score').get()).docs.map(d => d.data()),
+      });
+    } catch (error) {
+      if (error instanceof EveningScoresAccessError) throw new HttpsError(error.code, error.message);
+      throw error;
+    }
+  },
+);
+
 // ─── Callable: promote a personal/orphan group to a real community ─────
 //
 // Flips `isPersonal` and `hidden` to false, applies the user-chosen
@@ -10808,6 +10900,8 @@ export const serveCommunityPage = onRequest(
  * link keeps full attribution (install referrer / clipboard) + WhatsApp preview.
  * A pure alias — no redirect, so the short URL stays in the address bar.
  */
+export { serveAdLink } from './serveAdLink';
+
 export const serveInviteCode = onRequest(
   { region: 'us-central1', memory: '256MiB' },
   async (req, res) => {
@@ -10832,6 +10926,13 @@ export const serveInviteCode = onRequest(
           }
           targetId = typeof d.targetId === 'string' ? d.targetId : '';
           invitedBy = typeof d.invitedBy === 'string' ? d.invitedBy : '';
+          // Native resolution is a read, not a landing-page visit. Keep every
+          // click counter unchanged and avoid loading presentation metadata.
+          if (req.query.resolve === '1') {
+            res.set('Cache-Control', 'no-store');
+            res.status(200).json({ type, id: targetId, invitedBy });
+            return;
+          }
           // Count the click (per short link). Fire-and-forget.
           snap.ref
             .set(
@@ -10863,6 +10964,12 @@ export const serveInviteCode = onRequest(
             kind: 'invite',
           }).catch(() => {});
         }
+      }
+
+      if (req.query.resolve === '1') {
+        res.set('Cache-Control', 'no-store');
+        res.status(404).json({ error: 'invite_not_found' });
+        return;
       }
 
       // Situation-aware OG preview so the WhatsApp/crawler card matches the
@@ -10931,16 +11038,13 @@ export const serveInviteCode = onRequest(
       const rendered = injectMeta(html, meta.title, meta.description, ogImage);
       // Inject the resolved target BEFORE the page's inline script runs, so
       // invite.html reads window.__INVITE__ instead of the (target-less) path.
-      const inject = `<script>window.__INVITE__=${JSON.stringify({
-        type,
-        id: targetId,
-        invitedBy,
-      })};</script>`;
+      const payload = JSON.stringify({ type, id: targetId, invitedBy, clickTracked: true }).replace(/</g, '\\u003c');
+      const inject = `<script>window.__INVITE__=${payload};</script>`;
       const out = rendered.replace('</head>', `${inject}</head>`);
 
       res.set('Content-Type', 'text/html; charset=utf-8');
       // Short cache — the click counter + resolved target should stay fresh.
-      res.set('Cache-Control', 'public, max-age=60, s-maxage=60');
+      res.set('Cache-Control', 'no-store');
       res.status(200).send(out);
     } catch (err) {
       console.error('[serveInviteCode] render failed', err);
@@ -13256,38 +13360,38 @@ export const trackCampaignEvent = onCall(
 // a fire-and-forget fetch here on load, so we count CLICKS (people who
 // tapped the link + reached the page) independently of installs. Keyed by
 // the link id `l` when present (per-link), else by source `s` (per-source).
-// Public, READ-ONLY landing-page preview. Resolves a short invite CODE (never
-// a raw gameId) to a strictly-whitelisted, non-personal summary so the landing
-// page can show real game/community context. Returns ONLY: title, date/time,
-// city/field, community name, status, free spots (game) or name/city/cover/
-// member-count (community). NEVER player names, uids, phones, participants,
-// notes, or admin data. Any invalid code / deleted target / error → { type:
-// 'generic' } so the page falls back to the generic Teamder version.
+// Public invitation preview: canonical code OR validated direct session/team/app.
+// This narrow display contract is not permission to join or access a roster.
+// Only summary fields and the inviter's usersPublic display identity leave here.
+// No participant identities, phones, notes, ratings or administrator data.
 export const getInvitePreview = onRequest(
   { region: 'us-central1', memory: '256MiB', cors: true },
   async (req, res) => {
     res.set('Cache-Control', 'public, max-age=60');
     try {
-      const code =
-        typeof req.query.code === 'string' ? req.query.code.trim() : '';
-      if (!code) {
-        res.json({ type: 'generic' });
-        return;
+      const code = typeof req.query.code === 'string' ? req.query.code.trim() : '';
+      let link: { type?: string; targetId?: string; invitedBy?: string };
+      if (code) {
+        if (!/^[A-Za-z0-9_-]{1,80}$/.test(code)) { res.json({ type: 'generic' }); return; }
+        const linkSnap = await db.collection('inviteLinks').doc(code).get();
+        if (!linkSnap.exists) { res.json({ type: 'generic' }); return; }
+        link = linkSnap.data() as typeof link;
+      } else {
+        // A direct invitation reveals the same narrow preview as a short code.
+        // This is not permission to join, read a roster or access a private club.
+        const type = typeof req.query.type === 'string' ? req.query.type : '';
+        if (!['session', 'team', 'app', 'go'].includes(type)) { res.json({ type: 'generic' }); return; }
+        link = { type: type === 'go' ? 'app' : type, targetId: previewId(req.query.id), invitedBy: previewId(req.query.invitedBy) };
       }
-      const linkSnap = await db.collection('inviteLinks').doc(code).get();
-      if (!linkSnap.exists) {
-        res.json({ type: 'generic' });
-        return;
+      const targetId = previewId(link.targetId);
+      const inviterId = previewId(link.invitedBy);
+      let inviter: Record<string, unknown> = {};
+      if (inviterId) {
+        try {
+          const u = await db.collection('usersPublic').doc(inviterId).get();
+          inviter = publicInviterFields(u.exists ? u.data() as Record<string, unknown> : undefined);
+        } catch { /* An optional public identity must not hide the target. */ }
       }
-      const link = linkSnap.data() as {
-        type?: string;
-        targetId?: string;
-        invitedBy?: string;
-      };
-      const targetId =
-        typeof link.targetId === 'string' ? link.targetId : '';
-      const inviterId =
-        typeof link.invitedBy === 'string' ? link.invitedBy : '';
 
       if (link.type === 'session' && targetId) {
         const g = await db.collection('games').doc(targetId).get();
@@ -13331,6 +13435,8 @@ export const getInvitePreview = onRequest(
         }
         res.json({
           type: 'game',
+          ...inviter,
+          ...publicGameFields(d, Date.now()),
           id: targetId, // lets the page deep-link to THIS game (footy://session/<id>)
           gameTitle: typeof d.title === 'string' ? d.title : undefined,
           startsAt: typeof d.startsAt === 'number' ? d.startsAt : undefined,
@@ -13349,21 +13455,25 @@ export const getInvitePreview = onRequest(
       }
 
       if (link.type === 'team' && targetId) {
+        if (req.query.showcase === '1') {
+          const show = await db.collection('communityShowcase').doc(targetId).get();
+          if (!show.exists) { res.json({ type: 'generic' }); return; }
+        }
         const gp = await db.collection('groupsPublic').doc(targetId).get();
         const d = gp.exists
           ? (gp.data() as Record<string, unknown>)
           : null;
-        if (!d) {
+        if (!d || d.isPersonal === true || d.hidden === true) {
           res.json({ type: 'generic' });
           return;
         }
         res.json({
           type: 'community',
+          ...inviter,
           id: targetId, // deep-link to THIS community (footy://team/<id>)
           communityName: typeof d.name === 'string' ? d.name : undefined,
           city: typeof d.city === 'string' ? d.city : undefined,
-          communityCover:
-            typeof d.coverUrl === 'string' ? d.coverUrl : undefined,
+          communityCover: publicCover(d, targetId),
           communityMembersCount:
             typeof d.memberCount === 'number' ? d.memberCount : undefined,
         });
@@ -13374,16 +13484,32 @@ export const getInvitePreview = onRequest(
       // inviter's display NAME only (no uid/phone), so the hero can say
       // "{name} הזמין אותך". Safe: name is public-facing display text.
       if ((link.type === 'app' || !link.type) && inviterId) {
-        let inviterName: string | undefined;
+        if (!inviter.inviterName) { res.json({ type: 'generic' }); return; }
+        let community: Record<string, unknown> | undefined;
+        let nextGame: Record<string, unknown> | undefined;
+        // Public future rounds only; membership in private clubs is never read.
+        // These cards are optional. Failure cannot invent a club or a next round.
         try {
-          // Public mirror — this response is served to an open web page.
-          const u = await db.collection('usersPublic').doc(inviterId).get();
-          const un = u.exists ? (u.data() as { name?: string }).name : undefined;
-          if (typeof un === 'string' && un.trim()) inviterName = un.trim();
-        } catch {
-          /* name is optional */
-        }
-        res.json({ type: 'personal', inviterName });
+          const future = await db.collection('games').where('visibility', '==', 'public')
+            .where('status', '==', 'open').where('startsAt', '>', Date.now())
+            .orderBy('startsAt', 'asc').limit(50).get();
+          const hit = future.docs.find((g) => Array.isArray(g.data().players) && g.data().players.includes(inviterId));
+          if (hit) {
+            const gd = hit.data();
+            nextGame = { id: hit.id, startsAt: gd.startsAt };
+            const clubId = previewId(gd.groupId);
+            if (clubId) {
+              const gp = await db.collection('groupsPublic').doc(clubId).get();
+              const pd = gp.exists ? gp.data() : undefined;
+              if (pd && pd.isOpen === true && pd.isPersonal !== true && pd.hidden !== true) community = {
+                id: gp.id, name: typeof pd.name === 'string' ? pd.name : undefined,
+                city: typeof pd.city === 'string' ? pd.city : undefined,
+                coverUrl: publicCover(pd, clubId),
+              };
+            }
+          }
+        } catch { /* Optional public activity unavailable; omit the cards. */ }
+        res.json({ type: 'personal', ...inviter, ...(community ? { community } : {}), ...(nextGame ? { nextGame } : {}) });
         return;
       }
 
@@ -13950,6 +14076,33 @@ const isReal = (id: string) =>
   !id.startsWith(GUEST_PREFIX) &&
   !RAW_GUEST_RE.test(id);
 
+/** Resolves only the authenticated caller's current waitlist offer. The game
+ *  trigger already emits the next offer notification once from the new uid. */
+export const resolveSpotOffer = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
+    const { gameId, decision } = request.data ?? {};
+    if (typeof gameId !== 'string' || !gameId || gameId.length > 128 || gameId.includes('/') ||
+        (decision !== 'confirm' && decision !== 'pass')) {
+      throw new HttpsError('invalid-argument', 'gameId and decision required');
+    }
+    return db.runTransaction(async tx => {
+      const ref = db.collection('games').doc(gameId);
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new HttpsError('not-found', 'game not found');
+      try {
+        const result = decideSpotOffer(snap.data()!, uid, decision, Date.now());
+        if (result.changed) tx.update(ref, result.patch);
+        return { ok: true, changed: result.changed };
+      } catch (error) {
+        throw new HttpsError('failed-precondition', (error as Error).message);
+      }
+    });
+  },
+);
+
 export const commitRoundStats = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
   async (request) => {
@@ -13965,9 +14118,15 @@ export const commitRoundStats = onCall(
       winnerSide,
       goals,
       penalties,
+      liveGoalIds,
+      rotationUpdatedAt,
+      tieResolution,
     } = (request.data ?? {}) as {
       gameId?: string;
       roundId?: number | string | null;
+      liveGoalIds?: string[];
+      rotationUpdatedAt?: number | null;
+      tieResolution?: 'bothOut' | 'veteranOut';
       sideA?: string[];
       sideB?: string[];
       // Bib-colour indices of the two sides (0=red,1=blue,2=green,…). Stored on
@@ -14017,6 +14176,50 @@ export const commitRoundStats = onCall(
       game.createdBy === uid ||
       ((grpData?.adminIds as string[] | undefined) ?? []).includes(uid);
     if (!isAdmin) throw new HttpsError('permission-denied', 'admin only');
+
+    // A lost response is success on retry, even if the season closed after
+    // the original write. No new statistics are written on this path.
+    if (roundId !== undefined && roundId !== null) {
+      const committed = await snap.ref.collection('committedRounds').doc(String(roundId)).get();
+      const history = committed.exists ? await snap.ref.collection('roundHistory').doc(String(roundId)).get() : null;
+      if (committed.exists && history?.exists) {
+        const currentRotation = game.rotation as Parameters<typeof liveRoundKey>[0] | undefined;
+        const currentGoals = (game.liveMatch as { goals?: unknown[] } | undefined)?.goals ?? [];
+        if (liveGoalIds !== undefined && currentRotation && liveRoundKey(currentRotation) === String(roundId) &&
+            currentGoals.length > 0 && (game.lastCommittedRoundId === String(roundId) ||
+            !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties }))) {
+          throw new HttpsError('failed-precondition', 'נוספו שערים אחרי שמירת המשחק. הם נשמרו בלוח ולא נמחקו.');
+        }
+        // A pre-protocol-2 client might have committed statistics but lost its
+        // response before clearing. Repair ONLY an exactly matching old board;
+        // an uncredited late goal must remain visible and raise a conflict.
+        if (liveGoalIds !== undefined && game.lastCommittedRoundId !== String(roundId) &&
+            matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties })) {
+          const goalShape = (rows: Record<string, unknown>[]) => rows.map(row => ({
+            scorerId: row.scorerId ?? null, assisterId: row.assisterId ?? null,
+            ownGoal: !!row.ownGoal, minute: Math.max(0, Math.floor(Number(row.minute) || 0)), team: row.team,
+          }));
+          const kickShape = (rows: Record<string, unknown>[]) => rows.map(row => ({
+            kickerId: row.kickerId || null, keeperId: row.keeperId || null, scored: !!row.scored,
+          }));
+          if (JSON.stringify(goalShape(history.get('goals') ?? [])) !== JSON.stringify(goalShape(goals ?? [])) ||
+              JSON.stringify(kickShape(history.get('penalties') ?? [])) !== JSON.stringify(kickShape(penalties ?? []))) {
+            throw new HttpsError('failed-precondition', 'המשחק כבר נשמר עם תוצאה אחרת. השערים שנותרו לא נמחקו.');
+          }
+          await snap.ref.update({
+            'liveMatch.scoreA': 0, 'liveMatch.scoreB': 0, 'liveMatch.goals': [],
+            'liveMatch.shootout': admin.firestore.FieldValue.delete(),
+            lastCommittedRoundId: String(roundId), updatedAt: Date.now(),
+          }, { lastUpdateTime: snap.updateTime! });
+        }
+        return { ok: true, alreadyCommitted: true, protocol: 2,
+          winnerSide: committed.get('winnerSide') ?? history.get('winnerSide'),
+          tieResolution: committed.get('tieResolution') ?? null };
+      }
+    }
+    if (liveGoalIds !== undefined && !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties })) {
+      throw new HttpsError('failed-precondition', 'המשחק השתנה. יש לנסות שוב עם התוצאה המעודכנת.');
+    }
 
     // §12 — results cannot be written into a season that has been archived.
     //
@@ -14149,7 +14352,8 @@ export const commitRoundStats = onCall(
     if (roundId !== undefined && roundId !== null) {
       sb.create(
         db.collection('games').doc(gameId).collection('committedRounds').doc(String(roundId)),
-        { committedAt: now, by: uid, winnerSide },
+        { committedAt: now, by: uid, winnerSide,
+          ...(winnerSide === 'tie' && (tieResolution === 'bothOut' || tieResolution === 'veteranOut') ? { tieResolution } : {}) },
       );
     }
 
@@ -14217,11 +14421,9 @@ export const commitRoundStats = onCall(
     }
     // Build the round-history doc (written AFTER the stats batch commits — see
     // below). It is deliberately kept OUT of the atomic batch: (a) it would add
-    // an op to a batch that is already near Firestore's 500-write cap for a full
-    // 11-a-side round, and (b) an unbounded goals[] array could push the doc
-    // toward the 1 MiB limit and abort the latched stats batch. The goal log is
-    // length-capped for the same reason. It is a display convenience, not a
-    // stat of record, so a rare write failure loses only summary richness.
+    // History shares the same atomic batch as statistics and its create-only
+    // latch. The bounded goal log and operation-count guard below protect the
+    // Firestore limits without allowing statistics/history to diverge.
     const roundHistoryDoc =
       roundId !== undefined && roundId !== null
         ? {
@@ -14737,7 +14939,7 @@ export const commitRoundStats = onCall(
     // quadratic pair writes and the caps on goals/penalties bound the rest, so
     // this should be unreachable — which is exactly why it must shout if it
     // ever isn't, instead of silently overflowing.
-    if (sb.opCount + (roundHistoryDoc ? 1 : 0) > MAX_ROUND_BATCH_OPS) {
+    if (sb.opCount + (roundHistoryDoc ? 1 : 0) + (liveGoalIds !== undefined ? 1 : 0) > MAX_ROUND_BATCH_OPS) {
       console.error(
         `[commitRoundStats] batch too large: ${sb.opCount} ops ` +
           `(A=${A.length} B=${B.length} goals=${cappedGoals.length} pens=${pens.length})`,
@@ -14776,6 +14978,18 @@ export const commitRoundStats = onCall(
         // A losing concurrent payload cannot overwrite the winning history.
         const batch = sb.build(db.batch(), inc);
         if (roundHistoryRef && roundHistoryDoc) batch.set(roundHistoryRef, roundHistoryDoc);
+        if (liveGoalIds !== undefined) {
+          // Any goal, undo, lineup or shootout edit since the snapshot rejects
+          // the WHOLE batch. Nothing is credited or erased from a stale board.
+          batch.update(snap.ref, {
+            'liveMatch.scoreA': 0,
+            'liveMatch.scoreB': 0,
+            'liveMatch.goals': [],
+            'liveMatch.shootout': admin.firestore.FieldValue.delete(),
+            lastCommittedRoundId: String(roundId),
+            updatedAt: now,
+          }, { lastUpdateTime: snap.updateTime! });
+        }
         await batch.commit();
       },
       healHistory:
@@ -14806,7 +15020,12 @@ export const commitRoundStats = onCall(
         return new HttpsError('unavailable', 'could not store round history');
       },
     });
-    if (outcome.alreadyCommitted) return { ok: true, alreadyCommitted: true };
+    if (outcome.alreadyCommitted) {
+      const stored = latchRef ? await latchRef.get() : null;
+      return { ok: true, alreadyCommitted: true, protocol: 2,
+        winnerSide: stored?.get('winnerSide') ?? winnerSide,
+        tieResolution: stored?.get('tieResolution') ?? null };
+    }
 
     // Stamp "this evening was played" from the server, if the app never did.
     //
@@ -14864,7 +15083,8 @@ export const commitRoundStats = onCall(
       console.error('[commitRoundStats] played-stamp failed', gameId, err);
     }
 
-    return { ok: true, scorers: Object.keys(byScorer).length };
+    return { ok: true, scorers: Object.keys(byScorer).length, protocol: 2, winnerSide,
+      tieResolution: winnerSide === 'tie' && (tieResolution === 'bothOut' || tieResolution === 'veteranOut') ? tieResolution : null };
   },
 );
 
@@ -17783,3 +18003,52 @@ export const syncUserPublic = onDocumentWritten(
     }
   },
 );
+
+// Manager dashboard reminders: canonical membership, no invite/access mutation.
+export const sendClubRegistrationReminder = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async request => {
+ const uid=request.auth?.uid;
+ if(!uid) throw new HttpsError('unauthenticated','sign-in required');
+ const {gameId,recipientId}=request.data??{};
+ if(typeof gameId!=='string'||!gameId||gameId.includes('/')||gameId.length>128||typeof recipientId!=='string'||!recipientId||recipientId.includes('/')||recipientId.length>128)
+   throw new HttpsError('invalid-argument','invalid ids');
+ const gameRef=db.collection('games').doc(gameId);
+ const receiptRef=db.collection('serverRateLimits').doc(`clubReminder_${gameId}`);
+ const now=Date.now();
+ const claimed=await db.runTransaction(async tx=>{
+   const game=(await tx.get(gameRef)).data();
+   if(!game||typeof game.groupId!=='string')throw new HttpsError('not-found','game missing');
+   const group=(await tx.get(db.collection('groups').doc(game.groupId))).data();
+   const check=clubReminderEligibility(uid,recipientId,game,group,now);
+   if(check!=='ok')throw new HttpsError(check,'recipient not eligible for reminder');
+   const receipts=(await tx.get(receiptRef)).data()?.sentAt??{};
+   const last=receipts[recipientId];
+   if(typeof last==='number'&&now-last<6*3600000)return false;
+   tx.set(receiptRef,{sentAt:{...receipts,[recipientId]:now},updatedAt:now});
+   return true;
+ });
+ if(!claimed)return {wrote:false};
+ try {
+   const game=(await gameRef.get()).data()!;
+   const result=await createNotificationOnce({type:'gameRsvpNudge',recipientId,createdByUid:uid,
+     payload:{gameId,gameTitle:game.title||'המחזור',startsAt:game.startsAt}});
+   return {wrote:result.wrote};
+ } catch(error) {
+   // Release only this claim, never a newer send. A failed send must be retryable.
+   await db.runTransaction(async tx=>{
+     const record=(await tx.get(receiptRef)).data();
+     if(record?.sentAt?.[recipientId]===now) { const next={...record.sentAt};delete next[recipientId];tx.set(receiptRef,{...record,sentAt:next}); }
+   });
+   throw error;
+ }
+});
+export const getClubReminderStatus = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async request=>{
+ const uid=request.auth?.uid,gameId=request.data?.gameId;
+ if(!uid)throw new HttpsError('unauthenticated','sign-in required');
+ if(typeof gameId!=='string'||!gameId||gameId.includes('/')||gameId.length>128)throw new HttpsError('invalid-argument','invalid game');
+ const game=(await db.collection('games').doc(gameId).get()).data();
+ if(!game||typeof game.groupId!=='string')throw new HttpsError('not-found','game missing');
+ const group=(await db.collection('groups').doc(game.groupId).get()).data();
+ if(!Array.isArray(group?.adminIds)||!group.adminIds.includes(uid))throw new HttpsError('permission-denied','admin only');
+ const record=(await db.collection('serverRateLimits').doc(`clubReminder_${gameId}`).get()).data();
+ return {sentAt:record?.sentAt??{}};
+});

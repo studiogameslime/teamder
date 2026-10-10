@@ -1,9 +1,12 @@
 # כיסוי מסכי המקור
 
+8.10.2026: נוסף קיצור בדיקה `FinishedMatchStats` ב־`QARouteLauncher` למסך `MatchDetails` הקיים, מחזור הדמו `gv2-7` ולשונית הסטטיסטיקות. טבלת הציונים והמיון נצפו שם. אין מסך מוצר חדש; [תיעוד הציונים והראיות](rounds/match-stats.md).
+
 עודכן 7.10.2026 מול `8e8fde5`. הטבלה מאתרת קובצי מסך בתיעוד; קישור למסמך אינו טענה שהמסך הורץ. מצבי ההרצה והחסרונות מפורטים בכל מסמך ובתוכנית האימות.
 
 | מסך מקור | מסמכים במפה |
 |---|---|
+| `src/screens/communities/ManagerDashboardScreen.tsx` | [לוח מנהל](clubs/manager-dashboard.md) |
 | `src/screens/AdvancedLiveMatchScreen.tsx` | [coverage.md](coverage.md) · [rounds/fillers.md](rounds/fillers.md) · [rounds/live-advanced.md](rounds/live-advanced.md) |
 | `src/screens/auth/EmailAuthScreen.tsx` | [coverage.md](coverage.md) · [entry/authentication.md](entry/authentication.md) |
 | `src/screens/auth/ProfileSetupScreen.tsx` | [coverage.md](coverage.md) · [entry/profile-onboarding.md](entry/profile-onboarding.md) |
@@ -188,3 +191,19 @@
 ## חלונית בדיקת הנפשות — 8.10.2026
 
 `src/dev/MotionPreview.tsx` נפתחת דרך QARouteLauncher ב־`footy://qa/_motion` ורק עם __DEV__, QA_ROUTES=1 ו־FORCE_MOCK=1. אינה מסך מוצר או מסלול רשום במחסניות הלקוח; מציגה את רכיבי ההרשמה, ההמתנה, TeamScore וחלוניות הציוד עם מצבים מקומיים. פירוט ומגבלות: [תשתית תנועה](shared/menus-and-motion.md), [יומן ההשלמה](../changes/2026-10-08-motion-completion.md). אין לראות אותה כהוכחת כתיבת שירות או כניסה למסכי המוצר המלאים.
+
+
+
+עדכון 9.10.2026: `ManagerDashboard` כולל גם לשונית ״תמונת מועדון״ (`initialTab: club`) וחלון פירוט עשרת המחזורים, ללא מסך עצמאי חדש. תיעוד ובדיקות בזוג מסמכי לוח המנהל.
+
+## אתר הנחיתה — 10.10.2026
+
+ארבעת מצבי האתר, הנתיבים הקצרים והארוכים, מעבר לחנויות וייחוס מתועדים בזוג [דף הנחיתה והזמנות](entry/landing-and-links.md). אלו דפי אתר קיימים שעוצבו מחדש, לא מסכי ניווט חדשים באפליקציה. המקור הוא `public/index.html`, `public/invite.html`, `public/c/index.html` ו־`functions/templates/invite.html`.
+
+## ממשק הפולס — 10.10.2026
+
+מסך מקורות הפרסום וחלון פרטי הקישור בפולס מתועדים בזוג [קישורים וספירת ייחוס](shared/pulse-links.md). הקוד נמצא ב־worktree המצוין במסמך, מחוץ למקור אפליקציית טימדר הראשית; אינו מוסיף מסך או נתיב לניווט שלה. התיעוד מבדיל בין פתיחות, חשבונות בעלי מזהה קישור ודוח מקור כללי, ומתעד בנפרד את גרסת חבילת הפולס והראיות החזותיות.
+
+## דפי מידע באתר — 10.10.2026
+
+מדיניות, תקנון ופרטי מחיקת חשבון מתועדים בזוג [דפי מידע באתר](entry/legal-pages.md). אלה שלושה דפי אתר קיימים שעוצבו מחדש, ללא מסך או מסלול חדש באפליקציה.

@@ -20,6 +20,7 @@ import {
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/Button';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { AchievementBadge } from '@/components/AchievementBadge';
 import { SeasonTitlesShelf } from '@/components/profile/SeasonTitlesShelf';
@@ -53,6 +54,7 @@ export function AchievementsScreen() {
   // Set if deriveCounters fails — then we fall back to the stored counters
   // instead of waiting forever on the loader.
   const [deriveFailed, setDeriveFailed] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
   // Newly-reached tiers to celebrate (filled from persistDerivedUnlocks).
   const [celebrate, setCelebrate] = useState<NewlyUnlocked[]>([]);
 
@@ -85,6 +87,7 @@ export function AchievementsScreen() {
   useEffect(() => {
     if (!localUser) return;
     let alive = true;
+    setDeriveFailed(false);
     achievementsService
       .deriveCounters(localUser.id, {
         groups,
@@ -115,7 +118,7 @@ export function AchievementsScreen() {
     };
     // groups is included so adding/leaving a community refreshes the
     // teams* metrics on the next render.
-  }, [localUser?.id, groups]);
+  }, [localUser?.id, groups, reloadTick, localUser?.friends?.length, localUser?.stats?.goals, localUser?.stats?.assists, localUser?.stats?.cleanSheets]);
 
   // Show the loader until the user is loaded AND the derived counters have
   // resolved (or failed). Rendering the STORED counters first and then swapping
@@ -155,6 +158,10 @@ export function AchievementsScreen() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.profileSectionMyAchievements} />
       <ScrollView contentContainerStyle={styles.content}>
+        {deriveFailed ? <View style={{ gap: spacing.sm }}>
+          <Text style={{ color: colors.textMuted, textAlign: RTL_LABEL_ALIGN }}>העדכון לא הצליח. ההישגים השמורים שלך מוצגים כאן.</Text>
+          <Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} />
+        </View> : null}
         {/* Titles above the achievements grid, and only when there are any.
             An achievement is granted for a milestone; a title was won off
             other people, once, in a competition with an end — so it leads. */}
@@ -216,7 +223,7 @@ export function AchievementsScreen() {
               {/* What the player has actually DONE for this badge (feat-63l30):
                   e.g. "כבר 10 שערים". Counted metrics only — a one-off badge
                   is binary (earned / not) and has no running tally. */}
-              {!active.def.oneOff && active.value > 0 ? (
+              {!deriveFailed && !active.def.oneOff && active.value > 0 ? (
                 <Text style={styles.detailTally}>
                   {he.achievementYourTally(active.value, active.def.nounHe)}
                 </Text>
@@ -249,7 +256,9 @@ export function AchievementsScreen() {
                 </Text>
               ) : null}
               {/* Progress bar toward the NEXT tier (or "maxed" when gold). */}
-              {active.next ? (
+              {deriveFailed ? (
+                <Text style={styles.detailDesc}>ההתקדמות העדכנית אינה זמינה כרגע.</Text>
+              ) : active.next ? (
                 <View style={styles.progressWrap}>
                   <View style={styles.progressTrack}>
                     <View

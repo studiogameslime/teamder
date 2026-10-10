@@ -1,3 +1,4 @@
+import { ScrollSurface } from '@/components/ScrollSurface';
 // CommunityStatsScreen — the club's collective statistics dashboard.
 //
 // Aggregates everything the community has accumulated: total goals / assists /
@@ -14,7 +15,7 @@
 
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -888,7 +889,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
        *
        *  Now the ScrollView and the header are the same elements in every
        *  state and only what sits BELOW the header changes. */}
-      <ScrollView
+      <ScrollSurface
         contentContainerStyle={[
           styles.scroll,
           // `center` is flex:1, which needs a growable content container to
@@ -1380,7 +1381,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           />
           </ChangeMotion>
         )}
-      </ScrollView>
+      </ScrollSurface>
     </SafeAreaView>
   );
 }

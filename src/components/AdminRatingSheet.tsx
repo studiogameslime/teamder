@@ -43,7 +43,7 @@ export function AdminRatingSheet({
             {target ? he.communityAdminRatingTitle(target.name) : ''}
           </Text>
           <Text style={styles.sheetHint}>{he.communityAdminRatingHint}</Text>
-          <RatingSlider value={value} onChange={setValue} />
+          <RatingSlider value={value} onChange={setValue} accessibilityLabel={target ? he.communityAdminRatingTitle(target.name) : he.ratingInThisGroup} readonly={saving} />
           <View style={styles.sheetActions}>
             <Pressable
               onPress={() => onSave(null)}
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   sheetActions: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     alignSelf: 'stretch',

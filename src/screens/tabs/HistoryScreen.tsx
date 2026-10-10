@@ -1,4 +1,3 @@
-import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import React, { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,8 +16,7 @@ import { useUserStore } from '@/store/userStore';
 
 
 export function HistoryScreen() {
-  // Personal, cross-club history. Registration and actual attendance are
-  // separate so the all/played filter does not change statistics counters.
+  // Personal, cross-club history. Keep every returned historical entry.
   const userId = useUserStore((s) => s.currentUser?.id);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nav = useNavigation<any>();
@@ -26,7 +24,6 @@ export function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
-  const [playedOnly, setPlayedOnly] = useState(false);
 
   useEffect(() => {
     logEvent(AnalyticsEvent.HistoryOpened);
@@ -65,8 +62,6 @@ export function HistoryScreen() {
     };
   }, [userId, reload]);
 
-  const visibleItems = playedOnly ? items.filter((item) => item.viewerPlayed === true) : items;
-
   const openDetails = (gameId: string) => {
     // Push within the current stack (ProfileStack) — back returns to
     // History rather than jumping the user to GamesList in the Games
@@ -77,16 +72,6 @@ export function HistoryScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.historyTitle} />
-      <View style={styles.filters} accessibilityRole="tablist">
-        {[false, true].map((only) => (
-          <Pressable key={String(only)} accessibilityRole="tab" accessibilityState={{ selected: playedOnly === only }}
-            onPress={() => setPlayedOnly(only)} style={[styles.filter, playedOnly === only && styles.selectedFilter]}>
-            <Text style={[styles.filterText, playedOnly === only && styles.selectedText]}>
-              {only ? he.historyFilterPlayed : he.historyFilterAll}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
       {loading ? (
         <View style={{ padding: spacing.lg, gap: spacing.sm }}>
           <MatchCardSkeleton count={4} />
@@ -102,22 +87,20 @@ export function HistoryScreen() {
             <Text style={styles.retryText}>{he.retry}</Text>
           </Pressable>
         </View>
-      ) : visibleItems.length === 0 ? (
+      ) : items.length === 0 ? (
         <View style={styles.emptyWrap}>
-          <Text style={styles.emptyTitle}>{playedOnly ? he.historyPlayedEmpty : he.historyEmptyReal}</Text>
-          {!playedOnly && <Text style={styles.emptyHint}>{he.historyEmptyHint}</Text>}
+          <Text style={styles.emptyTitle}>{he.historyEmptyReal}</Text>
+          <Text style={styles.emptyHint}>{he.historyEmptyHint}</Text>
         </View>
       ) : (
-        <ChangeMotion triggerKey={playedOnly} style={{ flex: 1 }}>
         <FlatList
           contentContainerStyle={{ padding: spacing.md, gap: spacing.sm }}
-          data={visibleItems}
+          data={items}
           keyExtractor={(g) => g.id}
           renderItem={({ item }) => (
             <CommunityHistoryRow item={item} onPress={() => openDetails(item.id)} />
           )}
         />
-        </ChangeMotion>
       )}
     </SafeAreaView>
   );
@@ -125,12 +108,6 @@ export function HistoryScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  filters: { flexDirection: 'row', marginHorizontal: spacing.md, marginTop: spacing.sm,
-    padding: 3, borderRadius: radius.lg, backgroundColor: colors.surfaceMuted },
-  filter: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 40, borderRadius: radius.md },
-  selectedFilter: { backgroundColor: colors.primaryLight },
-  filterText: { ...typography.label, fontWeight: '700', color: colors.textMuted },
-  selectedText: { ...typography.label, fontWeight: '700', color: colors.primary },
   header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,

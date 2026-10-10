@@ -11,7 +11,9 @@
 //    must never recurse into itself.
 
 import { Platform } from 'react-native';
-import { crumbErr } from '@/services/breadcrumbs';
+import { crumbErr, formatTrail } from '@/services/breadcrumbs';
+import { diagnosticAttachment, diagnosticOwner } from './diagnosticJournal';
+import { readPendingDiagnosticErrors, savePendingDiagnosticErrors, persistDiagnosticJournal } from './diagnosticStorage';
 import Constants from 'expo-constants';
 import {
   doc,
@@ -38,6 +40,9 @@ interface Buffered {
   userId?: string;
   screen?: string;
   pending: number; // un-flushed occurrences
+  trail: string;
+  journal: string;
+  version: string;
 }
 
 const FLUSH_MS = 12000; // coalesce window
@@ -48,12 +53,53 @@ const FLUSH_MS = 12000; // coalesce window
 // 30 writes is plenty to know "this happens a lot" while protecting the DB.
 const SESSION_WRITE_CAP = 30;
 const buffer = new Map<string, Buffered>();
+// Keep unacknowledged writes on disk even while their network request is pending.
+const delivering = new Map<string, Buffered>();
+let ownerGeneration = 0;
 const flushedPerFp = new Map<string, number>(); // writes done this session, by fp
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let inFlush = false;
 
 const appVersion =
   (Constants.expoConfig?.version as string | undefined) ?? 'unknown';
+
+// Read before the first new error can replace the previous process's outbox.
+const recoveredErrors = readPendingDiagnosticErrors();
+let restored=false;
+let pendingTimer:ReturnType<typeof setTimeout>|undefined;
+function persistPending(immediate=false):void {
+ if(pendingTimer){if(!immediate)return;clearTimeout(pendingTimer);pendingTimer=undefined;}
+ const save=()=>{
+  pendingTimer=undefined;
+  const rows=new Map<string,Buffered>(delivering);
+  for(const [fp,entry] of buffer){if(entry.pending>0)rows.set(fp,{...entry,pending:entry.pending+(delivering.get(fp)?.pending??0)});}
+  void savePendingDiagnosticErrors([...rows].map(([fp,entry])=>({fp,entry})));
+ };
+ if(immediate)save();else pendingTimer=setTimeout(save,250);
+}
+export function clearPendingErrors():void {
+ ownerGeneration+=1;buffer.clear();delivering.clear();flushedPerFp.clear();
+ if(flushTimer)clearTimeout(flushTimer);flushTimer=null;
+ if(pendingTimer)clearTimeout(pendingTimer);pendingTimer=undefined;
+}
+export async function restorePendingErrors(viewerId:string):Promise<void> {
+ if(restored)return;
+ const rows=await recoveredErrors;
+ if(currentUid()!==viewerId)return;
+ restored=true;
+ for(const row of rows){
+  if(!row||typeof row!=='object')continue;
+  const {fp,entry}=row as {fp?:unknown;entry?:Buffered};
+  if(typeof fp!=='string'||!/^[a-z0-9]{1,20}$/.test(fp)||!entry||entry.userId!==viewerId||
+    typeof entry.operation!=='string'||typeof entry.message!=='string'||typeof entry.journal!=='string'||entry.journal.length>60000||
+    typeof entry.trail!=='string'||entry.trail.length>6000||typeof entry.version!=='string'||entry.version.length>100||
+    !entry.context||typeof entry.context!=='object'||Array.isArray(entry.context)||
+    !Number.isInteger(entry.pending)||entry.pending<=0||entry.pending>1000000)continue;
+  // Preserve newer in-process evidence for the same fingerprint.
+  if(!buffer.has(fp))buffer.set(fp,entry);else buffer.get(fp)!.pending+=entry.pending;
+ }
+ persistPending();await flush();
+}
 
 // ── helpers ────────────────────────────────────────────────────────
 function djb2(s: string): string {
@@ -273,7 +319,8 @@ export function logError(
   context?: ErrorContext,
 ): void {
   try {
-    const { message, code, stack } = errInfo(error);
+    const info = errInfo(error);
+    const message = info.message.slice(0,2000), code = info.code, stack = info.stack;
     // Drop transient network/offline/timeout blips — not actionable bugs,
     // just dead-zone noise in the dev inbox (see isTransientEnvError).
     if (isTransientEnvError(code, message)) return;
@@ -291,6 +338,12 @@ export function logError(
     if ((flushedPerFp.get(fp) ?? 0) >= SESSION_WRITE_CAP) return;
     const screen = context?.screen as string | undefined;
     const existing = buffer.get(fp);
+    // Auth may switch just before App's ownership effect runs. Never attach
+    // the previous account's actions in that narrow transition window.
+    const owner=diagnosticOwner();
+    const sameOwner=owner===undefined||owner===uid;
+    const trail=sameOwner?formatTrail().slice(-6000):'';
+    const journal=sameOwner?diagnosticAttachment():'';
     if (existing) {
       existing.pending += 1;
       existing.message = message;
@@ -299,6 +352,7 @@ export function logError(
       existing.context = safeContext(context);
       existing.userId = uid;
       existing.screen = screen;
+      existing.trail=trail;existing.journal=journal;existing.version=appVersion;
     } else {
       buffer.set(fp, {
         operation,
@@ -309,8 +363,10 @@ export function logError(
         userId: uid,
         screen,
         pending: 1,
+        trail, journal, version:appVersion,
       });
     }
+    persistPending();
     scheduleFlush();
   } catch {
     // logging must never throw
@@ -403,6 +459,8 @@ export function installGlobalErrorHandlers(): void {
       const prev = g.ErrorUtils.getGlobalHandler?.();
       g.ErrorUtils.setGlobalHandler((error: unknown, isFatal?: boolean) => {
         logError('uncaught', error, { isFatal: !!isFatal });
+        persistPending(true);
+        void persistDiagnosticJournal();
         // Flush synchronously-ish before a fatal tears the JS context down.
         void flush();
         if (prev) prev(error, isFatal);
@@ -430,6 +488,7 @@ export function installGlobalErrorHandlers(): void {
 export async function flush(): Promise<void> {
   if (inFlush || buffer.size === 0) return;
   inFlush = true;
+  const generation = ownerGeneration;
   let db;
   try {
     db = getFirebase().db; // throws in mock mode → skip silently
@@ -438,9 +497,16 @@ export async function flush(): Promise<void> {
     return;
   }
   const entries = [...buffer.entries()].filter(([, e]) => e.pending > 0);
-  for (const [fp, e] of entries) {
+  for (const [fp, live] of entries) {
+    if(generation!==ownerGeneration)break;
+    // Freeze the occurrence before awaiting a write; later navigation/errors
+    // cannot change the journal paired with this error.
+    const e={...live};
     const delta = e.pending;
-    e.pending = 0;
+    live.pending = 0;
+    if(e.userId!==currentUid())continue;
+    delivering.set(fp,e);
+    persistPending(true);
     const ref = doc(db, 'errors', fp);
     const silent = e.context?.silent === true;
     const category = categoryFor(e.operation, silent);
@@ -453,18 +519,21 @@ export async function flush(): Promise<void> {
       lastCode: e.code ?? null,
       lastStack: e.stack ?? null,
       lastContext: e.context,
+      lastTrail: e.trail,
+      lastJournal: e.journal,
       lastUserId: e.userId ?? null,
       lastScreen: e.screen ?? null,
       platform: Platform.OS,
       osVersion: String(Platform.Version ?? ''),
-      appVersion,
+      appVersion:e.version,
       lastSeen: serverTimestamp(),
     };
     try {
       // Increment an existing signature…
       await updateDoc(ref, { ...common, count: increment(delta) });
-      flushedPerFp.set(fp, (flushedPerFp.get(fp) ?? 0) + 1);
+      if(generation===ownerGeneration)flushedPerFp.set(fp, (flushedPerFp.get(fp) ?? 0) + 1);
     } catch {
+      if(generation!==ownerGeneration||e.userId!==currentUid()){delivering.delete(fp);continue;}
       // …or create it on first sighting (with create-only fields).
       try {
         await setDoc(
@@ -478,11 +547,14 @@ export async function flush(): Promise<void> {
           },
           { merge: true },
         );
-        flushedPerFp.set(fp, (flushedPerFp.get(fp) ?? 0) + 1);
+        if(generation===ownerGeneration)flushedPerFp.set(fp, (flushedPerFp.get(fp) ?? 0) + 1);
       } catch {
-        e.pending += delta; // write failed (offline) — retry next flush
+        if(generation===ownerGeneration)live.pending += delta; // retry only in the original account
       }
     }
+    delivering.delete(fp);
   }
   inFlush = false;
+  persistPending(true);
+  if([...buffer.values()].some(e=>e.pending>0))scheduleFlush();
 }

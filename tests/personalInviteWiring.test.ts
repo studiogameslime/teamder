@@ -81,13 +81,11 @@ describe('a personal invite', () => {
     expect(upTo).not.toMatch(/clearPendingAction|markLandingShown/);
   });
 
-  // The other side of the contract: the signup readers still read the key the
-  // consumer no longer clears. If either of these moves, the pair has to be
-  // looked at together.
+  // Signup reads the separate referral lifetime after navigation is consumed.
   it('is still what signup reads for attribution', () => {
     const svc = code(path.join('src', 'services', 'userService.ts'));
     expect(svc).toContain('applyInviteAttributionIfFresh');
-    expect(svc).toMatch(/storage\.getPendingInvite\(\)/);
+    expect(svc).toMatch(/storage\.getInviteAttribution\(newUserId,\s*\x27referral\x27\)/);
   });
 });
 

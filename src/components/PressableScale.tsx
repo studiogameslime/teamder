@@ -14,7 +14,9 @@
 // hits on the text triggered the action. Keeping Pressable outside
 // guarantees the entire visual surface is the touch target.
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
+import { recordDiagnostic } from '@/services/diagnosticJournal';
 import {
   Pressable,
   StyleSheet,
@@ -48,6 +50,8 @@ function tapHaptic() {
 }
 
 interface Props extends Omit<PressableProps, 'style'> {
+  /** Stable diagnostic code, never user text. */
+  diagnosticName?:string;
   children: React.ReactNode;
   /** Target scale on press-in. Default 0.96 (subtle). */
   pressedScale?: number;
@@ -72,17 +76,26 @@ export function PressableScale({
   onPressIn,
   onPressOut,
   onLongPress,
+  onPress,
+  diagnosticName,
   disabled,
   haptic = true,
   showLongPressRing,
   ...rest
 }: Props) {
+  const reducedMotion = useReducedMotion();
   const scale = useSharedValue(1);
   // Ring scale: 0 (hidden) → 1.4 (expanded). Driven only when an
   // onLongPress callback is registered AND the gesture isn't aborted.
   const ringScale = useSharedValue(0);
   const ringOpacity = useSharedValue(0);
-  const ringEnabled = !!onLongPress && showLongPressRing !== false;
+  const ringEnabled = !reducedMotion && !!onLongPress && showLongPressRing !== false;
+  useEffect(() => {
+    if (!reducedMotion) return;
+    scale.value = 1;
+    ringScale.value = 0;
+    ringOpacity.value = 0;
+  }, [reducedMotion, scale, ringScale, ringOpacity]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -116,7 +129,8 @@ export function PressableScale({
       {...rest}
       disabled={disabled}
       style={style}
-      onLongPress={onLongPress}
+      onPress={onPress?e=>{recordDiagnostic('press',diagnosticName??rest.testID??'control');onPress(e);}:undefined}
+      onLongPress={onLongPress?e=>{recordDiagnostic('press','long_press',{type:diagnosticName??rest.testID});onLongPress(e);}:undefined}
       onPressIn={(e) => {
         // Suppress the scale animation entirely when disabled —
         // Pressable's native `disabled` already blocks `onPress`,
@@ -126,7 +140,7 @@ export function PressableScale({
         if (disabled) return;
         // Faster ramp on press-in so the touch feels immediate;
         // spring back on release so the bounce is friendly.
-        scale.value = withTiming(pressedScale, { duration: 80 });
+        scale.value = reducedMotion ? 1 : withTiming(pressedScale, { duration: 80 });
         if (ringEnabled) {
           // Expanding ring tells the user "we see your hold" — fires
           // immediately on press-in. ~480 ms expand matches the
@@ -142,7 +156,7 @@ export function PressableScale({
       }}
       onPressOut={(e) => {
         if (disabled) return;
-        scale.value = withSpring(1, { damping: 12, stiffness: 220 });
+        scale.value = reducedMotion ? 1 : withSpring(1, { damping: 12, stiffness: 220 });
         if (ringEnabled) {
           // Snap-fade the ring on release so a quick tap doesn't leave
           // a lingering glow.

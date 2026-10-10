@@ -134,9 +134,9 @@ describe('the declared link surface', () => {
 
   // The app has no branch for either, so claiming them would open the app on
   // a path it cannot route. Both are resolved server-side on purpose.
-  it('leaves the server-resolved shapes out', () => {
-    expect(paths).not.toContain('/i/*');
-    expect(paths).not.toContain('/c/*');
+  it('registers short codes and community aliases', () => {
+    expect(paths).toContain('/i/*');
+    expect(paths).toContain('/c/*');
   });
 
   it('agrees with the app id the project builds', () => {

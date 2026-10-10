@@ -22,6 +22,13 @@ function Boot({ color }: { color: string }) {
     d="M24 5l-5 7-6 3-8 3c-3 1-3 6 1 7h22V13l-4-8zM11 16l3 3m2-5l3 3M5 25v3m7-3v3m7-3v3m7-3v3"
     stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" /></Svg>;
 }
+function Field({ color }: { color: string }) {
+  return <Svg width={27} height={27} viewBox="0 0 32 32">
+    <Rect x="2" y="5" width="28" height="22" rx="2" stroke={color} strokeWidth={2} fill="none" />
+    <Path d="M16 5v22M2 11h5v10H2m28-10h-5v10h5" stroke={color} strokeWidth={2} fill="none" />
+    <Circle cx="16" cy="16" r="4" stroke={color} strokeWidth={2} fill="none" />
+  </Svg>;
+}
 function Pitch() {
   return <View pointerEvents="none" style={StyleSheet.absoluteFill}><Svg width="100%" height="100%" viewBox="0 0 360 185" preserveAspectRatio="none">
     <Rect x="17" y="17" width="326" height="151" rx="2" stroke="#FFFFFF" opacity={0.13} fill="none" />
@@ -62,7 +69,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(function EveningSummar
     { value: m.goals, label: 'שערים', color: C.gold, icon: 'football-outline' },
     { value: m.assists, label: 'בישולים', color: C.purple },
   ];
-  return <View ref={ref} collapsable={false} style={s.root}>
+  return <View ref={ref} testID="evening-summary-card" collapsable={false} style={s.root}>
     <View style={s.identity}>
       <UserAvatar user={user ?? { id: m.uid, name: m.playerName }} size={62} />
       <View style={s.flex}><Text style={s.name}>{m.playerName}</Text>
@@ -70,6 +77,11 @@ export const EveningSummaryCard = forwardRef<View, Props>(function EveningSummar
     </View>
     <LinearGradient colors={['#2877FF', '#1459DE']} style={s.hero}>
       <Pitch /><Text style={s.heroLabel}>ציון המחזור</Text><Text style={s.score}>{m.score.toFixed(1)}</Text>
+      {m.scoreRank === 1 && m.scoreTotal != null && m.scoreTotal >= 1 && m.rounds > 0 ?
+        <View style={s.topPlayerRow}>
+          <Text style={s.topPlayer}>אתה מצטיין המחזור!</Text>
+          <Text style={s.topPlayerCrown} accessible={false}>👑</Text>
+        </View> : null}
       <Text style={s.heroRank}>{m.scoreRank != null && m.scoreTotal != null && m.scoreTotal > 1
         ? `מקום ${m.scoreRank} מתוך ${m.scoreTotal} שחקנים במחזור` : 'הביצועים שלך במחזור'}</Text>
       {onScoreInfo && !captureMode ? <Pressable onPress={onScoreInfo} accessibilityRole="button" accessibilityLabel="איך מחושב ציון המחזור?" hitSlop={10} style={s.info}>
@@ -77,8 +89,8 @@ export const EveningSummaryCard = forwardRef<View, Props>(function EveningSummar
     </LinearGradient>
     <View style={s.panel}><Text style={s.sectionTitle}>הערב שלך</Text><View style={s.stats}>
       {stats.map((stat, i) => <View key={stat.label} style={[s.stat, i < 3 && s.statBorder]}>
+        {stat.label === 'משחקים' ? <Field color={stat.color} /> : stat.icon ? <Ionicons name={stat.icon} size={26} color={stat.color} /> : <Boot color={stat.color} />}
         <Text style={[s.statNumber, { color: stat.color }]}>{stat.value}</Text>
-        {stat.icon ? <Ionicons name={stat.icon} size={26} color={stat.color} /> : <Boot color={stat.color} />}
         <Text style={[s.statLabel, { color: stat.color }]}>{stat.label}</Text></View>)}
     </View><Text style={s.participation}>{m.totalKnown ? `שיחקת ב־${m.rounds} מתוך ${m.totalRounds} משחקים` : `שיחקת ב־${m.rounds} משחקים`}</Text></View>
     <View style={s.panel}><Text style={s.sectionTitle}>תוצאות המשחקים שלך</Text>
@@ -95,10 +107,9 @@ export const EveningSummaryCard = forwardRef<View, Props>(function EveningSummar
           {m.wins > 0 ? <View style={{ flex: m.wins, backgroundColor: '#71CCA0' }} /> : null}
           {m.losses > 0 ? <View style={{ flex: m.losses, backgroundColor: '#F4A9B0' }} /> : null}
         </View>}
-        <Text style={s.resultNote}>{outcomes ? 'לפי סדר המשחקים ששיחקת' : 'מאזן המשחקים שהוכרעו'}</Text>
+        <Text style={s.resultNote}>{outcomes ? 'סדר המשחקים ששיחקת, מימין לשמאל' : 'מאזן המשחקים שהוכרעו'}</Text>
       </View></View>
       {draws > 0 ? <Text style={s.note}>אחוז הניצחונות מחושב מהמשחקים שהוכרעו, ללא תיקו.</Text> : null}
-      {m.teamGoalsKnown ? <Text style={s.teamGoals}>הקבוצות שלך: {m.teamGoalsFor} שערי זכות · {m.teamGoalsAgainst} שערי חובה</Text> : null}
     </View>
     {highlights.length > 0 || records.length > 0 || hasPen ? <View style={s.section}>
       <Text style={s.sectionTitle}>רגעי הערב</Text>
@@ -137,6 +148,9 @@ const s = StyleSheet.create({
   hero: { borderRadius: 23, paddingVertical: 20, paddingHorizontal: 24, alignItems: 'center', overflow: 'hidden' },
   heroLabel: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
   score: { fontSize: 72, lineHeight: 88, fontWeight: '800', color: '#FFFFFF', textAlign: 'center' },
+  topPlayerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 7 },
+  topPlayer: { fontSize: 18, fontWeight: '800', color: '#FFE494', textAlign: 'center', flexShrink: 1 },
+  topPlayerCrown: { fontSize: 21 },
   heroRank: { fontSize: 14, color: '#FFFFFF', textAlign: 'center' }, info: { position: 'absolute', bottom: 14, end: 14 },
   panel: { backgroundColor: '#FFFFFF', borderRadius: 21, padding: 16, gap: 10, shadowColor: '#102348', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   section: { gap: 9 }, sectionTitle: { fontSize: 19, fontWeight: '800', color: C.ink, textAlign: RTL_LABEL_ALIGN },
@@ -153,7 +167,6 @@ const s = StyleSheet.create({
   distribution: { height: 12, borderRadius: 6, overflow: 'hidden', backgroundColor: '#EEF0F5', flexDirection: 'row' },
   resultNote: { fontSize: 10, color: C.muted, textAlign: RTL_LABEL_ALIGN, marginTop: 5 },
   note: { fontSize: 12, lineHeight: 18, color: C.muted, textAlign: RTL_LABEL_ALIGN },
-  teamGoals: { borderTopWidth: 1, borderColor: C.line, paddingTop: 9, fontSize: 12, color: C.muted, textAlign: RTL_LABEL_ALIGN },
   fact: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 12, borderWidth: 1, borderRadius: 16 },
   factTitle: { fontSize: 14, lineHeight: 21, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   factDetail: { fontSize: 12, lineHeight: 19, marginTop: 2, color: C.muted, textAlign: RTL_LABEL_ALIGN },
@@ -161,3 +174,4 @@ const s = StyleSheet.create({
   standing: { flexDirection: 'row', alignItems: 'center', gap: 12 }, standingRank: { fontSize: 19, fontWeight: '800', color: C.ink, textAlign: RTL_LABEL_ALIGN },
   metricLine: { borderTopWidth: 1, borderColor: C.line, paddingTop: 9, gap: 3 }, metricTitle: { fontSize: 13, fontWeight: '600', color: C.ink, textAlign: RTL_LABEL_ALIGN },
 });
+

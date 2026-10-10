@@ -80,3 +80,9 @@ vendor/joryio/android/build/
 vendor/joryio/**/build/
 vendor/joryio/react-native-sdk/node_modules/
 backups/
+
+# Machine-local attachments, repair helper and Python bytecode.
+.codex-remote-attachments/
+store-repair.ps1
+__pycache__/
+*.pyc

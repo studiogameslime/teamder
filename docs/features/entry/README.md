@@ -12,5 +12,7 @@
 | פעולה ממתינה וטיוטה שחוזרת לאחר הרשמה | [פשוט](pending-actions.simple.md) | [מעמיק](pending-actions.md) |
 | הזמנה אישית — איפה המזמין משחק | [פשוט](personal-invite.simple.md) | [מעמיק](personal-invite.md) |
 | היכרות והשלמת פרופיל לאחר התחברות | [פשוט](profile-onboarding.simple.md) | [מעמיק](profile-onboarding.md) |
+| דף הנחיתה והזמנות | [פשוט](landing-and-links.simple.md) | [מעמיק](landing-and-links.md) |
+| דפי מדיניות, תקנון ופרטי חשבון באתר | [פשוט](legal-pages.simple.md) | [מעמיק](legal-pages.md) |
 
 [חזרה למפת המוצר](../README.md)

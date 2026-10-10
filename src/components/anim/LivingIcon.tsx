@@ -24,6 +24,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import type { ViewStyle } from 'react-native';
+import { useAmbientMotion } from '@/hooks/animations/useAmbientMotion';
 
 export type LivingMotion = 'spin' | 'pulse' | 'bounce' | 'sway' | 'shine' | 'hop';
 
@@ -45,10 +46,12 @@ export function LivingIcon({
   style,
 }: Props) {
   const v = useSharedValue(0);
+  const active = useAmbientMotion();
 
   useEffect(() => {
-    if (paused) {
+    if (paused || !active) {
       cancelAnimation(v);
+      v.value = 0;
       return;
     }
     switch (motion) {
@@ -117,7 +120,7 @@ export function LivingIcon({
     }
     return () => cancelAnimation(v);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [motion, speed, paused]);
+  }, [motion, speed, paused, active, v]);
 
   const animatedStyle = useAnimatedStyle(() => {
     switch (motion) {
@@ -130,7 +133,7 @@ export function LivingIcon({
       case 'sway':
         return { transform: [{ rotateZ: `${v.value * 9}deg` }] };
       case 'shine':
-        return { opacity: 0.55 + v.value * 0.45 };
+        return { opacity: active && !paused ? 0.55 + v.value * 0.45 : 1 };
       case 'hop':
         return { transform: [{ translateY: -v.value * 9 }, { scale: 1 + v.value * 0.06 }] };
       default:

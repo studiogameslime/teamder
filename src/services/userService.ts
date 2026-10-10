@@ -82,6 +82,18 @@ function mergeHomeCity(
 }
 
 export const userService = {
+  /** Complete only the new account tied locally to the unresolved link. */
+  async completeDeferredInviteAttribution(): Promise<void> {
+    if (USE_MOCK_DATA) return;
+    const current = getFirebase().auth.currentUser;
+    if (!current || current.isAnonymous) return;
+    const ticket = await storage.getFreshInviteUser(current.uid);
+    if (!ticket) return;
+    const snap = await getDoc(docs.user(current.uid));
+    if (!snap.exists() || snap.data()?.createdAt !== ticket.createdAt || getFirebase().auth.currentUser?.uid !== current.uid || getFirebase().auth.currentUser?.isAnonymous) return;
+    await applyInviteAttributionIfFresh(current.uid);
+    await applyAcquisitionIfFresh(current.uid);
+  },
   /**
    * Start a guest session (Firebase Anonymous Auth). Lets the user browse
    * public communities + games without registering; account actions later
@@ -129,18 +141,22 @@ export const userService = {
     // AsyncStorage-cached user so a signed-in user still gets into the app; the
     // live doc refreshes once the network returns.
     let snap: import('firebase/firestore').DocumentSnapshot<User> | null = null;
+    let readTimer: ReturnType<typeof setTimeout> | undefined;
     try {
       snap = await Promise.race([
         getDoc(ref),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('getCurrentUser: read timeout')), 8000),
+          { readTimer = setTimeout(() => reject(new Error('getCurrentUser: read timeout')), 8000); },
         ),
       ]);
     } catch (err) {
       if (__DEV__) console.warn('[auth] getCurrentUser read timed out', err);
       const cached = await readCachedAuthUser(fbUser.uid);
       if (cached) return cached;
-      return null;
+      // A restored account whose profile is unavailable is not signed out.
+      throw err;
+    } finally {
+      if (readTimer) clearTimeout(readTimer);
     }
     if (snap.exists()) {
       // Presence ping — powers Pulse's platform / "inactive N days" segments.
@@ -157,8 +173,8 @@ export const userService = {
     // never ran, (b) recovery after a previous launch left an Auth
     // user with no /users doc (e.g. that setDoc failed). Wrapped in
     // try/catch so a transient write failure doesn't crash the app
-    // — we surface `null` and the caller sees "not signed in" until
-    // the next launch retries.
+    // — a cached profile stays visible, otherwise the caller offers a retry
+    // while keeping the restored Firebase identity.
     //
     // Seeded from the offline snapshot when there is one for THIS uid. The
     // re-create used to start from nothing but the Firebase Auth fields, so
@@ -195,8 +211,10 @@ export const userService = {
     } catch (err) {
       logError('createUserDoc', err, { uid: fresh.id, source: 'getCurrentUser' });
       if (__DEV__) console.warn('[auth] lazy user-doc create failed', err);
-      return null;
+      if (cached) return cached;
+      throw err;
     }
+    await storage.registerFreshInviteUser(fresh.id, fresh.createdAt);
     await applyInviteAttributionIfFresh(fresh.id);
     await applyAcquisitionIfFresh(fresh.id);
     await cacheAuthUser(fresh);
@@ -321,6 +339,7 @@ export const userService = {
       }
       throw err;
     }
+    await storage.registerFreshInviteUser(fresh.id, fresh.createdAt);
     await applyInviteAttributionIfFresh(fresh.id);
     await applyAcquisitionIfFresh(fresh.id);
     await cacheAuthUser(fresh);
@@ -365,6 +384,7 @@ export const userService = {
       }
       throw err;
     }
+    await storage.registerFreshInviteUser(fresh.id, fresh.createdAt);
     await applyInviteAttributionIfFresh(fresh.id);
     await applyAcquisitionIfFresh(fresh.id);
     await cacheAuthUser(fresh);
@@ -452,6 +472,7 @@ export const userService = {
       }
       throw err;
     }
+    await storage.registerFreshInviteUser(fresh.id, fresh.createdAt);
     await applyInviteAttributionIfFresh(fresh.id);
     await applyAcquisitionIfFresh(fresh.id);
     await cacheAuthUser(fresh);
@@ -949,9 +970,8 @@ export const userService = {
    * count aggregation so we don't pay for a full collection scan or
    * download user docs we don't display.
    *
-   * Best-effort: returns 0 on failure (no Firestore, query not
-   * indexed, rules deny). The stat row hides itself when this is 0
-   * so the UI doesn't show a dead "0" for everyone.
+   * Query failures reject so callers retain saved data or offer a retry.
+   * A zero is reserved for a successful empty count.
    */
   async getInvitedUsersCount(userId: string): Promise<number> {
     if (USE_MOCK_DATA) return 0;
@@ -966,7 +986,7 @@ export const userService = {
         logError('getInvitedUsersCount', err, { userId });
       }
       if (__DEV__) console.warn('[users] getInvitedUsersCount failed', err);
-      return 0;
+      throw err;
     }
   },
 
@@ -976,9 +996,8 @@ export const userService = {
    * tappable referrals tile on Profile so the user can see WHO they
    * brought (not just a count).
    *
-   * Sorted newest-first (most recent joiner at the top). Best-effort:
-   * returns [] on failure so the consumer can render an empty state
-   * instead of crashing.
+   * Sorted newest-first. Query failures reject so the screen distinguishes
+   * a failed load from a genuinely empty list.
    */
   async listInvitedUsers(userId: string): Promise<{
     id: string;
@@ -1027,7 +1046,7 @@ export const userService = {
     } catch (err) {
       logError('listInvitedUsers', err, { userId });
       if (__DEV__) console.warn('[users] listInvitedUsers failed', err);
-      return [];
+      throw err;
     }
   },
 };
@@ -1096,12 +1115,13 @@ async function applyInviteAttributionIfFresh(
 ): Promise<void> {
   try {
     if (USE_MOCK_DATA) return;
-    const pending = await storage.getPendingInvite();
+    const pending = await storage.getInviteAttribution(newUserId, 'referral');
     if (!pending?.invitedBy) return;
     if (pending.invitedBy === newUserId) return;
 
     const ref = docs.user(newUserId);
     const snap = await getDoc(ref);
+    if (getFirebase().auth.currentUser?.uid !== newUserId || getFirebase().auth.currentUser?.isAnonymous) return;
     const existing = snap.data();
     if (existing?.invitedBy) return;
 
@@ -1135,12 +1155,13 @@ async function applyInviteAttributionIfFresh(
 async function applyAcquisitionIfFresh(newUserId: string): Promise<void> {
   try {
     if (USE_MOCK_DATA) return;
-    const pending = await storage.getPendingInvite();
+    const pending = await storage.getInviteAttribution(newUserId, 'acquisition');
     const source = pending?.source;
     if (!source) return;
 
     const ref = docs.user(newUserId);
     const snap = await getDoc(ref);
+    if (getFirebase().auth.currentUser?.uid !== newUserId || getFirebase().auth.currentUser?.isAnonymous) return;
     const existing = snap.data() as { acquisition?: unknown } | undefined;
     if (existing?.acquisition) return; // set-once
 

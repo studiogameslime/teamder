@@ -73,6 +73,7 @@ interface EntryState {
   existingAccountWasNew: boolean;
 
   hydrate: () => Promise<void>;
+  refreshInvite: () => Promise<void>;
   chooseIntent: (intent: EntryIntent) => Promise<void>;
   /**
    * The destination the chosen intent opened, while the person is still a
@@ -97,6 +98,8 @@ interface EntryState {
   takePendingIntent: () => EntryIntent | null;
 }
 
+let inviteReadRevision = 0;
+
 export const useEntryStore = create<EntryState>((set, get) => ({
   organicCompleted: null,
   invite: null,
@@ -117,6 +120,7 @@ export const useEntryStore = create<EntryState>((set, get) => ({
       logError('entryHydrateFlag', err, {});
     }
 
+    const revision = ++inviteReadRevision;
     let invite: EntryInvite | null = null;
     try {
       invite = inviteFromPending(await readPendingAction());
@@ -126,7 +130,19 @@ export const useEntryStore = create<EntryState>((set, get) => ({
       logError('entryHydrateInvite', err, {});
     }
 
-    set({ organicCompleted, invite });
+    // A user choice made during disk reads must survive hydration.
+    if (get().organicCompleted === null) set({ organicCompleted });
+    if (revision === inviteReadRevision) set({ invite });
+  },
+
+  refreshInvite: async () => {
+    const revision = ++inviteReadRevision;
+    try {
+      const invite = inviteFromPending(await readPendingAction());
+      if (revision === inviteReadRevision) set({ invite });
+    } catch (err) {
+      logError('entryRefreshInvite', err, {});
+    }
   },
 
   chooseIntent: async (intent) => {

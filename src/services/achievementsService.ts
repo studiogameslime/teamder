@@ -166,8 +166,7 @@ export const achievementsService = {
    *
    * Network: at most two reads — one games query (array-contains on
    * participantIds, same index used elsewhere) and one count
-   * aggregation for referrals. Both are best-effort; on failure the
-   * affected metric falls back to 0.
+   * aggregation for referrals. A failed source rejects the derivation; callers keep saved data and offer retry.
    */
   async deriveCounters(
     userId: UserId,
@@ -251,7 +250,7 @@ export const achievementsService = {
       }
     } catch (err) {
       logError('deriveGamesJoined', err, { userId });
-      // Silent — leave gamesJoined at 0 on transient failures.
+      throw err;
     }
     const maxGamesWithPlayer = Object.values(withPlayer).reduce(
       (m, n) => Math.max(m, n),
@@ -277,7 +276,7 @@ export const achievementsService = {
         }
       } catch (err) {
         logError('deriveMaxWinsWithPlayer', err, { userId });
-        // Silent — leave at 0.
+        throw err;
       }
     }
 
@@ -290,7 +289,7 @@ export const achievementsService = {
       invitesSent = await userService.getInvitedUsersCount(userId);
     } catch (err) {
       logError('deriveInvitesSent', err, { userId });
-      // Silent — leave at 0.
+      throw err;
     }
 
     return {
@@ -311,18 +310,7 @@ export const achievementsService = {
     };
   },
 
-  /**
-   * Build the display list using DERIVED counters (strict). An
-   * achievement appears unlocked if and only if the derived metric
-   * currently meets its threshold. The persisted unlocked list is
-   * NOT used as a "sticky" override — that was the source of the
-   * old "5-games badge but 0 stats" bug, since legacy bumps wrote
-   * unlocks based on join clicks rather than actual play.
-   *
-   * `unlockedAt` is preserved from the persisted list when the
-   * achievement is still derived-unlocked — so badges keep their
-   * "earned at" date for users whose unlocks were valid all along.
-   */
+  /** Derived counters determine new tiers; previously earned tiers stay earned. */
   listFromCounters(
     user: User,
     counters: UserAchievementState,
@@ -330,18 +318,7 @@ export const achievementsService = {
     return buildList(user, counters);
   },
 
-  /**
-   * Reconcile the persisted `unlocked` list with the current
-   * derivation. Adds newly-met thresholds (with `now` as the unlock
-   * time) and REMOVES persisted entries whose derived counter no
-   * longer meets the threshold. Best-effort — failures are silent.
-   *
-   * Why we prune: legacy bumps wrote unlocks eagerly on join clicks
-   * and similar intent events. Those entries are stuck in
-   * `user.achievements.unlocked` even after the derived counter
-   * (which counts actual play) returns 0. Pruning brings the
-   * persisted state into agreement with reality.
-   */
+  /** Add newly reached tiers idempotently; never revoke an earned tier. */
   async persistDerivedUnlocks(
     userId: UserId,
     counters: UserAchievementState,
@@ -417,7 +394,12 @@ function buildList(
   for (const u of stored.unlocked) persistedAtById[u.id] = u.unlockedAt;
   return ACHIEVEMENTS.map((def) => {
     const value = counters[def.metric] ?? 0;
-    const { current, next } = resolveTier(def, value);
+    const resolved = resolveTier(def, value);
+    const earned = stored.unlocked.find((u) => u.id === def.id);
+    const savedTier = earned ? def.tiers.find((t) => t.tier === (earned.tier ?? 'bronze')) : undefined;
+    const current = savedTier && (!resolved.current || savedTier.threshold > resolved.current.threshold)
+      ? savedTier : resolved.current;
+    const next = def.tiers.find((t) => t.threshold > (current?.threshold ?? value)) ?? null;
     return {
       def,
       value,
@@ -568,8 +550,7 @@ async function persistFirebase(
   const { next, changed, newlyUnlocked } = diffUnlocks(prev.unlocked, counters);
   if (!changed) return newlyUnlocked;
   logNewlyUnlocked(prev.unlocked, next);
-  // Whole-array overwrite — `arrayUnion` would only add, never
-  // remove, and removing stale unlocks is the whole point.
+  // Store the reconciled highest earned tier for each definition.
   await updateDoc(docs.user(uid), {
     'achievements.unlocked': next,
     updatedAt: Date.now(),

@@ -187,9 +187,6 @@ export function UpcomingRoundCard({
             on the left, which is the reference's split. */}
         <View style={styles.meta}>
           <View style={styles.titleRow}>
-            <View style={[styles.calChip, { backgroundColor: `${tone.ink}14` }]}>
-              <Ionicons name="calendar" size={15} color={tone.ink} />
-            </View>
             <Text
               style={styles.title}
               numberOfLines={1}
@@ -198,6 +195,9 @@ export function UpcomingRoundCard({
             >
               {he.homeNextGameTitle}
             </Text>
+            <View style={[styles.calChip, { backgroundColor: `${tone.ink}14` }]}>
+              <Ionicons name="calendar" size={15} color={tone.ink} />
+            </View>
           </View>
 
           {club ? (
@@ -208,18 +208,18 @@ export function UpcomingRoundCard({
 
           {venue ? (
             <View style={styles.infoRow}>
-              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
               <Text style={styles.infoMuted} numberOfLines={1}>
                 {venue}
               </Text>
+              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
             </View>
           ) : null}
 
           <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={14} color={tone.ink} />
             <Text style={styles.infoStrong} numberOfLines={1}>
               {formatGameDay(game.startsAt)} · {formatTime(game.startsAt)}
             </Text>
+            <Ionicons name="calendar-outline" size={14} color={tone.ink} />
           </View>
 
           <Occupancy state={state} tone={tone} />
@@ -426,9 +426,6 @@ function StatusPanel({
   return (
     <HeightReveal visible={!!body}>
     {body ? <View style={[styles.panel, { backgroundColor: tone.wash }]}>
-      <View style={[styles.panelIcon, { backgroundColor: '#FFFFFF' }]}>
-        <Ionicons name={body.icon} size={16} color={tone.ink} />
-      </View>
       <View style={styles.panelTexts}>
         <Text style={[styles.panelTitle, { color: tone.ink }]} numberOfLines={2}>
           {body.title}
@@ -438,6 +435,9 @@ function StatusPanel({
             {body.sub}
           </Text>
         ) : null}
+      </View>
+      <View style={[styles.panelIcon, { backgroundColor: '#FFFFFF' }]}>
+        <Ionicons name={body.icon} size={16} color={tone.ink} />
       </View>
     </View> : null}
     </HeightReveal>
@@ -613,11 +613,6 @@ export function CompletedRoundCard({
 
       <View style={styles.doneBody}>
         <View style={styles.doneHead}>
-          {compact ? (
-            <View style={styles.doneTrophySm}>
-              <Ionicons name="trophy" size={15} color="#4F46E5" />
-            </View>
-          ) : null}
           <View style={styles.doneTexts}>
             <Text style={styles.doneTitle} numberOfLines={1}>
               {he.roundCompletedTitle}
@@ -626,6 +621,11 @@ export function CompletedRoundCard({
               {[when, club].filter(Boolean).join(' · ')}
             </Text>
           </View>
+          {compact ? (
+            <View style={styles.doneTrophySm}>
+              <Ionicons name="trophy" size={15} color="#4F46E5" />
+            </View>
+          ) : null}
         </View>
 
         {/* Only the numbers the evening really recorded. An evening with

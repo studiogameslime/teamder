@@ -66,6 +66,7 @@ beforeEach(() => {
     onboardingDone: true,
     currentUser: GUEST as never,
     guestInitFailed: false,
+    profileRestoreFailed: false,
   });
 });
 
@@ -90,15 +91,18 @@ describe('refreshing the store from the session', () => {
   });
 
   // Blanking the tree under a live screen is worse than being briefly stale.
-  it('keeps what it has when the session reads back empty', async () => {
+  it('stops the authenticated journey when the profile reads back empty', async () => {
     getCurrentUser.mockResolvedValue(null);
-    await useUserStore.getState().refreshFromSession();
-    expect(useUserStore.getState().currentUser).toMatchObject({ id: 'guest-1' });
+    await expect(useUserStore.getState().refreshFromSession()).rejects.toThrow();
+    expect(useUserStore.getState().currentUser).toBeNull();
+    expect(useUserStore.getState().profileRestoreFailed).toBe(true);
   });
 
-  it('never throws into the caller', async () => {
+  it('propagates profile failure and opens the root retry gate', async () => {
     getCurrentUser.mockRejectedValue(new Error('offline'));
-    await expect(useUserStore.getState().refreshFromSession()).resolves.toBeUndefined();
+    await expect(useUserStore.getState().refreshFromSession()).rejects.toThrow('offline');
+    expect(useUserStore.getState().currentUser).toBeNull();
+    expect(useUserStore.getState().profileRestoreFailed).toBe(true);
     expect(logError).toHaveBeenCalled();
   });
 });
@@ -155,13 +159,13 @@ describe('the contextual auth sheet handler', () => {
   ) as string;
 
   it('refreshes the store when the sheet reports success', () => {
-    expect(src).toContain('refreshFromSession()');
+    expect(src).toContain('refreshFromSession(uid)');
   });
 
   // Before the new-account early return: that branch needs the refresh too,
   // or the navigator keeps reading the guest's `onboardingCompleted: true`.
   it('refreshes before the new-account branch returns', () => {
-    const refresh = src.indexOf('refreshFromSession()');
+    const refresh = src.indexOf('refreshFromSession(uid)');
     const early = src.indexOf('if (isNewAccount) return;');
     expect(refresh).toBeGreaterThan(-1);
     expect(early).toBeGreaterThan(-1);
@@ -170,9 +174,18 @@ describe('the contextual auth sheet handler', () => {
 
   // And before the resume, which asks the server as the newly signed-in user.
   it('refreshes before resuming the pending action', () => {
-    const refresh = src.indexOf('refreshFromSession()');
+    const refresh = src.indexOf('refreshFromSession(uid)');
     const resume = src.indexOf('resumePendingAction()');
     expect(resume).toBeGreaterThan(-1);
     expect(refresh).toBeLessThan(resume);
   });
+});
+
+test('authenticated refresh refuses a guest or another account profile',async()=>{
+ for(const value of [GUEST,REAL]){
+  getCurrentUser.mockResolvedValue(value);
+  await expect(useUserStore.getState().refreshFromSession('expected')).rejects.toThrow();
+  expect(useUserStore.getState().currentUser).toBeNull();expect(useUserStore.getState().profileRestoreFailed).toBe(true);
+ }
+ getCurrentUser.mockResolvedValue(REAL);await useUserStore.getState().refreshFromSession('u-real');expect(useUserStore.getState().profileRestoreFailed).toBe(false);
 });

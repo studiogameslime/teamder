@@ -288,7 +288,9 @@ describe('the rule is the presence of the field, not its contents', () => {
 // exactly where a few extra expressions could tip something over, and it is
 // the case worth pinning rather than reasoning about.
 
-import bigGame from './bigGame.fixture.json' assert { type: 'json' };
+// readFileSync keeps this fixture compatible with both Node 20 and Node 24.
+// Import assertions were removed in Node 22; the fixture and expectations stay identical.
+const bigGame = JSON.parse(fs.readFileSync(path.join(HERE, 'bigGame.fixture.json'), 'utf8'));
 
 describe('the 82-field game, and the cap the admin branch already sits behind', () => {
   async function seedBig(pendingClose) {

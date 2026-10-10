@@ -77,6 +77,8 @@ interface Props {
   onClose: () => void;
   /** Live count of games matching the current draft — shown in the CTA. */
   matchCount?: number;
+  /** A quick filter owned by the parent should also expose reset. */
+  hasAdditionalFilters?: boolean;
   /** Optional caption under the location card (e.g. resolved city). */
   nearbyCaption?: string;
   /** Map centre for the radius preview (viewer GPS or home city). When
@@ -90,6 +92,7 @@ export function GameFilterSheet({
   onChange,
   onClose,
   matchCount,
+  hasAdditionalFilters = false,
   nearbyCaption,
   mapCenter,
 }: Props) {
@@ -361,7 +364,7 @@ export function GameFilterSheet({
               ))}
             </View>
 
-            {!isFiltersEmpty(filters) ? (
+            {(!isFiltersEmpty(filters) || hasAdditionalFilters) ? (
               <Pressable
                 onPress={() => onChange(EMPTY_GAME_FILTERS)}
                 hitSlop={8}
@@ -468,6 +471,7 @@ function QuickToggle({
   return (
     <Pressable
       onPress={() => onChange(!value)}
+      accessibilityRole="switch" accessibilityLabel={label} accessibilityState={{ checked: value }}
       style={[styles.quickCard, value && styles.quickCardActive]}
     >
       <View style={styles.quickTop}>
@@ -481,6 +485,9 @@ function QuickToggle({
         </Text>
       </View>
       <BallSwitch
+        accessible={false}
+        importantForAccessibility="no"
+        accessibilityLabel={label}
         value={value}
         onValueChange={onChange}
         trackColor={{ false: colors.border, true: colors.primary }}

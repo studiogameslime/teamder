@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View, StyleSheet } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 
+import { Button } from '@/components/Button';
 import { ChatView } from '@/components/chat/ChatView';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -24,9 +25,14 @@ export function GameChatScreen() {
   const groups = useGroupStore((s) => s.groups);
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     let alive = true;
+    setLoading(true);
+    setFailed(false);
+    setGame(null);
     gameService
       .getGameById(gameId)
       .then((g) => {
@@ -38,14 +44,16 @@ export function GameChatScreen() {
           setLoading(false);
         }
       })
-      .catch(() => {
-        logEvent(AnalyticsEvent.ChatLoadFailed, { scope: 'game', reason: 'fetch_failed' });
-        if (alive) setLoading(false);
+      .catch((err) => {
+        const code = String((err as { code?: string })?.code ?? '');
+        const blocked = code === 'ACCESS_BLOCKED' || code === 'permission-denied';
+        logEvent(AnalyticsEvent.ChatLoadFailed, { scope: 'game', reason: blocked ? 'game_unavailable' : 'fetch_failed' });
+        if (alive) { setFailed(!blocked); setLoading(false); }
       });
     return () => {
       alive = false;
     };
-  }, [gameId]);
+  }, [gameId, reloadTick]);
 
   if (loading) {
     // Keep a header (with back button) while the game resolves, so the user
@@ -59,6 +67,16 @@ export function GameChatScreen() {
       </View>
     );
   }
+
+  if (failed) return (
+    <View style={styles.flex}>
+      <ScreenHeader title={he.chatOpenGame} />
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>{he.dmLoadError}</Text>
+        <Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} />
+      </View>
+    </View>
+  );
 
   // Moderator = the organiser OR an admin of the game's community.
   const grp = game ? groups.find((g) => g.id === game.groupId) : undefined;

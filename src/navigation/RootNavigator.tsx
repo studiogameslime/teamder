@@ -1,3 +1,6 @@
+import { canNavigateInvitation } from '@/services/inviteNavigationPolicy';
+import { invitePreflight } from '@/services/invitePreflight';
+import { waitForEntryBootstrap } from '@/services/entryBootstrap';
 // Top-level "decider": picks which sub-stack to render based on
 // onboarding / auth / group state. We deliberately re-mount stacks on state
 // transitions (no shared history) so each phase starts fresh.
@@ -6,8 +9,11 @@
 // type — we re-export it as an alias of GameStackParamList for backward
 // compatibility, so I don't have to touch the working screens.
 
-import React, { useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import { subscribePendingInvite } from '@/services/storage';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text } from 'react-native';
+import { Button } from '@/components/Button';
+import { he } from '@/i18n/he';
 import { SplashVisual } from '@/screens/SplashScreen';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -32,7 +38,8 @@ import { notificationsService } from '@/services/notificationsService';
 import { storage } from '@/services/storage';
 import {
   readPendingAction,
-  clearPendingAction,
+  clearPendingActionIfMatches,
+  pendingActionMatches,
   isOpenKind,
 } from '@/services/pendingAction';
 import { wasLandingShown, markLandingShown } from '@/services/inviteLanding';
@@ -50,6 +57,7 @@ export type { GameStackParamList as RootStackParamList } from './GameStack';
 export function RootNavigator() {
   const userHydrated = useUserStore((s) => s.hydrated);
   const guestInitFailed = useUserStore((s) => s.guestInitFailed);
+  const profileRestoreFailed = useUserStore((s) => s.profileRestoreFailed);
   const currentUser = useUserStore((s) => s.currentUser);
   const profileComplete = useUserStore((s) => s.isProfileComplete());
   const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding());
@@ -62,6 +70,7 @@ export function RootNavigator() {
   // flash the organic pitch at somebody who opened a match link, which is the
   // single behaviour the gate exists to prevent.
   const entryOrganicCompleted = useEntryStore((s) => s.organicCompleted);
+  const entryInvite = useEntryStore((s) => s.invite);
   const hydrateEntry = useEntryStore((s) => s.hydrate);
 
   // Computed HERE, above the effects, not down in the decision tree where it
@@ -102,7 +111,7 @@ export function RootNavigator() {
   // fully ready (profile complete, group state hydrated) before firing
   // navigation — otherwise the target screen could mount before auth
   // and Firestore reads would 401. `consumedRef` guarantees we hit the
-  // navigator at most once per app launch.
+  // navigator one attempt at a time; each current intent can retry boundedly.
   // Pending-invite consumer — the SOLE place in the app that touches
   // the navigator with a deep-link target. App.tsx only stashes;
   // deepLinkService never navigates. Keeping a single consumer makes
@@ -114,6 +123,20 @@ export function RootNavigator() {
   // optimization, not a correctness requirement — public details
   // works for any signed-in user regardless of membership.
   const consumedRef = useRef(false);
+  const [inviteRetry, setInviteRetry] = useState(0);
+  const retryRef = useRef<{ intentId?: string; count: number }>({ count: 0 });
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const disposedRef = useRef(false);
+  const scheduleInviteRetry = (action: Awaited<ReturnType<typeof readPendingAction>>) => {
+    if (!action || disposedRef.current) return;
+    if (retryRef.current.intentId !== action.intentId) retryRef.current = { intentId: action.intentId, count: 0 };
+    if (retryRef.current.count >= 3) return;
+    retryRef.current.count++;
+    if (retryTimer.current) clearTimeout(retryTimer.current);
+    retryTimer.current = setTimeout(() => setInviteRetry((n) => n + 1), 500 * retryRef.current.count);
+  };
+  const suppressAutoConsume = useEntryStore((s) => s.suppressAutoConsume);
+  useEffect(() => { disposedRef.current = false; return () => { disposedRef.current = true; if (retryTimer.current) clearTimeout(retryTimer.current); }; }, []);
   useEffect(() => {
     if (consumedRef.current) return;
     // Readiness is "we know who is asking", and a GUEST counts. The old
@@ -145,7 +168,7 @@ export function RootNavigator() {
     // It is still there ON PURPOSE: `applyInviteAttributionIfFresh` reads it
     // at signup, so the inviter is credited either way. Only the navigation
     // is suppressed, and only for this launch.
-    if (useEntryStore.getState().suppressAutoConsume) {
+    if (suppressAutoConsume) {
       if (__DEV__) console.info('[invite] consumer — invitation declined at entry');
       return;
     }
@@ -156,16 +179,18 @@ export function RootNavigator() {
     // a navigate needs the tabs to exist.
     if (!groupHydrated) return;
     consumedRef.current = true;
+    let activeAction: Awaited<ReturnType<typeof readPendingAction>> = null;
     (async () => {
       // PendingAction is the source of truth now. It reads the new key and
       // falls back to deriving from the legacy one, so a target stashed by a
       // previous build still resolves — and the legacy key is left in place
       // for the seven other readers that have not moved.
       const action = await readPendingAction();
+      activeAction = action;
       if (__DEV__) {
         console.info('[invite] consumer — pending before consume', action);
       }
-      if (!action) return;
+      if (!action) { consumedRef.current = false; return; }
 
       const ageMs = Math.max(0, Date.now() - action.createdAt);
       logEvent(AnalyticsEvent.PendingActionResumed, {
@@ -221,11 +246,13 @@ export function RootNavigator() {
         // latching — nothing was shown, and there is nothing to remember.
         if (!invitedBy) return;
         if (await wasLandingShown(invitedBy)) return;
+        if (disposedRef.current || !await pendingActionMatches(action) || !canNavigateInvitation(currentUser.id, viewerIsGuest)) return;
         const ok = navigatePersonalInvite({ invitedBy, source: action.origin });
         // Latch only on a navigation that actually happened. A navigator that
         // was not ready yet is a race to retry on the next mount, not an
         // invitation this device has already seen.
         if (ok) await markLandingShown(invitedBy);
+        else scheduleInviteRetry(action);
         return;
       }
 
@@ -257,9 +284,9 @@ export function RootNavigator() {
       let exists = true;
       try {
         if (pending.type === 'session') {
-          exists = (await gameService.getGameById(pending.id)) !== null;
+          exists = await invitePreflight(() => gameService.getGameById(pending.id));
         } else {
-          exists = (await groupService.getPublic(pending.id)) !== null;
+          exists = await invitePreflight(() => groupService.getPublic(pending.id));
         }
       } catch (err) {
         const code =
@@ -275,6 +302,8 @@ export function RootNavigator() {
           exists = true;
         }
       }
+      // A newer link or a newer explicit choice invalidates this old response.
+      if (disposedRef.current || !await pendingActionMatches(action) || !canNavigateInvitation(currentUser.id, viewerIsGuest)) return;
       if (!exists) {
         if (__DEV__) {
           console.info('[invite] consumer — target missing, dropping', pending);
@@ -288,7 +317,7 @@ export function RootNavigator() {
           reason: 'target_deleted',
         });
         toast.error('הקישור לא תקין או שהפריט כבר לא קיים');
-        await clearPendingAction();
+        await clearPendingActionIfMatches(action);
         return;
       }
 
@@ -320,21 +349,32 @@ export function RootNavigator() {
       // against re-firing on the same mount.
       if (ok) {
         if (__DEV__) console.info('[invite] consumer — cleared after navigate');
-        await clearPendingAction();
-      } else if (__DEV__) {
-        console.info(
+        await clearPendingActionIfMatches(action);
+      } else {
+        scheduleInviteRetry(action);
+        if (__DEV__) console.info(
           '[invite] consumer — navigateInvite returned false, keeping stash',
         );
       }
     })().catch((err) => {
       if (__DEV__) console.warn('[invite] consume failed', err);
+    }).finally(async () => {
+      consumedRef.current = false;
+      if (!disposedRef.current && activeAction &&
+          (!await pendingActionMatches(activeAction) || !canNavigateInvitation(currentUser.id, viewerIsGuest))) {
+        if (retryTimer.current) clearTimeout(retryTimer.current);
+        retryTimer.current = setTimeout(() => setInviteRetry((n) => n + 1), 50);
+      }
     });
   }, [
     currentUser,
     profileComplete,
     hasCompletedOnboarding,
     entryDecision,
+    entryInvite,
     groupHydrated,
+    suppressAutoConsume,
+    inviteRetry,
   ]);
 
   // ── Resuming what somebody asked for before they had an identity ────────
@@ -490,6 +530,12 @@ export function RootNavigator() {
     return () => clearInterval(id);
   }, [intentDestination, viewerIsGuest, reopenIntent, clearIntentDestination]);
 
+  useEffect(() => subscribePendingInvite(() => {
+    void useEntryStore.getState().refreshInvite();
+    if (retryTimer.current) clearTimeout(retryTimer.current);
+    retryTimer.current = setTimeout(() => setInviteRetry((n) => n + 1), 50);
+  }), []);
+
   // Hydrate user store on mount + initialize side services.
   // Each side service is wrapped so a failure in one doesn't break boot.
   useEffect(() => {
@@ -497,7 +543,7 @@ export function RootNavigator() {
     // Reads the entry flag and resolves this launch's bypass. Independent of
     // the user hydrate above — the gate needs both, and serialising them would
     // add a disk read to every cold start's critical path.
-    void hydrateEntry();
+    void waitForEntryBootstrap().then(hydrateEntry);
     // Fetch server-tunable knobs (ad frequency, etc.) early so they're
     // active before the app-open ad gate runs. Fire-and-forget; getters
     // fall back to in-code defaults until it resolves.
@@ -602,6 +648,12 @@ export function RootNavigator() {
   // where this person landed before any of this existed. Without this branch
   // the splash would never end.
   if (!currentUser) {
+    if (profileRestoreFailed) return (
+      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
+        <Text style={{ color: colors.text, textAlign: 'center', fontSize: 16 }}>לא ניתן לטעון את הפרופיל כרגע. החשבון שלך נשמר.</Text>
+        <Button title={he.retry} onPress={() => void hydrateUser()} />
+      </View>
+    );
     if (guestInitFailed) return <AuthStack initialRoute="SignIn" />;
     // Hydrate is still in flight (it flips `hydrated` only once the session
     // is in hand), so this is a belt-and-braces frame, not a normal path.

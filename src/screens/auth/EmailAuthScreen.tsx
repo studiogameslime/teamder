@@ -4,7 +4,8 @@
 // currentUser and RootNavigator routes onward (onboarding fills name/avatar,
 // exactly like an Apple sign-in — the provider gives us neither).
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useEntryStore } from '@/store/entryStore';
 import {
   ActivityIndicator,
   Platform,
@@ -40,6 +41,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function EmailAuthScreen() {
   const nav = useNavigation<Nav>();
+  useEffect(() => nav.addListener('beforeRemove', () => {
+    // A real back gesture cancels this journey. Successful sign-in is handled
+    // by RootNavigator before the old stack unmounts; do not clear its marker.
+    const user = useUserStore.getState().currentUser;
+    if (!user || user.isGuest) useEntryStore.getState().endExistingAccountAttempt();
+  }), [nav]);
   const signInWithEmail = useUserStore((s) => s.signInWithEmail);
   const signUpWithEmail = useUserStore((s) => s.signUpWithEmail);
   const sendPasswordReset = useUserStore((s) => s.sendPasswordReset);

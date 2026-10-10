@@ -1,3 +1,4 @@
+import { ScrollSurface } from '@/components/ScrollSurface';
 // EveningSummaryScreen — shows the shareable "סיכום הערב" card for the
 // current user in a finished game, with a Share button that captures the
 // card to a PNG and hands it to the OS share sheet (expo-sharing).
@@ -8,9 +9,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -23,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { EveningSummaryCard } from '@/components/summary/EveningSummaryCard';
+import { EveningScoreInfoSheet } from '@/components/summary/EveningScoreInfoSheet';
 import {
   eveningSummaryService,
   type EveningSummaryModel,
@@ -45,6 +45,7 @@ export function EveningSummaryScreen() {
   const [model, setModel] = useState<EveningSummaryModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const [scoreInfoVisible, setScoreInfoVisible] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -143,10 +144,9 @@ export function EveningSummaryScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollSurface contentContainerStyle={styles.scroll}>
           <EveningSummaryCard key={`${model.gameId}:${model.uid}`} ref={cardRef} model={model} user={currentUser} captureMode={sharing}
-            onScoreInfo={() => Alert.alert('איך מחושב הציון?',
-              'הציון נע בין 6 ל־10 ומשקלל ניצחונות, שערים ובישולים. לניצחונות המשקל הגבוה ביותר, עם התאמה למספר המשחקים ששיחקת. שערים ובישולים נמדדים מול נתוני המחזורים הקודמים במועדון. במועדון חדש משתמשים ביעדי ברירת מחדל. כשיש מעורבות בפנדלים, גם היא משפיעה.\n\nזהו מדד לנתונים שתועדו, ולא הערכה מלאה של היכולת שלך: הגנה, מסירות ומאמץ אינם נמדדים כאן.\n\nהמיקום במחזור מבוסס על הציון. טבלת העונה במועדון מבוססת על נקודות: שתי נקודות לכל שער ונקודה לכל בישול.', [{ text: 'הבנתי' }])}
+            onScoreInfo={() => setScoreInfoVisible(true)}
           />
           <Pressable
             style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.9 }]}
@@ -158,11 +158,12 @@ export function EveningSummaryScreen() {
             {sharing ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <><Ionicons name="share-outline" size={22} color="#FFFFFF" /><Text style={styles.shareTxt}>שתף את הסיכום</Text></>
+            <><Text style={styles.shareTxt}>שתף את הסיכום</Text><Ionicons name="share-outline" size={22} color="#FFFFFF" /></>
             )}
           </Pressable>
-        </ScrollView>
+        </ScrollSurface>
       )}
+      <EveningScoreInfoSheet visible={scoreInfoVisible} onClose={() => setScoreInfoVisible(false)} />
     </SafeAreaView>
   );
 }

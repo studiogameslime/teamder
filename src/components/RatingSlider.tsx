@@ -25,6 +25,7 @@ interface Props {
   value: number;
   onChange?: (next: number) => void;
   readonly?: boolean;
+  accessibilityLabel?: string;
 }
 
 const THUMB = 26;
@@ -35,22 +36,25 @@ const STARS = [1, 2, 3, 4, 5];
 // align with the track: 0 at the left edge, 5 at the right).
 const TICKS = [0, 1, 2, 3, 4, 5];
 
-export function RatingSlider({ value, onChange, readonly = false }: Props) {
+export function RatingSlider({ value, onChange, readonly = false, accessibilityLabel = 'דירוג שחקן' }: Props) {
   const [trackW, setTrackW] = useState(0);
   const widthRef = useRef(0);
   const rated = isRated(value);
+  const latest = useRef({ readonly, onChange });
+  latest.current = { readonly, onChange };
 
   const emit = (locationX: number) => {
+    if (latest.current.readonly) return;
     const w = widthRef.current;
     if (w <= 0) return;
     const ratio = Math.min(1, Math.max(0, locationX / w));
-    onChange?.(snapRating(RATING_MIN + ratio * SPAN));
+    latest.current.onChange?.(snapRating(RATING_MIN + ratio * SPAN));
   };
 
   const pan = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !readonly,
-      onMoveShouldSetPanResponder: () => !readonly,
+      onStartShouldSetPanResponder: () => !latest.current.readonly,
+      onMoveShouldSetPanResponder: () => !latest.current.readonly,
       onPanResponderGrant: (e: GestureResponderEvent) => {
         selectionHaptic();
         emit(e.nativeEvent.locationX);
@@ -82,6 +86,8 @@ export function RatingSlider({ value, onChange, readonly = false }: Props) {
         </Text>
         {rated && !readonly ? (
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={he.ratingClear}
             onPress={() => {
               selectionHaptic();
               onChange?.(0);
@@ -114,6 +120,17 @@ export function RatingSlider({ value, onChange, readonly = false }: Props) {
 
       {/* Track (LTR: 1 left → 5 right) */}
       <View
+        accessible
+        accessibilityRole={readonly ? 'text' : 'adjustable'}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityValue={{ min: 0, max: RATING_MAX, now: rated ? value : 0, text: rated ? formatRating(value) : he.ratingNotRated }}
+        accessibilityActions={readonly ? [] : [{ name: 'increment' }, { name: 'decrement' }]}
+        onAccessibilityAction={(e) => {
+          if (readonly) return;
+          const action = e.nativeEvent.actionName;
+          if (action !== 'increment' && action !== 'decrement') return;
+          onChange?.(snapRating((rated ? value : RATING_MIN) + (action === 'increment' ? 0.1 : -0.1)));
+        }}
         style={styles.trackArea}
         onLayout={(e) => {
           const w = e.nativeEvent.layout.width;

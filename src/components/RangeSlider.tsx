@@ -22,6 +22,8 @@ interface Props {
   /** Text rendered inside the thumb (defaults to the raw value). */
   thumbLabel?: string;
   accent?: string;
+  accessibilityLabel?: string;
+  disabled?: boolean;
 }
 
 const THUMB = 44;
@@ -34,15 +36,19 @@ export function RangeSlider({
   onChange,
   thumbLabel,
   accent = colors.primary,
+  accessibilityLabel = 'טווח חיפוש',
+  disabled = false,
 }: Props) {
   const [trackW, setTrackW] = useState(0);
   const trackWRef = useRef(0);
   const valueRef = useRef(value);
   valueRef.current = value;
+  const latest = useRef({ min, max, step, onChange, disabled });
+  latest.current = { min, max, step, onChange, disabled };
 
   const clampToStep = useCallback(
     (raw: number) => {
-      const stepped = Math.round(raw / step) * step;
+      const stepped = min + Math.round((raw - min) / step) * step;
       return Math.min(max, Math.max(min, stepped));
     },
     [min, max, step],
@@ -50,10 +56,12 @@ export function RangeSlider({
 
   const fromX = useCallback(
     (x: number) => {
+      const { min, max, step } = latest.current;
       const w = trackWRef.current - THUMB;
       if (w <= 0) return min;
       const ratio = Math.min(1, Math.max(0, x / w));
-      return clampToStep(min + ratio * (max - min));
+      const raw = min + ratio * (max - min);
+      return Math.min(max, Math.max(min, min + Math.round((raw - min) / step) * step));
     },
     [min, max, clampToStep],
   );
@@ -67,20 +75,22 @@ export function RangeSlider({
       // scroll that *starts* on the 44px track moves the value instead of
       // scrolling) is well worth a slider that actually responds; tap +
       // drag both work now.
-      onStartShouldSetPanResponder: () => true,
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
+      onStartShouldSetPanResponder: () => !latest.current.disabled,
+      onStartShouldSetPanResponderCapture: () => !latest.current.disabled,
+      onMoveShouldSetPanResponder: () => !latest.current.disabled,
+      onMoveShouldSetPanResponderCapture: () => !latest.current.disabled,
       // Once we own the gesture, don't surrender it to the ScrollView
       // mid-drag.
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (e) => {
-        onChange(fromX(e.nativeEvent.locationX - THUMB / 2));
+        if (latest.current.disabled) return;
+        latest.current.onChange(fromX(e.nativeEvent.locationX - THUMB / 2));
       },
       onPanResponderMove: (e, g) => {
+        if (latest.current.disabled) return;
         // locationX is relative to the thumb on move; use the track-relative
         // x0 + dx instead for stable tracking across the whole bar.
-        onChange(fromX(g.moveX - trackOriginRef.current - THUMB / 2));
+        latest.current.onChange(fromX(g.moveX - trackOriginRef.current - THUMB / 2));
       },
     }),
   ).current;
@@ -105,6 +115,18 @@ export function RangeSlider({
 
   return (
     <View
+      accessible
+      accessibilityRole="adjustable"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
+      accessibilityValue={{ min, max, now: value, text: thumbLabel ?? String(value) }}
+      accessibilityActions={disabled ? [] : [{ name: 'increment' }, { name: 'decrement' }]}
+      onAccessibilityAction={(e) => {
+        if (disabled) return;
+        const action = e.nativeEvent.actionName;
+        if (action !== 'increment' && action !== 'decrement') return;
+        onChange(clampToStep(valueRef.current + (action === 'increment' ? step : -step)));
+      }}
       ref={trackViewRef}
       style={styles.wrap}
       onLayout={onLayout}

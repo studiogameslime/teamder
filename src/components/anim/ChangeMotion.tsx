@@ -51,6 +51,10 @@ export function ReorderMotion({ children, index, rowHeight, style }: {
     cancelAnimation(y);
     const delta = previous.current - index;
     previous.current = index;
+    if (reduced || delta === 0) {
+      y.value = 0;
+      return;
+    }
     y.value = reduced ? 0 : Math.max(-6, Math.min(6, delta)) * rowHeight;
     y.value = withTiming(0, { duration: reduced ? 0 : 260, easing: Easing.out(Easing.cubic) });
     return () => cancelAnimation(y);

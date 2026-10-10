@@ -26,6 +26,7 @@
 import * as Linking from 'expo-linking';
 import { storage, type PendingInvite } from './storage';
 import { logError } from './errorLog';
+import { receivePendingInvite } from './pendingAction';
 
 /** All hostnames + custom-scheme prefixes we treat as our invite links.
  *  The bare "teamder" subdomain was reserved by another Firebase project
@@ -145,6 +146,7 @@ export function parseInviteUrl(url: string): PendingInvite | null {
       parsed.hostname &&
       HOSTING_DOMAINS.has(parsed.hostname) &&
       (segments[0] === 'app' || segments[0] === 'go');
+    if (isAppHosting && str(parsed.queryParams?.code)) return null;
     if (isAppScheme || isAppHosting) {
       // An acquisition link may target a game via `?g=<gameId>` — deep-link
       // to it like a session invite while still recording the source.
@@ -174,8 +176,8 @@ export function parseInviteUrl(url: string): PendingInvite | null {
         }
       }
     } else if (parsed.hostname && HOSTING_DOMAINS.has(parsed.hostname)) {
-      if (segments[0] === 'session' || segments[0] === 'team') {
-        type = segments[0];
+      if (segments[0] === 'session' || segments[0] === 'team' || segments[0] === 'c') {
+        type = segments[0] === 'c' ? 'team' : segments[0];
         id = segments[1] ?? null;
       }
     }
@@ -191,6 +193,52 @@ export function parseInviteUrl(url: string): PendingInvite | null {
     logError('parseInviteUrl', err, { url });
     return null;
   }
+}
+
+/** Resolve only our hosted short URLs, using the existing public HTML payload.
+ * Never evaluates scripts, reads protected documents or fetches foreign hosts.
+ */
+export async function resolveInviteUrl(url: string): Promise<PendingInvite | null> {
+  const direct = parseInviteUrl(url);
+  if (direct) return direct;
+  let short: string[] | null = /^https:\/\/(teamderfc\.web\.app|teamderfc\.firebaseapp\.com)\/i\/([A-Za-z0-9_-]{1,80})(?:[?#].*)?$/.exec(url);
+  if (!short) {
+    const parsed = Linking.parse(url);
+    const path = (parsed.path ?? '').replace(/^\//, '');
+    const code = parsed.queryParams?.code;
+    if (['app', 'go'].includes(path) && ['teamderfc.web.app', 'teamderfc.firebaseapp.com'].includes(parsed.hostname ?? '') && typeof code === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(code)) {
+      short = [url, parsed.hostname!, code];
+    }
+  }
+  if (!short) return null;
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const request = (async () => {
+      const response = await fetch(`https://${short[1]}/i/${short[2]}?resolve=1`, { signal: controller.signal });
+      if (!response.ok) return null;
+      const html = await response.text();
+      if (html.length > 200000) return null;
+      // JSON after server rollout; legacy HTML remains compatible until rollout.
+      const match = /window\.__INVITE__\s*=\s*(\{[^<]*?\})\s*;/.exec(html);
+      const payload = JSON.parse(match ? match[1] : html);
+      if (!['app', 'team', 'session'].includes(payload.type)) return null;
+      if (payload.type !== 'app' && (typeof payload.id !== 'string' || !payload.id)) return null;
+      const rawQuery = url.includes('?') ? url.split('?')[1].split('#')[0] : '';
+      // A canonical code owns the target and inviter. Query aliases cannot
+      // overwrite it, and retaining `code` would recursively reject app URLs.
+      const query = rawQuery.split('&').filter((pair) => {
+        try { return !['invitedBy', 'code', 'g'].includes(decodeURIComponent(pair.split('=')[0])); } catch { return false; }
+      }).join('&');
+      const inviter = typeof payload.invitedBy === 'string' ? payload.invitedBy : '';
+      const path = payload.type === 'app' ? 'app' : `${payload.type}/${encodeURIComponent(payload.id)}`;
+      return parseInviteUrl(`${HOSTING_ORIGIN}/${path}?${query}${inviter ? '&invitedBy=' + encodeURIComponent(inviter) : ''}`);
+    })();
+    return await Promise.race([request, new Promise<null>((resolve) => {
+      timer = setTimeout(() => { controller.abort(); resolve(null); }, 4000);
+    })]);
+  } catch { return null; }
+  finally { if (timer) clearTimeout(timer); }
 }
 
 /**
@@ -223,26 +271,9 @@ export function buildAppInviteUrl(invitedBy?: string): string {
   return invitedBy ? `${base}?invitedBy=${encodeURIComponent(invitedBy)}` : base;
 }
 
-/**
- * Persist an invite for the post-login consumer in RootNavigator.
- *
- * Set-once contract: if a pending invite already exists in storage we
- * leave it alone. The first invite the app saw on this launch wins.
- * Callers that want a fresh value must explicitly clear first.
- */
+/** A freshly clicked link replaces an older navigation target, never a draft. */
 export async function stashPendingInvite(invite: PendingInvite): Promise<void> {
-  const existing = await storage.getPendingInvite();
-  if (existing) {
-    if (__DEV__) {
-      console.info(
-        '[invite] stash skipped — existing pending invite already set',
-        existing,
-      );
-    }
-    return;
-  }
-  await storage.setPendingInvite(invite);
-  if (__DEV__) console.info('[invite] stashed pending invite', invite);
+  await receivePendingInvite(invite);
 }
 
 export const deepLinkService = {

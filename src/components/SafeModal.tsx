@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal as NativeModal, type ModalProps } from 'react-native';
 import { SafeAreaProvider, SafeAreaInsetsContext, SafeAreaFrameContext } from 'react-native-safe-area-context';
 import { SystemSafeArea } from './SystemSafeArea';
+import { crumbTap, crumbGestureEnd } from '@/services/breadcrumbs';
 
 /** Native focus/back/dismiss semantics are preserved; content is protected
  * independently of the safe viewport behind this separate native window.
@@ -12,7 +13,9 @@ export function SafeModal({ children, transparent, ...props }: ModalProps) {
     <NativeModal {...props} transparent={transparent} statusBarTranslucent navigationBarTranslucent>
       <SafeAreaInsetsContext.Provider value={null}>
         <SafeAreaFrameContext.Provider value={null}>
-          <SafeAreaProvider>
+          <SafeAreaProvider
+            onStartShouldSetResponderCapture={e=>{crumbTap(e.nativeEvent.pageX,e.nativeEvent.pageY,e.nativeEvent.target);return false;}}
+            onTouchEnd={e=>crumbGestureEnd(e.nativeEvent.pageX,e.nativeEvent.pageY)}>
             <SystemSafeArea transparent={transparent}>{children}</SystemSafeArea>
           </SafeAreaProvider>
         </SafeAreaFrameContext.Provider>

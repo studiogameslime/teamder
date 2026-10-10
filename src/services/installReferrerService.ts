@@ -1,3 +1,4 @@
+import { resolveIncomingInvite } from './incomingInvite';
 // installReferrerService — recover an invite from the Play Install
 // Referrer after a fresh install.
 //
@@ -24,6 +25,7 @@ import { Platform } from 'react-native';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { storage, type PendingInvite } from './storage';
 import { logError } from './errorLog';
+import { receivePendingInvite } from './pendingAction';
 
 interface PlayInstallReferrerInfo {
   installReferrer: string;
@@ -65,88 +67,50 @@ import { parseReferrerInvite } from '@/utils/referrerInvite';
  * the install referrer arriving), we leave it alone — the deep link
  * represents the user's *current* intent.
  */
-export async function consumeInstallReferrerIfFresh(): Promise<void> {
-  if (Platform.OS !== 'android') return;
-  if (await storage.getInstallReferrerConsumed()) return;
+let inFlight: Promise<void> | null = null;
+export function consumeInstallReferrerIfFresh(): Promise<void> {
+  if (inFlight) return inFlight;
+  inFlight = recoverReferrer().finally(() => { inFlight = null; });
+  return inFlight;
+}
 
+async function recoverReferrer(): Promise<void> {
+  if (Platform.OS !== 'android' || await storage.getInstallReferrerConsumed()) return;
   const mod = loadModule();
-  if (!mod) {
-    // Native module unavailable (Expo Go, iOS, dev client without the
-    // pod linked). Mark consumed so we don't retry every launch.
-    await storage.setInstallReferrerConsumed();
-    return;
-  }
-
-  await new Promise<void>((resolve) => {
+  if (!mod) return; // A later build may have the native module available.
+  const result = await new Promise<PlayInstallReferrerInfo | null>((resolve) => {
     let settled = false;
-    const finish = () => {
+    const finish = (value: PlayInstallReferrerInfo | null) => {
       if (settled) return;
       settled = true;
-      // Always set the consumed flag, even on error / empty referrer
-      // — the native API only returns a meaningful value once per
-      // install, and we don't want to keep retrying forever.
-      storage
-        .setInstallReferrerConsumed()
-        .catch((e) => {
-          logError('setInstallReferrerConsumed', e, {});
-          return undefined;
-        })
-        .finally(resolve);
+      clearTimeout(timer);
+      resolve(value);
     };
+    const timer = setTimeout(() => finish(null), 3000);
     try {
-      mod.getInstallReferrerInfo(async (info, err) => {
-        try {
-          if (err || !info) {
-            // Install-referrer errors (SERVICE_UNAVAILABLE / FEATURE_NOT_SUPPORTED
-            // / already-consumed) are all expected & non-actionable — attribution
-            // is best-effort. Don't log them as failures.
-            if (__DEV__) {
-              console.info('[installReferrer] no referrer info', { err });
-            }
-            return finish();
-          }
-          const raw = info.installReferrer ?? '';
-          if (__DEV__) console.info('[installReferrer] raw referrer →', raw);
-          const invite = parseReferrerInvite(raw);
-          if (__DEV__) console.info('[installReferrer] parsed →', invite);
-          if (!invite) return finish();
-          // Existing-pending guard: don't override a fresher deep
-          // link that was just stashed by App.tsx's Linking listener.
-          const existing = await storage.getPendingInvite();
-          if (existing) {
-            if (__DEV__) {
-              console.info(
-                '[installReferrer] skip — pending already set',
-                existing,
-              );
-            }
-            return finish();
-          }
-          await storage.setPendingInvite(invite);
-          // Nothing in this file emitted anything before, so whether deferred
-          // attribution worked at all was unobservable in production.
-          logEvent(AnalyticsEvent.DeferredDeepLinkResolved, {
-            channel: 'install_referrer',
-            target_type: invite.type,
-            target_id: invite.type === 'app' ? undefined : invite.id,
-            has_inviter: !!invite.invitedBy,
-          });
-          if (__DEV__) {
-            console.info('[installReferrer] stashed pending invite', invite);
-          }
-        } catch (e) {
-          logError('installReferrerParse', e, {});
-          if (__DEV__) console.warn('[installReferrer] parse failed', e);
-        } finally {
-          finish();
-        }
+      mod.getInstallReferrerInfo((info, err) => {
+        // Transient failures and late callbacks cannot consume or overwrite.
+        finish(err ? null : info);
       });
-    } catch (e) {
-      logError('installReferrerNativeCall', e, {});
-      if (__DEV__) console.warn('[installReferrer] native call threw', e);
-      finish();
-    }
+    } catch { finish(null); }
   });
+  if (!result) return; // Retry on next launch, with no repeated polling.
+  try {
+    const referrer = result.installReferrer ?? '';
+    const unresolved = new URLSearchParams(referrer).get('invite_url');
+    const invite = unresolved ? await resolveIncomingInvite(unresolved, 'deferred_deep_link') : parseReferrerInvite(referrer);
+    if (invite && await receivePendingInvite(invite, 'deferred_deep_link')) {
+      logEvent(AnalyticsEvent.DeferredDeepLinkResolved, {
+        channel: 'install_referrer', target_type: invite.type,
+        target_id: invite.type === 'app' ? undefined : invite.id,
+        has_inviter: !!invite.invitedBy,
+      });
+    }
+    await storage.setInstallReferrerConsumed();
+  } catch (err) {
+    // A failed stash remains retryable rather than recording successful recovery.
+    logError('installReferrerPersist', err, {});
+  }
 }
 
 export const installReferrerService = {

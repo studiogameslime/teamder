@@ -335,14 +335,14 @@ export function FriendsScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={he.friendsEmptyCtaButton}
                 >
+                  <Text style={styles.emptyCtaBtnText}>
+                    {he.friendsEmptyCtaButton}
+                  </Text>
                   <Ionicons
                     name="person-add-outline"
                     size={18}
                     color="#FFFFFF"
                   />
-                  <Text style={styles.emptyCtaBtnText}>
-                    {he.friendsEmptyCtaButton}
-                  </Text>
                 </Pressable>
               </View>
             ) : (

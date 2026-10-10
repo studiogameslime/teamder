@@ -14,6 +14,7 @@
 | פעולה ממתינה וטיוטה שחוזרת לאחר הרשמה | [הסבר פשוט](entry/pending-actions.simple.md) | [הסבר מעמיק](entry/pending-actions.md) |
 | הזמנה אישית — איפה המזמין משחק | [הסבר פשוט](entry/personal-invite.simple.md) | [הסבר מעמיק](entry/personal-invite.md) |
 | היכרות והשלמת פרופיל לאחר התחברות | [הסבר פשוט](entry/profile-onboarding.simple.md) | [הסבר מעמיק](entry/profile-onboarding.md) |
+| דף הנחיתה והזמנות | [הסבר פשוט](entry/landing-and-links.simple.md) | [הסבר מעמיק](entry/landing-and-links.md) |
 
 ## בית
 
@@ -115,4 +116,10 @@
 | תפריטים, חלונות ותנועה משותפת | [הסבר פשוט](shared/menus-and-motion.simple.md) | [הסבר מעמיק](shared/menus-and-motion.md) |
 | שעונים, רכיבי בית, נתונים גופניים ומזג אוויר | [הסבר פשוט](shared/native-integrations.simple.md) | [הסבר מעמיק](shared/native-integrations.md) |
 | הצעת התראות אחרי פעולה | [הסבר פשוט](shared/notification-offer.simple.md) | [הסבר מעמיק](shared/notification-offer.md) |
+| שורת הניווט הראשית | [הסבר פשוט](shared/navigation-dock.simple.md) | [הסבר מעמיק](shared/navigation-dock.md) |
+| רצף פעולות מקומי לשחזור תקלות | [הסבר פשוט](shared/diagnostic-journal.simple.md) | [הסבר מעמיק](shared/diagnostic-journal.md) |
+| קישורי פולס וספירת ייחוס | [הסבר פשוט](shared/pulse-links.simple.md) | [הסבר מעמיק](shared/pulse-links.md) |
+| דפי מדיניות, תקנון ופרטי חשבון באתר | [הסבר פשוט](entry/legal-pages.simple.md) | [הסבר מעמיק](entry/legal-pages.md) |
+
+לוח מנהל: [הסבר פשוט](clubs/manager-dashboard.simple.md) · [מאחורי הקלעים](clubs/manager-dashboard.md).
 

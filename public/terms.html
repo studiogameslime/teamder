@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
+<!doctype html><html lang="he" dir="rtl"><head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>תנאי שימוש — Teamder</title>
@@ -8,249 +6,27 @@
   <link rel="icon" type="image/png" href="/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --blue-dark: #1D4ED8;
-      --blue: #3B82F6;
-      --blue-light: #60A5FA;
-      --bg: #ffffff;
-      --bg-soft: #f8fafc;
-      --text: #0f172a;
-      --muted: #64748b;
-      --border: #e2e8f0;
-      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-      --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: "Heebo", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-      line-height: 1.75;
-      -webkit-font-smoothing: antialiased;
-    }
-    img { max-width: 100%; display: block; }
-    a { color: var(--blue-dark); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
 
-    .container {
-      max-width: 1080px;
-      margin: 0 auto;
-      padding: 0 24px;
-    }
-
-    /* Top nav */
-    nav.topnav {
-      padding: 20px 0;
-      border-bottom: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: saturate(180%) blur(8px);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    .topnav .row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-    .brand img { height: 32px; }
-    .nav-links {
-      display: flex;
-      gap: 24px;
-      align-items: center;
-      font-size: 14px;
-    }
-    .nav-links a { color: var(--muted); font-weight: 500; }
-    .nav-links a:hover { color: var(--text); text-decoration: none; }
-
-    /* Page header */
-    section.page-header {
-      padding: 64px 0 32px;
-      background: linear-gradient(180deg, #EFF6FF 0%, #ffffff 100%);
-    }
-    .page-header .container { max-width: 760px; }
-    .page-eyebrow {
-      color: var(--blue-dark);
-      font-weight: 700;
-      font-size: 14px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      margin: 0 0 12px;
-    }
-    .page-title {
-      font-size: clamp(32px, 5vw, 44px);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      margin: 0 0 16px;
-    }
-    .page-meta {
-      color: var(--muted);
-      font-size: 15px;
-      margin: 0;
-    }
-
-    /* Body */
-    section.page-body {
-      padding: 40px 0 80px;
-    }
-    .page-body .container { max-width: 760px; }
-    .page-body p { font-size: 16px; color: #1e293b; }
-    .page-body h2 {
-      font-size: 22px;
-      font-weight: 800;
-      letter-spacing: -0.01em;
-      margin: 40px 0 12px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-    }
-    .page-body h2:first-of-type { padding-top: 0; border-top: 0; margin-top: 24px; }
-    .page-body h3 {
-      font-size: 17px;
-      font-weight: 700;
-      margin: 24px 0 8px;
-    }
-    .page-body ul, .page-body ol {
-      padding-inline-start: 22px;
-      margin: 8px 0;
-    }
-    .page-body li { margin-bottom: 6px; color: #1e293b; }
-    .page-body strong { font-weight: 700; }
-
-    .info-card {
-      background: var(--bg-soft);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      margin: 16px 0;
-    }
-    .info-card.tight { padding: 16px 20px; }
-
-    table.clean {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 12px 0 8px;
-      font-size: 15px;
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      overflow: hidden;
-    }
-    table.clean th, table.clean td {
-      padding: 14px 16px;
-      text-align: start;
-      vertical-align: top;
-      border-bottom: 1px solid var(--border);
-    }
-    table.clean tr:last-child td { border-bottom: 0; }
-    table.clean th {
-      color: var(--muted);
-      font-weight: 700;
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      background: var(--bg-soft);
-    }
-
-    code {
-      background: #f1f5f9;
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-size: 14px;
-      direction: ltr;
-      display: inline-block;
-      color: #475569;
-    }
-
-    /* Footer (shared) */
-    footer.site {
-      border-top: 1px solid var(--border);
-      padding: 48px 0 32px;
-      background: var(--bg-soft);
-    }
-    .footer-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 24px;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .footer-brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-    .footer-brand img { height: 24px; }
-    .footer-links {
-      display: flex;
-      gap: 24px;
-      flex-wrap: wrap;
-      font-size: 14px;
-    }
-    .footer-links a { color: var(--muted); font-weight: 500; }
-    .footer-links a:hover { color: var(--text); text-decoration: none; }
-    .footer-copy {
-      color: var(--muted);
-      font-size: 13px;
-      text-align: center;
-      margin-top: 24px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-    }
-
-    @media (max-width: 640px) {
-      .nav-links { display: none; }
-      section.page-header { padding: 40px 0 24px; }
-      section.page-body { padding: 24px 0 56px; }
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Top nav -->
-  <nav class="topnav">
-    <div class="container row">
-      <a class="brand" href="/">
-        <img src="/logo2.png" alt="Teamder" />
-      </a>
-      <div class="nav-links">
-        <a href="/#features">פיצ׳רים</a>
-        <a href="/#how">איך זה עובד</a>
-        <a href="/#beta">הצטרפות לבטא</a>
-      </div>
-    </div>
-  </nav>
-
-  <!-- Header -->
-  <section class="page-header">
-    <div class="container">
+<link rel="stylesheet" href="/landing.css"/><link rel="stylesheet" href="/legal.css"/>
+</head><body class="legal-page"><a class="skip-link" href="#legal-content">דילוג לתוכן</a><header class="hd legal-header"><div class="cw"><a class="brand" href="/" aria-label="Teamder — עמוד הבית"><img class="brand-logo" src="/logo.png" alt="" width="44" height="44"/><span>Teamder</span></a><nav class="legal-nav" aria-label="ניווט באתר"><a href="/">על האפליקציה</a><a href="/privacy" >מדיניות פרטיות</a><a href="/terms" aria-current="page">תקנון</a></nav></div></header><main><section class="legal-hero"><div class="cw"><a class="legal-back" href="/">חזרה לעמוד הבית <span aria-hidden="true">←</span></a><div class="legal-hero-copy">
       <p class="page-eyebrow">משפטי</p>
       <h1 class="page-title">תנאי שימוש</h1>
       <p class="page-meta">תאריך עדכון אחרון: 24 בספטמבר 2026 · Teamder · Studio Games Lime</p>
-    </div>
-  </section>
-
-  <!-- Body -->
-  <section class="page-body">
-    <div class="container">
+    </div><div class="legal-emblem" aria-hidden="true"><img src="/logo.png" alt="" width="92" height="92"/></div></div></section><div class="cw legal-layout"><aside class="legal-sidebar"><details id="legal-contents"><summary>בעמוד הזה <span aria-hidden="true">⌄</span></summary><nav aria-label="תוכן העניינים"><a href="#section-1">1. מה השירות עושה</a><a href="#section-2">2. מי רשאי להשתמש</a><a href="#section-3">3. התנהגות במגרש ובאפליקציה</a><a href="#section-4">4. מועדונים, מנהלים ודירוגים</a><a href="#section-5">5. סטטיסטיקה, תארים ועונות</a><a href="#section-6">6. בטיחות ואחריות</a><a href="#section-7">7. זמינות השירות</a><a href="#section-8">8. תשלומים</a><a href="#section-9">9. פרסומות</a><a href="#section-10">10. קניין רוחני</a><a href="#section-11">11. סיום השימוש</a><a href="#section-12">12. שינויים בתנאים</a><a href="#section-13">13. דין וסמכות שיפוט</a><a href="#section-14">14. יצירת קשר</a></nav></details><a class="legal-help" href="mailto:studiogameslime@gmail.com">יש לכם שאלה? דברו איתנו <span aria-hidden="true">←</span></a></aside><article class="legal-content" id="legal-content" aria-label="תקנון ותנאי שימוש"><section class="legal-section">
       <p>אלה התנאים שחלים על השימוש באפליקציית Teamder ובאתר שלה (יחד — "השירות"). השימוש בשירות מהווה הסכמה לתנאים האלה. אם אינכם מסכימים להם, אל תשתמשו בשירות.</p>
       <p>מה נעשה במידע שלכם מתואר בנפרד ב<a href="/privacy">מדיניות הפרטיות</a>, והיא חלק בלתי נפרד מתנאים אלה.</p>
 
-      <h2>1. מה השירות עושה</h2>
+      </section><section class="legal-section"><h2 id="section-1">1. מה השירות עושה</h2>
       <p>Teamder הוא כלי לארגון משחקי כדורגל חובבים: פתיחת מחזור, הרשמת שחקנים, חלוקה לכוחות, ניהול טיימר ותוצאות, וסטטיסטיקה של השחקנים והמועדון.</p>
       <p>אנחנו מספקים את הכלי בלבד. אנחנו לא מארגנים את המשחקים, לא מפעילים מגרשים, לא צד לשום הסדר בין שחקנים, ולא מעורבים במה שקורה במגרש.</p>
 
-      <h2>2. מי רשאי להשתמש</h2>
+      </section><section class="legal-section"><h2 id="section-2">2. מי רשאי להשתמש</h2>
       <p>השירות מיועד לבני 13 ומעלה. מתחת לגיל 18 — בהסכמת הורה או אפוטרופוס. אתם אחראים לשמור על פרטי החשבון שלכם ועל כל פעולה שנעשית דרכו.</p>
       <p>מותר חשבון אחד לאדם. אסור להתחזות לאדם אחר, להשתמש בשם שאינו שלכם, או ליצור חשבונות אוטומטיים.</p>
 
-      <h2>3. התנהגות במגרש ובאפליקציה</h2>
+      </section><section class="legal-section"><h2 id="section-3">3. התנהגות במגרש ובאפליקציה</h2>
       <p>השירות כולל צ'אט, שמות שחקנים, הודעות מנהל ותוכן שמשתמשים כותבים. אסור לפרסם או לשלוח:</p>
       <ul>
         <li>הטרדה, איומים, הסתה, גזענות או פגיעה באדם או בקבוצה;</li>
@@ -261,66 +37,41 @@
       </ul>
       <p>בכל הודעה בצ'אט אפשר לדווח על תוכן פוגעני ולחסום משתמש. אנחנו בודקים דיווחים ורשאים להסיר תוכן, להשעות חשבון או לחסום אותו לצמיתות — בלי התראה מוקדמת כשיש צורך מיידי.</p>
 
-      <h2>4. מועדונים, מנהלים ודירוגים</h2>
+      </section><section class="legal-section"><h2 id="section-4">4. מועדונים, מנהלים ודירוגים</h2>
       <p>מי שפותח מועדון הוא מנהל שלו. מנהל רשאי לאשר או לדחות בקשות הצטרפות, להסיר חברים, לערוך מחזורים ותוצאות, ולתת דירוג פנימי לשחקנים.</p>
       <p>הדירוג הפנימי הוא כלי של המנהלים לאיזון כוחות. הוא לא הערכה מקצועית ולא אמירה על אדם, ואין להשתמש בו לשום מטרה מחוץ לאפליקציה.</p>
       <p>המנהל אחראי לתוכן שהוא כותב ולהחלטות שהוא מקבל במועדון שלו. אנחנו לא צד לסכסוכים בין חברי מועדון.</p>
 
-      <h2>5. סטטיסטיקה, תארים ועונות</h2>
+      </section><section class="legal-section"><h2 id="section-5">5. סטטיסטיקה, תארים ועונות</h2>
       <p>הנתונים באפליקציה — גולים, בישולים, נוכחות, ציוני ערב ותארים — נרשמים מתוך מה שהמנהלים מזינים ומה שקורה במשחק החי. הם עשויים להיות חלקיים או לא מדויקים, ואין להסתמך עליהם לשום מטרה שמחוץ למשחק.</p>
       <p>כשעונה נסגרת, התוצאות שלה נשמרות בארכיון ואינן משתנות עוד. תיקונים אפשריים רק בחלון הזמן שהאפליקציה מאפשרת.</p>
 
-      <h2>6. בטיחות ואחריות</h2>
+      </section><section class="legal-section"><h2 id="section-6">6. בטיחות ואחריות</h2>
       <p><strong>המשחק עצמו הוא באחריותכם בלבד.</strong> אנחנו לא אחראים לפציעות, לנזק לרכוש, למחלוקות בין שחקנים, למגרש, לציוד, או לכל דבר שקורה לפני המשחק, במהלכו או אחריו.</p>
       <p>ודאו שאתם כשירים לשחק, ובמקרה של ספק — היוועצו ברופא.</p>
 
-      <h2>7. זמינות השירות</h2>
+      </section><section class="legal-section"><h2 id="section-7">7. זמינות השירות</h2>
       <p>אנחנו משתדלים שהשירות יהיה זמין ותקין, אבל הוא ניתן "כמות שהוא". ייתכנו תקלות, שגיאות, הפסקות ואובדן נתונים. אנחנו רשאים לשנות תכונות, להוסיף או להסיר אותן, או להפסיק את השירות — ונודיע על הפסקה מראש במידת האפשר.</p>
 
-      <h2>8. תשלומים</h2>
+      </section><section class="legal-section"><h2 id="section-8">8. תשלומים</h2>
       <p>השירות ניתן ללא תשלום. אין באפליקציה רכישות, מנויים או העברות כספים מכל סוג. אם ייווסף בעתיד רכיב בתשלום, הוא יוצג מראש ובאופן ברור לפני כל חיוב.</p>
 
-      <h2>9. פרסומות</h2>
+      </section><section class="legal-section"><h2 id="section-9">9. פרסומות</h2>
       <p>באפליקציה מוצגות פרסומות מרשתות פרסום חיצוניות. אנחנו לא אחראים לתוכן הפרסומות או למוצרים והשירותים שמפורסמים בהן.</p>
 
-      <h2>10. קניין רוחני</h2>
+      </section><section class="legal-section"><h2 id="section-10">10. קניין רוחני</h2>
       <p>השם Teamder, הלוגו, העיצוב והקוד שייכים ל-Studio Games Lime. אין להעתיק, לשכפל או להפיץ אותם בלי אישור בכתב.</p>
       <p>התוכן שאתם כותבים נשאר שלכם. בפרסום תוכן בשירות אתם נותנים לנו רשות להציג אותו לחברי המועדון שלכם ולשמור אותו לצורך הפעלת השירות.</p>
 
-      <h2>11. סיום השימוש</h2>
+      </section><section class="legal-section"><h2 id="section-11">11. סיום השימוש</h2>
       <p>אפשר למחוק את החשבון בכל רגע מתוך האפליקציה או דרך <a href="/delete-account">עמוד מחיקת החשבון</a>. אנחנו רשאים להשעות או לסגור חשבון שמפר את התנאים האלה.</p>
 
-      <h2>12. שינויים בתנאים</h2>
+      </section><section class="legal-section"><h2 id="section-12">12. שינויים בתנאים</h2>
       <p>נעדכן את התנאים מעת לעת. תאריך העדכון האחרון מופיע בראש העמוד, ושינוי מהותי יוצג גם באפליקציה. המשך שימוש לאחר עדכון מהווה הסכמה לנוסח החדש.</p>
 
-      <h2>13. דין וסמכות שיפוט</h2>
+      </section><section class="legal-section"><h2 id="section-13">13. דין וסמכות שיפוט</h2>
       <p>על תנאים אלה חלים דיני מדינת ישראל, וסמכות השיפוט הבלעדית נתונה לבתי המשפט המוסמכים במחוז תל אביב.</p>
 
-      <h2>14. יצירת קשר</h2>
+      </section><section class="legal-section"><h2 id="section-14">14. יצירת קשר</h2>
       <p>שאלות בנוגע לתנאי השימוש: <a href="mailto:studiogameslime@gmail.com">studiogameslime@gmail.com</a>.</p>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="site">
-    <div class="container">
-      <div class="footer-row">
-        <div class="footer-brand">
-          <img src="/logo2.png" alt="Teamder" />
-          <span>· מארגנים משחקי כדורגל בלי בלגן</span>
-        </div>
-        <div class="footer-links">
-          <a href="/privacy">מדיניות פרטיות</a>
-          <a href="/terms">תנאי שימוש</a>
-          <a href="/delete-account">מחיקת חשבון</a>
-          <a href="mailto:studiogameslime@gmail.com">צור קשר</a>
-        </div>
-      </div>
-      <div class="footer-copy">
-        © Studio Games Lime · כל הזכויות שמורות
-      </div>
-    </div>
-  </footer>
-
-</body>
-</html>
+    </section></article></div></main><footer class="foot legal-footer"><div class="cw"><a class="brand" href="/"><img class="brand-logo" src="/logo.png" alt="" width="44" height="44"/><span>Teamder</span></a><nav aria-label="קישורים נוספים"><a href="/">עמוד הבית</a><a href="/privacy">מדיניות פרטיות</a><a href="/terms">תקנון ותנאי שימוש</a><a href="/delete-account">מחיקת חשבון</a><a href="mailto:studiogameslime@gmail.com">יצירת קשר</a></nav><span>© Studio Games Lime</span></div></footer><script src="/js/legal-navigation.js" defer></script></body></html>

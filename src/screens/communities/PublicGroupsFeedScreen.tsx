@@ -29,9 +29,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '@/components/Button';
 import { BouncingBall } from '@/components/anim/BouncingBall';
-import { LivingIcon } from '@/components/anim/LivingIcon';
 import { AppearItem } from '@/components/anim/AppearItem';
-import { Breathing } from '@/components/anim/Breathing';
 import { toast } from '@/components/Toast';
 import {
   CommunityFilterSheet,
@@ -450,7 +448,7 @@ export function PublicGroupsFeedScreen() {
   // see CreateGroupScreen — so what they typed is preserved across the sign-in
   // and the club is created for them afterwards. Gating the ENTRY here was what
   // made "browse, then decide" impossible.
-  const handleCreate = (source: 'fab' | 'empty_state' | 'my_clubs_hint') => {
+  const handleCreate = (source: 'hero' | 'empty_state' | 'my_clubs_hint') => {
     logEvent(AnalyticsEvent.CommunityCreateStarted, { source });
     nav.navigate('CommunitiesCreate');
   };
@@ -522,11 +520,12 @@ export function PublicGroupsFeedScreen() {
     return (
       <AppearItem key={g.id} index={idx}>
         <ClubCard
+          groupId={g.id}
           vm={{ ...vm, friendsOverflow: overflow }}
           name={localGroup?.name ?? g.name}
           city={city}
-          coverPhotoUrl={g.coverPhotoUrl}
-          coverImageId={g.coverImageId}
+          coverPhotoUrl={localGroup?.coverPhotoUrl ?? g.coverPhotoUrl}
+          coverImageId={localGroup?.coverImageId ?? g.coverImageId}
           onPress={() => {
             // Members enter the full community page; non-members open the
             // public preview where they can act on a join.
@@ -547,7 +546,7 @@ export function PublicGroupsFeedScreen() {
   if (loading && items === null) {
     return (
       <View style={styles.root}>
-        <CommunitiesHero />
+        <CommunitiesHero onCreate={() => handleCreate('hero')} />
         <SoccerBallLoader size={40} style={{ marginTop: spacing.xxl }} />
       </View>
     );
@@ -565,7 +564,7 @@ export function PublicGroupsFeedScreen() {
           ALSO pinned (outside the scroll) but uses a negative
           marginTop to float over the hero's bottom edge — z-order:
           row on top of the hero. */}
-      <CommunitiesHero />
+      <CommunitiesHero onCreate={() => handleCreate('hero')} />
       <View style={styles.searchRow}>
         {/* White pill search bar. Inside the pill we want the
             placeholder/value on the visual RIGHT and the search
@@ -710,7 +709,7 @@ export function PublicGroupsFeedScreen() {
                   </View>
                 </Section>
               ) : null}
-              <Section title={he.communitiesSectionOpen}>
+              <Section title={he.communitiesSectionOpen} subtitle={he.communitiesDiscoverSubtitle}>
                 {discoveryItems.length === 0 ? (
                   <Text style={styles.sectionEmpty}>
                     {he.communitiesEmptyOpenSection}
@@ -743,29 +742,6 @@ export function PublicGroupsFeedScreen() {
         </ScrollView>
       )}
 
-      {/* Floating "+" action — bottom LEFT under RTL. Using `end`
-          (which resolves to the visual LEFT under forceRTL) keeps it
-          off the right edge where the chevron-back gesture lives.
-          Hidden on the empty state, which already shows a centered
-          "create first community" button. */}
-      {totalKnown === 0 && !isSearching ? null : (
-        <Breathing mode="pulse" amount={0.05} periodMs={2400} style={styles.fab}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.fabInner,
-              pressed && { opacity: 0.92, transform: [{ scale: 0.96 }] },
-            ]}
-            onPress={() => handleCreate('fab')}
-            accessibilityRole="button"
-            accessibilityLabel={he.communitiesCreateGroup}
-          >
-            <LivingIcon motion="hop">
-              <Ionicons name="add" size={30} color="#FFFFFF" />
-            </LivingIcon>
-          </Pressable>
-        </Breathing>
-      )}
-
       <CommunityFilterSheet
         visible={filterOpen}
         onClose={() => setFilterOpen(false)}
@@ -788,10 +764,12 @@ export function PublicGroupsFeedScreen() {
 // ─── Sub-components ────────────────────────────────────────────────────────
 
 function Section({
+  subtitle,
   title,
   children,
 }: {
   title: string;
+  subtitle?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -803,6 +781,7 @@ function Section({
             row so it sits under the start of the right-aligned
             Hebrew title. */}
         <View style={styles.sectionUnderline} />
+        {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
       </View>
       {children}
     </View>
@@ -812,7 +791,7 @@ function Section({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F8FAFC' },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 24,
   },
   // Pinned search/filter row that floats OVER the bottom of the
   // hero. Negative marginTop pulls the row up onto the hero's
@@ -823,7 +802,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-    marginTop: -spacing.xxl,
+    marginTop: -12,
+    marginBottom: 12,
     zIndex: 2,
     elevation: 2,
   },
@@ -941,6 +921,7 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     textAlign: RTL_LABEL_ALIGN,
   },
+  sectionSubtitle: { color: '#64748B', fontSize: 12, textAlign: RTL_LABEL_ALIGN },
   // Blue underline indicator — small dash under the title, pinned to
   // the trailing edge of the row (right under RTL) so it sits under
   // the start of the Hebrew title text.

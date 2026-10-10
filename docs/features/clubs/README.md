@@ -6,6 +6,7 @@
 
 | מסך או תחום | הסבר פשוט | פירוט מעמיק | נתיב ניווט |
 |---|---|---|---|
+| לוח מנהל | [קצר ופשוט](manager-dashboard.simple.md) | [לוח מנהל](manager-dashboard.md) | `ManagerDashboard` |
 | גילוי, חיפוש וסינון | [קצר ופשוט](discovery.simple.md) | [גילוי מועדונים](discovery.md) | `CommunitiesFeed` |
 | תצוגה ציבורית ובקשת הצטרפות | [קצר ופשוט](public-preview-and-join.simple.md) | [תצוגה ציבורית](public-preview-and-join.md) | `CommunityDetailsPublic` |
 | יצירה ועריכה | [קצר ופשוט](create-and-edit.simple.md) | [יצירה ועריכה](create-and-edit.md) | `CommunitiesCreate`, `CommunityEdit` |
@@ -29,3 +30,4 @@
 6. עדכן את המסמך, טבלת המצבים והצילום לאחר שינוי. הפנה לצילום חדש וכתוב באיזו סביבה צולם.
 
 מקורות היסטוריים והסתירות שנפתרו: [סקירת התחום](../reviews/clubs-stats-chat.md), [ארכיון 047–092](../reviews/archive-047-092.md).
+

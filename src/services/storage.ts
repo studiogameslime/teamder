@@ -23,6 +23,8 @@ const KEYS = {
   // user opened before they were authenticated. RootNavigator consumes
   // this after the post-sign-in onboarding completes.
   PENDING_INVITE: 'footy.invite.pending',
+  INVITE_ATTRIBUTION: 'footy.invite.attribution',
+  INVITE_NEW_USER: 'footy.invite.newUser',
   // Set once installReferrerService has read the Play Install Referrer
   // for this install — the API only delivers the referrer once per
   // install, and we additionally cache "we've looked" so subsequent
@@ -109,6 +111,39 @@ export type PendingInvite =
   // inviter so referral attribution still lands; the consumer doesn't
   // navigate anywhere (the user just arrives on the home screen).
   | ({ type: 'app'; invitedBy?: string } & AcquisitionTag);
+
+let inviteWrites: Promise<unknown> = Promise.resolve();
+function serializeInviteWrite<T>(operation: () => Promise<T>): Promise<T> {
+  const result = inviteWrites.then(operation, operation);
+  inviteWrites = result.catch(() => {});
+  return result;
+}
+
+const inviteListeners = new Set<() => void>();
+async function rememberAttribution(invite: PendingInvite): Promise<void> {
+  if (!invite.invitedBy && !invite.source) return;
+  const raw = await AsyncStorage.getItem(KEYS.INVITE_ATTRIBUTION);
+  let record: { referral?: PendingInvite; acquisition?: PendingInvite; userId?: string; invite?: PendingInvite } = {};
+  try { if (raw) record = JSON.parse(raw); } catch { /* replace unreadable record */ }
+  // Upgrade the local legacy record, without changing already chosen axes.
+  if (record.invite?.invitedBy && !record.referral) record.referral = record.invite;
+  if (record.invite?.source && !record.acquisition) record.acquisition = record.invite;
+  delete record.invite;
+  // First known inviter and first known acquisition are independent. A plain
+  // Play install cannot lock out a later recovered referral. Never mix campaign
+  // fields from a different touch into an already complete acquisition.
+  if (!record.referral && invite.invitedBy) record.referral = invite;
+  if (!record.acquisition && invite.source) record.acquisition = invite;
+  await AsyncStorage.setItem(KEYS.INVITE_ATTRIBUTION, JSON.stringify(record));
+}
+
+export function subscribePendingInvite(listener: () => void): () => void {
+  inviteListeners.add(listener);
+  return () => { inviteListeners.delete(listener); };
+}
+function notifyPendingInvite() {
+  for (const listener of inviteListeners) listener();
+}
 
 export const storage = {
   /**
@@ -244,6 +279,64 @@ export const storage = {
     await AsyncStorage.setItem(KEYS.AVAIL_NUDGE_LAST_SHOWN, String(ms));
   },
 
+  async registerFreshInviteUser(userId: string, createdAt: number): Promise<void> {
+    await serializeInviteWrite(async () => {
+    if (Date.now() - createdAt > 24 * 60 * 60 * 1000 || createdAt > Date.now() + 60000) return;
+    const raw = await AsyncStorage.getItem('footy.invite.unresolved');
+    const creditRaw = await AsyncStorage.getItem(KEYS.INVITE_ATTRIBUTION);
+    try {
+      const pending = raw ? JSON.parse(raw) : null;
+      const credit = creditRaw ? JSON.parse(creditRaw) : null;
+      if (credit?.userId && credit.userId !== userId) return;
+      if (!pending && !credit?.referral && !credit?.acquisition) return;
+      await AsyncStorage.setItem(KEYS.INVITE_NEW_USER, JSON.stringify({ userId, createdAt, url: pending?.url ?? '', expiresAt: Date.now() + 24 * 60 * 60 * 1000, resolved: !pending }));
+    } catch { /* best-effort registration metadata */ }
+    });
+  },
+  async markInviteAttributionResolved(url: string): Promise<void> {
+    await serializeInviteWrite(async () => {
+      const raw = await AsyncStorage.getItem(KEYS.INVITE_NEW_USER);
+      if (!raw) return;
+      const ticket = JSON.parse(raw);
+      if (ticket.url !== url || ticket.expiresAt < Date.now()) return;
+      await AsyncStorage.setItem(KEYS.INVITE_NEW_USER, JSON.stringify({ ...ticket, resolved: true }));
+    });
+  },
+  async getFreshInviteUser(userId: string): Promise<{ createdAt: number } | null> {
+    const raw = await AsyncStorage.getItem(KEYS.INVITE_NEW_USER);
+    if (!raw) return null;
+    try {
+      const ticket = JSON.parse(raw);
+      return ticket.userId === userId && ticket.resolved === true && ticket.expiresAt >= Date.now() ? { createdAt: ticket.createdAt } : null;
+    } catch { return null; }
+  },
+  async rememberInviteAttribution(invite: PendingInvite): Promise<void> {
+    await serializeInviteWrite(() => rememberAttribution(invite));
+  },
+  async getInviteAttribution(userId: string, axis: 'referral' | 'acquisition' | 'combined' = 'combined'): Promise<PendingInvite | null> {
+    // Upgrade compatibility: capture the old stash before a navigator removes it.
+    const legacy = await storage.getPendingInvite();
+    if (legacy) await storage.rememberInviteAttribution(legacy);
+    return serializeInviteWrite(async () => {
+      const raw = await AsyncStorage.getItem(KEYS.INVITE_ATTRIBUTION);
+      if (!raw) return null;
+      try {
+        const record = JSON.parse(raw);
+        if (record.userId && record.userId !== userId) return null;
+        if (!record.userId) {
+          record.userId = userId;
+          await AsyncStorage.setItem(KEYS.INVITE_ATTRIBUTION, JSON.stringify(record));
+        }
+        const referral = record.referral ?? (record.invite?.invitedBy ? record.invite : null);
+        const acquisition = record.acquisition ?? (record.invite?.source ? record.invite : null);
+        if (axis === 'referral') return referral;
+        if (axis === 'acquisition') return acquisition;
+        if (!referral && !acquisition) return null;
+        return { ...(acquisition ?? {}), ...(referral ?? {}),
+          ...(acquisition?.source ? { source: acquisition.source, campaign: acquisition.campaign, linkId: acquisition.linkId } : {}) } as PendingInvite;
+      } catch { return null; }
+    });
+  },
   async getPendingInvite(): Promise<PendingInvite | null> {
     const raw = await AsyncStorage.getItem(KEYS.PENDING_INVITE);
     if (!raw) return null;
@@ -253,7 +346,8 @@ export const storage = {
         parsed &&
         ((parsed.type === 'app') ||
           ((parsed.type === 'session' || parsed.type === 'team') &&
-            typeof (parsed as { id?: unknown }).id === 'string'));
+            typeof (parsed as { id?: unknown }).id === 'string' &&
+            (parsed as { id: string }).id.trim().length > 0));
       if (!validShape) {
         await AsyncStorage.removeItem(KEYS.PENDING_INVITE);
         return null;
@@ -275,10 +369,26 @@ export const storage = {
     }
   },
   async setPendingInvite(invite: PendingInvite): Promise<void> {
-    await AsyncStorage.setItem(KEYS.PENDING_INVITE, JSON.stringify(invite));
+    await serializeInviteWrite(async () => {
+      await rememberAttribution(invite);
+      await AsyncStorage.setItem(KEYS.PENDING_INVITE, JSON.stringify(invite));
+      notifyPendingInvite();
+    });
+  },
+  async setPendingInviteIfAbsent(invite: PendingInvite): Promise<boolean> {
+    return serializeInviteWrite(async () => {
+      if (await storage.getPendingInvite()) return false;
+      await rememberAttribution(invite);
+      await AsyncStorage.setItem(KEYS.PENDING_INVITE, JSON.stringify(invite));
+      notifyPendingInvite();
+      return true;
+    });
   },
   async clearPendingInvite(): Promise<void> {
-    await AsyncStorage.removeItem(KEYS.PENDING_INVITE);
+    await serializeInviteWrite(async () => {
+      await AsyncStorage.removeItem(KEYS.PENDING_INVITE);
+      notifyPendingInvite();
+    });
   },
 
   async getInstallReferrerConsumed(): Promise<boolean> {

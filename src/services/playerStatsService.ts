@@ -127,6 +127,7 @@ export const playerStatsService = {
       }
     } catch (err) {
       logError('playerStats.games', err, { userId });
+      throw err;
     }
 
     const distinctPlayers = Object.keys(withPlayer).length;
@@ -227,6 +228,7 @@ export const playerStatsService = {
       }
     } catch (err) {
       logError('playerStats.pairs', err, { userId });
+      throw err;
     }
 
     return {

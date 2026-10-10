@@ -231,6 +231,7 @@ export function AdvancedLiveMatchScreen() {
     baseTeams?: { index: number; playerIds: string[] }[];
     working: { teams: RotationTeam[]; loans: MatchRotation['loans'] };
     rotationBase: MatchRotation;
+    source?: string;
     perTeam: number;
     fillMode: RotationFillState['fillMode'];
     loserFirst: number | null;
@@ -495,6 +496,7 @@ export function AdvancedLiveMatchScreen() {
       baseTeams,
       working,
       rotationBase: skeleton.rotation,
+      source: skeleton.source,
       perTeam: skeleton.perTeam,
       fillMode: skeleton.fillMode,
       loserFirst: skeleton.loserFirst,
@@ -578,6 +580,7 @@ export function AdvancedLiveMatchScreen() {
         { rotation, teams: flow.working.teams },
         flow.baseTeams,
         !flow.keepClock && me ? { userId: me.id, userName: me.name ?? '' } : undefined,
+        flow.source,
       );
     } catch (err) {
       logError('liveCommitFilledRotation', err, { gameId });

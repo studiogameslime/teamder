@@ -26,6 +26,7 @@ import { userService } from '@/services';
 import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { Button } from '@/components/Button';
 import { Avatar } from '@/components/Avatar';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -51,35 +52,43 @@ export function ReferralsListScreen() {
   const currentUserId = useUserStore((s) => s.currentUser?.id ?? null);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const requestRef = useRef(0);
+  const ownerRef = useRef(currentUserId);
   // The screen-open event carries the referral count, which is only known
   // once the load resolves — and `load` re-runs on every focus, so guard it
   // to a single fire per mount.
   const openLoggedRef = useRef(false);
 
   const load = useCallback(async () => {
+    const request = ++requestRef.current;
+    if (ownerRef.current !== currentUserId) { setRows(null); ownerRef.current = currentUserId; openLoggedRef.current = false; }
+    setFailed(false);
+    setLoading(true);
     if (!currentUserId) {
       setRows([]);
+      setLoading(false);
       return;
     }
     try {
       const list = await userService.listInvitedUsers(currentUserId);
+      if (request !== requestRef.current) return;
       setRows(list);
       if (!openLoggedRef.current) {
         openLoggedRef.current = true;
         logEvent(AnalyticsEvent.ReferralsScreenOpened, { count: list.length });
       }
     } catch (err) {
-      // Never leave `rows` as null — that drives the perpetual spinner
-      // (loading is derived from `rows === null`). On failure fall back to
-      // an empty list so the user sees the empty state, not a frozen load.
-      // The empty state is indistinguishable from "genuinely no referrals",
-      // so without this the failed read would vanish — record it.
+      // Retain the previous successful list; failure is a separate retryable state.
       logError('loadReferrals', err, {
         screen: 'ReferralsListScreen',
         userId: currentUserId,
       });
       if (__DEV__) console.warn('[referrals] load failed', err);
-      setRows([]);
+      if (request === requestRef.current) setFailed(true);
+    } finally {
+      if (request === requestRef.current) setLoading(false);
     }
   }, [currentUserId]);
 
@@ -88,6 +97,7 @@ export function ReferralsListScreen() {
   useFocusEffect(
     useCallback(() => {
       void load();
+      return () => { requestRef.current += 1; };
     }, [load]),
   );
 
@@ -100,16 +110,20 @@ export function ReferralsListScreen() {
     }
   }, [load]);
 
-  const loading = rows === null;
-  const empty = !loading && rows.length === 0;
+  const empty = !loading && rows?.length === 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.referralsScreenTitle} />
 
-      {loading ? (
+      {loading && rows === null ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : failed && !rows?.length ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyBody}>לא ניתן לטעון את השחקנים שהצטרפו דרכך כרגע.</Text>
+          <Button title={he.retry} variant="outline" onPress={() => void load()} />
         </View>
       ) : empty ? (
         <View style={styles.center}>
@@ -120,6 +134,7 @@ export function ReferralsListScreen() {
             {he.referralsScreenEmptyTitle}
           </Text>
           <Text style={styles.emptyBody}>{he.referralsScreenEmptyBody}</Text>
+          <Button title={he.retry} variant="outline" onPress={() => void load()} />
         </View>
       ) : (
         <ScrollView
@@ -133,10 +148,11 @@ export function ReferralsListScreen() {
           }
           showsVerticalScrollIndicator={false}
         >
+          {failed ? <Button title={he.retry} variant="outline" onPress={() => void load()} /> : null}
           <Text style={styles.summary}>
-            {he.referralsScreenSummary(rows.length)}
+            {he.referralsScreenSummary(rows?.length ?? 0)}
           </Text>
-          {rows.map((row) => (
+          {(rows ?? []).map((row) => (
             <Row key={row.id} row={row} onOpen={openCard} />
           ))}
         </ScrollView>

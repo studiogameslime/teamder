@@ -52,7 +52,9 @@ import {
 } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 
-import { mockGamesV2 } from '@/data/mockData';
+import { mockGamesV2, mockRoundHistory } from '@/data/mockData';
+import { IntentScreen } from '@/screens/entry/IntentScreen';
+import { useEntryStore } from '@/store/entryStore';
 import { MotionPreview } from './MotionPreview';
 import { appAlert } from '@/components/AppDialog';
 import {
@@ -98,6 +100,12 @@ const ROUTES: Array<
   ['CommunityDetailsPublic', 'CommunityDetailsPublic', 'ProfileTab', { groupId: 'pub_3' }],
   ['CommunityEdit', 'CommunityEdit', 'ProfileTab', { groupId: 'g1' }],
   ['CommunityPlayers', 'CommunityPlayers', 'ProfileTab', { groupId: 'g1' }],
+  ['ManagerDashboard', 'ManagerDashboard', 'CommunitiesTab', { groupId: 'g1' }],
+  ['ManagerRatings', 'ManagerDashboard', 'CommunitiesTab', { groupId: 'g1', initialTab: 'ratings', initialFilter: 'up' }],
+  ['ManagerAllRatings', 'ManagerDashboard', 'CommunitiesTab', { groupId: 'g1', initialTab: 'ratings', initialFilter: 'all' }],
+  ['ManagerRatingsDown', 'ManagerDashboard', 'CommunitiesTab', { groupId: 'g1', initialTab: 'ratings', initialFilter: 'down' }],
+  ['ManagerEquipment', 'ManagerDashboard', 'CommunitiesTab', { groupId: 'g1', initialTab: 'equipment' }],
+  ['ManagerClubInsights', 'ManagerDashboard', 'CommunitiesTab', { groupId: 'g1', initialTab: 'club' }],
   ['CommunityStats', 'CommunityStats', 'ProfileTab', { groupId: 'g1' }],
   ['CommunityHistory', 'CommunityHistory', 'ProfileTab', { groupId: 'g1' }],
   ['CommunitiesMap', 'CommunitiesMap', 'CommunitiesTab'],
@@ -109,6 +117,8 @@ const ROUTES: Array<
   ['GamesList', 'GamesList', 'GameTab'],
   ['GamesMap', 'GamesMap', 'GameTab', { mode: 'games', items: mockGamesV2.filter(g => g.fieldLat && g.fieldLng).slice(0, 2).map((g, i) => ({ id: g.id, lat: g.fieldLat! + i * 0.025, lng: g.fieldLng! + i * 0.025, title: g.title, subtitle: g.fieldName, kind: 'game', dateBucket: 'today', timeLabel: 'היום · 20:00' })) }],
   ['MatchDetails', 'MatchDetails', 'ProfileTab', { gameId: 'gv2-live' }],
+  ['FinishedMatchStats', 'MatchDetails', 'ProfileTab', { gameId: 'gv2-7', initialTab: 'stats' }],
+  ['FinishedMatchGamesLong', 'MatchDetails', 'ProfileTab', { gameId: 'gv2-7', initialTab: 'games' }],
   ['MatchPlayers', 'MatchPlayers', 'ProfileTab', { gameId: 'gv2-live' }],
   ['MatchRounds', 'MatchRounds', 'ProfileTab', { gameId: 'gv2-live' }],
   ['GameEdit', 'GameEdit', 'ProfileTab', { gameId: 'gv2-live' }],
@@ -118,6 +128,7 @@ const ROUTES: Array<
   ['RoundSummary', 'MatchDetails', 'ProfileTab', { gameId: 'gv2-live', initialTab: 'stats' }],
   ['EveningSummary', 'EveningSummary', 'ProfileTab', { gameId: 'gv2-live' }],
   ['EveningSummaryQuiet', 'EveningSummary', 'ProfileTab', { gameId: 'qa-summary-quiet' }],
+  ['EveningSummaryTop', 'EveningSummary', 'ProfileTab', { gameId: 'qa-summary-top' }],
   ['History', 'History', 'ProfileTab', { groupId: 'g1' }],
   ['— PROFILE / STATS —', '', ''],
   ['Profile', 'Profile', 'ProfileTab'],
@@ -199,6 +210,10 @@ function focusedTab(): string {
 }
 
 function navigateTo(route: string) {
+  if (route === 'FinishedMatchGamesLong' && QA_ROUTES_ENABLED && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+    const sample = mockRoundHistory['gv2-7'].slice(0,3);
+    mockRoundHistory['gv2-7'] = Array.from({length:12},(_,i)=>({...sample[i%3],roundId:String(i+1),at:(i+1)*1000}));
+  }
   const hit = ROUTES.find(([label, r]) => r === route || label === route);
   route = hit?.[1] || route;
   try {
@@ -287,6 +302,7 @@ const ALERTS: Record<string, () => void> = {
 export function QARouteLauncher(): React.ReactElement | null {
   const [open, setOpen] = useState(false);
   const [motionPreview, setMotionPreview] = useState(false);
+  const [entryPreview, setEntryPreview] = useState(false);
   const [authKind, setAuthKind] = useState<AuthPromptReason | null>(null);
   // Which route is actually on screen, printed so a `uiautomator dump` can
   // read it. Comparing rendered TEXT between two screens was the alternative
@@ -301,6 +317,7 @@ export function QARouteLauncher(): React.ReactElement | null {
       const target = routeFromUrl(url);
       if (!target) return;
       setOpen(false);
+      if (target === '_entry_invite' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setEntryPreview(true); return; }
       if (target === '_motion') { setMotionPreview(true); return; }
       if (target.startsWith('_auth_')) {
         setAuthKind(target.slice(6) as AuthPromptReason);
@@ -341,6 +358,7 @@ export function QARouteLauncher(): React.ReactElement | null {
 
   return (
     <>
+      {entryPreview ? <Modal visible onRequestClose={() => setEntryPreview(false)}><EntryInvitePreview /></Modal> : null}
       {motionPreview ? <MotionPreview onClose={() => setMotionPreview(false)} /> : null}
       <Pressable style={s.fab} onPress={() => setOpen(true)} testID="qa-fab">
         <Text style={s.fabTxt}>QA</Text>
@@ -481,3 +499,13 @@ const s = StyleSheet.create({
   rowTxt: { fontSize: 14, fontWeight: '700', color: '#111827' },
   rowSub: { fontSize: 11, color: '#9CA3AF', marginTop: 1 },
 });
+
+/** Read-only rendering of the real first-entry component, mock data only. */
+function EntryInvitePreview() {
+  useEffect(() => {
+    const invite = useEntryStore.getState().invite;
+    useEntryStore.setState({ invite: { kind: 'referral', invitedBy: 'p1' } });
+    return () => useEntryStore.setState({ invite });
+  }, []);
+  return <View style={{ flex: 1 }} pointerEvents="none"><IntentScreen /></View>;
+}

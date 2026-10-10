@@ -539,6 +539,7 @@ export function AvailabilityEditScreen() {
             </Text>
           </View>
           <BallSwitch
+            accessibilityLabel={he.availabilityLocationToggle}
             value={locationEnabled}
             onValueChange={handleToggleLocation}
             trackColor={{ false: colors.border, true: ACCENT }}
@@ -749,6 +750,7 @@ export function AvailabilityEditScreen() {
             <Text style={styles.notifHint}>{he.availabilityNotifHint}</Text>
           </View>
           <BallSwitch
+            accessibilityLabel={he.availabilityNotifTitle}
             value={notify}
             onValueChange={(v) => {
               setNotify(v);

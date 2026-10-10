@@ -1,3 +1,4 @@
+import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
 // Games tab navigation:
 //   GamesList → MatchDetails → LiveMatch
 //                            → AvailablePlayers
@@ -144,6 +145,7 @@ export type GameStackParamList = {
   AvailabilityEdit: undefined;
   CommunityEdit: { groupId: string };
   CommunityPlayers: { groupId: string };
+  ManagerDashboard: { groupId: string; initialTab?: 'overview' | 'club' | 'ratings' | 'equipment'; initialFilter?: 'all' | 'up' | 'down' };
   CommunityStats: { groupId: string };
   CommunityHistory: { groupId: string };
   /**
@@ -206,6 +208,7 @@ export function GameStack() {
       <Stack.Screen name="AvailabilityEdit" component={AvailabilityEditScreen} />
       <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />
       <Stack.Screen name="CommunityPlayers" component={CommunityPlayersScreen} />
+      <Stack.Screen name="ManagerDashboard" component={ManagerDashboardScreen} />
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
       <Stack.Screen name="AdminApproval" component={AdminApprovalScreen} />

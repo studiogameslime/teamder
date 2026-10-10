@@ -9,6 +9,7 @@
 
 import React, { useEffect } from 'react';
 import { type ViewStyle } from 'react-native';
+import { useAmbientMotion } from '@/hooks/animations/useAmbientMotion';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -44,9 +45,10 @@ export function Breathing({
 }: Props) {
   const amt = amount ?? (mode === 'pulse' ? 0.05 : 6);
   const t = useSharedValue(0);
+  const ambient = useAmbientMotion();
 
   useEffect(() => {
-    if (!active) {
+    if (!active || !ambient) {
       cancelAnimation(t);
       t.value = withTiming(0, { duration: 200 });
       return;
@@ -67,7 +69,7 @@ export function Breathing({
       clearTimeout(id);
       cancelAnimation(t);
     };
-  }, [active, periodMs, delayMs, t]);
+  }, [active, ambient, periodMs, delayMs, t]);
 
   const animStyle = useAnimatedStyle(() => {
     if (mode === 'bob') {

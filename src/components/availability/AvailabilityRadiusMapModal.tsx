@@ -152,6 +152,7 @@ export function AvailabilityRadiusMapModal({
             </Text>
           </View>
           <RangeSlider
+            accessibilityLabel={he.availabilityRangeTitle}
             min={minKm}
             max={maxKm}
             step={1}

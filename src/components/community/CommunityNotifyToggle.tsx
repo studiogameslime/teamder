@@ -44,6 +44,7 @@ export function CommunityNotifyToggle({ subscribed, onChange }: Props) {
         styles.row,
         pressed && { backgroundColor: 'rgba(15,23,42,0.03)' },
       ]}
+      accessibilityLabel={he.communityNotifyDesignTitle}
       accessibilityRole="switch"
       accessibilityState={{ checked: on }}
     >
@@ -54,6 +55,9 @@ export function CommunityNotifyToggle({ subscribed, onChange }: Props) {
         {he.communityNotifyDesignTitle}
       </Text>
       <BallSwitch
+        accessible={false}
+        importantForAccessibility="no"
+        accessibilityLabel={he.communityNotifyDesignTitle}
         value={on}
         onValueChange={flip}
         trackColor={{ false: '#E2E8F0', true: ACCENT }}

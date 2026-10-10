@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '@/theme';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 
 const ITEM_WIDTH = 76;
 const ICON_SIZE = 28;
@@ -51,6 +52,7 @@ interface Props {
 }
 
 export function StepIndicator({ current, labels, emojis, inactiveColor }: Props) {
+  const reducedMotion = useReducedMotion();
   // Bar width drives the deterministic step-center math below — saves
   // us from per-item onLayout (which on Android+forceRTL can report
   // either logical or physical x depending on RN version).
@@ -91,9 +93,13 @@ export function StepIndicator({ current, labels, emojis, inactiveColor }: Props)
 
     // Snap into place on first measure (without an animation), then
     // animate every subsequent step change.
-    if (!hasPlacedRef.current) {
+    if (!hasPlacedRef.current || reducedMotion) {
       hasPlacedRef.current = true;
+      x.stopAnimation();
+      rotation.stopAnimation();
       x.setValue(target);
+      rotation.setValue(0);
+      rotationValue.current = 0;
       return;
     }
 
@@ -125,11 +131,14 @@ export function StepIndicator({ current, labels, emojis, inactiveColor }: Props)
       }),
     ]).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, stepDistance]);
+  }, [current, stepDistance, reducedMotion]);
 
   // Kick off the perpetual idle roll once, mirroring the writing direction so
   // the in-place spin matches the way the ball rolls forward between steps.
   useEffect(() => {
+    idleSpin.stopAnimation();
+    idleSpin.setValue(0);
+    if (reducedMotion) return;
     const loop = Animated.loop(
       Animated.timing(idleSpin, {
         toValue: dir,
@@ -141,7 +150,7 @@ export function StepIndicator({ current, labels, emojis, inactiveColor }: Props)
     loop.start();
     return () => loop.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dir]);
+  }, [dir, reducedMotion]);
 
   const onBarLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;

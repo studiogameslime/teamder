@@ -117,6 +117,12 @@ describe('the action touches nothing it does not own', () => {
 // ─── 7 — an existing account goes to the app ──────────────────────────────
 
 describe('an identity with a Teamder account behind it', () => {
+  it('refreshes the guest store after the direct sheet succeeds, after closing the modal', () => {
+    const callback = INTENT.slice(INTENT.indexOf('onAuthenticated={async'));
+    expect(callback.indexOf('setAuthOpen(false)')).toBeGreaterThan(-1);
+    expect(callback.indexOf('await useUserStore.getState().refreshFromSession(uid)'))
+      .toBeGreaterThan(callback.indexOf('setAuthOpen(false)'));
+  });
   it('reaches the app: the flag was never latched, so rule 1 answers', () => {
     useEntryStore.getState().beginExistingAccountAttempt();
     // RootNavigator only latches when onboarding is OWED. It is not here.

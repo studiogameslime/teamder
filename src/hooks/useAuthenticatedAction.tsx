@@ -95,7 +95,7 @@ export function useAuthenticatedAction(): UseAuthenticatedAction {
   }, []);
 
   const onAuthenticated = useCallback(
-    async ({ isNewAccount }: { uid: string; isNewAccount: boolean }) => {
+    async ({ uid, isNewAccount }: { uid: string; isNewAccount: boolean }) => {
       // Close FIRST. A sheet still mounted while the profile screen appears is
       // a modal over a modal, and on iOS the second one silently never shows.
       setPendingKind(null);
@@ -112,7 +112,12 @@ export function useAuthenticatedAction(): UseAuthenticatedAction {
       //
       // Before the resume, not after: the resumer and every screen behind the
       // sheet read the store, and they must see the real account.
-      await useUserStore.getState().refreshFromSession();
+      try {
+        await useUserStore.getState().refreshFromSession(uid);
+      } catch (err) {
+        logError('authenticatedProfileRestore', err, {});
+        return;
+      }
 
       // A brand-new account owes a name and an avatar. RootNavigator's gate
       // already renders `PostSignInOnboardingScreen` for exactly that state —

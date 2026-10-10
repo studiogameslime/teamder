@@ -241,6 +241,7 @@ export function PromoteOrphanScreen() {
           />
           {/* Open vs admin-approved join. */}
           <Pressable
+            accessible={false}
             onPress={() => setIsOpen((v) => !v)}
             style={styles.toggleCard}
           >
@@ -251,6 +252,7 @@ export function PromoteOrphanScreen() {
               </View>
             </View>
             <BallSwitch
+              accessibilityLabel={he.createGroupIsOpen}
               value={isOpen}
               onValueChange={setIsOpen}
               trackColor={{ false: colors.border, true: '#3B82F6' }}

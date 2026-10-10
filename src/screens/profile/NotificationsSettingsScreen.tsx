@@ -1,8 +1,8 @@
 // NotificationsSettingsScreen — toggles for each push notification type,
 // grouped by category under a hero explainer.
 //
-// Saves to /users/{uid}.notificationPrefs. The Cloud Function consumer
-// reads this map alongside fcmTokens before delivering an FCM payload,
+// Saves to /users/{uid}/private/push.notificationPrefs. The Cloud Function
+// consumer reads this self-only map alongside tokens before delivering a payload,
 // so a `false` here suppresses the corresponding type without touching
 // the dispatch path on the writer side.
 //
@@ -14,6 +14,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  AppState,
   Linking,
   Pressable,
   ScrollView,
@@ -43,66 +44,9 @@ import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { joryio } from '@/services/joryio';
+import { NOTIFICATION_CATEGORIES } from '@/utils/notificationPreferenceCatalog';
+import { mergeNotificationPreferences } from '@/utils/notificationPreferences';
 
-interface Row {
-  key: keyof NotificationPrefs;
-  label: string;
-  sub: string;
-}
-
-interface Category {
-  title: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  rows: Row[];
-}
-
-// Grouped by what the notification is about. Within each group, the most
-// useful day-to-day items come first; chatty/optional ones last.
-const CATEGORIES: Category[] = [
-  {
-    title: he.notifCategoryGames,
-    icon: 'football-outline',
-    rows: [
-      { key: 'joinRequest', label: he.notifJoinRequest, sub: he.notifJoinRequestSub },
-      { key: 'approvedRejected', label: he.notifApprovedRejected, sub: he.notifApprovedRejectedSub },
-      { key: 'gamePlayersJoined', label: he.notifGamePlayersJoined, sub: he.notifGamePlayersJoinedSub },
-      { key: 'playerCancelled', label: he.notifPlayerCancelled, sub: he.notifPlayerCancelledSub },
-      { key: 'gameShortageWarning', label: he.notifGameShortageWarning, sub: he.notifGameShortageWarningSub },
-      { key: 'gameCanceledOrUpdated', label: he.notifGameCanceledOrUpdated, sub: he.notifGameCanceledOrUpdatedSub },
-    ],
-  },
-  {
-    title: he.notifCategoryCommunity,
-    icon: 'people-outline',
-    rows: [
-      { key: 'newGameInCommunity', label: he.notifNewGameInCommunity, sub: he.notifNewGameInCommunitySub },
-      { key: 'spotOpened', label: he.notifSpotOpened, sub: he.notifSpotOpenedSub },
-      { key: 'gameFillingUp', label: he.notifGameFillingUp, sub: he.notifGameFillingUpSub },
-      { key: 'inviteToGame', label: he.notifInviteToGame, sub: he.notifInviteToGameSub },
-      { key: 'groupDeleted', label: he.notifGroupDeleted, sub: he.notifGroupDeletedSub },
-    ],
-  },
-  {
-    title: he.notifCategoryReminders,
-    icon: 'alarm-outline',
-    rows: [
-      { key: 'gameReminder', label: he.notifGameReminder, sub: he.notifGameReminderSub },
-      { key: 'gameRsvpNudge', label: he.notifGameRsvpNudge, sub: he.notifGameRsvpNudgeSub },
-      { key: 'rateReminder', label: he.notifRateReminder, sub: he.notifRateReminderSub },
-      { key: 'growthMilestone', label: he.notifGrowthMilestone, sub: he.notifGrowthMilestoneSub },
-    ],
-  },
-  // The only category that is not one of our Cloud Functions. Turning this off
-  // writes 'unsubscribed' on the Joryio push channel, which is what actually
-  // stops the journey sends — our own CFs never look at it.
-  {
-    title: he.notifCategoryMarketing,
-    icon: 'megaphone-outline',
-    rows: [
-      { key: 'marketingPush', label: he.notifMarketingPush, sub: he.notifMarketingPushSub },
-    ],
-  },
-];
 
 export function NotificationsSettingsScreen() {
   const nav = useNavigation();
@@ -110,10 +54,7 @@ export function NotificationsSettingsScreen() {
   // Merge defaults under saved prefs so a legacy user whose stored
   // `notificationPrefs` predates the latest fields still gets sensible
   // values for the new toggles instead of an unchecked switch.
-  const [prefs, setPrefs] = useState<NotificationPrefs>({
-    ...defaultNotificationPrefs,
-    ...(user?.notificationPrefs ?? {}),
-  });
+  const [prefs, setPrefs] = useState<NotificationPrefs>(() => mergeNotificationPreferences(user?.notificationPrefs));
   const [busy, setBusy] = useState(false);
   const [prefsReady, setPrefsReady] = useState(false);
   const edited = useRef(new Set<keyof NotificationPrefs>());
@@ -150,6 +91,20 @@ export function NotificationsSettingsScreen() {
     };
   }, []);
 
+  // Returning from the phone's settings must unlock the controls immediately.
+  useEffect(() => {
+    let active = true;
+    const subscription = AppState.addEventListener('change', state => {
+      if (state !== 'active') return;
+      notificationsService.getPushPermissionStatus().then(status => {
+        if (!active) return;
+        setPermGranted(status.available ? status.granted : null);
+        setPermCanAsk(status.canAskAgain);
+      }).catch(() => { /* Preserve the last known permission on a transient read failure. */ });
+    });
+    return () => { active = false; subscription.remove(); };
+  }, []);
+
   // Hydrate the toggles from the SELF-ONLY private/push doc — the source of
   // truth savePreferences writes to. currentUser.notificationPrefs (root doc)
   // no longer carries them, so without this the screen would show stale
@@ -169,7 +124,7 @@ export function NotificationsSettingsScreen() {
         return;
       }
       if (cancelled) return;
-      const merged = { ...defaultNotificationPrefs, ...saved };
+      const merged = mergeNotificationPreferences(user?.notificationPrefs, saved);
       setPrefs((prev) => Object.fromEntries(Object.entries(merged).map(([key, value]) => [key, edited.current.has(key as keyof NotificationPrefs) ? prev[key as keyof NotificationPrefs] : value])) as unknown as NotificationPrefs);
       setPrefsReady(true);
       useUserStore.setState((s) =>
@@ -221,6 +176,7 @@ export function NotificationsSettingsScreen() {
   };
 
   const toggle = (k: keyof NotificationPrefs) => {
+    if (!prefsReady || busy || permGranted === false) return;
     edited.current.add(k);
     setPrefs((p) => {
       const nextVal = !p[k];
@@ -334,22 +290,22 @@ export function NotificationsSettingsScreen() {
                 ]}
                 accessibilityRole="button"
               >
+                <Text style={styles.permBtnText}>
+                  {permCanAsk ? he.notifPermEnable : he.notifPermOpenSettings}
+                </Text>
                 <Ionicons
                   name={permCanAsk ? 'notifications-outline' : 'settings-outline'}
                   size={16}
                   color="#FFFFFF"
                 />
-                <Text style={styles.permBtnText}>
-                  {permCanAsk ? he.notifPermEnable : he.notifPermOpenSettings}
-                </Text>
               </Pressable>
             </View>
           </View>
         ) : null}
 
         {/* Per-type toggles, grouped by category */}
-        <View style={gated && styles.gatedGroup} pointerEvents={gated ? 'none' : 'auto'}>
-          {CATEGORIES.map((cat) => (
+        <View style={gated && styles.gatedGroup} pointerEvents={gated || !prefsReady || busy ? 'none' : 'auto'}>
+          {NOTIFICATION_CATEGORIES.map((cat) => (
             <View key={cat.title} style={styles.categoryBlock}>
               <View style={styles.categoryHeader}>
                 <Text style={styles.categoryTitle}>{cat.title}</Text>
@@ -359,14 +315,23 @@ export function NotificationsSettingsScreen() {
                 {cat.rows.map((row, i) => (
                   <Pressable
                     key={row.key}
+                    accessibilityRole="switch"
+                    accessibilityLabel={row.label}
+                    accessibilityHint={row.sub}
+                    accessibilityState={{ checked: !!prefs[row.key], disabled: gated || !prefsReady || busy }}
+                    disabled={gated || !prefsReady || busy}
                     onPress={() => toggle(row.key)}
                     style={[styles.row, i > 0 && styles.rowDivider]}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.label}>{row.label}</Text>
+                      <Text style={[styles.label, (gated || !prefsReady || busy) && styles.disabledLabel]}>{row.label}</Text>
                       <Text style={styles.sub}>{row.sub}</Text>
                     </View>
                     <BallSwitch
+                      accessible={false}
+                      importantForAccessibility="no"
+                      accessibilityLabel={row.label}
+                      disabled={gated || !prefsReady || busy}
                       value={!!prefs[row.key]}
                       onValueChange={() => toggle(row.key)}
                       trackColor={{ false: colors.border, true: colors.primary }}
@@ -388,12 +353,15 @@ export function NotificationsSettingsScreen() {
             <Ionicons name="lock-closed-outline" size={16} color={colors.primary} />
           </View>
           <Card style={styles.card}>
-            <Pressable onPress={toggleTracking} style={styles.row}>
+            <Pressable onPress={toggleTracking} style={styles.row} accessibilityRole="switch" accessibilityLabel={he.notifTracking} accessibilityHint={he.notifTrackingSub} accessibilityState={{checked: !trackingOut}}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.label}>{he.notifTracking}</Text>
                 <Text style={styles.sub}>{he.notifTrackingSub}</Text>
               </View>
               <BallSwitch
+                accessible={false}
+                importantForAccessibility="no"
+                accessibilityLabel={he.notifTracking}
                 value={!trackingOut}
                 onValueChange={toggleTracking}
                 trackColor={{ false: colors.border, true: colors.primary }}
@@ -474,9 +442,9 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     lineHeight: 18,
   },
-  // `row-reverse` so icon sits to the right of the label, centred together.
+  // Text first under forceRTL keeps the action icon visually left.
   permBtn: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
@@ -493,7 +461,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   // ── Categories ──
-  gatedGroup: { opacity: 0.45 },
+  // Keep cards opaque: group opacity composites Android elevation through
+  // the surface, creating a thick grey inset frame. Dim only the controls.
+  gatedGroup: {},
+  disabledLabel: { color: colors.textMuted },
   categoryBlock: { gap: 6, marginTop: spacing.xs },
   // `row` → icon (first child) on the visual RIGHT under forceRTL.
   categoryHeader: {

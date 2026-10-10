@@ -22,6 +22,7 @@ type Variant =
 type Size = 'sm' | 'md' | 'lg';
 
 interface Props {
+  diagnosticName?:string;
   title: string;
   onPress?: () => void;
   variant?: Variant;
@@ -50,6 +51,7 @@ export function Button({
   style,
   fullWidth,
   accessibilityLabel,
+  diagnosticName,
 }: Props) {
   const palette = variantPalette(variant);
   const padV = size === 'sm' ? spacing.sm : size === 'lg' ? spacing.lg : spacing.md;
@@ -78,6 +80,7 @@ export function Button({
 
   return (
     <PressableScale
+      diagnosticName={diagnosticName??({'שמור':'save','שמירה':'save','ביטול':'cancel','הצטרף למחזור':'join_round','נסה שוב':'retry','שלח':'submit','שליחה':'submit','המשך':'continue','סגור':'close'} as Record<string,string>)[title]??'button'}
       onPress={onPress}
       disabled={disabled || loading}
       // Default a11y label to the visible title — fixes FV-06 where the

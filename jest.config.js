@@ -5,5 +5,5 @@ module.exports = {
   sandboxInjectedGlobals: ['Math'],
   roots: ['<rootDir>/tests'],
   moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
-  transform: { '^.+\\.tsx?$': ['ts-jest', { isolatedModules: true }] },
+  transform: { '^.+\\.tsx?$': ['ts-jest', { isolatedModules: true, tsconfig: { jsx: 'react-jsx' } }] },
 };

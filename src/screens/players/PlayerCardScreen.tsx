@@ -873,6 +873,8 @@ function AchievementsSection({ user }: { user: User }) {
   const groups = useGroupStore((s) => s.groups);
   const isMe = !!me && me.id === user.id;
   const [counters, setCounters] = useState<UserAchievementState | null>(null);
+  const [deriveFailed, setDeriveFailed] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
   const [celebrate, setCelebrate] = useState<NewlyUnlocked[]>([]);
 
   useEffect(() => {
@@ -881,6 +883,7 @@ function AchievementsSection({ user }: { user: User }) {
       return;
     }
     let alive = true;
+    setDeriveFailed(false);
     achievementsService
       .deriveCounters(user.id, {
         groups,
@@ -896,12 +899,12 @@ function AchievementsSection({ user }: { user: User }) {
         if (alive && fresh.length) setCelebrate(fresh);
       })
       .catch(() => {
-        /* keep stored counters on failure */
+        if (alive) setDeriveFailed(true);
       });
     return () => {
       alive = false;
     };
-  }, [isMe, user.id, groups, me?.friends?.length]);
+  }, [isMe, user.id, groups, me?.friends?.length, reloadTick, user.stats?.goals, user.stats?.assists, user.stats?.cleanSheets]);
 
   const items = counters
     ? achievementsService.listFromCounters(user, counters)
@@ -925,6 +928,10 @@ function AchievementsSection({ user }: { user: User }) {
           {he.achievementsCount(unlockedCount, items.length)}
         </Text>
       </View>
+      {deriveFailed ? <View style={{ gap: spacing.sm }}>
+        <Text style={{ color: colors.textMuted, textAlign: RTL_LABEL_ALIGN }}>העדכון לא הצליח. ההישגים השמורים שלך מוצגים כאן.</Text>
+        <Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} />
+      </View> : null}
       <View style={styles.achievementsGrid}>
         {ordered.map((item) => (
           <View key={item.def.id} style={styles.achievementsCell}>
@@ -952,7 +959,7 @@ function AchievementsSection({ user }: { user: User }) {
             </Text>
           ) : null}
           <Text style={styles.detailDesc}>
-            {active.next
+            {deriveFailed ? 'ההתקדמות העדכנית אינה זמינה כרגע.' : active.next
               ? he.achievementProgressToNext(
                   Math.min(active.value, active.next.threshold),
                   active.next.threshold,

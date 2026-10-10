@@ -89,12 +89,14 @@ export function Avatar({
     >
       {def ? (
         <Image
+          resizeMethod="resize"
           source={def.source}
           resizeMode="contain"
           style={{ width: inner, height: inner, borderRadius: radius.pill, backgroundColor: '#fff' }}
         />
       ) : uri ? (
         <Image
+          resizeMethod="resize"
           source={{ uri }}
           style={{ width: inner, height: inner, borderRadius: radius.pill }}
         />

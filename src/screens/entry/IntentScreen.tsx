@@ -130,12 +130,13 @@ export function IntentScreen() {
   // resolved here from `/usersPublic`, the same four-field mirror the invite
   // landing reads, and the card renders without a name until it lands rather
   // than holding the whole screen on one `get`.
-  const [inviterName, setInviterName] = useState<string | null>(null);
+  const [resolvedName, setResolvedName] = useState<{ id: string; name: string } | null>(null);
+  const inviterName = resolvedName?.id === invite?.invitedBy ? resolvedName?.name ?? null : null;
   useEffect(() => {
     if (!invite?.invitedBy) return;
     let alive = true;
     void resolveInviter(invite.invitedBy).then(({ inviter }) => {
-      if (alive && inviter?.name) setInviterName(inviter.name.trim());
+      if (alive && inviter?.name) setResolvedName({ id: invite!.invitedBy!, name: inviter.name.trim() });
     });
     return () => {
       alive = false;
@@ -175,8 +176,8 @@ export function IntentScreen() {
       </SafeAreaView>
 
       {/* Four cards do not fit a small phone, and squeezing them would break
-          the fixed proportion every card shares. Scrolling is the correct
-          answer; the cards keep their height. */}
+          the minimum proportion every card shares. Scrolling keeps the
+          choices reachable even with large text and long names. */}
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -186,7 +187,7 @@ export function IntentScreen() {
             <PressableScale
               onPress={() => pick(c.intent)}
               accessibilityRole="button"
-              accessibilityLabel={c.title.replace('\n', ' ')}
+              accessibilityLabel={[c.title.replace('\n', ' '), c.tag, c.body].filter(Boolean).join('. ')}
               style={[styles.card, c.tag !== undefined && styles.cardInvite]}
             >
               {/* One child. PressableScale stacks its children vertically, so
@@ -205,10 +206,10 @@ export function IntentScreen() {
                       <Ionicons name="heart" size={12} color={colors.primary} />
                     </View>
                   ) : null}
-                  <Text style={styles.cardTitle} numberOfLines={2}>
+                  <Text style={styles.cardTitle}>
                     {c.title}
                   </Text>
-                  <Text style={styles.cardBody} numberOfLines={2}>
+                  <Text style={styles.cardBody}>
                     {c.body}
                   </Text>
                 </View>
@@ -257,6 +258,7 @@ export function IntentScreen() {
           title: he.entryExistingSheetTitle,
           body: he.entryExistingSheetBody,
         }}
+        onEmailTransition={() => setAuthOpen(false)}
         onCancel={() => {
           // Backing out changes nothing: no intent, no pending action, and the
           // invitation — which was never touched — is still on the disk and
@@ -264,13 +266,20 @@ export function IntentScreen() {
           setAuthOpen(false);
           endExistingAccountAttempt();
         }}
-        onAuthenticated={() => {
+        onAuthenticated={async ({ uid }) => {
           // Deliberately empty of routing. Whether this identity has a Teamder
           // account behind it is not ours to judge from the auth result —
           // `isNewAccount` describes the Firebase credential, not the account —
-          // and RootNavigator's gates already read the only thing that answers
-          // it. Closing the sheet is the whole job.
+          // and RootNavigator's gates read the refreshed user's profile.
           setAuthOpen(false);
+          // This direct sheet bypasses useAuthenticatedAction. Firebase has
+          // changed identity, but the navigator still sees the guest until we
+          // refresh the store. Close first so iOS can present the next screen.
+          try {
+            await useUserStore.getState().refreshFromSession(uid);
+          } catch {
+            // The root now shows the saved-account retry gate.
+          }
         }}
       />
     </View>
@@ -291,13 +300,14 @@ export function buildInviteChoice(
   name: string | null,
 ): Choice | null {
   if (!invite) return null;
-  const tag = name ? he.entryInviteTag(name) : he.entryInviteTagAnon;
+  const displayName = name ? `⁨${name}⁩` : null;
+  const tag = displayName ? he.entryInviteTag(displayName) : he.entryInviteTagAnon;
   if (invite.kind === 'game') {
     return {
       intent: 'invite',
       art: 'invite_game',
       tag,
-      title: name ? he.entryInviteGameTitle(name) : he.entryInviteGameTitleAnon,
+      title: displayName ? he.entryInviteGameTitle(displayName) : he.entryInviteGameTitleAnon,
       body: he.entryInviteGameBody,
     };
   }
@@ -306,7 +316,7 @@ export function buildInviteChoice(
       intent: 'invite',
       art: 'invite_club',
       tag,
-      title: name ? he.entryInviteClubTitle(name) : he.entryInviteClubTitleAnon,
+      title: displayName ? he.entryInviteClubTitle(displayName) : he.entryInviteClubTitleAnon,
       body: he.entryInviteClubBody,
     };
   }
@@ -317,8 +327,8 @@ export function buildInviteChoice(
     intent: 'invite',
     art: 'invite_referral',
     tag,
-    title: he.entryInviteReferralTitle(name),
-    body: he.entryInviteReferralBody(name),
+    title: he.entryInviteReferralTitle(displayName!),
+    body: he.entryInviteReferralBody(displayName!),
   };
 }
 
@@ -342,14 +352,12 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   existingCta: {
     ...typography.caption,
     color: colors.primary,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   existingCtaOn: { opacity: 0.6 },
   root: { flex: 1, backgroundColor: SKY },
@@ -404,7 +412,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(30,64,175,0.20)',
     backgroundColor: '#FBFDFF',
   },
-  cardRow: { flexDirection: 'row', alignItems: 'center', height: CARD_HEIGHT },
+  cardRow: { flexDirection: 'row', alignItems: 'center', minHeight: CARD_HEIGHT },
   cardText: {
     flex: 1,
     gap: spacing.xs,
@@ -416,6 +424,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   tag: {
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-end',
@@ -426,7 +435,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     marginBottom: spacing.xs,
   },
-  tagText: { ...typography.caption, fontSize: 12, fontWeight: '700', color: colors.primary },
+  tagText: { flexShrink: 1, textAlign: RTL_LABEL_ALIGN, ...typography.caption, fontSize: 12, fontWeight: '700', color: colors.primary },
   cardTitle: {
     ...typography.h3,
     fontSize: 20,

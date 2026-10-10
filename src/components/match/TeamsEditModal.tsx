@@ -15,6 +15,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  AccessibilityInfo,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -35,6 +36,7 @@ import { isGuestId, type DraftTeam, type Game } from '@/types';
 import { teamName } from '@/utils/draft';
 import { teamColor } from '@/components/match/rotationView';
 import { selectionHaptic, successHaptic } from '@/utils/haptics';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 
 export interface RosterUser {
   id: string;
@@ -60,11 +62,12 @@ interface Props {
 /** Pulsing opacity — marks the swap-target candidates while a source is picked.
  *  Resets cleanly to opacity 1 on deactivate so a chip never stays dimmed. */
 function Blink({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const reducedMotion = useReducedMotion();
   const op = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    if (!active) {
+    if (!active || reducedMotion) {
       op.stopAnimation();
-      Animated.timing(op, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+      op.setValue(1);
       return;
     }
     const loop = Animated.loop(
@@ -75,17 +78,21 @@ function Blink({ active, children }: { active: boolean; children: React.ReactNod
     );
     loop.start();
     return () => loop.stop();
-  }, [active, op]);
+  }, [active, op, reducedMotion]);
   return <Animated.View style={{ opacity: op }}>{children}</Animated.View>;
 }
 
 export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Props) {
+  const reducedMotion = useReducedMotion();
   // Working copy of the teams; reset every time the modal opens.
   const [teams, setTeams] = useState<DraftTeam[]>([]);
   // Non-null while a first player is picked: the roster id to swap FROM.
   const [swapSource, setSwapSource] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    if (visible && swapSource) AccessibilityInfo.announceForAccessibility(he.teamsEditPickTarget);
+  }, [visible, swapSource]);
 
   useEffect(() => {
     if (!visible) return;
@@ -187,7 +194,7 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType={reducedMotion ? 'none' : 'slide'}
       statusBarTranslucent
       onRequestClose={onClose}
     >
@@ -208,8 +215,8 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
               onPress={() => setSwapSource(null)}
               style={styles.pickBanner}
             >
-              <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
               <Text style={styles.pickBannerText}>{he.teamsEditPickTarget}</Text>
+              <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
             </Pressable>
           ) : (
             <Text style={styles.hint}>{he.teamsEditHint}</Text>
@@ -249,6 +256,7 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
                         isCaptain={idx === 0}
                         isSource={isSource}
                         isCandidate={isCandidate}
+                        teamLabel={teamName(t.index, teams)}
                         onPress={() => onChipTap(pid)}
                       />
                     );
@@ -281,15 +289,20 @@ function Chip({
   isSource,
   isCandidate,
   onPress,
+  teamLabel,
 }: {
   user: RosterUser;
   isCaptain: boolean;
   isSource: boolean;
   isCandidate: boolean;
   onPress: () => void;
+  teamLabel: string;
 }) {
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={onPress} accessibilityRole="button"
+      accessibilityState={{ selected: isSource }}
+      accessibilityLabel={`${user.name} · ${teamLabel}${isCaptain ? ` · ${he.draftCaptainBadge}` : ''}`}
+      accessibilityHint={isCandidate ? 'החלף עם השחקן שנבחר' : isSource ? 'בטל בחירה' : 'בחר שחקן להחלפה'}>
       <Blink active={isCandidate}>
         <View
           style={[
@@ -342,7 +355,7 @@ const styles = StyleSheet.create({
   },
   // Active "now pick a target" banner shown while a source is selected.
   pickBanner: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,

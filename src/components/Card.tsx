@@ -30,6 +30,7 @@ export function Card({ children, style, tint, onPress }: Props) {
     // adds up to noise rather than feedback.
     return (
       <PressableScale
+        unstable_pressDelay={100}
         onPress={onPress}
         pressedScale={motion.press.cardScale}
         haptic={false}

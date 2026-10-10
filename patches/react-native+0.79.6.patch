@@ -1,0 +1,63 @@
+diff --git a/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.js b/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.js
+--- a/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.js
++++ b/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.js
+@@ -634,6 +634,9 @@
+    * true.
+    */
+   removeClippedSubviews?: ?boolean,
++  // Teamder opt-in: recover a lost native momentum-end after frames stop.
++  recoverStaleMomentumAfterMs?: ?number,
++  onStaleMomentumRecovered?: ?(() => void),
+   /**
+    * A RefreshControl component, used to provide pull-to-refresh
+    * functionality for the ScrollView. Only works for vertical ScrollViews
+@@ -728,6 +731,7 @@
+   _isTouching: boolean = false;
+   _lastMomentumScrollBeginTime: number = 0;
+   _lastMomentumScrollEndTime: number = 0;
++  _lastScrollEventTime: number = 0;
+ 
+   // Reset to false every time becomes responder. This is used to:
+   // - Determine if the scroll view has been scrolled and therefore should
+@@ -1121,6 +1125,9 @@
+   }
+ 
+   _handleScroll = (e: ScrollEvent) => {
++    if (this.props.recoverStaleMomentumAfterMs != null) {
++      this._lastScrollEventTime = global.performance.now();
++    }
+     this._observedScrollSinceBecomingResponder = true;
+     this.props.onScroll && this.props.onScroll(e);
+   };
+@@ -1296,6 +1303,18 @@
+    */
+   _isAnimating: () => boolean = () => {
+     const now = global.performance.now();
++    const recoveryMs = this.props.recoverStaleMomentumAfterMs;
++    if (
++      recoveryMs != null && recoveryMs > 0 &&
++      this._lastMomentumScrollEndTime < this._lastMomentumScrollBeginTime &&
++      now - Math.max(this._lastScrollEventTime, this._lastMomentumScrollBeginTime) > recoveryMs
++    ) {
++      // A missing native end otherwise captures EVERY subsequent child press.
++      // Recent frames keep a real (even long) fling protected. Opt-in callers
++      // must use scrollEventThrottle <= recoveryMs.
++      this._lastMomentumScrollEndTime = now - IS_ANIMATING_TOUCH_START_THRESHOLD_MS - 1;
++      this.props.onStaleMomentumRecovered?.();
++    }
+     const timeSinceLastMomentumScrollEnd =
+       now - this._lastMomentumScrollEndTime;
+     const isAnimating =
+diff --git a/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.d.ts b/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.d.ts
+--- a/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.d.ts
++++ b/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.d.ts
+@@ -715,6 +715,9 @@
+    * false.
+    */
+   removeClippedSubviews?: boolean | undefined;
++  /** Teamder opt-in recovery for a lost native momentum-end event. */
++  recoverStaleMomentumAfterMs?: number | undefined;
++  onStaleMomentumRecovered?: (() => void) | undefined;
+ 
+   /**
+    * When true, shows a horizontal scroll indicator.

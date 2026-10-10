@@ -1,55 +1,27 @@
-// MatchListCard — games-feed card. Two columns under forceRTL:
-//
-//   ┌─────────────────────────────────────────────────────────────┐
-//   │                     14/15   כדורגל אנשים טובים ‹  [בהרכב][🛡] │
-//   │  ▓▓▓▓▓▓▓░           📍 שדרות אליהו סעדון, אור יהודה           │
-//   │  חסר שחקן אחד    [עוד 11 שעות] 20:00 🕐  היום 📅            │
-//   │  [ אני מגיע ]    [מקום אחרון] [5×5] [אספלט] [סגור למועדון]    │
-//   └─────────────────────────────────────────────────────────────┘
-//
-// RIGHT column = details (title + chevron + status/manager pill, location,
-// date/time line with a relative-kickoff pill, chip tags). LEFT column =
-// occupancy number (top), progress bar, spots-left text (bottom) + join CTA.
-// Fill urgency (green plenty / amber last-few / red full) colours the bar +
-// spots text. Tap → MatchDetails.
-
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useRef, useState } from 'react';
+import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Game, FieldType, UserId, activeGuestCount } from '@/types';
-import { spacing, RTL_LABEL_ALIGN } from '@/theme';
+import { RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { dayDiff, formatDateShort, formatTime,
-  gameFormatLabel,
-} from '@/utils/format';
+import { dayDiff, formatDateShort, formatTime, gameFormatLabel } from '@/utils/format';
+import { getCoverSource } from '@/data/coverImages';
+import { clubDefaultCoverId } from '@/utils/clubDefaultCoverId';
 import { PressableScale } from '@/components/PressableScale';
+import { recordDiagnostic } from '@/services/diagnosticJournal';
 
-export type MatchCardCta =
-  | 'join'
-  | 'requestJoin'
-  | 'cancel'
-  | 'waitlist'
-  | 'leaveWaitlist'
-  | 'pending'
-  | 'none';
-
+export type MatchCardCta = 'join' | 'requestJoin' | 'cancel' | 'waitlist' | 'leaveWaitlist' | 'pending' | 'none';
 interface Props {
   game: Game;
   userId: UserId;
   onPrimary: (cta: MatchCardCta) => void;
   busy?: boolean;
+  /** undefined: club lookup pending; null: resolved without a club cover. */
+  cover?: { coverPhotoUrl?: string; coverImageId?: string } | null;
+  coverLoading?: boolean;
 }
-
-const ACCENT = '#3B82F6';
-const GREEN = '#16A34A';
-const AMBER = '#F59E0B';
-const RED = '#DC2626';
-const MUTED = '#94A3B8';
-const INK = '#0F172A';
-
-// ─── Pure derivations ──────────────────────────────────────────────────
-
+const DEFAULT_COVER = require('../../assets/images/groupImages/park-aerial.jpg');
 function statusForUser(
   g: Game,
   uid: UserId,
@@ -92,361 +64,122 @@ function fieldTypeLabel(f: FieldType): string {
   return he.fieldTypeGrass;
 }
 
-// ─── Component ─────────────────────────────────────────────────────────
-
-export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
+export function MatchListCard({ game, userId, onPrimary, busy, cover, coverLoading = false }: Props) {
   const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
+  const activePhoto = useRef(cover?.coverPhotoUrl);
+  activePhoto.current = cover?.coverPhotoUrl;
+  const coverReady = !game.groupId || !coverLoading;
+  const source = !coverReady ? undefined : cover?.coverPhotoUrl && cover.coverPhotoUrl !== failedPhotoUrl
+    ? { uri: cover.coverPhotoUrl }
+    : getCoverSource(cover?.coverImageId) ?? (game.groupId && !game.isOrphanContext ? getCoverSource(clubDefaultCoverId(game.groupId)) : DEFAULT_COVER);
   const status = statusForUser(game, userId);
   const cta = ctaForGame(game, status);
-  const isManager = !!userId && game.createdBy === userId;
-  const fmt = game.format ? gameFormatLabel(game.format) : null;
-  const occupancy =
-    game.players.length +
-    activeGuestCount(game.guests) +
-    (game.pendingPromotion?.uid ? 1 : 0);
-  const isFull = occupancy >= game.maxPlayers;
-  const spotsLeft = Math.max(0, game.maxPlayers - occupancy);
-  const ratio = game.maxPlayers > 0 ? Math.min(1, occupancy / game.maxPlayers) : 0;
-
-  // Fill urgency → colours the progress bar. (The spots-left text under the
-  // bar was removed — the bar itself already reads at a glance.)
-  const urgency = isFull ? RED : spotsLeft <= 3 ? AMBER : GREEN;
-
-  // Smart when-line: today/tomorrow → "<day> ב-HH:MM"; further out → date + time.
-  const dDiff = dayDiff(game.startsAt);
+  const occupancy = game.players.length + activeGuestCount(game.guests) + (game.pendingPromotion?.uid ? 1 : 0);
+  const spots = Math.max(0, game.maxPlayers - occupancy);
+  const ratio = game.maxPlayers > 0 ? Math.max(0, Math.min(1, occupancy / game.maxPlayers)) : 0;
+  const diff = dayDiff(game.startsAt);
   const time = formatTime(game.startsAt);
-  const whenText =
-    dDiff === 0
-      ? he.matchCardWhenToday(time)
-      : dDiff === 1
-        ? he.matchCardWhenTomorrow(time)
-        : he.matchCardWhenDate(formatDateShort(game.startsAt), time);
-  const whenSoon = dDiff <= 1;
-
-  // Side accent stripe by the viewer's relationship to the game:
-  // green = in the roster, orange = on the waitlist, blue = regular.
-  const stripeColor =
-    status === 'joined' ? GREEN : status === 'waitlist' ? AMBER : ACCENT;
-
-  const openDetails = () => nav.navigate('MatchDetails', { gameId: game.id });
-
-  // A full game always offers a waitlist join ("הצטרף") — there's no
-  // lock-registration feature, so registration is open until the game is over.
-  const showCta =
-    cta === 'join' || cta === 'requestJoin' || cta === 'waitlist';
-  // Even a full game's CTA just says "הצטרף" (not "…לרשימת המתנה") — tappers
-  // land on the waitlist and then see the "ברשימת המתנה" badge.
-  const ctaLabel =
-    cta === 'requestJoin' ? he.gameCardRequestJoin : he.matchCardJoinShort;
-
-  // Personal-status label — replaces the CTA button once the user has a
-  // relationship to the game. Styled as a soft, non-interactive badge (looks
-  // un-tappable, not a button) in the same spot the "הצטרף" button sat.
-  const statusLabel =
-    status === 'joined'
-      ? { label: he.matchStatusJoined, bg: '#DCFCE7', fg: '#166534', icon: 'checkmark-circle' as const }
-      : status === 'waitlist'
-        ? { label: he.matchCardInWaitlist, bg: '#FEF3C7', fg: '#B45309', icon: 'hourglass' as const }
-        : status === 'pending'
-          ? { label: he.matchStatusPending, bg: '#E2E8F0', fg: '#475569', icon: 'time' as const }
-          : null;
-
-  // Chip tags — format + surface + visibility only. (Scarcity / full /
-  // closed tags were dropped — they duplicate the occupancy bar.)
-  const chips: Array<{ label: string; tone: 'neutral' | 'accent' | 'warning' | 'danger' }> = [];
-  if (fmt) chips.push({ label: fmt, tone: 'neutral' });
-  if (game.fieldType) chips.push({ label: fieldTypeLabel(game.fieldType), tone: 'neutral' });
-  chips.push({
-    label:
-      game.visibility === 'public'
-        ? he.matchTagOpenToAll
-        : game.isOrphanContext
-          ? he.matchTagQuickClosed
-          : he.matchTagCommunityOnly,
-    tone: game.visibility === 'public' ? 'accent' : 'neutral',
-  });
-
+  const when = diff === 0 ? he.matchCardWhenToday(time) : diff === 1
+    ? he.matchCardWhenTomorrow(time) : he.matchCardWhenDate(formatDateShort(game.startsAt), time);
+  const badge = status === 'joined'
+    ? { text: he.roundFeedRegistered, bg: '#DCFCE7', fg: '#166534', icon: 'checkmark-circle' as const }
+    : status === 'waitlist'
+    ? { text: he.roundFeedWaiting, bg: '#FEF3C7', fg: '#92400E', icon: 'hourglass-outline' as const }
+    : status === 'pending'
+    ? { text: he.matchStatusPending, bg: '#E2E8F0', fg: '#475569', icon: 'time-outline' as const }
+    : { text: game.visibility === 'public' ? he.matchTagOpenToAll : game.isOrphanContext
+        ? he.matchTagQuickClosed : he.matchTagCommunityOnly, bg: '#FFFFFF', fg: '#1E40AF', icon: 'people-outline' as const };
+  const joinable = cta === 'join' || cta === 'requestJoin' || cta === 'waitlist';
+  const visibilityLabel = game.visibility === 'public'
+    ? he.matchTagOpenToAll : game.groupId && !game.isOrphanContext ? he.matchTagCommunityOnly : he.matchTagClosedRound;
+  const action = cta === 'waitlist' ? he.matchCardWaitlistCta : cta === 'requestJoin'
+    ? he.gameCardRequestJoin : he.matchCardJoinFull;
+  const openDetails = () => {
+    recordDiagnostic('press','open_round',{gameId:game.id,groupId:game.groupId});
+    nav.navigate('MatchDetails', { gameId: game.id });
+  };
   return (
-    <PressableScale
-      onPress={openDetails}
-      style={[styles.card, { borderEndColor: stripeColor }]}
-      haptic={false}
-      accessibilityRole="button"
-      accessibilityLabel={game.title}
-    >
-      <View style={styles.row}>
-        {/* ── RIGHT column: details ──────────────────────────────── */}
-        <View style={styles.detailsCol}>
-          <Text style={styles.title} numberOfLines={2}>
-            {game.title}
-          </Text>
-
-          {game.fieldName ? (
-            <InfoRow icon="location-outline" text={game.fieldName} />
-          ) : null}
-
-          {/* Smart when-line: "היום ב-20:00" / "מחר ב-20:00" / "01.08 · 17:00". */}
-          <View style={styles.dateRow}>
-            <MetaChip icon="calendar-outline" text={whenText} emphasis={whenSoon} />
-          </View>
-
-          {/* Chip tags — format / surface / visibility. */}
-          <View style={styles.chipsRow}>
-            {chips.map((c, i) => (
-              <Chip key={`${c.label}-${i}`} label={c.label} tone={c.tone} />
-            ))}
+    <PressableScale onPress={openDetails} style={styles.card} haptic={false}
+      accessibilityRole="button" accessibilityLabel={`${game.title}, ${when}, ${badge.text}`}>
+      <View style={styles.top}>
+        <View style={styles.details}>
+          <Text style={styles.when}>{when}</Text>
+          <Text style={styles.title} numberOfLines={2}>{game.title}</Text>
+          {game.fieldName ? <View style={styles.location}>
+            <Ionicons name="location-outline" size={15} color="#64748B" />
+            <Text style={styles.locationText} numberOfLines={2}>{game.fieldName}</Text>
+          </View> : null}
+          <View style={styles.occupancy}>
+            <Text style={styles.players}>{he.roundFeedPlayers(occupancy, game.maxPlayers)}</Text>
+            <Text style={[styles.spots, !spots && styles.full]}>{he.roundFeedSpaces(spots)}</Text>
           </View>
         </View>
-
-        {/* ── LEFT column: occupancy + CTA / status label ────────── */}
-        <View style={styles.statusCol}>
-          <Text style={styles.occupancy}>
-            {he.matchCardOccupancy(occupancy, game.maxPlayers)}
-          </Text>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${Math.round(ratio * 100)}%`, backgroundColor: urgency },
-              ]}
-            />
-          </View>
-
-          {showCta ? (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                onPrimary(cta);
-              }}
-              disabled={busy}
-              hitSlop={6}
-              style={({ pressed }) => [
-                styles.cta,
-                (pressed || busy) && { opacity: 0.85 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={ctaLabel}
-            >
-              <Text
-                style={styles.ctaText}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.5}
-              >
-                {ctaLabel}
-              </Text>
-            </Pressable>
-          ) : statusLabel ? (
-            // Already in the game → a soft, NON-interactive status badge in the
-            // button's spot (so the CTA doesn't just vanish after joining).
-            <View style={[styles.statusLabel, { backgroundColor: statusLabel.bg }]}>
-              <Ionicons name={statusLabel.icon} size={13} color={statusLabel.fg} />
-              <Text
-                style={[styles.statusLabelText, { color: statusLabel.fg }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.6}
-              >
-                {statusLabel.label}
-              </Text>
-            </View>
-          ) : null}
+        <ImageBackground key={`${game.groupId ?? 'standalone'}:${cover?.coverPhotoUrl ?? cover?.coverImageId ?? 'pending'}`}
+          testID={coverReady ? 'round-cover-ready' : 'round-cover-pending'}
+          source={source} resizeMode="cover" resizeMethod="resize" style={styles.photo} imageStyle={styles.photoImage}
+          onError={() => {
+            if (cover?.coverPhotoUrl && activePhoto.current === cover.coverPhotoUrl) setFailedPhotoUrl(cover.coverPhotoUrl);
+          }}>
+          {status !== 'none' ? <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+            <Text style={[styles.badgeText, { color: badge.fg }]}>{badge.text}</Text>
+            <Ionicons name={badge.icon} size={13} color={badge.fg} />
+          </View> : null}
+        </ImageBackground>
+      </View>
+      <View style={styles.progress} accessibilityRole="progressbar"
+        accessibilityLabel={he.roundFeedPlayers(occupancy, game.maxPlayers)}
+        accessibilityValue={{ min: 0, max: Math.max(0, game.maxPlayers), now: Math.min(occupancy, Math.max(0, game.maxPlayers)) }}>
+        <View style={[styles.fill, { width: `${Math.round(ratio * 100)}%` }]} />
+      </View>
+      <View style={styles.bottom}>
+        <View style={styles.tags}>
+          <Text style={[styles.tag, game.visibility === 'public' && styles.publicTag]}>{visibilityLabel}</Text>
+          {game.format ? <Text style={styles.tag}>{gameFormatLabel(game.format).replace(/\s*×\s*/, ' על ')}</Text> : null}
+          {game.fieldType ? <Text style={styles.tag}>{fieldTypeLabel(game.fieldType)}</Text> : null}
         </View>
+        <Pressable onPress={(e) => { e.stopPropagation(); recordDiagnostic('press','round_primary',{type:cta,gameId:game.id}); joinable ? onPrimary(cta) : openDetails(); }}
+          disabled={busy} hitSlop={{ top: 4, bottom: 4 }} accessibilityRole="button" accessibilityState={{ disabled: !!busy, busy: !!busy }}
+          style={[styles.action, joinable && styles.join, busy && { opacity: 0.55 }]}>
+          <Text style={[styles.actionText, joinable && { color: '#FFFFFF' }]}>
+            {joinable ? action : he.roundFeedDetails}
+          </Text>
+          {!joinable ? <Ionicons name="chevron-back" size={15} color="#1D4ED8" /> : null}
+        </Pressable>
       </View>
     </PressableScale>
   );
 }
-
-// ─── Sub-components ────────────────────────────────────────────────────
-
-function InfoRow({
-  icon,
-  text,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-}) {
-  return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoText} numberOfLines={1}>
-        {text}
-      </Text>
-      <Ionicons name={icon} size={13} color={MUTED} />
-    </View>
-  );
-}
-
-function MetaChip({
-  icon,
-  text,
-  emphasis,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-  emphasis?: boolean;
-}) {
-  return (
-    <View style={styles.metaChip}>
-      <Text style={[styles.metaText, emphasis && styles.metaTextEmphasis]} numberOfLines={1}>
-        {text}
-      </Text>
-      <Ionicons name={icon} size={12} color={emphasis ? ACCENT : MUTED} />
-    </View>
-  );
-}
-
-function Chip({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: 'neutral' | 'accent' | 'warning' | 'danger';
-}) {
-  const palette =
-    tone === 'danger'
-      ? { bg: '#FEE2E2', fg: '#B91C1C' }
-      : tone === 'warning'
-        ? { bg: '#FEF3C7', fg: '#B45309' }
-        : tone === 'accent'
-          ? { bg: 'rgba(59,130,246,0.12)', fg: '#1D4ED8' }
-          : { bg: '#F1F5F9', fg: '#475569' };
-  return (
-    <View style={[styles.chip, { backgroundColor: palette.bg }]}>
-      <Text style={[styles.chipText, { color: palette.fg }]}>{label}</Text>
-    </View>
-  );
-}
-
-// ─── Styles ────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingVertical: spacing.md,
-    // 6px colored accent border on the visual-LEFT edge (end under RTL).
-    // paddingEnd is reduced by 6 so the CONTENT position is unchanged.
-    borderEndWidth: 6,
-    paddingEnd: spacing.md - 6,
-    paddingStart: spacing.md,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 3,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-  },
-  detailsCol: { flex: 1, gap: 6 },
-  // Status pill (top-left) + centred occupancy + progress bar + CTA.
-  statusCol: {
-    width: 96,
-    gap: 6,
-    alignItems: 'stretch',
-  },
-  title: {
-    color: INK,
-    fontSize: 16,
-    fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  // Non-interactive status badge that replaces the CTA once joined/waitlisted.
-  // Soft fill, no shadow/border → reads as a label, not a tappable button.
-  statusLabel: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 999,
-    alignSelf: 'stretch',
-    marginTop: 2,
-  },
-  statusLabelText: { fontSize: 12.5, fontWeight: '800', flexShrink: 1 },
-  infoRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 5,
-    alignSelf: 'flex-start',
-    maxWidth: '100%',
-  },
-  infoText: {
-    color: '#475569',
-    fontSize: 12.5,
-    fontWeight: '500',
-    textAlign: RTL_LABEL_ALIGN,
-    flexShrink: 1,
-  },
-  dateRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: spacing.sm,
-    alignSelf: 'flex-start',
-    flexWrap: 'wrap',
-  },
-  metaChip: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 3,
-  },
-  metaText: {
-    color: '#475569',
-    fontSize: 12.5,
-    fontWeight: '700',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  metaTextEmphasis: { color: ACCENT, fontWeight: '800' },
-  chipsRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 5,
-    alignSelf: 'flex-start',
-    flexWrap: 'wrap',
-    marginTop: 1,
-  },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  chipText: { fontSize: 11, fontWeight: '700' },
-  // ── left column ──
-  // Smaller + centred over the progress bar.
-  occupancy: {
-    color: INK,
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-    textAlign: 'center',
-  },
-  progressTrack: {
-    height: 7,
-    borderRadius: 999,
-    backgroundColor: '#EEF2F7',
-    overflow: 'hidden',
-    alignSelf: 'stretch',
-    // Fill grows from the visual-LEFT (flex-end under forceRTL) to match the
-    // sketch — was filling from the right (reversed).
-    alignItems: 'flex-end',
-  },
-  progressFill: { height: '100%', borderRadius: 999 },
-  cta: {
-    backgroundColor: ACCENT,
-    paddingVertical: 9,
-    paddingHorizontal: 8,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'stretch',
-    marginTop: 2,
-  },
-  // Smaller and with room at the sides: "בקש להצטרף" is twice the length of
-  // "הצטרף" and ran past the pill on Android. The Text already asks to shrink
-  // to fit, but `adjustsFontSizeToFit` is iOS-only — on Android nothing
-  // happened and the label simply overflowed (user report, with a screenshot).
-  ctaText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '800', letterSpacing: 0.1 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 20, overflow: 'hidden', borderWidth: 1,
+    borderColor: '#E8EDF5', elevation: 2, shadowColor: '#122450', shadowOpacity: 0.07,
+    shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
+  top: { flexDirection: 'row', alignItems: 'stretch', minHeight: 126 },
+  details: { flex: 1, padding: 12, gap: 4 },
+  when: { fontSize: 16, fontWeight: '800', color: '#1D4ED8', textAlign: RTL_LABEL_ALIGN },
+  title: { fontSize: 16, fontWeight: '800', color: '#101D3B', textAlign: RTL_LABEL_ALIGN },
+  location: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  locationText: { flex: 1, fontSize: 12, color: '#64748B', textAlign: RTL_LABEL_ALIGN },
+  occupancy: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 2, marginTop: 2 },
+  players: { fontSize: 12, color: '#334155', fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
+  spots: { fontSize: 11, color: '#15803D', textAlign: RTL_LABEL_ALIGN },
+  full: { color: '#B45309' },
+  photo: { width: '35%', backgroundColor: '#DCE6F5', overflow: 'hidden', borderRadius: 18, marginBottom: 8 },
+  photoImage: { width: '100%', height: '100%', borderRadius: 18 },
+  badge: { position: 'absolute', top: 8, end: 8, flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 7,
+    paddingVertical: 5, borderRadius: 20, maxWidth: '90%' },
+  badgeText: { fontSize: 10, fontWeight: '800', flexShrink: 1, textAlign: RTL_LABEL_ALIGN },
+  // Logical start is the visual RIGHT under forceRTL. Fill grows toward the left.
+  progress: { height: 5, backgroundColor: '#E7EEFA', alignItems: 'flex-start', overflow: 'hidden',
+    marginHorizontal: 12, marginTop: 2, borderRadius: 3 },
+  fill: { height: '100%', backgroundColor: '#2563EB', borderRadius: 3 },
+  bottom: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 6 },
+  tags: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  tag: { fontSize: 10, fontWeight: '700', color: '#475569', backgroundColor: '#EFF3F8',
+    paddingHorizontal: 7, paddingVertical: 4, borderRadius: 10 },
+  publicTag: { color: '#1D4ED8', backgroundColor: '#EAF2FF' },
+  action: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3,
+    paddingHorizontal: 10, paddingVertical: 6, minHeight: 36, borderRadius: 10, maxWidth: '49%' },
+  join: { backgroundColor: '#2563EB' },
+  actionText: { fontSize: 12, fontWeight: '800', color: '#1D4ED8', textAlign: 'center', flexShrink: 1 },
 });

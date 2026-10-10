@@ -16,7 +16,9 @@
     "**/*.tsx"
   ],
   "exclude": [
+    "scripts/pulse-ui",
     "node_modules",
+    "artifacts",
     "functions"
   ]
 }

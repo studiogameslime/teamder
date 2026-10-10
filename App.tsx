@@ -1,3 +1,6 @@
+import { userService } from '@/services/userService';
+import { resolveIncomingInvite, startInviteRecovery } from '@/services/incomingInvite';
+import { finishEntryBootstrap } from '@/services/entryBootstrap';
 import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -199,7 +202,10 @@ try {
   // expo-notifications native module not available — no-op.
 }
 import { NavigationContainer } from '@react-navigation/native';
-import { crumbNav, crumbTap } from '@/services/breadcrumbs';
+import { crumbNav, crumbTap, crumbGestureEnd } from '@/services/breadcrumbs';
+import { bindDiagnosticOwner, recordDiagnostic } from '@/services/diagnosticJournal';
+import { startDiagnosticStorage, persistDiagnosticJournal, clearDiagnosticStorage } from '@/services/diagnosticStorage';
+import { restorePendingErrors, clearPendingErrors } from '@/services/errorLog';
 import * as Linking from 'expo-linking';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { SystemSafeArea } from '@/components/SystemSafeArea';
@@ -213,7 +219,6 @@ import { RootNavigator } from '@/navigation/RootNavigator';
 import { CampaignGate } from '@/components/CampaignGate';
 import {
   navigationRef,
-  navigateInvite,
   navigateAppDestination,
 } from '@/navigation/navigationRef';
 import { parseAppLink, type AppDestination } from '@/utils/appLinks';
@@ -227,7 +232,6 @@ import { useEntryStore } from '@/store/entryStore';
 import { decideEntry } from '@/navigation/entryGate';
 import { useGroupStore } from '@/store/groupStore';
 import {
-  parseInviteUrl,
   stashPendingInvite,
 } from '@/services/deepLinkService';
 // Imported for its side effects: registers what each pending action kind does
@@ -318,6 +322,7 @@ const OPTIONAL_UPDATE_SNOOZE_MS = 24 * 60 * 60 * 1000;
 // Install global crash + unhandled-rejection catch-alls as early as
 // possible (module load), so failures before/around mount are captured.
 installGlobalErrorHandlers();
+startDiagnosticStorage();
 
 export default function App() {
   // The kickoff splash plays once per app launch. We render it OVER the
@@ -371,11 +376,8 @@ export default function App() {
   const optionalUpdateDismissedRef = useRef(false);
 
   // Live "navigator is mounted and ready to navigate" flag. Flipped
-  // by NavigationContainer's `onReady`. We pair it with `pendingLink`
-  // below so a deep link that arrives before navigation is ready
-  // gets retried the moment readiness flips on. RootNavigator's
-  // one-shot `consumedRef` covers cold-start storage stash; this
-  // pair covers warm-app URLs that race the navigator mount.
+  // by NavigationContainer's `onReady`. Campaign destinations wait here;
+  // invitation targets are persisted and consumed by RootNavigator alone.
   const [navReady, setNavReady] = useState(false);
 
   // Android hardware back. Without this every press fell through to the
@@ -387,26 +389,18 @@ export default function App() {
   // the evening propped on a bag showing the timer and the teams, and a screen
   // that sleeps every thirty seconds defeats the point.
   useScreenAwake();
-  // In-memory pending deep link. Set by the warm URL handler when
-  // it can't navigate immediately (auth not ready, navigator still
-  // mounting). Last-write-wins semantics: the most recent URL
-  // overwrites any prior pending — taps are explicit user intent
-  // and the stale one is no longer interesting.
-  const [pendingLink, setPendingLink] = useState<{
-    type: 'session' | 'team';
-    id: string;
-  } | null>(null);
-  // Same idea for a campaign link (`footy://open/<where>`). Kept apart from
-  // pendingLink because it needs LESS: no auth, no membership lookup, no
-  // stash that survives a restart. A tab is a tab — if the navigator is up,
-  // it can go there, and a marketing tap is not worth resurrecting on the
-  // next launch.
+  // Campaign destinations remain independent of invitation navigation.
   const [pendingDest, setPendingDest] = useState<AppDestination | null>(null);
   // Auth signals — already maintained by the user store. We watch
-  // them here so the consumer effect re-fires the moment the user
-  // finishes signing in / completes onboarding while the link is
-  // sitting in pendingLink.
+  // them here for campaign navigation and retrying fresh-account attribution.
   const currentUserId = useUserStore((s) => s.currentUser?.id ?? null);
+  const diagnosticAuthHydrated = useUserStore((s) => s.hydrated);
+  useEffect(() => {
+    if(!diagnosticAuthHydrated)return;
+    if(bindDiagnosticOwner(currentUserId)){clearPendingErrors();void clearDiagnosticStorage();}
+    if(currentUserId)void restorePendingErrors(currentUserId);
+    else void clearDiagnosticStorage();
+  },[currentUserId,diagnosticAuthHydrated]);
   const profileComplete = useUserStore((s) => s.isProfileComplete());
   const onboardingComplete = useUserStore((s) => s.hasCompletedOnboarding());
   // A guest is NOT somebody "מה חדש" is written for. `buildGuestUser` stamps
@@ -522,6 +516,8 @@ export default function App() {
 
     // Cold-start handler — stash and let RootNavigator consume after
     // auth is ready. This is the legacy path; behavior unchanged.
+    let warmInviteReceived = false;
+    let inviteResolutionVersion = 0;
     const handleCold = async (url: string | null) => {
       if (!url) return;
       if (isDuplicate(url)) return;
@@ -535,8 +531,10 @@ export default function App() {
         setPendingDest(campaign.dest);
         return;
       }
-      const parsed = parseInviteUrl(url);
-      if (!parsed) return;
+      if (warmInviteReceived) return;
+      const version = ++inviteResolutionVersion;
+      const parsed = await resolveIncomingInvite(url);
+      if (version !== inviteResolutionVersion || !parsed) return;
       // Opened via an invite link → suppress the next app-open ad.
       adsService.noteIntentfulOpen();
       logEvent(AnalyticsEvent.InviteLinkOpened, {
@@ -550,6 +548,8 @@ export default function App() {
         // `readPendingAction`, which derives from this key — so the new shape
         // is the source of truth without the old one having to move yet.
         await stashPendingInvite(parsed);
+        await storage.markInviteAttributionResolved(url);
+        await userService.completeDeferredInviteAttribution();
         logEvent(AnalyticsEvent.PendingActionSaved, {
           kind: kindOfInvite(parsed),
           origin: 'deep_link',
@@ -560,22 +560,13 @@ export default function App() {
       }
     };
 
-    // Warm-start handler — fired by `addEventListener` while the
-    // app is mounted. If the user is signed in & onboarded AND the
-    // navigator is ready, navigate DIRECTLY. Otherwise stash both
-    // in-memory (pendingLink, consumed by the effect below) AND in
-    // storage (recovery across cold restarts).
-    //
-    // The dual-store matters: RootNavigator's one-shot `consumedRef`
-    // could already have fired by the time a warm URL arrives, so
-    // we can't rely on the storage stash alone — that path runs
-    // exactly once per launch. The in-memory pendingLink + consumer
-    // effect runs whenever (navReady, auth, pendingLink) flip,
-    // which is the only setup that survives an
-    // already-passed-by-consumer state.
+    // Warm URLs share the same persistent ingress as cold URLs. The root's
+    // storage subscriber retries navigation after readiness and identity gates.
     const handleWarm = async (url: string) => {
       if (!url) return;
       if (isDuplicate(url)) return;
+      warmInviteReceived = true;
+      const version = ++inviteResolutionVersion;
       const campaign = parseAppLink(url);
       if (campaign) {
         if (campaign.role) void recordRole(campaign.role);
@@ -585,61 +576,18 @@ export default function App() {
         if (!navigateAppDestination(campaign.dest)) setPendingDest(campaign.dest);
         return;
       }
-      const parsed = parseInviteUrl(url);
-      if (!parsed) return;
+      const parsed = await resolveIncomingInvite(url);
+      if (version !== inviteResolutionVersion || !parsed) return;
       // Opened via an invite link → suppress the next app-open ad.
       adsService.noteIntentfulOpen();
 
-      // Generic app invite — no target to navigate to. Stash for
-      // attribution (a no-op for an already-signed-up user) and stop.
-      if (parsed.type === 'app') {
-        await storage.setPendingInvite(parsed).catch(() => undefined);
-        return;
-      }
+      // A later deliberate tap can open a new invite; a subsequent entry choice
+      // can still suppress it before the sole consumer becomes ready.
+      useEntryStore.setState({ suppressAutoConsume: false });
+      await stashPendingInvite(parsed);
+        await storage.markInviteAttributionResolved(url);
+        await userService.completeDeferredInviteAttribution();
 
-      const userState = useUserStore.getState();
-      // Same correction as the consumer in RootNavigator: a GUEST is ready.
-      // `isProfileComplete()` is "has a non-empty name", which a guest never
-      // has, so requiring it here meant a warm link opened by somebody
-      // without an account fell through to the stash and was never navigated.
-      const viewerIsGuest = userState.currentUser?.isGuest === true;
-      const isAuthReady =
-        !!userState.currentUser &&
-        (viewerIsGuest ||
-          (userState.isProfileComplete() && userState.hasCompletedOnboarding()));
-
-      if (isAuthReady && navigationRef.isReady()) {
-        const cachedGroups = useGroupStore.getState().groups;
-        const isMember =
-          parsed.type === 'team'
-            ? cachedGroups.some((g) => g.id === parsed.id)
-            : false;
-        const ok = navigateInvite({
-          type: parsed.type,
-          id: parsed.id,
-          isMember,
-        });
-        if (ok) {
-          await storage.clearPendingInvite().catch(() => undefined);
-          if (__DEV__) {
-            console.info('[invite] warm — navigated directly', parsed);
-          }
-          return;
-        }
-      }
-
-      // Not ready — last-link-wins overwrite of in-memory pending.
-      // Also write through to storage so a cold restart picks it up.
-      setPendingLink({ type: parsed.type, id: parsed.id });
-      await storage.clearPendingInvite().catch(() => undefined);
-      try {
-        await stashPendingInvite(parsed);
-        if (__DEV__) {
-          console.info('[invite] warm — pending (not ready)', parsed);
-        }
-      } catch (err) {
-        if (__DEV__) console.warn('[invite] warm stash failed', err);
-      }
     };
 
     (async () => {
@@ -695,10 +643,17 @@ export default function App() {
       // number you can trust.
       const resolved = await storage.getPendingInvite();
       reportEntrySource(resolved ? 'deferred' : 'organic', resolved);
-    })();
+    })().catch((err) => {
+      if (__DEV__) console.warn('[invite] bootstrap failed', err);
+    }).finally(finishEntryBootstrap);
 
-    const sub = Linking.addEventListener('url', (e) => handleWarm(e.url));
-    return () => sub.remove();
+    const stopRecovery = startInviteRecovery(() => userService.completeDeferredInviteAttribution());
+    const sub = Linking.addEventListener('url', (e) => {
+      void handleWarm(e.url).catch((err) => {
+        if (__DEV__) console.warn('[invite] warm ingress failed', err);
+      });
+    });
+    return () => { sub.remove(); stopRecovery(); };
   }, []);
 
   // Pending-destination consumer. Deliberately does NOT wait on auth: the
@@ -711,44 +666,12 @@ export default function App() {
     if (navigateAppDestination(pendingDest)) setPendingDest(null);
   }, [pendingDest, navReady]);
 
-  // Pending-link consumer. Re-runs on every change of (pendingLink,
-  // navReady, currentUserId, profileComplete, onboardingComplete) —
-  // this guarantees a deep link sitting in pendingLink fires the
-  // moment the navigator AND the user are both ready, regardless of
-  // which one became ready last. RootNavigator's storage-stash
-  // consumer covers cold-start; this covers warm URLs that arrived
-  // mid-launch or while the user was on Auth/Onboarding.
   useEffect(() => {
-    if (!pendingLink) return;
-    if (!navReady) return;
-    if (!navigationRef.isReady()) return;
-    if (!currentUserId || !profileComplete || !onboardingComplete) return;
-    const cachedGroups = useGroupStore.getState().groups;
-    const isMember =
-      pendingLink.type === 'team'
-        ? cachedGroups.some((g) => g.id === pendingLink.id)
-        : false;
-    const ok = navigateInvite({
-      type: pendingLink.type,
-      id: pendingLink.id,
-      isMember,
+    if (!currentUserId) return;
+    void userService.completeDeferredInviteAttribution().catch((err) => {
+      if (__DEV__) console.warn('[invite] late attribution retry failed', err);
     });
-    if (ok) {
-      // Clear both stores so a stale link can never re-fire on the
-      // next ready-tick.
-      setPendingLink(null);
-      storage.clearPendingInvite().catch(() => undefined);
-      if (__DEV__) {
-        console.info('[invite] consumer (pending) — navigated', pendingLink);
-      }
-    }
-  }, [
-    pendingLink,
-    navReady,
-    currentUserId,
-    profileComplete,
-    onboardingComplete,
-  ]);
+  }, [currentUserId, onboardingComplete]);
 
   // Resolve the freshly-fetched UpdateKind into a UI verdict. Force
   // wins always; optional is suppressed when already dismissed this
@@ -808,6 +731,7 @@ export default function App() {
         logEvent(AnalyticsEvent.AppBackgrounded);
       }
       lastState = next;
+      if(next!=='active')void persistDiagnosticJournal();
       if (next !== 'active' || !updateCheckedRef.current) return;
       checkForUpdate().then(applyUpdateResult);
     });
@@ -1056,10 +980,7 @@ export default function App() {
         theme={navTheme}
         ref={navigationRef}
         onReady={() => {
-          // Flag readiness so the pendingLink consumer effect above
-          // can fire the queued deep link (if any). Without this the
-          // warm URL sits forever waiting for an event it would
-          // never get on its own.
+          // Release any campaign destination waiting for the navigator.
           setNavReady(true);
           // Seed the initial route so the first screen_view fires before
           // any subsequent state change (otherwise it'd only fire on the
@@ -1069,16 +990,17 @@ export default function App() {
             : null;
           if (r) {
             currentScreenRef.current = r.name;
-            crumbNav(r.name);
+            crumbNav(r.name,r.params);
             logEvent(AnalyticsEvent.ScreenView, { screen: r.name });
           }
         }}
         onStateChange={() => {
           if (!navigationRef.isReady()) return;
-          const next = navigationRef.getCurrentRoute()?.name;
+          const route = navigationRef.getCurrentRoute();
+          const next = route?.name;
+          if(route)crumbNav(route.name,route.params);
           if (next && next !== currentScreenRef.current) {
             currentScreenRef.current = next;
-            crumbNav(next);
             logEvent(AnalyticsEvent.ScreenView, { screen: next });
           }
         }}
@@ -1092,6 +1014,7 @@ export default function App() {
             That combination is bulletproof across iOS + Android. */}
         <View
           style={{ flex: 1, backgroundColor: colors.bg }}
+          onLayout={e=>recordDiagnostic('act','viewport',{width:e.nativeEvent.layout.width,height:e.nativeEvent.layout.height})}
           // Every touch in the app passes through here on its way down.
           //
           // `onStartShouldSetResponderCapture` is the ONE hook that sees a
@@ -1102,9 +1025,10 @@ export default function App() {
           // analytics event, no navigation and no error, so until now it left
           // no trace anywhere. Now it leaves a `tap` with nothing after it.
           onStartShouldSetResponderCapture={(e) => {
-            crumbTap(e.nativeEvent.pageX, e.nativeEvent.pageY);
+            crumbTap(e.nativeEvent.pageX, e.nativeEvent.pageY,e.nativeEvent.target);
             return false;
           }}
+          onTouchEnd={e=>crumbGestureEnd(e.nativeEvent.pageX,e.nativeEvent.pageY)}
         >
           <MockModeBanner />
           <AnnouncementBanner />

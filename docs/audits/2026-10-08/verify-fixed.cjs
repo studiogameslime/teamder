@@ -100,7 +100,7 @@ async function main() {
   assert.equal(kicks.map(k=>k.id).join(','),'k1,k2');
   note('B06',{concurrentKickPreserved:true});
   const protocol=load('functions/src/commitProtocol.ts',{});
-  let history,stats,latch=false;
+  let history,stats,latch=false,clears=0;
   const outNode=node('functions/src/index.ts',n=>ts.isVariableDeclaration(n)&&n.name.getText()==='outcome'&&n.getText().includes('commitRoundInOrder'));
   const commitMod=(value)=>loadString('exports.commit=async()=>{const '+outNode+';return outcome;};',{
     commitRoundInOrder:protocol.commitRoundInOrder,
@@ -108,11 +108,22 @@ async function main() {
     roundHistoryDoc:{payload:value},
     roundHistoryRef:{create:async(doc)=>{if(history)throw Object.assign(new Error('exists'),{code:6});history=doc.payload}},
     sb:{build:batch=>batch},inc:()=>{},gameId:'g',roundId:'1',HttpsError:Error,
-    db:{batch:()=>{let doc;return {set:(ref,v)=>{doc=v},commit:async()=>{if(latch)throw Object.assign(new Error('exists'),{code:6});latch=true;stats=value;history=doc.payload;}}}},
+    liveGoalIds:[],snap:{ref:'game',updateTime:'v1'},now:123,
+    admin:{firestore:{FieldValue:{delete:()=>({delete:true})}}},
+    db:{batch:()=>{let doc,clear;return {
+      set:(ref,v)=>{doc=v},
+      update:(ref,patch,condition)=>{assert.equal(ref,'game');assert.equal(condition.lastUpdateTime,'v1');clear=patch},
+      commit:async()=>{
+        if(latch)throw Object.assign(new Error('exists'),{code:6});
+        assert.equal(clear.lastCommittedRoundId,'1');assert.deepEqual(Array.from(clear['liveMatch.goals']),[]);
+        latch=true;stats=value;history=doc.payload;clears++;
+      },
+    }}},
   });
   await Promise.all([commitMod('A').commit(),commitMod('B').commit()]);
   assert.equal(history,stats);assert.equal(stats,'A');
-  note('B07',{statsPayload:stats,historyPayload:history,statisticsAppliedOnce:true});
+  assert.equal(clears,1);
+  note('B07',{statsPayload:stats,historyPayload:history,statisticsAppliedOnce:true,boardClearedAtomicallyOnce:true});
   const health='src/services/healthService.ts';
   const overlap=node(health,n=>ts.isFunctionDeclaration(n)&&n.name?.text==='overlapMs');
   const times=node(health,n=>ts.isFunctionDeclaration(n)&&n.name?.text==='recTimes');
@@ -136,7 +147,7 @@ async function main() {
   const blockedMethod=node('src/services/chatService.ts',n=>ts.isMethodDeclaration(n)&&n.name.getText()==='subscribeBlocked');
   const blockedMod=loadString('exports.service={'+blockedMethod+'};',{
     onSnapshot:(q,success,error)=>{error(new Error('permission-denied'));return()=>{};},
-    col:{userBlocked:()=>({})},logError:()=>{},__DEV__:false,
+    col:{userBlocked:()=>({})},logError:()=>{},__DEV__:false,USE_MOCK_DATA:false,
   });
   let blockedIds=new Set(['blocked-player']);
   blockedMod.service.subscribeBlocked('u',ids=>{blockedIds=ids});

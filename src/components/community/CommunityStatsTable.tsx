@@ -15,6 +15,7 @@ import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { userService } from '@/services';
 import { compareByThen, type ChampionshipRow } from '@/utils/championship';
+import { compareEveningScores, formatEveningScore } from '@/utils/eveningScoreColumn';
 import {
   toEfficiencyRow,
   sortEfficiency,
@@ -65,6 +66,7 @@ export function CommunityStatsTable({
   /** Guest roster-id → name. Rows whose uid is here resolve to that name (no
    *  /users fetch) and open no player card. Used by the per-game table. */
   guestNames,
+  eveningScores,
   /** uid → the name a CLOSED season froze, used only where /users has no
    *  answer. A player who deleted their account or left the club still played
    *  that season and still holds their row in it; without this their name goes
@@ -95,6 +97,8 @@ export function CommunityStatsTable({
   hideAppearances?: boolean;
   attendedByUser?: Record<string, number>;
   guestNames?: Record<string, string>;
+  /** Opt-in for the single-evening table only. Missing is not zero. */
+  eveningScores?: Record<string, number>;
   fallbackNames?: Record<string, string>;
   clubRounds?: number;
   clubEvenings?: number;
@@ -105,17 +109,17 @@ export function CommunityStatsTable({
   // Rows showing a season's frozen name because /users had no answer — most
   // likely a player who has left. Their card would open on nothing.
   const [nameOnly, setNameOnly] = useState<Set<string>>(new Set());
-  // Tap a column header to sort by it. Cumulative leads on wins, the headline
-  // stat; efficiency leads on goals+assists per game, the one the table exists
-  // to surface.
-  const [sortKey, setSortKey] = useState<string>(
-    mode === 'efficiency' ? 'gaPerGame' : 'wins',
-  );
+  // A single evening defaults to its rating; ordinary club tables retain wins.
+  // Depend on column availability, not the map identity: an async score update
+  // must not overwrite a column the viewer has already chosen.
+  const defaultSortKey = mode === 'efficiency' ? 'gaPerGame'
+    : eveningScores !== undefined ? 'eveningScore' : 'wins';
+  const [sortKey, setSortKey] = useState<string>(defaultSortKey);
   // Switching tabs must not carry a column that does not exist on the other
   // side — 'wins' means nothing to the efficiency grid and vice versa.
   useEffect(() => {
-    setSortKey(mode === 'efficiency' ? 'gaPerGame' : 'wins');
-  }, [mode]);
+    setSortKey(defaultSortKey);
+  }, [defaultSortKey]);
   // Replace the rollup `games` with the authoritative scan count when provided.
   const effPlayers = React.useMemo(
     () =>
@@ -189,9 +193,11 @@ export function CommunityStatsTable({
     // METHOD is unchanged — and resolves equal values through the one shared
     // comparator.
     return [...effPlayers]
-      .sort(compareByThen(sortKey as keyof ChampionshipRow))
+      .sort(sortKey === 'eveningScore' && eveningScores
+        ? compareEveningScores(eveningScores)
+        : compareByThen(sortKey as keyof ChampionshipRow))
       .slice(0, limit);
-  }, [effPlayers, ranked, efficiency, sortKey, limit, mode, showAttendance]);
+  }, [effPlayers, ranked, efficiency, sortKey, limit, mode, showAttendance, eveningScores]);
 
   useEffect(() => {
     let alive = true;
@@ -233,7 +239,7 @@ export function CommunityStatsTable({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [players, limit, sortKey]);
+  }, [rows, guestNames, fallbackNames]);
 
   // Hoisted above the guard below. `rows` starts empty and is filled by the
   // effect above, so the FIRST render returns null here and the second one
@@ -314,6 +320,8 @@ export function CommunityStatsTable({
   // the only column here counted in EVENINGS rather than mini-games — it
   // belongs next to the other whole-club share, not lost among the per-משחקון
   // averages.
+  if (eveningScores) cumulativeCols.unshift({ key: 'eveningScore', label: 'ציון',
+    cell: r => formatEveningScore(eveningScores[r.uid]), tint: clubAccent.blue });
   const efficiencyCols: Col[] = [
     { key: 'winPct', label: he.effColWinPct,
       cell: (r) => formatPct(efficiency[r.uid]?.winPct ?? null) },

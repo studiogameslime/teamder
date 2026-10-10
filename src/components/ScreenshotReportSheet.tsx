@@ -22,7 +22,7 @@ import { SpringSheet } from '@/components/anim/SpringSheet';
 import { ScreenshotAnnotator } from '@/components/ScreenshotAnnotator';
 import { Button } from '@/components/Button';
 import { toast } from '@/components/Toast';
-import { submitFeedback, type FeedbackCategory } from '@/services/feedbackService';
+import { submitFeedback, captureFeedbackDiagnostics, type FeedbackDiagnostics, type FeedbackCategory } from '@/services/feedbackService';
 import { navigationRef } from '@/navigation/navigationRef';
 import { useUserStore } from '@/store/userStore';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -53,6 +53,7 @@ export function ScreenshotReportSheet() {
   const [busy, setBusy] = useState(false);
   const [annotating, setAnnotating] = useState(false);
   const capturingRef = useRef(false);
+  const diagnosticsRef=useRef<FeedbackDiagnostics|undefined>(undefined);
   // Tester-only surface: the screenshot→report popup fires only for users
   // we've explicitly marked as QA testers from the Pulse dashboard.
   const isTester = useUserStore((s) => s.currentUser?.qa === true);
@@ -61,6 +62,7 @@ export function ScreenshotReportSheet() {
     // Ignore re-entrancy and don't stack a second sheet over an open one.
     if (capturingRef.current || visible) return;
     capturingRef.current = true;
+    diagnosticsRef.current=captureFeedbackDiagnostics(navigationRef.isReady()?navigationRef.getCurrentRoute()?.name:undefined);
     let shot: string | null = null;
     // Prefer the native PixelCopy capture (real window surface — maps/GL/video
     // come through instead of rendering black). Falls back to view-shot's
@@ -116,7 +118,7 @@ export function ScreenshotReportSheet() {
         : undefined;
       // The screenshot is the content; text is optional.
       const msg = text.trim() || he.screenshotReportDefaultMsg;
-      await submitFeedback('bug', msg, screen, image ?? undefined, category);
+      await submitFeedback('bug', msg, screen, image ?? undefined, category,diagnosticsRef.current);
       toast.success(he.screenshotReportSent);
       close();
     } catch {

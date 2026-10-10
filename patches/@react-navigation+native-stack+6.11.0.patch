@@ -1,0 +1,11 @@
+diff --git a/node_modules/@react-navigation/native-stack/src/views/NativeStackView.native.tsx b/node_modules/@react-navigation/native-stack/src/views/NativeStackView.native.tsx
+--- a/node_modules/@react-navigation/native-stack/src/views/NativeStackView.native.tsx
++++ b/node_modules/@react-navigation/native-stack/src/views/NativeStackView.native.tsx
+@@ -355,6 +355,7 @@
+                 </View>
+               ) : null}
+               <View
++                collapsable={false}
+                 accessibilityElementsHidden={!focused}
+                 importantForAccessibility={
+                   focused ? 'auto' : 'no-hide-descendants'

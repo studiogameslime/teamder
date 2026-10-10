@@ -1,4 +1,5 @@
 import { HeightReveal } from '@/components/anim/HeightReveal';
+import { recordDiagnostic } from '@/services/diagnosticJournal';
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // MatchDetailsScreen — read-mostly view of a single match.
 //
@@ -462,6 +463,7 @@ export function MatchDetailsScreen() {
     () => new Set<GameTabKey>(['info']),
   );
   const showTab = (k: GameTabKey) => {
+    recordDiagnostic('press','round_tab',{tab:k,gameId});
     setTab(k);
     setSeen((prev) => (prev.has(k) ? prev : new Set(prev).add(k)));
   };
@@ -948,10 +950,22 @@ export function MatchDetailsScreen() {
   //  itself teaches the admin what the create-screen toggle buys them.
   // The club behind this evening, for the hero's cover. `isOrphanContext` is
   // the one-off marker; those keep the bundled stadium.
-  const heroClub =
+  const memberHeroClub =
     game && !game.isOrphanContext && game.groupId
       ? myCommunities.find((c) => c.id === game.groupId)
       : undefined;
+  const [publicHeroCover, setPublicHeroCover] = useState<{groupId:string;ownerId:string;cover: {coverPhotoUrl?:string;coverImageId?:string}|null}|null>(null);
+  const heroGroupId = game && !game.isOrphanContext ? game.groupId : undefined;
+  useEffect(() => {
+    if (!heroGroupId || memberHeroClub || !user?.id) return;
+    let alive = true;
+    import('@/services/groupService').then(m=>m.groupService.getPublic(heroGroupId)).then(cover=>{
+      if(alive)setPublicHeroCover({groupId:heroGroupId,ownerId:user.id,cover});
+    }).catch(()=>{if(alive)setPublicHeroCover({groupId:heroGroupId,ownerId:user.id,cover:null});});
+    return()=>{alive=false;};
+  },[heroGroupId,memberHeroClub,user?.id]);
+  const publicCoverResolved = publicHeroCover?.groupId===heroGroupId && publicHeroCover?.ownerId===user?.id;
+  const heroClub = memberHeroClub ?? (publicCoverResolved ? publicHeroCover?.cover : undefined);
 
   const advanced = game?.advancedMode === true;
 
@@ -2961,6 +2975,8 @@ export function MatchDetailsScreen() {
     // the sticky child's box starting at its true top.
     <View style={styles.heroWrap}>
         <MatchStadiumHero
+          groupId={heroGroupId}
+          coverLoading={!!heroGroupId && !memberHeroClub && !publicCoverResolved}
           startsAt={game.startsAt}
           title={game.title}
           // Which season this evening counts in. An evening already stamped

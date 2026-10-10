@@ -25,6 +25,7 @@ import {
   type GameFormValues,
 } from '@/screens/games/GameWizardForm';
 import { useGroupStore } from '@/store/groupStore';
+import { registrationEditPatch } from '@/utils/registrationEdit';
 import { Text } from 'react-native';
 
 type Nav = NativeStackNavigationProp<GameStackParamList, 'GameEdit'>;
@@ -39,7 +40,7 @@ function gameToValues(g: Game): GameFormValues {
   // admin can flip it OFF to convert the game to immediate-open.
   const isRecurringEdit =
     g.status === 'scheduled' ||
-    (typeof g.registrationOpensAt === 'number' && g.registrationOpensAt > 0);
+    (typeof g.registrationOpensAt === 'number' && g.registrationOpensAt > Date.now());
   // City is the matcher key. Pre-fill from the saved value and trust
   // it as canonical (it was picked from the same autocomplete in the
   // create / previous edit flow). Previously we forced the admin to
@@ -283,23 +284,14 @@ export function GameEditScreen() {
         throw err;
       }
     }
-    // `registrationOpensAt` is patched when the scheduled-reg toggle is ON and
-    // the game is still 'scheduled' — once the CF has flipped it to 'open' the
-    // field is moot, and `openedNotificationSent` stops a re-flip firing a
-    // second push.
-    //
-    // And when the toggle is switched OFF it is stamped to NOW, which is the
-    // whole point of switching it off: open the game and tell the roster. This
-    // branch simply did not exist — the patch was `{}` whenever the toggle was
-    // off, so turning it off wrote nothing and the game stayed scheduled for
-    // good, which is what was reported. Stamping "now" makes the game due and
-    // the server's own flip does the rest, with every one of its guards.
-    const regOpensPatch =
-      game.status !== 'scheduled'
-        ? {}
-        : v.scheduledRegEnabled && v.registrationOpensAt > 0
-          ? { registrationOpensAt: v.registrationOpensAt }
-          : { registrationOpensAt: Date.now() };
+    // Open rounds can close new registration until a future time. Existing
+    // rosters and the opened-notification latch are never cleared. Switching
+    // a scheduled round off makes it due for the existing server opener.
+    const regOpensPatch = registrationEditPatch(game.status, v.scheduledRegEnabled, v.registrationOpensAt, Date.now());
+    if (game.status === 'locked' && v.scheduledRegEnabled && v.registrationOpensAt > Date.now()) {
+      appAlert(he.error, he.editGameLockedRegistration);
+      return;
+    }
     try {
       await gameService.updateGameV2(game.id, {
         title: v.title.trim() || game.title,
@@ -350,7 +342,7 @@ export function GameEditScreen() {
       // actually wrote.
       if (
         v.scheduledRegEnabled &&
-        game.status === 'scheduled' &&
+        (game.status === 'scheduled' || game.status === 'open') &&
         v.registrationOpensAt > 0
       ) {
         logEvent(AnalyticsEvent.GameScheduleSet, {

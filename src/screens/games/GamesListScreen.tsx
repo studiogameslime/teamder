@@ -1,26 +1,5 @@
-// GamesListScreen — Matches tab, redesigned.
-//
-// Layout (top → bottom, RTL):
-//   ① Blue gradient hero with stadium photo, title + subtitle, calendar
-//      disc on the right, filter button on the left.
-//   ② Pill segmented control: פתוחים (default) / שלי. Floating up onto
-//      the bottom of the hero via negative marginTop.
-//   ③ Section title with blue underline indicator.
-//   ④ List of MatchListCards (premium, with format strip on left).
-//   ⑤ MatchEmptyHintCard at the bottom — a static "still didn't find
-//      a match?" CTA card that lives below the list, not in place of
-//      it. Empty state (no cards at all) replaces the list entirely.
-//   ⑥ Floating "+" FAB pinned to the bottom-LEFT.
-//
-// The screen ADAPTS to how many matches it has (see gamesFeedDiscovery):
-//   many → ①–⑥ exactly as above, nothing added. Real matches carry the tab.
-//   few  → the same list, then "ביקוש לכדורגל באזור שלך" + "מועדונים באזור שלך".
-//   none → a one-line "nothing open right now" in place of the big empty
-//          state, then those same two sections.
-// The order is fixed and deliberate: a joinable match outranks real demand,
-// and demand outranks a club — discovery never sits above the list.
-// Filters hiding everything is a separate case that keeps the original empty
-// state, because there the fix is "clear the filter", not "find a club".
+// Sectioned rounds feed: my rounds first, upcoming registration, then discovery.
+// Club photos and personal status live on the cards; registration stays in the services.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -46,9 +25,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '@/components/Button';
 import { MatchCardSkeleton } from '@/components/anim/MatchCardSkeleton';
-import { LivingIcon } from '@/components/anim/LivingIcon';
 import { AppearItem } from '@/components/anim/AppearItem';
-import { Breathing } from '@/components/anim/Breathing';
 import { joinLocation } from '@/utils/format';
 import { BouncingBall } from '@/components/anim/BouncingBall';
 import { toast } from '@/components/Toast';
@@ -97,10 +74,12 @@ import {
 } from '@/services/gameLifecycle';
 import { storage } from '@/services/storage';
 import { Game, type TimeBucket } from '@/types';
+import { mergeRoundCovers, resolveRoundCover, type RoundCoverCache } from '@/utils/roundFeedCovers';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { getInboxCount } from '@/services/requestsService';
+import { groupService } from '@/services/groupService';
 import { useGroupStore } from '@/store/groupStore';
 import { useGameStore } from '@/store/gameStore';
 import type { GameStackParamList } from '@/navigation/GameStack';
@@ -192,6 +171,8 @@ export function GamesListScreen() {
   } | null>(null);
   const [cancelOtherBusy, setCancelOtherBusy] = useState(false);
 
+  const [clubsOnly, setClubsOnly] = useState(false);
+  const [publicCovers, setPublicCovers] = useState<RoundCoverCache>({ ownerId: null, covers: {} });
   const [filters, setFilters] = useState<GameFilters>(EMPTY_GAME_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -550,28 +531,47 @@ export function GamesListScreen() {
   const mineList = useMemo(
     () =>
       applyGameFilters(
-        myGames.filter((g) => isVisibleInMyGames(g) && !scheduledIds.has(g.id)),
+        myGames.filter((g) => isVisibleInMyGames(g) && !scheduledIds.has(g.id) &&
+          (!clubsOnly || myCommunities.some((club) => club.id === g.groupId))),
         {
           ...filters,
           nearby: false,
         },
       ).sort(sortByStart),
-    [myGames, filters, scheduledIds],
+    [myGames, filters, scheduledIds, clubsOnly, myCommunities],
   );
   const restList = useMemo(() => {
     const mineIds = new Set(mineList.map((g) => g.id));
     const set = new Map<string, Game>();
     [...communityGames, ...openGames]
-      .filter(isVisibleInOpenGames)
+      .filter((g) => isVisibleInOpenGames(g) && (!clubsOnly || myCommunities.some((club) => club.id === g.groupId)))
       .forEach((g) => {
         if (!mineIds.has(g.id) && !scheduledIds.has(g.id)) set.set(g.id, g);
       });
     return applyGameFilters(Array.from(set.values()), restFilters, gameCtx).sort(
       sortByStart,
     );
-  }, [communityGames, openGames, restFilters, gameCtx, mineList, scheduledIds]);
+  }, [communityGames, openGames, restFilters, gameCtx, mineList, scheduledIds, clubsOnly, myCommunities]);
 
-  const filterCount = activeFiltersCount(filters);
+  // One public read per distinct non-member club per feed refresh. No private club reads.
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) return;
+    const ownerId = user.id;
+    const memberIds = new Set(myCommunities.map((g) => g.id));
+    const ids = [...new Set([...myGames, ...communityGames, ...openGames]
+      .map((g) => g.groupId).filter((id): id is string => !!id && !memberIds.has(id)))];
+    Promise.allSettled(ids.map((id) => groupService.getPublic(id))).then((results) => {
+      if (!active) return;
+      setPublicCovers(previous => mergeRoundCovers(previous, ownerId, ids, results));
+    });
+    return () => { active = false; };
+  }, [user?.id, myCommunities, myGames, communityGames, openGames]);
+  const coverForGame = (g: Game) => resolveRoundCover(g.isOrphanContext ? undefined : g.groupId, myCommunities, publicCovers, user?.id ?? null);
+  const scopedUpcoming = clubsOnly
+    ? scheduledUpcoming.filter((g) => myCommunities.some((club) => club.id === g.groupId))
+    : scheduledUpcoming;
+  const filterCount = activeFiltersCount(filters) + Number(clubsOnly);
   // A community game needs a community the user admins. When they admin
   // none, the chooser's "community game" option is locked with a hint.
   const canCreateCommunityGame =
@@ -581,7 +581,7 @@ export function GamesListScreen() {
   // other needs an admin. Telling a member of two clubs "you have no club"
   // reads as the app not knowing who they are.
   const hasAnyCommunity = myCommunities.length > 0;
-  const isEmpty = mineList.length === 0 && restList.length === 0;
+  const isEmpty = mineList.length === 0 && restList.length === 0 && scopedUpcoming.length === 0;
 
   // ── How full does this tab feel, and what do we put underneath ─────────
   // While the app is growing there are stretches with few (or zero) public
@@ -595,7 +595,7 @@ export function GamesListScreen() {
   // doesn't need padding out.
   const feedCfg = gamesFeedConfig();
   const visibleGamesCount =
-    mineList.length + restList.length + scheduledUpcoming.length;
+    mineList.length + restList.length + scopedUpcoming.length;
   const density = feedDensity(visibleGamesCount, feedCfg.richMin);
   // Filters hiding everything is a different problem with a different fix
   // ("clear the filter"), so that case keeps the original empty state rather
@@ -637,14 +637,14 @@ export function GamesListScreen() {
   // registered to is more urgent than one you can't even join yet (manager
   // request). Still shown when there's nothing joinable at all.
   const upcomingSection =
-    !loading && scheduledUpcoming.length > 0 ? (
+    !loading && scopedUpcoming.length > 0 ? (
       <View style={{ marginBottom: spacing.lg }}>
         <View style={styles.sectionTitleRow}>
           <Text style={styles.sectionTitle}>{he.homeUpcomingSectionTitle}</Text>
           <View style={styles.sectionUnderline} />
         </View>
         <View style={styles.cardsList}>
-          {scheduledUpcoming.map((g, idx) => (
+          {scopedUpcoming.map((g, idx) => (
             <AppearItem key={g.id} index={idx}>
               <UpcomingScheduledGameCard
                 game={g}
@@ -682,16 +682,23 @@ export function GamesListScreen() {
           Rendered here so it opens OVER the feed — the person never leaves
           the list they were reading. */}
       {authAction.sheet}
-      {/* Hero pinned at the top of the screen. The controls row
-          below it is ALSO pinned (outside the scroll) but uses a
-          negative marginTop to float over the hero's bottom edge —
-          z-order: controls on top of hero. Same visual as before
-          the pinning change, just with the hero no longer scrolling. */}
-      <MatchesHero />
+      {/* Header and quick filters stay above the scrolling feed. */}
+      <MatchesHero onCreate={() => { if (hintVisible) dismissHint(); handleCreate(); }} />
       <View style={styles.controlsFloat}>
-        {/* Tabs removed — the list is one sectioned scroll now. Spacer keeps
-            the filter button on the trailing edge. */}
-        <View style={{ flex: 1 }} />
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={styles.quickFilters}>
+          {[
+            { label: he.roundFeedAll, active: !clubsOnly && !filters.nearby,
+              press: () => { setClubsOnly(false); setFilters((f) => ({ ...f, nearby: false })); } },
+            { label: he.roundFeedClubs, active: clubsOnly,
+              press: () => { setClubsOnly((v) => !v); setFilters((f) => ({ ...f, nearby: false })); } },
+            { label: he.roundFeedNearby, active: filters.nearby,
+              press: () => { setClubsOnly(false); setFilters((f) => ({ ...f, nearby: !f.nearby })); } },
+          ].map((chip) => <Pressable key={chip.label} onPress={chip.press} accessibilityRole="button"
+            accessibilityState={{ selected: chip.active }} style={[styles.quickFilter, chip.active && styles.quickFilterActive]}>
+            <Text style={[styles.quickFilterText, chip.active && { color: '#FFFFFF' }]}>{chip.label}</Text>
+          </Pressable>)}
+        </ScrollView>
         {/* The map button is OUT of this row too (owner, 28.09) — same call
             as the communities feed: the row carried three controls over one
             search field, and the field is what people reach for. Removed
@@ -773,7 +780,7 @@ export function GamesListScreen() {
               hasActiveFilters
               onCreate={handleCreate}
               onSwitchToOpen={handleCreate}
-              onClearFilters={() => setFilters(EMPTY_GAME_FILTERS)}
+              onClearFilters={() => { setClubsOnly(false); setFilters(EMPTY_GAME_FILTERS); }}
             />
           ) : isEmpty ? (
             // Nothing open right now: one honest line instead of a big empty
@@ -801,6 +808,8 @@ export function GamesListScreen() {
                       <AppearItem key={g.id} index={idx}>
                         <MatchListCard
                           game={g}
+                          cover={coverForGame(g)}
+                          coverLoading={!!g.groupId && !g.isOrphanContext && coverForGame(g) === undefined}
                           userId={user?.id ?? ''}
                           busy={busyGameId === g.id}
                           onPrimary={(cta) => handleCardPrimary(g, cta)}
@@ -825,6 +834,8 @@ export function GamesListScreen() {
                       <AppearItem key={g.id} index={idx}>
                         <MatchListCard
                           game={g}
+                          cover={coverForGame(g)}
+                          coverLoading={!!g.groupId && !g.isOrphanContext && coverForGame(g) === undefined}
                           userId={user?.id ?? ''}
                           busy={busyGameId === g.id}
                           onPrimary={(cta) => handleCardPrimary(g, cta)}
@@ -843,42 +854,6 @@ export function GamesListScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* Floating "+" FAB — pinned to the bottom-LEFT under forceRTL.
-          `end: spacing.xl` is the trailing edge under RTL, which is
-          the visual LEFT (per spec). Hidden only on the filtered-to-nothing
-          empty state, which already shows a centered CTA — a second floating
-          + would be redundant. The no-open-matches state now renders a real
-          scrollable screen, so it keeps the FAB. */}
-      {!filteredToNothing ? (
-        <>
-          <Breathing mode="pulse" amount={0.05} periodMs={2400} style={styles.fab}>
-            <Pressable
-              onPress={() => {
-                if (hintVisible) dismissHint();
-                handleCreate();
-              }}
-              style={({ pressed }) => [
-                styles.fabInner,
-                pressed && { transform: [{ scale: 0.95 }] },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={he.matchesCreateFab}
-            >
-              <LivingIcon motion="hop">
-                <Ionicons name="add" size={30} color="#FFFFFF" />
-              </LivingIcon>
-            </Pressable>
-          </Breathing>
-
-          {hintVisible ? (
-            <Pressable style={styles.hintBubble} onPress={dismissHint}>
-              <Text style={styles.hintText}>{he.hintCreateGame}</Text>
-              <View style={styles.hintArrow} />
-            </Pressable>
-          ) : null}
-        </>
-      ) : null}
 
       <GameFilterSheet
         visible={filterOpen}
@@ -902,8 +877,10 @@ export function GamesListScreen() {
               }
             : null)
         }
+        hasAdditionalFilters={clubsOnly}
         matchCount={mineList.length + restList.length}
         onChange={(next) => {
+          if (next === EMPTY_GAME_FILTERS) setClubsOnly(false);
           // Compare before/after counts so we can differentiate
           // applying a filter from clearing one.
           const before = activeFiltersCount(filters);
@@ -1273,25 +1250,26 @@ function FullEmptyState({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F8FAFC' },
   scroll: {
-    paddingBottom: 120,
+    paddingBottom: 24,
   },
-  // Pinned controls row that floats OVER the bottom edge of the
-  // hero. Negative marginTop pulls it up so the row sits on the
-  // hero's gradient instead of starting below it. zIndex/elevation
-  // raised so it visually layers on top of the hero across both
-  // platforms.
+  // Quick filters remain pinned below the compact header.
+  quickFilters: { gap: 6, alignItems: 'center', paddingEnd: 4 },
+  quickFilter: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 12, borderRadius: 18, backgroundColor: '#E8EFFA', justifyContent: 'center' },
+  quickFilterActive: { backgroundColor: '#2563EB' },
+  quickFilterText: { color: '#475569', fontSize: 12, fontWeight: '700' },
   controlsFloat: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-    marginTop: -spacing.xxl,
+    marginTop: 12,
+    marginBottom: 12,
     zIndex: 2,
     elevation: 2,
   },
   filterBtn: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 44,
     borderRadius: 14,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
@@ -1325,7 +1303,7 @@ const styles = StyleSheet.create({
   },
   body: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.lg,
     gap: spacing.lg,
   },
   // Section title row + blue underline indicator. `alignItems:
@@ -1383,55 +1361,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Floating action button — bottom LEFT under forceRTL.
-  fab: {
-    position: 'absolute',
-    bottom: spacing.xxl,
-    end: spacing.xl,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#3B82F6',
-    shadowColor: '#1E40AF',
-    shadowOpacity: 0.32,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
-  fabInner: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
-  // First-run hint bubble pointing at the FAB.
-  hintBubble: {
-    position: 'absolute',
-    bottom: spacing.xxl + 60 + 12,
-    end: spacing.xl,
-    backgroundColor: '#0F172A',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 14,
-    maxWidth: 220,
-  },
-  hintText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  hintArrow: {
-    position: 'absolute',
-    bottom: -6,
-    end: 24,
-    width: 12,
-    height: 12,
-    backgroundColor: '#0F172A',
-    transform: [{ rotate: '45deg' }],
-  },
 });
 
 const emptyStyles = StyleSheet.create({

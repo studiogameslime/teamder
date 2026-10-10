@@ -400,6 +400,9 @@ export function DraftSetupScreen() {
                 return (
                   <PressableScale
                     key={u.id}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={`${u.name} · ${he.draftCaptainBadge}`}
+                    accessibilityState={{ checked: isCap }}
                     onPress={() => toggleCaptain(u.id)}
                     style={[styles.playerRow, isCap && styles.playerRowActive]}
                   >
@@ -533,7 +536,7 @@ function MethodCard({
   onPress: () => void;
 }) {
   return (
-    <PressableScale onPress={onPress} style={styles.methodCard}>
+    <PressableScale onPress={onPress} style={styles.methodCard} accessibilityRole="button" accessibilityLabel={`${title}. ${subtitle}`}>
       <View style={styles.methodInner}>
         <View style={styles.methodIcon}>
           <Ionicons name={icon} size={22} color={colors.primary} />
@@ -575,6 +578,9 @@ function OrderOption({
   return (
     <PressableScale
       onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected, checked: selected }}
+      accessibilityLabel={`${recommended ? he.draftRecommended + '. ' : ''}${he.draftOrderTitle}: ${order.map(n => n + 1).join(', ')}`}
       style={[styles.option, selected && styles.optionActive]}
     >
       <View style={styles.optionInner}>

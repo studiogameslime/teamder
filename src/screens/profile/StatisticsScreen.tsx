@@ -3,12 +3,14 @@
 // victim, nemesis). All derived by playerStatsService in ≤3 reads; names for
 // the relational cards are resolved here.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { Button } from '@/components/Button';
+import { logError } from '@/services/errorLog';
 import { EmptyState } from '@/components/EmptyState';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -40,19 +42,27 @@ export function StatisticsScreen() {
     ties: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
+  const statsOwnerRef = useRef(localUser?.id);
 
   useEffect(() => {
     const uid = localUser?.id;
-    if (!uid) return;
+    if (statsOwnerRef.current !== uid) {
+      statsOwnerRef.current = uid;
+      setStats(null); setPen(null); setPeople({}); setFailed(false);
+    }
+    if (!uid) { setLoading(false); return; }
     let alive = true;
     setLoading(true);
+    setFailed(false);
     // Goals are incremented SERVER-side (commitRoundStats), so the local store
     // copy lags. Fetch the fresh user doc for an accurate goal count + goals/
     // evening rather than trusting the (possibly stale) cached stats.
     userService
       .getUserById(uid)
-      .catch(() => null)
       .then((fresh) => {
+        if (!alive) throw new Error('statistics request superseded');
         // Penalty-shootout stats (server-maintained) — captured for the tiles.
         const st = fresh?.stats;
         setPen(
@@ -100,8 +110,8 @@ export function StatisticsScreen() {
         });
         setPeople(map);
       })
-      .catch(() => {
-        /* leave stats null → empty state */
+      .catch((err) => {
+        if (alive) { setFailed(true); logError('loadStatistics', err, { userId: uid }); }
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -111,7 +121,7 @@ export function StatisticsScreen() {
     };
     // assists must be a dep too — the effect reads it, so an assists-only
     // server bump (no goal change) otherwise left the assist tile stale.
-  }, [localUser?.id, localUser?.stats?.goals, localUser?.stats?.assists]);
+  }, [localUser?.id, localUser?.stats?.goals, localUser?.stats?.assists, reloadTick]);
 
   const hasData = !!stats && stats.attendedGames > 0;
 
@@ -122,10 +132,16 @@ export function StatisticsScreen() {
         <View style={styles.center}>
           <SoccerBallLoader size={40} />
         </View>
+      ) : failed && !hasData ? (
+        <View style={styles.center}>
+          <Text style={{ color: colors.textMuted }}>לא ניתן לטעון את הסטטיסטיקה כרגע.</Text>
+          <Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} />
+        </View>
       ) : !hasData ? (
         <EmptyState icon="stats-chart-outline" title={he.statsScreenEmpty} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
+          {failed ? <View><Text style={{ color: colors.textMuted }}>לא ניתן לרענן את הסטטיסטיקה כרגע. הנתונים הקודמים מוצגים.</Text><Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} /></View> : null}
           {/* ── Numbers ─────────────────────────────────────────────── */}
           <Text style={styles.section}>{he.statsSectionNumbers}</Text>
           <View style={styles.tileGrid}>

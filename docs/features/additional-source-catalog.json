@@ -394,9 +394,9 @@
   {
     "path": "tests/rules/README.md",
     "hashMode": "text-lf",
-    "sha256": "255cca8d2aade834a61cd094c3d3594cfeb5d8117a5c86ea0aa482098dbda2e3",
+    "sha256": "58e7e900d7a18ec71024f9c5b3db40db5738d6a244828ec6ae5f6ecba2d889db",
     "review": "reviews/additional-root-sources.md",
-    "auditDate": "2026-10-07"
+    "auditDate": "2026-10-10"
   },
   {
     "path": "docs/changes/2026-10-08-audit-fixes.md",

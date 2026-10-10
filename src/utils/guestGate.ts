@@ -13,6 +13,7 @@ import { appAlert } from '@/components/AppDialog';
 import { useUserStore } from '@/store/userStore';
 import { storage, type PendingInvite } from '@/services/storage';
 import { he } from '@/i18n/he';
+import { receivePendingInvite } from '@/services/pendingAction';
 
 /** True if the current session is an anonymous guest. */
 export function isGuestSession(): boolean {
@@ -50,7 +51,7 @@ export function ensureNotGuest(body?: string, returnTo?: PendingInvite): boolean
           // worse outcome than nothing only if it also blocks sign-up.
           if (returnTo) {
             try {
-              await storage.setPendingInvite(returnTo);
+              await receivePendingInvite(returnTo);
             } catch (err) {
               if (__DEV__) console.warn('[guestGate] could not stash return target', err);
             }

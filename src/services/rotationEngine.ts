@@ -83,6 +83,9 @@ export function canStart(teams: RotationTeam[]): boolean {
  * interactive path (let the admin pick the fillers) start from one of these.
  */
 export interface RotationFillState {
+  /** Service-only source fingerprint; carried through the local fill dialog.
+   * Never persisted as part of the rotation. Pure engine callers omit it. */
+  source?: string;
   /** Teams as they stand pre-fill (home rosters; permanent moves not yet applied). */
   teams: RotationTeam[];
   /** The two teams now on the field. */

@@ -22,6 +22,7 @@ import {
   View,
 } from 'react-native';
 import { DraggableMenuSheet } from '@/components/DraggableMenuSheet';
+import { recordDiagnostic } from '@/services/diagnosticJournal';
 import { MenuIcon } from '@/components/MenuIcon';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
@@ -112,6 +113,8 @@ function MenuRow({
   const isDanger = item.tone === 'danger';
   const isToggle = !!item.toggle;
   const handlePress = () => {
+    if(item.toggle?.disabled)return;
+    recordDiagnostic('press','menu_item',{type:item.id,...(item.toggle?{selected:!item.toggle.value}:{})});
     if (isToggle) {
       if (item.toggle?.disabled) return;
       item.toggle?.onChange(!item.toggle.value);
@@ -138,7 +141,7 @@ function MenuRow({
       accessibilityRole={isToggle ? 'switch' : 'button'}
       accessibilityLabel={item.label}
       accessibilityState={
-        isToggle ? { checked: !!item.toggle?.value } : undefined
+        isToggle ? { checked: !!item.toggle?.value, disabled: !!item.toggle?.disabled } : undefined
       }
     >
       <View style={styles.iconWrap}>
@@ -167,9 +170,12 @@ function MenuRow({
       ) : null}
       {isToggle ? (
         <BallSwitch
+        accessible={false}
+        importantForAccessibility="no"
+          accessibilityLabel={item.label}
           value={!!item.toggle?.value}
           disabled={item.toggle?.disabled}
-          onValueChange={(v) => item.toggle?.onChange(v)}
+          onValueChange={(v) => {recordDiagnostic('press','menu_toggle',{type:item.id,selected:v});item.toggle?.onChange(v);}}
           trackColor={{ false: colors.border, true: colors.primary }}
           thumbColor="#fff"
         />

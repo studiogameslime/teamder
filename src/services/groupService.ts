@@ -906,6 +906,39 @@ export const groupService = {
     });
   },
 
+  /** Change one member's flags against the latest snapshot, never a stale roster. */
+  async setPlayerEquipment(
+    groupId: GroupId, userId: UserId, flags: { ball: boolean; jerseys: boolean },
+  ): Promise<{ ballHolderIds: UserId[]; jerseysHolderIds: UserId[]; ballChanged: boolean; jerseysChanged: boolean }> {
+    const apply = (g: Pick<Group, 'ballHolderIds' | 'jerseysHolderIds'>) => {
+      const toggle = (ids: UserId[] = [], on: boolean) => on
+        ? Array.from(new Set([...ids, userId])) : ids.filter((id) => id !== userId);
+      return {
+        ballHolderIds: toggle(g.ballHolderIds, flags.ball),
+        jerseysHolderIds: toggle(g.jerseysHolderIds, flags.jerseys),
+        ballChanged: (g.ballHolderIds ?? []).includes(userId) !== flags.ball,
+        jerseysChanged: (g.jerseysHolderIds ?? []).includes(userId) !== flags.jerseys,
+      };
+    };
+    if (USE_MOCK_DATA) {
+      const g = groupsById[groupId];
+      if (!g) throw new Error('setPlayerEquipment: group not found');
+      const result = apply(g);
+      g.ballHolderIds = result.ballHolderIds;
+      g.jerseysHolderIds = result.jerseysHolderIds;
+      g.updatedAt = Date.now();
+      return result;
+    }
+    return runTransaction(getFirebase().db, async (tx) => {
+      const ref = docs.group(groupId);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error('setPlayerEquipment: group not found');
+      const result = apply(snap.data());
+      tx.update(ref, { ballHolderIds: result.ballHolderIds, jerseysHolderIds: result.jerseysHolderIds, updatedAt: Date.now() });
+      return result;
+    });
+  },
+
   async approveMember(groupId: GroupId, userId: UserId): Promise<Group> {
     if (USE_MOCK_DATA) {
       const g = groupsById[groupId];

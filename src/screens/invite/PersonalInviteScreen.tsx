@@ -29,6 +29,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 
+import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { MatchListCard } from '@/components/match/MatchListCard';
 import { MatchCardSkeleton } from '@/components/anim/MatchCardSkeleton';
@@ -50,7 +51,7 @@ type Params = { PersonalInvite: { invitedBy?: string; source?: string } | undefi
 
 type ActivityState =
   | { status: 'loading' }
-  | { status: 'ready'; games: Game[]; clubs: GroupPublic[] }
+  | { status: 'ready'; games: Game[]; clubs: GroupPublic[]; clubsUnavailable?: boolean }
   | { status: 'error' };
 
 export function PersonalInviteScreen() {
@@ -84,21 +85,23 @@ export function PersonalInviteScreen() {
     };
   }, [invitedBy]);
 
+  const activityRequest = useRef(0);
   const loadActivity = useCallback(async () => {
+    const request = ++activityRequest.current;
     if (!me) return;
     setActivity({ status: 'loading' });
     try {
-      const { games, clubs } = await resolveInviteActivity(invitedBy, me.id);
-      setActivity({ status: 'ready', games, clubs });
+      const { games, clubs, clubsUnavailable } = await resolveInviteActivity(invitedBy, me.id);
+      if (request === activityRequest.current) setActivity({ status: 'ready', games, clubs, clubsUnavailable });
     } catch {
-      // `resolveInviteActivity` already swallows its own failures; this is the
-      // belt to its braces. Either way the hero above stays exactly where it is.
-      setActivity({ status: 'error' });
+      // Keep the inviter visible and make the failed query retryable.
+      if (request === activityRequest.current) setActivity({ status: 'error' });
     }
   }, [invitedBy, me]);
 
   useEffect(() => {
     void loadActivity();
+    return () => { activityRequest.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.id, invitedBy]);
 
@@ -156,11 +159,15 @@ export function PersonalInviteScreen() {
   const named = inviter?.name?.trim();
   const ready = activity.status === 'ready' ? activity : null;
   const nothingToShow =
-    !!ready && ready.clubs.length === 0 && ready.games.length === 0;
+    !!ready && !ready.clubsUnavailable && ready.clubs.length === 0 && ready.games.length === 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {ready?.clubsUnavailable ? <Card>
+          <Text style={{ color: colors.textMuted, textAlign: RTL_LABEL_ALIGN }}>חלק מפרטי המועדונים לא נטענו.</Text>
+          <Button title={he.retry} variant="outline" onPress={() => void loadActivity()} />
+        </Card> : null}
         {/* ── The hero ──────────────────────────────────────────────────
             Warmer than the organic Home — a tinted card and a face — but the
             same palette, the same radii, the same type ramp. */}

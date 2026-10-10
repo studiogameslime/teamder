@@ -34,6 +34,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  type UpdateData,
 } from 'firebase/firestore';
 import {
   ArrivalStatus,
@@ -68,6 +69,7 @@ import { geocodeAddress } from '@/services/geocodeService';
 import { isAttendedGame } from '@/utils/playedGames';
 import { communityHistoryFacets } from '@/utils/communityHistory';
 import { isPersonalHistoryGame } from '@/utils/personalHistory';
+import { registrationEditStatus } from '@/utils/registrationEdit';
 import {
   eveningPlayState,
   didEveningHappen,
@@ -106,6 +108,7 @@ import {
   acceptsReorder,
 } from '@/services/rotationEngine';
 import { stripUndefined } from '@/utils/stripUndefined';
+import { rotationWriteSource } from '@/services/rotationWriteSource';
 import { restoreTargetTeam } from '@/utils/restoreTarget';
 import { canMoveOut } from '@/utils/teamSlots';
 import { failValidation, optionalString, requireInt, requireString } from '@/utils/validate';
@@ -1552,7 +1555,14 @@ export const gameService = {
     // the evening" even with no stats).
     attendedUids?: string[],
   ): Promise<{ players: ChampionshipRow[] }> {
-    if (USE_MOCK_DATA || !gameId) return { players: [] };
+    if (!gameId) return { players: [] };
+    if (USE_MOCK_DATA) return { players: gameId === 'gv2-7' ? rankChampionshipRows([
+      { userId: 'p1', goals: 2, assists: 1, wins: 2, losses: 1, rounds: 3 },
+      { userId: 'p2', goals: 1, assists: 0, wins: 1, losses: 2, rounds: 3 },
+      { userId: 'p3', goals: 0, assists: 2, wins: 1, losses: 1, rounds: 2 },
+      { userId: 'p7', goals: 3, assists: 1, wins: 2, losses: 0, rounds: 2 },
+      { userId: 'p4', goals: 0, assists: 0, wins: 0, losses: 0, rounds: 0 },
+    ], 'points', true) : [] };
     const db = getFirebase().db;
     try {
       const snap = await getDocs(
@@ -3223,8 +3233,8 @@ export const gameService = {
       hasHalfTime: boolean;
       extraTimeMinutes: number;
       ruleTags: string[];
-      /** Editable on a `status:'scheduled'` game so an admin can
-       *  shift the open-time before the CF flips it. The CF's
+      /** Editable on open/scheduled rounds, preserving every roster entry.
+       *  A future time moves an open round to scheduled. The CF's
        *  `openedNotificationSent` latch ensures this never fires a
        *  second push if the original time already passed. */
       registrationOpensAt: number;
@@ -3397,6 +3407,13 @@ export const gameService = {
       ...patch,
       updatedAt: Date.now(),
     };
+    if (typeof patch.registrationOpensAt === 'number') {
+      if (existing.status === 'locked' && patch.registrationOpensAt > Date.now()) {
+        failValidation('registrationOpensAt', he.editGameLockedRegistration);
+      }
+      const status = registrationEditStatus(existing.status, patch.registrationOpensAt, Date.now());
+      if (status) updates.status = status;
+    }
     // A reschedule invalidates the "reminder already sent" latch — otherwise a
     // game moved to a NEW time after its ~1h reminder already fired would never
     // remind for the new kickoff (the server's reminder guard early-returns on
@@ -3407,6 +3424,26 @@ export const gameService = {
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
       if (m) Object.assign(m, updates);
+    } else if (typeof patch.registrationOpensAt === 'number') {
+      // Re-read inside the write: a concurrent start must never be changed
+      // back to scheduled. Existing registrations/queues are left untouched.
+      await runTransaction(getFirebase().db, async (tx) => {
+        const ref = docs.game(gameId);
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error('updateGameV2: game not found');
+        const current = snap.data();
+        if (['active', 'finished', 'cancelled'].includes(current.status)) {
+          throw Object.assign(new Error('GAME_ALREADY_STARTED'), { code: 'GAME_ALREADY_STARTED' });
+        }
+        if (current.status === 'locked' && patch.registrationOpensAt! > Date.now()) {
+          failValidation('registrationOpensAt', he.editGameLockedRegistration);
+        }
+        const next = { ...updates };
+        delete next.status;
+        const status = registrationEditStatus(current.status, patch.registrationOpensAt!, Date.now());
+        if (status) next.status = status;
+        tx.update(ref, stripUndefined(next) as UpdateData<GameDoc>);
+      });
     } else {
       await updateGameDoc(gameId, updates);
     }
@@ -3845,7 +3882,7 @@ export const gameService = {
       index: t.index,
       playerIds: [...t.playerIds],
     }));
-    await this._persistRotation(gameId, draft, res);
+    await this._persistRotation(gameId, draft, res, undefined, rotationWriteSource(g));
   },
 
   /** Record the round result and rotate (winner stays, loser out, next in,
@@ -3864,7 +3901,7 @@ export const gameService = {
     // Carry the original-roster snapshot forward (the engine builds a fresh
     // rotation object each round and doesn't know about baseTeams).
     res.rotation.baseTeams = g.rotation.baseTeams;
-    await this._persistRotation(gameId, draft, res);
+    await this._persistRotation(gameId, draft, res, undefined, rotationWriteSource(g));
   },
 
   /** Record a TIE and rotate per the game's 4-team tie rule (advancedTieMode).
@@ -3879,7 +3916,7 @@ export const gameService = {
     const teams = liveRosterTeams(g, draft);
     const res = runRecordTie(teams, g.rotation, perTeam, fillMode, mode);
     res.rotation.baseTeams = g.rotation.baseTeams;
-    await this._persistRotation(gameId, draft, res);
+    await this._persistRotation(gameId, draft, res, undefined, rotationWriteSource(g));
   },
 
   // ─── Advanced-mode goal entry (live scoreboard) ────────────────────────
@@ -3942,22 +3979,26 @@ export const gameService = {
       }
       return;
     }
-    const cur = await readTimerState(gameId);
-    if (!cur?.liveMatch) return;
-    // Don't record a goal onto a closed evening — mirrors the timer guards.
-    // Without this, a second admin tapping "+goal" right after another admin
-    // ended the evening writes a phantom goal + tally onto a finished game.
-    if (cur.status === 'finished' || cur.status === 'cancelled') return;
-    // arrayUnion + increment so two near-simultaneous goal entries don't clobber
-    // each other (the old read-modify-write replaced the whole array and could
-    // drop a concurrent goal). The goal log is the source of truth for stats.
-    await updateDoc(docs.game(gameId), {
+    // Read and write under the same transaction. The server clears the live
+    // board atomically with the stats/latch; a goal racing that commit either
+    // wins first (the commit must retry) or retries here and is rejected.
+    await runTransaction(getFirebase().db, async (tx) => {
+      const ref = doc(getFirebase().db, 'games', gameId);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const cur = snap.data();
+      if (!cur.liveMatch || cur.status === 'finished' || cur.status === 'cancelled') return;
+      if (cur.rotation && cur.lastCommittedRoundId === roundCommitKey(cur.rotation)) {
+        throw new Error('המשחק כבר נשמר. יש להמתין למעבר למשחק הבא.');
+      }
+      tx.update(ref, {
       'liveMatch.goals': arrayUnion(goal),
       'liveMatch.scoreA': increment(opts.team === 'A' ? 1 : 0),
       'liveMatch.scoreB': increment(opts.team === 'B' ? 1 : 0),
       // Evening-long per-player tally (drives the badge); survives round-end.
       ...(tallyId ? { [`liveMatch.goalTally.${tallyId}`]: increment(1) } : {}),
       updatedAt: Date.now(),
+      });
     });
   },
 
@@ -3990,33 +4031,30 @@ export const gameService = {
       }
       return;
     }
-    const cur = await readTimerState(gameId);
-    if (!cur?.liveMatch) return;
-    // Don't mutate goals on a closed evening (symmetric with recordGoal).
-    if (cur.status === 'finished' || cur.status === 'cancelled') return;
-    const gone = (cur.liveMatch.goals ?? []).find((x) => x.id === goalId);
+    await runTransaction(getFirebase().db, async (tx) => {
+    const ref = doc(getFirebase().db, 'games', gameId);
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return;
+    const cur = snap.data();
+    if (!cur.liveMatch || cur.status === 'finished' || cur.status === 'cancelled') return;
+    if (cur.rotation && cur.lastCommittedRoundId === roundCommitKey(cur.rotation)) {
+      throw new Error('המשחק כבר נשמר. יש להמתין למעבר למשחק הבא.');
+    }
+    const gone = (cur.liveMatch.goals ?? []).find((x: import('@/types').RoundGoal) => x.id === goalId);
     if (!gone) return;
     // Roll back the evening tally for the undone goal's scorer — real OR guest
     // (both are tallied now). Own goals / unknown scorers credit no one, so
     // there's nothing to roll back for them. Keep symmetric with recordGoal.
     const untally = !gone.ownGoal && gone.scorerId ? gone.scorerId : null;
-    // arrayRemove + increment(-1) compose ATOMICALLY at the field level with a
-    // concurrent recordGoal (arrayUnion + increment(+1)) — unlike the old
-    // read-modify-write, which overwrote the whole `goals` array and could drop
-    // a concurrent goal, leaving the score and the goal log permanently out of
-    // sync. arrayRemove matches by value, so a double-remove of the same goal
-    // is a no-op on the array. NOTE: the score increment has no server-side
-    // floor — only the `if (!gone) return` pre-read above prevents a re-decrement
-    // (sequential undo of an already-removed goal is a no-op). The live match is
-    // admin-only / single-actor, so two devices removing the SAME goal in the
-    // exact same read window (the only path to a negative score) isn't reachable
-    // in practice; a reset/commit recomputes the score from the goal log anyway.
-    await updateDoc(docs.game(gameId), {
+    // The transaction rechecks existence after a concurrent undo/commit;
+    // two admins undoing the same goal cannot decrement the score twice.
+    tx.update(ref, {
       'liveMatch.goals': arrayRemove(gone),
       'liveMatch.scoreA': increment(gone.team === 'A' ? -1 : 0),
       'liveMatch.scoreB': increment(gone.team === 'B' ? -1 : 0),
       ...(untally ? { [`liveMatch.goalTally.${untally}`]: increment(-1) } : {}),
       updatedAt: Date.now(),
+    });
     });
   },
 
@@ -4077,16 +4115,17 @@ export const gameService = {
     const isTie = !winnerSide;
     if (isTie && !tieMode) return null; // 2–3 teams: caller must supply a winner
 
-    await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide);
+    const committed = await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide, tieMode);
 
     // Rotate. A tie in a 4-team game follows the tie rule; otherwise winner
     // stays, loser out, next in.
-    if (isTie && tieMode) {
+    if (!committed.winnerSide && tieMode) {
       await this.recordTie(gameId, tieMode);
       return 'tie';
     }
-    await this.recordWinner(gameId, userId, winnerSide === 'A' ? idxA : idxB);
-    return winnerSide;
+    if (!committed.winnerSide) return 'tie';
+    await this.recordWinner(gameId, userId, committed.winnerSide === 'A' ? idxA : idxB);
+    return committed.winnerSide;
   },
 
   // ── Penalty shootout (drawn-round tiebreaker) ────────────────────────────
@@ -4233,7 +4272,8 @@ export const gameService = {
     rot: import('@/types').MatchRotation,
     draft: DraftTeamsResult,
     winnerSide: 'A' | 'B' | null,
-  ): Promise<void> {
+    tieResolution?: 'bothOut' | 'veteranOut',
+  ): Promise<{ winnerSide: 'A' | 'B' | null; tieResolution?: 'bothOut' | 'veteranOut' }> {
     const [idxA, idxB] = rot.playing;
     // On-field rosters — the EFFECTIVE lineup (loan-adjusted), guests INCLUDED.
     // A guest is a full player in the cycle, so they must appear in the
@@ -4245,11 +4285,10 @@ export const gameService = {
     const sideB = rosterFor(idxB);
 
     if (!USE_MOCK_DATA) {
-      const now = Date.now();
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { httpsCallable } = require('firebase/functions');
-        await httpsCallable(getFirebase().functions, 'commitRoundStats')({
+        const response = await httpsCallable(getFirebase().functions, 'commitRoundStats')({
           gameId,
           // Idempotency key for the server's double-commit latch.
           //
@@ -4268,6 +4307,10 @@ export const gameService = {
           // field, so it keeps the legacy key (and the legacy risk) until its
           // next round transition mints one. Nothing historical is rewritten.
           roundId: roundCommitKey(rot),
+          // The server binds the payload to this exact live goal log and uses
+          // the game's update time as an atomic precondition on the batch.
+          liveGoalIds: (lm.goals ?? []).map((goal) => goal.id),
+          rotationUpdatedAt: rot.updatedAt ?? null,
           sideA,
           sideB,
           // Team indices (0=red,1=blue,2=green,…) → the round-history screen shows
@@ -4275,6 +4318,7 @@ export const gameService = {
           teamAIndex: idxA,
           teamBIndex: idxB,
           winnerSide: winnerSide ?? 'tie',
+          ...(tieResolution ? { tieResolution } : {}),
           goals: (lm.goals ?? []).map((gl) => ({
             scorerId: gl.scorerId ?? null,
             assisterId: gl.assisterId ?? null,
@@ -4290,21 +4334,18 @@ export const gameService = {
           // fields — never goals/score. A round with no shootout sends [].
           penalties: buildShootoutPenaltyPayload(lm.shootout),
         });
-        // Clear the scoreboard ONLY after the stats commit succeeded. Doing it
-        // unconditionally (as before) meant a failed/​swallowed commit — an
-        // offline blip or App Check hiccup at round/evening end — still wiped
-        // liveMatch.goals, so that round's goals/assists/wins were aggregated
-        // nowhere and lost for good. Now the goal log survives a failed commit
-        // and the round can be retried (the server's roundId latch dedupes).
-        await updateDoc(docs.game(gameId), {
-          'liveMatch.scoreA': 0,
-          'liveMatch.scoreB': 0,
-          'liveMatch.goals': [],
-          // Clear the shootout too — it's a per-round tiebreaker, so like the
-          // goal log it must not survive into the next round.
-          'liveMatch.shootout': deleteField(),
-          updatedAt: now,
-        });
+        if ((response.data as { protocol?: number })?.protocol !== 2) {
+          throw new Error('שמירת המשחק דורשת עדכון שרת. יש לנסות שוב לאחר העדכון.');
+        }
+        const result = response.data as { winnerSide?: 'A' | 'B' | 'tie'; tieResolution?: 'bothOut' | 'veteranOut' | null };
+        if (result.winnerSide !== 'A' && result.winnerSide !== 'B' && result.winnerSide !== 'tie') {
+          throw new Error('לא התקבלה תוצאה שמורה תקינה. יש לנסות שוב.');
+        }
+        // Clearing is part of the SERVER'S atomic stats batch. Never clear
+        // from a stale client snapshot after the network call: another admin
+        // may already have advanced the rotation and entered the next goal.
+        return { winnerSide: result.winnerSide === 'tie' ? null : result.winnerSide,
+          tieResolution: result.tieResolution ?? tieResolution };
       } catch (err) {
         logError('commitRoundStats', err, { gameId });
         if (__DEV__) console.warn('[gameService] commitRoundStats failed', err);
@@ -4321,6 +4362,7 @@ export const gameService = {
         m.liveMatch.goals = [];
         m.liveMatch.shootout = undefined;
       }
+      return { winnerSide, tieResolution };
     }
   },
 
@@ -4357,6 +4399,7 @@ export const gameService = {
       index: t.index,
       playerIds: [...t.playerIds],
     }));
+    skeleton.source = rotationWriteSource(g);
     return { skeleton, draft, baseTeams };
   },
 
@@ -4387,6 +4430,7 @@ export const gameService = {
     const shortB = perTeam - effectiveRosterOf(b, teams, loans).length > 0;
     if (!shortA && !shortB) return null; // no playing team needs filling
     const skeleton: RotationFillState = {
+      source: rotationWriteSource(g),
       teams,
       playing: rot.playing,
       perTeam,
@@ -4424,17 +4468,23 @@ export const gameService = {
     const draft = g?.draftTeams;
     if (!g || !lm || !rot || !draft) return null;
     const [idxA, idxB] = rot.playing;
-    const winnerSide: 'A' | 'B' | null =
+    let winnerSide: 'A' | 'B' | null =
       lm.scoreA > lm.scoreB ? 'A' : lm.scoreB > lm.scoreA ? 'B' : manualWinnerSide ?? null;
     // Only an EXPLICIT decision resolves a draw. `g.advancedTieMode` is no
     // longer consulted: the setting is gone from the form, and honouring a
     // leftover value on old games would resolve their draws without asking,
     // which is the behaviour this replaces.
-    const tieMode = tieResolution;
-    const isTie = !winnerSide;
+    let tieMode = tieResolution;
+    let isTie = !winnerSide;
     if (isTie && !tieMode) return { outcome: null };
 
-    await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide);
+    const committed = await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide, tieMode);
+    // A competing admin may already have committed a different tie decision.
+    // Rotate from the winner's stored result, never this request's losing pick.
+    winnerSide = committed.winnerSide;
+    tieMode = committed.tieResolution;
+    isTie = !winnerSide;
+    if (isTie && !tieMode) return { outcome: null };
 
     const perTeam = playersPerTeamFor(g.format);
     const fillMode = effFillMode(g, draft);
@@ -4443,12 +4493,12 @@ export const gameService = {
       playerIds: [...t.playerIds],
     }));
     if (isTie && tieMode) {
-      return { outcome: 'tie', skeleton: recordTieSkeleton(teams, rot, perTeam, fillMode, tieMode), draft };
+      return { outcome: 'tie', skeleton: { ...recordTieSkeleton(teams, rot, perTeam, fillMode, tieMode), source: rotationWriteSource(g) }, draft };
     }
     const winnerIdx = winnerSide === 'A' ? idxA : idxB;
     return {
       outcome: winnerSide as 'A' | 'B',
-      skeleton: recordWinnerSkeleton(winnerIdx, teams, rot, perTeam, fillMode),
+      skeleton: { ...recordWinnerSkeleton(winnerIdx, teams, rot, perTeam, fillMode), source: rotationWriteSource(g) },
       draft,
     };
   },
@@ -4464,12 +4514,13 @@ export const gameService = {
     // rotation commit — so a concurrent admin's timer-start can't slip in
     // between two separate writes and get clobbered (or lost).
     resetTimerBy?: { userId: string; userName: string },
+    source?: string,
   ): Promise<void> {
     if (!gameId) return;
     const rotation = baseTeams
       ? { ...result.rotation, baseTeams }
       : result.rotation;
-    await this._persistRotation(gameId, draft, { rotation, teams: result.teams }, resetTimerBy);
+    await this._persistRotation(gameId, draft, { rotation, teams: result.teams }, resetTimerBy, source);
   },
 
   /** Clear the rotation (back to "not started"). In 'permanent' fill mode the
@@ -4532,7 +4583,9 @@ export const gameService = {
     draft: DraftTeamsResult,
     res: { rotation: import('@/types').MatchRotation; teams: RotationTeam[] },
     resetTimerBy?: { userId: string; userName: string },
+    source?: string,
   ): Promise<void> {
+    if (!source) throw new Error('הרכב המקור חסר. יש לפתוח מחדש את בחירת ההרכב.');
     // Stamp the round's immutable identity before anything is written. This is
     // the ONE funnel every rotation write passes through — round transitions
     // (startRotation / recordWinner / recordTie) and mid-round fills alike — so
@@ -4568,6 +4621,7 @@ export const gameService = {
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
       if (m) {
+        if (rotationWriteSource(m) !== source) throw new Error('המשחק או ההרכב השתנו. יש לפתוח מחדש את בחירת ההרכב.');
         m.rotation = res.rotation;
         m.draftTeams = newDraft;
         if (resetTimerBy && m.liveMatch) {
@@ -4607,7 +4661,20 @@ export const gameService = {
       patch['liveMatch.scoreA'] = 0;
       patch['liveMatch.scoreB'] = 0;
     }
-    await updateGameDoc(gameId, patch);
+    const ref = docs.game(gameId);
+    await runTransaction(getFirebase().db, async (tx) => {
+      const snapshot = await tx.get(ref);
+      if (!snapshot.exists() || rotationWriteSource(snapshot.data()) !== source) {
+        throw new Error('המשחק או ההרכב השתנו. יש לפתוח מחדש את בחירת ההרכב.');
+      }
+      const live = snapshot.data().liveMatch;
+      if (resetTimerBy && ((live?.goals?.length ?? 0) > 0 || (live?.scoreA ?? 0) !== 0 || (live?.scoreB ?? 0) !== 0)) {
+        // An old client can still add a goal after the server committed. A
+        // transition must not zero that uncredited score while changing teams.
+        throw new Error('נוספה תוצאה בזמן בחירת ההרכב. היא נשמרה בלוח ויש לבדוק אותה.');
+      }
+      tx.update(ref, patch as UpdateData<Game>);
+    });
   },
 
   /** Mark a player as having left for the evening ("הלך הביתה"). Removes them
@@ -6694,190 +6761,55 @@ export const gameService = {
    * clears the offer, and chains a fresh offer to the new head if
    * there's still capacity and people waiting.
    */
-  async confirmSpotOffer(gameId: string, userId: UserId): Promise<void> {
-    const { db } = getFirebase();
-    const ref = docs.game(gameId);
-    let result;
-    try {
-      result = await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) return { ok: false as const };
-      const data = snap.data();
-      const offer = data.pendingPromotion as
-        | { uid?: string; offeredAt?: number }
-        | null
-        | undefined;
-      // Idempotency: if the user is already in players, treat as ok.
-      if ((data.players ?? []).includes(userId)) {
-        return { ok: true as const, alreadyIn: true };
+  async _resolveSpotOffer(gameId: string, userId: UserId, decision: 'confirm' | 'pass'): Promise<void> {
+    if (USE_MOCK_DATA) {
+      const game = mockGamesV2.find(g => g.id === gameId);
+      if (!game) throw new Error('GAME_NOT_FOUND');
+      if (decision === 'confirm' && game.players.includes(userId)) return;
+      if (game.pendingPromotion?.uid !== userId) {
+        if (decision === 'pass') return;
+        throw new Error('STALE_OFFER');
       }
-      if (!offer || offer.uid !== userId) {
-        return { ok: false as const, reason: 'STALE_OFFER' as const };
+      if (game.status !== 'open' && game.status !== 'locked') throw new Error('GAME_NOT_OPEN');
+      if (!game.waitlist.includes(userId)) throw new Error('STALE_OFFER');
+      if (decision === 'confirm') {
+        if (game.players.length + activeGuestCount(game.guests) >= game.maxPlayers) throw new Error('GROUP_FULL');
+        game.players = [...game.players, userId];
       }
-      if (data.status !== 'open' && data.status !== 'locked') {
-        return { ok: false as const, reason: 'GAME_NOT_OPEN' as const };
-      }
-      const players = [...(data.players ?? []), userId];
-      const waitlist = (data.waitlist ?? []).filter(
-        (id: string) => id !== userId,
-      );
-      // Chain: if more capacity AND waitlist still has people, offer
-      // the next head — keeps the queue moving without admin work.
-      const guests = Array.isArray(data.guests) ? data.guests : [];
-      let nextOffer: { uid: string; offeredAt: number } | null = null;
-      if (
-        waitlist.length > 0 &&
-        players.length + activeGuestCount(guests) < (data.maxPlayers ?? 15)
-      ) {
-        nextOffer = { uid: waitlist[0], offeredAt: Date.now() };
-      }
-      // Rebuild union from post-update arrays so the rule invariant
-      // holds even if the stored participantIds was stale.
-      const pendingArr = (data.pending ?? []) as string[];
-      const participantIds = Array.from(
-        new Set([...players, ...waitlist, ...pendingArr]),
-      );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tx.update(ref, {
-        players,
-        waitlist,
-        participantIds,
-        pendingPromotion: nextOffer,
-        updatedAt: Date.now(),
-      } as any);
-      return {
-        ok: true as const,
-        title: typeof data.title === 'string' ? data.title : '',
-        startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
-        nextOfferUid: nextOffer?.uid ?? null,
-      };
-      });
-    } catch (e) {
-      const code = (e as { code?: string })?.code;
-      if (
-        ![
-          'GAME_OVERLAP',
-          'REGISTRATION_CONFLICT',
-          'GAME_NOT_OPEN',
-          'GAME_STARTED',
-          'GAME_LIVE',
-          'GROUP_FULL',
-          'STALE_OFFER',
-          'resource-exhausted',
-          'functions/resource-exhausted',
-        ].includes(code as string)
-      ) {
-        logError('confirmSpotOffer', e, { gameId, userId });
-      }
-      throw e;
+      game.waitlist = game.waitlist.filter(uid => uid !== userId);
+      game.pendingPromotion = game.waitlist.length > 0 && game.players.length + activeGuestCount(game.guests) < game.maxPlayers
+        ? { uid: game.waitlist[0], offeredAt: Date.now() } : null;
+      game.participantIds = [...new Set([...game.players, ...game.waitlist, ...(game.pending ?? [])])];
+      game.updatedAt = Date.now();
+      return;
     }
-    if (!result.ok) {
-      throw new Error(result.reason ?? 'CONFIRM_FAILED');
-    }
-    if ('alreadyIn' in result && result.alreadyIn) return;
-    if (result.nextOfferUid) {
-      notificationsService.dispatch({
-        type: 'spotOffered',
-        recipientId: result.nextOfferUid,
-        payload: {
-          gameId,
-          gameTitle: result.title ?? '',
-          startsAt: result.startsAt ?? 0,
-        },
-      });
-    }
-    logEvent(AnalyticsEvent.WaitlistPromoted, {
-      gameId,
-      promotedUserId: userId,
-      viaOfferConfirm: true,
-    });
+    const { auth, functions } = getFirebase();
+    if (auth.currentUser?.uid !== userId) throw new Error('STALE_SESSION');
+    // The server validates the offer owner/capacity and chains the next offer
+    // atomically. No client permission change or write on behalf of a stranger.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    await httpsCallable(functions, 'resolveSpotOffer')({ gameId, decision });
   },
 
-  /**
-   * Head of waitlist taps "ויתור". Removes them from the waitlist
-   * entirely (they explicitly opted out — re-joining means tapping
-   * "אני בא" again), clears the offer, and chains the next offer to
-   * whoever is now at the head.
-   */
-  async passSpotOffer(gameId: string, userId: UserId): Promise<void> {
-    const { db } = getFirebase();
-    const ref = docs.game(gameId);
-    let result;
+  async confirmSpotOffer(gameId: string, userId: UserId): Promise<void> {
     try {
-      result = await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) return { ok: false as const };
-      const data = snap.data();
-      const offer = data.pendingPromotion as
-        | { uid?: string }
-        | null
-        | undefined;
-      // Idempotency: if there's no offer for this user, just no-op.
-      if (!offer || offer.uid !== userId) {
-        return { ok: true as const, alreadyResolved: true };
-      }
-      const waitlist = (data.waitlist ?? []).filter(
-        (id: string) => id !== userId,
-      );
-      const guests = Array.isArray(data.guests) ? data.guests : [];
-      const players = (data.players ?? []) as string[];
-      let nextOffer: { uid: string; offeredAt: number } | null = null;
-      if (
-        waitlist.length > 0 &&
-        players.length + activeGuestCount(guests) < (data.maxPlayers ?? 15)
-      ) {
-        nextOffer = { uid: waitlist[0], offeredAt: Date.now() };
-      }
-      const pendingArr = (data.pending ?? []) as string[];
-      const participantIds = Array.from(
-        new Set([...players, ...waitlist, ...pendingArr]),
-      );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tx.update(ref, {
-        waitlist,
-        participantIds,
-        pendingPromotion: nextOffer,
-        updatedAt: Date.now(),
-      } as any);
-      return {
-        ok: true as const,
-        title: typeof data.title === 'string' ? data.title : '',
-        startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
-        nextOfferUid: nextOffer?.uid ?? null,
-      };
-      });
-    } catch (e) {
-      const code = (e as { code?: string })?.code;
-      if (
-        ![
-          'GAME_OVERLAP',
-          'REGISTRATION_CONFLICT',
-          'GAME_NOT_OPEN',
-          'GAME_STARTED',
-          'GAME_LIVE',
-          'GROUP_FULL',
-          'STALE_OFFER',
-          'resource-exhausted',
-          'functions/resource-exhausted',
-        ].includes(code as string)
-      ) {
-        logError('passSpotOffer', e, { gameId, userId });
-      }
-      throw e;
+      await this._resolveSpotOffer(gameId, userId, 'confirm');
+      logEvent(AnalyticsEvent.WaitlistPromoted, { gameId, promotedUserId: userId, viaOfferConfirm: true });
+    } catch (error) {
+      logError('confirmSpotOffer', error, { gameId, userId });
+      throw error;
     }
-    if (!result.ok) return;
-    if ('alreadyResolved' in result && result.alreadyResolved) return;
-    logEvent(AnalyticsEvent.SpotOfferDecided, { gameId, decision: 'passed' });
-    if (result.nextOfferUid) {
-      notificationsService.dispatch({
-        type: 'spotOffered',
-        recipientId: result.nextOfferUid,
-        payload: {
-          gameId,
-          gameTitle: result.title ?? '',
-          startsAt: result.startsAt ?? 0,
-        },
-      });
+  },
+
+  /** Resolve the caller's own existing offer; the server notifies the next head. */
+  async passSpotOffer(gameId: string, userId: UserId): Promise<void> {
+    try {
+      await this._resolveSpotOffer(gameId, userId, 'pass');
+      logEvent(AnalyticsEvent.SpotOfferDecided, { gameId, decision: 'passed' });
+    } catch (error) {
+      logError('passSpotOffer', error, { gameId, userId });
+      throw error;
     }
   },
 
@@ -7819,7 +7751,7 @@ export const gameService = {
       return;
     }
     try {
-      const ref = docs.game(gameId);
+      const ref = doc(getFirebase().db, 'games', gameId);
       const snap = await getDoc(ref);
       if (!snap.exists()) return;
       const data = snap.data();
@@ -7832,12 +7764,15 @@ export const gameService = {
       const lm = data.liveMatch as import('@/types').LiveMatchState | undefined;
       const rot = data.rotation as import('@/types').MatchRotation | undefined;
       const draft = data.draftTeams as DraftTeamsResult | undefined;
-      // Did the final round's stats commit succeed? If it FAILED (offline blip
-      // at night's end), we must NOT wipe the goal log below — otherwise the
-      // last round's goals/assists/wins are lost forever. Preserve them so a
-      // later retry (the committedRounds latch dedupes) can still aggregate.
-      let finalRoundCommitted = true;
-      if (lm && rot && draft && (lm.goals?.length ?? 0) > 0) {
+      // A prepared rotation is not a played 0:0. Per-round clock activity (or
+      // goals/shootout) is evidence; startedAt is evening-wide and cannot tell
+      // whether the next empty rotation actually played. A committed key is
+      // excluded even if its old timer is still visible after a lost response.
+      const finalRoundStarted = lm && (
+        (lm.goals?.length ?? 0) > 0 || !!lm.shootout ||
+        lm.timerRunning || (lm.timerAccumulatedMs ?? 0) > 0
+      );
+      if (lm && rot && draft && finalRoundStarted && data.lastCommittedRoundId !== roundCommitKey(rot)) {
         const winnerSide: 'A' | 'B' | null =
           (lm.scoreA ?? 0) > (lm.scoreB ?? 0)
             ? 'A'
@@ -7847,8 +7782,10 @@ export const gameService = {
         try {
           await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide);
         } catch (err) {
-          finalRoundCommitted = false;
           logError('endEvening.commitFinalRound', err, { gameId });
+          // No successful finish until the last result exists. Preserve the
+          // active evening and allow retry with the SAME immutable round id.
+          throw err;
         }
       }
       const updates: Record<string, unknown> = {
@@ -7885,17 +7822,36 @@ export const gameService = {
           updates['liveMatch.timerRunning'] = false;
           updates['liveMatch.timerLastStartedAt'] = null;
         }
-        if (finalRoundCommitted) {
-          // Commit succeeded (it already zeroed goals/score) → freeze empty.
-          updates['liveMatch.goals'] = [];
-          updates['liveMatch.scoreA'] = 0;
-          updates['liveMatch.scoreB'] = 0;
-        }
-        // Commit FAILED → keep the goal log/score so nothing is lost; only
-        // the phase flip above applies.
+        // The result callable already cleared its own board atomically. Do
+        // not overwrite any subsequent board from this earlier snapshot.
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await updateDoc(ref, updates as any);
+      await runTransaction(getFirebase().db, async (tx) => {
+        const fresh = await tx.get(ref);
+        if (!fresh.exists()) throw new Error('GAME_NOT_FOUND');
+        const current = fresh.data();
+        if (current.status === 'finished' || current.status === 'cancelled') return;
+        if (rot && current.rotation && roundCommitKey(current.rotation) !== roundCommitKey(rot)) {
+          throw new Error('המשחק השתנה בזמן הסיום. יש לנסות שוב.');
+        }
+        // Reject any late goal that was not in the committed result.
+        if ((current.liveMatch?.goals?.length ?? 0) > 0) {
+          throw new Error('נוסף שער בזמן הסיום. יש לנסות שוב כדי לשמור אותו.');
+        }
+        if (current.rotation && current.draftTeams &&
+            current.lastCommittedRoundId !== roundCommitKey(current.rotation) &&
+            (current.liveMatch?.timerRunning || (current.liveMatch?.timerAccumulatedMs ?? 0) > 0 || current.liveMatch?.shootout)) {
+          throw new Error('המשחק התחיל בזמן הסיום. יש לנסות שוב כדי לשמור את התוצאה.');
+        }
+        if (current.liveMatch) {
+          delete updates['liveMatch.activeIntervals'];
+          if (current.liveMatch.timerRunning && current.liveMatch.timerLastStartedAt) {
+            updates['liveMatch.activeIntervals'] = arrayUnion({ s: current.liveMatch.timerLastStartedAt, e: serverNow() });
+          }
+          updates['liveMatch.timerRunning'] = false;
+          updates['liveMatch.timerLastStartedAt'] = null;
+        }
+        tx.update(ref, updates as UpdateData<import('firebase/firestore').DocumentData>);
+      });
     } catch (err) {
       logError('endEvening', err, { gameId });
       if (__DEV__) console.warn('[gameService] endEvening failed', err);

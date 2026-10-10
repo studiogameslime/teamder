@@ -1,11 +1,11 @@
 // InputField — the standard form input across the redesigned UI.
 //
 // Layout (RTL):
-//   [icon (right)]  [text input (flex)]
+//   [text input (visual right, flex)] [icon (visual left)]
 //
 // Visual: light gray pill (`#F5F5F5`-style surface), no visible border,
-// 14-18dp rounded corners, generous padding. The icon sits on the right
-// because Hebrew is RTL and that's where the eye lands first.
+// 14-18dp rounded corners, generous padding. Text precedes its supporting
+// icon, consistently with the application's other labelled controls.
 //
 // The component is intentionally a thin wrapper around RN `TextInput`
 // so it composes with all standard input props (keyboardType,
@@ -41,7 +41,7 @@ interface Props
   /** Optional ⓘ next to the label that opens a brief explanation —
    *  keeps the form clean instead of a constant paragraph under the field. */
   info?: { title?: string; text: string };
-  /** Ionicon glyph rendered on the right (RTL). */
+  /** Supporting Ionicon glyph rendered visually left of the text. */
   icon?: keyof typeof Ionicons.glyphMap;
   /** When set the field becomes a tappable label; the `value` prop is
       shown as the text and `onPress` runs on tap. Used for date / time
@@ -112,6 +112,15 @@ export function InputField({
       {onPress ? (
         <Pressable
           onPress={onPress}
+          disabled={textInputProps.editable === false}
+          accessibilityRole="button"
+          accessibilityLabel={textInputProps.accessibilityLabel ?? label ?? placeholder}
+          accessibilityHint={textInputProps.accessibilityHint}
+          accessibilityValue={textInputProps.accessibilityValue ?? { text: hasValue ? value : (placeholder ?? '') }}
+          accessibilityState={{ ...textInputProps.accessibilityState, disabled: textInputProps.editable === false }}
+          onAccessibilityAction={textInputProps.onAccessibilityAction}
+          accessibilityActions={textInputProps.accessibilityActions}
+          testID={textInputProps.testID}
           style={({ pressed }) => [pressed && { opacity: 0.85 }]}
         >
           <Animated.View style={[styles.field, fieldAnimStyle]}>
@@ -142,6 +151,7 @@ export function InputField({
         <Animated.View style={[styles.field, fieldAnimStyle]}>
           <TextInput
             {...textInputProps}
+            accessibilityLabel={textInputProps.accessibilityLabel ?? label ?? placeholder}
             value={value}
             placeholder={placeholder}
             placeholderTextColor="#9CA3AF"
@@ -201,11 +211,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   field: {
-    // `row-reverse` places the LAST JSX child (the icon) on the
-    // physical RIGHT under forceRTL — the leading position in Hebrew
-    // reading order. Plain `row` would auto-flip and put the icon on
-    // the left, which trailed the text input awkwardly.
-    flexDirection: 'row-reverse',
+    // Text first, icon second: the icon lands visually left under forceRTL.
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F5F5F5',
     borderRadius: radius.lg,
@@ -233,7 +240,6 @@ const styles = StyleSheet.create({
     // explicit 'right' fixes both the date Pressable text and the
     // editable TextInput.
     textAlign: 'right',
-    writingDirection: 'rtl',
     // Pull the cursor onto the same baseline as the icon — RN's default
     // line-height pushes the digit down a few pixels otherwise.
     paddingVertical: spacing.sm,
@@ -244,9 +250,6 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   iconRight: {
-    // With `flexDirection:'row-reverse'` the icon sits on the right.
-    // `marginEnd` is its physical LEFT side under forceRTL — the gap
-    // separating it from the input field.
-    marginEnd: spacing.sm,
+    marginStart: spacing.sm,
   },
 });

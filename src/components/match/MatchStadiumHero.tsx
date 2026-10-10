@@ -12,7 +12,7 @@
 //     hero — a one-tap nav affordance that's visible without taking
 //     a full row in the body
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ImageBackground,
   Pressable,
@@ -31,6 +31,8 @@ import { skyForHour } from '@/utils/heroAtmosphere';
 import { LiveCountdown } from './LiveCountdown';
 
 interface Props {
+  groupId?: string;
+  coverLoading?: boolean;
   startsAt?: number;
   /** Game name — shown above the date/time inside the floating card. */
   title?: string;
@@ -99,10 +101,12 @@ interface Props {
 }
 
 import { getCoverSource } from '@/data/coverImages';
+import { clubDefaultCoverId } from '@/utils/clubDefaultCoverId';
 
-const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
 
 export function MatchStadiumHero({
+  groupId,
+  coverLoading = false,
   startsAt,
   title,
   seasonLabel,
@@ -118,19 +122,22 @@ export function MatchStadiumHero({
   coverImageId,
   compact = false,
 }: Props) {
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   // Living sky: the gradient tint follows the kickoff hour (morning/day/
   // sunset/night), with floodlights at night.
   const hour = startsAt ? new Date(startsAt).getHours() : 12;
   const sky = skyForHour(hour);
   // Priority mirrors `CommunityStadiumHero` exactly.
-  const bg: ImageSourcePropType = coverUrl
+  const bg: ImageSourcePropType | undefined = coverLoading ? undefined : coverUrl && coverUrl !== failedPhoto
     ? { uri: coverUrl }
-    : getCoverSource(coverImageId) ?? STADIUM_BG;
+    : getCoverSource(coverImageId) ?? getCoverSource(clubDefaultCoverId(groupId))!;
 
   return (
     <View style={styles.wrap}>
       <ImageBackground
+        resizeMethod="resize"
         source={bg}
+        onError={() => { if (coverUrl) setFailedPhoto(coverUrl); }}
         style={[styles.bg, compact && styles.bgCompact]}
         resizeMode="cover"
       >

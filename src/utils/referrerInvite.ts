@@ -21,7 +21,7 @@ function parseQuery(s: string): Record<string, string> {
     const i = pair.indexOf('=');
     if (i <= 0) continue;
     const k = pair.slice(0, i);
-    const v = safeDecode(pair.slice(i + 1));
+    const v = safeDecode(pair.slice(i + 1).replace(/\+/g, ' '));
     if (k && v) out[k] = v;
   }
   return out;
@@ -68,14 +68,20 @@ export function parseReferrerInvite(referrer: string): PendingInvite | null {
   // Acquisition (UTM) referrer emitted by the Pulse ad-link landing page,
   // e.g. `utm_source=whatsapp&utm_campaign=summer&g=<gameId>`. Standard
   // querystring form so it interoperates with Play's referrer field.
-  if (/(^|&)utm_source=/.test(referrer)) {
+  if (/(^|&)(utm_source|target_type)=/.test(referrer)) {
     const params = parseQuery(referrer);
     const source = params.utm_source || params.s;
-    if (source) {
+    if (source || params.target_type) {
       const gameId = params.g;
       const campaign = params.utm_campaign || params.c;
       const linkId = params.l; // per-link attribution key
-      const base = gameId
+      const targetType = params.target_type;
+      const targetId = params.target_id;
+      if (targetType && !['app', 'team', 'session'].includes(targetType)) return null;
+      if ((targetType === 'team' || targetType === 'session') && !targetId) return null;
+      const base = (targetType === 'team' || targetType === 'session') && targetId
+        ? { type: targetType, id: targetId } as const
+        : gameId
         ? ({ type: 'session', id: gameId } as const)
         : ({ type: 'app' } as const);
       // The inviter, when the landing page put one here.
@@ -95,7 +101,7 @@ export function parseReferrerInvite(referrer: string): PendingInvite | null {
       const invitedBy = params.by || params.invitedBy;
       return {
         ...base,
-        source,
+        ...(source ? { source } : {}),
         ...(campaign ? { campaign } : {}),
         ...(linkId ? { linkId } : {}),
         ...(invitedBy ? { invitedBy } : {}),
