@@ -2,7 +2,7 @@
   "expo": {
     "name": "Pulse",
     "slug": "pulse",
-    "version": "1.0.85",
+    "version": "1.0.89",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.matanlevi.pulse",
-      "versionCode": 89,
+      "versionCode": 96,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#0B1220",

@@ -1,3 +1,4 @@
+import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -114,6 +115,8 @@ export function ErrorDetailScreen() {
               </Text>
             </View>
           </Card>
+
+          <DiagnosticTimeline docPath={`${rec.coll??'errors'}/${rec.id}`} />
 
           {/* What the user was trying to do — decoded params */}
           {v && v.attempted.length ? (

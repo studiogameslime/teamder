@@ -1,3 +1,4 @@
+import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
 // ReportsBody — "דיווחים ממשתמשים" segment of the unified Dev Inbox. Every
 // user-submitted bug report / suggestion (the `feedback` collection) with text,
 // context, and the attached SCREENSHOT (tap to zoom). Grouped by reporter/screen.
@@ -263,6 +264,7 @@ export function ReportsBody() {
                       .filter(Boolean)
                       .join('  ·  ')}
                   </Text>
+                  <DiagnosticTimeline docPath={`feedback/${it.id}`} />
                   {it.message ? <Text style={s.message}>{it.message}</Text> : null}
                   {it.image ? (
                     <Pressable style={s.shotWrap} onPress={() => setZoom(it.image!)}>

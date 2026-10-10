@@ -1,9 +1,10 @@
+import { createShortAdLink } from './shortAdLinks';
 // Acquisition (UTM) tracking. The admin creates a tracked link per
 // distribution channel (whatsapp / facebook / …); the app records
-// `acquisition.source` on install, and fetchAcquisitionReport rolls users
-// up by source into a download → signup → joined-game funnel.
+// `acquisition.source` on account attribution. These are account counts,
+// not store downloads or unique visitors.
 
-import { patchDoc, listAll, deleteDoc, type FsDoc } from './firestoreRest';
+import { createDocOnly, listAll, deleteDoc, type FsDoc } from './firestoreRest';
 import { cached, invalidate } from './cache';
 import { fetchUsers, fetchUsersWithAuth } from './firebase';
 
@@ -65,20 +66,9 @@ export interface AdLinkInput {
 }
 
 export async function createAdLink(a: AdLinkInput): Promise<{ ok: boolean; url: string }> {
-  const id = `al_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`;
-  // Embed the link id so clicks/installs attribute to THIS specific link.
-  const url = buildAdLink(a.source, a.campaign, a.gameId, id);
-  const ok = await patchDoc(`adLinks/${id}`, {
-    name: a.name,
-    source: a.source,
-    ...(a.campaign ? { campaign: a.campaign } : {}),
-    ...(a.gameId ? { gameId: a.gameId } : {}),
-    url,
-    clicks: 0,
-    createdAt: Date.now(),
-  });
-  invalidate('adLinks');
-  return { ok, url };
+  const result = await createShortAdLink(a, createDocOnly);
+  if (result.ok) invalidate('adLinks');
+  return result;
 }
 
 export async function listAdLinks(force = false): Promise<FsDoc[]> {
@@ -97,7 +87,7 @@ export async function deleteAdLink(id: string): Promise<boolean> {
 
 export interface SourceRow {
   source: string; // '(אורגני)' for users with no acquisition tag
-  downloads: number;
+  accounts: number; // real accounts, not store downloads
   signups: number; // completed onboarding
   joined: number; // attended ≥ 1 game
 }
@@ -116,8 +106,8 @@ export async function fetchAcquisitionReport(range?: { from?: number; to?: numbe
   const users = (await fetchUsers()).filter((u) => !u.isTest && !u.deleted);
   const map = new Map<string, SourceRow>();
   const bump = (key: string, u: (typeof users)[number]) => {
-    const row = map.get(key) ?? { source: key, downloads: 0, signups: 0, joined: 0 };
-    row.downloads += 1;
+    const row = map.get(key) ?? { source: key, accounts: 0, signups: 0, joined: 0 };
+    row.accounts += 1;
     if (u.onboardingCompleted) row.signups += 1;
     if (u.attended > 0) row.joined += 1;
     map.set(key, row);
@@ -141,25 +131,18 @@ export async function fetchAcquisitionReport(range?: { from?: number; to?: numbe
     }
   }
 
-  const rows = [...map.values()].sort((a, b) => b.downloads - a.downloads);
+  const rows = [...map.values()].sort((a, b) => b.accounts - a.accounts);
   return { rows, totalTracked: tracked, totalUsers: users.length };
 }
 
 // ── Per-link detail funnel ──────────────────────────────────────────────
-export interface LinkStats {
-  clicks: number;
-  downloads: number; // installs attributed to this link
-  signups: number; // of downloads, completed onboarding
-  google: number;
-  apple: number;
-  joined: number; // of downloads, joined ≥1 game
-  created: number; // of downloads, created ≥1 game
-}
+export { calculateLinkStats, type LinkStats } from './adLinkStats';
+import { calculateLinkStats, type LinkStats } from './adLinkStats';
 
 /** uids that created (hosted) at least one game. */
 export async function fetchGameCreators(): Promise<Set<string>> {
   return cached('gameCreators', async () => {
-    const games = await listAll('games').catch(() => []);
+    const games = await listAll('games');
     const s = new Set<string>();
     for (const g of games) {
       const c = (g.createdBy ?? g.creatorId) as string | undefined;
@@ -169,38 +152,13 @@ export async function fetchGameCreators(): Promise<Set<string>> {
   });
 }
 
-/** Full funnel for ONE link. Clicks come from the link doc (live); the
- *  install funnel matches users by acquisition source+campaign (exact
- *  per-link once the app captures the link id). */
+/** Exact link attribution only. Legacy source/campaign-only accounts belong
+ * to fetchAcquisitionReport; they cannot be assigned to an individual link.
+ * Read failures propagate so the UI never labels unavailable data as zero. */
 export async function fetchLinkStats(link: FsDoc): Promise<LinkStats> {
   const [users, creators] = await Promise.all([
-    fetchUsersWithAuth().catch(() => []),
+    fetchUsersWithAuth(),
     fetchGameCreators(),
   ]);
-  const src = String(link.source ?? '').trim();
-  const camp = link.campaign ? String(link.campaign).trim() : undefined;
-  const id = String(link.id ?? '');
-  const real = users.filter((u) => !u.isTest && !u.deleted);
-  // PRIMARY: per-link attribution by the captured link id — accurate even for
-  // several links that share the same source (e.g. many WhatsApp links).
-  const byLink = real.filter((u) => (u.acquisition?.linkId ?? '') === id && !!id);
-  // FALLBACK (legacy installs that predate link-id capture, so they carry only
-  // source/campaign): bucket by source+campaign. These CAN'T be split between
-  // links of the same source — shown only when no link-id data exists for this
-  // link, so new installs take over cleanly once 1.0.4 is out.
-  const bySource = real.filter((u) =>
-    !(u.acquisition?.linkId) &&
-    (u.acquisition?.source ?? '').trim() === src &&
-    (!camp || (u.acquisition?.campaign ?? '').trim() === camp),
-  );
-  const matched = byLink.length > 0 ? byLink : bySource;
-  const st: LinkStats = { clicks: Number(link.clicks ?? 0), downloads: matched.length, signups: 0, google: 0, apple: 0, joined: 0, created: 0 };
-  for (const u of matched) {
-    if (u.onboardingCompleted) st.signups += 1;
-    if (u.provider === 'google') st.google += 1;
-    else if (u.provider === 'apple') st.apple += 1;
-    if (u.attended > 0) st.joined += 1;
-    if (creators.has(u.id)) st.created += 1;
-  }
-  return st;
+  return calculateLinkStats(link, users, creators);
 }

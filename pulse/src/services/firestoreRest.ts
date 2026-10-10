@@ -242,6 +242,21 @@ export async function patchDoc(
   return res.ok;
 }
 
+/** Create only: a code collision must never overwrite another campaign. */
+export async function createDocOnly(path: string, fields: Record<string, unknown>): Promise<'created' | 'conflict' | 'error'> {
+  const token = await googleAccessToken(SCOPE);
+  const res = await fetch(`${base()}/${path}?currentDocument.exists=false`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, toValue(v)])) }),
+  });
+  if (res.ok) return 'created';
+  // Firestore precondition failures use FAILED_PRECONDITION (400), not only 409.
+  const body = await res.json().catch(() => null);
+  const code = body?.error?.status;
+  return code === 'ALREADY_EXISTS' || code === 'FAILED_PRECONDITION' ? 'conflict' : 'error';
+}
+
 // Delete a document by path (needs datastore.user IAM).
 export async function deleteDoc(path: string): Promise<boolean> {
   const token = await googleAccessToken(SCOPE);

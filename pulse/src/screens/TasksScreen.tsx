@@ -1,3 +1,4 @@
+import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
 // TasksScreen — the app's home, and the ONE place all work lives.
 //
 // It used to show only the `tasks` collection, while errors, user reports,
@@ -526,6 +527,7 @@ function WorkRow({
 
       {expanded ? (
         <View style={st.expand}>
+          {(item.stream==='error'||item.stream==='report')?<DiagnosticTimeline docPath={item.docPath}/>:null}
           {item.body ? <Text style={st.notes}>{item.body}</Text> : null}
           {loadingShots ? (
             <ActivityIndicator color={colors.primary} style={{ alignSelf: 'flex-end' }} />

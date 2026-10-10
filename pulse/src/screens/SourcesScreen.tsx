@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert, Share, Modal, RefreshControl,
+  View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert, Share, Modal, RefreshControl, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen, Card } from '../components/ui';
@@ -11,8 +11,9 @@ import {
   deleteAdLink, SOURCE_PRESETS, type AcquisitionReport, type LinkStats,
 } from '../services/adLinks';
 import type { FsDoc } from '../services/firestoreRest';
+import { accountPercentage } from '../services/adLinkStats';
 
-const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : '0%');
+const pct = (n: number, d: number) => accountPercentage(n, d) ?? '—';
 const pctColor = (n: number, d: number) => {
   const p = d ? (n / d) * 100 : 0;
   return p >= 50 ? colors.green : p >= 20 ? colors.amber : colors.red;
@@ -31,7 +32,7 @@ function sourceIcon(src: string): { name: keyof typeof Ionicons.glyphMap; tint: 
 
 export function SourcesScreen() {
   const [name, setName] = useState('');
-  const [source, setSource] = useState('whatsapp');
+  const [source, setSource] = useState('');
   const [customSource, setCustomSource] = useState('');
   const [campaign, setCampaign] = useState('');
   const [gameId, setGameId] = useState('');
@@ -44,10 +45,21 @@ export function SourcesScreen() {
   const [detailLink, setDetailLink] = useState<FsDoc | null>(null);
   const [stats, setStats] = useState<LinkStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [statsError, setStatsError] = useState(false);
+  const detailRequest = useRef(0);
+  const closeDetail = () => { detailRequest.current += 1; setDetailLink(null); };
 
   const openDetail = async (l: FsDoc) => {
-    setDetailLink(l); setStats(null); setLoadingStats(true);
-    try { setStats(await fetchLinkStats(l)); } finally { setLoadingStats(false); }
+    const request = ++detailRequest.current;
+    setDetailLink(l); setStats(null); setStatsError(false); setLoadingStats(true);
+    try {
+      const result = await fetchLinkStats(l);
+      if (request === detailRequest.current) setStats(result);
+    } catch {
+      if (request === detailRequest.current) setStatsError(true);
+    } finally {
+      if (request === detailRequest.current) setLoadingStats(false);
+    }
   };
 
   const onDelete = (l: FsDoc) => {
@@ -61,7 +73,7 @@ export function SourcesScreen() {
           onPress: async () => {
             const ok = await deleteAdLink(String(l.id));
             if (!ok) { Alert.alert('שגיאה', 'המחיקה נכשלה'); return; }
-            if (detailLink?.id === l.id) setDetailLink(null);
+            if (detailLink?.id === l.id) closeDetail();
             await reload();
           },
         },
@@ -91,7 +103,7 @@ export function SourcesScreen() {
 
   const effectiveSource = (source === 'other' ? customSource : source).trim();
   const share = (url: string) => { Share.share({ message: url }).catch(() => {}); };
-  const preview = effectiveSource ? buildAdLink(effectiveSource, campaign.trim() || undefined, gameId.trim() || undefined) : '';
+  const preview = effectiveSource ? 'https://teamderfc.web.app/play/XXXXXXXX' : '';
 
   const onCreate = async () => {
     if (!effectiveSource) { Alert.alert('חסר', 'בחר מקור'); return; }
@@ -103,22 +115,23 @@ export function SourcesScreen() {
         await reload();
         Alert.alert('נוצר קישור', res.url, [{ text: 'סגור', style: 'cancel' }, { text: 'שתף', onPress: () => share(res.url) }]);
       } else Alert.alert('שגיאה', 'יצירת הקישור נכשלה');
-    } finally { setBusy(false); }
+    } catch { Alert.alert('שגיאה', 'יצירת הקישור נכשלה. בדוק חיבור והרשאות ונסה שוב'); } finally { setBusy(false); }
   };
 
   return (
     <Screen
       title="קישורים"
-      subtitle="צור קישורים ובדוק מאיפה הגיעו הכי הרבה הורדות"
+      subtitle="צור קישורים ובדוק מאיפה הגיעו החשבונות"
       right={<Ionicons name="add" size={26} color={colors.primary} />}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
       }
     >
+      <Text style={s.miniLbl}>למדידה נפרדת, צור קישור לפייסבוק וקישור נוסף לאינסטגרם.</Text>
       {/* create */}
       <Text style={s.section}>יצירת קישור חדש</Text>
       <Card style={{ gap: 10 }}>
-        <Dropdown title="מקור" options={SOURCE_PRESETS.map((p) => ({ value: p, label: p === 'other' ? 'אחר' : p }))} value={source} onSelect={setSource} />
+        <Dropdown title="בחר איפה הקישור יפורסם" options={[{ value: '', label: 'בחר מקור שיתוף' }, ...SOURCE_PRESETS.map((p) => ({ value: p, label: ({ whatsapp: 'וואטסאפ', facebook: 'פייסבוק', instagram: 'אינסטגרם', telegram: 'טלגרם', sms: 'מסרון', other: 'אחר' } as Record<string, string>)[p] }))]} value={source} onSelect={setSource} />
         {source === 'other' ? (
           <TextInput style={s.input} placeholder="שם מקור מותאם" placeholderTextColor={colors.textMuted} value={customSource} onChangeText={setCustomSource} />
         ) : null}
@@ -128,11 +141,11 @@ export function SourcesScreen() {
 
         {preview ? (
           <>
-            <Text style={s.miniLbl}>הקישור שלך</Text>
-            <Pressable style={s.urlBox} onPress={() => share(preview)}>
-              <Ionicons name="copy-outline" size={18} color={colors.primary} />
+            <Text style={s.miniLbl}>כך ייראה הקישור הקצר — ייווצר לאחר שמירה</Text>
+            <View style={s.urlBox}>
+              <Ionicons name="link-outline" size={18} color={colors.primary} />
               <Text style={s.urlTxt} numberOfLines={1}>{preview}</Text>
-            </Pressable>
+            </View>
           </>
         ) : null}
 
@@ -152,10 +165,10 @@ export function SourcesScreen() {
           <>
             <View style={[s.trow, s.thead]}>
               <Text style={[s.th, s.cSrc]}>מקור</Text>
-              <Text style={s.th}>הורדות</Text>
-              <Text style={s.th}>נרשמו</Text>
+              <Text style={s.th}>חשבונות</Text>
+              <Text style={s.th}>השלימו הרשמה</Text>
               <Text style={s.th}>הצטרפו</Text>
-              <Text style={[s.th, s.cConv]}>המרה</Text>
+              <Text style={[s.th, s.cConv]}>השלמה</Text>
             </View>
             {report.rows.map((r) => {
               const ic = sourceIcon(r.source);
@@ -165,10 +178,10 @@ export function SourcesScreen() {
                     <Ionicons name={ic.name} size={16} color={ic.tint} />
                     <Text style={s.srcName} numberOfLines={1}>{r.source}</Text>
                   </View>
-                  <Text style={[s.td, s.tdNum]}>{r.downloads.toLocaleString()}</Text>
+                  <Text style={[s.td, s.tdNum]}>{r.accounts.toLocaleString()}</Text>
                   <Text style={s.td}>{r.signups.toLocaleString()}</Text>
                   <Text style={s.td}>{r.joined.toLocaleString()}</Text>
-                  <Text style={[s.td, s.cConv, { color: pctColor(r.signups, r.downloads), fontWeight: '800' }]}>{pct(r.signups, r.downloads)}</Text>
+                  <Text style={[s.td, s.cConv, { color: pctColor(r.signups, r.accounts), fontWeight: '800' }]}>{pct(r.signups, r.accounts)}</Text>
                 </View>
               );
             })}
@@ -193,7 +206,7 @@ export function SourcesScreen() {
             {/* tappable body → per-link funnel */}
             <Pressable style={s.linkBody} onPress={() => openDetail(l)} hitSlop={4}>
               <Text style={s.linkName} numberOfLines={1}>{String(l.name ?? l.source ?? '—')}</Text>
-              <Text style={s.linkSub} numberOfLines={1}>👆 {Number(l.clicks ?? 0)} לחצו{l.campaign ? ` · ${l.campaign}` : ''}{l.gameId ? ' · 🎯' : ''}</Text>
+              <Text style={s.linkSub} numberOfLines={1}>👆 {Number(l.clicks ?? 0)} פתיחות{l.campaign ? ` · ${l.campaign}` : ''}{l.gameId ? ' · 🎯' : ''}</Text>
             </Pressable>
             {/* actions */}
             <Pressable style={s.linkAct} onPress={() => share(url)} hitSlop={6}><Ionicons name="share-social-outline" size={19} color={colors.primary} /></Pressable>
@@ -203,31 +216,41 @@ export function SourcesScreen() {
       })}
 
       {/* per-link detail funnel */}
-      <Modal visible={!!detailLink} transparent animationType="slide" onRequestClose={() => setDetailLink(null)}>
+      <Modal visible={!!detailLink} transparent animationType="slide" onRequestClose={closeDetail}>
         <View style={s.dBackdrop}>
           <View style={s.dSheet}>
             <View style={s.dHead}>
-              <Pressable onPress={() => setDetailLink(null)} hitSlop={10}><Ionicons name="close" size={24} color={colors.textSoft} /></Pressable>
+              <Pressable onPress={closeDetail} hitSlop={10}><Ionicons name="close" size={24} color={colors.textSoft} /></Pressable>
               <Text style={s.dTitle} numberOfLines={1}>{String(detailLink?.name ?? detailLink?.source ?? '')}</Text>
             </View>
-            {loadingStats || !stats ? (
+            <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ paddingBottom: 8 }}>
+            {statsError ? (
+              <View style={{ gap: 12, paddingVertical: 20 }}>
+                <Text style={s.empty}>לא ניתן לטעון את נתוני הקישור. המספרים אינם זמינים כרגע.</Text>
+                <Pressable style={s.btn} onPress={() => detailLink && openDetail(detailLink)} accessibilityRole="button">
+                  <Text style={s.btnTxt}>נסה שוב</Text>
+                </Pressable>
+              </View>
+            ) : loadingStats || !stats ? (
               <ActivityIndicator color={colors.primary} style={{ paddingVertical: 30 }} />
             ) : (
               <>
-                <FunnelRow icon="hand-left" tint="#3B82F6" label="לחצו על הקישור" value={stats.clicks} />
-                <FunnelRow icon="download" tint="#22C55E" label="הורידו" value={stats.downloads} of={stats.clicks} />
-                <FunnelRow icon="person-add" tint="#06B6D4" label="נרשמו" value={stats.signups} of={stats.downloads} />
+                <FunnelRow icon="hand-left" tint="#3B82F6" label="פתיחות של הקישור" value={stats.clicks} />
+                <FunnelRow icon="people" tint="#22C55E" label="חשבונות שיוחסו לקישור" value={stats.attributedAccounts} />
+                <Text style={s.dNote}>פתיחות עשויות לחזור על עצמן; הן אינן אנשים ייחודיים או הורדות מהחנות. הנתונים הבאים הם מצבם הנוכחי של החשבונות שיוחסו לקישור.</Text>
+                <FunnelRow icon="person-add" tint="#06B6D4" label="השלימו הרשמה" value={stats.signups} of={stats.attributedAccounts} />
                 <View style={s.provRow}>
                   <View style={s.provCell}><Ionicons name="logo-google" size={15} color="#EA4335" /><Text style={s.provTxt}>{stats.google} Google</Text></View>
                   <View style={s.provCell}><Ionicons name="logo-apple" size={15} color={colors.textSoft} /><Text style={s.provTxt}>{stats.apple} Apple</Text></View>
                 </View>
-                <FunnelRow icon="football" tint="#F59E0B" label="הצטרפו למשחק" value={stats.joined} of={stats.downloads} />
-                <FunnelRow icon="add-circle" tint="#A855F7" label="יצרו משחק" value={stats.created} of={stats.downloads} />
-                {stats.downloads === 0 && stats.clicks > 0 ? (
-                  <Text style={s.dNote}>יש לחצות, אבל עוד אין הורדות מיוחסות — הייחוס מתחיל לעבוד אחרי שגרסת 1.0.4 תשוחרר ותותקן.</Text>
+                <FunnelRow icon="football" tint="#F59E0B" label="הצטרפו למשחק" value={stats.joined} of={stats.attributedAccounts} />
+                <FunnelRow icon="add-circle" tint="#A855F7" label="יצרו משחק" value={stats.created} of={stats.attributedAccounts} />
+                {stats.attributedAccounts === 0 && stats.clicks > 0 ? (
+                  <Text style={s.dNote}>עדיין אין חשבונות עם שיוך מפורש לקישור הזה. שיוכים היסטוריים למקור בלבד מופיעים בדוח לפי מקור.</Text>
                 ) : null}
               </>
             )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -236,7 +259,7 @@ export function SourcesScreen() {
 }
 
 function FunnelRow({ icon, tint, label, value, of }: { icon: keyof typeof Ionicons.glyphMap; tint: string; label: string; value: number; of?: number }) {
-  const pctTxt = of && of > 0 ? `${Math.round((value / of) * 100)}%` : null;
+  const pctTxt = of === undefined ? null : accountPercentage(value, of);
   return (
     <View style={fr.row}>
       <View style={[fr.icon, { backgroundColor: tint + '22' }]}><Ionicons name={icon} size={18} color={tint} /></View>
@@ -264,7 +287,7 @@ const s = StyleSheet.create({
   btnTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
   empty: { color: colors.textMuted, textAlign: 'center', paddingVertical: 12 },
   dBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
-  dSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 30 },
+  dSheet: { maxHeight: '85%', backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 30 },
   dHead: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, marginBottom: 4 },
   dTitle: { flex: 1, color: colors.text, fontSize: 18, fontWeight: '800', textAlign: 'right', marginRight: 12 },
   dNote: { color: colors.textMuted, fontSize: 12, textAlign: 'right', marginTop: 12, lineHeight: 18 },
