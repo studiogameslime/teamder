@@ -136,7 +136,7 @@ test('statistics distinguishes compute failure from empty and retries without lo
   const compute = jest.fn().mockRejectedValueOnce(Error('offline')).mockResolvedValueOnce({ attendedGames: 9 });
   const run = expression(effect.arguments[0].getText(file), {
     statsOwnerRef: { current: 'me' }, localUser: { id: 'me', stats: {} }, userService: { getUserById: async () => ({ stats: {} }) }, playerStatsService: { compute },
-    setStats: (s: any) => { stats = s; }, setFailed: (s: boolean) => { failed = s; }, setLoading: (s: boolean) => { loading = s; }, setPen() {}, setPeople() {}, logError() {},
+    setStats: (s: any) => { stats = s; }, setFailed: (s: boolean) => { failed = s; }, setLoading: (s: boolean) => { loading = s; }, setHighlightsLoading() {}, setPen() {}, setPeople() {}, logError() {},
   });
   run(); await new Promise(setImmediate);
   expect(stats.attendedGames).toBe(8); expect(failed).toBe(true); expect(loading).toBe(false);
@@ -183,7 +183,7 @@ test('statistics service propagates source failures instead of reporting zero at
 test('statistics clears previous account data even when the next account read fails',async()=>{
  const file=ast('src/screens/profile/StatisticsScreen.tsx');const effect=find(file,n=>ts.isCallExpression(n)&&n.expression.getText(file)==='useEffect') as ts.CallExpression;
  let stats:any={attendedGames:99},pen:any={penTaken:20},people:any={old:{id:'old'}},failed=false;
- const ctx={statsOwnerRef:{current:'old'},localUser:{id:'new'},setStats:(s:any)=>{stats=s;},setPen:(s:any)=>{pen=s;},setPeople:(s:any)=>{people=s;},setFailed:(s:boolean)=>{failed=s;},setLoading(){},logError(){},userService:{getUserById:async()=>{throw Error('offline');}}};
+ const ctx={statsOwnerRef:{current:'old'},localUser:{id:'new'},setStats:(s:any)=>{stats=s;},setPen:(s:any)=>{pen=s;},setPeople:(s:any)=>{people=s;},setFailed:(s:boolean)=>{failed=s;},setLoading(){},setHighlightsLoading(){},logError(){},userService:{getUserById:async()=>{throw Error('offline');}}};
  expression(effect.arguments[0].getText(file),ctx)();await new Promise(setImmediate);
  expect(stats).toBeNull();expect(pen).toBeNull();expect(people).toEqual({});expect(failed).toBe(true);
 });

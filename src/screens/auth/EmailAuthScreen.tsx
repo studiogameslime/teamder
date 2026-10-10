@@ -42,6 +42,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function EmailAuthScreen() {
   const nav = useNavigation<Nav>();
   useEffect(() => nav.addListener('beforeRemove', () => {
+    logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'email_screen_left', step: 'authentication' });
     // A real back gesture cancels this journey. Successful sign-in is handled
     // by RootNavigator before the old stack unmounts; do not clear its marker.
     const user = useUserStore.getState().currentUser;
@@ -103,6 +104,7 @@ export function EmailAuthScreen() {
 
   const submit = async () => {
     if (!canSubmit) return;
+    logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'email_submit_tapped', step: 'authentication', mode });
     setBusy(true);
     try {
       if (mode === 'signIn') {
@@ -258,7 +260,7 @@ export function EmailAuthScreen() {
               textAlign="right"
             />
             <Pressable
-              onPress={() => setShowPassword((v) => !v)}
+              onPress={() => { logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'password_visibility_toggled', step: 'authentication' }); setShowPassword((v) => !v); }}
               hitSlop={8}
               style={styles.eyeBtn}
               accessibilityLabel={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
@@ -295,7 +297,7 @@ export function EmailAuthScreen() {
                   textAlign="right"
                 />
                 <Pressable
-                  onPress={() => setShowPassword((v) => !v)}
+                  onPress={() => { logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'confirmation_visibility_toggled', step: 'authentication' }); setShowPassword((v) => !v); }}
                   hitSlop={8}
                   style={styles.eyeBtn}
                   accessibilityLabel={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}

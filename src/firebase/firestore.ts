@@ -1515,24 +1515,24 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       minPlayers: typeof d.minPlayers === 'number' ? d.minPlayers : undefined,
       // Backward-compat: docs written before the rename used
       // `registeredUserIds` / `waitlistUserIds` / `pendingUserIds`. If the
-      // new fields are missing or empty, fall back to the old ones so old
+      // new fields are absent, fall back to the old ones so old
       // data is still readable in the new UI.
       players:
-        Array.isArray(d.players) && d.players.length > 0
+        Array.isArray(d.players)
           ? d.players
-          : Array.isArray(d.registeredUserIds)
+          : d.players === undefined && Array.isArray(d.registeredUserIds)
             ? d.registeredUserIds
             : [],
       waitlist:
-        Array.isArray(d.waitlist) && d.waitlist.length > 0
+        Array.isArray(d.waitlist)
           ? d.waitlist
-          : Array.isArray(d.waitlistUserIds)
+          : d.waitlist === undefined && Array.isArray(d.waitlistUserIds)
             ? d.waitlistUserIds
             : [],
       pending:
-        Array.isArray(d.pending) && d.pending.length > 0
+        Array.isArray(d.pending)
           ? d.pending
-          : Array.isArray(d.pendingUserIds)
+          : d.pending === undefined && Array.isArray(d.pendingUserIds)
             ? d.pendingUserIds
             : [],
       // participantIds may be missing on old docs — derive from the others.
@@ -1543,9 +1543,9 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
               ...(Array.isArray(d.players) ? d.players : []),
               ...(Array.isArray(d.waitlist) ? d.waitlist : []),
               ...(Array.isArray(d.pending) ? d.pending : []),
-              ...(Array.isArray(d.registeredUserIds) ? d.registeredUserIds : []),
-              ...(Array.isArray(d.waitlistUserIds) ? d.waitlistUserIds : []),
-              ...(Array.isArray(d.pendingUserIds) ? d.pendingUserIds : []),
+              ...(d.players === undefined && Array.isArray(d.registeredUserIds) ? d.registeredUserIds : []),
+              ...(d.waitlist === undefined && Array.isArray(d.waitlistUserIds) ? d.waitlistUserIds : []),
+              ...(d.pending === undefined && Array.isArray(d.pendingUserIds) ? d.pendingUserIds : []),
             ])
           ),
       // Organizer-rejected users — kept so a rejected request can't be

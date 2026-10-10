@@ -41,15 +41,24 @@ export function EveningSummaryScreen() {
   const { gameId } = useRoute<Params>().params;
   const currentUser = useUserStore((s) => s.currentUser);
   const cardRef = useRef<View>(null);
+  const summaryOwner = `${gameId}:${currentUser?.id ?? ''}`;
+  const loadedOwner = useRef(summaryOwner);
+  const ownsSummary = loadedOwner.current === summaryOwner;
 
   const [model, setModel] = useState<EveningSummaryModel | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const [sharing, setSharing] = useState(false);
   const [scoreInfoVisible, setScoreInfoVisible] = useState(false);
 
   useEffect(() => {
     let alive = true;
+    loadedOwner.current = summaryOwner;
+    setScoreInfoVisible(false);
     setLoading(true);
+    setFailed(false);
+    setModel(null);
     (async () => {
       // Physical/Health-Connect ingestion was removed — the feature is disabled
       // (no wearable data path). The summary is goals/assists/result only now.
@@ -81,14 +90,19 @@ export function EveningSummaryScreen() {
         const personalRecords = await eveningSummaryService.getPersonalRecords(m);
         if (alive) setModel({ ...m, personalRecords });
       }
-    })();
+    })().catch((error) => {
+      if (!alive) return;
+      logError('loadEveningSummary', error, { gameId });
+      setFailed(true);
+      setLoading(false);
+    });
     return () => {
       alive = false;
     };
-  }, [gameId, currentUser?.id, currentUser?.name]);
+  }, [gameId, currentUser?.id, currentUser?.name, retryTick]);
 
   async function onShare() {
-    if (!cardRef.current || sharing) return;
+    if (!ownsSummary || loading || !cardRef.current || sharing) return;
     setSharing(true);
     try {
       // Let the capture-only layout commit: all highlights, no interactive controls.
@@ -133,9 +147,16 @@ export function EveningSummaryScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader title="הסיכום שלי" />
-      {loading ? (
+      {!ownsSummary || loading ? (
         <View style={styles.center}>
           <SoccerBallLoader />
+        </View>
+      ) : failed ? (
+        <View style={styles.center}>
+          <Text style={styles.empty}>לא ניתן לטעון את הסיכום כרגע.</Text>
+          <Pressable accessibilityRole="button" onPress={() => setRetryTick((n) => n + 1)} style={styles.shareBtn}>
+            <Text style={styles.shareTxt}>נסה שוב</Text>
+          </Pressable>
         </View>
       ) : !model || noPlay ? (
         <View style={styles.center}>
@@ -163,7 +184,7 @@ export function EveningSummaryScreen() {
           </Pressable>
         </ScrollSurface>
       )}
-      <EveningScoreInfoSheet visible={scoreInfoVisible} onClose={() => setScoreInfoVisible(false)} />
+      <EveningScoreInfoSheet visible={ownsSummary && scoreInfoVisible} onClose={() => setScoreInfoVisible(false)} />
     </SafeAreaView>
   );
 }

@@ -123,3 +123,5 @@
 
 לוח מנהל: [הסבר פשוט](clubs/manager-dashboard.simple.md) · [מאחורי הקלעים](clubs/manager-dashboard.md).
 
+
+| מסלול ההצטרפות בפולס | [הסבר פשוט](shared/onboarding-activity.simple.md) | [הסבר מעמיק](shared/onboarding-activity.md) |

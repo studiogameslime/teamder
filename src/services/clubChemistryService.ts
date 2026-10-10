@@ -37,7 +37,7 @@ const n = (v: unknown): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : 0;
 
 export const clubChemistryService = {
-  async get(groupId: string): Promise<ClubChemistry> {
+  async get(groupId: string, strict = false): Promise<ClubChemistry> {
     const empty: ClubChemistry = { picks: [], pairs: {}, since: null };
     if (!groupId) return empty;
     if (USE_MOCK_DATA) return mockClubChemistry();
@@ -74,6 +74,7 @@ export const clubChemistryService = {
       };
     } catch (err) {
       if (!isExpectedDenial(err)) logError('clubChemistryGet', err, { groupId });
+      if (strict) throw err;
       return empty;
     }
   },

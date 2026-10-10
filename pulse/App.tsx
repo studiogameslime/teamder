@@ -14,7 +14,7 @@ import { colors } from './src/theme';
 import { RootTabs } from './src/navigation/RootTabs';
 import { navRef } from './src/navigation/navRef';
 import { DashboardProvider } from './src/state/DashboardContext';
-import { ensureNotificationSetup } from './src/services/notify';
+import { ensureNotificationSetup, openInitialOnboardingNotification } from './src/services/notify';
 import {
   unregisterBackgroundPoll,
   registerBackgroundQuota,
@@ -58,7 +58,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <DashboardProvider>
-        <NavigationContainer theme={navTheme} ref={navRef}>
+        <NavigationContainer theme={navTheme} ref={navRef} onReady={() => { void openInitialOnboardingNotification(); }}>
           <StatusBar style="light" />
           <RootTabs />
         </NavigationContainer>

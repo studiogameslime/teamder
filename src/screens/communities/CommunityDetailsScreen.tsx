@@ -1723,7 +1723,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
     marginBottom: spacing.sm,
   },
   lastCycleRow: { flexDirection: 'row', gap: spacing.sm },

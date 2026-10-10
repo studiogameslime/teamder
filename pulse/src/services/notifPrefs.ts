@@ -12,6 +12,7 @@ export interface NotifTypeDef {
 }
 
 export const NOTIF_TYPES: NotifTypeDef[] = [
+  { key: 'onboardingActivity', label: 'כניסה ובחירת מסלול הצטרפות', emoji: '👣', hint: 'פוש בכניסת אורח ובבחירה איך להתחיל; שאר הפעולות נשמרות ברצף בלבד. הרשמה ויצירה משתמשות בהתראות הקיימות' },
   { key: 'newUser', label: 'משתמש חדש נרשם', emoji: '🎉' },
   { key: 'gameCreate', label: 'מישהו יצר משחק', emoji: '⚽' },
   { key: 'gameJoin', label: 'מישהו נרשם למשחק', emoji: '🙋' },

@@ -1,5 +1,5 @@
 /** A decision can only resolve the caller's existing reservation, never join
- *  a new player. Locked registration preserves the existing waitlist rights. */
+ *  a new player. Locked or rescheduled registration preserves existing waitlist rights. */
 export function decideSpotOffer(
   game: {
     status?: string; players?: string[]; waitlist?: string[]; pending?: string[];
@@ -21,7 +21,7 @@ export function decideSpotOffer(
     if (decision === 'pass') return { changed: false };
     fail('STALE_OFFER');
   }
-  if (game.status !== 'open' && game.status !== 'locked') fail('GAME_NOT_OPEN');
+  if (game.status !== 'open' && game.status !== 'locked' && game.status !== 'scheduled') fail('GAME_NOT_OPEN');
   if (!queued.includes(uid)) fail('STALE_OFFER');
   const guests = (game.guests ?? []).filter(guest => !guest.waitlisted).length;
   const capacity = typeof game.maxPlayers === 'number' ? game.maxPlayers : 15;

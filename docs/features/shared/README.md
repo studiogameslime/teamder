@@ -15,3 +15,5 @@
 | קישורי פולס וספירת ייחוס | [הסבר פשוט](pulse-links.simple.md) | [מאחורי הקלעים](pulse-links.md) |
 
 [חזרה למפת המוצר](../README.md)
+
+| מסלול ההצטרפות בפולס | [הסבר פשוט](onboarding-activity.simple.md) | [מאחורי הקלעים](onboarding-activity.md) |

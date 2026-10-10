@@ -14,14 +14,15 @@ import { ScrollSurface } from '@/components/ScrollSurface';
 // No new collection needed — everything here is derived client-side.
 
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { EmptyState } from '@/components/EmptyState';
+import { CommunityStatsWelcome } from '@/components/community/CommunityStatsWelcome';
+import { useUserStore } from '@/store/userStore';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -31,6 +32,7 @@ import { AppearItem } from '@/components/anim/AppearItem';
 import { StatDonut } from '@/components/community/StatDonut';
 import { CommunityChampionship } from '@/components/community/CommunityChampionship';
 import { gameService } from '@/services/gameService';
+import { logError } from '@/services/errorLog';
 import { userService } from '@/services';
 import { groupService } from '@/services';
 import { type ChampionshipRow } from '@/utils/championship';
@@ -60,6 +62,7 @@ import { buildClubRecords } from '@/utils/clubRecords';
 import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 import { mergeAllTime, type TableSlice } from '@/utils/allTimeTable';
+import { completeSeasonHistory } from '@/utils/completeSeasonHistory';
 import { mergePairs, type PairTotals } from '@/utils/clubChemistry';
 import {
   seasonHistoryService,
@@ -169,6 +172,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
   // the CommunityStats route cannot be reached without it.
   const groupId: string = props.groupId ?? routeParams!.groupId;
   const embedded = !!props.groupId;
+  const viewerId = useUserStore((s) => s.currentUser?.id);
+  const [adminIds, setAdminIds] = useState<string[]>([]);
   // Which season these numbers belong to, when the club runs them.
   //
   // Without this the table simply RESETS one day and says nothing: a member
@@ -194,6 +199,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
   // the live rows alone as the club's lifetime — the exact number the
   // all-time scope exists to correct.
   const [pastLoaded, setPastLoaded] = useState(false);
+  const [pastFailed, setPastFailed] = useState(false);
   // The screen opened straight on all-time (a club that switched seasons
   // off). That slice needs one more round-trip than the live rows, and
   // until it lands every tile would read 0 — the exact number this default
@@ -231,9 +237,23 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
   const [attended, setAttended] = useState<Record<string, number>>({});
   const [subtitle, setSubtitle] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [archiveFailed, setArchiveFailed] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
+  const loadedGroup = useRef(groupId);
 
   useEffect(() => {
     let alive = true;
+    if (loadedGroup.current !== groupId) {
+      loadedGroup.current = groupId;
+      setChamp(null); setStats(null); setDuo(null); setAllTime(null); setArchive(null);
+      setPastSeasons([]); setScope({ k: 'current' }); setOpenedOnAllTime(false);
+      setPeople({}); setMemberIds([]); setAttended({}); setEveningStats([]);
+    }
+    setLoading(true);
+    setLoadFailed(false);
+    setPastLoaded(false);
+    setPastFailed(false);
     (async () => {
       // The club FIRST, because the evening scan has to know which season it
       // is counting. Everything else on this screen is already season-scoped
@@ -242,14 +262,17 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
       // lifetime count of evenings, a lifetime organisation rate and a
       // lifetime streak. One extra document read is the price of the four
       // tiles agreeing with each other.
-      const g = await groupService.get(groupId).catch(() => null);
+      const g = await groupService.get(groupId);
+      if (!g) throw new Error('Community statistics group unavailable');
+      if (!alive) return;
+      setAdminIds(g?.adminIds ?? []);
       const scope =
         g?.seasons?.enabled && g.seasons.currentId
           ? { currentId: g.seasons.currentId, currentNo: g.seasons.currentNo ?? 1 }
           : undefined;
       const [c, s, d] = await Promise.all([
-        gameService.getCommunityChampionship(groupId).catch(() => null),
-        gameService.getCommunityStats(groupId, scope).catch(() => null),
+        gameService.getCommunityChampionship(groupId, undefined, true),
+        gameService.getCommunityStats(groupId, scope, true),
         gameService.getCommunityDeadlyDuo(groupId).catch(() => null),
       ]);
       if (!alive) return;
@@ -288,10 +311,11 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               // 'error' is NOT an empty archive — leave the list alone and let
               // the all-time slice refuse to sum a history it cannot see.
               if (list !== 'error') setPastSeasons(list);
+              else setPastFailed(true);
               setPastLoaded(true);
             })
             .catch(() => {
-              if (alive) setPastLoaded(true);
+              if (alive) { setPastFailed(true); setPastLoaded(true); }
             });
         } else {
           setPastLoaded(true);
@@ -362,21 +386,28 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
       });
       setPeople(map);
       setLoading(false);
-    })();
+    })().catch((error) => {
+      if (alive) { setLoadFailed(true); logError('loadCommunityStatistics', error, { groupId }); }
+    }).finally(() => {
+      if (alive) setLoading(false);
+    });
     return () => {
       alive = false;
     };
-  }, [groupId]);
+  }, [groupId, reloadTick]);
 
   // Fetch a past season's archive the first time it is picked, and keep the
   // live numbers untouched underneath — switching back is free.
   useEffect(() => {
     if (scope.k === 'current') {
       setArchive(null);
+      setArchiveFailed(false);
       return;
     }
     let alive = true;
     setArchiveBusy(true);
+    setArchiveFailed(false);
+    if (scope.k === 'season') setArchive(null);
 
     // All-time cannot be summed before the list of closed seasons is in. This
     // matters now that all-time is where a seasons-off club OPENS: the list is
@@ -393,7 +424,9 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     // archives are the sealed record of the seasons they closed, so this is
     // addition over numbers that were already agreed.
     const load =
-      scope.k === 'all'
+      scope.k === 'all' && pastFailed
+        ? Promise.reject(new Error('Closed season list unavailable'))
+        : scope.k === 'all'
         ? Promise.all([
             ...pastSeasons.map((ps) => seasonHistoryService.table(groupId, ps.seasonId)),
             // The live pair documents, for the chemistry sum only — the table
@@ -402,17 +435,15 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             // ChemistrySection fetch its own, `chemistrySince` included: that
             // tab prints "מאז <date>" and the sum has no single such date.
             clubChemistryService
-              .get(groupId)
-              .then((c) => c.pairs)
-              .catch(() => ({}) as Record<string, PairTotals>),
+              .get(groupId, true)
+              .then((c) => c.pairs),
           ]).then((results) => {
             const livePairs = results.pop() as Record<string, PairTotals>;
             const archives = results as Array<FinishedSeasonTable | null>;
-            if (archives.some((a) => !a)) return null; // a gap would understate
             // The list itself failed to load (it returns 'error', never []),
             // so the club's closed seasons are missing from the sum. Same
             // answer as a missing archive: refuse, do not understate.
-            if ((seasons?.count ?? 0) > 0 && pastSeasons.length === 0) return null;
+            if (!completeSeasonHistory(seasons?.count ?? 0, pastSeasons.length, archives)) return null;
             const live: TableSlice = {
               totalGoals: champ?.totalGoals ?? 0,
               totalRounds: champ?.totalRounds ?? 0,
@@ -444,25 +475,24 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
         if (!alive) return;
         setArchiveBusy(false);
         if (!t) {
-          // A slice that will not load is not an empty one. Showing the live
-          // rows under another heading would be worse than any message, so the
-          // screen returns to the running season.
-          setScope({ k: 'current' });
+          // Keep the selected scope and show retry; never substitute live rows.
+          setArchiveFailed(true);
           return;
         }
         if (scope.k === 'all') setAllTime(t as TableSlice);
         else setArchive(t as FinishedSeasonTable);
       })
-      .catch(() => {
+      .catch((error) => {
         if (!alive) return;
         setArchiveBusy(false);
-        setScope({ k: 'current' });
+        setArchiveFailed(true);
+        logError('loadCommunityStatisticsArchive', error, { groupId });
       });
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, scope, pastSeasons, pastLoaded, seasons, champ]);
+  }, [groupId, scope, pastSeasons, pastLoaded, pastFailed, seasons, champ, reloadTick]);
 
   /** The card of the season on screen, for its evening count and its dates. */
   const scopedCard = useMemo(
@@ -491,13 +521,17 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           // impossible window hides the cards until it arrives.
           { from: Number.MAX_SAFE_INTEGER };
     }
+    if ((seasons?.count ?? 0) > 0 && (!pastLoaded || pastFailed || pastSeasons.length < (seasons?.count ?? 0))) {
+      return { from: Number.MAX_SAFE_INTEGER };
+    }
     const lastSealed = pastSeasons.reduce((m, p) => Math.max(m, p.endsAt), 0);
     return lastSealed > 0 ? { from: lastSealed } : {};
-  }, [scope, scopedCard, pastSeasons]);
+  }, [scope, scopedCard, pastSeasons, seasons, pastLoaded, pastFailed]);
 
   useEffect(() => {
     if (!groupId) return;
     let alive = true;
+    setEveningStats([]);
     roundSummaryService
       .listEveningStats(groupId, recordWindow)
       .then((r) => {
@@ -725,7 +759,9 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
   // The first paint is not finished until the slice the screen OPENED on is
   // in hand. Resolves either way: the all-time load that fails puts the scope
   // back on the live rows, and the condition falls with it.
-  const bootLoading = loading || (openedOnAllTime && scope.k === 'all' && !allTime);
+  const ownsClubData = loadedGroup.current === groupId;
+  const bootLoading = !ownsClubData || loading && !champ || (!loadFailed && !archiveFailed && (scope.k !== 'current' && !slice || openedOnAllTime && scope.k === 'all' && !allTime));
+  const blockingFailure = ownsClubData && ((loadFailed && !champ) || (archiveFailed && scope.k !== 'current' && !slice));
 
   /**
    * Is the scope on screen the club's WHOLE LIFE?
@@ -825,6 +861,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
 
   const isEmpty =
     !loading &&
+    !!champ && !!stats &&
     // NEVER while a past season is selected. The empty state replaces the
     // whole scroll view — including the season picker — so a club whose
     // archive is still loading, or whose chosen season really was empty, would
@@ -838,6 +875,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     // the club.
     (seasons?.count ?? 0) === 0 &&
     derived.totalGoals === 0 &&
+    derived.totalRounds === 0 &&
+    (stats?.lifetime?.totalFinished ?? 0) === 0 &&
     (stats?.totalFinished ?? 0) === 0 &&
     derived.players.length === 0;
 
@@ -901,16 +940,26 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
         {embedded && props.header ? (
           <View style={styles.headerBleed}>{props.header}</View>
         ) : null}
-        {bootLoading ? (
+        {ownsClubData && (loadFailed || archiveFailed) && !blockingFailure ? <View style={styles.center}>
+          <Text style={styles.loadingText}>לא ניתן לרענן את כל הנתונים כרגע. הנתונים הקודמים מוצגים.</Text>
+          <Button title={he.retry} variant="outline" onPress={() => setReloadTick((n) => n + 1)} />
+        </View> : null}
+        {blockingFailure ? (
+          <View style={styles.center}>
+            <Text style={styles.loadingText}>לא ניתן לטעון את הסטטיסטיקה כרגע.</Text>
+            <Button title={he.retry} variant="outline" onPress={() => setReloadTick((n) => n + 1)} />
+            {scope.k !== 'current' ? <Button title="לעונה הנוכחית" variant="outline" onPress={() => setScope({ k: 'current' })} /> : null}
+          </View>
+        ) : bootLoading ? (
           <View style={styles.center}>
             <SoccerBallLoader />
             <Text style={styles.loadingText}>{he.communityStatsLoading}</Text>
           </View>
         ) : isEmpty ? (
-          <EmptyState
-            icon="stats-chart-outline"
-            title={he.communityStatsEmptyTitle}
-            hint={he.communityStatsEmptyBody}
+          <CommunityStatsWelcome
+            onCreate={viewerId && adminIds.includes(viewerId)
+              ? () => nav.navigate('GameCreate', { groupId })
+              : undefined}
           />
         ) : (
           <ChangeMotion triggerKey={`${groupId}:${scope.k}:${scope.k === 'season' ? scope.id : ''}:${scopeLoading}`} duration={220} style={{ gap: spacing.sm }}>

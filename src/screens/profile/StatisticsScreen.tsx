@@ -1,21 +1,21 @@
 // StatisticsScreen — a dedicated page that gathers the player's numbers and
 // their "people" superlatives (most played with, winning duo, biggest
-// victim, nemesis). All derived by playerStatsService in ≤3 reads; names for
+// victim, nemesis). Derived by playerStatsService with history enrichment; names for
 // the relational cards are resolved here.
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { captureRef } from 'react-native-view-shot';
+import { ScrollSurface } from '@/components/ScrollSurface';
+import { toast } from '@/components/Toast';
+import { PersonalStatisticsCard, PersonalStatisticsWelcome, StatisticsAction, StatisticsBrand } from '@/components/stats/PersonalStatisticsCard';
 import { Button } from '@/components/Button';
 import { logError } from '@/services/errorLog';
-import { EmptyState } from '@/components/EmptyState';
-import { Card } from '@/components/Card';
-import { UserAvatar } from '@/components/UserAvatar';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
-import { AppearItem } from '@/components/anim/AppearItem';
 import { userService } from '@/services';
 import {
   playerStatsService,
@@ -23,13 +23,18 @@ import {
   type PlayerStatsSummary,
 } from '@/services/playerStatsService';
 import { useUserStore } from '@/store/userStore';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { User } from '@/types';
 
 type Resolved = Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>;
 
 export function StatisticsScreen() {
+  const nav = useNavigation<any>();
+  const route = useRoute();
+  const shareRef = useRef<View>(null);
+  const sharingRef = useRef(false);
+  const [sharing, setSharing] = useState(false);
   const localUser = useUserStore((s) => s.currentUser);
   const [stats, setStats] = useState<PlayerStatsSummary | null>(null);
   const [people, setPeople] = useState<Record<string, Resolved>>({});
@@ -42,6 +47,7 @@ export function StatisticsScreen() {
     ties: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [highlightsLoading, setHighlightsLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
   const statsOwnerRef = useRef(localUser?.id);
@@ -52,10 +58,11 @@ export function StatisticsScreen() {
       statsOwnerRef.current = uid;
       setStats(null); setPen(null); setPeople({}); setFailed(false);
     }
-    if (!uid) { setLoading(false); return; }
+    if (!uid) { setLoading(false); setHighlightsLoading(false); return; }
     let alive = true;
     setLoading(true);
     setFailed(false);
+    setHighlightsLoading(true);
     // Goals are incremented SERVER-side (commitRoundStats), so the local store
     // copy lags. Fetch the fresh user doc for an accurate goal count + goals/
     // evening rather than trusting the (possibly stale) cached stats.
@@ -80,6 +87,15 @@ export function StatisticsScreen() {
         return playerStatsService.compute(uid, {
           goals: fresh?.stats?.goals ?? localUser?.stats?.goals ?? 0,
           assists: fresh?.stats?.assists ?? localUser?.stats?.assists ?? 0,
+          isCurrent: () => alive,
+          onBase: (base) => {
+            if (!alive) return;
+            setStats(base);
+            setLoading(false);
+          },
+          onHighlights: (highlights) => {
+            if (alive) setStats(base => base ? { ...base, highlights } : base);
+          },
         });
       })
       .then(async (s) => {
@@ -114,7 +130,7 @@ export function StatisticsScreen() {
         if (alive) { setFailed(true); logError('loadStatistics', err, { userId: uid }); }
       })
       .finally(() => {
-        if (alive) setLoading(false);
+        if (alive) { setLoading(false); setHighlightsLoading(false); }
       });
     return () => {
       alive = false;
@@ -123,281 +139,78 @@ export function StatisticsScreen() {
     // server bump (no goal change) otherwise left the assist tile stale.
   }, [localUser?.id, localUser?.stats?.goals, localUser?.stats?.assists, reloadTick]);
 
-  const hasData = !!stats && stats.attendedGames > 0;
+  const qaPreview = __DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES === '1' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1'
+    ? (route.params as { qaStatisticsPreview?: 'full' | 'empty' } | undefined)?.qaStatisticsPreview : undefined;
+  const fixture = qaPreview === 'full' ? (require('@/dev/personalStatisticsFixture') as typeof import('@/dev/personalStatisticsFixture')).personalStatisticsFixture : null;
+  // Effects run after render: never paint a previous owner's numbers next to
+  // the new account's name, even for the first frame after an auth change.
+  const ownsStats = statsOwnerRef.current === localUser?.id;
+  const viewStats = fixture?.stats ?? (ownsStats ? stats : null);
+  const viewPen = fixture?.pen ?? (ownsStats ? pen : null);
+  const viewPeople = fixture?.people ?? (ownsStats ? people : {});
+  const viewUser = fixture?.user ?? localUser;
+  const hasData = qaPreview === 'empty' ? false : !!viewStats && (viewStats.attendedGames > 0 || viewStats.goals > 0 || viewStats.assists > 0 || !!viewPen && (viewPen.penTaken > 0 || viewPen.penFaced > 0 || viewPen.ownGoals > 0));
+
+  const onShare = async () => {
+    if (!shareRef.current || sharingRef.current) return;
+    sharingRef.current = true;
+    setSharing(true);
+    try {
+      const uri = await captureRef(shareRef, { format: 'png', quality: 1, result: 'tmpfile' });
+      // Lazy load for older development shells; release binaries include the module.
+      const Sharing = require('expo-sharing') as typeof import('expo-sharing');
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'הכדורגל שלי' });
+      } else toast.error(he.summaryShareUnavailable);
+    } catch (err) {
+      logError('sharePersonalStatistics', err);
+      toast.error(he.summaryShareFailed);
+    } finally {
+      sharingRef.current = false;
+      setSharing(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader title={he.statsScreenTitle} />
-      {loading && !stats ? (
-        <View style={styles.center}>
-          <SoccerBallLoader size={40} />
-        </View>
-      ) : failed && !hasData ? (
+      <View style={styles.header}>
+        <Pressable accessibilityRole="button" accessibilityLabel="חזרה" onPress={() => nav.goBack()} hitSlop={10} style={styles.back}>
+          <Ionicons name="chevron-forward" size={25} color="#111B40" />
+        </Pressable>
+        <Text style={styles.title}>הכדורגל שלי</Text>
+        <StatisticsBrand />
+      </View>
+      {(!ownsStats || loading && !stats) && !qaPreview ? (
+        <View style={styles.center}><SoccerBallLoader size={40} /></View>
+      ) : failed && !hasData && !qaPreview ? (
         <View style={styles.center}>
           <Text style={{ color: colors.textMuted }}>לא ניתן לטעון את הסטטיסטיקה כרגע.</Text>
           <Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} />
         </View>
-      ) : !hasData ? (
-        <EmptyState icon="stats-chart-outline" title={he.statsScreenEmpty} />
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
-          {failed ? <View><Text style={{ color: colors.textMuted }}>לא ניתן לרענן את הסטטיסטיקה כרגע. הנתונים הקודמים מוצגים.</Text><Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} /></View> : null}
-          {/* ── Numbers ─────────────────────────────────────────────── */}
-          <Text style={styles.section}>{he.statsSectionNumbers}</Text>
-          <View style={styles.tileGrid}>
-            <NumberTile icon="calendar-outline" value={String(stats!.attendedGames)} label={he.statGames} />
-            <NumberTile icon="football" value={String(stats!.goals)} label={he.statGoals} />
-            {/* "בישול" (assist) = cooking pun → a food icon, not a hand
-               (user request). Dropped the "גולים למחזור" + "שחקנים שונים"
-               tiles entirely (user request). */}
-            <NumberTile icon="restaurant-outline" value={String(stats!.assists)} label={he.statAssists} />
-            {/* Own goals — only shown once the player has one (a rare, dubious
-                stat; no need for a permanent 0 tile). */}
-            {/* Draws are NOT shown here, deliberately.
-                `users.stats` carries wins and ties but no losses and no
-                mini-game count, so a draws tile stands on this screen with
-                nothing to be a fraction of: "6 תיקו" beside 33 evenings and
-                29 goals reads as a result without a record. Reported exactly
-                that way — "יש רק תיקו אבל אין נצחונות והפסדים" — with the
-                tile circled.
-                The club table is where the three outcomes live together and
-                mean something. Bring this back only alongside wins AND
-                losses, which needs the personal stats to carry losses first. */}
-            {pen && pen.ownGoals > 0 ? (
-              <NumberTile icon="footsteps-outline" value={String(pen.ownGoals)} label={he.statOwnGoals} />
-            ) : null}
-          </View>
-
-          {/* ── Penalties AS KICKER (only when the player took any) ───── */}
-          {pen && pen.penTaken > 0 ? (
-            <>
-              <Text style={[styles.section, styles.sectionGap]}>
-                {he.statsSectionPenaltiesKicker}
-              </Text>
-              <View style={styles.tileGrid}>
-                <NumberTile
-                  icon="football-outline"
-                  value={`${pen.penScored}/${pen.penTaken}`}
-                  label={he.statPenScored}
-                />
-                <NumberTile
-                  icon="stats-chart-outline"
-                  value={`${Math.round((pen.penScored / pen.penTaken) * 100)}%`}
-                  label={he.statPenRate}
-                />
-              </View>
-            </>
-          ) : null}
-
-          {/* ── Penalties AS KEEPER (only when the player faced any) ──── */}
-          {pen && pen.penFaced > 0 ? (
-            <>
-              <Text style={[styles.section, styles.sectionGap]}>
-                {he.statsSectionPenaltiesKeeper}
-              </Text>
-              <View style={styles.tileGrid}>
-                <NumberTile
-                  icon="hand-left-outline"
-                  value={String(pen.penSaved)}
-                  label={he.statPenSaves}
-                />
-                <NumberTile
-                  icon="shield-checkmark-outline"
-                  value={`${Math.round((pen.penSaved / pen.penFaced) * 100)}%`}
-                  label={he.statPenSaveRate}
-                />
-              </View>
-            </>
-          ) : null}
-
-          {/* ── People (named superlatives) ─────────────────────────── */}
-          <Text style={[styles.section, styles.sectionGap]}>
-            {he.statsSectionPeople}
-          </Text>
-          <View style={styles.peopleWrap}>
-            <PersonCard
-              index={0}
-              icon="people"
-              tint={colors.primary}
-              title={he.statMostPlayedWith}
-              stat={stats!.mostPlayedWith}
-              sub={(n) => he.statMostPlayedWithSub(n)}
-              person={resolve(stats!.mostPlayedWith, people)}
-            />
-            <PersonCard
-              index={1}
-              icon="trophy"
-              tint="#F4B73E"
-              title={he.statMostWinsWith}
-              stat={stats!.mostWinsWith}
-              sub={(n) => he.statMostWinsWithSub(n)}
-              person={resolve(stats!.mostWinsWith, people)}
-            />
-            <PersonCard
-              index={2}
-              icon="thumbs-up"
-              tint={colors.success}
-              title={he.statBiggestVictim}
-              stat={stats!.biggestVictim}
-              sub={(n) => he.statBiggestVictimSub(n)}
-              person={resolve(stats!.biggestVictim, people)}
-            />
-            <PersonCard
-              index={3}
-              icon="flame"
-              tint={colors.danger}
-              title={he.statNemesis}
-              stat={stats!.nemesis}
-              sub={(n) => he.statNemesisSub(n)}
-              person={resolve(stats!.nemesis, people)}
-            />
-            <PersonCard
-              index={4}
-              icon="hand-left"
-              tint="#0EA5E9"
-              title={he.statMostAssistedTo}
-              stat={stats!.mostAssistedTo}
-              sub={(n) => he.statMostAssistedToSub(n)}
-              person={resolve(stats!.mostAssistedTo, people)}
-            />
-            <PersonCard
-              index={5}
-              icon="hand-right"
-              tint="#8B5CF6"
-              title={he.statMostAssistedBy}
-              stat={stats!.mostAssistedBy}
-              sub={(n) => he.statMostAssistedBySub(n)}
-              person={resolve(stats!.mostAssistedBy, people)}
-            />
-          </View>
-        </ScrollView>
+        <ScrollSurface contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {failed && !qaPreview ? <View><Text style={{ color: colors.textMuted }}>לא ניתן לרענן את הסטטיסטיקה כרגע. הנתונים הקודמים מוצגים.</Text><Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} /></View> : null}
+          {hasData && viewStats ? <>
+            {!qaPreview && viewStats.highlights?.incomplete && !highlightsLoading ? <View><Text style={{color:colors.textMuted}}>חלק מנתוני המחזורים לא נטענו. הנתונים הזמינים מוצגים.</Text><Button title={he.retry} variant="outline" onPress={() => setReloadTick(t=>t+1)} /></View> : null}
+            <View ref={shareRef} collapsable={false} style={styles.shareCard}>
+              <PersonalStatisticsCard user={viewUser ?? null} stats={viewStats} people={viewPeople} pen={viewPen} highlightsLoading={!qaPreview && highlightsLoading} />
+              <View style={styles.shareBrand}><StatisticsBrand /></View>
+            </View>
+            <StatisticsAction title={sharing ? 'מכין את הכרטיס…' : 'שתף את הכרטיס שלי'} icon="share-social-outline" disabled={sharing} onPress={() => void onShare()} />
+          </> : <PersonalStatisticsWelcome onFind={() => nav.getParent()?.navigate('GameTab', { screen: 'GamesList' })} />}
+        </ScrollSurface>
       )}
     </SafeAreaView>
   );
 }
 
-function resolve(
-  stat: NamedStat | null,
-  people: Record<string, Resolved>,
-): Resolved | null {
-  if (!stat) return null;
-  return people[stat.uid] ?? null;
-}
-
-function NumberTile({
-  icon,
-  value,
-  label,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  value: string;
-  label: string;
-}) {
-  return (
-    <Card style={styles.tile}>
-      <Ionicons name={icon} size={18} color={colors.primary} />
-      <Text style={styles.tileValue}>{value}</Text>
-      <Text style={styles.tileLabel}>{label}</Text>
-    </Card>
-  );
-}
-
-function PersonCard({
-  index,
-  icon,
-  tint,
-  title,
-  stat,
-  sub,
-  person,
-}: {
-  index: number;
-  icon: keyof typeof Ionicons.glyphMap;
-  tint: string;
-  title: string;
-  stat: NamedStat | null;
-  sub: (n: number) => string;
-  person: Resolved | null;
-}) {
-  return (
-    <AppearItem index={index}>
-      <Card style={styles.person}>
-        <View style={[styles.personIcon, { backgroundColor: tint }]}>
-          <Ionicons name={icon} size={18} color="#FFFFFF" />
-        </View>
-        <View style={styles.personText}>
-          <Text style={styles.personTitle}>{title}</Text>
-          {stat ? (
-            // Show the EARNED stat even if the partner's user doc failed to
-            // resolve (deleted / fetch error) — previously a legit superlative
-            // rendered as "no data" just because `person` was null.
-            <Text style={styles.personSub} numberOfLines={1}>
-              {sub(stat.count)}
-            </Text>
-          ) : (
-            <Text style={styles.personEmpty}>{he.statsPersonEmpty}</Text>
-          )}
-        </View>
-        {stat && person ? (
-          <View style={styles.personAvatar}>
-            <UserAvatar user={person} size={44} ring />
-            <Text style={styles.personName} numberOfLines={1}>
-              {firstName(person.name)}
-            </Text>
-          </View>
-        ) : (
-          <View style={[styles.personAvatar, styles.personAvatarEmpty]}>
-            <Ionicons name="person-outline" size={22} color={colors.textMuted} />
-          </View>
-        )}
-      </Card>
-    </AppearItem>
-  );
-}
-
-function firstName(name: string): string {
-  return (name ?? '').trim().split(/\s+/)[0] || name;
-}
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+  root: { flex: 1, backgroundColor: '#F4F7FB' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
-  content: { padding: spacing.lg, gap: spacing.sm, paddingBottom: spacing.xxl },
-  section: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
-  sectionGap: { marginTop: spacing.lg },
-  // numbers grid
-  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  tile: {
-    width: '31%',
-    flexGrow: 1,
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: spacing.md,
-  },
-  tileValue: { ...typography.h2, color: colors.text, fontWeight: '900' },
-  tileLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '700', textAlign: 'center' },
-  // people cards
-  peopleWrap: { gap: spacing.sm },
-  person: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
-  personIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  personText: { flex: 1, minWidth: 0, gap: 2 },
-  personTitle: { ...typography.bodyBold, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
-  personSub: { ...typography.caption, color: colors.textMuted, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
-  personEmpty: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
-  personAvatar: { alignItems: 'center', gap: 2, width: 56 },
-  personAvatarEmpty: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  personName: { ...typography.caption, color: colors.text, fontWeight: '700', width: '100%', textAlign: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#FFF' },
+  back: { minHeight: 40, minWidth: 32, alignItems: 'center', justifyContent: 'center' },
+  title: { flex: 1, fontSize: 21, fontWeight: '800', color: '#111B40', textAlign: RTL_LABEL_ALIGN },
+  content: { padding: 16, gap: 12, paddingBottom: 28 },
+  shareCard: { backgroundColor: '#F4F7FB', gap: 12 },
+  shareBrand: { alignItems: 'center', paddingVertical: 8 },
 });

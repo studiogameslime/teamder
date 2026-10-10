@@ -68,4 +68,27 @@ describe('summary data authority', () => {
     expect(await eveningSummaryService.getPersonalRecords(m!)).toEqual([]);
     expect(m?.score).toBe(8.9);
   });
+  it('propagates a failed authoritative stat read instead of claiming the player did not play', async () => {
+    (getDoc as jest.Mock).mockImplementation(async (path: string) => {
+      if (path.startsWith('gamePlayerStats/')) throw new Error('offline');
+      return snap();
+    });
+    await expect(eveningSummaryService.getEveningSummary('g', 'u')).rejects.toThrow('offline');
+  });
+  it('propagates a failed game read, but treats a missing stat document as unavailable', async () => {
+    (gameService.getGameById as jest.Mock).mockRejectedValue(new Error('denied'));
+    await expect(eveningSummaryService.getEveningSummary('g', 'u')).rejects.toThrow('denied');
+    setup(undefined);
+    (getDoc as jest.Mock).mockResolvedValue(snap());
+    expect(await eveningSummaryService.getEveningSummary('g', 'u')).toBeNull();
+  });
+  it('labels a local score estimate when the committed standings are absent or fail to load', async () => {
+    setup(stat, rounds, null);
+    const estimated = await eveningSummaryService.getEveningSummary('g', 'u');
+    expect(estimated?.scoreEstimated).toBe(true);
+    setup();
+    const committed = await eveningSummaryService.getEveningSummary('g', 'u');
+    expect(committed?.scoreEstimated).toBe(false);
+    expect(committed?.score).toBe(8.9);
+  });
 });

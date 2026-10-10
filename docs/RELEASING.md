@@ -138,3 +138,16 @@ below it went.
 be created and submitted through the App Store Connect API — there is a
 script for it under `~/.teamder-update-watch/`. A crash-on-launch justifies
 asking Apple for an expedited review.
+
+## בדיקת קבצים מקומית לפני התחלת שחרור
+
+אפשר להריץ בדיקה שאינה בונה, אינה מגישה ואינה פונה לרשת:
+
+```powershell
+node scripts/release-preflight.cjs --platform android --build-profile production --submit-profile internal
+node scripts/release-preflight.cjs --platform ios --profile production
+```
+
+פרופילי הבנייה וההגשה נפרדים בכוונה: למסלול הפנימי באנדרואיד בונים בפרופיל `production` ומגישים בפרופיל `internal`. ניתן להוסיף `--json` לפלט מובנה. קוד יציאה 1 מציין קובץ חסר; קוד 0 מעיד רק על קיום הקבצים שנבדקו, ולא על תקפות חתימה, הרשאות חנות או תקינות הבנייה. הסקריפט אינו מציג מפתחות או סיסמאות.
+
+ב־10.10.2026 במחשב Windows הנוכחי בדיקת Android עברה את בדיקות קיום הקבצים. בדיקת iOS מצאה שני חסרים: `credentials.json`, הנדרש משום שהפרופיל מגדיר חתימה מקומית, ומפתח ההגשה שמופיע ב־`eas.json` בנתיב `/Users/matan/.teamder-update-watch/AuthKey_SQBY46Q3DC.p8`. יש להשלים חתימה ומפתח אמיתיים במקום ליצור נתיבים או מפתחות מדומים, או לבצע את שלב Apple במחשב שבו האישורים זמינים. זו תמונת מצב מקומית מתוארכת; יש להריץ שוב לפני בנייה.

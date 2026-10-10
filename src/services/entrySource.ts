@@ -38,6 +38,11 @@ export type EntrySource =
 
 let current: EntrySource = 'unknown';
 
+/** No identity yet is unresolved, never evidence of an existing member. */
+export function entryGuestAfterHydration(hydrated: boolean, user: { id: string; isGuest?: boolean } | null): boolean | null {
+  return hydrated && user?.id ? user.isGuest === true : null;
+}
+
 export function setEntrySource(source: EntrySource): void {
   current = source;
 }

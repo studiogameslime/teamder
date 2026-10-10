@@ -56,6 +56,7 @@ import { mockGamesV2, mockRoundHistory } from '@/data/mockData';
 import { IntentScreen } from '@/screens/entry/IntentScreen';
 import { useEntryStore } from '@/store/entryStore';
 import { MotionPreview } from './MotionPreview';
+import { CommunityStatsWelcome } from '@/components/community/CommunityStatsWelcome';
 import { appAlert } from '@/components/AppDialog';
 import {
   ContextualAuthSheet,
@@ -134,6 +135,8 @@ const ROUTES: Array<
   ['Profile', 'Profile', 'ProfileTab'],
   ['ProfileEdit', 'ProfileEdit', 'ProfileTab'],
   ['Statistics', 'Statistics', 'ProfileTab'],
+  ['StatisticsPopulated', 'Statistics', 'ProfileTab', { qaStatisticsPreview: 'full' }],
+  ['StatisticsEmpty', 'Statistics', 'ProfileTab', { qaStatisticsPreview: 'empty' }],
   ['Achievements', 'Achievements', 'ProfileTab'],
   ['SeasonTitles', 'SeasonTitles', 'ProfileTab'],
   ['SeasonSummary', 'SeasonSummary', 'ProfileTab', { groupId: 'g1' }],
@@ -303,6 +306,7 @@ export function QARouteLauncher(): React.ReactElement | null {
   const [open, setOpen] = useState(false);
   const [motionPreview, setMotionPreview] = useState(false);
   const [entryPreview, setEntryPreview] = useState(false);
+  const [statsWelcomePreview, setStatsWelcomePreview] = useState(false);
   const [authKind, setAuthKind] = useState<AuthPromptReason | null>(null);
   // Which route is actually on screen, printed so a `uiautomator dump` can
   // read it. Comparing rendered TEXT between two screens was the alternative
@@ -319,6 +323,7 @@ export function QARouteLauncher(): React.ReactElement | null {
       setOpen(false);
       if (target === '_entry_invite' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setEntryPreview(true); return; }
       if (target === '_motion') { setMotionPreview(true); return; }
+      if (target === '_stats_welcome' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setStatsWelcomePreview(true); return; }
       if (target.startsWith('_auth_')) {
         setAuthKind(target.slice(6) as AuthPromptReason);
         return;
@@ -358,16 +363,22 @@ export function QARouteLauncher(): React.ReactElement | null {
 
   return (
     <>
+      {statsWelcomePreview ? <Modal visible onRequestClose={() => setStatsWelcomePreview(false)}>
+        <ScrollView style={{ backgroundColor: '#F4F7FB' }} contentContainerStyle={{ padding: 16, paddingTop: 48 }}>
+          <CommunityStatsWelcome onCreate={() => setStatsWelcomePreview(false)} />
+        </ScrollView>
+      </Modal> : null}
       {entryPreview ? <Modal visible onRequestClose={() => setEntryPreview(false)}><EntryInvitePreview /></Modal> : null}
       {motionPreview ? <MotionPreview onClose={() => setMotionPreview(false)} /> : null}
-      <Pressable style={s.fab} onPress={() => setOpen(true)} testID="qa-fab">
+      {/* Keep the statistics proof unobstructed; deep links remain available. */}
+      {here !== 'Statistics' ? <Pressable style={s.fab} onPress={() => setOpen(true)} testID="qa-fab">
         <Text style={s.fabTxt}>QA</Text>
-      </Pressable>
+      </Pressable> : null}
       {/* `pointerEvents: none` — a census must never have its own badge
           swallow a press meant for the screen underneath it. */}
-      <View style={s.badge} pointerEvents="none">
+      {here !== 'Statistics' ? <View style={s.badge} pointerEvents="none">
         <Text style={s.badgeTxt} testID="qa-here">{`@${here}`}</Text>
-      </View>
+      </View> : null}
       <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
         <View style={s.sheet}>
           <View style={s.head}>

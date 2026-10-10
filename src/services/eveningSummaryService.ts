@@ -140,6 +140,8 @@ export interface EveningSummaryModel {
   goals: number;
   assists: number;
   score: number;
+  /** Local estimate when no committed standing score is available. */
+  scoreEstimated?: boolean;
   title: string;
   titleEmoji: string;
   /** situational "alive" strips picked by this player's actual performance. */
@@ -214,6 +216,7 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     return { gameId, uid, playerName: 'אלירן צברי', communityName: 'כדורגל אנשים טובים', dateLabel: 'יום רביעי, 7.10',
       rounds: 3, totalRounds: 8, totalKnown: true, wins: 1, losses: 2, winRate: 33, goals: 0, assists: 0,
       score: eveningScore({ goals: 0, assists: 0, wins: 1, gamesPlayed: 3, pen: { scored: 0, saved: 0, missed: 0, conceded: 0 } }),
+      scoreEstimated: true,
       title: '', titleEmoji: '', insights: [], scoreDelta: null, rank: null, rankTotal: null, rankDelta: null,
       scoreRank: null, scoreTotal: null, metrics: [], heldPitch: 0, teamGoalsFor: 0, teamGoalsAgainst: 0,
       highlights: [], personalRecords: [], outcomes: ['loss', 'win', 'loss'], teamGoalsKnown: false };
@@ -306,8 +309,8 @@ export const eveningSummaryService = {
       // or a denied/failed read, degrades to "no contribution", never crashes.
       const [game, statSnap, roundSnap, name, standSnap] =
         await Promise.all([
-          gameService.getGameById(gameId).catch(() => null),
-          getDoc(doc(db, 'gamePlayerStats', `${gameId}__${uid}`)).catch(() => null),
+          gameService.getGameById(gameId),
+          getDoc(doc(db, 'gamePlayerStats', `${gameId}__${uid}`)),
           getDocs(collection(db, 'games', gameId, 'roundHistory')).catch(() => null),
           (viewerName
             ? Promise.resolve(viewerName)
@@ -317,6 +320,9 @@ export const eveningSummaryService = {
             () => null,
           ),
         ]);
+      // Missing is not failed: a missing summary may be unavailable, while a
+      // failed authoritative read must reach the screen's retry state.
+      if (!game || !statSnap.exists()) return null;
       const stand =
         standSnap && standSnap.exists()
           ? (standSnap.data() as Record<string, unknown>)
@@ -512,6 +518,7 @@ export const eveningSummaryService = {
         goals: row.goals,
         assists: row.assists,
         score,
+        scoreEstimated: storedScore == null,
         title: t.title,
         titleEmoji: t.emoji,
         insights: pickEveningInsights(narrative, seed),
@@ -537,7 +544,7 @@ export const eveningSummaryService = {
       };
     } catch (err) {
       logError('getEveningSummary', err, { gameId, uid });
-      return null;
+      throw err;
     }
   },
   async getPersonalRecords(model: EveningSummaryModel): Promise<PersonalEveningRecord[]> {

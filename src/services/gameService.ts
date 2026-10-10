@@ -30,6 +30,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  startAfter,
   setDoc,
   updateDoc,
   where,
@@ -1133,16 +1134,20 @@ export const gameService = {
         lifetime,
       };
     }
-    const q = query(
-      col.games(),
-      where('groupId', '==', groupId),
-      where('status', 'in', ['finished', 'cancelled']),
-      orderBy('startsAt', 'desc'),
-      limit(200),
-    );
-    let snap;
+    const rows: import('firebase/firestore').QueryDocumentSnapshot<GameDoc>[] = [];
     try {
-      snap = await getDocs(q);
+      // Lifetime means every terminal evening. A cursor snapshot also orders
+      // equal startsAt values by document id, without skipping tied dates.
+      let cursor: import('firebase/firestore').QueryDocumentSnapshot<GameDoc> | undefined;
+      for (;;) {
+        const page = await getDocs(query(col.games(),
+          where('groupId', '==', groupId),
+          where('status', 'in', ['finished', 'cancelled']),
+          orderBy('startsAt', 'desc'), ...(cursor ? [startAfter(cursor)] : []), limit(200)));
+        rows.push(...page.docs);
+        if (page.docs.length < 200) break;
+        cursor = page.docs[page.docs.length - 1];
+      }
     } catch (err) {
       if (isPermissionDenied(err) && !strict) return empty; // deleted group / non-member
       logError('getCommunityStats', err, { groupId });
@@ -1171,7 +1176,7 @@ export const gameService = {
     const lifeActiveYear = new Set<UserId>();
     /** Every lifetime evening, newest first, for the club-wide streak. */
     const lifeNights: Array<{ startsAt: number; attended: Set<UserId> }> = [];
-    for (const doc of snap.docs) {
+    for (const doc of rows) {
       const g = doc.data();
       // Lifetime first, BEFORE the season gate — one pass, two tallies. The
       // club's badges and its level are permanent, and the all-time scope
@@ -4136,40 +4141,45 @@ export const gameService = {
   // manual pick, so the shootout kicks credit penalty stats via that commit.
 
   /** Begin a shootout for the drawn round. `firstTeam` = who kicks first. */
-  async startShootout(gameId: string, firstTeam: 'A' | 'B'): Promise<void> {
-    if (!gameId) return;
+  async startShootout(gameId: string, firstTeam: 'A' | 'B', expectedRoundId?: string): Promise<void> {
+    if (!gameId) throw new Error('GAME_NOT_FOUND');
     const shootout = { firstTeam, keeperA: null, keeperB: null, kicks: [] };
     if (USE_MOCK_DATA) {
       const m =
         mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
-      if (m?.liveMatch) m.liveMatch.shootout = shootout;
+      if (!m?.liveMatch || ['finished', 'cancelled'].includes(m.status)) throw new Error('SHOOTOUT_CLOSED');
+      if (expectedRoundId && (!m.rotation || roundCommitKey(m.rotation) !== expectedRoundId)) throw new Error('SHOOTOUT_CHANGED');
+      if (!m.liveMatch.shootout) m.liveMatch.shootout = shootout;
       return;
     }
-    const cur = await readTimerState(gameId);
-    if (!cur?.liveMatch) return;
-    if (cur.status === 'finished' || cur.status === 'cancelled') return;
-    await updateDoc(docs.game(gameId), {
-      'liveMatch.shootout': shootout,
-      updatedAt: Date.now(),
+    await runTransaction(getFirebase().db, async tx => {
+      const ref = docs.game(gameId), snap = await tx.get(ref), cur = snap.data();
+      if (!cur?.liveMatch || ['finished', 'cancelled'].includes(cur.status)) throw new Error('SHOOTOUT_CLOSED');
+      if (expectedRoundId && (!cur.rotation || roundCommitKey(cur.rotation) !== expectedRoundId)) throw new Error('SHOOTOUT_CHANGED');
+      // A lost response or another administrator starting first is a read of
+      // the existing shootout, never permission to erase its keepers/kicks.
+      if (cur.liveMatch.shootout) return;
+      tx.update(ref, { 'liveMatch.shootout': shootout, updatedAt: Date.now() });
     });
   },
 
   /** Set (or replace) a team's sticky keeper for the shootout. */
-  async setShootoutKeeper(gameId: string, side: 'A' | 'B', uid: UserId): Promise<void> {
-    if (!gameId || !uid) return;
+  async setShootoutKeeper(gameId: string, side: 'A' | 'B', uid: UserId, expectedRoundId?: string): Promise<void> {
+    if (!gameId || !uid) throw new Error('SHOOTOUT_CLOSED');
     const field = side === 'A' ? 'keeperA' : 'keeperB';
     if (USE_MOCK_DATA) {
       const m =
         mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
-      if (m?.liveMatch?.shootout) m.liveMatch.shootout[field] = uid;
+      if (!m?.liveMatch?.shootout || ['finished', 'cancelled'].includes(m.status)) throw new Error('SHOOTOUT_CLOSED');
+      if (expectedRoundId && (!m.rotation || roundCommitKey(m.rotation) !== expectedRoundId)) throw new Error('SHOOTOUT_CHANGED');
+      m.liveMatch.shootout[field] = uid;
       return;
     }
-    const cur = await readTimerState(gameId);
-    if (!cur?.liveMatch?.shootout) return;
-    if (cur.status === 'finished' || cur.status === 'cancelled') return;
-    await updateDoc(docs.game(gameId), {
-      [`liveMatch.shootout.${field}`]: uid,
-      updatedAt: Date.now(),
+    await runTransaction(getFirebase().db, async tx => {
+      const ref = docs.game(gameId), snap = await tx.get(ref), cur = snap.data();
+      if (!cur?.liveMatch?.shootout || ['finished', 'cancelled'].includes(cur.status)) throw new Error('SHOOTOUT_CLOSED');
+      if (expectedRoundId && (!cur.rotation || roundCommitKey(cur.rotation) !== expectedRoundId)) throw new Error('SHOOTOUT_CHANGED');
+      tx.update(ref, { [`liveMatch.shootout.${field}`]: uid, updatedAt: Date.now() });
     });
   },
 
@@ -6770,7 +6780,7 @@ export const gameService = {
         if (decision === 'pass') return;
         throw new Error('STALE_OFFER');
       }
-      if (game.status !== 'open' && game.status !== 'locked') throw new Error('GAME_NOT_OPEN');
+      if (game.status !== 'open' && game.status !== 'locked' && game.status !== 'scheduled') throw new Error('GAME_NOT_OPEN');
       if (!game.waitlist.includes(userId)) throw new Error('STALE_OFFER');
       if (decision === 'confirm') {
         if (game.players.length + activeGuestCount(game.guests) >= game.maxPlayers) throw new Error('GROUP_FULL');

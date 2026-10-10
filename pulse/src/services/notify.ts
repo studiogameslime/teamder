@@ -9,11 +9,21 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { logNotification } from './notifLog';
+import { navRef } from '../navigation/navRef';
 
 const isExpoGo = Constants.executionEnvironment === 'storeClient';
 
 type NotificationsModule = typeof import('expo-notifications');
 let Notifications: NotificationsModule | null = null;
+
+export async function openInitialOnboardingNotification(): Promise<void> {
+  const response = await Notifications?.getLastNotificationResponseAsync();
+  const data = response?.notification.request.content.data;
+  if (data?.type === 'onboardingActivity' && navRef.isReady()) {
+    (navRef as any).navigate('OnboardingActivity', { sessionId: data.sessionId });
+    await Notifications?.clearLastNotificationResponseAsync();
+  }
+}
 
 if (!isExpoGo) {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -33,11 +43,22 @@ if (!isExpoGo) {
     const c = n.request.content;
     void logNotification(c.title ?? '', c.body ?? '', (c.data as Record<string, unknown>) ?? {});
   });
+  Notifications.addNotificationResponseReceivedListener(response => {
+    const data = response.notification.request.content.data;
+    if (data?.type === 'onboardingActivity' && navRef.isReady()) {
+      (navRef as any).navigate('OnboardingActivity', { sessionId: data.sessionId });
+      void Notifications?.clearLastNotificationResponseAsync();
+    }
+  });
 }
 
 export async function ensureNotificationSetup(): Promise<boolean> {
   if (!Notifications) return false; // Expo Go
   if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('onboarding', {
+      name: 'פעולות הצטרפות', importance: Notifications.AndroidImportance.HIGH,
+      sound: 'default',
+    });
     await Notifications.setNotificationChannelAsync('reviews', {
       name: 'Reviews & ratings',
       importance: Notifications.AndroidImportance.HIGH,

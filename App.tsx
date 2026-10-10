@@ -227,7 +227,7 @@ import { useAndroidBack } from '@/navigation/useAndroidBack';
 import { he } from '@/i18n/he';
 import { useScreenAwake } from '@/hooks/useScreenAwake';
 import { useUserStore } from '@/store/userStore';
-import { setEntrySource, type EntrySource } from '@/services/entrySource';
+import { setEntrySource, entryGuestAfterHydration, type EntrySource } from '@/services/entrySource';
 import { useEntryStore } from '@/store/entryStore';
 import { decideEntry } from '@/navigation/entryGate';
 import { useGroupStore } from '@/store/groupStore';
@@ -462,6 +462,8 @@ export default function App() {
   // closed vocabulary so the funnel can be sliced on it; `is_guest` says who
   // arrived, which is the number the whole guest refactor is judged on.
   const entryReportedRef = useRef(false);
+  const entryEventLoggedRef = useRef(false);
+  const [entryEvent, setEntryEvent] = useState<Record<string, string | boolean | undefined> | null>(null);
   const reportEntrySource = (
     how: 'deep_link' | 'stash' | 'deferred' | 'organic',
     pending: { type: 'session' | 'team' | 'app'; id?: string; invitedBy?: string } | null,
@@ -482,11 +484,9 @@ export default function App() {
     // say where the launch came from instead of assuming. See
     // `src/services/entrySource.ts` — GuestHome used to hardcode `organic`.
     setEntrySource(source as EntrySource);
-    const u = useUserStore.getState().currentUser;
-    logEvent(AnalyticsEvent.EntrySourceResolved, {
+    setEntryEvent({
       entry_source: source,
       resolved_by: how,
-      is_guest: u?.isGuest === true,
       target_type: pending?.type ?? 'none',
       // The id of a PUBLIC game or club — not personal data, and the thing
       // that makes a funnel row joinable to a real target. Never the inviter's
@@ -495,6 +495,14 @@ export default function App() {
       has_inviter: !!pending?.invitedBy,
     });
   };
+
+  useEffect(() => {
+    if (!entryEvent || entryEventLoggedRef.current) return;
+    const guest = entryGuestAfterHydration(userHydrated, useUserStore.getState().currentUser);
+    if (guest === null) return;
+    entryEventLoggedRef.current = true;
+    logEvent(AnalyticsEvent.EntrySourceResolved, { ...entryEvent, is_guest: guest });
+  }, [entryEvent, userHydrated, currentUserId, viewerIsGuest]);
 
   // How an invite maps onto a PendingAction kind. One place, so the analytics
   // and the consumer cannot drift on what a link "is".

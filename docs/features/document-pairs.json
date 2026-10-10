@@ -466,5 +466,11 @@
     "domain": "entry",
     "simple": "entry/legal-pages.simple.md",
     "technical": "entry/legal-pages.md"
+  },
+  {
+    "title": "מסלול ההצטרפות בפולס",
+    "domain": "shared",
+    "simple": "shared/onboarding-activity.simple.md",
+    "technical": "shared/onboarding-activity.md"
   }
 ]

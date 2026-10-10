@@ -102,3 +102,7 @@ B12: ChatStack רושמת את MatchDetails, CommunityHistory, CommunityEdit ו�
 
 
 ![לחיצה ראשונה לאחר גלילה בניסוי דמו מבוקר; מגבלות במניפסט](../screenshots/CommunityDetails-stale-end-controlled-2026-10-10.png)
+
+### תיקון יישור ציוד — 10.10.2026
+
+כותרת ציוד המחזור האחרון (`lastCycleTitle`) משתמשת רק ב־`RTL_LABEL_ALIGN`; הוסר שילובו עם `writingDirection: rtl`, שהפך את היישור לפיזי. צילום מצב עם מחזיקי ציוד נדרש לאימות חזותי; הקוד אינו ראיית הרצה.

@@ -195,12 +195,17 @@ export function ContextualAuthSheet({
   };
 
   const copy = copyOverride ?? COPY[kind];
+  const dismiss = (via: string) => {
+    if (busy) return;
+    logEvent(AnalyticsEvent.AuthCancelled, { action_kind: kind, via });
+    onCancel();
+  };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onCancel}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={() => dismiss('system_back')}>
       <SpringSheet
         visible={visible}
-        onBackdropPress={busy ? undefined : onCancel}
+        onBackdropPress={busy ? undefined : () => dismiss('backdrop_or_drag')}
         // `panelBottom` is a BOX from 10% down to the bottom edge, not a
         // bottom-anchored row — it sets `top:'10%'` so children with a
         // percentage height have something to resolve against (the filter
@@ -249,7 +254,7 @@ export function ContextualAuthSheet({
           {hasDraft ? <Text style={styles.reassure}>{he.ctxAuthReassure}</Text> : null}
 
           <Pressable
-            onPress={busy ? undefined : onCancel}
+            onPress={busy ? undefined : () => dismiss('close_button')}
             disabled={!!busy}
             style={({ pressed }) => [styles.cancel, pressed && { opacity: 0.6 }]}
             accessibilityRole="button"

@@ -686,7 +686,7 @@ export function RootNavigator() {
   // it. The splash is already what this person is looking at, so holding it
   // one more frame is invisible.
   if (entryDecision === 'unknown') return <Splash />;
-  if (entryDecision === 'entry') return <EntryStack />;
+  if (entryDecision === 'entry') return <><EntryStack /><QARouteLauncher /></>;
 
   // Post-sign-in onboarding (welcome → how → profile confirm) before group
   // selection. Once completed, /users/{uid}.onboardingCompleted is true and

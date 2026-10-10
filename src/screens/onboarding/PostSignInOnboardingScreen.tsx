@@ -107,6 +107,7 @@ export function PostSignInOnboardingScreen() {
   const canSave = name.trim().length > 0 && !busy && !uploading;
 
   const handlePickPhoto = async () => {
+    logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'photo_picker_opened', step: 'profile' });
     if (!user) return;
     setUploading(true);
     const res = await pickAndUploadAvatar(user.id);
@@ -157,6 +158,8 @@ export function PostSignInOnboardingScreen() {
   };
 
   const handleSave = async () => {
+    if (busy) return;
+    logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'profile_save_tapped', step: 'profile' });
     setBusy(true);
     try {
       const trimmedCity = city.trim();
@@ -236,6 +239,8 @@ export function PostSignInOnboardingScreen() {
             label={he.profileName}
             value={name}
             onChangeText={setName}
+            onFocus={() => logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'field_focused', field: 'name', step: 'profile' })}
+            onBlur={() => logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'field_edited', field: 'name', has_value: !!name.trim(), step: 'profile' })}
             placeholder={he.profileNamePlaceholder}
             maxLength={40}
             icon="person-outline"
@@ -249,7 +254,7 @@ export function PostSignInOnboardingScreen() {
             label={he.psoCityLabel}
             value={city}
             onChange={setCity}
-            onSelect={setCity}
+            onSelect={(value) => { setCity(value); logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'city_selected', has_value: !!value, step: 'profile' }); }}
             placeholder={he.psoCityPlaceholder}
             fetchSuggestions={fetchCities}
           />

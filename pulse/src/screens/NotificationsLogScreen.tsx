@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { navRef } from '../navigation/navRef';
 import { Screen, Card, Empty } from '../components/ui';
 import { colors, radius } from '../theme';
 import { timeAgo } from '../format';
@@ -26,6 +27,7 @@ type Seg = 'server' | 'local';
 
 function iconFor(kind?: string): { icon: keyof typeof Ionicons.glyphMap; color: string } {
   switch (kind) {
+    case 'onboardingActivity': return { icon: 'footsteps', color: colors.primary };
     case 'gameCreate': return { icon: 'football', color: '#22C55E' };
     case 'gameJoin': return { icon: 'person-add', color: '#3B82F6' };
     case 'communityCreate': return { icon: 'people-circle', color: '#8B5CF6' };
@@ -184,7 +186,7 @@ export function NotificationsLogScreen() {
           return (
             <View key={n.id}>
               {showHeader ? <Text style={s.dayHeader}>{bucket}</Text> : null}
-              <Card style={s.row}>
+              <Pressable disabled={!n.sessionId} onPress={() => (navRef as any).navigate('OnboardingActivity', { sessionId: n.sessionId })}><Card style={s.row}>
                 <View style={[s.iconWrap, { backgroundColor: color + '22' }]}>
                   <Ionicons name={icon} size={20} color={color} />
                 </View>
@@ -195,7 +197,7 @@ export function NotificationsLogScreen() {
                   </View>
                   {n.body ? <Text style={s.body} numberOfLines={3}>{n.body}</Text> : null}
                 </View>
-              </Card>
+              </Card></Pressable>
             </View>
           );
         })

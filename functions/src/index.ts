@@ -1,4 +1,5 @@
 import { publicInviterFields, publicGameFields, publicCover, previewId } from './invitePreviewFields';
+export { recordOnboardingActivity, onOnboardingActivity } from './onboardingActivity';
 import { clubReminderEligibility } from './clubRegistrationReminder';
 // Cloud Functions consumer for the /notifications outbound queue + a
 // scheduled reminder job for upcoming games.
@@ -3712,7 +3713,7 @@ async function runExpireStaleOffers(): Promise<void> {
 
   let advanced = 0;
   for (const gameDoc of snap.docs) {
-    if ((gameDoc.data() as { status?: string }).status !== 'open') continue;
+    if (!['open', 'locked', 'scheduled'].includes((gameDoc.data() as { status?: string }).status ?? '')) continue;
     try {
       await db.runTransaction(async (tx) => {
         const fresh = await tx.get(gameDoc.ref);
@@ -3727,7 +3728,7 @@ async function runExpireStaleOffers(): Promise<void> {
           waitlistApprovalTimeoutMinutes?: number;
           pendingPromotion?: { uid?: string; offeredAt?: number } | null;
         };
-        if (d.status !== 'open') return;
+        if (!['open', 'locked', 'scheduled'].includes(d.status ?? '')) return;
         const offer = d.pendingPromotion;
         // This game's configured confirm window (default 20m).
         const gameTtlMs =

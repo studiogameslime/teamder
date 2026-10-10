@@ -1,9 +1,10 @@
 // playerStatsService — the data behind the dedicated "סטטיסטיקה" screen.
 //
-// Everything here is DERIVED from data we already keep, in at most three
-// reads: one games query (array-contains participantIds, same index the
+// Everything here is DERIVED from data we already keep. The core uses three
+// queries: one games query (array-contains participantIds, same index the
 // achievements derivation uses) plus the two pairStats halves (a==uid /
-// b==uid). No new tracking is required.
+// b==uid). Highlights additionally load owner-only standings and personal
+// per-evening rows with bounded concurrency. No new tracking is required.
 //
 //   • numeric:   attended games, attendance %, distinct teammates, goals,
 //                goals-per-evening
@@ -17,6 +18,9 @@ import { USE_MOCK_DATA } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 import { isAttendedGame } from '@/utils/playedGames';
 import type { UserId } from '@/types';
+import { loadPersonalHighlights } from './personalHighlightsService';
+import type { PersonalHighlights, PersonalRound } from '@/utils/personalStatistics';
+import { didEveningHappen } from '@/utils/eveningPlayed';
 
 export interface NamedStat {
   uid: UserId;
@@ -24,6 +28,7 @@ export interface NamedStat {
 }
 
 export interface PlayerStatsSummary {
+  highlights?: PersonalHighlights;
   attendedGames: number;
   totalRegistered: number;
   /** attended / registered, 0-100. */
@@ -76,7 +81,7 @@ function topEntry(map: Record<string, number>): NamedStat | null {
 export const playerStatsService = {
   async compute(
     userId: UserId,
-    ctx: { goals?: number; assists?: number } = {},
+    ctx: { goals?: number; assists?: number; onBase?: (summary: PlayerStatsSummary) => void; onHighlights?: (highlights: PersonalHighlights) => void; isCurrent?: () => boolean } = {},
   ): Promise<PlayerStatsSummary> {
     const goals = Math.max(0, ctx.goals ?? 0);
     const assists = Math.max(0, ctx.assists ?? 0);
@@ -97,6 +102,7 @@ export const playerStatsService = {
 
     // ── Games scan: attendance + co-attendance per teammate ──────────────
     let attendedGames = 0;
+    const attendedRounds: PersonalRound[] = [];
     let totalRegistered = 0;
     const withPlayer: Record<string, number> = {};
     try {
@@ -110,16 +116,19 @@ export const playerStatsService = {
           startsAt?: number;
           players?: string[];
           arrivals?: Record<string, string>;
+          groupId?: string;
         };
         if (g.status !== 'finished') continue;
         if (typeof g.startsAt === 'number' && g.startsAt >= now) continue;
         const players = g.players ?? [];
         if (!players.includes(userId)) continue;
         const arrivals = g.arrivals ?? {};
+        if (!didEveningHappen(g)) continue;
         totalRegistered += 1;
         // Canonical attended gate — shared with the Profile count + History.
         if (!isAttendedGame(g, userId, now)) continue;
         attendedGames += 1;
+        attendedRounds.push({gameId:d.id,at:g.startsAt ?? 0,groupId:g.groupId});
         for (const pid of players) {
           if (pid === userId || arrivals[pid] === 'no_show') continue;
           withPlayer[pid] = (withPlayer[pid] ?? 0) + 1;
@@ -231,7 +240,7 @@ export const playerStatsService = {
       throw err;
     }
 
-    return {
+    const base: PlayerStatsSummary = {
       attendedGames,
       totalRegistered,
       attendanceRate,
@@ -246,5 +255,11 @@ export const playerStatsService = {
       mostAssistedTo,
       mostAssistedBy,
     };
+    ctx.onBase?.(base);
+    const highlights = await loadPersonalHighlights(userId, attendedRounds, {
+      isCurrent: ctx.isCurrent,
+      onProgress: ctx.onHighlights,
+    });
+    return { ...base, highlights };
   },
 };

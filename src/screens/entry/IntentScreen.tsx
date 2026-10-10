@@ -122,6 +122,7 @@ export function IntentScreen() {
    */
   const [authOpen, setAuthOpen] = useState(false);
   const openExistingAccount = () => {
+    logEvent(AnalyticsEvent.EntryExistingAccountTapped, { is_guest: isGuest });
     beginExistingAccountAttempt();
     setAuthOpen(true);
   };

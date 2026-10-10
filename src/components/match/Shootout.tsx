@@ -31,6 +31,7 @@ import {
   type RosterMember,
 } from '@/components/match/rotationView';
 import { gameService } from '@/services/gameService';
+import { roundCommitKey } from '@/services/rotationEngine';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import type { DraftTeamsResult, LiveMatchState, MatchRotation } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -166,6 +167,7 @@ export function Shootout({
   if (visibleRef.current !== visible) uiEpoch.current += 1;
   visibleRef.current = visible;
   const attempt = useRef<Parameters<typeof gameService.recordShootoutKick>[1] | null>(null);
+  const setupAttempt = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => () => { uiEpoch.current += 1; }, []);
   /** In-sheet confirmation. It is NOT `appAlert`, and that is the point:
    *  `AppDialogHost` lives at the app root and renders its own <Modal>, so
@@ -196,6 +198,7 @@ export function Shootout({
       setBusy(false);
       setConfirm(null);
       attempt.current = null;
+      setupAttempt.current = null;
       setSaveError(false);
     }
   }, [visible]);
@@ -245,19 +248,39 @@ export function Shootout({
   }, [kicks]);
 
   // ── actions ──
+  const saveSetup = async (save: () => Promise<void>) => {
+    if (writing.current) return;
+    writing.current = true;
+    setupAttempt.current = save;
+    const epoch = uiEpoch.current;
+    const current = () => visibleRef.current && uiEpoch.current === epoch;
+    setBusy(true); setSaveError(false);
+    try {
+      await save();
+      if (current()) setupAttempt.current = null;
+    } catch {
+      if (current()) setSaveError(true);
+    } finally {
+      writing.current = false;
+      if (current()) setBusy(false);
+    }
+  };
   const startFirst = (side: 'A' | 'B') => {
-    void gameService.startShootout(gameId, side);
-    logEvent(AnalyticsEvent.ShootoutStarted, { gameId, firstTeam: side, kicks: kicks.length });
+    const expectedRoundId = rotation ? roundCommitKey(rotation) : undefined;
+    void saveSetup(async () => {
+      await gameService.startShootout(gameId, side, expectedRoundId);
+      logEvent(AnalyticsEvent.ShootoutStarted, { gameId, firstTeam: side, kicks: kicks.length });
+    });
   };
   const chooseRandom = () => startFirst(Math.random() < 0.5 ? 'A' : 'B');
   const pickKeeper = (uid: string) => {
-    void gameService.setShootoutKeeper(gameId, defendingTeam, uid);
-    logEvent(AnalyticsEvent.ShootoutKeeperPicked, {
-      gameId,
-      team: defendingTeam,
-      kickIndex: kicks.length,
+    const expectedRoundId = rotation ? roundCommitKey(rotation) : undefined;
+    const epoch = uiEpoch.current;
+    void saveSetup(async () => {
+      await gameService.setShootoutKeeper(gameId, defendingTeam, uid, expectedRoundId);
+      logEvent(AnalyticsEvent.ShootoutKeeperPicked, { gameId, team: defendingTeam, kickIndex: kicks.length });
+      if (visibleRef.current && uiEpoch.current === epoch) setKeeperPicking(false);
     });
-    setKeeperPicking(false);
   };
   // ── the kick itself ──────────────────────────────────────────────────────
   //
@@ -507,17 +530,17 @@ export function Shootout({
       <Tag />
       <Text style={styles.q}>{he.shFirstTitle}</Text>
       {/* text (team name) on the RIGHT, colour dot / icon on the LEFT */}
-      <Pressable style={styles.opt} onPress={() => startFirst('A')}>
+      <Pressable style={styles.opt} disabled={busy} onPress={() => startFirst('A')}>
         <Text style={styles.optTxt}>{nameA}</Text>
         <View style={styles.prowSpacer} />
         <View style={[styles.ob, { backgroundColor: colA }]} />
       </Pressable>
-      <Pressable style={styles.opt} onPress={() => startFirst('B')}>
+      <Pressable style={styles.opt} disabled={busy} onPress={() => startFirst('B')}>
         <Text style={styles.optTxt}>{nameB}</Text>
         <View style={styles.prowSpacer} />
         <View style={[styles.ob, { backgroundColor: colB }]} />
       </Pressable>
-      <Pressable style={styles.opt} onPress={chooseRandom}>
+      <Pressable style={styles.opt} disabled={busy} onPress={chooseRandom}>
         <Text style={styles.optTxt}>{he.shRandom}</Text>
         <View style={styles.prowSpacer} />
         <Text style={styles.optIcon}>🎲</Text>
@@ -657,6 +680,7 @@ export function Shootout({
         {roster.map((p) => (
           <Pressable
             key={p.id}
+            disabled={busy}
             style={[styles.prow, selectedId === p.id && { backgroundColor: colors.primaryLight }]}
             onPress={() => onPick(p.id)}
           >
@@ -809,7 +833,7 @@ export function Shootout({
             },
           ]}
         >
-          {saveError && <Pressable accessibilityRole="button" disabled={busy} onPress={() => attempt.current ? takeKick(attempt.current.scored) : setSaveError(false)}><Text style={styles.q}>השמירה לא אושרה. {he.retry}</Text></Pressable>}
+          {saveError && <Pressable accessibilityRole="button" disabled={busy} onPress={() => setupAttempt.current ? void saveSetup(setupAttempt.current) : attempt.current ? takeKick(attempt.current.scored) : setSaveError(false)}><Text style={styles.q}>השמירה לא אושרה. {he.retry}</Text></Pressable>}
           {body}
         </View>
 

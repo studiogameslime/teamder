@@ -1,3 +1,4 @@
+import { resetOnboardingJourney } from './onboardingActivity';
 // userService — single entry point for everything user-shaped.
 // In mock mode we read from src/data/mockUsers.ts and persist a copy
 // in AsyncStorage so name/avatar edits survive reload.
@@ -891,11 +892,13 @@ export const userService = {
 
   async signOut(): Promise<void> {
     if (USE_MOCK_DATA) {
+      resetOnboardingJourney();
       await storage.setAuthUserJson(null);
       await storage.setCurrentGroupId(null);
       return;
     }
     await signOutFirebase();
+    resetOnboardingJourney();
     // Forget the person in Joryio too, and start a fresh anonymous session.
     // The fresh session is the load-bearing half: this install's anonymous
     // history belongs to whoever just left, and the next person to sign in here

@@ -3305,10 +3305,10 @@ export function MatchDetailsScreen() {
                   pressed && { opacity: 0.85 },
                 ]}
               >
-                <Ionicons name="navigate" size={20} color={colors.primary} />
                 <Text style={styles.navigateCtaText}>
                   {he.matchDetailsNavigateButton}
                 </Text>
+                <Ionicons name="navigate" size={20} color={colors.primary} />
               </Pressable>
             ) : null}
 
@@ -4508,7 +4508,7 @@ const styles = StyleSheet.create({
   // obvious "I'm driving there" affordance.
   navigateCta: {
     // Waze icon on the LEFT of the label (QA request).
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,

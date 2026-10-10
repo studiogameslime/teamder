@@ -16,8 +16,11 @@ import { USE_MOCK_DATA } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 import { crumbAct } from '@/services/breadcrumbs';
 import { joryio } from '@/services/joryio';
+import { recordOnboardingActivity } from '@/services/onboardingActivity';
 
 export const AnalyticsEvent = {
+  EntryExistingAccountTapped: 'entry_existing_account_tapped',
+  OnboardingInteraction: 'onboarding_interaction',
   // Navigation
   ScreenView: 'screen_view',
 
@@ -696,6 +699,7 @@ export function logEvent(
 
   if (__DEV__) console.log('[analytics]', name, cleaned);
   if (USE_MOCK_DATA) return;
+  try { recordOnboardingActivity(name, cleaned); } catch { /* telemetry must never block a tap */ }
 
   // Second sink: the same event, to Joryio. Queued and batched there, so this
   // is a push onto an array — it cannot slow down or break the caller.

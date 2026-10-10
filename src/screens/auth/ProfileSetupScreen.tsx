@@ -27,9 +27,12 @@ export function ProfileSetupScreen() {
 
   const canSave = name.trim().length > 0 && !busy;
   const handleSave = async () => {
+    if (!canSave) return;
+    logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'profile_save_tapped', step: 'profile_setup' });
     setBusy(true);
     try {
       await updateProfile({ name: name.trim() });
+      logEvent(AnalyticsEvent.ProfileConfirmed, { source: 'profile_setup' });
     } catch (err) {
       // First-run name capture gates entry to the whole app. A silent
       // failure here strands the user on this screen with no feedback —

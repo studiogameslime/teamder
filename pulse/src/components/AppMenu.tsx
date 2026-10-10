@@ -37,6 +37,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { route: 'Games', label: 'משחקים', icon: 'football', tint: '#F97316' },
       { route: 'Availability', label: 'זמינות', icon: 'calendar', tint: '#3B82F6' },
       { route: 'Analytics', label: 'אנליטיקה', icon: 'stats-chart', tint: '#06B6D4' },
+      { route: 'OnboardingActivity', label: 'מסלול ההצטרפות', icon: 'footsteps', tint: '#3B82F6' },
       { route: 'Map', label: 'מפה', icon: 'map', tint: '#8B5CF6' },
     ],
   },
