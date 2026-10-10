@@ -19,6 +19,7 @@
     "scripts/pulse-ui",
     "node_modules",
     "artifacts",
-    "functions"
+    "functions",
+    "pulse"
   ]
 }

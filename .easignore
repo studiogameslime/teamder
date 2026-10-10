@@ -92,3 +92,6 @@ docs/תיעוד/
 
 # Feature documentation and screenshots are not app assets.
 docs/features/
+
+# Companion monitoring app — built separately.
+/pulse/
