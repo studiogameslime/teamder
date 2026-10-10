@@ -60,6 +60,7 @@ export function CommunityStatsWelcome({ onCreate }: { onCreate?: () => void }) {
             <Ionicons name={icon} size={27} color="#2467F4" />
           </View>
         ))}
+        <Text style={s.featureBody}>ועוד — תארים, שיאים ונתונים מהמחזורים שלכם.</Text>
       </View>
     </View>
   );

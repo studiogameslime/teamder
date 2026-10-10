@@ -4282,5 +4282,109 @@
       "אין הוכחת רשת, הרשאות ייצור, מסירת פוש או אייפון."
     ],
     "sha256": "64fa1349a16ede214d8666c213d1145cad60cc3d105a72265d120fabe6113fc6"
+  },
+  {
+    "file": "pulse-ManagerDashboard-2026-10-10.png",
+    "source": "artifacts\\pulse-fixes-2026-10-10\\ManagerDashboard.png",
+    "platform": "Android",
+    "environment": "דמו מקומי מנותק ממסד",
+    "sourceCommit": "bcca0886 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום מסך מרונדר באמולטור; אינו אימות iOS או מכשיר המדווח.",
+      "דיווחי חסימת לחיצות נשארים פתוחים."
+    ],
+    "sha256": "eca91bfc5337d95ddc91bdbf6403185597f53f023ee591e9d6ca904e2f092031"
+  },
+  {
+    "file": "pulse-ManagerAllRatings-2026-10-10.png",
+    "source": "artifacts\\pulse-fixes-2026-10-10\\ManagerAllRatings.png",
+    "platform": "Android",
+    "environment": "דמו מקומי מנותק ממסד",
+    "sourceCommit": "bcca0886 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום מסך מרונדר באמולטור; אינו אימות iOS או מכשיר המדווח.",
+      "דיווחי חסימת לחיצות נשארים פתוחים."
+    ],
+    "sha256": "c1c9bc73d202184434966756eedc0bd2645e9e6fb40342d4b4c79491b38bf5fb"
+  },
+  {
+    "file": "pulse-CommunityDetails-2026-10-10.png",
+    "source": "artifacts\\pulse-fixes-2026-10-10\\CommunityDetails.png",
+    "platform": "Android",
+    "environment": "דמו מקומי מנותק ממסד",
+    "sourceCommit": "bcca0886 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום מסך מרונדר באמולטור; אינו אימות iOS או מכשיר המדווח.",
+      "דיווחי חסימת לחיצות נשארים פתוחים."
+    ],
+    "sha256": "29bd73deecb247a304ababed86e3fa73c95adff634d34f3f7b9fae35f8814db1"
+  },
+  {
+    "file": "pulse-GamesList-2026-10-10.png",
+    "source": "artifacts\\pulse-fixes-2026-10-10\\GamesList.png",
+    "platform": "Android",
+    "environment": "דמו מקומי מנותק ממסד",
+    "sourceCommit": "bcca0886 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום מסך מרונדר באמולטור; אינו אימות iOS או מכשיר המדווח.",
+      "דיווחי חסימת לחיצות נשארים פתוחים."
+    ],
+    "sha256": "9beb2970b6c8cefe6fe5770ed79c5320eae6478b78ae325755550d948a3375a1"
+  },
+  {
+    "file": "pulse-Profile-2026-10-10.png",
+    "source": "artifacts\\pulse-fixes-2026-10-10\\Profile.png",
+    "platform": "Android",
+    "environment": "דמו מקומי מנותק ממסד",
+    "sourceCommit": "bcca0886 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום מסך מרונדר באמולטור; אינו אימות iOS או מכשיר המדווח.",
+      "דיווחי חסימת לחיצות נשארים פתוחים."
+    ],
+    "sha256": "90a7dab3f2e918feb8e8f97e9c3a9747826a0f59f181c966d714f08615b005fd"
+  },
+  {
+    "file": "pulse-StatisticsPopulated-2026-10-10.png",
+    "source": "artifacts\\pulse-fixes-2026-10-10\\StatisticsPopulated.png",
+    "platform": "Android",
+    "environment": "דמו מקומי מנותק ממסד",
+    "sourceCommit": "bcca0886 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "צילום מסך מרונדר באמולטור; אינו אימות iOS או מכשיר המדווח.",
+      "דיווחי חסימת לחיצות נשארים פתוחים."
+    ],
+    "sha256": "03aa1a28edf0f49512d33332576cc6e43c2acea1589aadbe580d3988f236faeb"
+  },
+  {
+    "file": "manager-overview-merged-2026-10-10.png",
+    "source": "artifacts/pulse-fixes-2026-10-10/Manager-overview-merged.png",
+    "platform": "Android",
+    "environment": "דמו מקומי מנותק ממסד",
+    "sourceCommit": "bcca0886 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "סקירה נבחרת מימין ושלוש לשוניות; מחזור פתוח בראש המסך.",
+      "אייפון ומכשיר הבעלים לא נבדקו. מצב סגור נבדק בקוד בלבד."
+    ],
+    "sha256": "2b3693be3ca7db3952d152ba5d31bd0d566be7e524e06c7d867ec44788f6ca08"
+  },
+  {
+    "file": "manager-summary-clean-copy-2026-10-10.png",
+    "source": "artifacts/pulse-fixes-2026-10-10/Manager-summary-clean-copy.png",
+    "platform": "Android",
+    "environment": "דמו מקומי מנותק ממסד",
+    "sourceCommit": "bcca0886 עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "סיכום ללא חזרת תקופה מעל מדדי המשחקים.",
+      "אין אימות אייפון פיזי."
+    ],
+    "sha256": "8baba2762e626272f98120e126145c10ecee6ed22019fef60390eb6c93f898e3"
   }
 ]

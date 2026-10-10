@@ -25,7 +25,8 @@ import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 import type { User } from '@/types';
 
 const BLUE='#2467F5', NAVY='#101B47', GREEN='#13834A', AMBER='#A66709';
-type Tab='overview'|'club'|'ratings'|'equipment';
+type Tab='club'|'ratings'|'equipment';
+const initialTab=(tab: CommunitiesStackParamList['ManagerDashboard']['initialTab']):Tab=>tab==='overview'||!tab?'club':tab;
 type Period=30|90|'season';
 const date=(at:number)=>new Date(at).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
 function Label({children,style}:{children:React.ReactNode;style?:any}) {return <Text style={[s.text,style]}>{children}</Text>;}
@@ -58,11 +59,13 @@ export function ManagerDashboardScreen() {
  const me=useUserStore(st=>st.currentUser);
  const [snapshot,setSnapshot]=useState<{owner:string;data:ManagerData}|null>(null);
  const [loading,setLoading]=useState(true),[error,setError]=useState(''),[refresh,setRefresh]=useState(0);
- const [tab,setTab]=useState<Tab>(route.params.initialTab??'overview');
+ const [tab,setTab]=useState<Tab>(initialTab(route.params.initialTab));
  const [period,setPeriod]=useState<Period>(90),[filter,setFilter]=useState<'all'|'up'|'down'>(route.params.initialFilter??'all');
  const [ratingTarget,setRatingTarget]=useState<User|null>(null),[saving,setSaving]=useState(false);
  const [details,setDetails]=useState<RatingSeries|null>(null);
  const [allEquipment,setAllEquipment]=useState(false);
+ const [allAbsent,setAllAbsent]=useState(false),[allCancellations,setAllCancellations]=useState(false);
+ useEffect(()=>{setAllAbsent(false);setAllCancellations(false);},[groupId]);
  const [playerSearch,setPlayerSearch]=useState('');
  useEffect(()=>setPlayerSearch(''),[groupId,me?.id]);
  const [now,setNow]=useState(Date.now());
@@ -74,7 +77,7 @@ export function ManagerDashboardScreen() {
    loadManagerDashboard(groupId,me.id).then(value=>{if(active)setSnapshot({owner:me.id,data:value});}).catch(err=>{if(active){logError('loadManagerDashboard',err,{groupId});setError(managerLoadErrorMessage(err));}}).finally(()=>{if(active)setLoading(false);});
    return ()=>{active=false;stopAccess();};
  },[groupId,me?.id,refresh]));
- useEffect(()=>{setTab(route.params.initialTab??'overview');setFilter(route.params.initialFilter??'all');},[groupId,route.params.initialTab,route.params.initialFilter]);
+ useEffect(()=>{setTab(initialTab(route.params.initialTab));setFilter(route.params.initialFilter??'all');},[groupId,route.params.initialTab,route.params.initialFilter]);
  const since=period==='season'?(data?.group.seasons?.startedAt??now):now-period*86400000;
  const scoped=useMemo(()=>data?.games.filter(g=>g.startsAt<now&&(period==='season'?inSeason(g,data.group.seasons):g.startsAt>=since))??[],[data,since,now,period]);
  const overview=useMemo(()=>data?managerOverview(data.group,data.games,now):null,[data,now]);
@@ -99,17 +102,16 @@ export function ManagerDashboardScreen() {
  </View>;
  const up=advice.filter(a=>a.direction==='up').length,down=advice.length-up;
  return <SafeAreaView edges={['top']} style={s.root}>
- <ImageBackground source={require('../../assets/images/groupImages/daylight-pitch.jpg')} resizeMethod="resize" style={s.hero}>
+ <ImageBackground source={require('../../assets/images/manager-locker-room.png')} resizeMethod="resize" style={s.hero}>
  <LinearGradient colors={['#15428BB0','#164D9999']} style={StyleSheet.absoluteFill}/>
  <View style={s.heroLine}><Pressable accessibilityRole="button" accessibilityLabel="חזרה" onPress={()=>nav.goBack()} style={s.back}><Ionicons name="chevron-forward" size={25} color="white"/></Pressable><Label style={s.heroTitle}>לוח מנהל</Label></View>
  <Label style={s.heroSubtitle}>{data?.group.name??'ניהול המועדון'}</Label>
  </ImageBackground>
- {data&&<View style={s.tabs}>{([{key:'overview',label:'סקירה'},{key:'club',label:'תמונת מועדון'},{key:'ratings',label:'דירוגים'},{key:'equipment',label:'ציוד'}] as const).map(t=><Pressable key={t.key} accessibilityRole="tab" accessibilityState={{selected:tab===t.key}} onPress={()=>{setTab(t.key);setDetails(null);}} style={[s.tab,tab===t.key&&s.tabActive]}><Label style={[s.tabLabel,tab===t.key&&{color:BLUE}]}>{t.label}</Label></Pressable>)}</View>}
+ {data&&<View style={s.tabs}>{([{key:'club',label:'סקירה'},{key:'ratings',label:'דירוגים'},{key:'equipment',label:'ציוד'}] as const).map(t=><Pressable key={t.key} accessibilityRole="tab" accessibilityState={{selected:tab===t.key}} onPress={()=>{setTab(t.key);setDetails(null);}} style={[s.tab,tab===t.key&&s.tabActive]}><Label style={[s.tabLabel,tab===t.key&&{color:BLUE}]}>{t.label}</Label></Pressable>)}</View>}
  {loading?<View style={s.center}><ActivityIndicator color={BLUE}/><Label style={s.muted}>טוען את נתוני המועדון…</Label></View>:!data?<View style={s.center}><Label>{error}</Label><Action title="נסה שוב" icon="refresh" onPress={()=>setRefresh(v=>v+1)}/></View>:
  <ScrollSurface keyboardShouldPersistTaps="handled" key={tab} contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={loading} onRefresh={()=>setRefresh(v=>v+1)}/>}>
  {data.truncated&&<Label style={s.notice}>מוצגים עד 200 מחזורים ו־1,000 רישומי ציוד אחרונים. ייתכן שהתקופה אינה מלאה.</Label>}
- {tab==='club'&&me&&<ManagerClubInsights data={data} viewerId={me.id} now={now} onRound={id=>nav.navigate('MatchDetails',{gameId:id})} onApprovals={()=>nav.navigate('AdminApproval')} onRate={setRatingTarget} onResolved={()=>setRefresh(v=>v+1)}/>}
- {tab==='overview'&&overview&&<>
+ {tab==='club'&&overview?.upcoming&&canJoinGame(overview.upcoming)&&(overview.upcoming.registrationOpensAt??0)<=now&&<>
  <Box title="המחזור הקרוב" icon="calendar-outline">
  {overview.upcoming?<><Pressable accessibilityRole="button" onPress={()=>nav.navigate('MatchDetails',{gameId:overview.upcoming!.id})}><Label style={s.muted}>{date(overview.upcoming.startsAt)} · {new Date(overview.upcoming.startsAt).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</Label><Label style={s.big}>{overview.total} מתוך {overview.upcoming.maxPlayers} רשומים</Label></Pressable>
  <View style={s.progress}><View style={[s.fill,{width:`${Math.min(100,overview.total/Math.max(1,overview.upcoming.maxPlayers)*100)}%`}]}/></View>
@@ -118,14 +120,18 @@ export function ManagerDashboardScreen() {
  {(overview.upcoming.pending?.length??0)>0&&<Label style={s.foot}>{overview.upcoming.pending!.length} ממתינים לאישור מנהל</Label>}
  {!canJoinGame(overview.upcoming)&&<Label style={s.foot}>ההרשמה סגורה כרגע</Label>}
  {overview.upcoming.registrationOpensAt&&overview.upcoming.registrationOpensAt>now?<Label style={s.foot}>ההרשמה תיפתח ב־{date(overview.upcoming.registrationOpensAt)}</Label>:null}
- </>:<Label style={s.muted}>אין מחזור עתידי מתוכנן</Label>}
+ </>:<View style={{alignItems:"center",gap:12,paddingVertical:18}}><Ionicons name="calendar-outline" size={42} color={BLUE}/><Label style={[s.heading,{textAlign:"center"}]}>מתכוננים למחזור הבא</Label><Label style={[s.muted,{textAlign:"center"}]}>כשנפתחת הרשמה או נרשמים שחקנים, כאן תראו את תמונת המחזור ואת הקבועים שעדיין חסרים.</Label></View>}
  </Box>
  {overview.upcoming&&<Box title="הקבועים שעדיין חסרים" icon="people-outline">
  {overview.missing.length?overview.missing.map(m=>{const state=registrationState(overview.upcoming!,m.userId);const status={none:'טרם נרשם',waitlist:'ברשימת המתנה',pending:'ממתין לאישור',cancelled:'ביטל הרשמה',rejected:'בקשתו נדחתה',registered:'רשום'}[state];return person(m.userId,`נרשם ל־${m.count} מתוך ${m.sample} המחזורים האחרונים · ${status}`);}):<Label style={s.muted}>כל השחקנים הקבועים רשומים למחזור הקרוב</Label>}
  <Label style={s.foot}>קבוע: נרשם לפחות ל־7 מתוך 10 המחזורים האחרונים. הנתונים מתייחסים להרשמה.</Label>
  </Box>}
- <Box title="לא נרשמו לאחרונה" icon="time-outline">{overview.absent.length?overview.absent.map(m=>person(m.userId,`${m.wasRegular?'קבוע בדרך כלל · ':''}לא נרשם ל־${m.missed} מחזורים ברצף`)):<Label style={s.muted}>אין היעדרויות מהרשמה לפי הסף שנקבע</Label>}</Box>
- <Box title="ביטולי הרשמה" icon="close-circle-outline">{periodPicker}<View style={s.cancellationTotal}><Label style={s.cancellationN}>{cancellations?.cancellationCount??0}</Label><Label style={s.muted}>ביטולים מתועדים בתקופה</Label></View>{cancellations?.members.filter(m=>m.cancellations).sort((a,b)=>b.cancellations-a.cancellations).map(m=>person(m.userId,`${m.cancellations} ביטולים`))}<Label style={s.foot}>ביטול שבוטל בהרשמה מחדש אינו נשמר בהיסטוריה הקיימת. הסרה בידי מנהל אינה ביטול של שחקן.</Label></Box>
+
+ </>}
+ {tab==='club'&&me&&<ManagerClubInsights data={data} viewerId={me.id} now={now} onRound={id=>nav.navigate('MatchDetails',{gameId:id})} onApprovals={()=>nav.navigate('AdminApproval')} onRate={setRatingTarget} onResolved={()=>setRefresh(v=>v+1)}/>}
+ {tab==='club'&&overview&&<>
+ <Box title="לא נרשמו לאחרונה" icon="time-outline">{overview.absent.length?overview.absent.slice(0,allAbsent?undefined:5).map(m=>person(m.userId,`${m.wasRegular?'קבוע בדרך כלל · ':''}לא נרשם ל־${m.missed} מחזורים ברצף`)):<Label style={s.muted}>אין היעדרויות מהרשמה לפי הסף שנקבע</Label>}{overview.absent.length>5&&<Action title={allAbsent?'הצג פחות':'הצג הכול'} icon={allAbsent?'chevron-up':'chevron-down'} onPress={()=>setAllAbsent(v=>!v)}/>}</Box>
+ <Box title="ביטולי הרשמה" icon="close-circle-outline">{periodPicker}<View style={s.cancellationTotal}><Label style={s.cancellationN}>{cancellations?.cancellationCount??0}</Label><Label style={s.muted}>ביטולים מתועדים בתקופה</Label></View>{cancellations?.members.filter(m=>m.cancellations).sort((a,b)=>b.cancellations-a.cancellations).slice(0,allCancellations?undefined:5).map(m=>person(m.userId,`${m.cancellations} ביטולים`))}{(cancellations?.members.filter(m=>m.cancellations).length??0)>5&&<Action title={allCancellations?'הצג פחות':'הצג הכול'} icon={allCancellations?'chevron-up':'chevron-down'} onPress={()=>setAllCancellations(v=>!v)}/>}<Label style={s.foot}>ביטול שבוטל בהרשמה מחדש אינו נשמר בהיסטוריה הקיימת. הסרה בידי מנהל אינה ביטול של שחקן.</Label></Box>
  </>}
  {tab==='ratings'&&<>
  <Label style={s.pageHeading}>ציונים ומגמות</Label>{periodPicker}
@@ -141,7 +147,7 @@ export function ManagerDashboardScreen() {
  {visibleSeries.map(a=>{const recommendation=recommendations.get(a.userId),direction=recommendation?.direction??'neutral',rising=direction==='up',color=rising?GREEN:direction==='down'?AMBER:BLUE,bg=rising?'#E9F8EF':direction==='down'?'#FFF3DF':'#EDF3FF',last=a.points[a.points.length-1];return <View key={a.userId} style={s.ratingCard}>
  <View style={s.ratingTop}><UserAvatar user={user(a.userId)} size={42}/><View style={{flex:1}}><Label style={s.ratingName}>{user(a.userId).name}</Label><Label style={s.muted}>דירוג מנהל {a.rating===null?'טרם נקבע':`⁦${a.rating.toFixed(1)}/5⁩`}</Label></View><View style={[s.badge,{backgroundColor:bg}]}><Label style={{fontSize:13,color,fontWeight:'700'}}>{recommendation?`לבחון ${rising?'העלאה':'הורדה'}`:'נתוני ביצוע'}</Label><Ionicons name={recommendation?(rising?'arrow-up':'arrow-down'):'stats-chart-outline'} size={16} color={color}/></View></View>
  <Label style={s.chartTitle}>ציונים מ־{a.points.length} מחזורים אחרונים</Label><ManagerTrend points={a.points} direction={direction}/>
- <View style={[s.lastScore,{backgroundColor:bg}]}><View style={s.scoreNumber}><Label style={s.scoreCaption}>ציון אחרון</Label><Label style={s.lastNumber}>{`⁦${last.score.toFixed(1)}/10⁩`}</Label></View><View style={{flex:1}}><Label style={s.reason}>{recommendation?`מגמת ${rising?'עלייה':'ירידה'} לאורך 5 מחזורים`:a.points.length<5?'מוצגים כל הציונים הקיימים; המלצה נבחנת מחמישה ציונים.':'הציונים זמינים לצפייה, ללא המלצה לשינוי דירוג.'}</Label></View></View>
+ <View style={[s.lastScore,{backgroundColor:bg}]}><View style={s.scoreNumber}><Label style={s.scoreCaption}>ממוצע {a.points.length} ציונים אחרונים</Label><Label style={s.lastNumber}>{`⁦${(a.points.reduce((sum,p)=>sum+p.score,0)/a.points.length).toFixed(1)}/10⁩`}</Label></View><View style={{flex:1}}><Label style={s.reason}>{recommendation?`מגמת ${rising?'עלייה':'ירידה'} לאורך 5 מחזורים`:a.points.length<5?'מוצגים כל הציונים הקיימים; המלצה נבחנת מחמישה ציונים.':'הציונים זמינים לצפייה, ללא המלצה לשינוי דירוג.'}</Label></View></View>
  <View style={s.cardActions}><Action title="הצג נתונים" icon="stats-chart-outline" onPress={()=>setDetails(a)}/>{data.group.internalRating&&<Pressable accessibilityRole="button" onPress={()=>{logEvent(AnalyticsEvent.RatingSheetOpened,{groupId,hasRating:a.rating!==null});setRatingTarget(user(a.userId));}} style={s.edit}><Label style={s.editText}>ערוך דירוג</Label><Ionicons name="chevron-back" size={19} color={BLUE}/></Pressable>}</View>
  </View>;})}
  <Label style={s.foot}>ציוני המחזור מתוך 10 ודירוג המנהל מתוך 5. המלצה אינה משנה דירוג אוטומטית.</Label>

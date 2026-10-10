@@ -78,8 +78,8 @@ export function PersonalStatisticsCard({ user, stats, people, pen, highlightsLoa
     {stats.highlights && ((stats.highlights.bestGoals ?? 0)>0 || (stats.highlights.bestAssists ?? 0)>0) ? <>
       <Text style={s.section}>הרגעים הבולטים שלך</Text>
       <View style={s.highlights}>
-        {(stats.highlights.bestGoals??0)>0&&<View style={[s.card,s.highlight,{backgroundColor:'#FFFCF4'}]}><View style={s.personCopy}><Text style={s.highlightNumber}>{stats.highlights.bestGoals}</Text><Text style={s.personTitle}>המחזור הכי פורה</Text><Text style={s.personSub}>שערים במחזור אחד</Text></View><StatisticsIllustration kind="trophy" size={55}/></View>}
-        {(stats.highlights.bestAssists??0)>0&&<View style={[s.card,s.highlight,{backgroundColor:'#F3F9FF'}]}><View style={s.personCopy}><Text style={s.highlightNumber}>{stats.highlights.bestAssists}</Text><Text style={s.personTitle}>שיא בישולים</Text><Text style={s.personSub}>במחזור אחד</Text></View><StatisticsIllustration kind="boot" size={55}/></View>}
+        {(stats.highlights.bestGoals??0)>0&&<View style={[s.card,s.highlight,{backgroundColor:'#FFFCF4'}]}><View style={s.personCopy}><Text style={s.personTitle}>המחזור הכי פורה</Text><Text style={s.highlightNumber}>{stats.highlights.bestGoals}</Text><Text style={s.personSub}>שערים במחזור אחד</Text></View><StatisticsIllustration kind="trophy" size={55}/></View>}
+        {(stats.highlights.bestAssists??0)>0&&<View style={[s.card,s.highlight,{backgroundColor:'#F3F9FF'}]}><View style={s.personCopy}><Text style={s.personTitle}>שיא בישולים</Text><Text style={s.highlightNumber}>{stats.highlights.bestAssists}</Text><Text style={s.personSub}>במחזור אחד</Text></View><StatisticsIllustration kind="boot" size={55}/></View>}
       </View><Text style={[s.subtitle,{fontSize:11}]}>לפי {stats.highlights.recordedRounds} מחזורים עם נתונים מתועדים</Text>
     </>:null}
     <View style={s.card}>

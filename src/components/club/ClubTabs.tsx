@@ -12,6 +12,7 @@
 // a measured `left` is the one thing that reliably lands on the wrong side.
 
 import React from 'react';
+import { recordDiagnostic } from '@/services/diagnosticJournal';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RTL_LABEL_ALIGN, clubAccent, colors } from '@/theme';
@@ -77,7 +78,8 @@ export function ClubTabs<K extends string = ClubTabKey>({
               isActive && styles.tabActive,
               pressed && styles.pressed,
             ]}
-            onPress={() => (t.locked ? onLockedPress?.(t.key) : onChange(t.key))}
+            onPressIn={() => recordDiagnostic('tap','club_tab_press_in',{tab:t.key})}
+            onPress={() => { recordDiagnostic('tap','club_tab_selected',{tab:t.key}); t.locked ? onLockedPress?.(t.key) : onChange(t.key); }}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive, disabled: !!t.locked }}
             accessibilityLabel={t.label}

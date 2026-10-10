@@ -208,18 +208,18 @@ export function UpcomingRoundCard({
 
           {venue ? (
             <View style={styles.infoRow}>
+              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
               <Text style={styles.infoMuted} numberOfLines={1}>
                 {venue}
               </Text>
-              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
             </View>
           ) : null}
 
           <View style={styles.infoRow}>
+              <Ionicons name="calendar-outline" size={14} color={tone.ink} />
             <Text style={styles.infoStrong} numberOfLines={1}>
               {formatGameDay(game.startsAt)} · {formatTime(game.startsAt)}
             </Text>
-            <Ionicons name="calendar-outline" size={14} color={tone.ink} />
           </View>
 
           <Occupancy state={state} tone={tone} />

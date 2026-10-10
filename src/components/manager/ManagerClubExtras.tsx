@@ -17,16 +17,17 @@ function Label({children,style}:{children:React.ReactNode;style?:any}) {return <
 function Card({title,icon,children}:{title:string;icon:keyof typeof Ionicons.glyphMap;children:React.ReactNode}) {
   return <View style={s.card}><View style={s.row}><Label style={s.heading}>{title}</Label><Ionicons name={icon} size={21} color={BLUE}/></View>{children}</View>;
 }
-export function ManagerRoundNumbers({games,results,loading,error,onRetry,onRound}:{games:Game[];results:ClubResults;loading:boolean;error:boolean;onRetry:()=>void;onRound:(id:string)=>void}) {
+export function ManagerRoundNumbers({games,results,loading,error,onRetry,onRound,embedded=false}:{embedded?:boolean;games:Game[];results:ClubResults;loading:boolean;error:boolean;onRetry:()=>void;onRound:(id:string)=>void}) {
   const data=clubRoundNumbers(games,results);
   const max=data.maximum??0,axis=Math.max(2,Math.ceil(max/2)*2);
   const ordered=[...data.rounds].reverse();
   const width=280/Math.max(1,ordered.length),barWidth=Math.min(22,width*.65);
-  return <Card title="המחזור במספרים" icon="bar-chart-outline">
-    <Label style={s.muted}>{games.length===10?'10 המחזורים האחרונים':`${games.length} המחזורים האחרונים`} · מספר המשחקים בכל ערב</Label>
+  const Wrapper=({children}:{children:React.ReactNode})=>embedded?<View style={{gap:12}}>{children}</View>:<Card title="המחזור במספרים" icon="bar-chart-outline">{children}</Card>;
+  return <Wrapper>
+    {!embedded&&<Label style={s.muted}>{games.length===10?'10 המחזורים האחרונים':`${games.length} המחזורים האחרונים`} · מספר המשחקים בכל ערב</Label>}
     {loading?<View style={s.loading}><ActivityIndicator color={BLUE}/><Label style={s.muted}>טוען את מספר המשחקים…</Label></View>:data.covered>0?<>
       <View style={s.metrics}>{[{n:data.average!.toLocaleString('he-IL',{maximumFractionDigits:1}),label:'משחקים בממוצע למחזור',color:BLUE},{n:max,label:'הכי הרבה במחזור',color:GREEN},{n:data.total,label:'משחקים בסך הכול',color:BLUE}].map(m=><View key={m.label} style={s.metric}><Label style={[s.number,{color:m.color}]}>{m.n}</Label><Label style={s.caption}>{m.label}</Label></View>)}</View>
-      <Label style={s.muted}>{data.missing?`תיעוד זמין ל־${data.covered} מתוך ${games.length} מחזורים; הסיכום מחושב מהם בלבד.`:`מבוסס על ${games.length} מחזורים עם מספר משחקים מתועד.`}</Label>
+      {(data.missing>0||!embedded)&&<Label style={s.muted}>{data.missing?`תיעוד זמין ל־${data.covered} מתוך ${games.length} מחזורים; הסיכום מחושב מהם בלבד.`:`מבוסס על ${games.length} מחזורים עם מספר משחקים מתועד.`}</Label>}
       <Label style={s.chartTitle}>מספר המשחקים בכל מחזור</Label>
       <View accessible accessibilityLabel={`מספר המשחקים מהמחזור הישן לחדש: ${ordered.map(r=>r.count??'לא ידוע').join(', ')}`}>
         <Svg width="100%" height={145} viewBox="0 0 320 145">
@@ -39,7 +40,7 @@ export function ManagerRoundNumbers({games,results,loading,error,onRetry,onRound
       <Label style={s.foot}>מחזור הוא ערב שלם; משחק הוא משחק אחד בתוך הערב. סימן — מציין שאין מספר משחקים מתועד.</Label>
     </>:<Label style={s.muted}>{error?'לא ניתן לטעון כרגע את מספר המשחקים.':'אין מספר משחקים מתועד למחזורי התקופה.'}</Label>}
     {!loading&&(error||data.missing>0)&&<Pressable accessibilityRole="button" onPress={onRetry} style={s.retry}><Label style={s.link}>נסה לטעון שוב</Label><Ionicons name="refresh" size={17} color={BLUE}/></Pressable>}
-  </Card>;
+  </Wrapper>;
 }
 
 export function ManagerAttention({data,now,onApprovals,onRate,onResolved}:{data:ManagerData;now:number;onApprovals:()=>void;onRate:(user:User)=>void;onResolved:()=>void}) {

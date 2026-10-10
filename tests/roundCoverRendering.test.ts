@@ -15,6 +15,8 @@ jest.mock('@/theme', () => ({ RTL_LABEL_ALIGN: 'left' }));
 jest.mock('@/components/PressableScale', () => ({ PressableScale: 'PressableScale' }));
 jest.mock('@/data/coverImages', () => ({ getCoverSource: (id?: string) => id ? `cover:${id}` : null }));
 jest.mock('../src/assets/images/groupImages/park-aerial.jpg', () => 'default-cover');
+jest.mock('../src/assets/images/asphalt-pitch.png', () => 'asphalt-cover');
+jest.mock('../src/assets/images/synthetic-pitch.png', () => 'synthetic-cover');
 jest.mock('@/utils/format', () => ({ dayDiff: () => 0, formatTime: () => '20:00',
   formatDateShort: () => '9.10', gameFormatLabel: () => '5 על 5' }));
 
@@ -23,7 +25,7 @@ import { clubDefaultCoverId } from '@/utils/clubDefaultCoverId';
 import type { Game } from '@/types';
 
 const game = { id: 'round-a', groupId: 'club-a', title: 'מחזור', players: [], waitlist: [],
-  maxPlayers: 10, status: 'open', visibility: 'public', fieldType: 'synthetic', startsAt: 1 } as unknown as Game;
+  maxPlayers: 10, status: 'open', visibility: 'public', fieldType: 'grass', startsAt: 1 } as unknown as Game;
 function image(node: any): any {
   if (!node || typeof node !== 'object') return undefined;
   if (node.type === 'ImageBackground') return node.props;
@@ -83,4 +85,15 @@ it('keeps the fresh default stable and distributes clubs across the ten new phot
   expect(ids.every(id=>/^c(0[1-9]|10)$/.test(id))).toBe(true);
   expect(clubDefaultCoverId('club-a')).toBe(clubDefaultCoverId('club-a'));
   expect(clubDefaultCoverId()).toBe('c01');
+});
+
+it('matches the surface while preserving uploaded club photos and unresolved lookup', () => {
+ for (const [fieldType,expected] of [['asphalt','asphalt-cover'],['synthetic','synthetic-cover']] as const) {
+  const renderSurface=(cover:any,coverLoading=false)=>image(MatchListCard({game:{...game,fieldType},userId:'u1',onPrimary:()=>{},cover,coverLoading}));
+  expect(renderSurface({coverImageId:'c12'}).source).toBe(expected);
+  expect(renderSurface({coverPhotoUrl:'uploaded'}).source).toEqual({uri:'uploaded'});
+  expect(renderSurface(undefined,true).source).toBeUndefined();
+  renderSurface({coverPhotoUrl:'broken'}).onError();
+  expect(renderSurface({coverPhotoUrl:'broken'}).source).toBe(expected);
+ }
 });

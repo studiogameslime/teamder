@@ -992,6 +992,7 @@ export function CommunityDetailsScreen() {
             same numbers live inside the tabs, where the rest of the club's
             figures are. */}
       <ClubTabs
+        flush
         tabs={clubTabs}
         active={tab}
         onChange={(k) => {

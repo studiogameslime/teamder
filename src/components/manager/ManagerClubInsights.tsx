@@ -41,8 +41,8 @@ export function ManagerClubInsights({data,viewerId,now,onRound,onApprovals,onRat
         {insights.returned.length>0&&<View style={s.insight}><Label style={s.insightText}>{insights.returned.length===1?'שחקן אחד נרשם שוב אחרי הפסקה':`${insights.returned.length} שחקנים נרשמו שוב אחרי הפסקה`}</Label><Ionicons name="refresh-outline" size={21} color={GREEN}/></View>}
         <Label style={s.foot}>לפי רשימות ההרשמה שנשמרו; אין אישור נוכחות. הממוצע והתפוסה כוללים אורחים פעילים. שחקנים שונים אינם כוללים אורחים ללא חשבון.</Label>
         <Pressable accessibilityRole="button" onPress={()=>setDetails(true)} style={s.link}><Label style={s.linkText}>לנתונים המלאים</Label><Ionicons name="chevron-back" size={18} color={BLUE}/></Pressable>
+        <ManagerRoundNumbers embedded games={insights.recent} results={results} loading={loading} error={error} onRetry={()=>setRetry(v=>v+1)} onRound={onRound}/>
       </Card>
-      <ManagerRoundNumbers games={insights.recent} results={results} loading={loading} error={error} onRetry={()=>setRetry(v=>v+1)} onRound={onRound}/>
       <Card title="איכות חלוקת הכוחות" icon="football-outline">
         {loading?<View style={s.loading}><ActivityIndicator color={BLUE}/><Label style={s.muted}>טוען תוצאות משחקים…</Label></View>:error?<><Label style={s.muted}>לא ניתן לטעון כרגע את התוצאות</Label><Pressable accessibilityRole="button" onPress={()=>setRetry(v=>v+1)}><Label style={s.linkText}>נסה שוב</Label></Pressable></>:<>
           <Label style={s.muted}>{balance.total} משחקים עם תוצאה תקפה מתוך {balance.covered} מחזורים · נבדקו {insights.recent.length} מחזורים אחרונים</Label>

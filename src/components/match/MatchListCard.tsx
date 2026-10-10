@@ -70,9 +70,10 @@ export function MatchListCard({ game, userId, onPrimary, busy, cover, coverLoadi
   const activePhoto = useRef(cover?.coverPhotoUrl);
   activePhoto.current = cover?.coverPhotoUrl;
   const coverReady = !game.groupId || !coverLoading;
+  const surfaceCover = game.fieldType === 'asphalt' ? require('../../assets/images/asphalt-pitch.png') : game.fieldType === 'synthetic' ? require('../../assets/images/synthetic-pitch.png') : undefined;
   const source = !coverReady ? undefined : cover?.coverPhotoUrl && cover.coverPhotoUrl !== failedPhotoUrl
     ? { uri: cover.coverPhotoUrl }
-    : getCoverSource(cover?.coverImageId) ?? (game.groupId && !game.isOrphanContext ? getCoverSource(clubDefaultCoverId(game.groupId)) : DEFAULT_COVER);
+    : surfaceCover ?? getCoverSource(cover?.coverImageId) ?? (game.groupId && !game.isOrphanContext ? getCoverSource(clubDefaultCoverId(game.groupId)) : DEFAULT_COVER);
   const status = statusForUser(game, userId);
   const cta = ctaForGame(game, status);
   const occupancy = game.players.length + activeGuestCount(game.guests) + (game.pendingPromotion?.uid ? 1 : 0);

@@ -194,7 +194,6 @@ export function StatisticsScreen() {
             {!qaPreview && viewStats.highlights?.incomplete && !highlightsLoading ? <View><Text style={{color:colors.textMuted}}>חלק מנתוני המחזורים לא נטענו. הנתונים הזמינים מוצגים.</Text><Button title={he.retry} variant="outline" onPress={() => setReloadTick(t=>t+1)} /></View> : null}
             <View ref={shareRef} collapsable={false} style={styles.shareCard}>
               <PersonalStatisticsCard user={viewUser ?? null} stats={viewStats} people={viewPeople} pen={viewPen} highlightsLoading={!qaPreview && highlightsLoading} />
-              <View style={styles.shareBrand}><StatisticsBrand /></View>
             </View>
             <StatisticsAction title={sharing ? 'מכין את הכרטיס…' : 'שתף את הכרטיס שלי'} icon="share-social-outline" disabled={sharing} onPress={() => void onShare()} />
           </> : <PersonalStatisticsWelcome onFind={() => nav.getParent()?.navigate('GameTab', { screen: 'GamesList' })} />}
