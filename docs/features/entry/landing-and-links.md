@@ -71,3 +71,8 @@
 - אישי: [נייד](../screenshots/landing-live-personal-390-2026-10-10.jpg) · [מחשב](../screenshots/landing-live-personal-1440-2026-10-10.jpg)
 - מחזור: [נייד](../screenshots/landing-live-game-390-2026-10-10.jpg) · [מחשב](../screenshots/landing-live-game-1440-2026-10-10.jpg)
 - מועדון: [נייד](../screenshots/landing-live-community-390-2026-10-10.jpg) · [מחשב](../screenshots/landing-live-community-1440-2026-10-10.jpg)
+
+
+## הכנת בדיקות ממחשב חדש — 10.10.2026
+
+לפני הבדיקות נוצרות תבניות השרת מחדש מקובצי המקור של דף הנחיתה. כך הבדיקה אינה תלויה בתוצר ישן מהמחשב המקומי. אין שינוי בהתנהגות האתר או פריסה. ההכנה מחוברת דרך globalSetup ב־jest.config.js ומריצה את functions/scripts/copy-template.js; גם npx jest ישירות מפעיל אותה.
