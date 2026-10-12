@@ -24,6 +24,7 @@
 // scale, silently.
 
 import * as admin from 'firebase-admin';
+import { readArchiveData } from './seasonArchiveData';
 import { countSeasonParticipants } from './seasonParticipants';
 import { computeSeasonAwards } from './seasonAwards';
 
@@ -53,8 +54,8 @@ const rowNum = (v: unknown): number =>
  * Subtracting leaves exactly that evening behind as the next season's opening
  * balance, which is where it belongs.
  *
- * `archived` of null means "this row belongs to no season": a pair past the
- * archive cap, which is zeroed rather than carried into the next season.
+ * The pure helper admits a null archive as zeroing, but closeSeason only calls
+ * it with a frozen archived row. Unarchived contributions remain untouched.
  *
  * Clamped at zero, so a row that somehow holds less than the archive took from
  * it lands on zero rather than on a negative goal tally.
@@ -178,7 +179,7 @@ export function sealedCardEvenings(
  * this season are archived at all: a 50-player club has 1,225 possible pairs
  * and nothing like that many turn out together in one season.
  */
-const MAX_ARCHIVED_PAIRS = 1200;
+const PAIRS_PER_PAGE = 400;
 
 /** Club-scoped counters a season owns. Everything not named here survives. */
 const PLAYER_SEASON_FIELDS = [
@@ -291,6 +292,8 @@ export interface RolloverArgs {
   targetHistory?: unknown[];
   /** Season 1 of a club that predates a metric — see the spec. */
   partialData?: boolean;
+  /** A noncompetitive period retained only in lifetime statistics. */
+  nonSeason?: boolean;
   now: number;
 }
 
@@ -455,10 +458,6 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       droppedEmptyPairs += 1;
       continue;
     }
-    if (Object.keys(pairs).length >= MAX_ARCHIVED_PAIRS) {
-      droppedOverflowPairs += 1;
-      continue;
-    }
     // Sorted key, and the archived a/b sorted WITH it — the direction of
     // `winsA` and `assistsAToB` is meaningless unless the reader knows which
     // player is which, and the live document's own a/b need not be sorted.
@@ -561,7 +560,7 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     awardLines.map((l) => l.games),
     args.completedRounds,
   );
-  const awards = computeSeasonAwards(awardLines, awardPairs, seasonEvenings);
+  const awards = computeSeasonAwards(args.nonSeason ? [] : awardLines, args.nonSeason ? [] : awardPairs, seasonEvenings);
 
   /**
    * How much of the season שחקן העונה's average is really built from.
@@ -608,15 +607,31 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   /** Set when we are resuming a close that died before it finished. */
   let resumedAwards: typeof awards | null = null;
   let resumedPlayers: typeof players | null = null;
+  let resumedPairs: typeof pairs | null = null;
   let resumedTotals: Record<string, number> | null = null;
   let resumedEvenings: unknown = null;
+  let sealedMeta: Record<string, unknown> = { no: args.seasonNo, startsAt: args.startsAt, endsAt: now, endedEarly: args.endedEarly, partialData: args.partialData };
 
   // ── 1. Archive, exactly once ────────────────────────────────────────────
   const summaryRef = db
     .collection('seasonSummary')
     .doc(`${groupId}__${seasonId}`);
+  // Root and overflow pages land atomically; competing closes cannot mix snapshots.
+  const pairEntries = Object.entries(pairs);
+  const pairPages: string[] = [];
+  const archiveBatch = db.batch();
+  if (pairEntries.length > PAIRS_PER_PAGE * 499) throw new Error('Season archive exceeds atomic page limit');
+  for (let start = PAIRS_PER_PAGE; start < pairEntries.length; start += PAIRS_PER_PAGE) {
+    const id = `${groupId}__${seasonId}__pairs_${start / PAIRS_PER_PAGE}`;
+    pairPages.push(id);
+    archiveBatch.create(db.collection('seasonSummary').doc(id), {
+      groupId, seasonId, kind: 'pairPage',
+      players: Object.fromEntries(Object.entries(players).map(([uid, row]) => [uid, { games: row.games, rounds: row.rounds }])),
+      pairs: Object.fromEntries(pairEntries.slice(start, start + PAIRS_PER_PAGE)),
+    });
+  }
   try {
-    await summaryRef.create({
+    archiveBatch.create(summaryRef, {
       groupId,
       // Frozen, like the player names. A closed season has to be readable by
       // someone who has since LEFT the club — they played in it — and they
@@ -674,7 +689,10 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       ...(args.partialData ? { partialData: true } : {}),
       totals,
       players,
-      pairs,
+      pairs: Object.fromEntries(pairEntries.slice(0, PAIRS_PER_PAGE)),
+      pairPages,
+      nonSeason: args.nonSeason === true,
+      notificationPending: args.nonSeason !== true,
       // The awards, plus the rating's coverage on the one title that is an
       // average. Written here as well as on the card because the two are read
       // by different screens: the hall of fame reads `seasonCards.winners`,
@@ -684,6 +702,7 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
         ? { ...awards, mvp: { ...awards.mvp, coverage: mvpCoverage } }
         : awards,
     });
+    await archiveBatch.commit();
   } catch (err) {
     const code = (err as { code?: number | string }).code;
     if (code !== 6 && code !== 'already-exists') throw err;
@@ -719,6 +738,9 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     // Decided titles come from the ARCHIVE on this path, never recomputed: the
     // live rows may be half-zeroed by the pass that died, and a title decided
     // from those would be a different title from the one already sealed.
+    const frozen = await readArchiveData(db, existing.data() as Record<string, unknown>);
+    resumedPairs = frozen.pairs as typeof pairs;
+    sealedMeta = frozen;
     resumedAwards = (existing.get('awards') ?? null) as typeof awards | null;
     // The ROWS come from the archive too, for the same reason the titles do.
     //
@@ -758,7 +780,7 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     key: string;
     names: string[];
     value: number;
-    coverage?: { rated: number; of: number };
+    coverage?: unknown;
   }> = [];
   for (const [key, award] of Object.entries(resumedAwards ?? awards)) {
     if (!award || !award.winners.length) continue;
@@ -776,7 +798,7 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       ),
       value: award.value,
       // Only on the title whose value is an average.
-      ...(key === 'mvp' && mvpCoverage ? { coverage: mvpCoverage } : {}),
+      ...(key === 'mvp' && ((resumedAwards?.mvp as { coverage?: unknown } | undefined)?.coverage ?? mvpCoverage) ? { coverage: (resumedAwards?.mvp as { coverage?: unknown } | undefined)?.coverage ?? mvpCoverage } : {}),
     });
   }
   // Written on BOTH paths now.
@@ -807,9 +829,10 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
         {
           groupId,
           seasonId,
-          no: args.seasonNo,
-          startsAt: args.startsAt,
-          endsAt: now,
+          nonSeason: args.nonSeason === true,
+          no: sealedMeta.no,
+          startsAt: sealedMeta.startsAt,
+          endsAt: sealedMeta.endsAt,
           completedRounds: cardEvenings,
           totals: {
             rounds: cardTotals.rounds ?? 0,
@@ -849,8 +872,8 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
           // `completedRounds` is the season's length, it is the denominator
           // the phrase "share of the season" actually means, and the hall of
           // fame already has it. See the matching note on the archive write.
-          ...(args.endedEarly ? { endedEarly: true } : {}),
-          ...(args.partialData ? { partialData: true } : {}),
+          ...(sealedMeta.endedEarly ? { endedEarly: true } : {}),
+          ...(sealedMeta.partialData ? { partialData: true } : {}),
           winners: cardWinners,
         },
         { merge: true },
@@ -894,10 +917,10 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
             groupId,
             groupName,
             seasonId,
-            seasonNo: args.seasonNo,
+            seasonNo: sealedMeta.no,
             titleKey,
             value: award.value,
-            at: now,
+            at: sealedMeta.endsAt,
           },
           { merge: true },
         );
@@ -924,14 +947,14 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   // skips. Once per player per season, so the cost is a few dozen transactions
   // a year for a club.
   for (const d of psSnap.docs) {
-    const archivedRow = players[(d.data() as { userId?: string }).userId ?? ''];
+    const archivedRow = (resumedPlayers ?? players)[(d.data() as { userId?: string }).userId ?? ''];
     if (!archivedRow) continue;
     await db.runTransaction(async (tx) => {
       const fresh = await tx.get(d.ref);
       if (!fresh.exists) return;
       const data = fresh.data() as Record<string, unknown>;
-      // Already done — but only a RESUME may believe that. See `resuming`.
-      if (resuming && data.seasonWoundBack === seasonId) return;
+      // Already subtracted; reopening clears this stamp before a later close.
+      if (data.seasonWoundBack === seasonId) return;
       const patch: Record<string, unknown> = {
         seasonWoundBack: seasonId,
         // Cleared so a LATER reopen can stamp its own restore.
@@ -966,9 +989,9 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   // reason: an evening committed between the read and the wipe would otherwise
   // be erased from both the archive and the live table.
   //
-  // A pair with no archived row — one past the cap — is set to zero rather than
-  // skipped: it belongs to no season, and leaving it standing would carry it
-  // into the next one. A GUEST pair is deleted outright; see below.
+  // A real pair absent from the frozen archive is preserved: its contribution
+  // arrived later. All archived real pairs are retained through overflow pages.
+  // A guest pair is deleted outright; see below.
   for (const d of pairSnap.docs) {
     const x = d.data() as Record<string, unknown>;
     // A guest pair is DELETED, not wound back.
@@ -995,48 +1018,23 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       if (++ops >= 400) await flush();
       continue;
     }
-    // Already wound back for this season — skip, but only on a RESUME.
-    //
-    // The player rows carry this stamp and the pair rows did not, so the two
-    // halves of one operation behaved differently on a resume: the player kept
-    // the two goals he scored between the crash and the retry, and the pair
-    // lost that whole evening's chemistry, because subtracting the archived
-    // row a second time clamps at zero. The stamp is read off the snapshot
-    // taken at the top of this function, which on a retry already reflects the
-    // first pass — no transaction needed, since the quiet check and the
-    // create() latch serialise the close.
-    //
-    // `resuming` is the half that was missing, and without it the stamp was
-    // being read as evidence of something it does not prove. A REOPEN of this
-    // same season leaves the stamp on every row the close touched but the
-    // restore does not reach — every guest pair and every pair the archive
-    // dropped for being empty — and reopenSeason only started sweeping those
-    // up today. The one club that has run seasons has 21 real pair rows
-    // stamped 's2' with s2 running: on a first pass those rows would be
-    // archived and then skipped, sealing their chemistry into s2's write-once
-    // archive while leaving it standing live for s3 to inherit, double
-    // counted, unreconcilable. A stamp naming the season being closed is not
-    // evidence that season was already wound back; only this pass having
-    // written it is, and on a first pass this pass has written nothing.
-    if (resuming && x.seasonWoundBack === seasonId) continue;
-    const { key } = seasonPairKey(String(x.a ?? ''), String(x.b ?? ''));
-    // A pair with no archived row — one past the cap — is zeroed rather than
-    // subtracted: it belongs to no season, and leaving it standing would carry
-    // it into the next one.
-    const archivedPair = (pairs[key] ?? null) as unknown as
-      Record<string, number> | null;
-    batch.set(
-      d.ref,
-      {
-        ...windBackRow(x, archivedPair, PAIR_SEASON_FIELDS),
+    const { key, flip } = seasonPairKey(String(x.a ?? ''), String(x.b ?? ''));
+    const frozenPair = (resumedPairs ?? pairs)[key];
+    // An absent pair was not archived: leave any new contribution alone.
+    if (!frozenPair) continue;
+    const archivedPair = { ...frozenPair, ...(flip ? {
+      winsA: frozenPair.winsB, winsB: frozenPair.winsA,
+      assistsAToB: frozenPair.assistsBToA, assistsBToA: frozenPair.assistsAToB,
+    } : {}) };
+    await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(d.ref);
+      if (!fresh.exists || fresh.get('seasonWoundBack') === seasonId) return;
+      tx.set(d.ref, {
+        ...windBackRow(fresh.data(), archivedPair, PAIR_SEASON_FIELDS),
         seasonWoundBack: seasonId,
-        // Cleared so a later reopen can stamp its own restore.
-        seasonReopened: admin.firestore.FieldValue.delete(),
-        updatedAt: now,
-      },
-      { merge: true },
-    );
-    if (++ops >= 400) await flush();
+        seasonReopened: admin.firestore.FieldValue.delete(), updatedAt: now,
+      }, { merge: true });
+    });
   }
   await flush();
   if (deletedGuestPairs > 0) {
@@ -1049,24 +1047,17 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     );
   }
 
-  const zeroClub: Record<string, number> = {};
-  for (const f of CLUB_SEASON_FIELDS) zeroClub[f] = 0;
-  await db
-    .collection('communityStats')
-    .doc(groupId)
-    .set(
-      {
-        ...zeroClub,
-        // Cleared so a later reopen can stamp its own restore.
-        seasonReopened: admin.firestore.FieldValue.delete(),
-        // Re-stamped, or the new season's chemistry card would date itself from
-        // the old one. It is only advanced when absent or earlier, so leaving it
-        // alone would quietly keep the stale window.
-        chemistrySince: now,
-        updatedAt: now,
-      },
-      { merge: true },
-    );
+  const clubRef = db.collection('communityStats').doc(groupId);
+  await db.runTransaction(async (tx) => {
+    const fresh = await tx.get(clubRef);
+    if (fresh.get('seasonWoundBack') === seasonId) return;
+    tx.set(clubRef, {
+      ...windBackRow(fresh.data(), resumedTotals ?? totals, CLUB_SEASON_FIELDS),
+      seasonWoundBack: seasonId,
+      seasonReopened: admin.firestore.FieldValue.delete(),
+      chemistrySince: now, updatedAt: now,
+    }, { merge: true });
+  });
 
   // Only now. Everything above is repeatable; this says it does not need to be.
   await summaryRef.set({ zeroedAt: Date.now() }, { merge: true });
@@ -1116,6 +1107,7 @@ export async function reopenSeason(args: {
   db: admin.firestore.Firestore;
   groupId: string;
   seasonId: string;
+  preserveArchive?: boolean;
 }): Promise<{ reopened: boolean; players: number; titles: number }> {
   const { db, groupId, seasonId } = args;
   const summaryRef = db
@@ -1124,7 +1116,7 @@ export async function reopenSeason(args: {
   const snap = await summaryRef.get();
   if (!snap.exists) return { reopened: false, players: 0, titles: 0 };
 
-  const data = snap.data() as Record<string, unknown>;
+  const data = await readArchiveData(db, snap.data() as Record<string, unknown>);
   const players = (data.players ?? {}) as Record<
     string,
     Record<string, unknown>
@@ -1255,6 +1247,7 @@ export async function reopenSeason(args: {
       clubRef,
       {
         seasonReopened: seasonId,
+        seasonWoundBack: admin.firestore.FieldValue.delete(),
         updatedAt: Date.now(),
         ...restoreRow(cur, totals, CLUB_SEASON_FIELDS),
       },
@@ -1296,6 +1289,9 @@ export async function reopenSeason(args: {
   await db.collection('seasonCards').doc(`${groupId}__${seasonId}`).delete();
 
   // 5. Last, because while it exists this is repeatable.
-  await summaryRef.delete();
+  if (!args.preserveArchive) {
+    for (const id of (data.pairPages ?? []) as string[]) await db.collection('seasonSummary').doc(id).delete();
+    await summaryRef.delete();
+  }
   return { reopened: true, players: restored, titles };
 }

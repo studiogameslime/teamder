@@ -74,7 +74,7 @@ describe('the options offered', () => {
     expect(o[2].text).toBe(he.communityStatsScopePast(3));
   });
 
-  it('a club that switched seasons OFF names the live slice differently', () => {
+  it('a disabled club offers lifetime and archives without an inconsistent current slice', () => {
     // There is no running season — the switch-off closed it — so the line
     // says what the live rows actually are instead of naming a season that
     // never ran.
@@ -83,7 +83,8 @@ describe('the options offered', () => {
       [{ seasonId: 's2', no: 2 }],
       CURRENT,
     );
-    expect(o[0].text).toBe(he.communityStatsScopeSinceOff(2));
+    expect(o[0].text).toBe(he.communityStatsScopeAllTime);
+    expect(o.some(x => x.scope.k === 'current')).toBe(false);
   });
 
   it('exactly one option is active, and it is the chosen one', () => {
@@ -123,4 +124,10 @@ describe('the closed bar label', () => {
   it('is empty for a club with no options rather than throwing', () => {
     expect(scopeTitleOf([])).toBe('');
   });
+});
+
+
+it('noncompetitive periods contribute to lifetime but never appear as seasons', () => {
+  const options = buildScopeOptions(running(2, 1), [{ seasonId: 's1', no: 1 }, { seasonId: 'off_1_123', no: 1, nonSeason: true }], { k: 'all' });
+  expect(options.map(x => x.key)).toEqual(['current', 'all', 's1']);
 });

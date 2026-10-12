@@ -1,13 +1,12 @@
 import React, { useRef, useState } from 'react';
-import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Game, FieldType, UserId, activeGuestCount } from '@/types';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { dayDiff, formatDateShort, formatTime, gameFormatLabel } from '@/utils/format';
-import { getCoverSource } from '@/data/coverImages';
-import { clubDefaultCoverId } from '@/utils/clubDefaultCoverId';
+import { resolveRoundCover } from '@/data/roundCover';
 import { PressableScale } from '@/components/PressableScale';
 import { recordDiagnostic } from '@/services/diagnosticJournal';
 
@@ -21,7 +20,6 @@ interface Props {
   cover?: { coverPhotoUrl?: string; coverImageId?: string } | null;
   coverLoading?: boolean;
 }
-const DEFAULT_COVER = require('../../assets/images/groupImages/park-aerial.jpg');
 function statusForUser(
   g: Game,
   uid: UserId,
@@ -70,10 +68,7 @@ export function MatchListCard({ game, userId, onPrimary, busy, cover, coverLoadi
   const activePhoto = useRef(cover?.coverPhotoUrl);
   activePhoto.current = cover?.coverPhotoUrl;
   const coverReady = !game.groupId || !coverLoading;
-  const surfaceCover = game.fieldType === 'asphalt' ? require('../../assets/images/asphalt-pitch.png') : game.fieldType === 'synthetic' ? require('../../assets/images/synthetic-pitch.png') : undefined;
-  const source = !coverReady ? undefined : cover?.coverPhotoUrl && cover.coverPhotoUrl !== failedPhotoUrl
-    ? { uri: cover.coverPhotoUrl }
-    : surfaceCover ?? getCoverSource(cover?.coverImageId) ?? (game.groupId && !game.isOrphanContext ? getCoverSource(clubDefaultCoverId(game.groupId)) : DEFAULT_COVER);
+  const source = resolveRoundCover(game, cover, coverLoading, failedPhotoUrl);
   const status = statusForUser(game, userId);
   const cta = ctaForGame(game, status);
   const occupancy = game.players.length + activeGuestCount(game.guests) + (game.pendingPromotion?.uid ? 1 : 0);
@@ -145,7 +140,7 @@ export function MatchListCard({ game, userId, onPrimary, busy, cover, coverLoadi
           <Text style={[styles.actionText, joinable && { color: '#FFFFFF' }]}>
             {joinable ? action : he.roundFeedDetails}
           </Text>
-          {!joinable ? <Ionicons name="chevron-back" size={15} color="#1D4ED8" /> : null}
+            {busy ? <ActivityIndicator size="small" color={joinable ? '#FFFFFF' : '#1D4ED8'} /> : !joinable ? <Ionicons name="chevron-back" size={15} color="#1D4ED8" /> : null}
         </Pressable>
       </View>
     </PressableScale>

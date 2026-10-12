@@ -11,10 +11,7 @@
 
 import React, { useEffect } from 'react';
 import {
-  Pressable,
   StyleSheet,
-  Text,
-  View,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -23,10 +20,10 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import { NoticeCard } from './NoticeCard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { spacing } from '@/theme';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -123,32 +120,12 @@ export function ToastHost() {
     transform: [{ translateY: translateY.value }, { scale: scale.value }],
   }));
 
-  // Wide card tinted by status, with a football icon in a soft circle on
-  // the trailing (right, RTL) side, a divider, and the message text.
-  const palette =
-    type === 'success'
-      ? { icon: colors.success, iconBg: 'rgba(22,163,74,0.12)', card: '#F1FBF4', border: 'rgba(22,163,74,0.30)' }
-      : type === 'error'
-        ? { icon: colors.danger, iconBg: 'rgba(239,68,68,0.12)', card: '#FEF3F2', border: 'rgba(239,68,68,0.28)' }
-        : { icon: colors.primary, iconBg: 'rgba(37,99,235,0.12)', card: '#EEF4FF', border: 'rgba(37,99,235,0.28)' };
-
   return (
     <Animated.View
       pointerEvents={visible ? 'box-none' : 'none'}
       style={[styles.host, { top: insets.top + 8 }, animStyle]}
     >
-      <Pressable
-        onPress={hide}
-        style={[styles.toast, { backgroundColor: palette.card, borderColor: palette.border }]}
-      >
-        <View style={[styles.iconCircle, { backgroundColor: palette.iconBg }]}>
-          <Ionicons name="football" size={24} color={palette.icon} />
-        </View>
-        <View style={styles.divider} />
-        <Text style={styles.text} numberOfLines={3}>
-          {message}
-        </Text>
-      </Pressable>
+      <NoticeCard message={message} type={type} onClose={hide} />
     </Animated.View>
   );
 }
@@ -163,45 +140,5 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     zIndex: 9999,
     elevation: 10,
-  },
-  toast: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    borderRadius: radius.xxl,
-    borderWidth: 1,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    // Soft, lifted shadow so the toast floats above content.
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  divider: {
-    width: StyleSheet.hairlineWidth,
-    height: 34,
-    backgroundColor: colors.border,
-  },
-  text: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
-    flex: 1,
-    // Every toast body in this app is Hebrew. textAlign alone right-aligns
-    // the block but leaves the ENGINE laying the line out LTR, so a message
-    // that mixes in a latin token or a number — a player name, "3/12", a
-    // club handle — reorders around it. writingDirection pins the base
-    // direction so it can't.
-    textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
 });

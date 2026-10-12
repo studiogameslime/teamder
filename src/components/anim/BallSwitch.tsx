@@ -14,7 +14,7 @@
 // switches it replaces.
 
 import React, { useEffect } from 'react';
-import { Platform, Pressable, StyleSheet, type ViewStyle, type AccessibilityProps } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, type ViewStyle, type AccessibilityProps } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -26,6 +26,7 @@ import Animated, {
 import { SoccerBall } from '../SoccerBall';
 import { colors } from '@/theme';
 import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
+import { useFormDesign, FORM_BLUE } from '@/components/forms/FormTheme';
 
 interface Props extends AccessibilityProps {
   value: boolean;
@@ -60,6 +61,10 @@ export function BallSwitch({
   ...accessibilityProps
 }: Props) {
   const reducedMotion = useReducedMotion();
+  const formDesign = useFormDesign();
+  const ballSize = formDesign ? 28 : BALL;
+  const halfTravel = formDesign ? 12 : HALF;
+  const rollDegrees = (halfTravel * 2 / (Math.PI * ballSize)) * 360;
   // 0 = off (ball right), 1 = on (ball left). Spring gives the ball a
   // little overshoot as it settles — like it bumps the goalpost.
   const p = useSharedValue(value ? 1 : 0);
@@ -69,11 +74,12 @@ export function BallSwitch({
       damping: 14,
       stiffness: 170,
       mass: 0.7,
+      overshootClamping: formDesign,
     });
-  }, [value, p, reducedMotion]);
+  }, [value, p, reducedMotion, formDesign]);
 
-  const offColor = trackColor?.false ?? colors.border;
-  const onColor = trackColor?.true ?? colors.primary;
+  const offColor = formDesign ? '#DCE5F0' : trackColor?.false ?? colors.border;
+  const onColor = formDesign ? FORM_BLUE : trackColor?.true ?? colors.primary;
 
   const trackStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(p.value, [0, 1], [offColor, onColor]),
@@ -82,10 +88,10 @@ export function BallSwitch({
   // Rolling thumb: the ball sits at the track centre and shifts by ±HALF —
   // off (p=0) → +HALF (right), on (p=1) → −HALF (left). Rotation tracks the
   // travel so it genuinely rolls rather than slides.
-  const rotation = useDerivedValue(() => -p.value * ROLL_DEG);
+  const rotation = useDerivedValue(() => -p.value * (formDesign ? rollDegrees : ROLL_DEG));
   const ballStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: interpolate(p.value, [0, 1], [HALF, -HALF]) },
+      { translateX: interpolate(p.value, [0, 1], [halfTravel, -halfTravel]) },
       { rotateZ: `${rotation.value}deg` },
     ],
   }));
@@ -102,11 +108,17 @@ export function BallSwitch({
       accessibilityRole="switch"
       accessibilityState={{ ...accessibilityProps.accessibilityState, checked: value, disabled: !!disabled }}
       hitSlop={8}
-      style={[disabled && { opacity: 0.5 }, style]}
+      style={[formDesign && styles.formTouch, disabled && { opacity: 0.5 }, style]}
     >
-      <Animated.View style={[styles.track, trackStyle]}>
-        <Animated.View style={[styles.ball, ballStyle]}>
-          <SoccerBall size={BALL} />
+      <Animated.View style={[styles.track, formDesign && styles.formTrack, trackStyle]}>
+        <Animated.View style={[styles.ball, formDesign && { width: ballSize, height: ballSize, shadowOpacity: 0 }, ballStyle]}>
+          {formDesign ? <Image
+            source={require('../../assets/images/form-toggle-football-3d.png')}
+            style={{ width: ballSize, height: ballSize }}
+            resizeMode="contain"
+            fadeDuration={0}
+            accessible={false}
+          /> : <SoccerBall size={BALL} />}
         </Animated.View>
       </Animated.View>
     </Pressable>
@@ -114,6 +126,8 @@ export function BallSwitch({
 }
 
 const styles = StyleSheet.create({
+  formTouch: { minHeight: 44, justifyContent: 'center', flexShrink: 0 },
+  formTrack: { width: 56, height: 32, borderRadius: 16 },
   track: {
     width: W,
     height: H,

@@ -238,6 +238,9 @@ export const pairCompareService = {
         // chemistry start date over it would be quoting the wrong window.
         since = null;
       } else if (scope.k === 'all') {
+        const history = await seasonHistoryService.list(groupId, true);
+        if (history === 'error' || history.filter((x) => !x.nonSeason).length < (seasons?.count ?? 0)) return null;
+        const archiveIds = history.map((x) => x.seasonId);
         // Live + every archive. Nothing recomputes: the archives are the
         // sealed record of the seasons they closed, so this is addition over
         // numbers that were already agreed.
@@ -245,7 +248,7 @@ export const pairCompareService = {
           readLivePair(groupId, viewerId, otherId),
           gameService.getCommunityChampionship(groupId, undefined, true),
           Promise.all(
-            pastSeasonIds.map((id) => seasonHistoryService.table(groupId, id)),
+            archiveIds.map((id) => seasonHistoryService.table(groupId, id)),
           ),
           readChemistrySince(groupId),
         ]);

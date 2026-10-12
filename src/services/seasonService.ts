@@ -39,6 +39,9 @@ export type SeasonRefusal =
   | 'nothingToReopen'
   | 'closedSeasonGame'
   | 'tooFewRounds'
+  | 'operationBusy'
+  | 'operationStale'
+  | 'cadenceLocked'
   | 'unknown';
 
 export class SeasonRefusedError extends Error {
@@ -84,6 +87,9 @@ export function seasonRefusalText(
   const played = ctx?.played;
   const target = ctx?.target;
   switch (reason) {
+    case 'operationBusy': return 'פעולת עונות קודמת עדיין בטיפול. אם התקבלה שגיאה, נסו שוב את אותה פעולה כדי להשלים אותה.';
+    case 'operationStale': return 'נתוני העונה השתנו. רעננו את המסך לפני שמירה נוספת.';
+    case 'cadenceLocked': return 'לאחר שהתקיים מחזור בעונה ניתן לשנות את היעד, אך לא את סוג העונה.';
     case 'tooFewRounds':
       return typeof played === 'number'
         ? he.seasonBlockedTooFewRoundsAt(played, MIN_SEASON_ROUNDS)
@@ -148,7 +154,7 @@ function refusalOf(err: unknown): SeasonRefusal | null {
   // it with a different code. Same refusal to the admin either way: the number
   // they typed is not a number a season can be measured in.
   if (code === 'functions/invalid-argument') {
-    return msg.includes('targetRounds') ? 'targetInvalid' : null;
+    return msg.includes('targetRounds') || msg.includes('-round floor') ? 'targetInvalid' : msg.includes('months') ? 'lengthInvalid' : null;
   }
   if (code !== 'functions/failed-precondition') return null;
   // planActivation's own verdicts, thrown back as `season-plan:<error>`. The
@@ -159,6 +165,9 @@ function refusalOf(err: unknown): SeasonRefusal | null {
   // Sealing a season that has played fewer evenings than a season may be set
   // to last. Carries the two numbers so the admin is told where they stand and
   // what it takes, not merely refused.
+  if (msg.includes('season-operation:busy')) return 'operationBusy';
+  if (msg.includes('season-operation:stale')) return 'operationStale';
+  if (msg.includes('cannot change a')) return 'cadenceLocked';
   if (msg.includes('season-close:tooFewRounds')) return 'tooFewRounds';
   if (msg.includes('season-plan:')) {
     if (msg.includes('monthsInvalid')) return 'lengthInvalid';
@@ -254,8 +263,8 @@ export const seasonService = {
   },
 
   /**
-   * Switch seasons off. Does NOT close the running season — that is a separate,
-   * deliberate action. Numbering survives, so re-enabling opens the next one.
+   * Switch seasons off. A season with at least two evenings is archived; a
+   * shorter period stays in lifetime totals without awards. Numbering survives.
    */
   async disable(groupId: string): Promise<void> {
     if (USE_MOCK_DATA) return;

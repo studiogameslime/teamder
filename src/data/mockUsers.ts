@@ -10,6 +10,8 @@ export const mockCurrentUser: User = {
   avatarId: 'a13', // built-in avatar
   createdAt: Date.now() - 1000 * 60 * 60 * 24 * 90,
   onboardingCompleted: true,
+  // Accepted, mutual demo friendships; never written to Firebase.
+  friends: ['qa-itay', 'qa-daniel'],
   availability: {
     preferredDays: [4], // Thursday
     timeFrom: '20:00',

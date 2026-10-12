@@ -24,7 +24,8 @@
 // "12/15" does.
 
 import { HeightReveal } from '@/components/anim/HeightReveal';
-import React from 'react';
+import React, { useRef, useState } from 'react';
+import { resolveRoundCover, type RoundCoverClub } from '@/data/roundCover';
 import {
   ImageBackground,
   Pressable,
@@ -48,10 +49,6 @@ import {
   type UpcomingRoundState,
 } from '@/utils/homeRoundState';
 
-/** The ball-on-grass photo the card has always used. No per-game image
- *  exists on the document, so this is the one fallback for every round —
- *  bundled, so it costs no request. */
-const BALL_FIELD: ImageSourcePropType = require('../../assets/images/ball-field.jpg');
 /** The floodlit pitch, for the finished round. */
 const NIGHT_PITCH: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
 
@@ -74,11 +71,11 @@ const CARD_SHADOW = {
 const TONE: Record<RoundStateKind, { ink: string; wash: string; onInk: string }> = {
   open: { ink: '#2563EB', wash: '#EFF4FF', onInk: '#FFFFFF' },
   registered: { ink: '#15803D', wash: '#ECFDF3', onInk: '#FFFFFF' },
-  today: { ink: '#6D28D9', wash: '#F3EEFF', onInk: '#FFFFFF' },
+  today: { ink: '#15803D', wash: '#ECFDF3', onInk: '#FFFFFF' },
   live: { ink: '#6D28D9', wash: '#F3EEFF', onInk: '#FFFFFF' },
   waitlist: { ink: '#C2410C', wash: '#FFF3E6', onInk: '#FFFFFF' },
   pending: { ink: '#C2410C', wash: '#FFF3E6', onInk: '#FFFFFF' },
-  opensSoon: { ink: '#6D28D9', wash: '#F3EEFF', onInk: '#FFFFFF' },
+  opensSoon: { ink: '#15803D', wash: '#ECFDF3', onInk: '#FFFFFF' },
   full: { ink: '#DC2626', wash: '#FEF2F2', onInk: '#FFFFFF' },
   closed: { ink: '#475569', wash: '#F1F5F9', onInk: '#FFFFFF' },
 };
@@ -164,6 +161,8 @@ export function UpcomingRoundCard({
   game,
   state,
   clubName,
+  cover,
+  coverLoading = false,
   actions,
   busy,
   now,
@@ -171,11 +170,17 @@ export function UpcomingRoundCard({
   game: Game;
   state: UpcomingRoundState;
   clubName?: string;
+  cover?: RoundCoverClub | null;
+  coverLoading?: boolean;
   actions: RoundActions;
   /** A join is in flight — the primary action locks so it cannot double-fire. */
   busy?: boolean;
   now: number;
 }) {
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
+  const activePhoto = useRef(cover?.coverPhotoUrl);
+  activePhoto.current = cover?.coverPhotoUrl;
+  const source = resolveRoundCover(game, cover, coverLoading, failedPhotoUrl);
   const tone = TONE[state.kind];
   const venue = [game.fieldName, game.city].filter(Boolean).join(' · ');
   const club = (clubName || game.title || '').trim();
@@ -227,7 +232,10 @@ export function UpcomingRoundCard({
 
         <View style={styles.photo}>
           <ImageBackground
-            source={BALL_FIELD}
+            source={source}
+            onError={() => {
+              if (cover?.coverPhotoUrl && activePhoto.current === cover.coverPhotoUrl) setFailedPhotoUrl(cover.coverPhotoUrl);
+            }}
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
           />

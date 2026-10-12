@@ -5,6 +5,7 @@ jest.mock('react', () => ({
   useState: (v: unknown) => [v, jest.fn()],
   useRef: (v: unknown) => ({ current: v }),
   useEffect: jest.fn(),
+  useContext: () => false,
   useCallback: (fn: unknown) => fn,
 }));
 jest.mock('react-native', () => ({
@@ -43,6 +44,17 @@ function find(node: any, predicate: (p: any) => boolean): any {
 const action = (name: string) => ({ nativeEvent: { actionName: name } });
 
 describe('accessible controls without touch gestures', () => {
+  test('rating sends only integer native accessibility values for all decimal ratings', () => {
+    for (let tenth = 0; tenth <= 50; tenth++) for (const readonly of [false,true]) {
+      const value = tenth / 10;
+      const control = find(RatingSlider({ value, readonly }), p => p.accessibilityRole === (readonly ? 'text' : 'adjustable'));
+      const nativeValue = control.props.accessibilityValue;
+      // Fabric's AccessibilityValue uses optional<int>; a fractional now crashes rendering.
+      expect(Number.isInteger(nativeValue.now)).toBe(true);
+      expect(nativeValue).toMatchObject({ min: 0, max: 50, now: tenth });
+      expect(nativeValue.text).toBe(value === 0 ? he.ratingNotRated : `${value.toFixed(1)} מתוך 5`);
+    }
+  });
   test('rating changes by the business step and clamps both limits', () => {
     for (const [value, name, expected] of [[3.5, 'increment', 3.6], [3.5, 'decrement', 3.4], [5, 'increment', 5], [0, 'decrement', 0]] as const) {
       const onChange = jest.fn();

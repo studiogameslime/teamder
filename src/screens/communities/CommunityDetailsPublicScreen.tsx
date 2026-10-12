@@ -12,7 +12,7 @@
 // PublicGroupsFeedScreen will navigate to the private CommunityDetails
 // instead, which has the full member roster.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
   ScrollView,
@@ -57,6 +57,8 @@ import { RTL_LABEL_ALIGN, clubAccent, clubSurface, colors, spacing, typography }
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
+import { receivedInvitationsService } from '@/services/receivedInvitationsService';
+import { hasClubInvitation } from '@/utils/receivedInvitations';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
@@ -94,6 +96,30 @@ export function CommunityDetailsPublicScreen() {
   const [upcomingGames, setUpcomingGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyJoin, setBusyJoin] = useState(false);
+  const memberNavigation = useRef<string | null>(null);
+  const openMemberView = useCallback(() => {
+    const key = `${me?.id}:${groupId}`;
+    if (!nav.isFocused() || memberNavigation.current === key) return;
+    memberNavigation.current = key;
+    nav.replace('CommunityDetails', {groupId});
+  }, [nav, me?.id, groupId]);
+  const [invitation, setInvitation] = useState<{uid: string; groupId: string; available: boolean} | null>(null);
+  const fromInvitation = invitation?.uid === me?.id && invitation?.groupId === groupId && invitation.available;
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setInvitation(null);
+    if (!me || me.isGuest) return;
+    receivedInvitationsService.list(me.id).then(items => {
+      if (active) setInvitation({uid: me.id, groupId, available: hasClubInvitation(items, groupId)});
+    }).catch(error => {
+      if (active) {
+        setInvitation({uid: me.id, groupId, available: false});
+        logError('communityInvitationLookup', error, {groupId});
+      }
+    });
+    return () => { active = false; };
+  }, [me?.id, me?.isGuest, groupId]));
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -136,11 +162,11 @@ export function CommunityDetailsPublicScreen() {
   // If the user is already a member, bounce to the private full screen.
   // (They might land here via a shared link or after backgrounding the
   // app at the moment they got approved.)
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (memberGroups.some((g) => g.id === groupId)) {
-      nav.replace('CommunityDetails', { groupId });
+      openMemberView();
     }
-  }, [memberGroups, groupId, nav]);
+  }, [memberGroups, groupId, openMemberView]));
 
   // Derive the community's day/hour pattern from its actual upcoming
   // games rather than the legacy `preferredDays` / `preferredHour`
@@ -228,10 +254,11 @@ export function CommunityDetailsPublicScreen() {
       });
       return;
     }
-    if (!me || isPending) return;
+    if (!me || (isPending && !fromInvitation)) return;
     setBusyJoin(true);
     try {
       const status = await requestJoinById(group.id, me.id);
+      if (useUserStore.getState().currentUser?.id !== me.id) return;
       // Silent-failure guard: requestJoinById updates the group store in
       // place (pending → adds to pendingGroups; joined → re-hydrates
       // memberGroups). Read the FRESHLY-SET store snapshot via getState()
@@ -260,9 +287,10 @@ export function CommunityDetailsPublicScreen() {
       } else if (status === 'joined') {
         successHaptic();
         toast.success(he.toastJoinedGroup);
-        nav.goBack();
+        openMemberView();
       } else if (status === 'already_member') {
         toast.info(he.groupAlreadyMember);
+        openMemberView();
       }
     } catch (err) {
       logEvent(AnalyticsEvent.GroupJoinFailed, {
@@ -333,7 +361,7 @@ export function CommunityDetailsPublicScreen() {
     : null;
 
   const cta = group.isOpen ? he.communityJoinAuto : he.communityRequestToJoin;
-  const ctaDisabled = isPending || busyJoin;
+  const ctaDisabled = (isPending && !fromInvitation) || busyJoin;
 
   return (
     // No 'top' any more: the hero claims the status-bar inset itself, exactly
@@ -483,7 +511,7 @@ export function CommunityDetailsPublicScreen() {
         ) : null}
 
         <Button
-          title={isPending ? he.groupsActionPending : cta}
+          title={fromInvitation ? 'אישור הזמנה והצטרפות' : isPending ? he.groupsActionPending : cta}
           variant="primary"
           size="lg"
           fullWidth

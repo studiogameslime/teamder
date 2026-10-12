@@ -108,11 +108,11 @@ async function main() {
     roundHistoryDoc:{payload:value},
     roundHistoryRef:{create:async(doc)=>{if(history)throw Object.assign(new Error('exists'),{code:6});history=doc.payload}},
     sb:{build:batch=>batch},inc:()=>{},gameId:'g',roundId:'1',HttpsError:Error,
-    liveGoalIds:[],snap:{ref:'game',updateTime:'v1'},now:123,
+    liveGoalIds:[],snap:{ref:'game',updateTime:'v1'},grpSnap:{ref:'group',updateTime:'club-v1'},now:123,
     admin:{firestore:{FieldValue:{delete:()=>({delete:true})}}},
     db:{batch:()=>{let doc,clear;return {
       set:(ref,v)=>{doc=v},
-      update:(ref,patch,condition)=>{assert.equal(ref,'game');assert.equal(condition.lastUpdateTime,'v1');clear=patch},
+      update:(ref,patch,condition)=>{if(ref==='group'){assert.equal(condition.lastUpdateTime,'club-v1');return;}assert.equal(ref,'game');assert.equal(condition.lastUpdateTime,'v1');clear=patch},
       commit:async()=>{
         if(latch)throw Object.assign(new Error('exists'),{code:6});
         assert.equal(clear.lastCommittedRoundId,'1');assert.deepEqual(Array.from(clear['liveMatch.goals']),[]);
@@ -182,7 +182,7 @@ async function main() {
   let friends=[],incoming=[{request:{fromUserId:'p'},user:{id:'p'}}];
   let alertCount=0;
   const friendsMod=loadString('const '+accept+';exports.accept=handleAccept;',{
-    me:{id:'u'},incoming,friends,
+    me:{id:'u'},incoming,friends,isCurrentUser:()=>true,
     setBusyId:()=>{},setFriends:fn=>{friends=fn(friends)},setIncoming:fn=>{incoming=fn(incoming)},
     friendsService:{acceptRequest:fail},successHaptic:()=>{},toast:{success:()=>{}},he:{},load:async()=>{},
     __DEV__:false,appAlert:()=>{alertCount++},

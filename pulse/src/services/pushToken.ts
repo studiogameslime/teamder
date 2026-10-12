@@ -5,7 +5,7 @@
 
 import { getDevicePushToken } from './notify';
 import { getDoc, patchDoc } from './firestoreRest';
-import { has } from '../secrets';
+import { has } from '../capabilities';
 
 export async function registerForRealtimeAlerts(): Promise<void> {
   try {

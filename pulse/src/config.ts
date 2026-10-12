@@ -1,5 +1,5 @@
 // What this dashboard monitors. Edit these to point at any app you own.
-// Nothing here is secret — the actual API keys live in src/secrets.ts.
+// Public resource identifiers only. Administrative credentials live on the server.
 
 export const config = {
   // Friendly name shown in the UI + notifications.

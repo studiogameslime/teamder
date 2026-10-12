@@ -12,7 +12,7 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { achievementsService } from '@/services/achievementsService';
 import { useUserStore } from '@/store/userStore';
 import { logError } from '@/services/errorLog';
-import { isStaleSession } from '@/services/staleSession';
+import { isStaleSession, StaleSessionError } from '@/services/staleSession';
 
 type MembershipStatus =
   | 'none'      // user has no group at all
@@ -337,7 +337,16 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
   },
 
   requestJoinById: async (groupId, userId) => {
+    const account = accountGeneration;
+    const assertCurrent = () => {
+      const current = useUserStore.getState().currentUser;
+      if (account !== accountGeneration || (current && current.id !== userId)) {
+        throw new StaleSessionError(userId, current?.id ?? '');
+      }
+    };
+    assertCurrent();
     const { group, status } = await groupService.requestJoinById(groupId, userId);
+    assertCurrent();
     if (status === 'pending') {
       set((s) => ({
         pendingGroups: s.pendingGroups.find((g) => g.id === group.id)
@@ -346,7 +355,20 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
       }));
       // See requestJoin above — admin push is fully owned by the
       // server-side `onGroupPendingChanged` Cloud Function.
-    } else if (status === 'joined') {
+    } else if (status === 'joined' || status === 'already_member') {
+      // The callable returns a stub. Read this club's canonical member document
+      // instead of blocking the join on every club and pending request query.
+      const joined = await groupService.get(groupId).catch(() => null);
+      assertCurrent();
+      if (joined?.id === groupId &&
+          (joined.playerIds.includes(userId) || joined.adminIds.includes(userId))) {
+        set(s => ({
+          groups: [...s.groups.filter(g => g.id !== groupId), joined],
+          pendingGroups: s.pendingGroups.filter(g => g.id !== groupId),
+        }));
+        return status;
+      }
+      // Preserve the existing bounded recovery when the direct read is stale.
       await refreshAfterJoin(
         get().hydrate,
         () => get().groups.some((g) => g.id === group.id),

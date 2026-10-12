@@ -128,12 +128,8 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
                   anchor.above ? styles.caretDown : styles.caretUp,
                 ]}
               />
-              {/* The card is laid out LTR so the caret's absolute `left` is
-                  physical. Hebrew inside it therefore needs its OWN direction
-                  rather than a textAlign override per <Text> — with only the
-                  override, a long line started outside the card's padding and
-                  the first character was clipped. One RTL block, and the text
-                  lays out in the frame it is actually written in. */}
+              {/* Keep the measured card and text block in one physical frame;
+                  each Text explicitly supplies RTL writing and right alignment. */}
               <View style={styles.textBlock}>
                 {title ? <Text style={styles.title}>{title}</Text> : null}
                 <Text style={styles.body}>{text}</Text>
@@ -150,7 +146,10 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
 }
 
 const styles = StyleSheet.create({
-  textBlock: { direction: 'rtl', alignSelf: 'stretch' },
+  // Keep the physical frame LTR; Text explicitly sets Hebrew direction and
+  // physical right alignment. Mixing an RTL frame with swapped alignment
+  // makes Android forceRTL align tooltip paragraphs on the wrong side.
+  textBlock: { direction: 'ltr', alignSelf: 'stretch' },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.25)',
@@ -227,5 +226,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.primary,
     fontWeight: '800',
+    writingDirection: 'rtl',
+    textAlign: 'right',
   },
 });

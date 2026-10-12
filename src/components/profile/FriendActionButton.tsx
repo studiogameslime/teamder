@@ -10,7 +10,7 @@
 // Closes TU-04 — before, a sent request had no UI to cancel and the
 // user was stuck.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,10 +26,14 @@ import { he } from '@/i18n/he';
 interface Props {
   meId: string;
   otherUserId: string;
+  compact?: boolean;
+  onChanged?: () => void;
 }
 
-export function FriendActionButton({ meId, otherUserId }: Props) {
+export function FriendActionButton({ meId, otherUserId, compact = false, onChanged }: Props) {
+  const epoch = useRef(0);
   const [rel, setRel] = useState<FriendRelationship | null>(null);
+  const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   // Name is best-effort — comes from the gameStore players map (which
   // is hydrated for anyone who appeared in a game). Falls back to a
@@ -40,8 +44,11 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
   );
 
   const load = useCallback(async () => {
+    const current = ++epoch.current;
     try {
-      setRel(await friendsService.getRelationship(meId, otherUserId));
+      setFailed(false);
+      const next = await friendsService.getRelationship(meId, otherUserId);
+      if (epoch.current === current) setRel(next);
     } catch (e) {
       // A failed relationship lookup (e.g. a blocked friendRequests read)
       // must NOT make the button vanish — fall back to 'none' so the
@@ -49,15 +56,19 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
       if (__DEV__) {
         console.warn('[FriendActionButton] getRelationship failed', e);
       }
-      setRel('none');
+      if (epoch.current === current) setFailed(true);
     }
   }, [meId, otherUserId]);
 
   useEffect(() => {
-    load();
+    setRel(null);
+    void load();
+    return () => { epoch.current++; };
   }, [load]);
 
-  if (rel === null || rel === 'self') return null;
+  if (failed) return <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.pending}><Text style={styles.labelPending}>נסה שוב</Text></Pressable>;
+  if (rel === null) return <ActivityIndicator size="small" color={colors.primary} />;
+  if (rel === 'self') return null;
 
   // All three of these states drive a user-meaningful action when
   // tapped: send / cancel-mine / accept-theirs. 'friends' stays muted.
@@ -69,6 +80,7 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
       await friendsService.cancelRequest(meId, otherUserId);
       toast.success(he.friendsRequestCancelled);
       await load();
+      onChanged?.();
     } catch (e) {
       if (__DEV__) console.warn('[friendAction] cancel failed', e);
       appAlert(he.error, he.friendsActionFailed);
@@ -107,6 +119,7 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
         toast.success(he.friendsAccepted);
       }
       await load();
+      onChanged?.();
     } catch (e) {
       if (__DEV__) console.warn('[friendAction] failed', e);
       appAlert(he.error, he.friendsActionFailed);
@@ -135,6 +148,7 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
       disabled={!interactive || busy}
       style={[
         styles.btn,
+        compact && { paddingHorizontal: 9, paddingVertical: 7, gap: 5, minHeight: 36 },
         // Outgoing gets a softer "pending" look — visually distinct from
         // the bold primary "send/accept" CTA — but still tappable.
         rel === 'outgoing'
@@ -150,9 +164,10 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
       }
     >
       <Text
-        numberOfLines={1}
+        numberOfLines={compact ? 2 : 1}
         style={[
           styles.label,
+          compact && { fontSize: 11.5, lineHeight: 15, fontWeight: '600', flexShrink: 1, textAlign: 'center' },
           rel === 'outgoing'
             ? styles.labelPending
             : interactive
@@ -176,7 +191,7 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
       ) : (
         <Ionicons
           name={icon}
-          size={18}
+          size={compact ? 15 : 18}
           color={
             rel === 'outgoing'
               ? colors.primary
@@ -198,7 +213,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
+    borderRadius: 11,
     // Stretch to fill its half-width slot so the label sits on one line.
     alignSelf: 'stretch',
   },

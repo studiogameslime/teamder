@@ -29,8 +29,10 @@
 
 ## פרופיל
 
+
 | פיצ׳ר | הסבר פשוט | מאחורי הקלעים |
 |---|---|---|
+| גילוי שחקנים ופרטיות | [הסבר פשוט](profile/player-discovery.simple.md) | [הסבר מעמיק](profile/player-discovery.md) |
 | יציאה, חזרה לאורח ומחיקת חשבון | [הסבר פשוט](profile/account-lifecycle.simple.md) | [הסבר מעמיק](profile/account-lifecycle.md) |
 | ארון התארים וההישגים האישיים | [הסבר פשוט](profile/achievements.simple.md) | [הסבר מעמיק](profile/achievements.md) |
 | עריכת זמינות, מקום ורדיוס | [הסבר פשוט](profile/availability-edit.simple.md) | [הסבר מעמיק](profile/availability-edit.md) |
@@ -125,3 +127,6 @@
 
 
 | מסלול ההצטרפות בפולס | [הסבר פשוט](shared/onboarding-activity.simple.md) | [הסבר מעמיק](shared/onboarding-activity.md) |
+
+
+כניסה מאובטחת לפולס: [הסבר פשוט](../../pulse/docs/secure-access.simple.md) · [הסבר טכני](../../pulse/docs/secure-access.md). הוכן מקומית; המסך טרם צולם.

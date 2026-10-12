@@ -33,7 +33,7 @@ yarn-error.*
 # local env files
 .env*.local
 
-# personal credentials (this app bundles them; never commit)
+# Legacy credentials: never bundle, upload, or commit
 src/secrets.ts
 
 # typescript

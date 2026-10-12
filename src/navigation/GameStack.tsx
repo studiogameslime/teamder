@@ -1,3 +1,5 @@
+import { FeedbackScreen } from '@/screens/FeedbackScreen';
+import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
 import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
 // Games tab navigation:
 //   GamesList → MatchDetails → LiveMatch
@@ -123,6 +125,8 @@ export type GameStackParamList = {
     /** View-only (non-managers): summary without edit/finish actions. */
     readOnly?: boolean;
   };
+  Statistics: { userId?: string } | undefined;
+  Feedback: { type?: 'bug' | 'suggestion'; playerId?: string; playerName?: string } | undefined;
   PlayerCard: { userId: string; groupId?: string };
   PlayerCompare: { groupId: string; otherUid: string; otherName?: string };
   /** Admin-only per-community player timeline — reachable from
@@ -139,7 +143,7 @@ export type GameStackParamList = {
    *  "מועדונים באזור שלך" section on the games list. Registered here (as well
    *  as in CommunitiesStack) so back returns to the matches tab; without the
    *  registration navigate() would silently no-op. */
-  CommunityDetailsPublic: { groupId: string };
+  CommunityDetailsPublic: { groupId: string; fromInvitation?: boolean };
   /** Reached from the "ביקוש באזור שלך" card ("גם אני פנוי" / "הגדר אזור"),
    *  so declaring availability doesn't bounce the user out to the profile tab. */
   AvailabilityEdit: undefined;
@@ -198,6 +202,8 @@ export function GameStack() {
       <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="Statistics" component={StatisticsScreen} />
+      <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
       <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />

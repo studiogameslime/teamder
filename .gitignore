@@ -86,3 +86,6 @@ backups/
 store-repair.ps1
 __pycache__/
 *.pyc
+
+# Function runtime configuration is provisioned at deployment time.
+/functions/.env*

@@ -406,7 +406,7 @@ export function CommunityDetailsScreen() {
     }
     let alive = true;
     seasonHistoryService
-      .list(groupId)
+      .list(groupId, true)
       .then((list) => {
         // 'error' is NOT an empty list: a club with five sealed seasons told
         // that on a dropped connection would read as having lost them.

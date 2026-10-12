@@ -272,6 +272,31 @@ export function repeatPenalty(
   return total;
 }
 
+/** Candidate membership and weights stay fixed while refinement swaps players.
+ * Compile pair keys once, preserving the exact pair-summation order and RNG. */
+function repeatScorer(teams: BuildTeam[], weights: Record<string, number>): (teams: BuildTeam[]) => number {
+  const ids = teams.flatMap(team => team.ids);
+  const table: Record<string, Record<string, number>> = Object.create(null);
+  for (const id of ids) table[id] = Object.create(null);
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const value = weights[pairKey(ids[i], ids[j])] ?? 0;
+      table[ids[i]][ids[j]] = value;
+      table[ids[j]][ids[i]] = value;
+    }
+  }
+  return current => {
+    let total = 0;
+    for (const team of current) {
+      for (let i = 0; i < team.ids.length; i++) {
+        const row = table[team.ids[i]];
+        for (let j = i + 1; j < team.ids.length; j++) total += row[team.ids[j]];
+      }
+    }
+    return total;
+  };
+}
+
 /**
  * A copy of the pair weights with each entry scaled by an independent random
  * factor in [1 − SEARCH_JITTER, 1 + SEARCH_JITTER]. Used to steer one restart
@@ -666,18 +691,19 @@ export function balanceCore(input: CoreInput): CoreResult {
     // differ only in what they are willing to trade.
     if (searchWeights) {
       const scale = repeatScale(teams);
+      const scoreRepeats = repeatScorer(teams, searchWeights);
       refineSwaps(
         teams,
         ratingOf,
         strategy === 'A'
           ? (t) =>
               balancePenalty(spreadOf(t)) +
-              repeatPenalty(t, searchWeights) / scale +
+              scoreRepeats(t) / scale +
               STACK_WEIGHT * stackPenalty(t, top, bottom)
           : // B keeps balance as a pure constraint: minimise repeats, and pay a
             // large fixed price only for crossing the ceiling.
             (t) =>
-              repeatPenalty(t, searchWeights) / scale +
+              scoreRepeats(t) / scale +
               100 * Math.max(0, spreadOf(t) - GAP_MAX) +
               STACK_WEIGHT * stackPenalty(t, top, bottom),
         rng,

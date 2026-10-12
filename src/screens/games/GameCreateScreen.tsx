@@ -856,9 +856,11 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
   },
   orphanBannerText: {
+    flex: 1,
     color: '#1D4ED8',
     fontSize: 13,
-    fontWeight: '700',
+    lineHeight: 20,
+    fontWeight: '600',
     textAlign: RTL_LABEL_ALIGN,
   },
   communityPickerWrap: {

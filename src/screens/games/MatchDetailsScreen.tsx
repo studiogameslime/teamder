@@ -16,6 +16,7 @@ import { ChangeMotion } from '@/components/anim/ChangeMotion';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Linking,
   Pressable,
   ScrollView,
@@ -567,6 +568,7 @@ export function MatchDetailsScreen() {
   // SoccerBallLoader during initial load.
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const primaryInFlight = useRef(false);
   const [guestModalOpen, setGuestModalOpen] = useState(false);
 
   // Check the viewer's red-card status for this community once (self only).
@@ -1206,7 +1208,7 @@ export function MatchDetailsScreen() {
   }, [game, adminUids, myCommunities, isAdmin]);
 
   const performPrimary = async () => {
-    if (!user || !game) return;
+    if (!user || !game || primaryInFlight.current) return;
     // A guest may browse this game; joining needs an identity. The coordinator
     // persists the intent and the sheet opens IN PLACE — the person never leaves
     // the game they were looking at, and when they come back the join runs
@@ -1220,6 +1222,9 @@ export function MatchDetailsScreen() {
       void authAction.request(guestJoinGameRequest(game.id));
       return;
     }
+    primaryInFlight.current = true;
+    setBusy(true);
+    try {
     const status = statusForUser(game, user.id);
     // Lifecycle gate via the shared helper (mirrors the txn check
     // inside joinGameV2 and the firestore.rules clause). Cancel
@@ -1286,8 +1291,6 @@ export function MatchDetailsScreen() {
     // Late-cancel confirm popup removed 2026-06-21 (user report): the
     // reliability/"אמינות" feature it warned for was scrapped, so cancelling
     // now proceeds directly with no danger-window prompt.
-    setBusy(true);
-    try {
       if (!isJoinAction) {
         // A cancel makes any in-flight join audit meaningless — the user is
         // SUPPOSED to be out of the roster now.
@@ -1466,6 +1469,10 @@ export function MatchDetailsScreen() {
         toast.info(he.matchDetailsAlreadyStarted);
       } else if (msg.includes('GAME_LIVE')) {
         toast.info(he.matchDetailsAlreadyLive);
+      } else if (msg.includes('GAME_JOIN_PROCESSING')) {
+        toast.info('הבקשה נשלחה ונמצאת בעיבוד. מצב ההרשמה יתעדכן ברשימת השחקנים.');
+      } else if (msg.includes('GAME_JOIN_FORBIDDEN')) {
+        toast.error('אין לך הרשאה להצטרף למחזור הזה. אפשר לבקש הזמנה ממנהל המחזור.');
       } else if (msg.includes('GAME_NOT_OPEN')) {
         toast.info(
           isScheduled(game) && game.registrationOpensAt
@@ -1490,6 +1497,7 @@ export function MatchDetailsScreen() {
       // (user report).
       void reload();
     } finally {
+      primaryInFlight.current = false;
       setBusy(false);
     }
   };
@@ -1726,6 +1734,7 @@ export function MatchDetailsScreen() {
    * plain "are you sure", asked every time.
    */
   const handlePrimary = () => {
+    if (primaryInFlight.current) return;
     if (!user || !game) {
       void performPrimary();
       return;
@@ -1755,7 +1764,7 @@ export function MatchDetailsScreen() {
   // direct "join", never "request to join" (user report: the creator + an
   // invited player both saw "בקש להצטרף" on a game they were invited to).
   const isInvitedToGame =
-    !!user && (game.invitedUserIds ?? []).includes(user.id);
+    !!user && (game.approvedInvites?.[user.id]?.expiresAt ?? 0) > Date.now();
   const needsApproval = game.requiresApproval === true && !isAdmin && !isInvitedToGame;
   const primaryLabel = (() => {
     if (primaryDestructive) return he.matchDetailsCancel;
@@ -2975,6 +2984,8 @@ export function MatchDetailsScreen() {
     // the sticky child's box starting at its true top.
     <View style={styles.heroWrap}>
         <MatchStadiumHero
+          roundId={game.id}
+          fieldType={game.fieldType}
           groupId={heroGroupId}
           coverLoading={!!heroGroupId && !memberHeroClub && !publicCoverResolved}
           startsAt={game.startsAt}
@@ -2984,10 +2995,7 @@ export function MatchDetailsScreen() {
           // it WILL land in, which is the club's running one — the stamp is
           // written on the transition to active, not at creation.
           seasonLabel={seasonLabelForGame}
-          // The club's own cover, so an evening looks like the club it belongs
-          // to (owner request). ONLY for a club game: a one-off has no club to
-          // borrow from and keeps the bundled stadium. Read from the club the
-          // viewer already has in the store — no extra fetch.
+          // Shared list/details cover policy, seeded with this round's id.
           coverUrl={heroClub?.coverPhotoUrl}
           coverImageId={heroClub?.coverImageId}
           onMenuPress={hasMenuItems ? () => setMenuOpen(true) : undefined}
@@ -3890,11 +3898,12 @@ export function MatchDetailsScreen() {
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={ctaState.label}
+                accessibilityState={{busy, disabled: busy}}
               >
                 {/* Text first so the icon lands on the visual LEFT (forceRTL
                     flips `row`: last child → visual left). */}
                 <Text style={styles.inviteCtaText}>{ctaState.label}</Text>
-                <Ionicons name={ctaState.icon} size={18} color="#FFFFFF" />
+                {busy ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons name={ctaState.icon} size={18} color="#FFFFFF" />}
               </Pressable>
               {ctaState.tone === 'blocked' ? (
                 <Text style={styles.ctaHelper}>

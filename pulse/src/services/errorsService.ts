@@ -3,7 +3,7 @@
 // (user-submitted bug reports + feature suggestions), and lets the dashboard
 // triage them — all in one unified panel.
 
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import type { ErrorRecord, ErrorStatus } from '../types';
 import { listAll, patchDoc, type FsDoc } from './firestoreRest';
 import { cached, invalidate } from './cache';

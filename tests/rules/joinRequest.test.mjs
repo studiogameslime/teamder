@@ -82,23 +82,23 @@ async function askToJoin(next) {
   }
 }
 
-describe('a person can ask to join', () => {
+describe('direct membership writes cannot bypass the join callable', () => {
   test('the ordinary first request', async () => {
     await seed([]);
-    assert.equal(await askToJoin([ME]), true);
+    assert.equal(await askToJoin([ME]), false);
   });
 
   test('joining a queue that already holds other people', async () => {
     await seed(['other']);
-    assert.equal(await askToJoin(['other', ME]), true);
+    assert.equal(await askToJoin(['other', ME]), false);
   });
 
   test('a club that predates the pendingPlayerIds field — bug 1', async () => {
     await seed(undefined);
     assert.equal(
       await askToJoin([ME]),
-      true,
-      'a club with no pendingPlayerIds must still accept a join request',
+      false,
+      'a club with no pendingPlayerIds must use the server join endpoint',
     );
   });
 
@@ -106,14 +106,14 @@ describe('a person can ask to join', () => {
     await seed([ME]);
     assert.equal(
       await askToJoin([ME]),
-      true,
-      'arrayUnion is a no-op when already pending; the retry must not fail',
+      false,
+      'arrayUnion is a no-op when already pending; the retry must use the server endpoint',
     );
   });
 
   test('asking twice when others are queued too', async () => {
     await seed(['x', ME, 'y']);
-    assert.equal(await askToJoin(['x', ME, 'y']), true);
+    assert.equal(await askToJoin(['x', ME, 'y']), false);
   });
 });
 

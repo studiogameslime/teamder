@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useRoute, useIsFocused, type RouteProp } from '@react-navigation/native';
 
 import { ChatView } from '@/components/chat/ChatView';
 import { chatService } from '@/services/chatService';
@@ -23,6 +23,7 @@ import type { User } from '@/types';
 import type { ChatStackParamList } from '@/navigation/ChatStack';
 
 export function DirectChatScreen() {
+  const focused = useIsFocused();
   const route = useRoute<RouteProp<ChatStackParamList, 'DirectChat'>>();
   const { convId } = route.params;
   const me = useUserStore((s) => s.currentUser);
@@ -43,6 +44,7 @@ export function DirectChatScreen() {
   const headerName = official ? he.officialAccountName : other?.name ?? '';
 
   useEffect(() => {
+    if (!focused) return;
     let alive = true;
     (async () => {
       if (!me || !otherId) {
@@ -81,7 +83,7 @@ export function DirectChatScreen() {
     return () => {
       alive = false;
     };
-  }, [me?.id, otherId, convId, reloadTick]);
+  }, [me?.id, otherId, convId, reloadTick, focused]);
 
   if (loading) {
     return (
@@ -92,7 +94,7 @@ export function DirectChatScreen() {
     );
   }
 
-  if (restricted || !me || !otherId) {
+  if (!me || !otherId) {
     return (
       <View style={styles.root}>
         <ScreenHeader title={headerName || he.dmTitle} />
@@ -131,6 +133,9 @@ export function DirectChatScreen() {
       title={headerName}
       canModerate={false}
       official={official}
+      readOnly={restricted}
+      statusBanner={restricted ? 'הכתיבה זמינה לחברים בלבד' : undefined}
+      readOnlyMessage='אפשר להמשיך לקרוא את ההודעות. כדי לכתוב שוב צריך להיות חברים.'
       // No members sheet for the official account — there is no profile to open
       // behind it, and the sheet would list a person who doesn't exist.
       memberIds={official ? [] : [me.id, otherId]}

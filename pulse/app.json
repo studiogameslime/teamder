@@ -37,7 +37,15 @@
         {
           "color": "#3B82F6"
         }
-      ]
+      ],
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": false
+        }
+      ],
+      "@react-native-google-signin/google-signin",
+      "./plugins/withAuthBackupExclusions.js"
     ]
   }
 }

@@ -154,7 +154,7 @@ describe('the legitimate senders still get through', () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await deleteDoc(doc(ctx.firestore(), 'groups', GID));
     });
-    assert.equal(await send(ADMIN, 'groupDeleted', OF_GROUP), true);
+    assert.equal(await send(ADMIN, 'groupDeleted', OF_GROUP), false);
   });
 });
 
@@ -246,7 +246,7 @@ describe('every payload the SHIPPED client actually sends', () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await deleteDoc(doc(ctx.firestore(), 'groups', GID));
     });
-    assert.equal(await send(ADMIN, 'groupDeleted', { groupId: GID, groupName: 'club' }), true);
+    assert.equal(await send(ADMIN, 'groupDeleted', { groupId: GID, groupName: 'club' }), false);
   });
 
   // Not a gap: the shipped client does NOT dispatch this one for real. Its own
@@ -268,7 +268,7 @@ describe('every payload the SHIPPED client actually sends', () => {
 
 // ⚠️ The residual, stated rather than left to be discovered.
 describe('what this does NOT close', () => {
-  test('groupDeleted naming a club that does not exist is still accepted', async () => {
+  test('groupDeleted naming a club that does not exist is refused: deletion notices are server-only', async () => {
     // The rule for this type is "the club must be absent", because by the time
     // the real notification is sent the club IS absent and there is nothing
     // left to authorise against. So a forger can still say "your club was
@@ -281,7 +281,7 @@ describe('what this does NOT close', () => {
     await seed();
     assert.equal(
       await send(STRANGER, 'groupDeleted', { groupId: 'no-such-club', groupName: 'x' }),
-      true,
+      false,
     );
   });
 });

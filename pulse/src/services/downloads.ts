@@ -1,3 +1,4 @@
+import { pulseFetch as fetch } from './adminTransport';
 // Downloads / installs.
 //   Apple  — App Store Connect Sales Reports API (daily, gzipped TSV).
 //   Google — Play "statistics" reports from the Cloud Storage bucket
@@ -5,7 +6,7 @@
 
 import { gunzipSync, strFromU8 } from 'fflate';
 import { config } from '../config';
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import type { DailyPoint, NameCount, StoreDownloads } from '../types';
 import { appStoreJwt, googleAccessToken } from './auth';
 

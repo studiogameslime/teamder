@@ -1,3 +1,4 @@
+import { waitForJoinResult } from '@/utils/joinRequestResult';
 // gameService — read/write of the active game for a group, plus past
 // game-night history.
 //
@@ -5386,33 +5387,6 @@ export const gameService = {
     const tappedAt = serverNow();
     clearMyGamesCache();
 
-    const predictBucket = (g: {
-      players?: string[];
-      waitlist?: string[];
-      pending?: string[];
-      guests?: { id: string; waitlisted?: boolean }[];
-      maxPlayers?: number;
-      requiresApproval?: boolean;
-      createdBy?: string;
-      pendingPromotion?: { uid?: string } | null;
-    }): 'players' | 'waitlist' | 'pending' => {
-      const state: RosterState = {
-        players: g.players ?? [],
-        waitlist: g.waitlist ?? [],
-        pending: g.pending ?? [],
-        guestsCount: activeGuestCount(g.guests),
-        maxPlayers: g.maxPlayers ?? 15,
-        // The game's creator/manager joins their OWN game without approval —
-        // requiring them to approve themselves is nonsense.
-        requiresApproval: g.requiresApproval === true && g.createdBy !== userId,
-        pendingOfferReservation: !!g.pendingPromotion?.uid,
-      };
-      const res = assignJoins(state, [
-        { uid: userId, tappedAt, requestedAt: tappedAt },
-      ]);
-      return res.assignments[0]?.bucket ?? 'waitlist';
-    };
-
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) throw new Error('requestJoinGame: game not found');
@@ -5455,7 +5429,7 @@ export const gameService = {
           pending: g.pending ?? [],
           guestsCount: activeGuestCount(g.guests),
           maxPlayers: g.maxPlayers,
-          requiresApproval: g.requiresApproval === true && g.createdBy !== userId,
+          requiresApproval: g.requiresApproval === true && g.createdBy !== userId && !((g.approvedInvites?.[userId]?.expiresAt ?? 0) > Date.now()),
           pendingOfferReservation: !!g.pendingPromotion?.uid,
         },
         [{ uid: userId, tappedAt, requestedAt: tappedAt }],
@@ -5534,7 +5508,9 @@ export const gameService = {
     // `fair` says HOW the place was allocated (the tap-ordered queue);
     // `source` says WHERE the user tapped from. Different questions.
     logEvent(AnalyticsEvent.GameJoined, { gameId, fair: true, source });
-    return { bucket: predictBucket(data) };
+    return waitForJoinResult((next, fail) => onSnapshot(reqRef, snap => {
+      if (snap.exists()) next(snap.data());
+    }, fail), () => getFirebase().auth.currentUser?.uid === userId);
   },
 
   /**
@@ -5548,6 +5524,7 @@ export const gameService = {
     userId: UserId,
     source: JoinSource = 'unknown'
   ): Promise<{ bucket: 'players' | 'waitlist' | 'pending' }> {
+    if (!USE_MOCK_DATA) return gameService.requestJoinGame(gameId, userId, source);
     clearMyGamesCache(); // joining adds the game to the user's my-games list
     // Emitted by the CALLER on success (it knows the resulting bucket), see the
     // logEvent(GameJoined) sites in GamesListScreen / MatchDetailsScreen.

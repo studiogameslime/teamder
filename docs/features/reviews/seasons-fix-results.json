@@ -1,0 +1,72 @@
+[
+  {
+    "probe": "reactivation",
+    "seasons": {
+      "count": 1,
+      "currentNo": 2,
+      "currentId": "s2",
+      "playedRounds": 0,
+      "targetHistory": [],
+      "startedAt": 1791706937776,
+      "enabled": true,
+      "cadence": {
+        "endsOn": null,
+        "months": null,
+        "targetRounds": 10,
+        "type": "rounds",
+        "endsAt": null,
+        "startsOn": null
+      },
+      "roundsAtStart": 30
+    },
+    "playerGoals": 0,
+    "clubGoals": 0,
+    "pairSameTeam": 0
+  },
+  {
+    "probe": "closedCorrectionWithFeatureOff",
+    "allowed": false
+  },
+  {
+    "probe": "resumeWithUnwipedPlayerChange",
+    "archivedGoals": 5,
+    "expectedLiveGoals": 2,
+    "actualLiveGoals": 2
+  },
+  {
+    "probe": "ordinaryResume",
+    "archivedGoals": 5,
+    "actualLiveGoals": 0
+  },
+  {
+    "probe": "firstActivationSealHistory",
+    "realHistory": 8,
+    "lateSealCounter": 3,
+    "archivedCompletedRounds": 8
+  },
+  {
+    "probe": "scheduledCloseWithoutRounds",
+    "archiveCreated": false,
+    "count": 1
+  },
+  {
+    "probe": "historyOver200",
+    "realHistory": 205,
+    "returned": 205
+  },
+  {
+    "probe": "failedHistoryRead",
+    "rejected": true
+  },
+  {
+    "probe": "staleCorrectionWindow",
+    "currentId": "s3",
+    "pendingSeasonId": null
+  },
+  {
+    "probe": "freshWindowRevalidation",
+    "notDueRefused": true,
+    "originalDeadlinePreserved": true,
+    "earlyCloseRefused": true
+  }
+]

@@ -95,6 +95,15 @@ service cloud.firestore {
         isGroupAdmin(gameDoc(gid).groupId)
       );
     }
+    // Finished-round chat stays writable for 24h from the actual end.
+    // Legacy finished rounds without an end timestamp are read-only.
+    function canWriteGameChat(gid) {
+      let game = gameDoc(gid);
+      let ended = game.get('endedAt', 0);
+      return game.get('status', '') != 'cancelled' &&
+        (game.get('status', '') != 'finished' ||
+          (ended is number && ended > 0 && request.time.toMillis() < ended + 86400000));
+    }
     // Mirrors the audience of /games' own `allow read` (public game, club
     // member, participant, creator). Used by per-game subcollections whose
     // documents carry a `gameId` but no `groupId`, so they can be bound to the
@@ -108,6 +117,7 @@ service cloud.firestore {
         request.auth.uid == gameDoc(gid).get('createdBy', '') ||
         request.auth.uid in gameDoc(gid).get('participantIds', []) ||
         request.auth.uid in gameDoc(gid).get('players', []) ||
+        request.auth.uid in gameDoc(gid).get('invitedUserIds', []) ||
         isGroupMember(gameDoc(gid).get('groupId', ''))
       );
     }
@@ -256,10 +266,7 @@ service cloud.firestore {
         // OWN departure. That is the whole claim the notification makes.
         ? notifPayload().get('cancellingUserId', '') == request.auth.uid
         : request.resource.data.type == 'groupDeleted'
-        ? (
-            notifClaimsGroup() is string && notifClaimsGroup().size() > 0 &&
-            !exists(/databases/$(database)/documents/groups/$(notifClaimsGroup()))
-          )
+        ? false // only the deletion trigger knows the real former membership
         : (
             isGroupAdminSafe(notifClaimsGroup()) ||
             (
@@ -406,6 +413,11 @@ service cloud.firestore {
       return 'invitedBy' in data && data.invitedBy != null;
     }
 
+    function validClientChatMessage() {
+      return request.resource.data.keys().hasOnly(['text', 'senderId', 'createdAt']) &&
+        request.resource.data.createdAt == request.time;
+    }
+
     // ── /users/{uid} ────────────────────────────────────────────────────
     // Reads: signed-in users can read profile basics. Sensitive fields
     // (fcmTokens, notificationPrefs, newGameSubscriptions) ARE in the
@@ -426,23 +438,10 @@ service cloud.firestore {
     // open clause let any signed-in user inflate / sabotage anyone
     // else's profile.
     match /users/{uid} {
-      // GET and LIST are split because they answer different questions and a
-      // combined `allow read` would give the weaker one away with the stronger.
-      //
-      // A full account keeps exactly what it had: it reads any user doc, which
-      // the roster, friends, admin and chat surfaces all rely on. An anonymous
-      // session gets nothing but its own (non-existent) doc — public name and
-      // avatar now come from /usersPublic, which is all a public surface ever
-      // needed. Before this, "continue as guest" was enough to read anyone's
-      // email, phone, fcmTokens and referral attribution.
-      allow get: if isSelf(uid) || isFullAccount();
-
-      // LIST is a strictly bigger capability — it enumerates the user base.
-      // Three real queries need it, all authenticated-user functionality:
-      //   • groupService.ts:1866  where(documentId(), 'in', ids)   — roster hydrate
-      //   • userService.ts:886    where('invitedBy','==',uid)      — referral count
-      //   • userService.ts:921    same                              — referral list
-      allow list: if isFullAccount();
+      // Full records contain private totals, attribution and contact data.
+      // Public identity is served by usersPublic / scoped server projections.
+      allow get: if isSelf(uid);
+      allow list: if false;
 
       // Anonymous sessions never get a /users doc — `buildGuestUser` builds a
       // runtime-only object and `getCurrentUser` returns before the lazy
@@ -451,6 +450,8 @@ service cloud.firestore {
       // them could have written a junk user doc. Closed here rather than
       // relying on the client to keep not doing it.
       allow create: if isFullAccount() && isSelf(uid) &&
+        (!('stats' in request.resource.data) || request.resource.data.stats == null) &&
+        request.resource.data.get('friends', []).size() == 0 &&
         // Brand-new doc: no inviter known yet, OR invitedBy is set to
         // someone OTHER than self (the URL/install-referrer flow on
         // first signup).
@@ -529,7 +530,7 @@ service cloud.firestore {
         ) &&
         // `stats` is server-derived. A client that sets it would be
         // inflating their public attendance/cancellation %. Block.
-        !affectedKeys().hasAny(['stats']);
+        !affectedKeys().hasAny(['stats', 'friends']);
 
       allow delete: if false;
 
@@ -538,11 +539,8 @@ service cloud.firestore {
       // never be visible to other authenticated users. Currently:
       //   • /users/{uid}/private/push  →  fcmTokens, notificationPrefs
       //
-      // The parent /users/{uid} doc is readable by any signed-in user
-      // (so the app can render names/avatars), which historically
-      // exposed `fcmTokens` to anyone with auth. Moving those fields
-      // here closes that hole. Cloud Functions read this path via
-      // Admin SDK (rules bypass).
+      // Parent and private children are now owner-only. Cloud Functions
+      // use the Admin SDK; public names/avatars have an explicit projection.
       match /private/{doc} {
         allow read, write: if isSelf(uid);
       }
@@ -556,26 +554,20 @@ service cloud.firestore {
         request.auth.uid in resource.data.pendingPlayerIds
       );
 
-      allow create: if isSignedIn() &&
-        request.resource.data.adminIds == [request.auth.uid] &&
-        request.resource.data.playerIds.hasOnly([request.auth.uid]) &&
-        request.resource.data.pendingPlayerIds.size() == 0 &&
-        // Sanity caps on initial fields.
-        isShortString(request.resource.data.name, 80) &&
-        isOptionalShortString(request.resource.data, 'description', 500) &&
-        isOptionalShortString(request.resource.data, 'city', 80) &&
-        isOptionalShortString(request.resource.data, 'fieldName', 200) &&
-        isOptionalShortString(request.resource.data, 'fieldAddress', 300) &&
-        // A club cannot be BORN holding a seasons block.
-        //
-        // `allow update` makes the field server-owned, and create said nothing
-        // — so anyone could plant one: a club created with enabled:true is
-        // adopted by the hourly rollover without enableClubSeasons ever having
-        // run, with a `count` nobody validated. The client sizes its season
-        // picker from that number.
-        !('seasons' in request.resource.data);
+      match /private/{privateId} {
+        allow get: if privateId == 'adminRatings' && isSignedIn() && (
+          isGroupAdmin(gid) || (
+            request.auth.uid in get(/databases/$(database)/documents/groups/$(gid)).data.get('playerIds', []) &&
+            get(/databases/$(database)/documents/groups/$(gid)).data.get('hideInternalRating', false) != true
+          )
+        );
+        allow list, write: if false;
+      }
 
-      allow update: if (
+      // Creation and its daily quota are enforced by createGroupCallable.
+      allow create: if false;
+
+      allow update: if !request.resource.data.diff(resource.data).affectedKeys().hasAny(['adminRatings']) && (
         // Admin branch — can mutate freely BUT a few fields are
         // immutable across the whole admin team:
         //   • creatorId (ownership transfer would let an admin
@@ -664,39 +656,6 @@ service cloud.firestore {
           )
         )
       ) || (
-        // Self-add to pendingPlayerIds (community join request — closed group).
-        isSignedIn() &&
-        !(request.auth.uid in resource.data.playerIds) &&
-        !(request.auth.uid in resource.data.adminIds) &&
-        affectedKeys().hasOnly(['pendingPlayerIds', 'updatedAt']) &&
-        // A club that predates the field has no `pendingPlayerIds` at all, and
-        // reading it unguarded ERRORS — which denies the whole clause, so that
-        // club could never receive a join request and the asker just saw
-        // "Missing or insufficient permissions". Default it to empty.
-        request.resource.data.pendingPlayerIds.hasAll(
-          resource.data.get('pendingPlayerIds', [])
-        ) &&
-        // At most ONE entry may appear, and with the hasAll above that entry
-        // can only be the caller: nobody else may be dropped or swapped in.
-        // Without this pairing a "+1 in size" write could remove an existing
-        // entry and inject a stranger (net +1 still passes) — a hijack.
-        //
-        // `<=` and not `==` on purpose. arrayUnion is a no-op when the caller
-        // is ALREADY pending, so an `== old + 1` size check turned the second
-        // tap on "בקש להצטרף" — or any retry after a network blip — into a
-        // hard permission error, on a request that had in fact gone through.
-        // Equal size here means new == old (hasAll + no growth), i.e. the
-        // write is idempotent, which is exactly what a retry should be.
-        request.resource.data.pendingPlayerIds.size() <=
-          resource.data.get('pendingPlayerIds', []).size() + 1 &&
-        request.auth.uid in request.resource.data.pendingPlayerIds &&
-        // Capacity gate.
-        (
-          !('maxMembers' in resource.data) ||
-          resource.data.maxMembers <= 0 ||
-          resource.data.playerIds.size() < resource.data.maxMembers
-        )
-      ) || (
         // Self-cancel a pending join request: withdraw yourself from
         // pendingPlayerIds. Mirror of the self-add clause above so a
         // user can take back a request they sent to a closed community
@@ -716,24 +675,6 @@ service cloud.firestore {
         // old.hasAll(new) form missed (audit #6 residual).
         request.resource.data.pendingPlayerIds.hasAll(
           resource.data.pendingPlayerIds.removeAll([request.auth.uid])
-        )
-      ) || (
-        // Self-add to playerIds (auto-join — open group).
-        isSignedIn() &&
-        resource.data.isOpen == true &&
-        !(request.auth.uid in resource.data.playerIds) &&
-        !(request.auth.uid in resource.data.adminIds) &&
-        affectedKeys().hasOnly(['playerIds', 'updatedAt']) &&
-        request.resource.data.playerIds.size() ==
-          resource.data.playerIds.size() + 1 &&
-        request.auth.uid in request.resource.data.playerIds &&
-        // Nobody else may be dropped or swapped in — see pending branch. This
-        // closes the one-write "kick a member + inject a stranger" hijack.
-        request.resource.data.playerIds.hasAll(resource.data.playerIds) &&
-        (
-          !('maxMembers' in resource.data) ||
-          resource.data.maxMembers <= 0 ||
-          resource.data.playerIds.size() < resource.data.maxMembers
         )
       ) || (
         // Self-leave (player only): remove yourself from playerIds.
@@ -886,7 +827,9 @@ service cloud.firestore {
     // A guest reads per document instead; it is looking at one game.
     match /usersPublic/{uid} {
       allow get: if true;
-      allow list: if isFullAccount();
+      // Scoped identity reads remain available; global search uses the server
+      // projection, which honours discoverable and the caller's block list.
+      allow list: if false;
       // Server-written only, via the onUserWritten trigger. A client that
       // could write here could publish any name under any uid — and the
       // owner writing their own mirror is exactly how the two documents
@@ -990,34 +933,17 @@ service cloud.firestore {
         request.auth.uid == resource.data.fromUserId ||
         request.auth.uid == resource.data.toUserId
       );
-      allow create: if isSignedIn() &&
-        request.resource.data.fromUserId == request.auth.uid &&
-        request.resource.data.toUserId is string &&
-        request.resource.data.toUserId != request.auth.uid &&
-        request.resource.data.status == 'pending';
-      // Recipient declines: status → 'declined', parties unchanged.
-      // OR the original SENDER re-sends — resetting a withdrawn/declined
-      // request back to 'pending'. The app uses setDoc(), which is an
-      // UPDATE when a stale doc already exists; without this branch a
-      // legitimate re-send fails with permission-denied. Parties are
-      // pinned so neither side can rewrite the other party.
+      allow create: if false; // sendSocialFriendRequest owns creation and limits
+      // A recipient may decline; server-only sending checks blocks and quotas.
       allow update: if isSignedIn() &&
+        request.auth.uid == resource.data.toUserId &&
         request.resource.data.fromUserId == resource.data.fromUserId &&
         request.resource.data.toUserId == resource.data.toUserId &&
-        (
-          (request.auth.uid == resource.data.toUserId &&
-            request.resource.data.status == 'declined') ||
-          // Sender may (re)set to pending — BUT a declined request is
-          // terminal: once the recipient declined, the sender can't flip
-          // it back to pending and spam again. They'd have to be re-invited
-          // by the other side (a fresh request in the opposite direction).
-          (request.auth.uid == resource.data.fromUserId &&
-            request.resource.data.status == 'pending' &&
-            resource.data.status != 'declined')
-        );
-      // Either party may remove the doc (sender withdraws / recipient
-      // clears a declined one).
-      allow delete: if isSignedIn() && (
+        request.resource.data.status == 'declined' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      // Preserve declined requests: deleting one must not erase the server's
+      // rejection history and allow a fresh unsolicited request.
+      allow delete: if isSignedIn() && resource.data.status == 'pending' && (
         request.auth.uid == resource.data.fromUserId ||
         request.auth.uid == resource.data.toUserId
       );
@@ -1621,8 +1547,8 @@ service cloud.firestore {
       // community admin). No membership ⇒ no access at all.
       match /messages/{msgId} {
         allow read: if isGamePlayer(id);
-        allow create: if isGamePlayer(id) &&
-          request.resource.data.senderId == request.auth.uid &&
+        allow create: if isGamePlayer(id) && canWriteGameChat(id) &&
+          request.resource.data.senderId == request.auth.uid && validClientChatMessage() &&
           isShortString(request.resource.data.text, 1000) &&
           request.resource.data.text.size() > 0;
         allow update: if false; // no edits in v1
@@ -1644,7 +1570,8 @@ service cloud.firestore {
       // ── /games/{id}/typing/{uid} — ephemeral "is typing" flags ──────
       match /typing/{uid} {
         allow read: if isGamePlayer(id);
-        allow write: if isSelf(uid) && isGamePlayer(id);
+        allow write: if isSelf(uid) && isGamePlayer(id) &&
+          (request.method == 'delete' || canWriteGameChat(id));
       }
 
       // ── /games/{id}/retroGoals/{retroGoalId} — post-match goal fixes ──
@@ -1685,7 +1612,7 @@ service cloud.firestore {
       // pipeline (Admin SDK). Read by any game participant (the summary card +
       // future "who ran the most" views). No direct client writes here.
       match /physical/{uid} {
-        allow read: if isGamePlayer(id);
+        allow read: if isSelf(uid);
         allow write: if false;
       }
 
@@ -1696,7 +1623,12 @@ service cloud.firestore {
       // (Admin SDK, bypasses these rules) then seats everyone by tap time.
       match /joinRequests/{uid} {
         allow read: if isSelf(uid);
-        allow create: if isSelf(uid) &&
+        allow create: if isFullAccount() && isSelf(uid) &&
+          (
+            canReadGame(id) ||
+            request.auth.uid in gameDoc(id).get('invitedUserIds', []) ||
+            (gameDoc(id).get('acceptsFillers', false) == true && gameDoc(id).get('visibility', '') != 'private')
+          ) &&
           request.resource.data.uid == uid &&
           request.resource.data.state == 'queued' &&
           request.resource.data.tappedAt is number &&
@@ -1725,7 +1657,7 @@ service cloud.firestore {
       // Authenticated-only: a round is the play-by-play of one club's evening.
       // Nothing a guest browses renders it — the public game screen shows the
       // roster and the time, not the mini-game log.
-      allow read: if isFullAccount();
+      allow read: if isFullAccount() && canReadGame(resource.data.gameId);
       allow create: if isSignedIn() && (
         request.auth.uid == gameOrgId(request.resource.data.gameId) ||
         isGroupAdmin(gameGroupId(request.resource.data.gameId))
@@ -1747,9 +1679,9 @@ service cloud.firestore {
 
     // ── /playerStats/{uid} ──────────────────────────────────────────────
     match /playerStats/{uid} {
-      // Authenticated-only. Lifetime per-player totals: the player card and
-      // the profile render them, and both sit behind an account.
-      allow read: if isFullAccount();
+      // Personal lifetime totals. Other-player statistics use the server
+      // privacy gate; a full account alone does not grant access.
+      allow read: if isSelf(uid);
       allow write: if false;
     }
 
@@ -1767,7 +1699,7 @@ service cloud.firestore {
     match /groups/{gid}/messages/{msgId} {
       allow read: if isGroupMember(gid);
       allow create: if isGroupMember(gid) &&
-        request.resource.data.senderId == request.auth.uid &&
+        request.resource.data.senderId == request.auth.uid && validClientChatMessage() &&
         isShortString(request.resource.data.text, 1000) &&
         request.resource.data.text.size() > 0;
       allow update: if false; // no edits in v1
@@ -1792,7 +1724,7 @@ service cloud.firestore {
     // ── /dmConversations/{convId} — 1-on-1 direct messages ───────────────
     // convId = sorted([uidA, uidB]).join('__'); exactly two participants.
     // Access is limited to those two. Starting a NEW conversation is gated by
-    // the OTHER user's `dmFriendsOnly` (default false = anyone may DM).
+    // mutual trusted friendship. Existing history stays participant-only.
     match /dmConversations/{convId} {
       function dmParticipants() {
         return get(/databases/$(database)/documents/dmConversations/$(convId))
@@ -1822,15 +1754,18 @@ service cloud.firestore {
           : convId.split('__')[0];
       }
       function otherAllowsMe(otherUid) {
-        // Guard the get() with exists(): a recipient whose /users doc is missing
-        // (never created / mid-provisioning) previously made `.data` null →
-        // hard-DENY of a legitimate DM. A user with no doc can't have opted into
-        // dmFriendsOnly, so treat "no doc" as "allows me".
-        return !exists(/databases/$(database)/documents/users/$(otherUid))
-          || get(/databases/$(database)/documents/users/$(otherUid))
-                 .data.get('dmFriendsOnly', false) != true
-          || (request.auth.uid in get(/databases/$(database)/documents/users/$(otherUid))
-                 .data.get('friends', []));
+        // New sends require trusted mutual friendship, even for old records.
+        // The reserved official sender has no user document; clients can only
+        // reply as themselves. Admin SDK sends bypass these rules.
+        return isFullAccount()
+          && !exists(/databases/$(database)/documents/users/$(request.auth.uid)/blocked/$(otherUid))
+          && !exists(/databases/$(database)/documents/users/$(otherUid)/blocked/$(request.auth.uid))
+          && (otherUid == 'teamder' || (
+            exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            && exists(/databases/$(database)/documents/users/$(otherUid))
+            && otherUid in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('friends', [])
+            && request.auth.uid in get(/databases/$(database)/documents/users/$(otherUid)).data.get('friends', [])
+          ));
       }
       allow read: if isDmParticipant();
       allow create: if isSignedIn()
@@ -1851,12 +1786,11 @@ service cloud.firestore {
         allow read: if isDmParticipant();
         allow create: if isDmParticipant()
           && request.resource.data.senderId == request.auth.uid
+          && validClientChatMessage()
           && isShortString(request.resource.data.text, 1000)
           && request.resource.data.text.size() > 0
-          // Enforce friends-only HERE too, not just on the conversation-doc
-          // create. A sender can skip ensureDmConversation() and write straight
-          // to messages/ (convId is deterministic), bypassing the gate — so the
-          // recipient's dmFriendsOnly / friends list must be checked per message.
+          // Enforce mutual friendship and blocks on each message, including
+          // direct writes that skip conversation creation or the app UI.
           && otherAllowsMe(dmOther());
         allow update: if false;
         allow delete: if isSignedIn() && resource.data.senderId == request.auth.uid;
@@ -1876,8 +1810,7 @@ service cloud.firestore {
       // club data; `isSignedIn()` let any account read any club's per-player
       // rating summaries. No live screen reads this collection — the refs in
       // src/firebase/firestore.ts have no callers, and the current internal
-      // rating lives on groups/{gid}.adminRatings, which is already
-      // member-gated. The GLOBAL /ratings/{uid} below stays cross-club by
+      // rating now lives in the access-controlled private/adminRatings doc. The GLOBAL /ratings/{uid} below stays cross-club by
       // design.
       allow read: if isGroupMember(gid);
       allow write: if false;
@@ -2285,15 +2218,7 @@ service cloud.firestore {
       // able to write them. Abuse is bounded: the collection is read/delete
       // denied to clients, and every field is type+size capped below. Harden
       // later with App Check (request.app != null) once enforcement is on.
-      allow create, update: if
-        request.resource.data.operation is string &&
-        request.resource.data.operation.size() <= 80 &&
-        isOptionalShortString(request.resource.data, 'lastMessage', 2000) &&
-        isOptionalShortString(request.resource.data, 'lastStack', 4000) &&
-        isOptionalShortString(request.resource.data, 'lastUserId', 128) &&
-        isOptionalShortString(request.resource.data, 'lastScreen', 80) &&
-        isOptionalShortString(request.resource.data, 'platform', 16) &&
-        isOptionalShortString(request.resource.data, 'appVersion', 32);
+      allow create, update: if false; // recordClientError owns aggregation
     }
 
     // ── /feedback/{id} — user-authored bug reports / feature suggestions ──
@@ -2306,6 +2231,18 @@ service cloud.firestore {
       allow read, delete: if false;           // panel reads via admin SA
       allow update: if false;                 // status managed by admin SA
       allow create: if isSignedIn() &&
+        request.resource.data.keys().hasOnly(['type','message','trail','journal','previousJournal','userId','userName','screen','category','image','appVersion','platform','createdAt','status']) &&
+        request.resource.data.status == 'new' &&
+        request.resource.data.createdAt == request.time &&
+        isOptionalShortString(request.resource.data,'trail',6000) &&
+        isOptionalShortString(request.resource.data,'journal',60000) &&
+        isOptionalShortString(request.resource.data,'previousJournal',30000) &&
+        isOptionalShortString(request.resource.data,'image',700000) &&
+        isOptionalShortString(request.resource.data,'userName',100) &&
+        isOptionalShortString(request.resource.data,'screen',100) &&
+        isOptionalShortString(request.resource.data,'category',80) &&
+        isOptionalShortString(request.resource.data,'appVersion',100) &&
+        isOptionalShortString(request.resource.data,'platform',16) &&
         (request.resource.data.type == 'bug' ||
           request.resource.data.type == 'suggestion') &&
         isShortString(request.resource.data.message, 2000) &&
@@ -2357,18 +2294,12 @@ service cloud.firestore {
       allow read, write: if isSelf(uid);
     }
     // ── /users/{uid}/seasonTitles/{id} — the titles a player has won ─────
-    // Readable by any signed-in user, exactly like the profile they hang on:
-    // a title is a public boast, and the profile screen that shows it is
-    // already open to everyone. Nothing here identifies anybody else — the
-    // club name is frozen text and the value is a number.
-    //
-    // WRITE IS SERVER-ONLY. These are decided by closeSeason from the sealed
-    // numbers; a client that could write them could award itself the league.
-    // The Admin SDK bypasses these rules, so denying outright costs nothing.
+    // Titles include individual statistical values. Owner reads directly;
+    // shared club season tables retain their separate membership permission.
+    // Awarding remains server-only.
     match /users/{uid}/seasonTitles/{titleId} {
-      // Authenticated-only, and consistent with the parent: the trophy
-      // cabinet hangs off a user document a guest can no longer read.
-      allow read: if isFullAccount();
+      // Same private boundary as the parent user document.
+      allow read: if isSelf(uid);
       allow write: if false;
     }
 
@@ -2391,20 +2322,16 @@ service cloud.firestore {
       // FOLLOW-UP rules deploy once 1.0.50 is widely adopted. Until then keep the
       // validated create so legitimate reporting keeps working.
       allow read, update, delete: if false;
-      allow create: if isSignedIn() &&
-        request.resource.data.reporterId == request.auth.uid &&
-        isShortString(request.resource.data.messageText, 2000) &&
-        request.resource.data.scope is string &&
-        request.resource.data.parentId is string;
+      allow create: if false; // reportChatMessage loads the actual message
     }
 
     // Pairwise "played together" tallies (same team / wins / losses),
     // written ONLY server-side by onGameRotationChanged. Any signed-in user
     // may read (the public player card shows "you & X").
     match /pairStats/{pair} {
-      // Authenticated-only. "You and X" is a relationship between two named
-      // people; it belongs to the player card, which is behind an account.
-      allow read: if isFullAccount();
+      // A participant can read their own shared history. No global index of
+      // another player's relationships; use field-bound participant queries.
+      allow read: if isFullAccount() && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid);
       allow write: if false;
     }
 

@@ -583,9 +583,9 @@ export function navigateForPush(
       // banner there.
       if (groupId) {
         nav.navigate('CommunitiesTab', {
-          screen: 'CommunityDetails',
+          screen: 'CommunityDetailsPublic',
           initial: false,
-          params: { groupId },
+          params: { groupId, fromInvitation: true },
         });
         return true;
       }

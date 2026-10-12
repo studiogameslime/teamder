@@ -9,6 +9,7 @@ import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { allowMapNavigation, mapScriptValue, validMapPoint } from '@/utils/mapWebSecurity';
 
 export interface MapMarker {
   id: string;
@@ -81,9 +82,10 @@ export function MapWebView({
 
   // Smoothly recenter without a full reload when `focusOn` changes.
   useEffect(() => {
-    if (!focusOn) return;
+    if (!focusOn || !validMapPoint(focusOn)) return;
+    const focusZoom = Number.isFinite(focusOn.zoom) ? Math.max(7, Math.min(18, focusOn.zoom!)) : 13;
     ref.current?.injectJavaScript(
-      `window.tmap && window.tmap.flyTo({ center: [${focusOn.lng}, ${focusOn.lat}], zoom: ${focusOn.zoom ?? 13}, duration: ${reduced ? 0 : 250} }); true;`,
+      `window.tmap && window.tmap.flyTo({ center: [${focusOn.lng}, ${focusOn.lat}], zoom: ${focusZoom}, duration: ${reduced ? 0 : 250} }); true;`,
     );
   }, [focusOn, reduced]);
 
@@ -91,7 +93,7 @@ export function MapWebView({
   // (pin → null) removes the marker.
   useEffect(() => {
     if (!pickable) return;
-    if (pin) {
+    if (pin && validMapPoint(pin)) {
       ref.current?.injectJavaScript(
         `window.setPickPin && window.setPickPin(${pin.lat}, ${pin.lng}); true;`,
       );
@@ -104,6 +106,7 @@ export function MapWebView({
 
   const handleMessage = (e: WebViewMessageEvent) => {
     try {
+      if (e.nativeEvent.data.length > 100000) return;
       const msg = JSON.parse(e.nativeEvent.data) as {
         type?: string;
         id?: string;
@@ -111,18 +114,22 @@ export function MapWebView({
         lat?: number;
         lng?: number;
       };
-      if (msg.type === 'markerPress' && msg.id && onMarkerPress) {
+      const markerIds = new Set(markers.map(m => m.id));
+      if (msg.type === 'markerPress' && typeof msg.id === 'string' && markerIds.has(msg.id) && onMarkerPress) {
         onMarkerPress(msg.id);
       } else if (
         msg.type === 'clusterPress' &&
         Array.isArray(msg.ids) &&
         onClusterPress
       ) {
-        onClusterPress(msg.ids);
+        const ids = [...new Set(msg.ids.filter(id => typeof id === 'string' && markerIds.has(id)))];
+        if (ids.length) onClusterPress(ids);
       } else if (
         msg.type === 'mapPress' &&
+        pickable &&
         typeof msg.lat === 'number' &&
         typeof msg.lng === 'number' &&
+        validMapPoint({lat:msg.lat,lng:msg.lng}) &&
         onPick
       ) {
         onPick(msg.lat, msg.lng);
@@ -136,6 +143,8 @@ export function MapWebView({
     <WebView
       ref={ref}
       originWhitelist={['*']}
+      onShouldStartLoadWithRequest={({url}) => allowMapNavigation(url)}
+      mixedContentMode="never"
       source={{ html }}
       style={styles.web}
       onMessage={handleMessage}
@@ -159,8 +168,10 @@ function buildHtml(
   // tintAlpha is accepted for API compatibility but no longer used — the
   // liberty basemap has its own (untinted) look shared with the other maps.
   void tintAlpha;
-  const markersJson = JSON.stringify(
-    markers.map((m) => ({
+  const safeCenter = validMapPoint(center) ? center : {lat:32.0853,lng:34.7818};
+  const safeZoom = Number.isFinite(zoom) ? Math.max(7,Math.min(18,zoom)) : 11;
+  const markersJson = mapScriptValue(
+    markers.filter(validMapPoint).map((m) => ({
       id: m.id,
       lat: m.lat,
       lng: m.lng,
@@ -208,8 +219,8 @@ function buildHtml(
       var map = new maplibregl.Map({
         container: 'map',
         style: 'https://tiles.openfreemap.org/styles/liberty',
-        center: [${center.lng}, ${center.lat}],
-        zoom: ${zoom},
+        center: [${safeCenter.lng}, ${safeCenter.lat}],
+        zoom: ${safeZoom},
         minZoom: 7,
         maxZoom: 18,
         maxBounds: ISRAEL,
@@ -273,7 +284,7 @@ function buildHtml(
           var s = 64, cv = document.createElement('canvas'); cv.width = s; cv.height = s;
           var cx = cv.getContext('2d');
           cx.font = '44px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-          cx.fillText('${pinEmoji}', s / 2, s / 2 + 2);
+          cx.fillText(${mapScriptValue(pinEmoji)}, s / 2, s / 2 + 2);
           if (!map.hasImage('pin')) map.addImage('pin', cx.getImageData(0, 0, s, s), { pixelRatio: 2 });
           map.addLayer({ id: 'point-icon', type: 'symbol', source: 'pts',
             filter: ['!', ['has', 'point_count']],

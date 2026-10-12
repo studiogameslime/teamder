@@ -11,7 +11,7 @@
 // formatted INTO the text — which works today, for every user, including
 // those who never update.
 
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import {
   getDoc,
   listAll,

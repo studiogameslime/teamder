@@ -1,9 +1,10 @@
+import { pulseFetch as fetch } from './adminTransport';
 // Firebase service — reads the app's users/games/groups and derives a rich
 // set of aggregate stats for the dashboard. Falls back to mock until the
 // service account is present.
 
 import { config } from '../config';
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import type {
   AppStats,
   AppUser,

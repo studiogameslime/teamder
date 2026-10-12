@@ -1,3 +1,5 @@
+import { isOfficialSender } from '@/utils/officialAccount';
+import { socialPlayersService } from './socialPlayersService';
 // chatService — realtime messaging for the two chat scopes (game +
 // community). Both map onto the same /…/messages subcollection shape, so
 // one service + one screen serve both.
@@ -16,15 +18,17 @@ import {
   orderBy,
   query,
   setDoc,
+  where,
 } from 'firebase/firestore';
 
 import { httpsCallable } from 'firebase/functions';
 
-import { col } from '@/firebase/firestore';
+import { docs, col } from '@/firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { waitForAuthRestore } from '@/firebase/auth';
 import { logError } from '@/services/errorLog';
-import type { ChatMessage, ChatScope, ChatUnreadEntry, User, UserId } from '@/types';
+import type { ChatPreferences } from '@/utils/chatInbox';
+import type { Game, ChatMessage, ChatScope, ChatUnreadEntry, User, UserId } from '@/types';
 
 /** Max characters per message — guards against pathological payloads. */
 export const MAX_MESSAGE_LEN = 1000;
@@ -83,7 +87,72 @@ export interface ChatReader {
   photoUrl?: string;
 }
 
+/** Delay new inbox listeners until the restored Firebase identity is available. */
+function afterChatAuth(attach: () => () => void, onError?: (err: unknown) => void): () => void {
+  let stopped=false, unsubscribe:(()=>void)|undefined;
+  void (async()=>{
+    try {
+      const user=getFirebase().auth.currentUser ?? await waitForAuthRestore();
+      if(stopped)return;
+      if(!user)throw new Error('chat: not signed in');
+      unsubscribe=attach();
+    }catch(err){if(!stopped)onError?.(err);}
+  })();
+  return ()=>{stopped=true;unsubscribe?.();};
+}
+
 export const chatService = {
+
+  subscribePreferences(uid: string, cb: (settings: Record<string, ChatPreferences>) => void, onError?: (err: unknown) => void): () => void {
+    if (USE_MOCK_DATA) { cb({}); return () => {}; }
+    return afterChatAuth(()=>onSnapshot(col.userChatSettings(uid), snap => {
+      const settings: Record<string, ChatPreferences> = {};
+      for (const d of snap.docs) {
+        const x = d.data();
+        settings[d.id] = { muted: x.muted === true, pinned: x.pinned === true,
+          archivedAt: typeof x.archivedAt === 'number' ? x.archivedAt : 0, archivedMessageId: typeof x.archivedMessageId === 'string' ? x.archivedMessageId : undefined };
+      }
+      cb(settings);
+    }, onError),onError);
+  },
+  async setPreferences(uid: string, scope: ChatScope, parentId: string, patch: Partial<ChatPreferences>): Promise<void> {
+    rejectDemoChatWrite();
+    await setDoc(doc(col.userChatSettings(uid), chatKeyFor(scope, parentId)), { ...patch, scope, parentId }, { merge: true });
+  },
+  /** Subscribe to parent state, including roster removal and actual end time. */
+  subscribeGameParent(gameId: string, cb: (game: Game | null) => void, onError: (err: unknown) => void): () => void {
+    if (USE_MOCK_DATA) {
+      const { mockGamesV2 } = require('@/data/mockData') as typeof import('@/data/mockData');
+      cb(mockGamesV2.find(g => g.id === gameId) ?? null); return () => {};
+    }
+    return afterChatAuth(()=>onSnapshot(docs.game(gameId), snap => cb(snap.exists() ? { ...snap.data(), matches: [] } : null), onError),onError);
+  },
+  /** Live metadata only; messages are never scanned to build the inbox.
+   * Includes historical rounds so the archive survives an app restart. */
+  subscribeInboxGames(uid: string, adminGroupIds: string[], cb: (games: Game[]) => void, onError: (err: unknown) => void): () => void {
+    if (USE_MOCK_DATA) {
+      const { mockGamesV2 } = require('@/data/mockData') as typeof import('@/data/mockData');
+      cb(mockGamesV2.filter(g => g.players.includes(uid) || g.createdBy === uid || adminGroupIds.includes(g.groupId)));
+      return () => {};
+    }
+    const queries = [query(col.games(), where('participantIds', 'array-contains', uid)),
+      query(col.games(), where('createdBy', '==', uid))];
+    for (let i = 0; i < adminGroupIds.length; i += 30) queries.push(query(col.games(), where('groupId', 'in', adminGroupIds.slice(i, i + 30))));
+    const buckets = new Map<number, Game[]>();
+    return afterChatAuth(() => {
+      const unsub = queries.map((q, i) => onSnapshot(q, snap => {
+        buckets.set(i, snap.docs.map(d => ({ ...d.data(), matches: [] })));
+        if (buckets.size !== queries.length) return;
+        const games = new Map<string, Game>();
+        for (const rows of buckets.values()) for (const g of rows) {
+          if (g.players.includes(uid) || g.createdBy === uid || adminGroupIds.includes(g.groupId)) games.set(g.id, g);
+        }
+        cb([...games.values()]);
+      }, onError));
+      return () => unsub.forEach(fn => fn());
+    },onError);
+  },
+
   /**
    * Subscribe to the most recent messages, oldest→newest. Returns an
    * unsubscribe fn. `onError` fires if the listener is denied (e.g. the
@@ -120,7 +189,7 @@ export const chatService = {
         if (!user) throw new Error('chat: not signed in');
         real = onSnapshot(
           q,
-          (snap) => { if (!cancelled) onMessages(snap.docs.map((d) => d.data()).reverse()); },
+          (snap) => { if (!cancelled) onMessages(snap.docs.map((d) => ({ ...d.data(), id: d.id })).reverse()); },
           (err) => { if (!cancelled) onError?.(err); },
         );
       } catch (err) {
@@ -145,6 +214,11 @@ export const chatService = {
     rawText: string,
   ): Promise<string> {
     rejectDemoChatWrite();
+    if (scope === 'dm') {
+      const other = parentId.split('__').find(id => id !== sender.id);
+      if (!other) throw new Error('chat: missing recipient');
+      if (!isOfficialSender(other)) await socialPlayersService.checkMessaging(other);
+    }
     const text = rawText.trim().slice(0, MAX_MESSAGE_LEN);
     if (!text) throw new Error('chat: empty message');
     const message: ChatMessage = {
@@ -176,6 +250,7 @@ export const chatService = {
     }
     const convId = dmConvId(me, other);
     if (USE_MOCK_DATA) return convId;
+    if (!isOfficialSender(other)) await socialPlayersService.checkMessaging(other);
     await setDoc(
       col.dmConversation(convId),
       {
@@ -210,7 +285,7 @@ export const chatService = {
           // their face even before they send me anything.
           ...(other.avatarId ? { avatarId: other.avatarId } : {}),
           ...(other.photoUrl ? { photoUrl: other.photoUrl } : {}),
-          lastMessageAt: Date.now(),
+          openedAt: Date.now(),
         },
         { merge: true },
       );
@@ -254,6 +329,7 @@ export const chatService = {
             count: typeof x.count === 'number' ? x.count : 0,
             lastMessageAt: typeof x.lastMessageAt === 'number' ? x.lastMessageAt : 0,
             lastText: typeof x.lastText === 'string' ? x.lastText : '',
+            lastMessageId: typeof x.lastMessageId === 'string' ? x.lastMessageId : undefined,
             lastSenderName: typeof x.lastSenderName === 'string' ? x.lastSenderName : '',
             lastSenderId: typeof x.lastSenderId === 'string' ? x.lastSenderId : '',
             scope: (x.scope as ChatScope) ?? 'game',

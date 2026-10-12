@@ -1,0 +1,33 @@
+{
+  "version": "1.1.48",
+  "versionCode": 281,
+  "buildId": "2069cacb-0d78-416a-baca-93a1c3473c3a",
+  "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53",
+  "dirtySource": true,
+  "files": 1668,
+  "nonRuntimeDifferences": [
+    "functions/socialPlayers.emulator.test.mjs"
+  ],
+  "tests": {
+    "jest": 3575,
+    "suites": 277,
+    "rules": 345,
+    "server": 22
+  },
+  "internalVerified": true,
+  "production": {
+    "version": "1.1.46",
+    "code": 279
+  },
+  "googleScreenshotsUploaded": 6,
+  "appleScreenshotsUploaded": true,
+  "appleScreenshotVersion": "1.1.48",
+  "appleScreenshotState": "PREPARE_FOR_SUBMISSION",
+  "appleScreenshotCountPerSet": 6,
+  "appleScreenshotSets": ["APP_IPHONE_67", "APP_IPHONE_65"],
+  "appleScreenshotsPublished": false,
+  "deployedFunctions": [
+    "searchSocialPlayers"
+  ],
+  "rulesDeployed": false
+}

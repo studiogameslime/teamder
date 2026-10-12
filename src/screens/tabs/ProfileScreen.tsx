@@ -32,6 +32,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useFocusEffect,
   useNavigation,
+  useRoute,
   useScrollToTop,
 } from '@react-navigation/native';
 import Constants from 'expo-constants';
@@ -84,6 +85,8 @@ import {
   type ChecklistItem,
 } from '@/components/home/OnboardingChecklist';
 import { DidYouKnowCard, type Tip } from '@/components/home/DidYouKnowCard';
+import { HomePersonalStats } from '@/components/home/HomePersonalStats';
+import { personalStatisticsFixture } from '@/dev/personalStatisticsFixture';
 import {
   HamburgerMenu,
   type HamburgerSection,
@@ -133,6 +136,13 @@ export function ProfileScreen() {
   useRemoteConfig(); // re-render when feature flags / config activate
   const nav = useNavigation<any>(); // eslint-disable-line @typescript-eslint/no-explicit-any
   const localUser = useUserStore((s) => s.currentUser);
+  const homeRoute = useRoute();
+  const qaStatsMode = __DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES === '1' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1'
+    ? (homeRoute.params as { qaHomeStats?: 'full' | 'empty' } | undefined)?.qaHomeStats : undefined;
+  const homeStatsPreview = useMemo(() => qaStatsMode ? {
+    stats: qaStatsMode === 'full' ? personalStatisticsFixture.stats : { ...personalStatisticsFixture.stats, goals: 0, assists: 0, attendedGames: 0, highlights: undefined, mostPlayedWith: null },
+    partner: qaStatsMode === 'full' ? personalStatisticsFixture.people['qa-itay'] : undefined,
+  } : undefined, [qaStatsMode]);
   const signOut = useUserStore((s) => s.signOut);
   const deleteOwnAccount = useUserStore((s) => s.deleteOwnAccount);
   // For the guest card's register button only. Called unconditionally here
@@ -187,6 +197,23 @@ export function ProfileScreen() {
   // tested without a renderer.
   const heroPick = pickHomeHero<Game>([], openToJoin, scheduledUpcoming);
   const heroGame = heroPick.game;
+  // Resolve the same club cover as round details, before any early return.
+  const coverRound = isShowableUpcoming(nextGame) ? nextGame : isShowableUpcoming(heroGame) ? heroGame : null;
+  const coverGroupId = coverRound && !coverRound.isOrphanContext ? coverRound.groupId : undefined;
+  const memberCoverClub = myCommunities.find(c => c.id === coverGroupId);
+  const [publicRoundCover, setPublicRoundCover] = useState<{ groupId: string; ownerId: string; cover: { coverPhotoUrl?: string; coverImageId?: string } | null } | null>(null);
+  useEffect(() => {
+    if (!coverGroupId || memberCoverClub || !localUser?.id) return;
+    let alive = true;
+    const ownerId = localUser.id;
+    import('@/services/groupService').then(m => m.groupService.getPublic(coverGroupId)).then(cover => {
+      if (alive) setPublicRoundCover({ groupId: coverGroupId, ownerId, cover });
+    }).catch(() => { if (alive) setPublicRoundCover({ groupId: coverGroupId, ownerId, cover: null }); });
+    return () => { alive = false; };
+  }, [coverGroupId, memberCoverClub, localUser?.id]);
+  const publicRoundCoverResolved = publicRoundCover?.groupId === coverGroupId && publicRoundCover?.ownerId === localUser?.id;
+  const upcomingCover = memberCoverClub ?? (publicRoundCoverResolved ? publicRoundCover?.cover : undefined);
+  const upcomingCoverLoading = !!coverGroupId && !memberCoverClub && !publicRoundCoverResolved;
   // Unified count of incoming requests the user must act on — friend
   // requests + community-join requests (admin) + game-join requests
   // (creator). Drives the top-of-home "pending requests" banner, which is
@@ -1214,7 +1241,7 @@ export function ProfileScreen() {
           ? [
               {
                 id: 'friends',
-                label: he.friendsTitle,
+                label: 'חברים והזמנות',
                 icon: 'people-outline' as const,
                 onPress: () => nav.navigate('Friends'),
               },
@@ -1284,6 +1311,7 @@ export function ProfileScreen() {
           icon: 'notifications-outline',
           onPress: () => nav.navigate('NotificationsSettings'),
         },
+        { id: 'socialPrivacy', label: 'פרטיות השחקן', icon: 'shield-checkmark-outline', onPress: () => nav.navigate('SocialPrivacy') },
         {
           id: 'blocked',
           label: he.profileSectionBlocked,
@@ -1484,6 +1512,8 @@ export function ProfileScreen() {
             <NextGameCardEntrance triggerKey={roundLayout.upcoming.id}>
               <UpcomingRoundCard
                 game={roundLayout.upcoming}
+                cover={upcomingCover}
+                coverLoading={upcomingCoverLoading}
                 state={roundState}
                 clubName={
                   myCommunities.find((c) => c.id === roundLayout.upcoming!.groupId)?.name
@@ -1514,6 +1544,8 @@ export function ProfileScreen() {
           {roundLayout.showEmpty && gamesLoaded ? (
             <NoRoundCard onCreate={roundActions.onCreate} onFind={roundActions.onFind} />
           ) : null}
+
+          {localUser && <HomePersonalStats user={localUser} preview={homeStatsPreview} onOpen={() => nav.navigate('Statistics')} />}
 
           {/* ④ Three action tiles — the quick actions, straight under the
               hero card, because these are what most visits are for. */}

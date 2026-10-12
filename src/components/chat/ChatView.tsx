@@ -27,7 +27,7 @@ import { SafeModal as Modal } from '@/components/SafeModal';
 import { SafeAreaView, useSafeAreaFrame } from 'react-native-safe-area-context';
 import { MenuIcon } from '@/components/MenuIcon';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { setActiveChat } from '@/services/activeChat';
 
@@ -79,6 +79,10 @@ interface Props {
   /** Renders "חשבון רשמי" under the header title. Set only for the Teamder
    *  account, and only from its reserved id — see utils/officialAccount. */
   official?: boolean;
+  readOnly?: boolean;
+  statusBanner?: React.ReactNode;
+  readOnlyMessage?: string;
+  previewMessages?: ChatMessage[];
 }
 
 export function ChatView({
@@ -89,7 +93,12 @@ export function ChatView({
   memberIds = [],
   adminIds = [],
   official = false,
+  readOnly = false,
+  statusBanner,
+  readOnlyMessage = 'השיחה סגורה לכתיבה. ההודעות נשמרות לקריאה.',
+  previewMessages,
 }: Props) {
+  const focused = useIsFocused();
   const reduced = useReducedMotion();
   const me = useUserStore((s) => s.currentUser);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
@@ -146,6 +155,7 @@ export function ChatView({
   }, [scope, parentId]);
 
   useEffect(() => {
+    if (previewMessages) { setMessages(previewMessages); setLoading(false); return; }
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     const unsub = chatService.subscribeMessages(
       scope,
@@ -186,7 +196,7 @@ export function ChatView({
       if (retryTimer) clearTimeout(retryTimer);
       unsub();
     };
-  }, [scope, parentId, retryTick, observeMessages]);
+  }, [scope, parentId, retryTick, observeMessages, previewMessages]);
 
   // Per-chat mute state, my block list, read positions, and who's typing.
   useEffect(() => {
@@ -214,14 +224,18 @@ export function ChatView({
   // The query keeps a sliding window of 100: count alone stops changing.
   const latestMessageId = messages[messages.length - 1]?.id;
 
+  useEffect(() => {
+    if (readOnly && me) chatService.setTyping(scope,parentId,{id:me.id,name:me.name},false).catch(()=>{});
+  },[readOnly,me?.id,scope,parentId]);
+
   // Opening the chat (and reading new messages while open) clears my
   // unread counter for it — which also re-arms the "one push" for the
   // next message — and stamps my read position so others see I'm caught up.
   useEffect(() => {
-    if (!me || denied) return;
+    if (!me || denied || !focused) return;
     chatService.markChatRead(me.id, scope, parentId).catch(() => {});
     chatService.writeReadReceipt(scope, parentId, me).catch(() => {});
-  }, [me?.id, scope, parentId, denied, latestMessageId]);
+  }, [me?.id, scope, parentId, denied, latestMessageId, focused]);
 
   // Mark this chat as the foreground-active one while it's focused, so an
   // incoming push for THIS chat is suppressed (no banner for the conversation
@@ -252,7 +266,7 @@ export function ChatView({
 
   const send = async () => {
     const text = draft.trim();
-    if (!text || !me || sending || sendGuardRef.current) return;
+    if (readOnly || !text || !me || sending || sendGuardRef.current) return;
     // Terms gate — must accept the chat rules before posting (store-safety).
     // Guard on `!== true` (not `=== false`): while the accepted flag is still
     // loading it is `null`, and `=== false` let a never-accepted user post in
@@ -300,6 +314,7 @@ export function ChatView({
 
   // Signal "typing" as the user edits — throttled to a write every ~2.5s.
   const onDraftChange = (text: string) => {
+    if (readOnly) return;
     setDraft(text);
     if (!me) return;
     const now = Date.now();
@@ -498,6 +513,7 @@ export function ChatView({
           
           `padding` rather than `height`: it pads the bottom by the keyboard's
           own height from the keyboard events, without re-laying-out the list. */}
+      {statusBanner ? typeof statusBanner === 'string' ? <View style={{marginHorizontal:16,marginTop:10,padding:12,borderRadius:12,backgroundColor:'#EAF2FF',flexDirection:'row',alignItems:'center',gap:8}}><Text style={{flex:1,fontSize:13,fontWeight:'600',color:'#2457A6',textAlign:RTL_LABEL_ALIGN}}>{statusBanner}</Text><Ionicons name={readOnly?'lock-closed-outline':'time-outline'} size={20} color='#2563EB'/></View> : statusBanner : null}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={
@@ -568,13 +584,14 @@ export function ChatView({
           />
         )}
 
-        {!denied && typingLabel ? (
+        {!denied && !readOnly && typingLabel ? (
           <View style={styles.typingWrap}>
             <Text style={styles.typingText}>{typingLabel}</Text>
           </View>
         ) : null}
 
-        {!denied ? (
+        {!denied && readOnly ? <View style={{padding:20,backgroundColor:'#EFF3F9',flexDirection:'row',alignItems:'center',gap:10}}><Text style={{flex:1,fontSize:13,color:'#667796',textAlign:RTL_LABEL_ALIGN}}>{readOnlyMessage}</Text><Ionicons name='lock-closed-outline' size={19} color='#667796'/></View> : null}
+        {!denied && !readOnly ? (
           <View style={styles.inputBar}>
             <TextInput
               style={styles.input}
@@ -947,7 +964,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   blockedRow: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'center',
     gap: 6,
@@ -984,12 +1001,12 @@ const styles = StyleSheet.create({
   // Own bubble in pitch green; others in white with a thin field-line edge.
   // The squared "tail" corner faces the avatar (own = right under RTL →
   // bottom-start; others = left → bottom-end).
-  bubbleMine: { backgroundColor: '#1B8A43', borderBottomStartRadius: 4 },
+  bubbleMine: { backgroundColor: '#2563EB', borderBottomStartRadius: 4 },
   bubbleOther: {
     backgroundColor: colors.surface,
     borderBottomEndRadius: 4,
     borderWidth: 1,
-    borderColor: 'rgba(27,138,67,0.18)',
+    borderColor: 'rgba(37,99,235,0.12)',
   },
   // Name + badge share a row. First child lands on the visual RIGHT under RTL,
   // so the name leads and the mark trails it — the order a reader expects.
@@ -1059,7 +1076,7 @@ const styles = StyleSheet.create({
   typingWrap: { paddingHorizontal: spacing.md, paddingBottom: 2 },
   typingText: {
     ...typography.caption,
-    color: '#1B8A43',
+    color: '#2563EB',
     fontStyle: 'italic',
     textAlign: RTL_LABEL_ALIGN,
   },
@@ -1070,8 +1087,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     // A thin pitch-line accent along the top of the composer.
-    borderTopWidth: 2,
-    borderTopColor: 'rgba(27,138,67,0.45)',
+    borderTopWidth: 1,
+    borderTopColor: '#E4ECF7',
     backgroundColor: colors.bg,
   },
   input: {
@@ -1091,7 +1108,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#1B8A43',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },

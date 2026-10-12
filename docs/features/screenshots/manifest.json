@@ -4386,5 +4386,1712 @@
       "אין אימות אייפון פיזי."
     ],
     "sha256": "8baba2762e626272f98120e126145c10ecee6ed22019fef60390eb6c93f898e3"
+  },
+  {
+    "file": "games-surface-variety-2026-10-10.png",
+    "source": "artifacts/pulse-fixes-2026-10-10/Games-surface-variety.png",
+    "platform": "Android",
+    "environment": "דמו מקומי מנותק ממסד",
+    "sourceCommit": "ec536c6f עם שינויים מקומיים",
+    "captured": "2026-10-10",
+    "notes": [
+      "תמונות משחק בסינתטי ותמונת מגרש מוצגות בכרטיסים.",
+      "יתר המשטחים נבדקו בבדיקות ובתמונות המקור; אין צילום כרטיס אספלט או דשא, ואין אימות אייפון פיזי."
+    ],
+    "sha256": "e3035d472e2ec51622840892aea377c5653a1e9e787df4458d3fa03c93e4835d"
+  },
+  {
+    "file": "home-personal-stats-full-2026-10-11.png",
+    "source": "artifacts/home-personal-stats/full.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; תרחיש בדיקה מקומי",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "נתוני המחשה בלבד; אין חיבור למסד.",
+      "נבדקו החלקה, נקודות, כיווניות וקישור למסך הסטטיסטיקה.",
+      "אייפון ומכשיר פיזי לא נבדקו."
+    ],
+    "sha256": "807800f3dbd47538d2b131149521022f4101a7975377b87eadd7eff4eaf3c31f"
+  },
+  {
+    "file": "home-personal-stats-empty-2026-10-11.png",
+    "source": "artifacts/home-personal-stats/empty.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; תרחיש בדיקה מקומי",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "נתוני המחשה בלבד; אין חיבור למסד.",
+      "נבדקו החלקה, נקודות, כיווניות וקישור למסך הסטטיסטיקה.",
+      "אייפון ומכשיר פיזי לא נבדקו."
+    ],
+    "sha256": "68960062cd4426a8af5521ca0787031982232552e3fc2f69f48e9827d53ba76c"
+  },
+  {
+    "file": "home-personal-stats-numbers-2026-10-11.png",
+    "source": "artifacts/home-personal-stats/numbers.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; תרחיש בדיקה מקומי",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "נתוני המחשה בלבד; אין חיבור למסד.",
+      "נבדקו החלקה, נקודות, כיווניות וקישור למסך הסטטיסטיקה.",
+      "אייפון ומכשיר פיזי לא נבדקו."
+    ],
+    "sha256": "05da169054973c96bbf4ea6f7849dacdf3b7825efae25ff6db884dfddd8c8910"
+  },
+  {
+    "file": "home-personal-stats-partner-2026-10-11.png",
+    "source": "artifacts/home-personal-stats/partner.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; תרחיש בדיקה מקומי",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "נתוני המחשה בלבד; אין חיבור למסד.",
+      "נבדקו החלקה, נקודות, כיווניות וקישור למסך הסטטיסטיקה.",
+      "אייפון ומכשיר פיזי לא נבדקו."
+    ],
+    "sha256": "a44fabeec29ee545c33d7181b5747e17a9552e64e46699db5f7c36a3a42856f5"
+  },
+  {
+    "file": "home-personal-stats-pitch-v2-2026-10-11.png",
+    "source": "artifacts/home-personal-stats/pitch-v2.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתוני המחשה מקומיים",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "המגרש נצפה בפינה השמאלית העליונה בכיווניות עברית.",
+      "תוצאות השותף הן נתוני המחשה: 45 ניצחונות, 25 הפסדים, 10 תיקו מתוך 80 משחקים.",
+      "אין אימות מול מסד ייצור; אייפון ומכשיר פיזי לא נבדקו."
+    ],
+    "sha256": "c683b4b5b30c361dd1dd11a080d5550b04bc477efacec849501924a745f9c23e"
+  },
+  {
+    "file": "home-personal-stats-partner-v2-2026-10-11.png",
+    "source": "artifacts/home-personal-stats/partner-v2.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתוני המחשה מקומיים",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "המגרש נצפה בפינה השמאלית העליונה בכיווניות עברית.",
+      "תוצאות השותף הן נתוני המחשה: 45 ניצחונות, 25 הפסדים, 10 תיקו מתוך 80 משחקים.",
+      "אין אימות מול מסד ייצור; אייפון ומכשיר פיזי לא נבדקו."
+    ],
+    "sha256": "9350dc394a91857f926df5aff6b6b14f1585da268d0dd2e03a78333d39b6e440"
+  },
+  {
+    "file": "home-personal-stats-pitch-v3-2026-10-11.png",
+    "source": "artifacts/home-personal-stats/pitch-v3.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתוני המחשה מקומיים",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "איור מגרש לבן בפרספקטיבה על זוהר תכלת מתפוגג, לפי תמונת הייחוס.",
+      "נבדק בכיווניות עברית באימולטור; אייפון ומכשיר פיזי לא נבדקו."
+    ],
+    "sha256": "09697857b35e4a99e7764920fbffde706193279922c1bc809cbb48b5e9659ff7"
+  },
+  {
+    "file": "home-personal-stats-football-art-2026-10-11.png",
+    "source": "artifacts/home-personal-stats/football-art.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתוני המחשה מקומיים",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "נבדקו איור כדור ועמודות, כיווניות וגובה התוכן בכרטיס ציונים, מספרים ושותף.",
+      "אין אימות מסד ייצור; אייפון ומכשיר פיזי לא נבדקו."
+    ],
+    "sha256": "b7392a52187df4fc99e0c8482d8f110ec0a794e5c29912016d7fedcf3ce64c36"
+  },
+  {
+    "file": "home-personal-stats-numbers-compact-2026-10-11.png",
+    "source": "artifacts/home-personal-stats/numbers-compact.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתוני המחשה מקומיים",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "נבדקו איור כדור ועמודות, כיווניות וגובה התוכן בכרטיס ציונים, מספרים ושותף.",
+      "אין אימות מסד ייצור; אייפון ומכשיר פיזי לא נבדקו."
+    ],
+    "sha256": "d90ff4a7bcbf988b0f6712e26673f016e5222153f9615440f797284710c83276"
+  },
+  {
+    "file": "home-personal-stats-partner-compact-2026-10-11.png",
+    "source": "artifacts/home-personal-stats/partner-compact.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתוני המחשה מקומיים",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "נבדקו איור כדור ועמודות, כיווניות וגובה התוכן בכרטיס ציונים, מספרים ושותף.",
+      "אין אימות מסד ייצור; אייפון ומכשיר פיזי לא נבדקו."
+    ],
+    "sha256": "59602b4f309f6185719d0b939b7f440f39b038641b33e2f128813e11fcfbd3ec"
+  },
+  {
+    "file": "navigation-icons-home-2026-10-11.png",
+    "source": "artifacts/navigation-icons-2026-10-11/home.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתוני המחשה מקומיים",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "הלשונית נפתחה בלחיצה; נבדקו האייקון הפעיל וסדר מימין לשמאל.",
+      "אייפון לא נבדק; צילום המחזורים בזמן טעינה מאמת את שורת הניווט בלבד."
+    ],
+    "sha256": "4228f0ee38e3b5a46ce79ae4770085d0b7c17500141b23320ac4546393e99ac4"
+  },
+  {
+    "file": "navigation-icons-clubs-2026-10-11.png",
+    "source": "artifacts/navigation-icons-2026-10-11/clubs.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתוני המחשה מקומיים",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "הלשונית נפתחה בלחיצה; נבדקו האייקון הפעיל וסדר מימין לשמאל.",
+      "אייפון לא נבדק; צילום המחזורים בזמן טעינה מאמת את שורת הניווט בלבד."
+    ],
+    "sha256": "a78ecc7bede9dc4018d1c05127d713db84068ff8eafa3ccf500829639dd42bb8"
+  },
+  {
+    "file": "navigation-icons-rounds-2026-10-11.png",
+    "source": "artifacts/navigation-icons-2026-10-11/rounds.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתוני המחשה מקומיים",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "הלשונית נפתחה בלחיצה; נבדקו האייקון הפעיל וסדר מימין לשמאל.",
+      "אייפון לא נבדק; צילום המחזורים בזמן טעינה מאמת את שורת הניווט בלבד."
+    ],
+    "sha256": "c7afbfe77be884934bcc6daaadac1bea1e65b85b7f350a4e2aa0f36198f926ac"
+  },
+  {
+    "file": "navigation-icons-chats-2026-10-11.png",
+    "source": "artifacts/navigation-icons-2026-10-11/chats.png",
+    "platform": "Android",
+    "environment": "דמו בפיתוח; נתוני המחשה מקומיים",
+    "sourceCommit": "ec536c6f + שינויים מקומיים",
+    "captured": "2026-10-11",
+    "notes": [
+      "הלשונית נפתחה בלחיצה; נבדקו האייקון הפעיל וסדר מימין לשמאל.",
+      "אייפון לא נבדק; צילום המחזורים בזמן טעינה מאמת את שורת הניווט בלבד."
+    ],
+    "sha256": "eba1411b47e4fbecbdeebf7d15cae3013ef0515c0e6a285ac74c163a60e6b61b"
+  },
+  {
+    "file": "seasons-settings-live-2026-10-11.png",
+    "source": "artifacts\\seasons-audit-2026-10-11\\settings-live.png",
+    "platform": "Android",
+    "environment": "תצוגת בדיקה מנותקת; הרכיב האמיתי עם נתוני המחשה ופעולות מנוטרלות",
+    "sourceCommit": "ec536c6f + local season fixes",
+    "captured": "2026-10-11",
+    "notes": [
+      "בדיקת כיווניות והגדרות בלבד; לא שינוי עונה בחשבון אמיתי",
+      "אייפון ומסירת התראות למכשיר לא נבדקו"
+    ],
+    "sha256": "7ca0d59b96e9dce828d3d49f7222d2976f7265d6612ed7b7a1e268a16b3e257b"
+  },
+  {
+    "file": "seasons-settings-short-2026-10-11.png",
+    "source": "artifacts\\seasons-audit-2026-10-11\\settings-short.png",
+    "platform": "Android",
+    "environment": "הודעת המחשה מנותקת עם נוסח האפליקציה; כפתור הבנתי בלבד",
+    "sourceCommit": "ec536c6f + local season fixes",
+    "captured": "2026-10-11",
+    "notes": [
+      "לא כובתה עונה; נתוני דמו ללא חיבור למסד",
+      "אימות נוסח וכיווניות בלבד"
+    ],
+    "sha256": "937025960119a237e6c21eb2f18ea53a9ab109c6c512cda4bae1bf95adcbfe86"
+  },
+  {
+    "file": "home-scheduled-sky-2026-10-11.png",
+    "source": "artifacts\\home-personal-stats\\scheduled-sky.png",
+    "platform": "Android",
+    "environment": "תצוגת המחשה מנותקת של הרכיב האמיתי; כל הפעולות מנוטרלות",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "כרטיס opensSoon עם נתוני דמו; לא שונה מחזור אמיתי",
+      "נבדקו כיווניות וצבעים באנדרואיד; אייפון לא נבדק"
+    ],
+    "sha256": "14a58532efa2916f0f5d90b9e398294399ee6982dd86642007b4867a74763ded"
+  },
+  {
+    "file": "round-cover-consistency-2026-10-11.png",
+    "source": "artifacts\\home-personal-stats\\round-cover-consistency.png",
+    "platform": "Android",
+    "environment": "הרכיבים האמיתיים ברשימה ובכותרת פרטי מחזור, עם אותו מחזור דמו וללא פעולות",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "תצוגת השוואה מנותקת; סוג מגרש סינתטי ותמונת גלריית מועדון שונה בכוונה",
+      "אותו מקור תמונה עם חיתוך והכהיה שונים לפי הרכיב; אייפון לא נבדק"
+    ],
+    "sha256": "fea3d88ab97170a41edb610aa1eeba945345f26fff4f44da877c3503d201b02e"
+  },
+  {
+    "file": "home-round-cover-2026-10-11.png",
+    "source": "artifacts\\home-personal-stats\\home-round-cover.png",
+    "platform": "Android",
+    "environment": "הרכיבים האמיתיים בבית, ברשימה ובפרטי המחזור עם אותו מחזור דמו ופעולות מנוטרלות",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "אומת מקור תמונה משותף וכיווניות באנדרואיד; תצוגת המחשה ללא חשבון ייצור",
+      "חיתוך והכהיה שונים לפי הרכיב; אייפון לא נבדק"
+    ],
+    "sha256": "2b8bcf6c2b280cf75a4ac275eedebee79722721e6fb61188f7b8bf1ad850f30a"
+  },
+  {
+    "file": "social-search-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\social-search-2026-10-11.png",
+    "platform": "Android",
+    "environment": "רכיבי המוצר במסלולים הקיימים עם נתוני המחשה מנותקים; ללא פעולות ייצור",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מסך אמיתי באימולטור עם נתוני המחשה; פס כתום וסימון בדיקה הם כלי פיתוח בלבד",
+      "צפייה וגלילה בלבד; הגרף, הכיווניות והכפתורים נצפו, פעולות השרת נבדקו בנפרד במסד מקומי",
+      "אייפון, נתוני ייצור ומשלוח התראות למכשיר לא נבדקו; נדרשת השלמת הרשאות לפני הפצה"
+    ],
+    "sha256": "c7078628ba69abe221249e2af8bebed269adba948a44a01e49db497accae1a3b"
+  },
+  {
+    "file": "social-profile-friend-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\social-profile-friend-2026-10-11.png",
+    "platform": "Android",
+    "environment": "רכיבי המוצר במסלולים הקיימים עם נתוני המחשה מנותקים; ללא פעולות ייצור",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מסך אמיתי באימולטור עם נתוני המחשה; פס כתום וסימון בדיקה הם כלי פיתוח בלבד",
+      "צפייה וגלילה בלבד; הגרף, הכיווניות והכפתורים נצפו, פעולות השרת נבדקו בנפרד במסד מקומי",
+      "אייפון, נתוני ייצור ומשלוח התראות למכשיר לא נבדקו; נדרשת השלמת הרשאות לפני הפצה"
+    ],
+    "sha256": "814af967ea39a01aca67b6cf817c270421637b96e6b733755a7e3e585817f672"
+  },
+  {
+    "file": "social-profile-friend-details-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\social-profile-friend-details-2026-10-11.png",
+    "platform": "Android",
+    "environment": "רכיבי המוצר במסלולים הקיימים עם נתוני המחשה מנותקים; ללא פעולות ייצור",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מסך אמיתי באימולטור עם נתוני המחשה; פס כתום וסימון בדיקה הם כלי פיתוח בלבד",
+      "צפייה וגלילה בלבד; הגרף, הכיווניות והכפתורים נצפו, פעולות השרת נבדקו בנפרד במסד מקומי",
+      "אייפון, נתוני ייצור ומשלוח התראות למכשיר לא נבדקו; נדרשת השלמת הרשאות לפני הפצה"
+    ],
+    "sha256": "44fafc960cc5d3f681ee5afa54f6cdafaef8749bd65e56ced459f716c1b26000"
+  },
+  {
+    "file": "social-profile-stranger-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\social-profile-stranger-2026-10-11.png",
+    "platform": "Android",
+    "environment": "רכיבי המוצר במסלולים הקיימים עם נתוני המחשה מנותקים; ללא פעולות ייצור",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מסך אמיתי באימולטור עם נתוני המחשה; פס כתום וסימון בדיקה הם כלי פיתוח בלבד",
+      "צפייה וגלילה בלבד; הגרף, הכיווניות והכפתורים נצפו, פעולות השרת נבדקו בנפרד במסד מקומי",
+      "אייפון, נתוני ייצור ומשלוח התראות למכשיר לא נבדקו; נדרשת השלמת הרשאות לפני הפצה"
+    ],
+    "sha256": "c7c31afa96f3b23455169bea64a55f42ff8e840c99ab499f43cd5b02c4cc34b1"
+  },
+  {
+    "file": "social-privacy-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\social-privacy-2026-10-11.png",
+    "platform": "Android",
+    "environment": "רכיבי המוצר במסלולים הקיימים עם נתוני המחשה מנותקים; ללא פעולות ייצור",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מסך אמיתי באימולטור עם נתוני המחשה; פס כתום וסימון בדיקה הם כלי פיתוח בלבד",
+      "צפייה וגלילה בלבד; הגרף, הכיווניות והכפתורים נצפו, פעולות השרת נבדקו בנפרד במסד מקומי",
+      "אייפון, נתוני ייצור ומשלוח התראות למכשיר לא נבדקו; נדרשת השלמת הרשאות לפני הפצה"
+    ],
+    "sha256": "ce3241d9190734b683e3827f8d0eb15976ece43b65f879470d97c971ba5af791"
+  },
+  {
+    "file": "social-unified-filter-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\social-unified-filter-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני דמו מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מרונדר אמיתי, כיווניות נצפתה; פס כתום וכפתור בדיקות הם כלי פיתוח",
+      "לא נבדקו אייפון או נתוני ייצור; לא בוצעה הפצה"
+    ],
+    "sha256": "5fa8e5a305d25e5e6da3c43dc3dc4aed031ccc472dd1a1b018c058e268ac2d8f"
+  },
+  {
+    "file": "social-buttons-polish-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\social-buttons-polish-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני דמו מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מרונדר אמיתי, כיווניות נצפתה; פס כתום וכפתור בדיקות הם כלי פיתוח",
+      "לא נבדקו אייפון או נתוני ייצור; לא בוצעה הפצה"
+    ],
+    "sha256": "36c4170bdc360ff2abb8ae3f918fbebf41a5cae03fb9af02c5c310df4e53b028"
+  },
+  {
+    "file": "social-profile-polish-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\social-profile-polish-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני דמו מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מרונדר אמיתי, כיווניות נצפתה; פס כתום וכפתור בדיקות הם כלי פיתוח",
+      "לא נבדקו אייפון או נתוני ייצור; לא בוצעה הפצה"
+    ],
+    "sha256": "2937e3f09e3d10a9bd236a5751a5038d36aab2c2c9e1db0b91c1fc2fe3beeeb5"
+  },
+  {
+    "file": "ChatsList-redesign.png",
+    "source": "docs\\features\\screenshots\\ChatsList-redesign.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני המחשה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מרונדר שנצפה; פס הדמה, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "אין הוכחת כתיבה לייצור, מסירת פוש או בדיקה באייפון; לא בוצעה הפצה"
+    ],
+    "sha256": "344e1e59c09749203c9744892bea02e68b0cc8421b01afba6385bffc9b0f88f5"
+  },
+  {
+    "file": "ChatsList-options.png",
+    "source": "docs\\features\\screenshots\\ChatsList-options.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני המחשה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מרונדר שנצפה; פס הדמה, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "אין הוכחת כתיבה לייצור, מסירת פוש או בדיקה באייפון; לא בוצעה הפצה"
+    ],
+    "sha256": "0174f4779ebe67b12edb015ac3ddfceea0cc144a90ac34bb34928b40d86ef4af"
+  },
+  {
+    "file": "ChatsList-new.png",
+    "source": "docs\\features\\screenshots\\ChatsList-new.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני המחשה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מרונדר שנצפה; פס הדמה, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "אין הוכחת כתיבה לייצור, מסירת פוש או בדיקה באייפון; לא בוצעה הפצה"
+    ],
+    "sha256": "7246c0b39379123a6fbc2733da616fd5136ef57cbcb92353171cef884242c4c1"
+  },
+  {
+    "file": "ChatsList-archive.png",
+    "source": "docs\\features\\screenshots\\ChatsList-archive.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני המחשה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מרונדר שנצפה; פס הדמה, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "אין הוכחת כתיבה לייצור, מסירת פוש או בדיקה באייפון; לא בוצעה הפצה"
+    ],
+    "sha256": "c68e13109737d5f14074efb60938f87b8f3174bc1bc33304f6f991c6b4ef991c"
+  },
+  {
+    "file": "GameChat-closing.png",
+    "source": "docs\\features\\screenshots\\GameChat-closing.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני המחשה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מרונדר שנצפה; פס הדמה, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "אין הוכחת כתיבה לייצור, מסירת פוש או בדיקה באייפון; לא בוצעה הפצה"
+    ],
+    "sha256": "b68d6fc02a387613c2eb4801846c47d506b414b11cfae7c82b3a96c75ab31882"
+  },
+  {
+    "file": "GameChat-closed.png",
+    "source": "docs\\features\\screenshots\\GameChat-closed.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני המחשה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום מרונדר שנצפה; פס הדמה, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "אין הוכחת כתיבה לייצור, מסירת פוש או בדיקה באייפון; לא בוצעה הפצה"
+    ],
+    "sha256": "271b06975eb1f2190c33a5d5c9c1ac2f418a22d995536a1e703a5578d5938272"
+  },
+  {
+    "file": "form-club-advanced-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-club-advanced-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום שנצפה בפועל; הפס הכתום, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "לא בוצעה שמירת הטופס, בדיקת ייצור או בדיקה באייפון"
+    ],
+    "sha256": "ce1e935925aad9df5225c27db42e43aa3144fb35d3715d9fd917c12addcf9ef7"
+  },
+  {
+    "file": "form-club-cards-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-club-cards-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום שנצפה בפועל; הפס הכתום, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "לא בוצעה שמירת הטופס, בדיקת ייצור או בדיקה באייפון"
+    ],
+    "sha256": "29336c892884f66fbb4351eb623c05dbb19cced6625cdf0033d392e023d87e95"
+  },
+  {
+    "file": "form-club-details-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-club-details-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום שנצפה בפועל; הפס הכתום, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "לא בוצעה שמירת הטופס, בדיקת ייצור או בדיקה באייפון"
+    ],
+    "sha256": "2b29700881bed819991a6c97a89582ffc76c1b38430697b0c2ee74fc047fd541"
+  },
+  {
+    "file": "form-round-advanced-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-round-advanced-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום שנצפה בפועל; הפס הכתום, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "לא בוצעה שמירת הטופס, בדיקת ייצור או בדיקה באייפון"
+    ],
+    "sha256": "7476325f58c05a2b0ab963662ecf0bfb81a07d49294b870fe582fac13c08c406"
+  },
+  {
+    "file": "form-round-details-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-round-details-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום שנצפה בפועל; הפס הכתום, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "לא בוצעה שמירת הטופס, בדיקת ייצור או בדיקה באייפון"
+    ],
+    "sha256": "09de1dc8f944f616c6330c9d1813bdb205695e0e7199d8df42789b2d688820ef"
+  },
+  {
+    "file": "form-round-rules-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-round-rules-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום שנצפה בפועל; הפס הכתום, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "לא בוצעה שמירת הטופס, בדיקת ייצור או בדיקה באייפון"
+    ],
+    "sha256": "b5f52357e7a6cdeb0ba278222b16ae052691ab62c475c2b2d4f247c56510ca50"
+  },
+  {
+    "file": "form-round-schedule-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-round-schedule-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום שנצפה בפועל; הפס הכתום, כפתור הבדיקות וסימון המודעה הם כלי פיתוח",
+      "לא בוצעה שמירת הטופס, בדיקת ייצור או בדיקה באייפון"
+    ],
+    "sha256": "9196fa1e82e636d560858392becee5d9cb8f81d92c7b03bd543a56587443bc37"
+  },
+  {
+    "file": "wizard-ball-club-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\wizard-ball-club-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום סיום מעבר שנצפה בפועל; הסרטון כולל גלגול קדימה וחזרה",
+      "הפס הכתום וכפתור הבדיקות הם כלי פיתוח; לא בוצעה שמירה או בדיקה באייפון"
+    ],
+    "sha256": "fd3b12ef469b98c18dd6136884bb6e2dfceee424da75e347871dfa0f6619768f"
+  },
+  {
+    "file": "wizard-ball-round-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\wizard-ball-round-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "צילום סיום מעבר שנצפה בפועל; הסרטון כולל גלגול קדימה וחזרה",
+      "הפס הכתום וכפתור הבדיקות הם כלי פיתוח; לא בוצעה שמירה או בדיקה באייפון"
+    ],
+    "sha256": "28f2a32b36c1a258dfd6f6b34c354cf943ef57f7275137de1e722460eb0b868c"
+  },
+  {
+    "file": "wizard-ball-v2-club-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\wizard-ball-v2-club-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "איור הכדור המעודכן נצפה בפועל; כלים כתומים וכפתור בדיקות הם רכיבי פיתוח",
+      "לא נבדק אייפון ולא הועלתה גרסה"
+    ],
+    "sha256": "4b76921644bf4395d3e30d1ee818038d65f239851807d9be0b26777c07c3d8d2"
+  },
+  {
+    "file": "wizard-ball-v2-round-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\wizard-ball-v2-round-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "איור הכדור המעודכן נצפה בפועל; כלים כתומים וכפתור בדיקות הם רכיבי פיתוח",
+      "לא נבדק אייפון ולא הועלתה גרסה"
+    ],
+    "sha256": "6bd3281e165a4ebf95127dd57ba1d17c82485a3f15b5a805f742b7dad4136368"
+  },
+  {
+    "file": "form-compact-intro-club-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-compact-intro-club-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "אזור הסבר מצומצם נצפה בפועל בעברית בשני הטפסים",
+      "לא בוצעה שמירה לשרת או בדיקת אייפון; רכיבי בדיקות נראים בצילום"
+    ],
+    "sha256": "e6d029d38571057633691e47ada806bcddf3cc629862565a5406cc76dab2e66b"
+  },
+  {
+    "file": "form-compact-intro-round-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-compact-intro-round-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "אזור הסבר מצומצם נצפה בפועל בעברית בשני הטפסים",
+      "לא בוצעה שמירה לשרת או בדיקת אייפון; רכיבי בדיקות נראים בצילום"
+    ],
+    "sha256": "5887a057d078bccb5d6f89967369382dbba377a131c90e4fa5b0c87d6df4a36f"
+  },
+  {
+    "file": "form-ball-toggle-club-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-ball-toggle-club-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "מתגי כדורגל נצפו בפועל במצבים פעיל וכבוי; צולמה הפעלה וכיבוי במועדון",
+      "לא בוצעה כתיבת נתוני ייצור או בדיקת אייפון; צילום כולל כלי פיתוח"
+    ],
+    "sha256": "35f5cc10a73191ada5c735f5b0cc2a0acd9444f539172ff0dc65e3fc731242ae"
+  },
+  {
+    "file": "form-ball-toggle-round-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-ball-toggle-round-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "מתגי כדורגל נצפו בפועל במצבים פעיל וכבוי; צולמה הפעלה וכיבוי במועדון",
+      "לא בוצעה כתיבת נתוני ייצור או בדיקת אייפון; צילום כולל כלי פיתוח"
+    ],
+    "sha256": "bc78f2e504e53ce74ba8ead91ffc94abfb0ab7d04469e7ae450231d221ce8a43"
+  },
+  {
+    "file": "form-ball-toggle-3d-club-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-ball-toggle-3d-club-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "כדור בעל נפח במתגי הטופס; מצבים פעילים וכבויים נצפו בפועל",
+      "כיווניות נבדקה בצילום; גלגול נבדק בסרטון במועדון",
+      "ללא שמירה למסד או בדיקת אייפון; צילום כולל כלי פיתוח"
+    ],
+    "sha256": "a1196452de8d7451eee4d17efd9b1d596b1735f227de004a761cb8d3af4e5b43"
+  },
+  {
+    "file": "form-ball-toggle-3d-round-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-ball-toggle-3d-round-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "כדור בעל נפח במתגי הטופס; מצבים פעילים וכבויים נצפו בפועל",
+      "כיווניות נבדקה בצילום; גלגול נבדק בסרטון במועדון",
+      "ללא שמירה למסד או בדיקת אייפון; צילום כולל כלי פיתוח"
+    ],
+    "sha256": "3a7f161677e1aad9b7d4063e8d5b64a0dcfe77766f0efc2e51411b9693842995"
+  },
+  {
+    "file": "wizard-ball-3d-club-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\wizard-ball-3d-club-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "כדור בעל נפח במד השלבים; נצפה בפועל ונבדקה כיווניות",
+      "סרטון הלוך וחזור במועדון נבדק בפריימים; במחזור נצפה מעבר אחורה",
+      "אין בדיקת אייפון או שמירה למסד; צילום כולל כלי פיתוח"
+    ],
+    "sha256": "d65a8f34275829d56cc4d7429884c22aea1dbc0b695248fb9de5c567e5127be8"
+  },
+  {
+    "file": "wizard-ball-3d-round-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\wizard-ball-3d-round-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "כדור בעל נפח במד השלבים; נצפה בפועל ונבדקה כיווניות",
+      "סרטון הלוך וחזור במועדון נבדק בפריימים; במחזור נצפה מעבר אחורה",
+      "אין בדיקת אייפון או שמירה למסד; צילום כולל כלי פיתוח"
+    ],
+    "sha256": "7c0867aee689bb4c2b3ac44c015a4cec8dc5ebd121ced5cf4cb70a5894e3cfd1"
+  },
+  {
+    "file": "form-auto-teams-disabled-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-auto-teams-disabled-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נצפה בפועל בטופס עריכת מחזור; ללא כתיבה למסד",
+      "נבדקו השבתת המתג לצד טולטיפ פעיל, יישור לימין וכיוון המתגים",
+      "לא נבדק אייפון או דירוג פנימי פעיל בהרצה; צילום כולל כלי פיתוח"
+    ],
+    "sha256": "f81a732b7aaae31fc6a2055d239234db8e7b65a1501ca5186555646f760a6622"
+  },
+  {
+    "file": "form-auto-teams-tooltip-rtl-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-auto-teams-tooltip-rtl-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נצפה בפועל בטופס עריכת מחזור; ללא כתיבה למסד",
+      "נבדקו השבתת המתג לצד טולטיפ פעיל, יישור לימין וכיוון המתגים",
+      "לא נבדק אייפון או דירוג פנימי פעיל בהרצה; צילום כולל כלי פיתוח"
+    ],
+    "sha256": "cb961e53dcc9266e6a61df62898b66de211febd8ba95c2ba5767340e40e6e6f7"
+  },
+  {
+    "file": "form-toggle-rtl-on-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\form-toggle-rtl-on-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נצפה בפועל בטופס עריכת מחזור; ללא כתיבה למסד",
+      "נבדקו השבתת המתג לצד טולטיפ פעיל, יישור לימין וכיוון המתגים",
+      "לא נבדק אייפון או דירוג פנימי פעיל בהרצה; צילום כולל כלי פיתוח"
+    ],
+    "sha256": "38f63a98f3d2d6b04fa91febcc3a0e1987909217ae815f80dbba4455392ca42f"
+  },
+  {
+    "file": "wizard-ball-mask-round-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\wizard-ball-mask-round-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "מד שלושת השלבים נצפה ללא קו דרך הכדורים",
+      "נבדקו פריימים של מעבר הלוך וחזור; כיווניות נשמרה",
+      "אין בדיקת אייפון או צפייה חוזרת במועדון; ללא שמירה למסד"
+    ],
+    "sha256": "b1261439a6968b55b5bdb7bb3ea4a499d2d2b3be318b1eb811c39d4416d6d520"
+  },
+  {
+    "file": "round-review-edit-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\round-review-edit-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נצפה תקציר עריכת מחזור בפועל, לרבות כיווניות ואייקונים משמאל",
+      "נצפו הרחבה וגלילה ומועד פתיחה מתוזמן; לא אושרה שמירה",
+      "יצירה ומחזור פרטי נבדקו ברכיב בלבד; אין בדיקת אייפון או טקסט מוגדל"
+    ],
+    "sha256": "6c09fac39e46f328671f2254aeeee9077b57d8fd15a8961e9702acf891e03c9f"
+  },
+  {
+    "file": "round-review-scheduled-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\round-review-scheduled-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נצפה תקציר עריכת מחזור בפועל, לרבות כיווניות ואייקונים משמאל",
+      "נצפו הרחבה וגלילה ומועד פתיחה מתוזמן; לא אושרה שמירה",
+      "יצירה ומחזור פרטי נבדקו ברכיב בלבד; אין בדיקת אייפון או טקסט מוגדל"
+    ],
+    "sha256": "46b2e5ce40b60847e015e1740e9e21db5d2cdd8bdd8e53f2556e1c2c7968e381"
+  },
+  {
+    "file": "round-review-expanded-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\round-review-expanded-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נצפה תקציר עריכת מחזור בפועל, לרבות כיווניות ואייקונים משמאל",
+      "נצפו הרחבה וגלילה ומועד פתיחה מתוזמן; לא אושרה שמירה",
+      "יצירה ומחזור פרטי נבדקו ברכיב בלבד; אין בדיקת אייפון או טקסט מוגדל"
+    ],
+    "sha256": "1da203e68df46bc6380dbcba40721e46c1eb23e8c543a719237f9da957744157"
+  },
+  {
+    "file": "round-review-address-icons-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\round-review-address-icons-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נצפה תקציר יצירה: כתובת אחת ואייקונים מימין לפני הטקסט",
+      "לא אושרה יצירה; אין בדיקת אייפון"
+    ],
+    "sha256": "6f11257779be0b44219393af2484f378d570ef6f5017b7adc08958400dd7cb76"
+  },
+  {
+    "file": "round-review-spacing-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\round-review-spacing-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נצפו מצבי הרחבה וסגירה; במצב סגור אין שטח ריק לפני האישור והחץ משמאל",
+      "לא אושרה שמירה; אין בדיקת אייפון"
+    ],
+    "sha256": "062edf8b76ea4a9f9fc97a154715fcba2f00750c4e970ed639743c9b5da49d19"
+  },
+  {
+    "file": "privacy-football-toggle-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\privacy-football-toggle-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "המתג למציאת שחקנים הוחלף בכדור התלת־ממדי המתגלגל של טפסי המחזור. במצב פעיל הכדור משמאל ובמצב כבוי מימין.",
+      "`SocialPrivacyScreen` משתמש ב־`BallSwitch` עטוף מקומית ב־`FormDesignContext` לקבלת עיצוב הטפסים. נשמרו הערך, עדכון הטיוטה, חסימה בזמן שמירה ותווית הנגישות; השמירה עדיין מפורשת בכפתור. נצפה מצב פעיל באימולטור אנדרואיד מנותק; לא נלחץ שמור ולא נבדק אייפון."
+    ],
+    "sha256": "56a051574074c3cd9f5431c7c75e5cb94a83840e316519bb742cd91a376875e6"
+  },
+  {
+    "file": "quick-round-banner-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\quick-round-banner-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "ההסבר בראש המחזור המהיר מוצג בשתי שורות מיושרות לימין, ללא חיתוך בקצה.",
+      "`orphanBannerText` מקבל `flex: 1`, גובה שורה 20 ומשקל 600. המלל ב־`createGameOrphanBanner` מופרד לכותרת והסבר בשורה שנייה. נוסף מסלול פיתוח `GameCreateQuick` ב־`QARouteLauncher` לפתיחת הטופס עם `quick: true`; הוא כפוף לשערי הפיתוח הקיימים. נצפה הטופס בפועל באימולטור אנדרואיד מנותק; לא נוצר מחזור ולא נבדק אייפון."
+    ],
+    "sha256": "e3694d893e6aafa67c2875ed7b1e399d8bd9714c70d4a640834468e1230fcb05"
+  },
+  {
+    "file": "notice-success-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\notice-success-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "הודעת הדגמה מקומית ברכיב האמיתי; לא בוצעה פעולה עסקית",
+      "נבדקה כיווניות בפועל; אין בדיקת אייפון או קורא מסך"
+    ],
+    "sha256": "3c2e3f35c2145440b9bd56641b2b3d63906fb2e3b984fdee251575565ec5653d"
+  },
+  {
+    "file": "notice-error-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\notice-error-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "הודעת הדגמה מקומית ברכיב האמיתי; לא בוצעה פעולה עסקית",
+      "נבדקה כיווניות בפועל; אין בדיקת אייפון או קורא מסך"
+    ],
+    "sha256": "c047134a81ab4113daad81f7c126862f2e01176a710d2df1b0c435fc0c8c5379"
+  },
+  {
+    "file": "notice-info-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\notice-info-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "הודעת הדגמה מקומית ברכיב האמיתי; לא בוצעה פעולה עסקית",
+      "נבדקה כיווניות בפועל; אין בדיקת אייפון או קורא מסך"
+    ],
+    "sha256": "18f8a8ce34d5c1013de77f38a8b8f2b58b3af9994445591dada434f055b0085b"
+  },
+  {
+    "file": "notice-banner-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\notice-banner-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "הודעת הדגמה מקומית ברכיב האמיתי; לא בוצעה פעולה עסקית",
+      "נבדקה כיווניות בפועל; אין בדיקת אייפון או קורא מסך"
+    ],
+    "sha256": "f8306433763e064629c0567992a3d287d7a79a678651d18abd2fa15a31ba60cb"
+  },
+  {
+    "file": "notice-soft-success-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\notice-soft-success-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "הודעת הדגמה מקומית ברכיב האמיתי לפי הסקיצה שאושרה; לא בוצעה פעולה עסקית",
+      "נצפו כיווניות וטקסט; אין בדיקת אייפון או קורא מסך"
+    ],
+    "sha256": "82b60540b7f75ec91aec3f5125837047de8f71073bbe3fb01a8cb880b376f7a8"
+  },
+  {
+    "file": "notice-soft-error-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\notice-soft-error-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "הודעת הדגמה מקומית ברכיב האמיתי לפי הסקיצה שאושרה; לא בוצעה פעולה עסקית",
+      "נצפו כיווניות וטקסט; אין בדיקת אייפון או קורא מסך"
+    ],
+    "sha256": "5b4d69e5a01f70ac384a612e90cef8bd016d47cb21cf82a23e4cfa2414ae9672"
+  },
+  {
+    "file": "notice-soft-info-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\notice-soft-info-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "הודעת הדגמה מקומית ברכיב האמיתי לפי הסקיצה שאושרה; לא בוצעה פעולה עסקית",
+      "נצפו כיווניות וטקסט; אין בדיקת אייפון או קורא מסך"
+    ],
+    "sha256": "b9fb1d2624ff6b9289027e0d9c93a28ea91b201087babda83ec57e59cdd3df51"
+  },
+  {
+    "file": "notice-soft-banner-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\notice-soft-banner-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "הודעת הדגמה מקומית ברכיב האמיתי לפי הסקיצה שאושרה; לא בוצעה פעולה עסקית",
+      "נצפו כיווניות וטקסט; אין בדיקת אייפון או קורא מסך"
+    ],
+    "sha256": "2885465f18c9a7aa4980321a4a510143107d48293edc5ae479072c9ba0f4eb7f"
+  },
+  {
+    "file": "player-multifilter-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\player-multifilter-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נבדקו בחירת ימים ושעות ונראות כפתור ניקוי הסינון",
+      "לא נשלחה בקשת חברות אמיתית; אין בדיקת אייפון"
+    ],
+    "sha256": "21de028c391578a52ac10bc13b7488a665851e47c01f1cc50d503476d30e6946"
+  },
+  {
+    "file": "player-request-sent-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\player-request-sent-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "לחיצה על הוסף שינתה את הכפתור לבקשת חברות נשלחה ללא רענון הרשימה",
+      "הבקשה נשמרה בזיכרון הדמו בלבד; לא נכתבו נתוני ייצור ולא נבדק אייפון"
+    ],
+    "sha256": "55d2e418f454759189d167da3349b5b801fa0c33fbc692e4f9e53c8fa2e8d527"
+  },
+  {
+    "file": "friends-invites-entry-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\friends-invites-entry-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "המסך הקיים מרכז חברים והזמנות; כניסה מהלשונית, מצב ריק ורשימה נצפו באימולטור",
+      "שתי הזמנות בזיכרון דמו בלבד; לא נוצרו נתוני ייצור ולא נבדקה מסירת דחיפה או אייפון"
+    ],
+    "sha256": "8c038292c074d17158b95a76850701cf4ebd979e8666a91235c422ff08b80802"
+  },
+  {
+    "file": "friends-invites-empty-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\friends-invites-empty-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "המסך הקיים מרכז חברים והזמנות; כניסה מהלשונית, מצב ריק ורשימה נצפו באימולטור",
+      "שתי הזמנות בזיכרון דמו בלבד; לא נוצרו נתוני ייצור ולא נבדקה מסירת דחיפה או אייפון"
+    ],
+    "sha256": "3a1a7719baaed0a8c0119ede8e9fda53f6847811393e3b083f1a1b8a94e706cd"
+  },
+  {
+    "file": "friends-invites-list-2026-10-11.png",
+    "source": "docs\\features\\screenshots\\friends-invites-list-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אימולטור אנדרואיד, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "המסך הקיים מרכז חברים והזמנות; כניסה מהלשונית, מצב ריק ורשימה נצפו באימולטור",
+      "שתי הזמנות בזיכרון דמו בלבד; לא נוצרו נתוני ייצור ולא נבדקה מסירת דחיפה או אייפון"
+    ],
+    "sha256": "37835fc5567c23a56e939164ef5d01e79ada49bb06b653768c45034009af62db"
+  },
+  {
+    "file": "invitations-status-2026-10-11.png",
+    "source": "docs/features/screenshots/invitations-status-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, קוד עדכני ונתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "מצב הרשמה מתוזמנת מתוך התראות בזיכרון דמו; לא תשובת שרת ייצור",
+      "כיווניות ונראות נבדקו בצילום; אין מסירה לטלפון, בדיקת אייפון או נתוני ייצור"
+    ],
+    "sha256": "bccf8383a9707b1f6e8c895baf415d2a5ec2c43b70c2b45f7f72ebfea0f2dc40"
+  },
+  {
+    "file": "invitation-accept-2026-10-11.png",
+    "source": "docs/features/screenshots/invitation-accept-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, קוד עדכני ונתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "מסך פרטי מועדון קיים עם כפתור אישור הזמנה; צילום בלבד, ללא לחיצת הצטרפות",
+      "כיווניות ונראות נבדקו בצילום; אין מסירה לטלפון, בדיקת אייפון או נתוני ייצור"
+    ],
+    "sha256": "009b6d03e5f3e7e9ac3dc4edd579ea5e37aae92790fa696f0bfe505aa5e42668"
+  },
+  {
+    "file": "demo-friends-list-2026-10-11.png",
+    "source": "docs/features/screenshots/demo-friends-list-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "שני קשרי חברות הדדיים מקומיים; נפתח פרופיל איתי מתוך רשימת החברים הרגילה ללא מצב תצוגה כפוי.",
+      "אין חשבונות חדשים או כתיבת נתוני ייצור; לא נבדק אייפון."
+    ],
+    "sha256": "3d7e38ff9c618ed648b5037d7c24d77356b299a988d4f83171470ff917f9fe8f"
+  },
+  {
+    "file": "demo-friend-profile-2026-10-11.png",
+    "source": "docs/features/screenshots/demo-friend-profile-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "שני קשרי חברות הדדיים מקומיים; נפתח פרופיל איתי מתוך רשימת החברים הרגילה ללא מצב תצוגה כפוי.",
+      "אין חשבונות חדשים או כתיבת נתוני ייצור; לא נבדק אייפון."
+    ],
+    "sha256": "d38b2e20e41c88569dc6a4352674cddefa96ae8bcd20405b9d4c1ee7eae31e2c"
+  },
+  {
+    "file": "friend-statistics-copy-2026-10-11.png",
+    "source": "docs/features/screenshots/friend-statistics-copy-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, נתוני דמו מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נפתח מסלול הסטטיסטיקה המלאה מתוך פרופיל איתי לוי, חבר דמו מאושר; הכותרות והכיווניות נצפו.",
+      "אין אימות נתונים מול שרת ייצור או בדיקת אייפון."
+    ],
+    "sha256": "6ba61e9d931812662c41510049dcb4b729623c14c3f20404dad4ac3cfb573e1f"
+  },
+  {
+    "file": "friend-pair-story-2026-10-11.png",
+    "source": "docs/features/screenshots/friend-pair-story-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, קוד מקומי ונתוני דמו מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נפתחו פרופילי חברי דמו מתוך רשימת החברים הרגילה; נצפו תוצאות, בישולים, מועדונים ומצב ריק.",
+      "אין אימות מספרים מול מסד ייצור או בדיקת אייפון. נדרשת פריסת getSocialPlayerProfile בעת ההפצה."
+    ],
+    "sha256": "9478cd28a6023741bb58df28c19f541a0bd553dcffbd417d4f43d9f0e7f29abe"
+  },
+  {
+    "file": "friend-pair-assists-2026-10-11.png",
+    "source": "docs/features/screenshots/friend-pair-assists-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, קוד מקומי ונתוני דמו מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נפתחו פרופילי חברי דמו מתוך רשימת החברים הרגילה; נצפו תוצאות, בישולים, מועדונים ומצב ריק.",
+      "אין אימות מספרים מול מסד ייצור או בדיקת אייפון. נדרשת פריסת getSocialPlayerProfile בעת ההפצה."
+    ],
+    "sha256": "8ba5c481f9d0579d5a0ad9d5d561b2d379f8d68781d8180ef6e42d9f634418ef"
+  },
+  {
+    "file": "friend-clubs-split-2026-10-11.png",
+    "source": "docs/features/screenshots/friend-clubs-split-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, קוד מקומי ונתוני דמו מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נפתחו פרופילי חברי דמו מתוך רשימת החברים הרגילה; נצפו תוצאות, בישולים, מועדונים ומצב ריק.",
+      "אין אימות מספרים מול מסד ייצור או בדיקת אייפון. נדרשת פריסת getSocialPlayerProfile בעת ההפצה."
+    ],
+    "sha256": "146e06fe54c098a2099da4027fa0d7079203d93c3d730aac04b8232548ecb637"
+  },
+  {
+    "file": "friend-pair-empty-2026-10-11.png",
+    "source": "docs/features/screenshots/friend-pair-empty-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, קוד מקומי ונתוני דמו מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נפתחו פרופילי חברי דמו מתוך רשימת החברים הרגילה; נצפו תוצאות, בישולים, מועדונים ומצב ריק.",
+      "אין אימות מספרים מול מסד ייצור או בדיקת אייפון. נדרשת פריסת getSocialPlayerProfile בעת ההפצה."
+    ],
+    "sha256": "d73fa1861996dc392c5786f9b6f21e93cd7c328797a1c0a019c6565ba3426bf7"
+  },
+  {
+    "file": "invite-sheet-content-height-2026-10-11.png",
+    "source": "docs/features/screenshots/invite-sheet-content-height-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, נתוני הדגמה מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "נפתחה חלונית ההזמנה מפרופיל חבר עם מועדון וארבעה מחזורים; גובה התוכן והריווח התחתון נצפו. לא נשלחה הזמנה.",
+      "תקרת גובה וגלילה נשמרו בקוד; רשימה ארוכה יותר ואייפון לא נבדקו במכשיר."
+    ],
+    "sha256": "0e73f0c6af03a953901171a8f050d9c29dbadf89eb06cc37dafe08e4b7605bc9"
+  },
+  {
+    "file": "invite-sheet-dismiss-2026-10-11.png",
+    "source": "docs/features/screenshots/invite-sheet-dismiss-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, נתוני דמו מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "חלונית שליחת הזמנה משתמשת ברכיב התפריטים הגריר הקיים, עם ידית וכפתור סגירה בצד שמאל.",
+      "נפתח מפרופיל חבר ללא שליחת הזמנה; אין בדיקת אייפון או רשימה ארוכה יותר."
+    ],
+    "sha256": "1934c4fc819ccb3823ed1de3547a0b860bb9f212db5c4ccc98fad4a01aecfc18"
+  },
+  {
+    "file": "home-registered-green-2026-10-11.png",
+    "source": "docs/features/screenshots/home-registered-green-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, רכיב הכרטיס האמיתי בתצוגת הדגמה מנותקת",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "המחזור להיום והמשתמש רשום; התווית, פס התפוסה, הודעת המצב והכפתור נצפו בירוק.",
+      "נתוני המחשה בלבד והפעולות מנוטרלות; אין קריאה או כתיבה לנתוני ייצור, אין בדיקת אייפון."
+    ],
+    "sha256": "3539549b65d1a9f382ac11d0b38efcc30ab50fb6128eb8c80787ed14ee31de5a"
+  },
+  {
+    "file": "pulse-compare-badges-2026-10-11.png",
+    "source": "docs/features/screenshots/pulse-compare-badges-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, נתוני דמו מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "השוואת ראש בראש: תגיות מעוגלות וממורכזות; הצופה בכחול משמאל והאחר באדום מימין.",
+      "נבדקה תצוגה וכיווניות; אין אימות נתוני ייצור, מכשיר פיזי או אייפון."
+    ],
+    "sha256": "56880b8f335cb092f260a41362461d87e3c69902c1970eb5df0f1ac9ad21b52e"
+  },
+  {
+    "file": "pulse-manager-refresh-2026-10-11.png",
+    "source": "docs/features/screenshots/pulse-manager-refresh-2026-10-11.png",
+    "platform": "Android",
+    "environment": "אמולטור 5556, נתוני דמו מנותקים",
+    "sourceCommit": "ec536c6f + local changes",
+    "captured": "2026-10-11",
+    "notes": [
+      "תחתית סיכום המחזורים ללא כפתור טעינה חוזרת; הרענון במשיכה נשמר.",
+      "נבדקה תצוגה וכיווניות; אין אימות נתוני ייצור, מכשיר פיזי או אייפון."
+    ],
+    "sha256": "d416bf6fb2d3a8c127d6f338bab16209ca026707a24c9b575e81fbf5cfda4f52"
+  },
+  {
+    "file": "friends-load-error-2026-10-12.png",
+    "source": "artifacts/bug-sweep-2026-10-12/friends-error.png",
+    "platform": "Android",
+    "environment": "נתוני הדגמה; כשל חד־פעמי מבודד",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + local changes",
+    "captured": "2026-10-12",
+    "notes": [
+      "הקוד העדכני הורץ בשרת פיתוח נפרד; נתוני Firebase אינם בשימוש.",
+      "נבדקו כיווניות והתאוששות בניסיון חוזר עם שני חברי הדמו. לא נבדקו שרת חי ואייפון."
+    ],
+    "sha256": "4983865438338ae2e8d8f009ef8a9ca557ad730594f47f6218d571158907ba8d"
+  },
+  {
+    "file": "friends-load-recovered-2026-10-12.png",
+    "source": "artifacts/bug-sweep-2026-10-12/friends-recovered.png",
+    "platform": "Android",
+    "environment": "נתוני הדגמה; כשל חד־פעמי מבודד",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + local changes",
+    "captured": "2026-10-12",
+    "notes": [
+      "הקוד העדכני הורץ בשרת פיתוח נפרד; נתוני Firebase אינם בשימוש.",
+      "נבדקו כיווניות והתאוששות בניסיון חוזר עם שני חברי הדמו. לא נבדקו שרת חי ואייפון."
+    ],
+    "sha256": "7010a09cb1c94482167919e829d67bfdabd2ae1c8406e46dd2ed0a947e8369c3"
+  },
+  {
+    "file": "round-cover-library-top-2026-10-12.png",
+    "source": "artifacts/round-cover-library-2026-10-12/library-top.png",
+    "platform": "Android",
+    "environment": "אמולטור נתוני דמו, רכיבים אמיתיים בתצוגת המחשה מנותקת",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + local changes",
+    "captured": "2026-10-12",
+    "notes": [
+      "הפעולות מנוטרלות, אין יצירת נתוני מועדון או מחזור בייצור",
+      "שש קטגוריות נצפו ברכיב הרשימה; השוואת בית, רשימה ופרטים בסינתטי בלילה",
+      "התמונות נחתכות לפי מסגרת; מקור התמונה זהה בהשוואה",
+      "זמן המכשיר באמולטור הוא UTC; בחירת יום ולילה נעשית לפי ישראל",
+      "לא נבדק באייפון או בגרסת חנות"
+    ],
+    "sha256": "03d91de6832dd8e2549c709c855ace338dff23446bcc0cb4f3a82c43acba76b6"
+  },
+  {
+    "file": "round-cover-library-bottom-2026-10-12.png",
+    "source": "artifacts/round-cover-library-2026-10-12/library-bottom.png",
+    "platform": "Android",
+    "environment": "אמולטור נתוני דמו, רכיבים אמיתיים בתצוגת המחשה מנותקת",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + local changes",
+    "captured": "2026-10-12",
+    "notes": [
+      "הפעולות מנוטרלות, אין יצירת נתוני מועדון או מחזור בייצור",
+      "שש קטגוריות נצפו ברכיב הרשימה; השוואת בית, רשימה ופרטים בסינתטי בלילה",
+      "התמונות נחתכות לפי מסגרת; מקור התמונה זהה בהשוואה",
+      "זמן המכשיר באמולטור הוא UTC; בחירת יום ולילה נעשית לפי ישראל",
+      "לא נבדק באייפון או בגרסת חנות"
+    ],
+    "sha256": "137d7618f9eba64fa960ba5f5f16f1003a0de63030596a313c8f874098a5cd8c"
+  },
+  {
+    "file": "round-cover-library-consistency-2026-10-12.png",
+    "source": "artifacts/round-cover-library-2026-10-12/comparison.png",
+    "platform": "Android",
+    "environment": "אמולטור נתוני דמו, רכיבים אמיתיים בתצוגת המחשה מנותקת",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + local changes",
+    "captured": "2026-10-12",
+    "notes": [
+      "הפעולות מנוטרלות, אין יצירת נתוני מועדון או מחזור בייצור",
+      "שש קטגוריות נצפו ברכיב הרשימה; השוואת בית, רשימה ופרטים בסינתטי בלילה",
+      "התמונות נחתכות לפי מסגרת; מקור התמונה זהה בהשוואה",
+      "זמן המכשיר באמולטור הוא UTC; בחירת יום ולילה נעשית לפי ישראל",
+      "לא נבדק באייפון או בגרסת חנות"
+    ],
+    "sha256": "fca080b653dbd8c0ce9bc323f391efaacf1af1a20685f2ec0e85b3e09c21a862"
+  },
+  {
+    "file": "guest-rating-decimal-2026-10-12.png",
+    "source": "artifacts/guest-rating-crash-2026-10-12/guest-dragged.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "חלון האורח האמיתי נפתח דרך מסלול בדיקה מוגבל לפיתוח ודמו עם דירוג 4.5, ונגרר ל־3.3.",
+      "לא נשמר דירוג ולא שונו נתוני ייצור. לא נבדק אייפון."
+    ],
+    "sha256": "88712436a957ed9964eb009c531fd869b914ddb79ddd4507822cce38a308c1a2"
+  },
+  {
+    "file": "invitation-from-feed-2026-10-12.png",
+    "source": "artifacts/invitations-consistency-2026-10-12/invitation-from-feed.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "הזמנה בדמו; פתיחת פרטי מועדון ללא פרמטר fromInvitation. לא בוצעה הצטרפות.",
+      "לא נבדק שרת ייצור או אייפון."
+    ],
+    "sha256": "e80eb59024566ccf2ee5d2637e8f385885a79451eadfd1b7c161e1ab48bcba93"
+  },
+  {
+    "file": "invitations-filtered-2026-10-12.png",
+    "source": "artifacts/invitations-consistency-2026-10-12/invitations-filtered.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "שירות ההזמנות הוזן חד־פעמית בשתי הזמנות, פתוחה וכבר הצטרף. הרשימה הציגה רק את הפתוחה.",
+      "לא נבדק שרת ייצור או אייפון."
+    ],
+    "sha256": "cd9f023a3913b9b7ce6d98e16ca09b79d217757392d0643efd405a75ab3abec0"
+  },
+  {
+    "file": "club-join-member-view-2026-10-12.png",
+    "source": "artifacts/club-join-continuity-2026-10-12/join-after.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "נלחץ אישור הזמנה במועדון פתוח של הדמו. נותר אותו מועדון בתצוגת חבר, 19 שחקנים במקום 18.",
+      "לא נבדקו זמני שרת, אישור במועדון סגור בייצור או אייפון. נתוני הדמו בלבד השתנו."
+    ],
+    "sha256": "04326d8ede49da46ed2e4c7540892e7692e5d73ff22bbca5bcd7b53f4340ed8f"
+  },
+  {
+    "file": "round-join-loading-2026-10-12.png",
+    "source": "artifacts/round-join-loading-2026-10-12/round-join-loading.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסך פרטי המחזור האמיתי; נתון מחזור ותשובת הצטרפות מוזרקים במסלול בדיקה מוגבל לפיתוח ודמו, עם המתנה יזומה של שבע שניות.",
+      "לא בוצעה הצטרפות בייצור ולא נבדק אייפון."
+    ],
+    "sha256": "53e1788918b5f4d6807e9d21287850f9606d47371a11b9263caadf2b4352ac7e"
+  },
+  {
+    "file": "round-join-loading-later-2026-10-12.png",
+    "source": "artifacts/round-join-loading-2026-10-12/round-join-loading-later.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסך פרטי המחזור האמיתי; נתון מחזור ותשובת הצטרפות מוזרקים במסלול בדיקה מוגבל לפיתוח ודמו, עם המתנה יזומה של שבע שניות.",
+      "לא בוצעה הצטרפות בייצור ולא נבדק אייפון."
+    ],
+    "sha256": "d5fdb01194a2c6234dcc4019248c23e9fd07fcefc09c642ecc727231a3592f88"
+  },
+  {
+    "file": "round-join-card-loading-2026-10-12.png",
+    "source": "artifacts/round-join-loading-2026-10-12/round-join-card-loading.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בתצוגת בדיקה מנותקת",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "MatchListCard מוצג עם busy=true ונתוני דמו. לא הורץ תהליך הצטרפות מתוך רשימת המחזורים בצילום זה."
+    ],
+    "sha256": "27dc0bdf85f9d087433946a1a6835361e2403a5af6dbfd1e9125732f006bce02"
+  },
+  {
+    "file": "invitation-cards-2026-10-12.png",
+    "source": "artifacts/invitation-cards-2026-10-12/invitation-cards-final.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסכי המוצר האמיתיים עם נתוני דמו מוזרקים בלבד, ללא חיבור לנתוני ייצור.",
+      "נצפו אישור מועדון סגור, הסרת ההזמנה, צירוף להרכב וצירוף להמתנה. משתמש הדמו מנהל במחזור; בדיקת הזמנת מנהל לשחקן חיצוני נעשתה במבחן מבודד של מסלול השרת.",
+      "לא נבדק אייפון ולא הורצה הזמנה מול שרת הייצור."
+    ],
+    "sha256": "bd2963c4b11aecf4fac68a4edb26a4c2d901002360158d795530a4ea2202d8dc"
+  },
+  {
+    "file": "invitation-cards-full-2026-10-12.png",
+    "source": "artifacts/invitation-cards-2026-10-12/invitation-cards-full.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסכי המוצר האמיתיים עם נתוני דמו מוזרקים בלבד, ללא חיבור לנתוני ייצור.",
+      "נצפו אישור מועדון סגור, הסרת ההזמנה, צירוף להרכב וצירוף להמתנה. משתמש הדמו מנהל במחזור; בדיקת הזמנת מנהל לשחקן חיצוני נעשתה במבחן מבודד של מסלול השרת.",
+      "לא נבדק אייפון ולא הורצה הזמנה מול שרת הייצור."
+    ],
+    "sha256": "a1a9bd8cf4a25d729076480fb10c47e6a3f013eaa43168b9e2256a3642b9a78f"
+  },
+  {
+    "file": "invitation-club-accepted-2026-10-12.png",
+    "source": "artifacts/invitation-cards-2026-10-12/invitation-club-accepted.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסכי המוצר האמיתיים עם נתוני דמו מוזרקים בלבד, ללא חיבור לנתוני ייצור.",
+      "נצפו אישור מועדון סגור, הסרת ההזמנה, צירוף להרכב וצירוף להמתנה. משתמש הדמו מנהל במחזור; בדיקת הזמנת מנהל לשחקן חיצוני נעשתה במבחן מבודד של מסלול השרת.",
+      "לא נבדק אייפון ולא הורצה הזמנה מול שרת הייצור."
+    ],
+    "sha256": "cc2c26368e0bcf9477a80121a51570bd39799b0b2779679a6814d809884a8aef"
+  },
+  {
+    "file": "invitation-after-club-2026-10-12.png",
+    "source": "artifacts/invitation-cards-2026-10-12/invitation-after-club.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסכי המוצר האמיתיים עם נתוני דמו מוזרקים בלבד, ללא חיבור לנתוני ייצור.",
+      "נצפו אישור מועדון סגור, הסרת ההזמנה, צירוף להרכב וצירוף להמתנה. משתמש הדמו מנהל במחזור; בדיקת הזמנת מנהל לשחקן חיצוני נעשתה במבחן מבודד של מסלול השרת.",
+      "לא נבדק אייפון ולא הורצה הזמנה מול שרת הייצור."
+    ],
+    "sha256": "f0bfa14107618dcdcc04fdbad681242b2c20d84d01f5e91ae949ce92e2f1c1f3"
+  },
+  {
+    "file": "invitation-round-roster-2026-10-12.png",
+    "source": "artifacts/invitation-cards-2026-10-12/invitation-round-roster.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסכי המוצר האמיתיים עם נתוני דמו מוזרקים בלבד, ללא חיבור לנתוני ייצור.",
+      "נצפו אישור מועדון סגור, הסרת ההזמנה, צירוף להרכב וצירוף להמתנה. משתמש הדמו מנהל במחזור; בדיקת הזמנת מנהל לשחקן חיצוני נעשתה במבחן מבודד של מסלול השרת.",
+      "לא נבדק אייפון ולא הורצה הזמנה מול שרת הייצור."
+    ],
+    "sha256": "0c951450735bda87059973b912152a84bf8d33bc387d8a94a1c531aeb9ecd3ed"
+  },
+  {
+    "file": "invitation-round-waitlist-2026-10-12.png",
+    "source": "artifacts/invitation-cards-2026-10-12/invitation-round-waitlist.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסכי המוצר האמיתיים עם נתוני דמו מוזרקים בלבד, ללא חיבור לנתוני ייצור.",
+      "נצפו אישור מועדון סגור, הסרת ההזמנה, צירוף להרכב וצירוף להמתנה. משתמש הדמו מנהל במחזור; בדיקת הזמנת מנהל לשחקן חיצוני נעשתה במבחן מבודד של מסלול השרת.",
+      "לא נבדק אייפון ולא הורצה הזמנה מול שרת הייצור."
+    ],
+    "sha256": "3d65c5c9248da58a78d253395507a03e9f2cf83946d759f84b5af08c199ae07d"
+  },
+  {
+    "file": "invitation-waitlist-member-2026-10-12.png",
+    "source": "artifacts/invitation-cards-2026-10-12/invitation-waitlist-member.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסכי המוצר האמיתיים עם נתוני דמו מוזרקים בלבד, ללא חיבור לנתוני ייצור.",
+      "נצפו אישור מועדון סגור, הסרת ההזמנה, צירוף להרכב וצירוף להמתנה. משתמש הדמו מנהל במחזור; בדיקת הזמנת מנהל לשחקן חיצוני נעשתה במבחן מבודד של מסלול השרת.",
+      "לא נבדק אייפון ולא הורצה הזמנה מול שרת הייצור."
+    ],
+    "sha256": "f0b5d34f4a0fdef6151579227c09039f9f99574f36dfdb04fe6052bd26d2db7d"
+  },
+  {
+    "file": "chat-sender-2026-10-12.png",
+    "source": "artifacts/chat-sender-2026-10-12/chat-sender.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסך השיחות האמיתי ללא תצוגת המחשה מוכנה מראש: תקציר עם שחקן ומזהה p1 הושלם לשם אלין דרך שירות הזהות הציבורית במצב דמו.",
+      "השם מתן נבדק במבחן מבודד; אין צילום מחשבונו. לא נבדקו ייצור, פוש אמיתי או אייפון."
+    ],
+    "sha256": "2c012d02f5b9922414e3c4debf5658962544b1e84acdc4b9a8b98a758b266bed"
+  },
+  {
+    "file": "pulse-inbox-header-2026-10-12.png",
+    "source": "artifacts\\pulse-sweep-2026-10-12\\pulse-inbox-header.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "תג מעטפה מציג שתי הזמנות דמו, במקום הכרטיס הרחב מעל הלשוניות.",
+      "לא נבדקו משתמש ייצור, מסירה אמיתית או אייפון."
+    ],
+    "sha256": "49bbb36704c5311cd017c9688852b0ce2d1cc10b4e5f60dc44ed73b9a11c9add"
+  },
+  {
+    "file": "pulse-player-card-2026-10-12.png",
+    "source": "artifacts\\pulse-sweep-2026-10-12\\pulse-player-card.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "כותרת כרטיס שחקן בפרופיל חבר; נתוני ההמחשה הקיימים.",
+      "לא נבדקו משתמש ייצור, מסירה אמיתית או אייפון."
+    ],
+    "sha256": "0ec2280ba456c4c0861df7f964ef521e3569ca22ff8cd985a00492ed775bb285"
+  },
+  {
+    "file": "pulse-player-options-2026-10-12.png",
+    "source": "artifacts\\pulse-sweep-2026-10-12\\pulse-player-options.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "תפריט אפשרויות חדש הנפתח מלמטה, ללא ביצוע הסרה, דיווח או חסימה.",
+      "לא נבדקו משתמש ייצור, מסירה אמיתית או אייפון."
+    ],
+    "sha256": "4183b5f0003af4c36f053c2bf187779b29176cd2a903c8223b72a29034ebd766"
+  },
+  {
+    "file": "pulse-player-current-2026-10-12.png",
+    "source": "artifacts\\pulse-sweep-2026-10-12\\pulse-player-current.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "טבלת זמינות של שחקן, עם סימון ערב רביעי; מסלול פרופיל דמו רגיל.",
+      "לא נבדקו משתמש ייצור, מסירה אמיתית או אייפון."
+    ],
+    "sha256": "e7c35b3f3ad369cdac2f50017189fc2659e6e933185e53628f2bf3e54702cf2a"
+  },
+  {
+    "file": "pulse-invite-loading-2026-10-12.png",
+    "source": "artifacts\\pulse-sweep-2026-10-12\\pulse-invite-loading.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מחוון טעינה בשורת מחזור לאחר לחיצה אמיתית; תשובת שירות דמו הושהתה שמונה שניות. לא נשלחה הזמנה אמיתית.",
+      "לא נבדקו משתמש ייצור, מסירה אמיתית או אייפון."
+    ],
+    "sha256": "89d6ed2eeaa318d3ec7254402a6e15cde6b94b9e059b4fae403f314dacf18831"
+  },
+  {
+    "file": "pulse-chat-profile-menu-2026-10-12.png",
+    "source": "artifacts\\pulse-sweep-2026-10-12\\pulse-chat-profile-menu.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "כרטיס השחקן נוסף לתפריט שיחה אישית; נתוני רשימת שיחות מוזרקים, ללא שיחה בייצור.",
+      "לא נבדקו משתמש ייצור, מסירה אמיתית או אייפון."
+    ],
+    "sha256": "5326880f967778c5fb99f2d8a1c970ab06f6102d548dea8ede14d8a45373284e"
+  },
+  {
+    "file": "pulse-scheduled-green-2026-10-12.png",
+    "source": "artifacts\\pulse-sweep-2026-10-12\\pulse-scheduled-green.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "רכיב המחזור האמיתי במצב הרשמה שטרם נפתחה, עם נתוני המחשה והפעולות מנוטרלות.",
+      "לא נבדקו משתמש ייצור, מסירה אמיתית או אייפון."
+    ],
+    "sha256": "5af634fc0ad0b590832be5c570077be1d837a65107b281ee543926d664acffe1"
+  },
+  {
+    "file": "pulse-home-tiles-2026-10-12.png",
+    "source": "artifacts\\pulse-sweep-2026-10-12\\pulse-home-tiles.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "כרטיסי הפעולה בבית בגובה אחיד עם נתוני דמו.",
+      "לא נבדקו משתמש ייצור, מסירה אמיתית או אייפון."
+    ],
+    "sha256": "d71d95a80a80055e7979ea4e7f54206f0f3cf68a0060fcc417ede4ab49b2d9cd"
+  },
+  {
+    "file": "pulse-home-illustration-2026-10-12.png",
+    "source": "artifacts\\pulse-sweep-2026-10-12\\pulse-home-illustration.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "איור חדש של כדור ועמודות בכרטיס הכושר, עם ציוני הדגמה בלבד.",
+      "לא נבדקו משתמש ייצור, מסירה אמיתית או אייפון."
+    ],
+    "sha256": "43ac9a21b85bfc20614619e0e0dde2499d944ea204192b1d32cdca4b4e29e1a9"
+  },
+  {
+    "file": "pulse-discovery-real-2026-10-12.png",
+    "source": "artifacts/pulse-sweep-2026-10-12/pulse-discovery-real.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסך הגילוי האמיתי דרך שירות הדמו, ללא רשימת המחשה מוכנה: 3 לא חברים בברירת המחדל, ו־2 חברים במסנן.",
+      "לא נבדקו שרת ייצור או אייפון."
+    ],
+    "sha256": "32ae8439acfdb8be1f24e922f8a3e33aab4b63a4b6ba9f834f81ae13af0c93cc"
+  },
+  {
+    "file": "pulse-discovery-friends-2026-10-12.png",
+    "source": "artifacts/pulse-sweep-2026-10-12/pulse-discovery-friends.png",
+    "platform": "Android",
+    "environment": "דמו מנותק באמולטור",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53 + שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "מסך הגילוי האמיתי דרך שירות הדמו, ללא רשימת המחשה מוכנה: 3 לא חברים בברירת המחדל, ו־2 חברים במסנן.",
+      "לא נבדקו שרת ייצור או אייפון."
+    ],
+    "sha256": "8b94d9340d891a67fd872a9c5ab48a0e2420111bfe5f062482ecbc6303afdff6"
+  },
+  {
+    "file": "store-2026-10-12-01-home.png",
+    "source": "artifacts/store-screens-2026-10-12/01-home.png",
+    "platform": "Android",
+    "environment": "נתוני הדגמה מנותקים, מצב צילום",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53",
+    "captured": "2026-10-12",
+    "notes": [
+      "המסכים הורצו באימולטור אנדרואיד. אין כאן אימות אייפון.",
+      "מסך המועדון משתמש בפריסת הצילום הקיימת: נתונים וטבלת מועדון בלשונית המידע.",
+      "העימוד לחנות מוסיף כותרות מחוץ לצילום ומסיר את פסי מערכת ההפעלה."
+    ],
+    "sha256": "341d54d862f17cea48c58ce7835141602c434fb68716a511504355f783b1ee2c"
+  },
+  {
+    "file": "store-2026-10-12-02-club.png",
+    "source": "artifacts/store-screens-2026-10-12/02-club.png",
+    "platform": "Android",
+    "environment": "נתוני הדגמה מנותקים, מצב צילום",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53",
+    "captured": "2026-10-12",
+    "notes": [
+      "המסכים הורצו באימולטור אנדרואיד. אין כאן אימות אייפון.",
+      "מסך המועדון משתמש בפריסת הצילום הקיימת: נתונים וטבלת מועדון בלשונית המידע.",
+      "העימוד לחנות מוסיף כותרות מחוץ לצילום ומסיר את פסי מערכת ההפעלה."
+    ],
+    "sha256": "b9ffe94a0f8785131490c1d17018261bd753efaae81407eb39e4aca8a7e7ce57"
+  },
+  {
+    "file": "store-2026-10-12-03-round.png",
+    "source": "artifacts/store-screens-2026-10-12/03-round.png",
+    "platform": "Android",
+    "environment": "נתוני הדגמה מנותקים, מצב צילום",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53",
+    "captured": "2026-10-12",
+    "notes": [
+      "המסכים הורצו באימולטור אנדרואיד. אין כאן אימות אייפון.",
+      "מסך המועדון משתמש בפריסת הצילום הקיימת: נתונים וטבלת מועדון בלשונית המידע.",
+      "העימוד לחנות מוסיף כותרות מחוץ לצילום ומסיר את פסי מערכת ההפעלה."
+    ],
+    "sha256": "1b2f295dd1808a64e1c5e9d96032f0f73d136ee33ca5017af75f0d7281e89b1d"
+  },
+  {
+    "file": "store-2026-10-12-04-statistics.png",
+    "source": "artifacts/store-screens-2026-10-12/04-statistics.png",
+    "platform": "Android",
+    "environment": "נתוני הדגמה מנותקים, מצב צילום",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53",
+    "captured": "2026-10-12",
+    "notes": [
+      "המסכים הורצו באימולטור אנדרואיד. אין כאן אימות אייפון.",
+      "מסך המועדון משתמש בפריסת הצילום הקיימת: נתונים וטבלת מועדון בלשונית המידע.",
+      "העימוד לחנות מוסיף כותרות מחוץ לצילום ומסיר את פסי מערכת ההפעלה."
+    ],
+    "sha256": "6632fb19440909df485c2001aacc7e493edf44a465dd4a49f7f1b0f66bf1fc9f"
+  },
+  {
+    "file": "store-2026-10-12-05-discovery.png",
+    "source": "artifacts/store-screens-2026-10-12/05-discovery.png",
+    "platform": "Android",
+    "environment": "נתוני הדגמה מנותקים, מצב צילום",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53",
+    "captured": "2026-10-12",
+    "notes": [
+      "המסכים הורצו באימולטור אנדרואיד. אין כאן אימות אייפון.",
+      "מסך המועדון משתמש בפריסת הצילום הקיימת: נתונים וטבלת מועדון בלשונית המידע.",
+      "העימוד לחנות מוסיף כותרות מחוץ לצילום ומסיר את פסי מערכת ההפעלה."
+    ],
+    "sha256": "345c84a2b28bafb559229da5aa0d63b0aa6bac0a4fae2385db030737d1fc4f2e"
+  },
+  {
+    "file": "store-2026-10-12-06-chats.png",
+    "source": "artifacts/store-screens-2026-10-12/06-chats.png",
+    "platform": "Android",
+    "environment": "נתוני הדגמה מנותקים, מצב צילום",
+    "sourceCommit": "ec536c6f1e2302ff40cfa3b16b230257cae8df53",
+    "captured": "2026-10-12",
+    "notes": [
+      "המסכים הורצו באימולטור אנדרואיד. אין כאן אימות אייפון.",
+      "מסך המועדון משתמש בפריסת הצילום הקיימת: נתונים וטבלת מועדון בלשונית המידע.",
+      "העימוד לחנות מוסיף כותרות מחוץ לצילום ומסיר את פסי מערכת ההפעלה."
+    ],
+    "sha256": "c8fb0541ac7606e770d2c7171eed451732bba694871d71e784e1533178c1a384"
   }
 ]

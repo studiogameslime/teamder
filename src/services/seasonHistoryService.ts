@@ -12,6 +12,7 @@
 
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { readSeasonArchiveData } from './seasonArchiveData';
 import { logError } from '@/services/errorLog';
 import { SEASON_TITLE_KEYS, type SeasonTitleKey } from '@/utils/seasonAwards';
 import { type PairTotals } from '@/utils/clubChemistry';
@@ -40,6 +41,7 @@ export interface SeasonWinner {
 }
 
 export interface FinishedSeason {
+  nonSeason?: boolean;
   seasonId: string;
   no: number;
   startsAt: number;
@@ -93,6 +95,7 @@ function fromCard(d: Record<string, unknown>): FinishedSeason | null {
   }
   return {
     seasonId,
+    nonSeason: d.nonSeason === true,
     no: num(d.no),
     startsAt: num(d.startsAt),
     endsAt: num(d.endsAt),
@@ -122,7 +125,7 @@ export const seasonHistoryService = {
         doc(db, 'seasonSummary', `${groupId}__${seasonId}`),
       );
       if (!snap.exists()) return null;
-      return parseSeasonTable(snap.data() as Record<string, unknown>);
+      return parseSeasonTable(await readSeasonArchiveData(db, snap.data() as Record<string, unknown>));
     } catch (err) {
       logError('seasonHistoryTable', err, { groupId, seasonId });
       return null;
@@ -130,7 +133,7 @@ export const seasonHistoryService = {
   },
 
   /** Finished seasons for one club, newest first. */
-  async list(groupId: string): Promise<FinishedSeason[] | 'error'> {
+  async list(groupId: string, includePeriods = false): Promise<FinishedSeason[] | 'error'> {
     if (!groupId) return [];
     if (USE_MOCK_DATA) return mockHistory();
     try {
@@ -152,7 +155,7 @@ export const seasonHistoryService = {
       const out: FinishedSeason[] = [];
       snap.forEach((doc) => {
         const s = fromCard(doc.data() as Record<string, unknown>);
-        if (s) out.push(s);
+        if (s && (includePeriods || !s.nonSeason)) out.push(s);
       });
       return out.sort((a, b) => b.no - a.no);
     } catch (err) {

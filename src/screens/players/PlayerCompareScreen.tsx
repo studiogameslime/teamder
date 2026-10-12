@@ -117,6 +117,7 @@ export function PlayerCompareScreen() {
       const g = await groupService.get(groupId).catch(() => null);
       if (!alive) return;
       setSeasons(g?.seasons);
+      if (g?.seasons && !g.seasons.enabled && (g.seasons.count ?? 0) > 0) setScope({ k: 'all' });
       // Only a club that has actually closed one pays for the list.
       if ((g?.seasons?.count ?? 0) > 0) {
         const list = await seasonHistoryService.list(groupId).catch(() => 'error' as const);
@@ -150,7 +151,7 @@ export function PlayerCompareScreen() {
       // A slice that will not load is not an empty one. Falling back to the
       // running season beats printing one scope's numbers under another's
       // heading — the same refusal the club stats screen makes.
-      if (!m && scope.k !== 'current') {
+      if (!m && scope.k !== 'current' && seasons?.enabled) {
         setScope({ k: 'current' });
         return;
       }
@@ -872,16 +873,11 @@ function CompareBar({ row }: { row: CompareRow }) {
           alone was too quiet to find at a glance down eleven rows (asked for
           directly). The disc is the side's OWN colour at low opacity, so the
           number never leaves the colour that identifies whose it is. */}
-      <Text
-        style={[
-          styles.cmpValue,
-          styles.cmpValueB,
-          bWins && styles.cmpWin,
-          bWins && styles.cmpLeadB,
-        ]}
-      >
-        {fmt(row.b, row.format)}
-      </Text>
+      <View style={[styles.cmpBadge, bWins && styles.cmpLeadB]}>
+        <Text style={[styles.cmpValue, styles.cmpValueB, bWins && styles.cmpWin]}>
+          {fmt(row.b, row.format)}
+        </Text>
+      </View>
       <View style={styles.cmpMid}>
         <Text style={styles.cmpLabel} numberOfLines={1}>
           {row.label}
@@ -907,16 +903,11 @@ function CompareBar({ row }: { row: CompareRow }) {
           ) : null}
         </View>
       </View>
-      <Text
-        style={[
-          styles.cmpValue,
-          styles.cmpValueA,
-          aWins && styles.cmpWin,
-          aWins && styles.cmpLeadA,
-        ]}
-      >
-        {fmt(row.a, row.format)}
-      </Text>
+      <View style={[styles.cmpBadge, aWins && styles.cmpLeadA]}>
+        <Text style={[styles.cmpValue, styles.cmpValueA, aWins && styles.cmpWin]}>
+          {fmt(row.a, row.format)}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -1295,29 +1286,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   cmpFill: { height: 5 },
-  // The values outweigh the label they sit beside.
-  // The padding lives HERE, on every value, not on the lead styles below.
-  // When only the leading number carried it, its disc pushed those digits a
-  // few points off the edge the rest of the column was flush with, and the
-  // numbers stopped lining up (reported). The disc is a background now; it
-  // changes colour, never position.
-  cmpValue: {
-    fontSize: 18.5,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
-    minWidth: 58,
-    paddingHorizontal: 7,
-    paddingVertical: 1,
-  },
-  // Under forceRTL `textAlign:'left'` renders on the VISUAL RIGHT. The viewer
-  // sits on the visual LEFT, so their number pushes to the visual left edge —
-  // which is `textAlign:'right'`. Written out because it reads backwards.
-  cmpValueA: { color: BLUE, textAlign: 'right' },
-  cmpValueB: { color: RED, textAlign: 'left' },
+  // Equal, centred capsules keep the highlight around the digits on both sides.
+  // A View owns the radius: Android Text backgrounds do not form reliable pills.
+  cmpBadge: { minWidth: 64, minHeight: 34, paddingHorizontal: 7, paddingVertical: 4,
+    borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  cmpValue: { fontSize: 18.5, fontWeight: '800', fontVariant: ['tabular-nums'], textAlign: 'center' },
+  cmpValueA: { color: BLUE },
+  cmpValueB: { color: RED },
   cmpWin: { fontWeight: '900' },
-  // The lead disc, in the side's OWN colour at low opacity — the number never
-  // leaves the colour that says whose it is. `overflow:'hidden'` is what makes
-  // a radius apply to a <Text> on Android; without it the corners stay square.
+  // The leading capsule keeps the player's own colour at low opacity.
   cmpLeadA: {
     borderRadius: radius.pill,
     overflow: 'hidden',

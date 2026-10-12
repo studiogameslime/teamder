@@ -1361,6 +1361,7 @@ export const he = {
     'עד המועד שתבחר רק מנהל המחזור יוכל להוסיף אורחים. שאר השחקנים יוכלו להוסיף אורחים רק מהמועד הזה ואילך. למנהל אין הגבלה.',
   wizardGuestsOpenLabel: 'פתיחת הוספת אורחים לשחקנים',
   wizardAutoTeamsToggle: 'תזמון יצירת כוחות אוטומטיים',
+  wizardAutoTeamsRequiresRating: 'כדי להפעיל תזמון כוחות, יש להפעיל דירוג פנימי בהגדרות המועדון.',
   wizardAutoTeamsHint:
     'במועד שתבחר, המערכת תחלק את הנרשמים לקבוצות מאוזנות (לפי הדירוג הפנימי או באקראי — לבחירתך), וכל שחקן יקבל פוש עם הקבוצה שלו. אפשר לערוך אחר כך. שחקן ללא דירוג פנימי ייחשב בדירוג ממוצע.\n\nשים לב: אם כבר קבעת כוחות ידנית (בכל שיטה — ידני, דירוג או אקראי) — התזמון לא ירוץ ולא ישנה אותם.',
   wizardAutoTeamsLabel: 'מועד יצירת הכוחות',
@@ -1428,7 +1429,7 @@ export const he = {
   promoteOrphanErrorBody: 'נסה שוב בעוד רגע.',
   createGameOrphanCta: 'צור מחזור חד־פעמי',
   createGameOrphanCtaSub: 'בלי מועדון — מהיר, רק עבור המחזור',
-  createGameOrphanBanner: 'מחזור חד־פעמי — תוכל לקבע מועדון אחרי שתשחקו',
+  createGameOrphanBanner: 'מחזור חד־פעמי\nאחרי שתשחקו, אפשר להקים מועדון קבוע',
   createGameQuickLoading: 'מכינים מחזור מהיר…',
   createGameOrphanErrorTitle: 'תקלה ביצירה',
   createGameOrphanErrorBody: 'לא הצלחנו להכין את הסביבה. נסה שוב בעוד רגע.',
@@ -2529,7 +2530,10 @@ export const he = {
   seasonClosingGameBanner:
     'העונה בחלון סגירה — אי אפשר להתחיל את המחזור עד שהיא תיסגר',
   seasonsDisableTitle: 'לכבות עונות?',
-  seasonsDisableBodyOf: (no: number, played: number) =>
+  seasonsCadenceLocked: 'לאחר תחילת העונה אפשר לשנות את היעד, אך סוג העונה נשאר קבוע.',
+  seasonsDisableBodyOf: (no: number, played: number) => played < 2
+    ? 'טרם התקיימו שני מחזורים בעונה. העונות יכובו בלי ארכיון ובלי חלוקת תארים. הנתונים שכבר נצברו יישמרו בנתוני כל הזמנים, וכך גם העונות הקודמות והתארים שלהן.'
+    :
     `${count(played, 'מחזור אחד', 'מחזורים')} בעונה ${no}.\n\n` +
     'כיבוי העונות מסיים את העונה הפעילה עכשיו:\n' +
     '• התארים של העונה מחולקים לפי הנתונים שנצברו עד הרגע הזה\n' +
@@ -4214,7 +4218,7 @@ export const he = {
   matchDetailsAcceptOffer: 'נפתח לך מקום — אשר הגעה',
   matchDetailsClosedForRegistration: 'ההרשמה נסגרה',
   matchDetailsRegistrationOpensAt: (when: string) =>
-    `ההרשמה עדיין לא נפתחה — היא תיפתח ב-${when}`,
+    `ההרשמה עדיין לא נפתחה\nפתיחת הרשמה: ${when}`,
   matchDetailsAlreadyStarted: 'המחזור כבר התחיל',
   matchDetailsAlreadyLive: 'המחזור כבר במצב לייב',
   matchDetailsJoinRejected: 'בקשתך למחזור זה נדחתה ולא ניתן להירשם שוב.',
@@ -4949,7 +4953,7 @@ export const he = {
 
   // ── Chat ──────────────────────────────────────────────────────────
   delete: 'מחק',
-  tabChat: "צ'אטים",
+  tabChat: 'חברים',
   chatsListTitle: "צ'אטים",
   chatsListEmpty: 'אין עדיין שיחות',
   chatsListEmptyHint: 'שיחות של מחזורים ומועדונים שאתה חבר בהם יופיעו כאן',

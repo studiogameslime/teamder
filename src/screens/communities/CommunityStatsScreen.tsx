@@ -305,7 +305,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           // answer the badges' lifetime goal total; the badges now live on
           // CommunityDetails and read their own copy.)
           seasonHistoryService
-            .list(groupId)
+            .list(groupId, true)
             .then((list) => {
               if (!alive) return;
               // 'error' is NOT an empty archive — leave the list alone and let
@@ -443,7 +443,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             // The list itself failed to load (it returns 'error', never []),
             // so the club's closed seasons are missing from the sum. Same
             // answer as a missing archive: refuse, do not understate.
-            if (!completeSeasonHistory(seasons?.count ?? 0, pastSeasons.length, archives)) return null;
+            if (pastSeasons.filter((x) => !x.nonSeason).length < (seasons?.count ?? 0) || !completeSeasonHistory(seasons?.count ?? 0, pastSeasons.length, archives)) return null;
             const live: TableSlice = {
               totalGoals: champ?.totalGoals ?? 0,
               totalRounds: champ?.totalRounds ?? 0,
@@ -948,7 +948,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           <View style={styles.center}>
             <Text style={styles.loadingText}>לא ניתן לטעון את הסטטיסטיקה כרגע.</Text>
             <Button title={he.retry} variant="outline" onPress={() => setReloadTick((n) => n + 1)} />
-            {scope.k !== 'current' ? <Button title="לעונה הנוכחית" variant="outline" onPress={() => setScope({ k: 'current' })} /> : null}
+            {scope.k !== 'current' && seasons?.enabled ? <Button title="לעונה הנוכחית" variant="outline" onPress={() => setScope({ k: 'current' })} /> : null}
           </View>
         ) : bootLoading ? (
           <View style={styles.center}>

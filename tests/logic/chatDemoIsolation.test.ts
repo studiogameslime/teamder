@@ -89,7 +89,7 @@ test('rejected auth restoration is forwarded, while cancelled restoration cannot
 test('unsubscribing after attach closes the listener and suppresses late callbacks', () => {
   const x = load(false), seen = jest.fn(), failed = jest.fn();
   const stop = x.service.subscribeMessages('dm', 'g', seen, failed);
-  x.emit({ docs: [{ data: () => ({ id: 'new' }) }, { data: () => ({ id: 'old' }) }] });
+  x.emit({ docs: [{ id: 'new', data: () => ({ id: '' }) }, { id: 'old', data: () => ({ id: '' }) }] });
   expect(Array.from(seen.mock.calls[0][0], (m: any) => m.id)).toEqual(['old', 'new']);
   stop(); x.emit({ docs: [] }); x.fail(Error('late'));
   expect(x.stop).toHaveBeenCalledTimes(1); expect(seen).toHaveBeenCalledTimes(1); expect(failed).not.toHaveBeenCalled();
@@ -101,4 +101,14 @@ test('leaving before successful auth restore prevents attaching to the old chat'
   const failed = jest.fn(), stop = x.service.subscribeMessages('game', 'old', jest.fn(), failed);
   stop(); resolve({ uid: 'me' }); await new Promise(setImmediate);
   expect(x.snapshot).not.toHaveBeenCalled(); expect(failed).not.toHaveBeenCalled();
+});
+
+
+test('inbox preferences wait for restored auth and cancel before attaching after leaving',async()=>{
+  let resolve!:(user:any)=>void;
+  const x=load(false,{auth:{currentUser:null},restore:()=>new Promise(done=>{resolve=done;})});
+  const cb=jest.fn(),fail=jest.fn();
+  const stop=x.service.subscribePreferences('me',cb,fail);
+  expect(x.snapshot).not.toHaveBeenCalled();stop();resolve({uid:'me'});await new Promise(setImmediate);
+  expect(x.snapshot).not.toHaveBeenCalled();expect(fail).not.toHaveBeenCalled();
 });

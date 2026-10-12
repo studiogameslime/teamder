@@ -122,6 +122,7 @@ export function AvailablePlayersScreen() {
         // Resolve the filter city from the just-loaded game's community.
         const cityResolved = grp?.city || undefined;
         const list = await userService.findAvailablePlayers({
+          gameId,
           day,
           hour,
           city: cityResolved,

@@ -34,6 +34,7 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { InfoTip } from './InfoTip';
+import { useFormDesign, formFieldStyle } from './forms/FormTheme';
 
 interface Props
   extends Omit<TextInputProps, 'style' | 'placeholderTextColor'> {
@@ -69,6 +70,8 @@ export function InputField({
   onBlur,
   ...textInputProps
 }: Props) {
+  const designed = useFormDesign();
+  icon = icon ?? (designed ? (textInputProps.keyboardType === 'phone-pad' ? 'call-outline' : textInputProps.multiline ? 'document-text-outline' : 'create-outline') : undefined);
   const hasValue = typeof value === 'string' && value.length > 0;
 
   // Focus state drives a soft border + tint sweep on the surrounding
@@ -81,12 +84,12 @@ export function InputField({
     borderColor: interpolateColor(
       focus.value,
       [0, 1],
-      ['#F5F5F5', colors.primary],
+      [designed ? '#C9D6E9' : '#F5F5F5', designed ? '#2463F5' : colors.primary],
     ),
     backgroundColor: interpolateColor(
       focus.value,
       [0, 1],
-      ['#F5F5F5', '#FFFFFF'],
+      [designed ? '#FFFFFF' : '#F5F5F5', '#FFFFFF'],
     ),
   }));
 
@@ -123,7 +126,7 @@ export function InputField({
           testID={textInputProps.testID}
           style={({ pressed }) => [pressed && { opacity: 0.85 }]}
         >
-          <Animated.View style={[styles.field, fieldAnimStyle]}>
+          <Animated.View style={[styles.field, designed && formFieldStyle, fieldAnimStyle]}>
             <Text
               numberOfLines={1}
               style={[
@@ -148,14 +151,14 @@ export function InputField({
           </Animated.View>
         </Pressable>
       ) : (
-        <Animated.View style={[styles.field, fieldAnimStyle]}>
+        <Animated.View style={[styles.field, designed && formFieldStyle, fieldAnimStyle]}>
           <TextInput
             {...textInputProps}
             accessibilityLabel={textInputProps.accessibilityLabel ?? label ?? placeholder}
             value={value}
             placeholder={placeholder}
             placeholderTextColor="#9CA3AF"
-            style={styles.input}
+            style={[styles.input, designed && { fontSize: 15, minHeight: textInputProps.multiline ? 76 : undefined, textAlignVertical: textInputProps.multiline ? "top" : "center" }]}
             onFocus={(e) => {
               setFocus(true);
               onFocus?.(e);

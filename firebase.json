@@ -18,30 +18,82 @@
       "cleanUrls": true,
       "trailingSlash": false,
       "rewrites": [
-        { "source": "/play/**", "function": { "functionId": "serveAdLink", "region": "us-central1" } },
-        { "source": "/session/**", "destination": "/invite.html" },
-        { "source": "/app", "destination": "/invite.html" },
-        { "source": "/go", "destination": "/invite.html" },
-        { "source": "/track-click", "function": { "functionId": "trackLinkClick", "region": "us-central1" } },
-        { "source": "/invite-preview", "function": { "functionId": "getInvitePreview", "region": "us-central1" } },
+        {
+          "source": "/play/**",
+          "function": {
+            "functionId": "serveAdLink",
+            "region": "us-central1"
+          }
+        },
+        {
+          "source": "/session/**",
+          "destination": "/invite.html"
+        },
+        {
+          "source": "/app",
+          "destination": "/invite.html"
+        },
+        {
+          "source": "/go",
+          "destination": "/invite.html"
+        },
+        {
+          "source": "/track-click",
+          "function": {
+            "functionId": "trackLinkClick",
+            "region": "us-central1"
+          }
+        },
+        {
+          "source": "/invite-preview",
+          "function": {
+            "functionId": "getInvitePreview",
+            "region": "us-central1"
+          }
+        },
         {
           "source": "/team/**",
-          "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+          "function": {
+            "functionId": "serveCommunityPage",
+            "region": "us-central1"
+          }
         },
         {
           "source": "/c/**",
-          "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+          "function": {
+            "functionId": "serveCommunityPage",
+            "region": "us-central1"
+          }
         },
         {
           "source": "/i/**",
-          "function": { "functionId": "serveInviteCode", "region": "us-central1" }
+          "function": {
+            "functionId": "serveInviteCode",
+            "region": "us-central1"
+          }
         }
       ],
       "headers": [
         {
           "source": "/.well-known/apple-app-site-association",
           "headers": [
-            { "key": "Content-Type", "value": "application/json" }
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            }
           ]
         }
       ]
@@ -57,30 +109,82 @@
       "cleanUrls": true,
       "trailingSlash": false,
       "rewrites": [
-        { "source": "/play/**", "function": { "functionId": "serveAdLink", "region": "us-central1" } },
-        { "source": "/session/**", "destination": "/invite.html" },
-        { "source": "/app", "destination": "/invite.html" },
-        { "source": "/go", "destination": "/invite.html" },
-        { "source": "/track-click", "function": { "functionId": "trackLinkClick", "region": "us-central1" } },
-        { "source": "/invite-preview", "function": { "functionId": "getInvitePreview", "region": "us-central1" } },
+        {
+          "source": "/play/**",
+          "function": {
+            "functionId": "serveAdLink",
+            "region": "us-central1"
+          }
+        },
+        {
+          "source": "/session/**",
+          "destination": "/invite.html"
+        },
+        {
+          "source": "/app",
+          "destination": "/invite.html"
+        },
+        {
+          "source": "/go",
+          "destination": "/invite.html"
+        },
+        {
+          "source": "/track-click",
+          "function": {
+            "functionId": "trackLinkClick",
+            "region": "us-central1"
+          }
+        },
+        {
+          "source": "/invite-preview",
+          "function": {
+            "functionId": "getInvitePreview",
+            "region": "us-central1"
+          }
+        },
         {
           "source": "/team/**",
-          "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+          "function": {
+            "functionId": "serveCommunityPage",
+            "region": "us-central1"
+          }
         },
         {
           "source": "/c/**",
-          "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+          "function": {
+            "functionId": "serveCommunityPage",
+            "region": "us-central1"
+          }
         },
         {
           "source": "/i/**",
-          "function": { "functionId": "serveInviteCode", "region": "us-central1" }
+          "function": {
+            "functionId": "serveInviteCode",
+            "region": "us-central1"
+          }
         }
       ],
       "headers": [
         {
           "source": "/.well-known/apple-app-site-association",
           "headers": [
-            { "key": "Content-Type", "value": "application/json" }
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            }
           ]
         }
       ]
@@ -103,10 +207,19 @@
     }
   ],
   "emulators": {
-    "firestore": { "port": 8080 },
-    "auth": { "port": 9099 },
-    "storage": { "port": 9199 },
-    "ui": { "enabled": true, "port": 4000 },
+    "firestore": {
+      "port": 8080
+    },
+    "auth": {
+      "port": 9099
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
     "singleProjectMode": true
   }
 }

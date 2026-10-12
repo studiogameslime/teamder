@@ -123,7 +123,9 @@ export function RatingSlider({ value, onChange, readonly = false, accessibilityL
         accessible
         accessibilityRole={readonly ? 'text' : 'adjustable'}
         accessibilityLabel={accessibilityLabel}
-        accessibilityValue={{ min: 0, max: RATING_MAX, now: rated ? value : 0, text: rated ? formatRating(value) : he.ratingNotRated }}
+        // Fabric stores numeric accessibility values as integers. Preserve the
+        // decimal business rating and spoken text, but send integer tenths.
+        accessibilityValue={{ min: 0, max: RATING_MAX * 10, now: rated && Number.isFinite(value) ? Math.round(snapRating(value) * 10) : 0, text: rated ? `${formatRating(value)} מתוך ${RATING_MAX}` : he.ratingNotRated }}
         accessibilityActions={readonly ? [] : [{ name: 'increment' }, { name: 'decrement' }]}
         onAccessibilityAction={(e) => {
           if (readonly) return;

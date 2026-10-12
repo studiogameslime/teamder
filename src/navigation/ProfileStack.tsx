@@ -31,6 +31,7 @@ import { BlockedUsersScreen } from '@/screens/profile/BlockedUsersScreen';
 import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
 import { SeasonTitlesScreen } from '@/screens/profile/SeasonTitlesScreen';
 import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
+import { SocialPrivacyScreen } from '@/screens/profile/SocialPrivacyScreen';
 import { FriendsScreen } from '@/screens/profile/FriendsScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { PlayerCompareScreen } from '@/screens/players/PlayerCompareScreen';
@@ -86,10 +87,11 @@ export type ProfileStackParamList = {
   History: undefined;
   Achievements: undefined;
   SeasonTitles: undefined;
-  Statistics: undefined;
+  Statistics: { userId?: string } | undefined;
+  SocialPrivacy: undefined;
   Friends: undefined;
   Referrals: undefined;
-  Feedback: { type?: 'bug' | 'suggestion' } | undefined;
+  Feedback: { type?: 'bug' | 'suggestion'; playerId?: string; playerName?: string } | undefined;
   // Match-detail chain — same routes as GameStack/CommunitiesStack,
   // duplicated so back returns to the screen the user came from
   // (typically History).
@@ -131,7 +133,7 @@ export type ProfileStackParamList = {
    *  the person on the clubs feed of a tab they never chose. */
   CommunitiesCreate: undefined;
   /** Reachable from a public club opened out of Home. */
-  CommunityDetailsPublic: { groupId: string };
+  CommunityDetailsPublic: { groupId: string; fromInvitation?: boolean };
   /**
    * The contextual auth sheet's «המשך עם מייל» pushes this.
    *
@@ -237,6 +239,7 @@ export function ProfileStack() {
       <Stack.Screen name="Achievements" component={AchievementsScreen} />
       <Stack.Screen name="SeasonTitles" component={SeasonTitlesScreen} />
       <Stack.Screen name="Statistics" component={StatisticsScreen} />
+      <Stack.Screen name="SocialPrivacy" component={SocialPrivacyScreen} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen name="Referrals" component={ReferralsListScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />

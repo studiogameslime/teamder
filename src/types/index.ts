@@ -93,9 +93,10 @@ export interface User {
    */
   friends?: UserId[];
 
-  /** When true, only friends may start a direct-message conversation with this
-   *  user. Default (undefined/false) = anyone can send a DM. */
+  /** Legacy preference. New messages always require mutual friendship,
+   * irrespective of this historical value. */
   dmFriendsOnly?: boolean;
+  socialPrivacy?: { discoverable: boolean; statistics: 'everyone' | 'friends' | 'onlyMe' };
 
   /** Preferred playing position on the pitch (profile flavour + a setup
    *  step on the home checklist). Undefined until the user picks one. */
@@ -588,6 +589,8 @@ export interface NotificationDoc {
   createdAt: number;
   delivered?: boolean;
   deliveredAt?: number;
+  read?: boolean;
+  readAt?: number;
 }
 
 // ─── Chat ───────────────────────────────────────────────────────────────────
@@ -635,6 +638,7 @@ export interface ChatUnreadEntry {
    *  entry so the chats list can render their face without a user lookup. */
   avatarId?: string;
   photoUrl?: string;
+  lastMessageId?: string;
 }
 
 /** ISO weekday: 0=Sunday, 6=Saturday. */
@@ -980,6 +984,8 @@ export interface Group {
 export type SeasonCadenceType = 'date' | 'rounds';
 
 export interface GroupSeasons {
+  disabledAt?: number;
+  operation?: { kind: string; until: number; failed?: boolean };
   enabled: boolean;
   /** 1-based. Survives the feature being switched off and on again, so a club
    *  that ran seasons 1–3 and re-enables opens season 4, never season 1. */
@@ -1676,8 +1682,10 @@ export interface Game {
    * Terminal: only an admin clears it.
    */
   rejectedPlayerIds?: UserId[];
-  /** Users explicitly invited to this game — they bypass approval. */
+  /** Read invitations, including automatic filler notifications. */
   invitedUserIds?: UserId[];
+  /** Server-owned grants; the server also verifies the inviter's authority. */
+  approvedInvites?: Record<UserId, { inviterId: UserId; expiresAt: number }>;
   /**
    * Denormalized union of `players + waitlist + pending`. Lets the
    * "my games" query be a single `array-contains` instead of three

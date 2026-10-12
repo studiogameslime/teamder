@@ -575,6 +575,36 @@ export class NeedsPasswordReauthError extends Error {
   }
 }
 
+/** Reauthenticate the existing identity only. Never delete or switch accounts. */
+export async function ensureRecentAccountAuth(password?: string): Promise<void> {
+  if(USE_MOCK_DATA)return;
+  const {auth}=getFirebase(), user=auth.currentUser;
+  if(!user || user.isAnonymous)throw new Error('reauth: full account required');
+  const token=await user.getIdTokenResult(true);
+  const at=Date.parse(token.authTime), age=Date.now()-at;
+  if(Number.isFinite(at)&&age>=-60000&&age<=240000)return;
+  const providerId=currentAuthProviderId();
+  let credential;
+  if(providerId==='password') {
+    if(!password)throw new NeedsPasswordReauthError();
+    if(!user.email)throw new Error('reauth: missing email');
+    credential=EmailAuthProvider.credential(user.email,password);
+  } else if(providerId==='apple.com') {
+    const {identityToken,rawNonce}=await acquireAppleCredential();
+    credential=new OAuthProvider('apple.com').credential({idToken:identityToken,rawNonce});
+  } else if(providerId==='google.com') {
+    ensureGoogleConfigured();
+    await GoogleSignin.signOut().catch(()=>{});
+    if(Platform.OS==='android')await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog:true});
+    const result=await GoogleSignin.signIn();
+    if(!isSuccessResponse(result)||!result.data?.idToken)throw new Error('reauth: cancelled');
+    credential=GoogleAuthProvider.credential(result.data.idToken);
+  } else throw new Error('reauth: unsupported provider');
+  if(auth.currentUser?.uid!==user.uid)throw new Error('reauth: session changed');
+  await reauthenticateWithCredential(user,credential);
+  await user.getIdToken(true);
+}
+
 /**
  * Delete the currently signed-in Firebase Auth user. If Auth requires a
  * fresh login (the default after ~1h), we re-authenticate and retry once —

@@ -472,5 +472,17 @@
     "domain": "shared",
     "simple": "shared/onboarding-activity.simple.md",
     "technical": "shared/onboarding-activity.md"
+  },
+  {
+    "title": "חברים, גילוי שחקנים ופרטיות",
+    "domain": "profile",
+    "simple": "profile/player-discovery.simple.md",
+    "technical": "profile/player-discovery.md"
+  },
+  {
+    "title": "כניסה מאובטחת לפולס",
+    "domain": "shared",
+    "simple": "shared/pulse-security.simple.md",
+    "technical": "shared/pulse-security.md"
   }
 ]

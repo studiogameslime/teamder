@@ -7,7 +7,7 @@
 // Storage dependency). Each image is downscaled before save, so a handful
 // fit comfortably under Firestore's ~1MB/doc limit.
 
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import { listAll, patchDoc, deleteDoc } from './firestoreRest';
 import { cached, invalidate } from './cache';
 import { readClaude, type ClaudeCompletion } from './claudeWork';

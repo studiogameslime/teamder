@@ -25,6 +25,7 @@ import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 type ChatScope = 'game' | 'community' | 'dm';
 
 interface ChatMessageData {
+  messageId?: string;
   text?: string;
   senderId?: string;
   senderName?: string;
@@ -179,6 +180,7 @@ async function handleRecipient(
         {
           count: admin.firestore.FieldValue.increment(1),
           lastMessageAt,
+          ...(msg.messageId ? { lastMessageId: msg.messageId } : {}),
           lastText: truncate(text),
           lastSenderName: senderName,
           lastSenderId: typeof msg.senderId === 'string' ? msg.senderId : '',
@@ -193,14 +195,14 @@ async function handleRecipient(
       return priorZero;
     });
 
-    // (c) push only on the zero→one transition. When it wasn't a 0→1
+    // (c) Groups push only on zero→one; DMs push for every message. When it wasn't a 0→1
     // transition we will NOT push regardless of mute state, so we skip the
     // chatSettings read entirely. In an active chat most recipients already
     // hold an un-opened message (count>0), so this eliminates the vast majority
     // of per-recipient settings reads. Muted recipients still had their unread
     // count bumped by the transaction above, exactly as before — muting only
     // suppresses the push, never the badge count.
-    if (!wasZero) return;
+    if (scope !== 'dm' && !wasZero) return;
 
     // (d) muted? Only reached for the rare genuine 0→1 recipient — read their
     // mute setting now (not for everyone) and stay quiet if muted.
@@ -255,10 +257,15 @@ async function handleChatMessage(
         players?: string[];
         createdBy?: string;
         title?: string;
+        groupId?: string;
       };
       title = (g.title || '').trim() || 'המשחק';
       const all = [...(g.players || [])];
       if (typeof g.createdBy === 'string' && g.createdBy) all.push(g.createdBy);
+      if (g.groupId) {
+        const group = await db.collection('groups').doc(g.groupId).get();
+        all.push(...(group.data()?.adminIds ?? []));
+      }
       recipients = Array.from(new Set(all));
     } else if (scope === 'dm') {
       // convId = sorted([uid1, uid2]).join('__'); the only recipient is the
@@ -329,12 +336,13 @@ async function handleChatMessage(
         {
           lastMessageAt:
             typeof msg.createdAt === 'number' ? msg.createdAt : Date.now(),
+          ...(msg.messageId ? {lastMessageId:msg.messageId}:{}),
           lastText: truncate(msg.text || ''),
           lastSenderName: (msg.senderName || '').trim() || 'שחקן',
           lastSenderId: senderId,
           scope,
           parentId,
-          title,
+          ...(scope !== 'dm' ? { title } : {}),
         },
         { merge: true },
       )
@@ -376,6 +384,22 @@ async function handleChatMessage(
   );
 }
 
+async function trustedChatMessage(snap: FirebaseFirestore.QueryDocumentSnapshot): Promise<ChatMessageData> {
+  const db = admin.firestore();
+  const data = snap.data();
+  const uid = typeof data.senderId === 'string' ? data.senderId : '';
+  if (!uid) throw new Error('CHAT_SENDER_REQUIRED');
+  const profile = uid === TEAMDER_UID ? null : (await db.collection('users').doc(uid).get()).data();
+  const identity = {
+    senderName: uid === TEAMDER_UID ? 'Teamder' : String(profile?.name ?? 'שחקן'),
+    senderAvatarId: typeof profile?.avatarId === 'string' ? profile.avatarId : '',
+    senderPhotoUrl: uid === TEAMDER_UID ? 'https://teamderfc.web.app/logo.png' : typeof profile?.photoUrl === 'string' ? profile.photoUrl : '',
+    createdAt: snap.createTime.toMillis(),
+  };
+  await snap.ref.update(identity);
+  return { ...data, ...identity, messageId: snap.id } as ChatMessageData;
+}
+
 // ─── Triggers ──────────────────────────────────────────────────────────
 
 export const onGameChatMessage = onDocumentCreated(
@@ -384,7 +408,7 @@ export const onGameChatMessage = onDocumentCreated(
     const snap = event.data;
     if (!snap) return;
     const gameId = event.params.gameId;
-    await handleChatMessage('game', gameId, snap.data() as ChatMessageData);
+    await handleChatMessage('game', gameId, await trustedChatMessage(snap));
   },
 );
 
@@ -397,7 +421,7 @@ export const onCommunityChatMessage = onDocumentCreated(
     await handleChatMessage(
       'community',
       groupId,
-      snap.data() as ChatMessageData,
+      await trustedChatMessage(snap),
     );
   },
 );
@@ -408,6 +432,6 @@ export const onDmChatMessage = onDocumentCreated(
     const snap = event.data;
     if (!snap) return;
     const convId = event.params.convId;
-    await handleChatMessage('dm', convId, snap.data() as ChatMessageData);
+    await handleChatMessage('dm', convId, await trustedChatMessage(snap));
   },
 );

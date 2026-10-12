@@ -19,12 +19,12 @@ function Card({title,icon,children}:{title:string;icon:keyof typeof Ionicons.gly
 }
 export function ManagerClubInsights({data,viewerId,now,onRound,onApprovals,onRate,onResolved}:{data:ManagerData;viewerId:string;now:number;onRound:(id:string)=>void;onApprovals:()=>void;onRate:(user:User)=>void;onResolved:()=>void}) {
   const insights=useMemo(()=>managerClubInsights(data.group,data.games,now),[data,now]);
-  const [results,setResults]=useState<ClubResults>({}),[loading,setLoading]=useState(true),[error,setError]=useState(false),[retry,setRetry]=useState(0),[details,setDetails]=useState(false);
+  const [results,setResults]=useState<ClubResults>({}),[loading,setLoading]=useState(true),[error,setError]=useState(false),[details,setDetails]=useState(false);
   useEffect(()=>{
     let alive=true;setResults({});setLoading(true);setError(false);setDetails(false);
     loadManagerClubResults(data.group,data.games,viewerId,now).then(r=>{if(alive)setResults(r);}).catch(()=>{if(alive)setError(true);}).finally(()=>{if(alive)setLoading(false);});
     return ()=>{alive=false;};
-  },[data,viewerId,now,retry]);
+  },[data,viewerId,now]);
   const balance=clubBalance(insights.recent,results);
   const user=(id:string)=>data.users.find(u=>u.id===id)??{id,name:'שחקן ללא פרטים',createdAt:0};
   const open=(id:string)=>{setDetails(false);onRound(id);};
@@ -41,17 +41,16 @@ export function ManagerClubInsights({data,viewerId,now,onRound,onApprovals,onRat
         {insights.returned.length>0&&<View style={s.insight}><Label style={s.insightText}>{insights.returned.length===1?'שחקן אחד נרשם שוב אחרי הפסקה':`${insights.returned.length} שחקנים נרשמו שוב אחרי הפסקה`}</Label><Ionicons name="refresh-outline" size={21} color={GREEN}/></View>}
         <Label style={s.foot}>לפי רשימות ההרשמה שנשמרו; אין אישור נוכחות. הממוצע והתפוסה כוללים אורחים פעילים. שחקנים שונים אינם כוללים אורחים ללא חשבון.</Label>
         <Pressable accessibilityRole="button" onPress={()=>setDetails(true)} style={s.link}><Label style={s.linkText}>לנתונים המלאים</Label><Ionicons name="chevron-back" size={18} color={BLUE}/></Pressable>
-        <ManagerRoundNumbers embedded games={insights.recent} results={results} loading={loading} error={error} onRetry={()=>setRetry(v=>v+1)} onRound={onRound}/>
+        <ManagerRoundNumbers embedded games={insights.recent} results={results} loading={loading} error={error} onRound={onRound}/>
       </Card>
       <Card title="איכות חלוקת הכוחות" icon="football-outline">
-        {loading?<View style={s.loading}><ActivityIndicator color={BLUE}/><Label style={s.muted}>טוען תוצאות משחקים…</Label></View>:error?<><Label style={s.muted}>לא ניתן לטעון כרגע את התוצאות</Label><Pressable accessibilityRole="button" onPress={()=>setRetry(v=>v+1)}><Label style={s.linkText}>נסה שוב</Label></Pressable></>:<>
+        {loading?<View style={s.loading}><ActivityIndicator color={BLUE}/><Label style={s.muted}>טוען תוצאות משחקים…</Label></View>:error?<><Label style={s.muted}>לא ניתן לטעון כרגע את התוצאות</Label></>:<>
           <Label style={s.muted}>{balance.total} משחקים עם תוצאה תקפה מתוך {balance.covered} מחזורים · נבדקו {insights.recent.length} מחזורים אחרונים</Label>
           {balance.total>0?<>
             {[{label:'תיקו',n:balance.draws,color:BLUE},{label:'הפרש שער אחד',n:balance.oneGoal,color:GREEN},{label:'הפרש שני שערים ומעלה',n:balance.wide,color:AMBER}].map(r=><View key={r.label} style={s.barRow}><Label style={s.barLabel}>{r.label}</Label><Label style={[s.barNumber,{color:r.color}]}>{r.n}</Label><View style={s.track}><View style={[s.fill,{backgroundColor:r.color,width:`${r.n/balance.total*100}%`}]}/></View><Label style={[s.percent,{color:r.color}]}>{Math.round(r.n/balance.total*100)}%</Label></View>)}
             <View style={[s.insight,{backgroundColor:'#E9F8EF'}]}><Label style={[s.insightText,{color:GREEN}]}>{balance.closePercent}% מהמשחקים הסתיימו בתיקו או בהפרש שער אחד</Label><Ionicons name="stats-chart" size={23} color={GREEN}/></View>
           </>:<Label style={s.muted}>אין תוצאות משחקים מתועדות שניתן לנתח במחזורים האלה.</Label>}
           {(balance.unavailable>0||balance.missing>0||balance.invalid>0)&&<Label style={s.warning}>{balance.unavailable>0?`${balance.unavailable} מחזורים לא נטענו במלואם. `:''}{balance.missing>0?`${balance.missing} מחזורים ללא תוצאות תקפות. `:''}{balance.invalid>0?`${balance.invalid} תוצאות לא תקפות הושמטו. `:''}האחוזים מחושבים רק מהתוצאות התקפות שנטענו.</Label>}
-          {balance.unavailable>0&&<Pressable accessibilityRole="button" onPress={()=>setRetry(v=>v+1)}><Label style={s.linkText}>נסה לטעון שוב</Label></Pressable>}
           <Label style={s.foot}>התוצאה לבדה אינה קובעת את איכות החלוקה. תיקו נקבע לפי השערים לפני הכרעת פנדלים.</Label>
         </>}
       </Card>

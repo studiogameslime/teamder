@@ -1,3 +1,4 @@
+import { socialPlayersService } from '@/services/socialPlayersService';
 // StatisticsScreen — a dedicated page that gathers the player's numbers and
 // their "people" superlatives (most played with, winning duo, biggest
 // victim, nemesis). Derived by playerStatsService with history enrichment; names for
@@ -8,7 +9,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { captureRef } from 'react-native-view-shot';
 import { ScrollSurface } from '@/components/ScrollSurface';
 import { toast } from '@/components/Toast';
@@ -36,6 +37,11 @@ export function StatisticsScreen() {
   const sharingRef = useRef(false);
   const [sharing, setSharing] = useState(false);
   const localUser = useUserStore((s) => s.currentUser);
+  const requestedId = (route.params as { userId?: string } | undefined)?.userId;
+  const targetId = requestedId || localUser?.id;
+  const otherPlayer = !!targetId && targetId !== localUser?.id;
+  const [targetUser, setTargetUser] = useState<User | null>(null);
+  const [restricted, setRestricted] = useState(false);
   const [stats, setStats] = useState<PlayerStatsSummary | null>(null);
   const [people, setPeople] = useState<Record<string, Resolved>>({});
   const [pen, setPen] = useState<{
@@ -50,12 +56,14 @@ export function StatisticsScreen() {
   const [highlightsLoading, setHighlightsLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
-  const statsOwnerRef = useRef(localUser?.id);
+  const ownerKey = `${localUser?.id ?? ''}:${targetId ?? ''}`;
+  const statsOwnerRef = useRef(ownerKey);
+  useFocusEffect(React.useCallback(() => { if(otherPlayer){setStats(null);setPen(null);setPeople({});setLoading(true);} setReloadTick(n => n + 1); }, [targetId, localUser?.id,otherPlayer]));
 
   useEffect(() => {
-    const uid = localUser?.id;
-    if (statsOwnerRef.current !== uid) {
-      statsOwnerRef.current = uid;
+    const uid = targetId;
+    if (statsOwnerRef.current !== ownerKey) {
+      statsOwnerRef.current = ownerKey;
       setStats(null); setPen(null); setPeople({}); setFailed(false);
     }
     if (!uid) { setLoading(false); setHighlightsLoading(false); return; }
@@ -63,6 +71,21 @@ export function StatisticsScreen() {
     setLoading(true);
     setFailed(false);
     setHighlightsLoading(true);
+    setRestricted(false);
+    if (otherPlayer) {
+      // The existing full-statistics route rechecks access; no private user
+      // read or owner-only query is issued for another player.
+      setStats(null); setPen(null); setPeople({}); setTargetUser(null);
+      if (!localUser || localUser.isGuest) { setRestricted(true); setLoading(false); setHighlightsLoading(false); return; }
+      socialPlayersService.profile(uid).then(profile => {
+        if (!alive) return;
+        setTargetUser({ ...profile.player, createdAt: 0 });
+        if (!profile.canSeeStatistics || !profile.statistics) { setRestricted(true); return; }
+        setStats(profile.statistics.stats); setPen(profile.statistics.pen); setPeople(profile.statistics.people);
+      }).catch(() => { if (alive) setFailed(true); }).finally(() => { if (alive) {setLoading(false);setHighlightsLoading(false);} });
+      return () => { alive = false; };
+    }
+
     // Goals are incremented SERVER-side (commitRoundStats), so the local store
     // copy lags. Fetch the fresh user doc for an accurate goal count + goals/
     // evening rather than trusting the (possibly stale) cached stats.
@@ -137,18 +160,18 @@ export function StatisticsScreen() {
     };
     // assists must be a dep too — the effect reads it, so an assists-only
     // server bump (no goal change) otherwise left the assist tile stale.
-  }, [localUser?.id, localUser?.stats?.goals, localUser?.stats?.assists, reloadTick]);
+  }, [localUser?.id, targetId, ownerKey, otherPlayer, localUser?.isGuest, localUser?.stats?.goals, localUser?.stats?.assists, reloadTick]);
 
   const qaPreview = __DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES === '1' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1'
     ? (route.params as { qaStatisticsPreview?: 'full' | 'empty' } | undefined)?.qaStatisticsPreview : undefined;
   const fixture = qaPreview === 'full' ? (require('@/dev/personalStatisticsFixture') as typeof import('@/dev/personalStatisticsFixture')).personalStatisticsFixture : null;
   // Effects run after render: never paint a previous owner's numbers next to
   // the new account's name, even for the first frame after an auth change.
-  const ownsStats = statsOwnerRef.current === localUser?.id;
+  const ownsStats = statsOwnerRef.current === ownerKey;
   const viewStats = fixture?.stats ?? (ownsStats ? stats : null);
   const viewPen = fixture?.pen ?? (ownsStats ? pen : null);
   const viewPeople = fixture?.people ?? (ownsStats ? people : {});
-  const viewUser = fixture?.user ?? localUser;
+  const viewUser = fixture?.user ?? (otherPlayer ? targetUser : localUser);
   const hasData = qaPreview === 'empty' ? false : !!viewStats && (viewStats.attendedGames > 0 || viewStats.goals > 0 || viewStats.assists > 0 || !!viewPen && (viewPen.penTaken > 0 || viewPen.penFaced > 0 || viewPen.ownGoals > 0));
 
   const onShare = async () => {
@@ -177,12 +200,12 @@ export function StatisticsScreen() {
         <Pressable accessibilityRole="button" accessibilityLabel="חזרה" onPress={() => nav.goBack()} hitSlop={10} style={styles.back}>
           <Ionicons name="chevron-forward" size={25} color="#111B40" />
         </Pressable>
-        <Text style={styles.title}>הכדורגל שלי</Text>
+        <Text style={styles.title}>{otherPlayer ? 'סטטיסטיקת שחקן' : 'הכדורגל שלי'}</Text>
         <StatisticsBrand />
       </View>
       {(!ownsStats || loading && !stats) && !qaPreview ? (
         <View style={styles.center}><SoccerBallLoader size={40} /></View>
-      ) : failed && !hasData && !qaPreview ? (
+      ) : restricted ? <View style={styles.center}><Ionicons name="shield-checkmark-outline" size={40} color="#2563EB"/><Text style={{color:colors.textMuted,textAlign:'center'}}>הסטטיסטיקה אינה זמינה לך לפי הגדרות הפרטיות של השחקן.</Text></View> : failed && !hasData && !qaPreview ? (
         <View style={styles.center}>
           <Text style={{ color: colors.textMuted }}>לא ניתן לטעון את הסטטיסטיקה כרגע.</Text>
           <Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} />
@@ -193,10 +216,10 @@ export function StatisticsScreen() {
           {hasData && viewStats ? <>
             {!qaPreview && viewStats.highlights?.incomplete && !highlightsLoading ? <View><Text style={{color:colors.textMuted}}>חלק מנתוני המחזורים לא נטענו. הנתונים הזמינים מוצגים.</Text><Button title={he.retry} variant="outline" onPress={() => setReloadTick(t=>t+1)} /></View> : null}
             <View ref={shareRef} collapsable={false} style={styles.shareCard}>
-              <PersonalStatisticsCard user={viewUser ?? null} stats={viewStats} people={viewPeople} pen={viewPen} highlightsLoading={!qaPreview && highlightsLoading} />
+              <PersonalStatisticsCard isOwn={!otherPlayer} user={viewUser ?? null} stats={viewStats} people={viewPeople} pen={viewPen} highlightsLoading={!qaPreview && highlightsLoading} />
             </View>
-            <StatisticsAction title={sharing ? 'מכין את הכרטיס…' : 'שתף את הכרטיס שלי'} icon="share-social-outline" disabled={sharing} onPress={() => void onShare()} />
-          </> : <PersonalStatisticsWelcome onFind={() => nav.getParent()?.navigate('GameTab', { screen: 'GamesList' })} />}
+            {!otherPlayer ? <StatisticsAction title={sharing ? 'מכין את הכרטיס…' : 'שתף את הכרטיס שלי'} icon="share-social-outline" disabled={sharing} onPress={() => void onShare()} /> : null}
+          </> : otherPlayer ? <View style={styles.center}><Ionicons name="stats-chart-outline" size={36} color="#2563EB"/><Text style={{color:colors.textMuted}}>עדיין אין לשחקן נתונים מתועדים.</Text></View> : <PersonalStatisticsWelcome onFind={() => nav.getParent()?.navigate('GameTab', { screen: 'GamesList' })} />}
         </ScrollSurface>
       )}
     </SafeAreaView>

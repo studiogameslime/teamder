@@ -1,3 +1,5 @@
+import { readPlayerIdentity, playerReadCall } from './publicPlayerService';
+import { StaleSessionError } from './staleSession';
 import { resetOnboardingJourney } from './onboardingActivity';
 // userService — single entry point for everything user-shaped.
 // In mock mode we read from src/data/mockUsers.ts and persist a copy
@@ -6,18 +8,13 @@ import { resetOnboardingJourney } from './onboardingActivity';
 
 import {
   deleteField,
-  getCountFromServer,
   getDoc,
-  getDocs,
-  query,
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
 } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { User } from '@/types';
-import { haversineKm } from '@/utils/geo';
 import { sanitizeDisplayString } from '@/utils/validate';
 import { isEmailLikeName, isReservedName } from '@/utils/officialAccount';
 import { mockCurrentUser } from '@/data/mockUsers';
@@ -27,6 +24,7 @@ import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { httpsCallable } from 'firebase/functions';
 import {
   deleteCurrentFirebaseUser,
+  ensureRecentAccountAuth,
   signInAnonymously as fbSignInAnonymously,
   signInWithGoogle as fbSignInWithGoogle,
   signInWithApple as fbSignInWithApple,
@@ -597,21 +595,22 @@ export const userService = {
     return next;
   },
 
-  /**
-   * Look up an arbitrary user by id. Used by PlayerCardScreen and any
-   * surface that needs to show "another player" — never falls back to the
-   * current user. Returns null if the doc doesn't exist or the read fails.
-   */
   /** Toggle whether only friends may start a DM with me. */
   async setDmFriendsOnly(uid: string, value: boolean): Promise<void> {
     if (!uid || USE_MOCK_DATA) return;
     await updateDoc(docs.user(uid), { dmFriendsOnly: value, updatedAt: Date.now() });
   },
 
+  /** Own account: private record. Other account: identity only (no statistics,
+   * contact details, discipline, friends or availability coordinates).
+   * Missing records return null; transport failures reject for screen retry. */
   async getUserById(uid: string): Promise<User | null> {
     if (!uid) return null;
     if (USE_MOCK_DATA) {
       const { mockPlayers } = await import('@/data/mockData');
+      const { socialDemoPlayers } = await import('@/dev/socialPlayersFixture');
+      const socialPlayer = socialDemoPlayers.find(player => player.id === uid);
+      if (socialPlayer) return { id: uid, name: socialPlayer.name, avatarId: socialPlayer.avatarId, createdAt: 0 };
       const idx = mockPlayers.findIndex((x) => x.id === uid);
       // Demo penalty stats (mirrors the community-champ demo spread) so the
       // profile penalty tiles + compare card have something to render in mock.
@@ -666,40 +665,20 @@ export const userService = {
             : undefined,
       };
     }
-    try {
-      const ref = docs.user(uid);
-      const snap = await getDoc(ref);
-      return snap.exists() ? snap.data() : null;
-    } catch (err) {
-      // A rules denial here is now an EXPECTED outcome, not a fault: /users is
-      // gated on a full account, so an anonymous session reading somebody
-      // else's document is answered permission-denied by design. Filing that
-      // would put a steady drip into the production error panel every time a
-      // guest taps a player row. A real failure still surfaces.
-      if (!isExpectedDenial(err)) logError('getUserById', err, { uid });
-      if (__DEV__) console.warn('[userService] getUserById failed', err);
-      return null;
+    const owner = getFirebase().auth.currentUser?.uid;
+    if (uid !== owner) {
+      return readPlayerIdentity(uid);
     }
+    const snap = await getDoc(docs.user(uid));
+    if (getFirebase().auth.currentUser?.uid !== owner) throw new StaleSessionError(owner ?? '', getFirebase().auth.currentUser?.uid ?? '');
+    return snap.exists() ? snap.data() : null;
   },
 
-  /**
-   * Phase 9 — find users who would be a good invite candidate for a
-   * given game.
-   *
-   * Filters (all client-side after a coarse Firestore query):
-   *   - availability.isAvailableForInvites !== false
-   *   - availability.preferredDays includes the game's weekday
-   *   - availability.preferredCity matches game.city (case-insensitive)
-   *     when both are set
-   *   - availability.timeFrom..timeTo brackets the game hour (when set)
-   *   - id not in excludeIds (already in the game / blocked)
-   *
-   * Returns up to `limit` users (default 50). Mock mode hydrates from
-   * the bundled mock users; Firebase mode uses an `array-contains`
-   * query on `availability.preferredDays` so we don't fan out a full
-   * /users scan.
-   */
+  /** Manager-scoped server matching. The server derives time/location and
+   * excludes existing members/roster, blocks and hidden players. Only identity
+   * and display city return; pagination continues until 50 matches or EOF. */
   async findAvailablePlayers(opts: {
+    gameId: string;
     /** ISO weekday 0..6 of the game. */
     day: number;
     /** "HH:mm" of the kickoff. Used for time-window match. */
@@ -712,112 +691,16 @@ export const userService = {
     excludeIds: string[];
     limit?: number;
   }): Promise<User[]> {
-    const limit = opts.limit ?? 50;
-    const excluded = new Set(opts.excludeIds);
-    const gamePt =
-      typeof opts.gameLat === 'number' && typeof opts.gameLng === 'number'
-        ? { lat: opts.gameLat, lng: opts.gameLng }
-        : null;
-    const matches = (u: User): boolean => {
-      if (excluded.has(u.id)) return false;
-      const a = u.availability;
-      if (!a) return false;
-      if (a.isAvailableForInvites === false) return false;
-      // Empty/unset preferredDays = "available any day" (matches the backend
-      // filler matcher). Only exclude when the player DID pick days and this
-      // one isn't among them.
-      if (
-        Array.isArray(a.preferredDays) &&
-        a.preferredDays.length > 0 &&
-        !a.preferredDays.includes(opts.day as never)
-      ) {
-        return false;
-      }
-      // ── Location: RADIUS-based (the whole point of `availabilityRadiusKm`).
-      // Compute the great-circle distance from the player's home to the game
-      // and include them when it's within their chosen radius — so a Kiryat
-      // Ekron player with a 50km radius IS offered a Petah Tikva game (~30km),
-      // not excluded just because the city NAMES differ. City-name equality is
-      // kept only as a fallback when either side is missing coordinates.
-      const home =
-        typeof a.homeCityLat === 'number' && typeof a.homeCityLng === 'number'
-          ? { lat: a.homeCityLat, lng: a.homeCityLng }
-          : null;
-      const radiusKm =
-        typeof a.availabilityRadiusKm === 'number' && a.availabilityRadiusKm > 0
-          ? a.availabilityRadiusKm
-          : 20; // model default
-      if (gamePt && home) {
-        if (haversineKm(home, gamePt) > radiusKm) return false;
-      } else if (opts.city) {
-        const playerCity = a.homeCity || a.preferredCity;
-        if (
-          playerCity &&
-          playerCity.trim().toLowerCase() !== opts.city.trim().toLowerCase()
-        ) {
-          return false;
-        }
-      }
-      // Time window: honour the player's chosen windows (preferredTimes:
-      // morning/noon/evening). Empty = any time. The legacy timeFrom/timeTo
-      // fields are no longer written by the availability screen, so the old
-      // check never fired — players were offered games outside their window.
-      // `hour` arrives as a STRING (formatHour(startsAt), e.g. "20" / "20:00").
-      // The old `typeof === 'number'` gate never matched, so the whole
-      // time-window filter was dead — players were offered games outside their
-      // chosen windows. Parse the leading hour and honour preferredTimes.
-      const h =
-        typeof opts.hour === 'number'
-          ? opts.hour
-          : typeof opts.hour === 'string'
-            ? parseInt(opts.hour, 10)
-            : NaN;
-      if (Number.isFinite(h)) {
-        const times = Array.isArray(a.preferredTimes) ? a.preferredTimes : [];
-        if (times.length > 0) {
-          const window =
-            h >= 7 && h < 12 ? 'morning' : h >= 12 && h < 18 ? 'noon' : 'evening';
-          if (!times.includes(window as never)) return false;
-        }
-      }
-      return true;
-    };
-
-    if (USE_MOCK_DATA) {
-      // Mock mode has no shared user directory — the only persisted
-      // User is the current auth user. Return an empty list (the UI
-      // shows an "no candidates" empty state) so the surface still
-      // works during local development.
-      return [];
-    }
-
-    // Firebase: a focused query using array-contains on preferredDays.
-    // Combining multiple inequalities in Firestore is rough, so we read
-    // a candidate set then filter client-side.
-    const { col } = await import('@/firebase/firestore');
-    const { getDocs, query, where, limit: qlimit } = await import(
-      'firebase/firestore'
-    );
-    try {
-      const snap = await getDocs(
-        query(
-          col.users(),
-          where('availability.preferredDays', 'array-contains', opts.day),
-          qlimit(Math.max(limit * 2, 50)),
-        ),
-      );
-      return snap.docs
-        .map((d) => d.data())
-        .filter(matches)
-        .slice(0, limit);
-    } catch (err) {
-      logError('findAvailablePlayers', err, {
-        day: opts.day,
-        city: opts.city,
-        limit,
-      });
-      throw err;
-    }
+    if (USE_MOCK_DATA) return [];
+    const rows: User[] = [];
+    let cursor: string | null = null;
+    const maximum = Math.min(50, Math.max(1, opts.limit ?? 50));
+    do {
+      const page: {players: User[]; cursor: string | null} = await playerReadCall('findAvailableSocialPlayers', { gameId: opts.gameId, cursor });
+      rows.push(...page.players);
+      cursor = page.cursor;
+    } while (cursor && rows.length < maximum);
+    return rows.slice(0, maximum);
   },
 
   /**
@@ -836,7 +719,7 @@ export const userService = {
    * Step 3: clear local AsyncStorage so the app boots into the
    * sign-in screen.
    */
-  async deleteOwnAccount(_password?: string): Promise<void> {
+  async deleteOwnAccount(password?: string): Promise<void> {
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();
       if (cur) {
@@ -848,6 +731,9 @@ export const userService = {
     }
     const cur = await this.getCurrentUser();
     if (!cur) throw new Error('deleteOwnAccount: no current user');
+
+    // Complete (or cancel) the provider challenge before any destructive work.
+    await ensureRecentAccountAuth(password);
 
     // Why this order:
     //   • Anonymisation requires the user's own auth (rules: isSelf).
@@ -873,8 +759,8 @@ export const userService = {
     // and deletes the Auth user LAST. This replaces the old client flow that
     // (a) swept games BEFORE a client re-auth that the user could CANCEL —
     // leaving them kicked from every game with no account deleted — and
-    // (b) never touched community memberships. Admin deleteUser needs no
-    // recent login, so there is no re-auth step to cancel.
+    // (b) never touched community memberships. The provider challenge runs before
+    // cleanup; the server also checks recent authentication and revocation.
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'deleteMyAccount');
     await fn({});
@@ -967,30 +853,12 @@ export const userService = {
     return next;
   },
 
-  /**
-   * Returns how many users have `invitedBy === userId`. Powers the
-   * "שחקנים שהצטרפו דרכי" stat on the player card. Uses Firestore's
-   * count aggregation so we don't pay for a full collection scan or
-   * download user docs we don't display.
-   *
-   * Query failures reject so callers retain saved data or offer a retry.
-   * A zero is reserved for a successful empty count.
-   */
+  /** Owner-scoped server count. A source failure rejects, never returns zero. */
   async getInvitedUsersCount(userId: string): Promise<number> {
     if (USE_MOCK_DATA) return 0;
     if (!userId) return 0;
-    try {
-      const q = query(col.users(), where('invitedBy', '==', userId));
-      const snap = await getCountFromServer(q);
-      return snap.data().count ?? 0;
-    } catch (err) {
-      // unauthenticated/offline during early hydration is expected — skip.
-      if (!isExpectedDenial(err)) {
-        logError('getInvitedUsersCount', err, { userId });
-      }
-      if (__DEV__) console.warn('[users] getInvitedUsersCount failed', err);
-      throw err;
-    }
+    const result = await playerReadCall<{ count: number }>('getMyPlayerReferrals', { userId, countOnly: true });
+    return result.count;
   },
 
   /**
@@ -1013,44 +881,15 @@ export const userService = {
   }[]> {
     if (USE_MOCK_DATA) return [];
     if (!userId) return [];
-    try {
-      const q = query(col.users(), where('invitedBy', '==', userId));
-      const snap = await getDocs(q);
-      const rows = snap.docs.map((d) => {
-        const data = d.data() as unknown as Record<string, unknown>;
-        const at = data.invitedAt;
-        const invitedAtMs =
-          at && typeof (at as { toMillis?: () => number }).toMillis === 'function'
-            ? (at as { toMillis: () => number }).toMillis()
-            : typeof at === 'number'
-              ? at
-              : undefined;
-        const invitedByType: 'session' | 'team' | undefined =
-          data.invitedByType === 'session' || data.invitedByType === 'team'
-            ? data.invitedByType
-            : undefined;
-        return {
-          id: d.id,
-          name: typeof data.name === 'string' ? data.name : '',
-          avatarId: typeof data.avatarId === 'string' ? data.avatarId : undefined,
-          photoUrl:
-            typeof data.photoUrl === 'string' ? data.photoUrl : undefined,
-          invitedAt: invitedAtMs,
-          invitedByType,
-          invitedByTargetId:
-            typeof data.invitedByTargetId === 'string'
-              ? data.invitedByTargetId
-              : undefined,
-        };
-      });
-      // Newest first. Users without invitedAt sink to the bottom.
-      rows.sort((a, b) => (b.invitedAt ?? 0) - (a.invitedAt ?? 0));
-      return rows;
-    } catch (err) {
-      logError('listInvitedUsers', err, { userId });
-      if (__DEV__) console.warn('[users] listInvitedUsers failed', err);
-      throw err;
-    }
+    type Referral = { id: string; name: string; avatarId?: string; photoUrl?: string; invitedAt?: number; invitedByType?: 'session' | 'team'; invitedByTargetId?: string };
+    const rows: Referral[] = [];
+    let cursor: string | null = null;
+    do {
+      const page: { rows: Referral[]; cursor: string | null } = await playerReadCall('getMyPlayerReferrals', { userId, cursor });
+      rows.push(...page.rows);
+      cursor = page.cursor;
+    } while (cursor);
+    return rows.sort((a, b) => (b.invitedAt ?? 0) - (a.invitedAt ?? 0));
   },
 };
 

@@ -1,0 +1,66 @@
+[
+  {
+    "probe": "reactivation",
+    "seasons": {
+      "count": 1,
+      "currentNo": 2,
+      "currentId": "s2",
+      "playedRounds": 0,
+      "targetHistory": [],
+      "startedAt": 1791703904817,
+      "enabled": true,
+      "cadence": {
+        "endsOn": null,
+        "months": null,
+        "targetRounds": 10,
+        "type": "rounds",
+        "endsAt": null,
+        "startsOn": null
+      },
+      "roundsAtStart": 30
+    },
+    "playerGoals": 5,
+    "clubGoals": 10,
+    "pairSameTeam": 3
+  },
+  {
+    "probe": "closedCorrectionWithFeatureOff",
+    "allowed": true
+  },
+  {
+    "probe": "resumeWithUnwipedPlayerChange",
+    "archivedGoals": 5,
+    "expectedLiveGoals": 2,
+    "actualLiveGoals": 0
+  },
+  {
+    "probe": "ordinaryResume",
+    "archivedGoals": 5,
+    "actualLiveGoals": 0
+  },
+  {
+    "probe": "firstActivationSealHistory",
+    "realHistory": 8,
+    "lateSealCounter": 3,
+    "archivedCompletedRounds": 3
+  },
+  {
+    "probe": "scheduledCloseWithoutRounds",
+    "archiveCreated": true,
+    "count": 2
+  },
+  {
+    "probe": "historyOver200",
+    "realHistory": 205,
+    "returned": 200
+  },
+  {
+    "probe": "failedHistoryRead",
+    "returned": 0
+  },
+  {
+    "probe": "staleCorrectionWindow",
+    "currentId": "s3",
+    "pendingSeasonId": "s2"
+  }
+]

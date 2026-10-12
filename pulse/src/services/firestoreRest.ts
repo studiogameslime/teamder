@@ -1,7 +1,6 @@
-// Firestore REST client (read-only). Uses the service-account OAuth token
-// (datastore scope) to read the app's database directly from the device —
-// bypasses security rules via IAM (roles/datastore.viewer). Bundled key, so
-// this is fine for a personal dashboard.
+import { pulseFetch as fetch } from './adminTransport';
+// Firestore REST shapes are preserved; all requests pass through the
+// authenticated, project-scoped administrative backend.
 
 import { config } from '../config';
 import { googleAccessToken } from './auth';

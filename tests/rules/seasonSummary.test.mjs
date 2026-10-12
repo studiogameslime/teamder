@@ -207,16 +207,15 @@ describe('nobody writes', () => {
 // what a title is for.
 //
 // Writing is a different matter entirely.
-describe('a season title is public, like the profile it hangs on', () => {
+describe('personal season titles are owner-only, like personal totals', () => {
   test('a club member reads it', async () => {
     const t = await getDoc(doc(asMember(), 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`));
     assert.equal(t.exists(), true);
     assert.equal(t.data().value, 31);
   });
 
-  test('and so does someone outside the club', async () => {
-    const t = await getDoc(doc(asOutsider(), 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`));
-    assert.equal(t.exists(), true);
+  test('an outsider cannot read personal title values', async () => {
+    await assert.rejects(getDoc(doc(asOutsider(), 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`)));
   });
 
   test('a player can list their own titles', async () => {
@@ -224,9 +223,8 @@ describe('a season title is public, like the profile it hangs on', () => {
     assert.equal(snap.size, 1);
   });
 
-  test('and list somebody else\'s, which is the point of a boast', async () => {
-    const snap = await getDocs(collection(asOutsider(), 'users', MEMBER, 'seasonTitles'));
-    assert.equal(snap.size, 1);
+  test('an outsider cannot enumerate personal title values', async () => {
+    await assert.rejects(getDocs(collection(asOutsider(), 'users', MEMBER, 'seasonTitles')));
   });
 });
 
@@ -426,5 +424,27 @@ describe('and a club cannot be BORN with a seasons block', () => {
           cadence: { type: 'date', months: 6, endsAt: 1 },
         },
       }));
+  });
+});
+
+
+describe('archive overflow pages use the same existing access policy', () => {
+  before(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'seasonSummary', `${GID}__s1__pairs_1`), {
+        kind: 'pairPage', groupId: GID, seasonId: 's1',
+        players: { [MEMBER]: { games: 1 }, [LEFT]: { games: 1 } },
+        pairs: { 'member__departed': { sameTeam: 10 } },
+      });
+    });
+  });
+  test('a club member can read a page', async () => {
+    assert.equal((await getDoc(doc(asMember(), 'seasonSummary', `${GID}__s1__pairs_1`))).exists(), true);
+  });
+  test('a former participant can still read the page', async () => {
+    assert.equal((await getDoc(doc(asDeparted(), 'seasonSummary', `${GID}__s1__pairs_1`))).exists(), true);
+  });
+  test('an unrelated person cannot read the page', async () => {
+    await assert.rejects(() => getDoc(doc(asOutsider(), 'seasonSummary', `${GID}__s1__pairs_1`)));
   });
 });

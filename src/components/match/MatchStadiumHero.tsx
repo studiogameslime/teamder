@@ -12,14 +12,13 @@
 //     hero — a one-tap nav affordance that's visible without taking
 //     a full row in the body
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ImageBackground,
   Pressable,
   StyleSheet,
   Text,
   View,
-  type ImageSourcePropType,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,8 +28,12 @@ import { he } from '@/i18n/he';
 import { formatDayDate, formatTime } from '@/utils/format';
 import { skyForHour } from '@/utils/heroAtmosphere';
 import { LiveCountdown } from './LiveCountdown';
+import type { FieldType } from '@/types';
+import { resolveRoundCover } from '@/data/roundCover';
 
 interface Props {
+  roundId: string;
+  fieldType?: FieldType;
   groupId?: string;
   coverLoading?: boolean;
   startsAt?: number;
@@ -80,12 +83,8 @@ interface Props {
   /**
    * The parent club's cover, so an evening looks like the club it belongs to.
    *
-   * Same two fields and the same precedence the club's own hero uses — an
-   * uploaded photo first, then a pick from the built-in gallery — because a
-   * second way of resolving the same image is how the two screens end up
-   * showing different pictures for one club. Both absent (a one-off game with
-   * no club) falls through to the bundled stadium, which is what every evening
-   * showed before this.
+   * Uses the same resolver as MatchListCard: uploaded club photo, stable
+   * surface cover, club gallery/default, then standalone fallback.
    */
   coverUrl?: string;
   coverImageId?: string;
@@ -100,11 +99,11 @@ interface Props {
   compact?: boolean;
 }
 
-import { getCoverSource } from '@/data/coverImages';
-import { clubDefaultCoverId } from '@/utils/clubDefaultCoverId';
 
 
 export function MatchStadiumHero({
+  roundId,
+  fieldType,
   groupId,
   coverLoading = false,
   startsAt,
@@ -123,21 +122,20 @@ export function MatchStadiumHero({
   compact = false,
 }: Props) {
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  const activePhoto = useRef(coverUrl);
+  activePhoto.current = coverUrl;
   // Living sky: the gradient tint follows the kickoff hour (morning/day/
   // sunset/night), with floodlights at night.
   const hour = startsAt ? new Date(startsAt).getHours() : 12;
   const sky = skyForHour(hour);
-  // Priority mirrors `CommunityStadiumHero` exactly.
-  const bg: ImageSourcePropType | undefined = coverLoading ? undefined : coverUrl && coverUrl !== failedPhoto
-    ? { uri: coverUrl }
-    : getCoverSource(coverImageId) ?? getCoverSource(clubDefaultCoverId(groupId))!;
+  const bg = resolveRoundCover({ id: roundId, fieldType, groupId, startsAt }, { coverPhotoUrl: coverUrl, coverImageId }, coverLoading, failedPhoto);
 
   return (
     <View style={styles.wrap}>
       <ImageBackground
         resizeMethod="resize"
         source={bg}
-        onError={() => { if (coverUrl) setFailedPhoto(coverUrl); }}
+        onError={() => { if (coverUrl && activePhoto.current === coverUrl) setFailedPhoto(coverUrl); }}
         style={[styles.bg, compact && styles.bgCompact]}
         resizeMode="cover"
       >

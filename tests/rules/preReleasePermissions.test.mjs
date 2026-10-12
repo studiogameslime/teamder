@@ -5,7 +5,7 @@ import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebas
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { doc, collection, setDoc, getDoc, getDocs, updateDoc, query, where,
-  orderBy, limit, writeBatch, runTransaction } from 'firebase/firestore';
+  orderBy, limit, writeBatch, runTransaction, serverTimestamp } from 'firebase/firestore';
 
 const rules = fileURLToPath(new URL('../../firestore.rules', import.meta.url));
 const A = 'alice', B = 'bob', C = 'carol', CONV = `${A}__${B}`, G = 'permission-club';
@@ -15,10 +15,23 @@ const group = (owner = A) => ({ name: 'Football', creatorId: owner, adminIds: [o
   playerIds: [owner], pendingPlayerIds: [], isOpen: false, maxMembers: 20 });
 const mirror = { name: 'Football', memberCount: 1, city: 'City' };
 const metadata = { participants: [A, B], createdAt: 1, updatedAt: 1 };
-const message = (senderId = A) => ({ senderId, text: 'Hello', createdAt: 1 });
+const message = (senderId = A) => ({ senderId, text: 'Hello', createdAt: serverTimestamp() });
 const dm = (fs, id = CONV) => doc(fs, 'dmConversations', id);
 const msg = (fs, id = CONV) => doc(fs, 'dmConversations', id, 'messages', 'm1');
 const seed = callback => env.withSecurityRulesDisabled(ctx => callback(ctx.firestore()));
+
+test('round join requests require audience access and a full account', async () => {
+  await seed(async fs => {
+    await setDoc(doc(fs,'groups',G),group());
+    await setDoc(doc(fs,'games','invited-round'),{groupId:G,createdBy:A,visibility:'community',players:[A],participantIds:[A],invitedUserIds:[B]});
+  });
+  const {serverTimestamp}=await import('firebase/firestore');
+  const submit=(fs,uid)=>setDoc(doc(fs,'games','invited-round','joinRequests',uid),{uid,state:'queued',tappedAt:Date.now(),requestedAt:serverTimestamp()});
+  await assertSucceeds(submit(db(A),A));
+  await assertSucceeds(submit(db(B),B));
+  await assertFails(submit(db(C),C));
+  await assertFails(submit(env.authenticatedContext('guest',{firebase:{sign_in_provider:'anonymous'}}).firestore(),'guest'));
+});
 before(async () => {
   assert.equal(process.env.FIRESTORE_EMULATOR_HOST, '127.0.0.1:8080');
   env = await initializeTestEnvironment({ projectId: 'demo-soccer', firestore: {
@@ -37,7 +50,11 @@ test('DM: existing canonical conversation reopens idempotently from both partici
   await assertFails(getDoc(dm(db(C))));
 });
 
-test('DM: new canonical conversation can be opened and then receive its first message', async () => {
+test('DM: mutual friends can open a new canonical conversation and send its first message', async () => {
+  await seed(async fs => {
+    await setDoc(doc(fs, 'users', A), { friends: [B] });
+    await setDoc(doc(fs, 'users', B), { friends: [A] });
+  });
   await assertSucceeds(setDoc(dm(db(A)), metadata, { merge: true }));
   await assertSucceeds(setDoc(msg(db(A)), message()));
   await assertSucceeds(getDoc(msg(db(B))));
@@ -105,7 +122,8 @@ test('DM: friends-only privacy gates both opening and direct message bypass', as
   await seed(fs => setDoc(doc(fs, 'users', B), { dmFriendsOnly: true, friends: [] }));
   await assertFails(setDoc(dm(db(A)), metadata));
   await assertFails(setDoc(msg(db(A)), message()));
-  await seed(fs => setDoc(doc(fs, 'users', B), { dmFriendsOnly: true, friends: [A] }));
+  await seed(async fs => { await setDoc(doc(fs, 'users', B), { dmFriendsOnly: true, friends: [A] });
+    await setDoc(doc(fs, 'users', A), {friends:[B]}); });
   await assertSucceeds(setDoc(dm(db(A)), metadata));
   await assertSucceeds(setDoc(msg(db(A)), message()));
 });
@@ -134,22 +152,21 @@ test('groupsPublic: count-one orphan and non-admin mirror are denied; real admin
   await assertSucceeds(setDoc(doc(db(A), 'groupsPublic', G), mirror));
 });
 
-for (const mode of ['batch', 'transaction']) test(`groupsPublic: new canonical source and mirror in one ${mode} succeed atomically`, async () => {
+for (const mode of ['batch', 'transaction']) test(`groupsPublic: direct canonical creation with mirror is denied in a ${mode}`, async () => {
   const fs = db(A);
   if (mode === 'batch') {
     const batch = writeBatch(fs);
     batch.set(doc(fs, 'groups', G), group()); batch.set(doc(fs, 'groupsPublic', G), mirror);
-    await assertSucceeds(batch.commit());
-  } else await assertSucceeds(runTransaction(fs, async tx => {
+    await assertFails(batch.commit());
+  } else await assertFails(runTransaction(fs, async tx => {
     tx.set(doc(fs, 'groups', G), group()); tx.set(doc(fs, 'groupsPublic', G), mirror);
   }));
-  await assertSucceeds(getDoc(doc(fs, 'groups', G)));
-  await assertSucceeds(getDoc(doc(fs, 'groupsPublic', G)));
+  await seed(async server => assert.equal((await getDoc(doc(server, 'groups', G))).exists(), false));
 });
-
-test('groupsPublic: the same canonical create shape is independently allowed before its mirror', async () => {
+test('groupsPublic: only a server-created canonical club authorises its mirror', async () => {
   const fs = db(A);
-  await assertSucceeds(setDoc(doc(fs, 'groups', G), group()));
+  await assertFails(setDoc(doc(fs, 'groups', G), group()));
+  await seed(server => setDoc(doc(server, 'groups', G), group()));
   await assertSucceeds(setDoc(doc(fs, 'groupsPublic', G), mirror));
 });
 

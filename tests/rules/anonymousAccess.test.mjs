@@ -281,11 +281,11 @@ test('usersPublic is world-readable and client-unwritable', async () => {
   await expectAccess('full account get', get(full(), 'usersPublic', ALICE), true);
   await expectAccess('signed out get', get(nobody(), 'usersPublic', ALICE), true);
 
-  // A guest resolves BY id and cannot enumerate. A full account may list —
+  // A guest resolves BY id and cannot enumerate. A full account must use the server identity endpoint —
   // the batched roster query depends on it, and that account can already
   // enumerate /users, so four public fields is strictly less than it has.
   await expectAccess('guest list', listAll(anon(), 'usersPublic'), false);
-  await expectAccess('full account list', listAll(full(), 'usersPublic'), true);
+  await expectAccess('full account list', listAll(full(), 'usersPublic'), false);
 
   // Server-written only. A client that could write here could impersonate.
   await expectAccess(
@@ -312,7 +312,7 @@ test('the public roster renders for both kinds of viewer', async () => {
       collection(full(), 'usersPublic'),
       where(documentId(), 'in', [ALICE, BOB]),
     )),
-    true,
+    false,
   );
 });
 
@@ -345,16 +345,16 @@ test('the guest player card reads the mirror and nothing else', async () => {
   );
 });
 
-test('the same card, for a full account, reads everything it always did', async () => {
+test('full accounts use scoped projections for private player data', async () => {
   const db = full();
-  await expectAccess('the user document', get(db, 'users', ALICE), true);
-  await expectAccess('lifetime stats', get(db, 'playerStats', ALICE), true);
+  await expectAccess('the user document', get(db, 'users', ALICE), false);
+  await expectAccess('lifetime stats', get(db, 'playerStats', ALICE), false);
   await expectAccess('rating aggregate', get(db, 'ratings', ALICE), true);
   await expectAccess('pair chemistry', get(db, 'pairStats', `${ALICE}__${BOB}`), true);
   await expectAccess(
     'referral count query',
     getDocs(query(collection(db, 'users'), where('invitedBy', '==', ALICE), limit(10))),
-    true,
+    false,
   );
 });
 
@@ -363,14 +363,14 @@ test('the same card, for a full account, reads everything it always did', async 
 // The round must not cost a real user anything. Each of these passes today and
 // must still pass afterwards.
 
-test('full account keeps every read it has today', async () => {
+test('full account retains club content but cannot read another private profile', async () => {
   const db = full();
-  await expectAccess('users/{other}', get(db, 'users', ALICE), true);
-  await expectAccess('playerStats', get(db, 'playerStats', ALICE), true);
+  await expectAccess('users/{other}', get(db, 'users', ALICE), false);
+  await expectAccess('playerStats', get(db, 'playerStats', ALICE), false);
   await expectAccess('ratings', get(db, 'ratings', ALICE), true);
   await expectAccess('pairStats', get(db, 'pairStats', `${ALICE}__${BOB}`), true);
   await expectAccess('rounds', get(db, 'rounds', 'r1'), true);
-  await expectAccess('seasonTitles', get(db, 'users', ALICE, 'seasonTitles', 't1'), true);
+  await expectAccess('seasonTitles', get(db, 'users', ALICE, 'seasonTitles', 't1'), false);
   await expectAccess('groupsPublic', get(db, 'groupsPublic', CLUB), true);
   await expectAccess('public game', get(db, 'games', 'gamePub'), true);
   await expectAccess('campaigns', listAll(db, 'campaigns'), true);

@@ -1,3 +1,4 @@
+import { pulseFetch as fetch } from './adminTransport';
 // Google Play reviews + ratings.
 //
 // The Android Publisher reviews API only returns the last ~7 days and only
@@ -9,7 +10,7 @@
 // here — those come from the analytics events pipeline.
 
 import { config } from '../config';
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import type { RatingSummary, Review } from '../types';
 import { googleAccessToken } from './auth';
 import { summarize } from './appStoreConnect';

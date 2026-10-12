@@ -26,6 +26,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { InfoTip } from '@/components/InfoTip';
 
+import { useFormDesign, formFieldStyle } from '@/components/forms/FormTheme';
+
 interface Props {
   label?: string;
   info?: { title?: string; text: string };
@@ -45,6 +47,7 @@ export function RichRulesInput({
   placeholder,
   maxLength,
 }: Props) {
+  const designed = useFormDesign();
   const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
   // Last known selection. Defaults to end-of-text so a button press
@@ -106,7 +109,7 @@ export function RichRulesInput({
         <ToolbarButton icon="list" label="רשימה" onPress={applyBullet} />
       </View>
 
-      <View style={[styles.field, focused && styles.fieldFocused]}>
+      <View style={[styles.field, designed && formFieldStyle, focused && styles.fieldFocused]}>
         <TextInput
           ref={inputRef}
           value={value}
@@ -116,7 +119,7 @@ export function RichRulesInput({
           placeholderTextColor="#9CA3AF"
           multiline
           textAlignVertical="top"
-          style={styles.input}
+          style={[styles.input, designed && { minHeight: 80, fontSize: 15 }]}
           maxLength={maxLength}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
@@ -151,8 +154,8 @@ function ToolbarButton({
       style={({ pressed }) => [styles.toolBtn, pressed && styles.toolBtnPressed]}
       hitSlop={6}
     >
-      <Ionicons name={icon} size={16} color={colors.primary} />
       <Text style={styles.toolBtnText}>{label}</Text>
+      <Ionicons name={icon} size={16} color={colors.primary} />
     </Pressable>
   );
 }
@@ -197,12 +200,12 @@ const styles = StyleSheet.create({
   },
   labelFlex: { flexShrink: 1, width: undefined, alignSelf: 'auto' },
   toolbar: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     gap: spacing.sm,
     alignSelf: 'stretch',
   },
   toolBtn: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: spacing.md,

@@ -6,6 +6,7 @@
 
 | מסך מקור | מסמכים במפה |
 |---|---|
+| `src/screens/profile/SocialPrivacyScreen.tsx` | [חיפוש שחקנים ופרטיות](profile/player-discovery.md) |
 | `src/screens/communities/ManagerDashboardScreen.tsx` | [לוח מנהל](clubs/manager-dashboard.md) |
 | `src/screens/AdvancedLiveMatchScreen.tsx` | [coverage.md](coverage.md) · [rounds/fillers.md](rounds/fillers.md) · [rounds/live-advanced.md](rounds/live-advanced.md) |
 | `src/screens/auth/EmailAuthScreen.tsx` | [coverage.md](coverage.md) · [entry/authentication.md](entry/authentication.md) |
@@ -213,3 +214,15 @@
 עדכון 10.10.2026: מצב פתיחה של סטטיסטיקות מועדון משתמש ב־CommunityStatsWelcome; זהו מצב של CommunityStats הקיים, ללא מסך או מסלול מוצר חדש. כלי התצוגה זמין גם בשלב הכניסה בפיתוח בלבד.
 
 עדכון 10.10.2026: Statistics מציג כרטיס אישי ומצב התחלה מעוצב באמצעות PersonalStatisticsCard/PersonalStatisticsWelcome, באותו מסלול קיים. שיתוף תמונה נוסף בתוך המסך; אין מסך מוצר חדש.
+
+## קרוסלה אישית בבית — 11.10.2026
+
+נוסף רכיב `src/components/home/HomePersonalStats.tsx` במסך `ProfileScreen` הקיים, עם קישור ל־`Statistics`. [מסמכי הבית](home/dashboard.md) ו[הסטטיסטיקה](statistics/personal-statistics.md) כוללים מצבים, חישובים וראיות. קיצורי הבדיקה `ProfileStatisticsFull` ו־`ProfileStatisticsEmpty` מציגים מצבים מקומיים בלבד; לא נוספו מסכי מוצר.
+
+
+11.10.2026: `ChatsList`, `PlayerCard` ו־`Statistics` הקיימים הורחבו, ללא מסלול פרופיל מקביל. [תיעוד גילוי שחקנים](profile/player-discovery.md); בדיקת נראות בנתוני המחשה בלבד.
+
+
+## שער כניסה מאובטח לפולס — 11.10.2026
+
+`pulse/src/screens/AdminLoginScreen.tsx` נוסף כשער לפני לוח הניטור. [התיעוד](../../pulse/docs/secure-access.md). נבדק בקוד ובבדיקת טיפוסים בלבד; לא הורץ ולא צולם. אין צילום שניתן להציג כראיה לתצוגה או לכיווניות.

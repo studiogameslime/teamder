@@ -1,0 +1,150 @@
+{
+  "sourceSha256": "4ac086fdcae13c90103d85555aabcc2d502e50cd619212cd912f61ad41f7804e",
+  "input": {
+    "playerIds": [
+      "player-0",
+      "player-1",
+      "player-2",
+      "player-3",
+      "player-4",
+      "player-5",
+      "player-6",
+      "player-7",
+      "player-8",
+      "player-9",
+      "player-10",
+      "player-11",
+      "player-12",
+      "player-13",
+      "player-14",
+      "player-15",
+      "player-16"
+    ],
+    "ratings": {
+      "player-0": 4.5,
+      "player-1": 4,
+      "player-2": 3.6,
+      "player-3": 3.2,
+      "player-4": 4,
+      "player-5": 3.3,
+      "player-6": 3,
+      "player-7": 3.5,
+      "player-8": 3.2,
+      "player-9": 4.3,
+      "player-10": 2.7,
+      "player-11": 3.4,
+      "player-12": 3,
+      "player-13": 4,
+      "player-14": 1,
+      "player-15": 2.5,
+      "player-16": 3
+    },
+    "numTeams": 3,
+    "perTeam": 5,
+    "pairWeights": {
+      "player-0|player-1": 1,
+      "player-0|player-2": 1,
+      "player-0|player-3": 1,
+      "player-0|player-4": 1,
+      "player-1|player-2": 1,
+      "player-1|player-3": 1,
+      "player-1|player-4": 1,
+      "player-2|player-3": 1,
+      "player-2|player-4": 1,
+      "player-3|player-4": 1,
+      "player-5|player-6": 1,
+      "player-5|player-7": 1,
+      "player-5|player-8": 1,
+      "player-5|player-9": 1,
+      "player-6|player-7": 1,
+      "player-6|player-8": 1,
+      "player-6|player-9": 1,
+      "player-7|player-8": 1,
+      "player-7|player-9": 1,
+      "player-8|player-9": 1,
+      "player-10|player-11": 1,
+      "player-10|player-12": 1,
+      "player-10|player-13": 1,
+      "player-10|player-14": 1,
+      "player-10|player-15": 1,
+      "player-10|player-16": 1,
+      "player-11|player-12": 1,
+      "player-11|player-13": 1,
+      "player-11|player-14": 1,
+      "player-11|player-15": 1,
+      "player-11|player-16": 1,
+      "player-12|player-13": 1,
+      "player-12|player-14": 1,
+      "player-12|player-15": 1,
+      "player-12|player-16": 1,
+      "player-13|player-14": 1,
+      "player-13|player-15": 1,
+      "player-13|player-16": 1,
+      "player-14|player-15": 1,
+      "player-14|player-16": 1,
+      "player-15|player-16": 1
+    }
+  },
+  "cases": [
+    {
+      "strategy": "A",
+      "seed": 1,
+      "sha256": "d8fbbe80ee89990bc6f0e466a12ee7e298ddf715766d6b4af78d4ecb3de91ed5"
+    },
+    {
+      "strategy": "A",
+      "seed": 7,
+      "sha256": "5b391552c28e27208bfb31e0b7aaa3fd38b607618d9941b8c0a25df4a989f2f1"
+    },
+    {
+      "strategy": "A",
+      "seed": 42,
+      "sha256": "88e2870d8a726a25289597c1e1f4f1490903a5545b39aa246d3f2747d02272d5"
+    },
+    {
+      "strategy": "A",
+      "seed": 123,
+      "sha256": "114ff4e81a19e61cff50c56a4164b265aa686a9123428466e274dbc591e18c64"
+    },
+    {
+      "strategy": "A",
+      "seed": 567,
+      "sha256": "294c78df40ef0102565e6a90a016333423129f840ae269bce8d6d0a6d81297bb"
+    },
+    {
+      "strategy": "A",
+      "seed": 999,
+      "sha256": "eb680ea921be4751724d18bcf79e374e4689bb0ed15e913de1f231ada1735de2"
+    },
+    {
+      "strategy": "B",
+      "seed": 1,
+      "sha256": "d6c9db3c817a71cb0518ef4c68ce44c13e90c2bf70a42adffd274c4e9fdc077b"
+    },
+    {
+      "strategy": "B",
+      "seed": 7,
+      "sha256": "2f0d217cc5ea206d4c6eac44206f3eec4177b478ecaa4b200e8350ec684a397c"
+    },
+    {
+      "strategy": "B",
+      "seed": 42,
+      "sha256": "aad5d0bc3b44e6793d7ce110a59d09426065ac0dd3ce412d1bcb468890c5593e"
+    },
+    {
+      "strategy": "B",
+      "seed": 123,
+      "sha256": "1a2f2964942943ccf01df1719a106e2ffaf30819bf712044bb433cfcafb0c252"
+    },
+    {
+      "strategy": "B",
+      "seed": 567,
+      "sha256": "24da9976e5d88fc937410ead97919877a363fc1b40ad5f63da7bd135de8d7082"
+    },
+    {
+      "strategy": "B",
+      "seed": 999,
+      "sha256": "3bd76c68d71b56a51ea4e2ee980e77bdba25d7ebbbf3b4a5e39f6de8bca2f5d5"
+    }
+  ]
+}

@@ -1,23 +1,16 @@
+import { readPlayerIdentities } from './publicPlayerService';
+import { StaleSessionError } from './staleSession';
+import { mockCurrentUser } from '@/data/mockUsers';
 // friendsService — mutual friendships + friend requests.
 //
 // Data model:
 //   /friendRequests/{fromId__toId}   FriendRequestDoc (pending|accepted|declined)
 //   /users/{uid}.friends: UserId[]   mutual, written ONLY server-side
 //
-// Trust boundary:
-//   • SEND / DECLINE / CANCEL a request are direct client writes, gated
-//     by firestore.rules (sender owns create+delete, recipient may
-//     decline).
-//   • ACCEPT and REMOVE mutate BOTH users' /users docs, so they go
-//     through trusted callables (Admin SDK) — a client can't write
-//     another user's doc, and we never trust a client to fabricate a
-//     friendship. Those callables land in Phase 2; until then the
-//     Firebase-mode accept/remove paths throw, while MOCK mode is fully
-//     functional for building + testing the UI.
-//
-// A push to the recipient (friendRequest) and to the sender on accept
-// (friendRequestAccepted) is fired by a Cloud Function watching
-// /friendRequests — see Phase 2. No push is ever sent on decline.
+// Requests, acceptance and removal use server callables. Decline/cancel still
+// use the existing rules-protected request documents. Crossed requests and
+// acceptance are transactional; notifications reuse the existing trigger.
+// Legacy permission compatibility is tracked in the social permissions proposal.
 
 import {
   deleteDoc,
@@ -76,22 +69,37 @@ function mockUnlink(a: UserId, b: UserId): void {
   mockFriends[b]?.delete(a);
 }
 
-function callable<T>(name: string, data: Record<string, unknown>): Promise<T> {
+if (USE_MOCK_DATA) {
+  for (const friendId of mockCurrentUser.friends ?? []) mockLink(mockCurrentUser.id, friendId);
+}
+
+function assertFriendOwner(uid: UserId): void {
+  if (USE_MOCK_DATA) return;
+  const current = getFirebase().auth.currentUser;
+  if (!current || current.uid !== uid) throw new StaleSessionError(uid, current?.uid ?? '');
+  if (current.isAnonymous) throw new Error('friends: full account required');
+}
+
+async function callable<T>(name: string, data: Record<string, unknown>, ownerId: UserId): Promise<T> {
+  assertFriendOwner(ownerId);
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { httpsCallable } = require('firebase/functions');
   const { functions } = getFirebase();
-  return httpsCallable(functions, name)(data) as Promise<T>;
+  const result = await httpsCallable(functions, name)(data) as T;
+  assertFriendOwner(ownerId);
+  return result;
 }
 
 export const friendsService = {
   /**
    * Send a friend request from `fromUserId` to `toUserId`. Idempotent:
-   * re-sending re-opens an existing doc as pending. If the target had
+   * re-sending preserves an existing pending request. If the target had
    * already sent ME a request, we short-circuit to an accepted
    * friendship (both clearly want it) in mock mode; in Firebase mode the
    * accept callable handles that race.
    */
   async sendRequest(fromUserId: UserId, toUserId: UserId): Promise<void> {
+    assertFriendOwner(fromUserId);
     if (!fromUserId || !toUserId || fromUserId === toUserId) {
       throw new Error('friends: invalid request target');
     }
@@ -127,36 +135,11 @@ export const friendsService = {
       });
       return;
     }
-    // Block re-sending after a decline: if my previous outgoing request to
-    // this user was declined, don't let me reopen it. A declined doc is kept
-    // (status:'declined') precisely so we can enforce this. A get() on a
-    // NON-existent friendRequest throws permission-denied (the rule reads
-    // null resource.data) — that's the normal "no prior request" case, so we
-    // swallow it and let the send proceed.
     try {
-      const prior = await getDoc(docs.friendRequest(id));
-      if (prior.exists() && prior.data().status === 'declined') {
-        throw new FriendRequestDeclinedError();
-      }
+      await callable('sendSocialFriendRequest', { userId: toUserId }, fromUserId);
     } catch (e) {
-      if (e instanceof FriendRequestDeclinedError) throw e;
-      // any read failure (incl. permission-denied on a missing doc) → proceed
-    }
-    try {
-      await setDoc(docs.friendRequest(id), {
-        id,
-        fromUserId,
-        toUserId,
-        status: 'pending',
-        createdAt: Date.now(),
-      });
-    } catch (e) {
-      // Don't pollute the dashboard with expected denials (e.g. a transient
-      // rules race) — only log genuine failures. Still rethrow so the UI
-      // can surface a toast.
-      if (!isExpectedDenial(e)) {
-        logError('sendFriendRequest', e, { fromUserId, toUserId });
-      }
+      if (String((e as {message?:string})?.message).includes('Request declined')) throw new FriendRequestDeclinedError();
+      if (!isExpectedDenial(e)) logError('sendFriendRequest', e, { fromUserId, toUserId });
       throw e;
     }
     logEvent(AnalyticsEvent.FriendRequestSent, { toUserId });
@@ -168,6 +151,7 @@ export const friendsService = {
    * to the trusted `acceptFriendRequest` callable.
    */
   async acceptRequest(fromUserId: UserId, toUserId: UserId): Promise<void> {
+    assertFriendOwner(toUserId);
     const id = friendRequestId(fromUserId, toUserId);
     if (USE_MOCK_DATA) {
       const r = mockRequests.find((x) => x.id === id);
@@ -179,7 +163,7 @@ export const friendsService = {
       return;
     }
     try {
-      await callable('acceptFriendRequest', { fromUserId });
+      await callable('acceptFriendRequest', { fromUserId }, toUserId);
     } catch (e) {
       logError('acceptFriendRequest', e, { fromUserId });
       throw e;
@@ -189,6 +173,7 @@ export const friendsService = {
 
   /** Decline an incoming request. No push is sent. */
   async declineRequest(fromUserId: UserId, toUserId: UserId): Promise<void> {
+    assertFriendOwner(toUserId);
     const id = friendRequestId(fromUserId, toUserId);
     if (USE_MOCK_DATA) {
       const r = mockRequests.find((x) => x.id === id);
@@ -204,6 +189,7 @@ export const friendsService = {
         status: 'declined',
         updatedAt: Date.now(),
       });
+      assertFriendOwner(toUserId);
     } catch (e) {
       logError('declineFriendRequest', e, { fromUserId, toUserId });
       throw e;
@@ -213,6 +199,7 @@ export const friendsService = {
 
   /** Withdraw an outgoing request I sent (deletes the doc). */
   async cancelRequest(fromUserId: UserId, toUserId: UserId): Promise<void> {
+    assertFriendOwner(fromUserId);
     const id = friendRequestId(fromUserId, toUserId);
     if (USE_MOCK_DATA) {
       const i = mockRequests.findIndex((x) => x.id === id);
@@ -222,6 +209,7 @@ export const friendsService = {
     }
     try {
       await deleteDoc(docs.friendRequest(id));
+      assertFriendOwner(fromUserId);
     } catch (e) {
       logError('cancelFriendRequest', e, { fromUserId, toUserId });
       throw e;
@@ -232,13 +220,14 @@ export const friendsService = {
   /** Remove an existing friendship (mutual). Firebase delegates to the
    *  trusted `removeFriendship` callable. */
   async removeFriend(meId: UserId, otherId: UserId): Promise<void> {
+    assertFriendOwner(meId);
     if (USE_MOCK_DATA) {
       mockUnlink(meId, otherId);
       logEvent(AnalyticsEvent.FriendRemoved, { otherUserId: otherId });
       return;
     }
     try {
-      await callable('removeFriendship', { otherUserId: otherId });
+      await callable('removeFriendship', { otherUserId: otherId }, meId);
     } catch (e) {
       logError('removeFriend', e, { otherUserId: otherId });
       throw e;
@@ -249,61 +238,39 @@ export const friendsService = {
   /** Accepted-friend ids for a user. */
   async listFriendIds(uid: UserId): Promise<UserId[]> {
     if (USE_MOCK_DATA) return Array.from(mockFriends[uid] ?? []);
+    const checkOwner = () => {
+      const current = getFirebase().auth.currentUser?.uid ?? '';
+      if (current !== uid) throw new StaleSessionError(uid, current);
+    };
+    checkOwner();
     const u = await userService.getUserById(uid);
-    return u?.friends ?? [];
+    checkOwner();
+    if (!u) throw new Error('Friend list owner missing');
+    return u.friends ?? [];
   },
 
   /** Accepted friends resolved to User objects. */
   async listFriends(uid: UserId): Promise<User[]> {
     const ids = await this.listFriendIds(uid);
-    // allSettled, not all: if ONE friend's user-doc read throws (deleted /
-    // blocked / rules-restricted account) Promise.all would reject and the
-    // ENTIRE list would fail. Skip the bad entry instead.
-    const results = await Promise.allSettled(
-      ids.map((id) => userService.getUserById(id)),
-    );
-    return results
-      .filter(
-        (r): r is PromiseFulfilledResult<User | null> =>
-          r.status === 'fulfilled',
-      )
-      .map((r) => r.value)
-      .filter((u): u is User => !!u);
+    if (!USE_MOCK_DATA) {
+      assertFriendOwner(uid);
+      const users = await readPlayerIdentities(ids);
+      assertFriendOwner(uid);
+      return users;
+    }
+    return (await Promise.all(ids.map(id => userService.getUserById(id)))).filter((u): u is User => !!u);
   },
 
   /** Pending requests sent TO me, each paired with the sender. */
   async listIncomingRequests(uid: UserId): Promise<FriendRequestWithUser[]> {
     const reqs = await this.queryRequests('toUserId', uid);
-    // One unresolvable sender must not fail the whole inbox — drop it.
-    const results = await Promise.allSettled(
-      reqs.map(async (request) => ({
-        request,
-        user: await userService.getUserById(request.fromUserId),
-      })),
-    );
-    return results
-      .filter(
-        (r): r is PromiseFulfilledResult<FriendRequestWithUser> =>
-          r.status === 'fulfilled',
-      )
-      .map((r) => r.value);
+    return this.hydrateRequests(uid, reqs, 'fromUserId');
   },
 
   /** Pending requests I sent, each paired with the target. */
   async listOutgoingRequests(uid: UserId): Promise<FriendRequestWithUser[]> {
     const reqs = await this.queryRequests('fromUserId', uid);
-    const results = await Promise.allSettled(
-      reqs.map(async (request) => ({
-        request,
-        user: await userService.getUserById(request.toUserId),
-      })),
-    );
-    return results
-      .filter(
-        (r): r is PromiseFulfilledResult<FriendRequestWithUser> =>
-          r.status === 'fulfilled',
-      )
-      .map((r) => r.value);
+    return this.hydrateRequests(uid, reqs, 'toUserId');
   },
 
   /**
@@ -315,6 +282,7 @@ export const friendsService = {
     otherId: UserId,
   ): Promise<FriendRelationship> {
     if (!uid || !otherId) return 'none';
+    assertFriendOwner(uid);
     if (uid === otherId) return 'self';
     const friendIds = await this.listFriendIds(uid);
     if (friendIds.includes(otherId)) return 'friends';
@@ -348,6 +316,7 @@ export const friendsService = {
         const code = (e as { code?: string })?.code;
         if (code !== 'permission-denied') {
           logError('getFriendRelationship', e, { uid, otherId });
+          throw e;
         }
         if (__DEV__) {
           console.warn('[friends] getRelationship request read failed', e);
@@ -356,7 +325,9 @@ export const friendsService = {
       }
     };
     const outSnap = await readReq(friendRequestId(uid, otherId));
+    assertFriendOwner(uid);
     const inSnap = await readReq(friendRequestId(otherId, uid));
+    assertFriendOwner(uid);
     if (outSnap?.exists() && outSnap.data().status === 'pending') return 'outgoing';
     // A fresh INCOMING request wins over a STALE declined-outgoing one:
     // otherwise an old 'declined' A→B doc would mask a new B→A request and
@@ -368,18 +339,31 @@ export const friendsService = {
   },
 
   // ── internal ──
+  async hydrateRequests(uid: UserId, reqs: FriendRequestDoc[], field: 'fromUserId' | 'toUserId'): Promise<FriendRequestWithUser[]> {
+    assertFriendOwner(uid);
+    const ids = [...new Set(reqs.map(request => request[field]))];
+    const users = USE_MOCK_DATA
+      ? (await Promise.all(ids.map(id => userService.getUserById(id)))).filter((u): u is User => !!u)
+      : await readPlayerIdentities(ids);
+    assertFriendOwner(uid);
+    const byId = new Map(users.map(user => [user.id, user]));
+    // Missing/deleted users are unknown; a failed read is never an empty inbox.
+    return reqs.map(request => ({ request, user: byId.get(request[field]) ?? null }));
+  },
   /** Query pending requests by a single field; status filtered in JS so
    *  no composite index is required. */
   async queryRequests(
     field: 'toUserId' | 'fromUserId',
     uid: UserId,
   ): Promise<FriendRequestDoc[]> {
+    assertFriendOwner(uid);
     if (USE_MOCK_DATA) {
       return mockRequests.filter(
         (r) => r[field] === uid && r.status === 'pending',
       );
     }
     const snap = await getDocs(query(col.friendRequests(), where(field, '==', uid)));
+    assertFriendOwner(uid);
     return snap.docs.map((d) => d.data()).filter((r) => r.status === 'pending');
   },
 };

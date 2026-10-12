@@ -30,7 +30,7 @@
 // their own caches; those screens are opened rarely, this one is the launch
 // screen.
 
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import { MOCK_WORK } from '../config';
 import { mockWork } from './workItemsMock';
 import { listAll, getDoc, patchDoc, type FsDoc } from './firestoreRest';

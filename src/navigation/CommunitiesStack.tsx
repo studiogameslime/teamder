@@ -1,3 +1,5 @@
+import { FeedbackScreen } from '@/screens/FeedbackScreen';
+import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
 import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
 // Stack inside the Communities tab. The feed is the landing screen; from
 // there the user can:
@@ -66,12 +68,14 @@ export type CommunitiesStackParamList = {
   EmailAuth: undefined;
   CommunitiesCreate: undefined;
   CommunityDetails: { groupId: string };
-  CommunityDetailsPublic: { groupId: string };
+  CommunityDetailsPublic: { groupId: string; fromInvitation?: boolean };
   CommunityEdit: { groupId: string };
   CommunityPlayers: { groupId: string };
   ManagerDashboard: { groupId: string; initialTab?: 'overview' | 'club' | 'ratings' | 'equipment'; initialFilter?: 'all' | 'up' | 'down' };
   CommunityStats: { groupId: string };
   CommunityHistory: { groupId: string };
+  Statistics: { userId?: string } | undefined;
+  Feedback: { type?: 'bug' | 'suggestion'; playerId?: string; playerName?: string } | undefined;
   PlayerCard: { userId: string; groupId?: string };
   PlayerCompare: { groupId: string; otherUid: string; otherName?: string };
   /** Admin-only per-community player timeline (cards + equipment handoffs). */
@@ -157,6 +161,8 @@ export function CommunitiesStack() {
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="Statistics" component={StatisticsScreen} />
+      <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
       <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
