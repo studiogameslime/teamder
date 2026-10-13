@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // Global styled dialog — a drop-in replacement for React Native's
 // Alert.alert that renders the app's popup style (SpringSheet card, tone
 // icon, themed buttons) instead of the grey OS alert.
@@ -169,9 +170,7 @@ export function AppDialogHost() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+  card: { ...overlaySurfaces.dialog,
     padding: spacing.xl,
     gap: spacing.md,
     // Fill the panel width (minus its horizontal padding) instead of

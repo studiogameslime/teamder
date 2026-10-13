@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // ContextualAuthSheet — "one more step and you're in", at the moment it is true.
 //
 // Replaces the `appAlert` that `guestGate` used to raise. That was a generic
@@ -313,10 +314,7 @@ function ProviderButton({
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  sheet: { ...overlaySurfaces.sheet,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
     paddingTop: spacing.sm,

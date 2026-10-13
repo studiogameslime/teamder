@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // DeleteAccountSheet — replaces the one-tap "delete account" alert with a
 // typed-confirmation sheet. Account deletion is irreversible, so the delete
 // button stays disabled until the user types the confirmation word (בטוח).
@@ -118,10 +119,7 @@ export function DeleteAccountSheet({
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  sheet: { ...overlaySurfaces.sheet,
     paddingHorizontal: spacing.lg,
     paddingTop: 8,
     paddingBottom: spacing.xl,

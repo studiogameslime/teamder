@@ -33,6 +33,7 @@ import {
   getDocs,
   increment,
   query,
+  runTransaction,
   updateDoc,
   where,
 } from 'firebase/firestore';
@@ -54,7 +55,7 @@ import {
   type AchievementDef,
   type AchievementTierStep,
 } from '@/data/achievements';
-import { USE_MOCK_DATA } from '@/firebase/config';
+import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { col, docs } from '@/firebase/firestore';
 import { mockGamesV2 } from '@/data/mockData';
 import { storage } from '@/services/storage';
@@ -542,20 +543,24 @@ async function persistFirebase(
   uid: UserId,
   counters: UserAchievementState,
 ): Promise<NewlyUnlocked[]> {
-  // Lazy import to avoid a circular dep with userService.
-  const { userService } = await import('@/services/userService');
-  const fresh = await userService.getUserById(uid);
-  if (!fresh) return [];
-  const prev = readState(fresh);
-  const { next, changed, newlyUnlocked } = diffUnlocks(prev.unlocked, counters);
-  if (!changed) return newlyUnlocked;
-  logNewlyUnlocked(prev.unlocked, next);
-  // Store the reconciled highest earned tier for each definition.
-  await updateDoc(docs.user(uid), {
-    'achievements.unlocked': next,
-    updatedAt: Date.now(),
+  // Reconcile against the version that is actually committed. A stale read
+  // followed by updateDoc could downgrade gold to bronze in concurrent syncs.
+  // Side effects stay outside the retryable transaction callback.
+  const result = await runTransaction(getFirebase().db, async (tx) => {
+    const ref = docs.user(uid);
+    const fresh = await tx.get(ref);
+    if (!fresh.exists()) return null;
+    const prev = readState(fresh.data());
+    const diff = diffUnlocks(prev.unlocked, counters);
+    if (diff.changed) tx.update(ref, {
+      'achievements.unlocked': diff.next,
+      updatedAt: Date.now(),
+    });
+    return { ...diff, previous: prev.unlocked };
   });
-  return newlyUnlocked;
+  if (!result) return [];
+  if (result.changed) logNewlyUnlocked(result.previous, result.next);
+  return result.newlyUnlocked;
 }
 
 /** Fire one analytics event per newly-unlocked achievement id. */

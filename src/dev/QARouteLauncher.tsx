@@ -64,6 +64,7 @@ import { deriveRoundState } from '@/utils/homeRoundState';
 import { GuestModal } from '@/components/GuestModal';
 import { AdminRatingSheet } from '@/components/AdminRatingSheet';
 import { MotionPreview } from './MotionPreview';
+import { OverlayAuditPreview } from './OverlayAuditPreview';
 import { CommunityStatsWelcome } from '@/components/community/CommunityStatsWelcome';
 import { appAlert } from '@/components/AppDialog';
 import { toast } from '@/components/Toast';
@@ -327,6 +328,7 @@ export function QARouteLauncher(): React.ReactElement | null {
   const [roundCoverLibraryPreview, setRoundCoverLibraryPreview] = useState(false);
   const [guestRatingPreview, setGuestRatingPreview] = useState(false);
   const [adminRatingPreview, setAdminRatingPreview] = useState(false);
+  const [overlayAudit, setOverlayAudit] = useState<string | null>(null);
   const [statsWelcomePreview, setStatsWelcomePreview] = useState(false);
   const [authKind, setAuthKind] = useState<AuthPromptReason | null>(null);
   // Which route is actually on screen, printed so a `uiautomator dump` can
@@ -496,6 +498,7 @@ export function QARouteLauncher(): React.ReactElement | null {
       if (target === '_round_cover_library' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setRoundCoverLibraryPreview(true); return; }
       if (target === '_guest_rating_decimal' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setGuestRatingPreview(true); return; }
       if (target === '_admin_rating_decimal' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setAdminRatingPreview(true); return; }
+      if (target.startsWith('_overlay_audit_') && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setOverlayAudit(target.slice('_overlay_audit_'.length)); return; }
       if (target === '_home_registered' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setRegisteredPreview(true); return; }
       if (target === '_home_scheduled' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setScheduledPreview(true); return; }
       if (target === '_seasons_live' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setSeasonsPreview(true); return; }
@@ -547,6 +550,7 @@ export function QARouteLauncher(): React.ReactElement | null {
           </View>
         </Modal> : null}
       {process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <>
+        {overlayAudit ? <OverlayAuditPreview key={overlayAudit} kind={overlayAudit} onClose={() => setOverlayAudit(null)} /> : null}
         <GuestModal visible={guestRatingPreview} gameId="qa-local-guest-rating" callerId="qa-owner" isAdmin
           existing={{ id: 'qa-guest', name: 'אורח לדוגמה', addedBy: 'qa-owner', createdAt: 1, estimatedRating: 4.5 }}
           onClose={() => setGuestRatingPreview(false)} />

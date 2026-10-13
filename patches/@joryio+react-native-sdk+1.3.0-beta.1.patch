@@ -1,0 +1,98 @@
+diff --git a/node_modules/@joryio/react-native-sdk/src/index.ts b/node_modules/@joryio/react-native-sdk/src/index.ts
+--- a/node_modules/@joryio/react-native-sdk/src/index.ts
++++ b/node_modules/@joryio/react-native-sdk/src/index.ts
+@@ -645,6 +645,7 @@
+   private _pending: Array<HeldCall> = [];
+   /** The initialize() call in progress, if any. A second call joins it. */
+   private _initInFlight: Promise<void> | null = null;
++  private _lastInitializationError: {code: string; message: string} | null = null;
+   private _warnedPendingOverflow = false;
+   /**
+    * A wipeData() was handed to native before its initialize(), which runs it
+@@ -1179,6 +1180,7 @@
+       this._initConfigOptedOut = null;
+       this._initConfigDenied = null;
+       if (failure === null) {
++        this._lastInitializationError = null;
+         this._pending.forEach((call) => delete call.madeInWindow);
+         this._initialized = true;
+         this._wipeHandedToNative = false;
+@@ -1195,6 +1197,11 @@
+       // Everything downstream then degrades to a no-op with one clear warning,
+       // instead of each call throwing its own "SDK not initialized".
+       this._initFailed = true;
++      const error = failure.error as {code?: unknown; message?: unknown} | null;
++      this._lastInitializationError = {
++        code: typeof error?.code === 'string' ? error.code : 'NATIVE_INIT_ERROR',
++        message: typeof error?.message === 'string' ? error.message : 'Native initialization failed',
++      };
+       this._rejudgeWithoutInitConfig();
+       this._handHeldDecisionsToNative();
+       // eslint-disable-next-line no-console
+@@ -2065,8 +2072,14 @@
+    */
+   async getDiagnostics(): Promise<{
+     apiEndpoint: string | null;
++    initializationError?: {code: string; message: string};
+     lastError?: {message: string; isUnauthorized: boolean; isRetryable: boolean; at: number};
+   }> {
++    // Initialization failure is available even while other getters are gated.
++    // Preserve initialize()'s existing non-throwing contract.
++    if (this._initFailed && this._lastInitializationError) {
++      return {apiEndpoint: null, initializationError: {...this._lastInitializationError}};
++    }
+     // Gated like the other getters. "initialize() never completed" IS the
+     // diagnostic in that case, and _awaitReady logs exactly that.
+     return this._query('getDiagnostics', {apiEndpoint: null}, () => {
+diff --git a/node_modules/@joryio/react-native-sdk/lib/index.js b/node_modules/@joryio/react-native-sdk/lib/index.js
+--- a/node_modules/@joryio/react-native-sdk/lib/index.js
++++ b/node_modules/@joryio/react-native-sdk/lib/index.js
+@@ -256,6 +256,7 @@
+          * every subsequent call must degrade instead of waiting or throwing.
+          */
+         this._initFailed = false;
++        this._lastInitializationError = null;
+         /**
+          * Fire-and-forget calls made before initialize() succeeded, in call order,
+          * each with its {@link CallKind}. An opt-out or a denial made later
+@@ -809,6 +810,7 @@
+             this._initConfigOptedOut = null;
+             this._initConfigDenied = null;
+             if (failure === null) {
++                this._lastInitializationError = null;
+                 this._pending.forEach((call) => delete call.madeInWindow);
+                 this._initialized = true;
+                 this._wipeHandedToNative = false;
+@@ -825,6 +827,11 @@
+             // Everything downstream then degrades to a no-op with one clear warning,
+             // instead of each call throwing its own "SDK not initialized".
+             this._initFailed = true;
++            const error = failure.error;
++            this._lastInitializationError = {
++                code: typeof error?.code === 'string' ? error.code : 'NATIVE_INIT_ERROR',
++                message: typeof error?.message === 'string' ? error.message : 'Native initialization failed',
++            };
+             this._rejudgeWithoutInitConfig();
+             this._handHeldDecisionsToNative();
+             // eslint-disable-next-line no-console
+@@ -1655,6 +1662,9 @@
+      * shows the new ones.
+      */
+     async getDiagnostics() {
++        if (this._initFailed && this._lastInitializationError) {
++            return {apiEndpoint: null, initializationError: {...this._lastInitializationError}};
++        }
+         // Gated like the other getters. "initialize() never completed" IS the
+         // diagnostic in that case, and _awaitReady logs exactly that.
+         return this._query('getDiagnostics', { apiEndpoint: null }, () => {
+diff --git a/node_modules/@joryio/react-native-sdk/lib/index.d.ts b/node_modules/@joryio/react-native-sdk/lib/index.d.ts
+--- a/node_modules/@joryio/react-native-sdk/lib/index.d.ts
++++ b/node_modules/@joryio/react-native-sdk/lib/index.d.ts
+@@ -1005,6 +1005,7 @@
+      */
+     getDiagnostics(): Promise<{
+         apiEndpoint: string | null;
++        initializationError?: {code: string; message: string};
+         lastError?: {
+             message: string;
+             isUnauthorized: boolean;

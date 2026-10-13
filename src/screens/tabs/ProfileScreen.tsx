@@ -38,6 +38,7 @@ import {
 import Constants from 'expo-constants';
 
 import { Button } from '@/components/Button';
+import { ScrollSurface } from '@/components/ScrollSurface';
 import { DeleteAccountSheet } from '@/components/profile/DeleteAccountSheet';
 import { currentAuthProviderId } from '@/firebase/auth';
 // DisciplineRow (trust meter) hidden from UI for now — see render site below.
@@ -1409,7 +1410,7 @@ export function ProfileScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView
+      <ScrollSurface
         ref={scrollRef}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -1686,7 +1687,7 @@ export function ProfileScreen() {
             <Ionicons name="share-social-outline" size={18} color="#FFFFFF" />
           </Pressable>
         </View>
-      </ScrollView>
+      </ScrollSurface>
 
       <HamburgerMenu
         visible={menuOpen}

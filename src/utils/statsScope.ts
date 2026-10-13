@@ -34,6 +34,11 @@ export interface ScopeOption {
   scope: StatsScope;
 }
 
+/** Archived non-competitive periods are lifetime data too. */
+export function hasArchivedStats(seasons: GroupSeasons | undefined): boolean {
+  return (seasons?.count ?? 0) > 0 || seasons?.hasArchivedPeriods === true;
+}
+
 /**
  * The options a club actually has, in the order they are offered.
  *

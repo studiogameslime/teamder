@@ -82,12 +82,15 @@ export function activityLabel(action: string, params: Record<string, unknown> = 
 }
 
 // Never upload names, emails, passwords, search queries, free text or full URLs.
-const KEYS = new Set(['platform', 'intent', 'invite_kind', 'is_guest', 'entry_source', 'resolved_by', 'has_inviter', 'target_type', 'target_id', 'inviter_uid', 'source', 'channel', 'action_kind', 'auth_method', 'method', 'provider', 'is_existing_account', 'required_profile', 'has_draft', 'had_prefill', 'step', 'slide', 'total', 'via', 'direction', 'mode', 'stage', 'prefilled', 'code', 'reason', 'origin', 'action', 'field', 'has_value', 'granted', 'status', 'result', 'context', 'permission_before', 'permission_after', 'inviter_resolved', 'unresolved_reason', 'has_clubs', 'has_games']);
+const KEYS = new Set(['platform', 'intent', 'invite_kind', 'is_guest', 'entry_source', 'entry_channel', 'entry_campaign', 'resolved_by', 'has_inviter', 'target_type', 'target_id', 'inviter_uid', 'source', 'channel', 'action_kind', 'auth_method', 'method', 'provider', 'is_existing_account', 'required_profile', 'has_draft', 'had_prefill', 'step', 'slide', 'total', 'via', 'direction', 'mode', 'stage', 'prefilled', 'code', 'reason', 'origin', 'action', 'field', 'has_value', 'granted', 'status', 'result', 'context', 'permission_before', 'permission_after', 'inviter_resolved', 'unresolved_reason', 'has_clubs', 'has_games']);
 export function safeActivityParams(input: Record<string, unknown>): Record<string, string | number | boolean> {
   const out: Record<string, string | number | boolean> = {};
   for (const [key, value] of Object.entries(input)) {
     if (!KEYS.has(key)) continue;
-    if (typeof value === 'string') out[key] = value.slice(0, 120);
+    if (typeof value === 'string') {
+      if (['entry_channel','entry_campaign'].includes(key) && /https?:\/\/|@|\+?\d[\d -]{6,}/i.test(value)) continue;
+      out[key] = value.slice(0, 120);
+    }
     else if (typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value))) out[key] = value;
   }
   return out;

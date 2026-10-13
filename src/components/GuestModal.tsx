@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // GuestModal — the coach's "add a guest" form. Opens from Game Details
 // and from Live Match (admins only). Captures a name (required, ≤20)
 // and an optional 1–5 estimated rating.
@@ -360,18 +361,15 @@ const styles = StyleSheet.create({
   kavFill: {
     flex: 1,
   },
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
   },
-  card: {
+  card: { ...overlaySurfaces.dialog,
     width: '100%',
     maxWidth: 380,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.md,
   },

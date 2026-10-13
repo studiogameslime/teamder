@@ -45,10 +45,9 @@ describe('the coverage denominator', () => {
     }
   });
 
-  it('falls back to rounds when the counter is absent, never when it is zero', () => {
-    // Absent = an old row the backfill has not reached. Fall back.
+  it('leaves absent and zero coverage unknown', () => {
     const old = toEfficiencyRow(row({ rounds: 10, cleanSheets: 4 }));
-    expect(Math.round(old.cleanSheetPct!)).toBe(40);
+    expect(old.cleanSheetPct).toBeNull();
 
     // Zero = the metric was never measured for this player. Unknowable.
     const never = toEfficiencyRow(row({ rounds: 10, csRounds: 0, cleanSheets: 0 }));
@@ -73,11 +72,11 @@ describe('goals and assists divide by different windows', () => {
     expect(e.assistsPerGame).toBeCloseTo(0.2, 5);
   });
 
-  it('goals+assists use the window where BOTH were recorded', () => {
-    // Not `rounds`: that would credit the combined rate with goal-only
-    // mini-games and overstate exactly the longest-standing players.
+  it('does not divide lifetime goals by a shorter assist window', () => {
     const e = toEfficiencyRow(row({ rounds: 50, goals: 12, assists: 8, asRounds: 40 }));
-    expect(e.gaPerGame).toBeCloseTo(0.5, 5);
+    expect(e.gaPerGame).toBeNull();
+    expect(toEfficiencyRow(row({rounds:50,goals:12,assists:8,asRounds:50})).gaPerGame).toBe(0.4);
+    expect(toEfficiencyRow(row({rounds:50,goals:12,assists:8})).gaPerGame).toBeNull();
   });
 });
 

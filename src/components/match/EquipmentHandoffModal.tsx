@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // EquipmentHandoffModal — shown right after the admin ends the evening of a
 // COMMUNITY game ("סיים ערב"). Records who took the club's ball(s) and jerseys
 // home, so before the next game everyone sees who currently holds them. Both
@@ -189,11 +190,8 @@ function EquipmentChoiceRow({ player, hint, ballOn, jerseyOn, onBall, onJerseys 
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  backdrop: { backgroundColor: overlayTheme.backdrop,  flex: 1,  justifyContent: 'flex-end' },
+  sheet: { ...overlaySurfaces.sheet,
     padding: spacing.lg,
     gap: spacing.sm,
     maxHeight: '82%',
@@ -245,7 +243,7 @@ const styles = StyleSheet.create({
   },
   toggleBallOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   toggleJerseyOn: { backgroundColor: '#7C3AED', borderColor: '#7C3AED' },
-  footer: { flexDirection: 'row-reverse', gap: spacing.sm, marginTop: spacing.xs },
+  footer: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
   btn: { flex: 1, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: 'center' },
   btnSave: { backgroundColor: colors.primary },
   btnSaveText: { ...typography.bodyBold, color: '#FFFFFF', fontWeight: '800' },

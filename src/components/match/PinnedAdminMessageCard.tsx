@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // PinnedAdminMessageCard — admin-pinned announcement at the top of
 // MatchDetails. Three render states:
 //
@@ -316,15 +317,12 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     marginTop: 2,
   },
-  modalBackdrop: {
+  modalBackdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
     paddingHorizontal: spacing.lg,
   },
-  modalSheet: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+  modalSheet: { ...overlaySurfaces.dialog,
     padding: spacing.lg,
     gap: spacing.sm,
   },

@@ -538,8 +538,6 @@ function recordsOf(input: RoundSummaryInput): SummaryEvent[] {
     // ── personal ──
     const broke: string[] = [];
     const equalled: string[] = [];
-    let prevOfBroke = 0;
-    let prevOfEqualled = 0;
     for (const p of eligible) {
       const v = metricValue(p, metric);
       if (v <= 0) continue;
@@ -548,10 +546,8 @@ function recordsOf(input: RoundSummaryInput): SummaryEvent[] {
       if (typeof prev !== 'number') continue; // no baseline → not a record
       if (v > prev) {
         broke.push(p.userId);
-        prevOfBroke = Math.max(prevOfBroke, prev);
       } else if (v === prev && prev > 0) {
         equalled.push(p.userId);
-        prevOfEqualled = Math.max(prevOfEqualled, prev);
       }
     }
     // Only the strongest personal story per metric — one line, not a roll-call.
@@ -561,7 +557,10 @@ function recordsOf(input: RoundSummaryInput): SummaryEvent[] {
         (p) => metricValue(p, metric),
       );
       if (top) {
-        out.push({ type: 'personal_record', metric, userIds: top.userIds, value: top.value, previousValue: prevOfBroke, tied: false });
+        // A shared story has one baseline: use the highest baseline among its
+        // selected players only, never a record belonging to an omitted player.
+        const previousValue = Math.max(...top.userIds.map((uid) => input.personalBests[uid][metric] ?? 0));
+        out.push({ type: 'personal_record', metric, userIds: top.userIds, value: top.value, previousValue, tied: false });
       }
     } else if (equalled.length > 0) {
       const top = leaderOf(
@@ -569,7 +568,7 @@ function recordsOf(input: RoundSummaryInput): SummaryEvent[] {
         (p) => metricValue(p, metric),
       );
       if (top) {
-        out.push({ type: 'personal_record', metric, userIds: top.userIds, value: top.value, previousValue: prevOfEqualled, tied: true });
+        out.push({ type: 'personal_record', metric, userIds: top.userIds, value: top.value, previousValue: top.value, tied: true });
       }
     }
   }

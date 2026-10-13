@@ -88,6 +88,15 @@ const KIND_STYLE: Record<
   wall: { accent: clubAccent.purple, icon: 'shield-checkmark' },
 };
 
+export function ChemistryLoadNotice({ failed, onRetry }: { failed: boolean; onRetry: () => void }) {
+  return <View style={styles.loadNotice} accessibilityLiveRegion="polite">
+    <Text style={styles.empty}>{failed ? 'לא הצלחנו לטעון את נתוני הצמדים.' : 'טוענים את נתוני הצמדים…'}</Text>
+    {failed ? <Pressable onPress={onRetry} accessibilityRole="button" style={styles.retry}>
+      <Text style={styles.retryText}>נסה שוב</Text>
+    </Pressable> : null}
+  </View>;
+}
+
 /**
  * `pairs` decides WHICH window this section describes.
  *
@@ -118,24 +127,31 @@ export function ChemistrySection({
    */
   seasonScoped?: boolean;
 }) {
-  const [data, setData] = useState<ClubChemistry | null>(null);
+  const [loaded, setLoaded] = useState<{ groupId: string; source: typeof pairs; data: ClubChemistry | null; failed: boolean } | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [people, setPeople] = useState<Record<string, PairPerson>>({});
   const [open, setOpen] = useState<[string, string] | null>(null);
 
   useEffect(() => {
     let alive = true;
+    setLoaded(null);
+    setPeople({});
+    setOpen(null);
     (async () => {
       // `pairs === undefined` means "fetch the live ones"; `null` means the
       // caller has a scope selected whose pairs have not arrived yet, and it
       // must NOT fall through to the live fetch — that would put the running
       // season's chemistry under a closed season's heading, which is the
       // failure this screen has already had once with its table.
+      try {
+      // null is a scope still loading, never an empty result or a live read.
+      if (pairs === null) return;
       const c =
         pairs === undefined
-          ? await clubChemistryService.get(groupId)
+          ? await clubChemistryService.get(groupId, true)
           : { picks: pickChemistry(pairs ?? {}), pairs: pairs ?? {}, since: null };
       if (!alive) return;
-      setData(c);
+      setLoaded({ groupId, source: pairs, data: c, failed: false });
       // Every name the section needs, in ONE batched read. Twelve players over
       // six cards would otherwise be twelve round trips on a screen that is
       // already fetching several other things.
@@ -155,18 +171,25 @@ export function ChemistrySection({
         map[u.id] = { id: u.id, name: u.name, photoUrl: u.photoUrl, avatarId: u.avatarId };
       }
       setPeople(map);
+      } catch {
+        if (alive) setLoaded({ groupId, source: pairs, data: null, failed: true });
+      }
     })();
     return () => {
       alive = false;
     };
-  }, [groupId, pairs]);
+  }, [groupId, pairs, attempt]);
+
+  // Hide a previous club/scope synchronously, before its cleanup effect runs.
+  const current = loaded?.groupId === groupId && loaded.source === pairs ? loaded : null;
+  const data = current?.data ?? null;
 
   const person = useCallback(
     (id: string): PairPerson | null => people[id] ?? null,
     [people],
   );
 
-  if (!data) return null;
+  if (!data) return <ChemistryLoadNotice failed={current?.failed === true} onRetry={() => setAttempt(x => x + 1)} />;
   if (data.picks.length === 0) {
     return <Text style={styles.empty}>{he.chemistryEmpty}</Text>;
   }
@@ -277,6 +300,9 @@ export function ChemistrySection({
 }
 
 const styles = StyleSheet.create({
+  loadNotice: { gap: spacing.sm },
+  retry: { alignSelf: 'flex-start', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: 12, backgroundColor: clubCardTint(clubAccent.blue) },
+  retryText: { ...typography.label, color: colors.primary, textAlign: RTL_LABEL_ALIGN },
   // Centred, so an odd fifth card sits in the middle of its own row instead
   // of hanging at one edge beside a hole. A full row of two is unaffected —
   // the pair already fills the width.

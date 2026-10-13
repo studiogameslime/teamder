@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // LiveScoreboardCard — the merged top card for the advanced live match:
 // the timer in the CENTER, flanked by each on-pitch team's live score and an
 // "הוסף גול" button (admin only). A collapsible scorer log sits below.
@@ -8,7 +9,8 @@
 // listener.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import Animated, {
   cancelAnimation,
@@ -174,7 +176,7 @@ export function LiveScoreboardCard(props: Props) {
   // score) and the ✕ is a tiny target next to other rows — confirm first.
   const undo = (goalId: string) => {
     logEvent(AnalyticsEvent.GoalDeletePrompted, { gameId });
-    Alert.alert('מחיקת גול', 'למחוק את הגול מהיומן?', [
+    appAlert('מחיקת גול', 'למחוק את הגול מהיומן?', [
       { text: 'ביטול', style: 'cancel' },
       { text: 'מחק', style: 'destructive', onPress: () => doUndo(goalId) },
     ]);
@@ -640,11 +642,11 @@ const styles = StyleSheet.create({
   logName: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, fontWeight: '600' },
   logMin: { ...typography.caption, color: colors.textMuted, fontVariant: ['tabular-nums'], minWidth: 26 },
   // ── Scorer picker modal ──
-  backdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  sheet: { width: '100%', maxWidth: 380, backgroundColor: colors.bg, borderRadius: 24, padding: spacing.lg, gap: spacing.sm },
+  backdrop: { backgroundColor: overlayTheme.backdrop,  flex: 1,  alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  sheet: { ...overlaySurfaces.dialog,  width: '100%', maxWidth: 380,   padding: spacing.lg, gap: spacing.sm },
   sheetTitle: { ...typography.h2, color: colors.text, fontWeight: '800', textAlign: 'center', marginBottom: spacing.xs },
   // ── Goal wizard (StepIndicator header flush at top + padded body) ──
-  wizSheet: { width: '100%', maxWidth: 380, backgroundColor: colors.bg, borderRadius: 24, overflow: 'hidden' },
+  wizSheet: { ...overlaySurfaces.dialog,  width: '100%', maxWidth: 380,   overflow: 'hidden' },
   wizBody: { padding: spacing.lg, gap: spacing.sm },
   wizNav: {
     flexDirection: 'row-reverse',

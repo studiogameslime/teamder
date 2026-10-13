@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // InviteMembersSheet — the beat straight after a club is created.
 //
 // WHY IT EXISTS. 29 of the 53 real clubs in production have exactly ONE member:
@@ -74,10 +75,7 @@ export function InviteMembersSheet({ visible, clubName, onShare, onDismiss }: Pr
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+  sheet: { ...overlaySurfaces.sheet,
     padding: spacing.lg,
     paddingBottom: spacing.xl,
     gap: spacing.sm,

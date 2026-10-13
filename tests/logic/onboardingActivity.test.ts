@@ -36,6 +36,7 @@ test('catalog copies stay identical; arbitrary actions and private field values 
   for (const path of ['functions/src/onboardingActivityCatalog.ts', 'pulse/src/services/onboardingActivityCatalog.ts']) expect(fs.readFileSync(path, 'utf8').replace(/\r/g, '')).toBe(source);
   expect(safeActivityParams({ password: 'secret', email: 'private', name: 'private', query: 'private', intent: 'invite', slide: 2, reason: NaN })).toEqual({ intent: 'invite', slide: 2 });
   expect(ONBOARDING_ACTIONS.entry_intent_selected).toBeDefined();
+  expect(safeActivityParams({entry_channel:'https://private.test',entry_campaign:'a@b.test'})).toEqual({});
 });
 test('replaying a timed-out batch acknowledges it without duplicating history or its quota', async () => {
   await ingest(request()); await ingest(request());
@@ -63,7 +64,7 @@ test('different milestone choices send pushes, but repeated taps and trigger rep
 
 test('all other onboarding actions remain history-only, including existing registration/creation alerts', async () => {
   mockDocs.set('adminConfig/push', { tokens: ['device'] });
-  for (const action of Object.keys(ONBOARDING_ACTIONS).filter(action => !['entry_source_resolved', 'entry_intent_selected'].includes(action))) {
+  for (const action of Object.keys(ONBOARDING_ACTIONS).filter(action => !['entry_source_resolved', 'entry_intent_selected','auth_completed','sign_in_success'].includes(action))) {
     const ref = mockRef(`onboardingActivity/${action}`);
     mockDocs.set(ref.path, { ...event, action, uid: 'real-user' });
     await deliver({ data: { ref }, params: { eventId: action } });
@@ -72,15 +73,34 @@ test('all other onboarding actions remain history-only, including existing regis
   expect(mockSends).not.toHaveBeenCalled();
 });
 
-test('guest entry sends one push per visit; existing-account entry does not', async () => {
+test('entry is sent once per visit for guests and restored accounts', async () => {
   mockDocs.set('adminConfig/push', { tokens: ['device'] });
   for (const [id, guest] of [['entry-one', true], ['entry-again', true], ['member', false]] as const) {
     const ref = mockRef(`onboardingActivity/${id}`);
-    mockDocs.set(ref.path, { ...event, action: 'entry_source_resolved', params: { is_guest: guest, has_inviter: true }, uid: 'real-user' });
+    mockDocs.set(ref.path, { ...event, sessionId:guest?event.sessionId:'member-session',action: 'entry_source_resolved', params: { is_guest: guest, entry_source:'club_link',has_inviter: false }, uid: 'real-user' });
     await deliver({ data: { ref }, params: { eventId: id } });
   }
+  expect(mockSends).toHaveBeenCalledTimes(2);
+  expect(mockSends.mock.calls[0][0].notification.body).toContain('מקור: קישור למועדון');
+  expect(mockSends.mock.calls[1][0].notification.body).toContain('משתמש מחובר ללא שם');
+});
+
+test('authenticated success has one milestone across both login paths, guest auth remains history only',async()=>{
+  mockDocs.set('adminConfig/push',{tokens:['device']});
+  mockDocs.set('users/real-user',{name:'מתן'});
+  for(const [id,action,params] of [
+    ['guest','sign_in_success',{method:'guest'}],
+    ['authenticated','auth_completed',{auth_method:'google',entry_source:'personal_invite'}],
+    ['again','sign_in_success',{method:'google',entry_source:'personal_invite'}],
+  ] as const){
+    const ref=mockRef(`onboardingActivity/${id}`);
+    mockDocs.set(ref.path,{...event,action,params,uid:'real-user',anonymous:false});
+    await deliver({data:{ref},params:{eventId:id}});
+  }
   expect(mockSends).toHaveBeenCalledTimes(1);
-  expect(mockSends.mock.calls[0][0].notification.body).toContain('נכנס לאפליקציה דרך הזמנה');
+  expect(mockSends.mock.calls[0][0].notification).toEqual({title:'התחברות לחשבון',body:expect.stringContaining('מתן')});
+  expect(mockDocs.get('onboardingActivity/authenticated').pushBody).toContain('באמצעות גוגל');
+  expect(mockDocs.get('onboardingActivity/guest').pushStatus).toBe('history_only');
 });
 test('mute preserves history and does not send push', async () => {
   mockDocs.set('adminConfig/prefs', { onboardingActivity: false });

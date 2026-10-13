@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // LiveMatchScreen — pure match timer.
 //
 // Deliberately minimal: NO teams, NO "כוחות"/balancing, NO formations,
@@ -2616,15 +2617,12 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   stoppagesChipText: { fontSize: 13, color: '#475569', fontWeight: '700' },
-  stoppagesSheet: {
+  stoppagesSheet: { ...overlaySurfaces.sheet,
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
     maxHeight: '70%',
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
     paddingTop: 8,
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -2760,17 +2758,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingVertical: 18,
   },
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
   },
-  modalCard: {
+  modalCard: { ...overlaySurfaces.dialog,
     width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
     padding: 22,
     gap: 12,
   },

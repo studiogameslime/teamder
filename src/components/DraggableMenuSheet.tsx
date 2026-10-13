@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, PanResponder, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
@@ -67,8 +68,8 @@ export function DraggableMenuSheet({ visible, onClose, children }: {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15,23,42,0.42)' },
-  sheet: { maxHeight: '88%', backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
+  backdrop: { backgroundColor: overlayTheme.backdrop,  flex: 1, justifyContent: 'flex-end',  },
+  sheet: { ...overlaySurfaces.sheet,  maxHeight: '88%',    overflow: 'hidden' },
   safe: { flexShrink: 1 },
   header: { height: 48, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 12 },
   dragArea: { position: 'absolute', top: 0, bottom: 0, start: 56, end: 56, alignItems: 'center', paddingTop: 12 },

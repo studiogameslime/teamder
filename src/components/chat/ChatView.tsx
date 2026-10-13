@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // ChatView — the shared chat surface for BOTH scopes (game + community).
 // The two screen wrappers resolve a title + moderator flag and hand the
 // scope + parentId here; everything else (listen, render, send, delete)
@@ -502,7 +503,7 @@ export function ChatView({
       />
       {/* Android needs a behaviour too — but only on the versions where the
           manifest's `adjustResize` has stopped working.
-          
+
           The app is edge-to-edge, and from API 35 the system no longer resizes
           an edge-to-edge window for the IME: the app draws behind the keyboard
           and must make room itself. With `behavior` left undefined this view
@@ -510,7 +511,7 @@ export function ChatView({
           report). Below API 35 `adjustResize` still resizes the window, and
           adding padding on top of that would lift the composer TWICE — so
           those versions keep the old behaviour, which was never broken.
-          
+
           `padding` rather than `height`: it pads the bottom by the keyboard's
           own height from the keyboard events, without re-laying-out the list. */}
       {statusBanner ? typeof statusBanner === 'string' ? <View style={{marginHorizontal:16,marginTop:10,padding:12,borderRadius:12,backgroundColor:'#EAF2FF',flexDirection:'row',alignItems:'center',gap:8}}><Text style={{flex:1,fontSize:13,fontWeight:'600',color:'#2457A6',textAlign:RTL_LABEL_ALIGN}}>{statusBanner}</Text><Ionicons name={readOnly?'lock-closed-outline':'time-outline'} size={20} color='#2563EB'/></View> : statusBanner : null}
@@ -895,19 +896,15 @@ function ChatMembersSheet({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
-  membersBackdrop: {
+  membersBackdrop: { backgroundColor: overlayTheme.backdrop,
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  membersSheet: {
+  membersSheet: { ...overlaySurfaces.sheet,
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
     maxHeight: '70%',
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
     paddingTop: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
@@ -1045,7 +1042,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   // Floating context menu next to a message.
-  menuBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.18)' },
+  menuBackdrop: { backgroundColor: overlayTheme.popoverBackdrop,  flex: 1,  },
   actionMenu: {
     position: 'absolute',
     backgroundColor: colors.surface,

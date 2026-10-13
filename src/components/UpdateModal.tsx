@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
@@ -72,15 +73,12 @@ export function UpdateModal({ type, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+  card: { ...overlaySurfaces.dialog,
     padding: spacing.xl,
     gap: spacing.sm,
   },

@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // RegistrationConflictModal — shown when the user tries to join a game
 // while already registered for an overlapping one. Surfaces the clashing
 // game and the two ways out: cancel the other registration, or go look
@@ -152,15 +153,12 @@ export function RegistrationConflictModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+  card: { ...overlaySurfaces.dialog,
     padding: spacing.xl,
     gap: spacing.md,
   },

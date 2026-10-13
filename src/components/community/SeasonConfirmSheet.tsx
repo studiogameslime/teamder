@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // What switching seasons on will do, spelled out before it happens.
 //
 // This is the last screen before an irreversible change to a club's whole
@@ -44,6 +45,7 @@ export function SeasonConfirmSheet({
   months,
   rounds,
   seasonNo,
+  reactivation = false,
   busy,
   onCancel,
   onConfirm,
@@ -63,6 +65,7 @@ export function SeasonConfirmSheet({
    * archived and reset — a plan for two seasons it finished months ago.
    */
   seasonNo: number;
+  reactivation?: boolean;
   busy: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -87,6 +90,10 @@ export function SeasonConfirmSheet({
             style={styles.body}
             contentContainerStyle={styles.bodyInner}
           >
+            {reactivation ? <View style={styles.restartNotice}>
+              <Text style={styles.restartTitle}>{he.seasonsRestartTitle}</Text>
+              <Text style={styles.note}>{he.seasonsRestartBody}</Text>
+            </View> : null}
             <Row
               label={he.seasonsConfirmMethod}
               value={
@@ -241,19 +248,16 @@ export function SeasonConfirmSheet({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
   },
-  sheet: {
+  sheet: { ...overlaySurfaces.dialog,
     width: '100%',
     maxWidth: 420,
     maxHeight: '85%',
-    backgroundColor: colors.bg,
-    borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.md,
   },
@@ -289,4 +293,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
   },
   actions: { gap: spacing.sm },
+  restartNotice: {padding:spacing.md,borderRadius:radius.md,backgroundColor:'#EFF6FF',gap:spacing.xs},
+  restartTitle: {...typography.bodyBold,color:colors.primary,textAlign:RTL_LABEL_ALIGN},
 });

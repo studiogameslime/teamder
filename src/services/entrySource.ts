@@ -37,14 +37,21 @@ export type EntrySource =
   | 'unknown';
 
 let current: EntrySource = 'unknown';
+let context: Record<string, string | boolean> = {};
 
 /** No identity yet is unresolved, never evidence of an existing member. */
 export function entryGuestAfterHydration(hydrated: boolean, user: { id: string; isGuest?: boolean } | null): boolean | null {
   return hydrated && user?.id ? user.isGuest === true : null;
 }
 
-export function setEntrySource(source: EntrySource): void {
+export function setEntrySource(source: EntrySource, details: Record<string, string | boolean | undefined> = {}): void {
   current = source;
+  context = Object.fromEntries(Object.entries(details).filter((entry): entry is [string, string | boolean] => entry[1] !== undefined));
+}
+
+/** Current launch only: never infer this from a previous install's attribution. */
+export function getEntryContext(): Record<string, string | boolean> {
+  return { ...context, entry_source: current };
 }
 
 export function getEntrySource(): EntrySource {
@@ -54,4 +61,5 @@ export function getEntrySource(): EntrySource {
 /** Visible for tests. */
 export function resetEntrySource(): void {
   current = 'unknown';
+  context = {};
 }

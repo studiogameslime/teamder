@@ -2,8 +2,9 @@ import * as admin from 'firebase-admin';
 import { createHash } from 'crypto';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
-import { ONBOARDING_ACTIONS, safeActivityParams, activityLabel } from './onboardingActivityCatalog';
+import { ONBOARDING_ACTIONS, safeActivityParams } from './onboardingActivityCatalog';
 import { onboardingPushMilestone } from './onboardingPushPolicy';
+import { onboardingPushContent } from './onboardingPushContent';
 
 /** Authenticated anonymous sessions are valid; UID always comes from the token. */
 export const recordOnboardingActivity = onCall({ maxInstances: 5 }, async request => {
@@ -59,7 +60,7 @@ export const onOnboardingActivity = onDocumentCreated({ document: 'onboardingAct
   const current = (await ref.get()).data();
   if (!current || ['sent', 'muted', 'history_only', 'milestone_duplicate'].includes(current.pushStatus)) return;
   const milestone = onboardingPushMilestone(current.action, current.params);
-  if (!milestone) { await ref.update({ pushStatus: 'history_only' }); return; }
+  if (!milestone || (milestone === 'authenticated' && current.anonymous === true)) { await ref.update({ pushStatus: 'history_only' }); return; }
   // A repeated tap/view is still in history, but only one push for this milestone per visit.
   const marker = db.collection('onboardingMilestonePushes').doc(createHash('sha256').update(`${current.sessionId}:${milestone}`).digest('hex'));
   const ownsMilestone = await db.runTransaction(async tx => {
@@ -75,10 +76,7 @@ export const onOnboardingActivity = onDocumentCreated({ document: 'onboardingAct
   const tokens = [...new Set<string>((config?.tokens ?? []).filter((v: unknown) => typeof v === 'string' && v.length))];
   if (!tokens.length) { await ref.update({ pushStatus: 'no_devices' }); return; }
   const user = (await db.doc(`users/${current.uid}`).get()).data();
-  const who = typeof user?.name === 'string' && user.name.trim() ? user.name.trim().slice(0, 60) : 'אורח';
-  const summary = milestone === 'entry'
-    ? `נכנס לאפליקציה${current.params?.has_inviter ? ' דרך הזמנה' : ''}`
-    : activityLabel(current.action, current.params);
+  const content = onboardingPushContent({ action: current.action, actorName: current.actorName, anonymous: current.anonymous, params: current.params }, user);
   const tokenKey = (token: string) => createHash('sha256').update(token).digest('hex');
   const delivered = new Set<string>(Array.isArray(current.deliveredTargets) ? current.deliveredTargets : []);
   const permanent = new Set<string>(Array.isArray(current.invalidTargets) ? current.invalidTargets : []);
@@ -88,7 +86,7 @@ export const onOnboardingActivity = onDocumentCreated({ document: 'onboardingAct
     return;
   }
   const response = await admin.messaging().sendEachForMulticast({ tokens: pending,
-    notification: { title: 'תהליך ההצטרפות', body: `${who}: ${summary}` },
+    notification: content,
     data: { type: 'onboardingActivity', eventId: event.params.eventId, sessionId: current.sessionId, uid: current.uid },
     android: { priority: 'high', notification: { channelId: 'onboarding', sound: 'default', tag: event.params.eventId } },
     apns: { headers: { 'apns-collapse-id': createHash('sha256').update(event.params.eventId).digest('hex') }, payload: { aps: { sound: 'default' } } },
@@ -102,6 +100,7 @@ export const onOnboardingActivity = onDocumentCreated({ document: 'onboardingAct
     else { transient = true; transientCount++; }
   });
   await ref.update({ pushStatus: transient ? 'retrying' : delivered.size ? 'sent' : 'no_devices',
+    pushTitle: content.title, pushBody: content.body,
     deliveredTargets: [...delivered], invalidTargets: [...permanent],
     deliveredDevices: delivered.size, failedDevices: permanent.size + transientCount, pushAttemptAt: Date.now() });
   if (transient) throw new Error('Transient onboarding push delivery failure');

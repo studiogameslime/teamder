@@ -124,7 +124,7 @@ export function mockPairCompare(input: PairCompareInput): PairCompareModel {
     mk('assists', 'בישולים', rowA.assists, rowB.assists, 'int'),
     mk('wins', 'ניצחונות', rowA.wins, rowB.wins, 'int'),
     mk('losses', 'הפסדים', rowA.losses, rowB.losses, 'int'),
-    mk('winPct', 'אחוז ניצחון', winPct(rowA.wins, rowA.losses), winPct(rowB.wins, rowB.losses), 'pct'),
+    mk('winPct', 'אחוז ניצחון', winPct(rowA.wins, rowA.losses, Math.max(0,rowA.rounds-rowA.wins-rowA.losses)), winPct(rowB.wins, rowB.losses, Math.max(0,rowB.rounds-rowB.wins-rowB.losses)), 'pct'),
     mk('rounds', 'משחקונים', rowA.rounds, rowB.rounds, 'int'),
     mk('games', 'מחזורים', rowA.games, rowB.games, 'int'),
     mk('gpg', 'ממוצע גולים למחזור', gpg(rowA), gpg(rowB), 'avg1'),
@@ -143,7 +143,7 @@ export function mockPairCompare(input: PairCompareInput): PairCompareModel {
     pair,
     pairKnown: true,
     together: {
-      winPct: winPct(pair.winsTogether, pair.lossesTogether),
+      winPct: winPct(pair.winsTogether, pair.lossesTogether, pair.tiesTogether),
       cleanSheetPct:
         pair.roundsTogether > 0
           ? Math.round((pair.cleanSheetsTogether / pair.roundsTogether) * 100)
@@ -151,8 +151,8 @@ export function mockPairCompare(input: PairCompareInput): PairCompareModel {
       assistsTotal: pair.assistsViewerToOther + pair.assistsOtherToViewer,
     },
     h2h: {
-      winPctViewer: winPct(pair.winsViewer, pair.winsOther),
-      winPctOther: winPct(pair.winsOther, pair.winsViewer),
+      winPctViewer: winPct(pair.winsViewer, pair.winsOther, pair.tiesAgainst),
+      winPctOther: winPct(pair.winsOther, pair.winsViewer, pair.tiesAgainst),
       leader:
         pair.winsViewer > pair.winsOther
           ? 'a'

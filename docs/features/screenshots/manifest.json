@@ -6093,5 +6093,761 @@
       "העימוד לחנות מוסיף כותרות מחוץ לצילום ומסיר את פסי מערכת ההפעלה."
     ],
     "sha256": "c8fb0541ac7606e770d2c7171eed451732bba694871d71e784e1533178c1a384"
+  },
+  {
+    "file": "home-carousel-equal-scores-2026-10-12.png",
+    "source": "artifacts/home-carousel-height/fixed-scores.png",
+    "platform": "Android",
+    "environment": "אמולטור עם נתוני הדגמה מנותקים",
+    "sourceCommit": "b8a8ccf4 עם תיקון מקומי",
+    "captured": "2026-10-12",
+    "notes": [
+      "גובה הכרטיס 703 פיקסלים; כרטיס הפעולה מתחת נשאר במקום במעבר בין שלושת הכרטיסים.",
+      "אייפון וגופן מוגדל לא הורצו."
+    ],
+    "sha256": "86c56846c2f3996c707e4ac7f85b7b847ec58ed13321dacad6a755b89b2416b8"
+  },
+  {
+    "file": "home-carousel-equal-numbers-2026-10-12.png",
+    "source": "artifacts/home-carousel-height/fixed-numbers.png",
+    "platform": "Android",
+    "environment": "אמולטור עם נתוני הדגמה מנותקים",
+    "sourceCommit": "b8a8ccf4 עם תיקון מקומי",
+    "captured": "2026-10-12",
+    "notes": [
+      "גובה הכרטיס 703 פיקסלים; כרטיס הפעולה מתחת נשאר במקום במעבר בין שלושת הכרטיסים.",
+      "אייפון וגופן מוגדל לא הורצו."
+    ],
+    "sha256": "025bafc09113ccdfd494531cd0b5bc297cae0854dd9ee1e4ea6d82ce23d25af7"
+  },
+  {
+    "file": "home-carousel-equal-partner-2026-10-12.png",
+    "source": "artifacts/home-carousel-height/fixed-partner.png",
+    "platform": "Android",
+    "environment": "אמולטור עם נתוני הדגמה מנותקים",
+    "sourceCommit": "b8a8ccf4 עם תיקון מקומי",
+    "captured": "2026-10-12",
+    "notes": [
+      "גובה הכרטיס 703 פיקסלים; כרטיס הפעולה מתחת נשאר במקום במעבר בין שלושת הכרטיסים.",
+      "אייפון וגופן מוגדל לא הורצו."
+    ],
+    "sha256": "34b5fd4e656546a296d6060259a0badbc632568551626bfb534056526b9a3b78"
+  },
+  {
+    "file": "pulse-onboarding-push-copy-2026-10-12.png",
+    "source": "artifacts/home-carousel-height/onboarding-notifications-proof.png",
+    "platform": "Android",
+    "environment": "התראות דמו מקומיות באמולטור מתוך פלט פונקציית התוכן",
+    "sourceCommit": "b8a8ccf4 עם תיקון מקומי",
+    "captured": "2026-10-12",
+    "notes": [
+      "נבדקו נוסח, שם בעברית ובשם לועזי ומקור קישור. ההתראות נוצרו מקומית באמצעות כלי מערכת אנדרואיד.",
+      "לא נשלח פוש חי, לא נבדק מקבל ההתראות בפולס ולא נבדק אייפון."
+    ],
+    "sha256": "5660f89f381e2598322f887fcc31612fd6b8ec0e78a63c38408f22f9c6d78a21"
+  },
+  {
+    "file": "overlays-confirm-2026-10-12.png",
+    "source": "artifacts/home-carousel-height/night-confirm.png",
+    "platform": "Android",
+    "environment": "אימולטור פיתוח מנותק, רכיב אמיתי עם נתוני בדיקה מקומיים",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "נבדקו חזותית עברית, מעטפת ותוכן ברכיב המצולם. לא נשמרו דירוגים ולא בוצעו פעולות עסקיות.",
+      "הצילום אינו מוכיח שכל מופעי החלוניות באפליקציה הורצו. אייפון, גופן מוגדל, מקלדת ומצב כהה טרם הורצו."
+    ],
+    "sha256": "ef20b32e288c05d279e4f250b32969dacb812bdf022fcde5e4cb5738ada9c15c"
+  },
+  {
+    "file": "overlays-destructive-2026-10-12.png",
+    "source": "artifacts/night-capture-overlays.cjs",
+    "platform": "Android",
+    "environment": "אימולטור פיתוח מנותק, רכיב אמיתי עם נתוני בדיקה מקומיים",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "נבדקו חזותית עברית, מעטפת ותוכן ברכיב המצולם. לא נשמרו דירוגים ולא בוצעו פעולות עסקיות.",
+      "הצילום אינו מוכיח שכל מופעי החלוניות באפליקציה הורצו. אייפון, גופן מוגדל, מקלדת ומצב כהה טרם הורצו."
+    ],
+    "sha256": "f007def587a2af5ff83dd6a99597e074b2a2a721b48535cd9e825ecff061abd3"
+  },
+  {
+    "file": "overlays-filter-2026-10-12.png",
+    "source": "artifacts/night-capture-overlays.cjs",
+    "platform": "Android",
+    "environment": "אימולטור פיתוח מנותק, רכיב אמיתי עם נתוני בדיקה מקומיים",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "נבדקו חזותית עברית, מעטפת ותוכן ברכיב המצולם. לא נשמרו דירוגים ולא בוצעו פעולות עסקיות.",
+      "הצילום אינו מוכיח שכל מופעי החלוניות באפליקציה הורצו. אייפון, גופן מוגדל, מקלדת ומצב כהה טרם הורצו."
+    ],
+    "sha256": "7631021c9fc76d46e8c8d6731e31b12c5f27a95360e68a91026d4423a80235de"
+  },
+  {
+    "file": "overlays-score-2026-10-12.png",
+    "source": "artifacts/night-capture-overlays.cjs",
+    "platform": "Android",
+    "environment": "אימולטור פיתוח מנותק, רכיב אמיתי עם נתוני בדיקה מקומיים",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "נבדקו חזותית עברית, מעטפת ותוכן ברכיב המצולם. לא נשמרו דירוגים ולא בוצעו פעולות עסקיות.",
+      "הצילום אינו מוכיח שכל מופעי החלוניות באפליקציה הורצו. אייפון, גופן מוגדל, מקלדת ומצב כהה טרם הורצו."
+    ],
+    "sha256": "c098d7166ad2ea84cc570c08ca88395cb56c579cf9ecb5001a00c15f434130b9"
+  },
+  {
+    "file": "overlays-rating-2026-10-12.png",
+    "source": "artifacts/night-capture-overlays.cjs",
+    "platform": "Android",
+    "environment": "אימולטור פיתוח מנותק, רכיב אמיתי עם נתוני בדיקה מקומיים",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "נבדקו חזותית עברית, מעטפת ותוכן ברכיב המצולם. לא נשמרו דירוגים ולא בוצעו פעולות עסקיות.",
+      "הצילום אינו מוכיח שכל מופעי החלוניות באפליקציה הורצו. אייפון, גופן מוגדל, מקלדת ומצב כהה טרם הורצו."
+    ],
+    "sha256": "d3c804ee9bbd581a5a7bffce0e7373a38df47cbb998fb52cdd52cd77f5300caa"
+  },
+  {
+    "file": "overlays-guest-2026-10-12.png",
+    "source": "artifacts/night-capture-overlays.cjs",
+    "platform": "Android",
+    "environment": "אימולטור פיתוח מנותק, רכיב אמיתי עם נתוני בדיקה מקומיים",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "נבדקו חזותית עברית, מעטפת ותוכן ברכיב המצולם. לא נשמרו דירוגים ולא בוצעו פעולות עסקיות.",
+      "הצילום אינו מוכיח שכל מופעי החלוניות באפליקציה הורצו. אייפון, גופן מוגדל, מקלדת ומצב כהה טרם הורצו."
+    ],
+    "sha256": "dfae2f55d364289ad2f5cb6ecde7762217e174f3142dbe53c862ddf36b6ace62"
+  },
+  {
+    "file": "overlays-info-tip-2026-10-12.png",
+    "source": "artifacts/home-carousel-height/night-info-tip.png",
+    "platform": "Android",
+    "environment": "רכיב מידע אמיתי מעל חלונית דמו מנותקת",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-12",
+    "notes": [
+      "נבדקו יישור עברית, מיקום החץ לאייקון ומעטפת התפריט הצף.",
+      "הכותרת מאחור היא תוכן בדיקה; לא בוצעה פעולה עסקית. אייפון, גופן מוגדל ועוגן בתחתית המסך טרם נבדקו."
+    ],
+    "sha256": "18a836f550887d7669c838cff7ef7db1155f3c03a9a8c8538aa103deb47e5bc1"
+  },
+  {
+    "file": "overlays-home-guide-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-guide-clean.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בנתוני דמו מנותקים",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "נבדקו עברית, סמלים וגבולות המעטפת. הפונקציות בדמו אינן שומרות דבר.",
+      "לא נוצר מחזור ולא נבדק בשרת. גופן רגיל בלבד; אייפון ומקלדת לא נבדקו."
+    ],
+    "sha256": "b8a299dca6866f214f711e28cd3000f2b91235a43cd87436f38f0dee5babf43c"
+  },
+  {
+    "file": "overlays-round-review-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-review.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בנתוני דמו מנותקים",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "נבדקו עברית, סמלים וגבולות המעטפת. הפונקציות בדמו אינן שומרות דבר.",
+      "לא נוצר מחזור ולא נבדק בשרת. גופן רגיל בלבד; אייפון ומקלדת לא נבדקו."
+    ],
+    "sha256": "5787c254efa58d40a7b3591cf81b1b6ff77ba73171d327e77e8ffa3340dec71b"
+  },
+  {
+    "file": "overlays-round-review-expanded-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-review-expanded.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בנתוני דמו מנותקים",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "נבדקו עברית, סמלים וגבולות המעטפת. הפונקציות בדמו אינן שומרות דבר.",
+      "לא נוצר מחזור ולא נבדק בשרת. גופן רגיל בלבד; אייפון ומקלדת לא נבדקו."
+    ],
+    "sha256": "be5ab21aca85e881415517c0876d6f444385687f1a8f031caae5f36924cedec2"
+  },
+  {
+    "file": "overlays-round-review-large-font-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-review-large.png",
+    "platform": "Android",
+    "environment": "רכיב תקציר אמיתי בדמו מנותק; גופן 130%",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "אומת לאחר פתיחה קרה של התהליך; התגים והשורה המתוזמנת עברו שורה ללא אובדן תוכן, והכפתורים נגישים.",
+      "בהחלפת הגופן בזמן שהתהליך חי נצפה חיתוך טקסט גם מאחורי החלונית. אינו מוכח כתקלה ברכיב בלבד.",
+      "הגופן הוחזר ל־1.0 והתהליך נפתח מחדש. אין אישור לאייפון, לקורא מסך או לכל גודל גופן."
+    ],
+    "sha256": "d019a124fd920eeff05f066e2e1e04b8a982cae93bd23be1fdf2e1c00d1fa7fe"
+  },
+  {
+    "file": "overlays-round-review-loading-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-review-busy-back.png",
+    "platform": "Android",
+    "environment": "רכיב תקציר אמיתי בדמו מנותק; טעינה קבועה לבדיקה",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "נצפה מחוון טעינה בכפתור והחלונית נשארה פתוחה אחרי לחיצה על חזרת המכשיר.",
+      "המצב מוזרק בכלי בדיקה ואינו בקשת שמירה לרשת. לא אומתה שמירה אמיתית או התאוששות מכשל."
+    ],
+    "sha256": "d527220d61d8b7e4f31d8771ef9b871d2c52b63170b630bdfef3710c9ae935da"
+  },
+  {
+    "file": "overlays-score-copy-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-score-copy.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק, גופן רגיל",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "נצפו הנוסח המתוקן, סמלים מימין וכל התוכן ללא חיתוך.",
+      "אין בדיקת אייפון או נתוני ייצור; אין שינוי נוסחת דירוג."
+    ],
+    "sha256": "00d40fa9e71f23f7385aad8d7098f5db3a2d1e81fab39248823c1ad47ad4e01b"
+  },
+  {
+    "file": "overlays-achievement-celebration-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-celebration.png",
+    "platform": "Android",
+    "environment": "חגיגת הישג אמיתית עם נתוני בדיקה בדמו מנותק",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "דרגת כסף של שערים, סף 20 והפרש 80 לזהב. חזרת מכשיר נבדקה וסגרה למסך הדמו.",
+      "החגיגה לא שינתה סגנון ולא הוענק הישג. אין הוכחת שמירה או בדיקת תנועה מופחתת.",
+      "צילום פיקסלים נצפה; uiautomator לא הגיע למצב מנוחה בזמן האנימציה ולכן XML אינו ראיה למצב."
+    ],
+    "sha256": "ab69a45c1fe349f7cc486f40d550708487a10a0e292a6268422ca5d8df2f8175"
+  },
+  {
+    "file": "overlays-cover-picker-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-cover.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בסביבת דמו מנותקת דרך כלי בדיקה מוגן",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "רכיב בורר תמונת מועדון אמיתי, כותרת עברית, סגירה מימין וגלריה בשתי עמודות.",
+      "לא נלחץ כפתור העלאה ולא נבחרה תמונה; אין הוכחת הרשאות גלריה או שמירה."
+    ],
+    "sha256": "1b7e2f00eb1f43c58349ebcab512d04901198942305f3161d8989cf1422965d7"
+  },
+  {
+    "file": "overlays-cover-picker-scroll-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-cover-scroll.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בסביבת דמו מנותקת דרך כלי בדיקה מוגן",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "גלילה לרשת התמונות התחתונה, כותרת וכפתור סגירה נשארו זמינים.",
+      "חזרת מכשיר סגרה למסך הבית המנותק ונצפתה בצילום נפרד night-cover-closed.png; אין שינוי נתונים."
+    ],
+    "sha256": "ebb3e1b20ded23bece43a3e45166d126d5186706da5265d8b5281b4319092db8"
+  },
+  {
+    "file": "overlays-campaign-native-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-campaign-final.png",
+    "platform": "Android",
+    "environment": "מציג הקמפיין האמיתי בדמו מנותק; ללא מארח קמפיינים או מדידה",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "משטח ברירת מחדל; כותרת מופרדת מכפתור הסגירה ועברית מיושרת לימין.",
+      "אין הוכחת קבלת קמפיין חי, HTML, אייפון, טקסט ארוך או הגדלת גופן בסבב זה."
+    ],
+    "sha256": "ed10e8a6766a60b240f2cc97de86790e8c567c3e450c93ccebb911bc452beb8f"
+  },
+  {
+    "file": "overlays-campaign-custom-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-campaign-custom.png",
+    "platform": "Android",
+    "environment": "מציג הקמפיין האמיתי בדמו מנותק; ללא מארח קמפיינים או מדידה",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "צבעי קמפיין מפורשים, רדיוס 12 ומרכוז נשמרו.",
+      "אין הוכחת קבלת קמפיין חי, HTML, אייפון, טקסט ארוך או הגדלת גופן בסבב זה."
+    ],
+    "sha256": "11ab4e37cab8edec9da4431d09467f7074c1d20275bf7c5f0ca96c739288013e"
+  },
+  {
+    "file": "overlays-campaign-banner-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-campaign-banner.png",
+    "platform": "Android",
+    "environment": "מציג הקמפיין האמיתי בדמו מנותק; ללא מארח קמפיינים או מדידה",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "מיקום תחתון נשמר; לחיצה על כפתור אישור סגרה את התצוגה, ללא פעולה עסקית.",
+      "אין הוכחת קבלת קמפיין חי, HTML, אייפון, טקסט ארוך או הגדלת גופן בסבב זה."
+    ],
+    "sha256": "a896816bdff38eadfeadd7490187e6f49edfe50d16509ee77e370879fc68668a"
+  },
+  {
+    "file": "overlays-campaign-long-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-campaign-long-after.png",
+    "platform": "Android",
+    "environment": "מציג אמיתי בדמו מנותק, ללא קמפיין חי או מדידה",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "טקסט ארוך נגלל; כפתורי הפעולה והסגירה מחוץ לגלילה.",
+      "גופן רגיל; אין הוכחת אייפון, HTML או מסירה של קמפיין."
+    ],
+    "sha256": "d4708a2093813e18319945e92b444c3fd163a4c188d490fb8cee3c2e6097e60c"
+  },
+  {
+    "file": "overlays-campaign-long-end-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-campaign-long-end.png",
+    "platform": "Android",
+    "environment": "מציג אמיתי בדמו מנותק, ללא קמפיין חי או מדידה",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "פסקה 24 נראית בסוף הגלילה מעל כפתורי הפעולה.",
+      "גופן רגיל; אין הוכחת אייפון, HTML או מסירה של קמפיין."
+    ],
+    "sha256": "b38fe03b021f2bc0b9517c3ea79a6cfdcb2c8079ce649b2f458181f6f8c8094f"
+  },
+  {
+    "file": "overlays-campaign-long-large-font-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-campaign-long-large.png",
+    "platform": "Android",
+    "environment": "מציג אמיתי בדמו מנותק; גופן מערכת 130% לאחר פתיחה קרה",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "24 פסקאות, התוכן נגלל והפעולות נראות. אזהרת כלי הפיתוח נסגרה לפני הצילום הסופי.",
+      "גופן 1.0 הוחזר ונעשה אתחול תהליך. אין הוכחת HTML, אייפון או קמפיין חי."
+    ],
+    "sha256": "20a713fbd268234dff3b8154c8f1a5e7730694c6461bad2b8ecbeea4aea86347"
+  },
+  {
+    "file": "overlays-final-chemistry-error-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-final-chemistry_error.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק, מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "מציג שגיאה אמיתי, מוזרק בכלי דמו; אין כשל רשת חי.",
+      "אין הוכחת שרת, אייפון, מצב כהה או גרסת חנות."
+    ],
+    "sha256": "8ef49b8ea2072d3523a69a154db394cbcef3212d391dd31506636ea17ee24335"
+  },
+  {
+    "file": "overlays-final-chat-terms-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-final-chat_terms.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק, מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "כללי צ׳אט; ללא שמירת הסכמה.",
+      "אין הוכחת שרת, אייפון, מצב כהה או גרסת חנות."
+    ],
+    "sha256": "b420caae75573f1383576cf9fa1e122f712ebc639eba112934ab77f14e1add9c"
+  },
+  {
+    "file": "overlays-final-notification-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-final-notification.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק, מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "הסבר הרשאה; לא נפתח חלון הרשאת מערכת.",
+      "אין הוכחת שרת, אייפון, מצב כהה או גרסת חנות."
+    ],
+    "sha256": "63f5fa80a26db97285ca7ddadf1862e3955498fdfba1fc4c5c88e82b0330f64e"
+  },
+  {
+    "file": "overlays-final-notification-blocked-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-final-notification_blocked.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק, מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "מצב חסימה מוזרק; לא שונו הרשאות מכשיר.",
+      "אין הוכחת שרת, אייפון, מצב כהה או גרסת חנות."
+    ],
+    "sha256": "4ed8dc1a51f8d316bd2c60b30cd01592560490b2a18ef880ffb1d9423860356d"
+  },
+  {
+    "file": "overlays-final-conflict-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-final-conflict.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק, מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "התנגשות הרשמה מדומה; ללא ביטול הרשמה.",
+      "אין הוכחת שרת, אייפון, מצב כהה או גרסת חנות."
+    ],
+    "sha256": "635ef84b1f3263d7fbbe1ff5318176c22c2b86d25c55dbbbb41476d28a398513"
+  },
+  {
+    "file": "overlays-final-season-confirm-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-final-season_confirm.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק, מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "אישור עונה 2: 8 מתוך 12, נותרו 4. ללא הפעלת עונה.",
+      "אין הוכחת שרת, אייפון, מצב כהה או גרסת חנות."
+    ],
+    "sha256": "3ab9026db498f947825213a592364aec26eeb545b48a0e99764eafad31349e80"
+  },
+  {
+    "file": "overlays-final-issue-card-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-final-issue-normal-fixed.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק, מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "חלונית כרטיס אמיתית במצב רגיל, אחרי תיקון; ללא שמירה.",
+      "אין הוכחת שרת, אייפון, מצב כהה או גרסת חנות."
+    ],
+    "sha256": "606be573bde0a39277e7d098e9ec3bd383062a806dcf489a8ddd3fca11bf5fb4"
+  },
+  {
+    "file": "overlays-final-issue-card-keyboard-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-final-issue-keyboard-proof.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק, מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "מקלדת פתוחה אחרי התייצבות; שמור ובטל גלויים מעליה. ללא הזנת פרט או שמירה.",
+      "אין הוכחת שרת, אייפון, מצב כהה או גרסת חנות."
+    ],
+    "sha256": "9555fc6448d0dc7f25430aa21aad834a78856ff1282e599223958f0632cf79a3"
+  },
+  {
+    "file": "overlays-final-goal-confirm-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-final-goal-confirm.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק, מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "חלונית האישור האחידה; פעולות הדמו סוגרות בלבד, ללא מחיקת שער.",
+      "אין הוכחת שרת, אייפון, מצב כהה או גרסת חנות."
+    ],
+    "sha256": "86a900179ed75429bf561cab3ce5752db0f38e6556838cd0fc9066f49b693bca"
+  },
+  {
+    "file": "overlays-tenth-availability-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-tenth-availability.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "תזכורת זמינות: כותרת, שלוש תועלות ושתי פעולות נראות. חזרת מכשיר סגרה לפני מעבר לבורר הבא.",
+      "נתונים סינתטיים ופעולות סגירה מקומיות בלבד. לא נבדקו שרת, אייפון, מצב כהה או גופן מוגדל בסבב זה."
+    ],
+    "sha256": "12cab5787733df380e790858524aea3a339b71410548aaad516abcfb09f40339"
+  },
+  {
+    "file": "overlays-tenth-winner-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-tenth-winner.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "בורר מנצחת לפני בחירה; אישור מושבת. שמות ארוכים מתקצרים במכוון.",
+      "נתונים סינתטיים ופעולות סגירה מקומיות בלבד. לא נבדקו שרת, אייפון, מצב כהה או גופן מוגדל בסבב זה."
+    ],
+    "sha256": "04c0983bc6c1390859ab545daa2efa39d42b5163f8ae791b491459178d2844ba"
+  },
+  {
+    "file": "overlays-tenth-winner-selected-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-tenth-winner-fixed.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "מצב בחירה לאחר תיקון: הסימון מעל המסגרת ואינו מכסה את שם הקבוצה; אישור פעיל. אין אישור תוצאה.",
+      "נתונים סינתטיים ופעולות סגירה מקומיות בלבד. לא נבדקו שרת, אייפון, מצב כהה או גופן מוגדל בסבב זה."
+    ],
+    "sha256": "e81d5e9216dd21b652a30987aca6aa61f20bd94776918c73b07b24c39ab71f2f"
+  },
+  {
+    "file": "overlays-tenth-equipment-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-tenth-equipment-fixed.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "רשימת 12 שחקני דמו: דילוג מימין ושמירה משמאל אחרי תיקון כיווניות. אין שמירה.",
+      "נתונים סינתטיים ופעולות סגירה מקומיות בלבד. לא נבדקו שרת, אייפון, מצב כהה או גופן מוגדל בסבב זה."
+    ],
+    "sha256": "ed13b4ba5ee6babdd5e50e5de7272ee7ddd78a284b81e6deee3bd33b4a94274d"
+  },
+  {
+    "file": "overlays-tenth-equipment-scroll-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-tenth-equipment-scroll.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "גלילה עד שחקן 12: כותרת, סגירה, דילוג ושמירה נשארים נגישים. אין מסירת ציוד אמיתית.",
+      "נתונים סינתטיים ופעולות סגירה מקומיות בלבד. לא נבדקו שרת, אייפון, מצב כהה או גופן מוגדל בסבב זה."
+    ],
+    "sha256": "9065eb0dfaf9988ee925387a561701dda8843a1bb84d94255e49862d054cfe97"
+  },
+  {
+    "file": "overlays-eleventh-manage-fixed-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-eleventh-manage-fixed.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "ניהול ציוד מעוגן לתחתית, סמלים מימין. טיוטה ללא שינוי: שמירה מושבתת.",
+      "נתונים סינתטיים, פעולות מדומות בלבד. אין הוכחת שמירה, שרת, אייפון, גופן מוגדל או מצב כהה."
+    ],
+    "sha256": "2d8b60d10fe48046da6519f53ab9f1492042aead71a961f099e554b8ec4dcba3"
+  },
+  {
+    "file": "overlays-eleventh-manage-changed-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-eleventh-manage-changed.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "שינוי טיוטת גופיות מפעיל שמירה; אין שמירה בפועל.",
+      "נתונים סינתטיים, פעולות מדומות בלבד. אין הוכחת שמירה, שרת, אייפון, גופן מוגדל או מצב כהה."
+    ],
+    "sha256": "d838a7b3e57eacc2fb51b4850a92093d8f5b945ff472db62067a8aba393596ef"
+  },
+  {
+    "file": "overlays-eleventh-filler-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-eleventh-filler.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "שניים מתוך שניים מומלצים נבחרו, אישור פעיל ותוצאת דמו מוצגת. לא אושרה החלפה.",
+      "נתונים סינתטיים, פעולות מדומות בלבד. אין הוכחת שמירה, שרת, אייפון, גופן מוגדל או מצב כהה."
+    ],
+    "sha256": "154fc52d7bbdd47b9f8e5b42628a14c3f0655f03e1cb034020d5034cc2c8d7aa"
+  },
+  {
+    "file": "overlays-eleventh-filler-incomplete-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-eleventh-filler-incomplete.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "אחד מתוך שניים נבחר; אישור מושבת.",
+      "נתונים סינתטיים, פעולות מדומות בלבד. אין הוכחת שמירה, שרת, אייפון, גופן מוגדל או מצב כהה."
+    ],
+    "sha256": "9e02a8cdbb9c2a1e21848e951c236fdbd12d22a3703254fe812633455dac7726"
+  },
+  {
+    "file": "overlays-eleventh-filler-scroll-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-eleventh-filler-scroll.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "גלילה עד מועמד 12; הכותרת וכפתור האישור נגישים.",
+      "נתונים סינתטיים, פעולות מדומות בלבד. אין הוכחת שמירה, שרת, אייפון, גופן מוגדל או מצב כהה."
+    ],
+    "sha256": "4d6090e340a747450e31a2ac01683292c8a4ccb3c30c76c1522e477555b8a73b"
+  },
+  {
+    "file": "overlays-eleventh-filler-empty-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-eleventh-filler-empty.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "אין מועמדים: הודעה ברורה, אפס מתוך שניים, אישור מושבת וסגירה זמינה.",
+      "נתונים סינתטיים, פעולות מדומות בלבד. אין הוכחת שמירה, שרת, אייפון, גופן מוגדל או מצב כהה."
+    ],
+    "sha256": "16254a17b064fee02fa9941606d172ce4e07603286628e093dcec16b00379ad6"
+  },
+  {
+    "file": "overlays-eleventh-player-menu-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/night-eleventh-player-menu.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "עוגן אמיתי נמדד סמוך לתחתית; התפריט נפתח מעליו, חמש פעולות נראות והסמלים מימין. פריט מושבת לא סגר ולא הפעיל פעולה.",
+      "נתונים סינתטיים, פעולות מדומות בלבד. אין הוכחת שמירה, שרת, אייפון, גופן מוגדל או מצב כהה."
+    ],
+    "sha256": "8c0f221134fe99bacb8d5876d8a8057cb49fdd209165cb43237536fc8812f71c"
+  },
+  {
+    "file": "approved-statistics-season-restart-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/approved-season-restart.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "חלונית אישור הפעלה מחדש: הסבר, אפס מתוך 12 ואפשרות ביטול.",
+      "נתונים סינתטיים. אין הוכחת נתוני ייצור, שמירה מרחוק, אייפון, נגישות או גופן מוגדל."
+    ],
+    "sha256": "37dfd586bba018726ccde35e5da33f2edf895c4d4dca036af6f2cc9f8ead8eee"
+  },
+  {
+    "file": "approved-statistics-efficiency-final-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/approved-efficiency-final.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "מדגם מלא: 0.40; מדגם בישולים חלקי: מקף. מוסבר ההבדל בין מובילי מועדון לתארי עונה.",
+      "נתונים סינתטיים. אין הוכחת נתוני ייצור, שמירה מרחוק, אייפון, נגישות או גופן מוגדל."
+    ],
+    "sha256": "d8fb9d63f0f8073bb83dfe8328e6f6e20a3b370c41a162eb8ad2cc517f8aecc7"
+  },
+  {
+    "file": "approved-statistics-retro-policy-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/approved-retro-policy.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "נוסח השלמות: מונים בלבד; תוצאות, צמדים, ציונים ותארים חתומים אינם משתנים.",
+      "נתונים סינתטיים. אין הוכחת נתוני ייצור, שמירה מרחוק, אייפון, נגישות או גופן מוגדל."
+    ],
+    "sha256": "d61d417dc6fcd7d6f410b5d892bba8fcbc85e6a79cb0bb5abae4b56e67fce129"
+  },
+  {
+    "file": "approved-statistics-coaching-final-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/approved-coaching-final.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "חגיגת ניהול: מספר שחקנים במועדונים בניהול המשתמש. לא הוענק הישג.",
+      "נתונים סינתטיים. אין הוכחת נתוני ייצור, שמירה מרחוק, אייפון, נגישות או גופן מוגדל."
+    ],
+    "sha256": "2d7776c764af4879152764f4a01da2d922c971730dcc1ce51ebdbb617c18bf18"
+  },
+  {
+    "file": "approved-statistics-summary-final-2026-10-13.png",
+    "source": "artifacts/home-carousel-height/approved-summary-final.png",
+    "platform": "Android",
+    "environment": "רכיב אמיתי בדמו מנותק מאחורי שערי פיתוח ודמו",
+    "sourceCommit": "b8a8ccf4 עם שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "ארבעה משחקים, שני ניצחונות, הפסד ותיקו: 50%, כולל הסבר ופס חלוקה.",
+      "נתונים סינתטיים. אין הוכחת נתוני ייצור, שמירה מרחוק, אייפון, נגישות או גופן מוגדל."
+    ],
+    "sha256": "a85adfe9bbeb951f4d42b61630391d0992b6921a1e372adf4e9e051d5ceaa929"
+  },
+  {
+    "file": "pulse-manager-missing-2026-10-13.jpg",
+    "source": "artifacts\\home-carousel-height\\manager-missing-regulars-proof.png",
+    "platform": "Android API 35 / Fabric",
+    "environment": "דמו מקומי מנותק — אמולטור",
+    "sourceCommit": "b8a8ccf4 + שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "שני קבועים חסרים; הכרטיס נשאר מוצג.",
+      "לא בדיקת מכשיר פיזי, חשבון ייצור או אייפון."
+    ],
+    "sha256": "0400801235359b9256de90880c37ea6bf7fb3b8e44f99c099e02df9049976aa9"
+  },
+  {
+    "file": "pulse-manager-no-missing-2026-10-13.jpg",
+    "source": "artifacts\\home-carousel-height\\manager-no-missing-proof.png",
+    "platform": "Android API 35 / Fabric",
+    "environment": "דמו מקומי מנותק — אמולטור",
+    "sourceCommit": "b8a8ccf4 + שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "כל שמונת הקבועים רשומים; הכרטיס הריק מוסתר. הוחלף זמנית סגל הדמו בלבד והקובץ המקורי שוחזר לפי חותמת.",
+      "לא בדיקת מכשיר פיזי, חשבון ייצור או אייפון."
+    ],
+    "sha256": "627941c84100a48564b9655db7e77dfcfa7aedb8743eff92457051b6396eb61d"
+  },
+  {
+    "file": "pulse-touch-sticky-2026-10-13.jpg",
+    "source": "artifacts\\home-carousel-height\\touch-sticky-players-proof.png",
+    "platform": "Android API 35 / Fabric",
+    "environment": "דמו מקומי מנותק — אמולטור",
+    "sourceCommit": "b8a8ccf4 + שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "לשונית שחקנים לאחר לחיצה קטנה נעה על הכותרת הנעוצה. אין הוכחה מהצילום לבדו לרצף; האירועים נשמרו ביומן המקומי.",
+      "לא בדיקת מכשיר פיזי, חשבון ייצור או אייפון."
+    ],
+    "sha256": "33918bc7fb9eefbc30a9199096809d05b02ca78ffbe6df069be8971fbba1c039"
+  },
+  {
+    "file": "pulse-touch-club-2026-10-13.jpg",
+    "source": "artifacts\\home-carousel-height\\touch-club-players-proof.png",
+    "platform": "Android API 35 / Fabric",
+    "environment": "דמו מקומי מנותק — אמולטור",
+    "sourceCommit": "b8a8ccf4 + שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "מעבר לשחקני המועדון אחרי התאוששות מתנע חסר. אזהרת כלי הפיתוח בתחתית אינה חלק מהמוצר.",
+      "לא בדיקת מכשיר פיזי, חשבון ייצור או אייפון."
+    ],
+    "sha256": "12c8bd4a708afa3a9baf7668f346bcd2505cee211be169869effe861208b7ade"
+  },
+  {
+    "file": "pulse-touch-home-2026-10-13.jpg",
+    "source": "artifacts\\home-carousel-height\\touch-home-menu-proof.png",
+    "platform": "Android API 35 / Fabric",
+    "environment": "דמו מקומי מנותק — אמולטור",
+    "sourceCommit": "b8a8ccf4 + שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "תפריט הבית נפתח בלחיצה הראשונה אחרי גלילות מטה וחזרה לראש.",
+      "לא בדיקת מכשיר פיזי, חשבון ייצור או אייפון."
+    ],
+    "sha256": "66182b829f032ad7e65f3b5fc7b8968d416bb925e2a502f72724c30ff5612efe"
+  },
+  {
+    "file": "pulse-touch-games-2026-10-13.jpg",
+    "source": "artifacts\\home-carousel-height\\touch-games-filter-final.png",
+    "platform": "Android API 35 / Fabric",
+    "environment": "דמו מקומי מנותק — אמולטור",
+    "sourceCommit": "b8a8ccf4 + שינויים מקומיים",
+    "captured": "2026-10-13",
+    "notes": [
+      "חלונית הסינון פתוחה. בפעם הראשונה הפעולה נרשמה אך הצילום הקדים את ההצגה; זהו צילום לאחר פתיחה חוזרת והתייצבות.",
+      "לא בדיקת מכשיר פיזי, חשבון ייצור או אייפון."
+    ],
+    "sha256": "662538594aafc16b901d8b6d35c1bc08d01fb5d8e15d20df1c67579ba97f8be5"
   }
 ]

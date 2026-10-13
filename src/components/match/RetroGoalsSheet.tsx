@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // RetroGoalsSheet — admin-only, post-match "complete a missed goal" manager.
 //
 // Opened from the finished-game details screen (above the evening-scorers
@@ -257,11 +258,8 @@ export function RetroGoalsSheet({
 }
 
 const styles = StyleSheet.create({
-  sheet: {
+  sheet: { ...overlaySurfaces.sheet,
     marginTop: 'auto',
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xl,

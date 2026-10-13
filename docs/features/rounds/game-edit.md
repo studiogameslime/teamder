@@ -219,3 +219,8 @@ gameService.getGameById/updateGameV2/setVisibility; src/services/seriesService.t
 `SpringSheet` שומר גבול עליון של 14% אך מיישר את התוכן לתחתית. `RoundReviewSheet` מתכווץ לפי התוכן, ו־`ScrollView` ללא התרחבות שומר גלילה לתוכן ארוך; הפעולות מחוץ לגלילה. הוסר ריפוד התחתית של התוכן. סדר כפתור ההרחבה: טקסט ואחריו חץ תחת כיווניות האפליקציה. נצפו מצבים פתוח וסגור באימולטור אנדרואיד מנותק; לא אושרה שמירה ולא נבדק אייפון. בדיקת טיפוסים ובדיקות מלאות: `artifacts/form-redesign/types-review-spacing.txt`, `jest-review-spacing.txt`.
 
 [צילום עדכני](../screenshots/round-review-spacing-2026-10-11.png).
+
+
+## מעטפת התקציר — 13.10.2026
+
+המשטח והכפתורים התחתונים ב־RoundReviewSheet משתמשים בתשתית החלוניות המשותפת. אין שינוי שדות, סיכום, סגירה או שמירה. נצפה הרכיב האמיתי עם ערכי בדיקה מנותקים במצב יצירה, סגור ופתוח; מצב עריכה לא הורץ מחדש. [צילום](../screenshots/overlays-round-review-2026-10-13.png) · [פרטים ומגבלות](../shared/menus-and-motion.md). לא נוצר ולא נשמר מחזור בבדיקה.

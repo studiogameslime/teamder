@@ -124,12 +124,16 @@ export function reduceRounds(
     played += 1;
     const myTeam: 'A' | 'B' = onA ? 'A' : 'B';
     const goals = r.goals ?? [];
-    const credited = goals.filter((g) => !g.ownGoal && g.team === myTeam).length;
-    const against = goals.filter((g) => !g.ownGoal && g.team !== myTeam).length;
+    // The stored score includes guest and own goals. `team` in the event log
+    // identifies the beneficiary, including on an own goal.
+    const scoreFor = onA ? r.scoreA : r.scoreB;
+    const scoreAgainst = onA ? r.scoreB : r.scoreA;
+    const credited = Number.isFinite(scoreFor) && scoreFor >= 0 ? scoreFor : goals.filter((g) => g.team === myTeam).length;
+    const against = Number.isFinite(scoreAgainst) && scoreAgainst >= 0 ? scoreAgainst : goals.filter((g) => g.team === (onA ? 'B' : 'A')).length;
     teamGoals += credited;
     teamGoalsAgainst += against;
     const myGoals = goals.filter((g) => !g.ownGoal && g.scorerId === uid).length;
-    const myAssists = goals.filter((g) => g.assisterId === uid).length;
+    const myAssists = goals.filter((g) => !g.ownGoal && g.assisterId === uid && g.scorerId !== uid).length;
     touched += myGoals + myAssists;
 
     const pts = myGoals * 2 + myAssists;

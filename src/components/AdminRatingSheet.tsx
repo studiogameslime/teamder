@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // AdminRatingSheet — bottom-sheet editor for an admin-assigned player rating
 // (0–5, or clear). Shared by the community players roster and the match roster
 // so both edit the SAME internal rating through one UI. Save is wired by the
@@ -71,15 +72,11 @@ export function AdminRatingSheet({
 }
 
 const styles = StyleSheet.create({
-  sheetBackdrop: {
+  sheetBackdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
-  sheetCard: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  sheetCard: { ...overlaySurfaces.sheet,
     padding: spacing.lg,
     gap: spacing.md,
     alignItems: 'center',

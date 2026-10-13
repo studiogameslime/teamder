@@ -466,7 +466,7 @@ export default function App() {
   const [entryEvent, setEntryEvent] = useState<Record<string, string | boolean | undefined> | null>(null);
   const reportEntrySource = (
     how: 'deep_link' | 'stash' | 'deferred' | 'organic',
-    pending: { type: 'session' | 'team' | 'app'; id?: string; invitedBy?: string } | null,
+    pending: { type: 'session' | 'team' | 'app'; id?: string; invitedBy?: string; source?: string; campaign?: string } | null,
   ) => {
     if (entryReportedRef.current) return;
     entryReportedRef.current = true;
@@ -483,8 +483,7 @@ export default function App() {
     // Publish before reporting, so any screen that renders after this can
     // say where the launch came from instead of assuming. See
     // `src/services/entrySource.ts` — GuestHome used to hardcode `organic`.
-    setEntrySource(source as EntrySource);
-    setEntryEvent({
+    const details = {
       entry_source: source,
       resolved_by: how,
       target_type: pending?.type ?? 'none',
@@ -493,7 +492,11 @@ export default function App() {
       // uid, which would be somebody's identity.
       target_id: pending?.id,
       has_inviter: !!pending?.invitedBy,
-    });
+      entry_channel: pending?.source,
+      entry_campaign: pending?.campaign,
+    };
+    setEntrySource(source as EntrySource, details);
+    setEntryEvent(details);
   };
 
   useEffect(() => {

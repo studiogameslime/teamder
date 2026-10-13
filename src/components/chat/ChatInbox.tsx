@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, BackHandler, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ImageSourcePropType } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -156,7 +157,7 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
       ListEmptyComponent={loading?<ActivityIndicator style={s.empty} color={blue}/>:starters.length?null:empty(mode==='archive'?'הארכיון שלכם ריק':search||filter!=='all'?'לא נמצאו שיחות':'הכדור אצלכם',mode==='archive'?'שיחות מחזורים שנסגרו יישמרו כאן':search||filter!=='all'?'נסו לשנות את החיפוש או את המסנן':'דברו עם החברים ועם השחקנים במועדון')}
       ListFooterComponent={mode==='inbox'?<><Pressable style={s.archiveLink} onPress={()=>changeMode('archive')}><Text style={s.archiveTitle}>ארכיון שיחות{archiveCount?` · ${archiveCount}`:''}</Text><Ionicons name="archive-outline" size={21} color="#667796"/></Pressable>{starters.length?<><Text style={s.label}>מתחילים שיחה</Text><Text style={s.hint}>המועדונים והמחזורים שלכם, גם לפני ההודעה הראשונה</Text>{starters.map(row=><View key={key(row)}>{renderRow(row)}</View>)}</>:null}</>:null}/>}
 
-    <Modal visible={!!selected} transparent animationType="none" onRequestClose={()=>{if(!busy)setSelected(null);}}><SpringSheet visible={!!selected} onBackdropPress={()=>{if(!busy)setSelected(null);}} panelStyle={{backgroundColor:'white',borderTopLeftRadius:24,borderTopRightRadius:24,top:'auto'}}><View style={s.sheet}><View style={s.handle}/><Text style={s.sheetTitle}>{selected?.title}</Text>{selected?([
+    <Modal visible={!!selected} transparent animationType="none" onRequestClose={()=>{if(!busy)setSelected(null);}}><SpringSheet visible={!!selected} onBackdropPress={()=>{if(!busy)setSelected(null);}} panelStyle={{...overlaySurfaces.sheet,top:'auto'}}><View style={s.sheet}><View style={s.handle}/><Text style={s.sheetTitle}>{selected?.title}</Text>{selected?([
       {title:preferences[key(selected)]?.pinned?'ביטול נעיצה':'נעיצת שיחה',icon:'pin-outline',patch:{pinned:!preferences[key(selected)]?.pinned}},
       {title:preferences[key(selected)]?.muted?'הפעלת התראות':'השתקת שיחה',icon:'notifications-off-outline',patch:{muted:!preferences[key(selected)]?.muted}},
       ...(!selected.closed?[{title:archived(selected)?'החזרה לשיחות':'העברה לארכיון',icon:'archive-outline',patch:{archivedAt:archived(selected)?0:Math.max(Date.now(),selected.at),archivedMessageId:selected.messageId??'__empty__'}}]:[]),

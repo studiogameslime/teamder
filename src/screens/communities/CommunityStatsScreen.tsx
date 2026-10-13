@@ -63,6 +63,7 @@ import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 import { mergeAllTime, type TableSlice } from '@/utils/allTimeTable';
 import { completeSeasonHistory } from '@/utils/completeSeasonHistory';
+import { hasArchivedStats } from '@/utils/statsScope';
 import { mergePairs, type PairTotals } from '@/utils/clubChemistry';
 import {
   seasonHistoryService,
@@ -294,13 +295,13 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
         // For a club that no longer runs seasons the club's record IS the
         // all-time slice, so that is where the screen opens. The other scopes
         // stay in the picker; nothing is hidden.
-        if (g.seasons && !g.seasons.enabled && (g.seasons.count ?? 0) > 0) {
+        if (g.seasons && !g.seasons.enabled && hasArchivedStats(g.seasons)) {
           setScope({ k: 'all' });
           setOpenedOnAllTime(true);
         }
         // Only for a club that has actually closed a season; everyone else
         // pays nothing.
-        if ((g.seasons?.count ?? 0) > 0) {
+        if (hasArchivedStats(g.seasons)) {
           // One read of the cards feeds the season picker. (It used to also
           // answer the badges' lifetime goal total; the badges now live on
           // CommunityDetails and read their own copy.)
@@ -443,6 +444,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             // The list itself failed to load (it returns 'error', never []),
             // so the club's closed seasons are missing from the sum. Same
             // answer as a missing archive: refuse, do not understate.
+            if (seasons?.hasArchivedPeriods && !pastSeasons.some(x=>x.nonSeason)) return null;
             if (pastSeasons.filter((x) => !x.nonSeason).length < (seasons?.count ?? 0) || !completeSeasonHistory(seasons?.count ?? 0, pastSeasons.length, archives)) return null;
             const live: TableSlice = {
               totalGoals: champ?.totalGoals ?? 0,
@@ -521,7 +523,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           // impossible window hides the cards until it arrives.
           { from: Number.MAX_SAFE_INTEGER };
     }
-    if ((seasons?.count ?? 0) > 0 && (!pastLoaded || pastFailed || pastSeasons.length < (seasons?.count ?? 0))) {
+    if (hasArchivedStats(seasons) && (!pastLoaded || pastFailed || pastSeasons.length < (seasons?.count ?? 0)
+      || (seasons?.hasArchivedPeriods && !pastSeasons.some(p => p.nonSeason)))) {
       return { from: Number.MAX_SAFE_INTEGER };
     }
     const lastSealed = pastSeasons.reduce((m, p) => Math.max(m, p.endsAt), 0);
@@ -785,7 +788,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
    * that never ran a season would otherwise lose them entirely, with no chip
    * anywhere to find them under); after it, they belong to all-time alone.
    */
-  const lifetimeScope = scope.k === 'all' || (seasons?.count ?? 0) === 0;
+  const lifetimeScope = scope.k === 'all' || !hasArchivedStats(seasons);
 
   /**
    * What the summary row says. Built from the SAME strings the chips use, so
@@ -972,7 +975,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               close had emptied it) with no route to "כל הזמנים" and no route
               to its own archived seasons. It read as though the club had been
               wiped. */}
-          {seasons?.enabled || (seasons?.count ?? 0) > 0 ? (
+          {seasons?.enabled || hasArchivedStats(seasons) ? (
             <>
               {/* A picker needs something to pick. Before the club's first
                   close there is exactly one scope, and the row was a label
@@ -981,7 +984,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   row does not pop in when the archive finishes loading.
                   The banner below still says the numbers belong to a season —
                   that was this row's other job, and it keeps doing it. */}
-              {(seasons?.count ?? 0) > 0 ? (
+              {hasArchivedStats(seasons) ? (
               <View>
               {/* The reference's scope control: a white row with a calendar on
                   the leading edge and the chosen scope closing it on the left.
@@ -1029,7 +1032,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   ten-year member reads it as "מחקו לי הכל". */}
               {seasons?.enabled &&
               scope.k === 'current' &&
-              (seasons.count ?? 0) > 0 &&
+              hasArchivedStats(seasons) &&
               !hasScoring ? (
                 <View style={styles.seasonBanner}>
                   <Text style={styles.seasonBannerText}>
@@ -1055,6 +1058,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                 <Text style={styles.scopeNote}>
                   {archiveBusy
                     ? he.communityStatsScopeLoading
+                    : seasons?.hasArchivedPeriods ? he.communityStatsAllTimeWithPeriods
                     : seasons && !seasons.enabled
                       ? he.communityStatsScopeAllTimeNoteOff(pastSeasons.length)
                       : he.communityStatsScopeAllTimeNote(pastSeasons.length)}
@@ -1242,6 +1246,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                 );
                 return out;
               }, [])}
+            {derived.penaltyKing || derived.penaltyKeeperKing ? <Text style={{color:colors.textMuted,fontSize:13,textAlign:RTL_LABEL_ALIGN,marginTop:12}}>{he.communityPenaltyRankingNote}</Text> : null}
           </Card>
           </>
           ) : null}

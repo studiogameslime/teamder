@@ -203,9 +203,12 @@ function readStatRow(data: Record<string, unknown> | undefined): GameStatRow {
     wins: n(data?.wins),
     losses: n(data?.losses),
     rounds: n(data?.rounds),
-    teamGoalsFor: n(data?.teamGoalsFor),
-    teamGoalsAgainst: n(data?.teamGoalsAgainst),
-    hasTeamGoals: ['teamGoalsFor', 'teamGoalsAgainst'].every((k) => typeof data?.[k] === 'number' && Number.isFinite(data[k])),
+    teamGoalsFor: n(data?.actualTeamGoalsFor),
+    teamGoalsAgainst: n(data?.actualTeamGoalsAgainst),
+    // Old teamGoals fields exclude guest/own goals; their presence is not
+    // proof of a complete score. A mixed old/new evening is incomplete too.
+    hasTeamGoals: n(data?.rounds) > 0 && data?.teamScoreRounds === data?.rounds &&
+      ['actualTeamGoalsFor', 'actualTeamGoalsAgainst'].every((k) => typeof data?.[k] === 'number' && Number.isFinite(data[k]) && Number(data[k]) >= 0),
     pen: { scored: n(data?.penScored), saved: n(data?.penSaved), missed: n(data?.penMissed), conceded: n(data?.penConceded) },
     hasPenaltyStats: ['penScored', 'penSaved', 'penMissed', 'penConceded'].some((k) => typeof data?.[k] === 'number'),
   };
@@ -244,7 +247,7 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     totalKnown: true,
     wins,
     losses,
-    winRate: Math.round((wins / (wins + losses)) * 100),
+    winRate: rounds > 0 ? Math.round((wins / rounds) * 100) : 0,
     goals,
     assists,
     score: eveningScore({
@@ -340,7 +343,6 @@ export const eveningSummaryService = {
         : [];
       const rs = reduceRounds(uid, rounds);
 
-      const decided = row.wins + row.losses;
       // Evening total = number of roundHistory docs (one per committed mini-
       // game). Accurate for games from this feature onward; OLD games have no
       // roundHistory, so we fall back to the played count (total unknowable).
@@ -354,9 +356,8 @@ export const eveningSummaryService = {
       // sat rounds out).
       const totalKnown = rounds.length > 0 && rs.playedRounds >= row.rounds;
 
-      // GF/GA: prefer the AUTHORITATIVE gamePlayerStats team goals (committed in
-      // the atomic round batch) over the best-effort roundHistory reduction,
-      // which under-counts when a roundHistory write failed.
+      // Only fully covered exact-score counters are authoritative. Legacy
+      // credited-goal counters are not a final team score.
       const teamGoalsFor = row.hasTeamGoals ? row.teamGoalsFor : rs.teamGoalsFor;
       const teamGoalsAgainst = row.hasTeamGoals ? row.teamGoalsAgainst : rs.teamGoalsAgainst;
 
@@ -514,7 +515,7 @@ export const eveningSummaryService = {
         totalKnown,
         wins: row.wins,
         losses: row.losses,
-        winRate: decided > 0 ? Math.round((row.wins / decided) * 100) : 0,
+        winRate: row.rounds > 0 ? Math.round((row.wins / row.rounds) * 100) : 0,
         goals: row.goals,
         assists: row.assists,
         score,

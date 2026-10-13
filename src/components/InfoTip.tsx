@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // InfoTip — a small ⓘ icon that opens a brief explanation in a popover
 // ANCHORED to the icon (a speech-bubble with a caret pointing at it),
 // not a centred modal. Drop it next to any label that needs a "what is
@@ -150,9 +151,8 @@ const styles = StyleSheet.create({
   // physical right alignment. Mixing an RTL frame with swapped alignment
   // makes Android forceRTL align tooltip paragraphs on the wrong side.
   textBlock: { direction: 'ltr', alignSelf: 'stretch' },
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.popoverBackdrop,
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.25)',
     // The whole overlay is laid out LTR so every absolute `left` here —
     // the card's position, the caret, and the icon's measureInWindow x —
     // lives in ONE consistent physical coordinate frame. Under Android
@@ -161,23 +161,14 @@ const styles = StyleSheet.create({
     // textAlign:'right' + writingDirection:'rtl'.
     direction: 'ltr',
   },
-  card: {
+  card: { ...overlaySurfaces.popover,
     position: 'absolute',
     // LTR so the absolutely-positioned caret child uses physical `left`
     // (see render comment). Text inside stays Hebrew-right via explicit
     // textAlign:'right' + writingDirection:'rtl' on the title/body.
     direction: 'ltr',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
   },
   caret: {
     position: 'absolute',

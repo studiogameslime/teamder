@@ -191,9 +191,9 @@
   {
     "path": "docs/RELEASING.md",
     "hashMode": "text-lf",
-    "sha256": "ea288acc07b6366d1841c8c6b6d539a49b51dce0c9b60881321dd9eb01ad3edb",
+    "sha256": "f7c77b3776004fa55000d9ee30f04961ba78830fbecff02c1b31761e17993a3e",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-11"
+    "auditDate": "2026-10-13"
   },
   {
     "path": "docs/seasons/אפיון-עונות-טכני.html",

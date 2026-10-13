@@ -1,5 +1,9 @@
 # Shipping an Android build to Google Play
 
+## עדכון אחרון — 13.10.2026
+
+גרסה פנימית `1.1.49/282` הושלמה ואומתה בגוגל; הייצור נשאר `1.1.46/279`. נפרסו תשעה שירותים לתיקונים שאושרו, תוך שמירת התאימות וללא נעילת כללי ההרשאות. פירוט המקור, הבדיקות, הפריסה והחלופה לשמירת היסטוריית היומן: [יומן ההפצה](changes/2026-10-13-internal-1.1.49.md). זו ההפצה המאוחרת שמחליפה את סטטוס ״טרם נפרס״ במסמכי התיקונים המקומיים הרלוונטיים; אינה פריסה של כל היקף האבטחה העתידי.
+
 The exact sequence, as actually run for 1.1.32 (versionCode 267) on
 06.10.2026. Read [`AGENTS.md`](../AGENTS.md) §6 first — the rules there
 override anything convenient you find here.

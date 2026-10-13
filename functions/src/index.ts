@@ -71,7 +71,7 @@ import {
   isValidSeasonMonths,
   type CalendarDate,
 } from './seasonDates';
-import { planActivation, MIN_SEASON_ROUNDS, type HistoryChoice } from './seasonActivation';
+import { planActivation, MIN_SEASON_ROUNDS, isSeasonReactivation, type HistoryChoice } from './seasonActivation';
 import {
   eveningPlayState,
   didEveningHappen,
@@ -14591,6 +14591,11 @@ export const commitRoundStats = onCall(
           ...(clean ? { cleanSheets: 1 } : {}),
           teamGoalsFor: onA ? creditedA : creditedB,
           teamGoalsAgainst: onA ? creditedB : creditedA,
+          // Separate exact scores from legacy credited-goal counters. Coverage
+          // prevents a mid-evening rollout from labelling partial totals complete.
+          actualTeamGoalsFor: onA ? scoreA : scoreB,
+          actualTeamGoalsAgainst: onA ? scoreB : scoreA,
+          teamScoreRounds: 1,
         },
       );
       // Lifetime tally, in the SAME latched batch as the other two so the three
@@ -14639,6 +14644,9 @@ export const commitRoundStats = onCall(
             ...(result ? { [result]: 1 } : {}),
             teamGoalsFor: onA ? creditedA : creditedB,
             teamGoalsAgainst: onA ? creditedB : creditedA,
+            actualTeamGoalsFor: onA ? scoreA : scoreB,
+            actualTeamGoalsAgainst: onA ? scoreB : scoreA,
+            teamScoreRounds: 1,
           },
         );
       }
@@ -14972,7 +14980,9 @@ export const saveGamePhysical = onCall(
     // re-syncs, so keep the MAX of stored vs incoming per numeric field — a
     // degraded read can never lower a previously-recorded metric.
     const ref = db.collection('games').doc(gameId).collection('physical').doc(uid);
-    const prev = ((await ref.get()).data() ?? {}) as Record<string, unknown>;
+    // Read/merge/write atomically: two syncs must not lower each other's maxima.
+    await db.runTransaction(async (tx) => {
+    const prev = ((await tx.get(ref)).data() ?? {}) as Record<string, unknown>;
     const prevNum = (k: string): number => {
       const n = prev[k];
       return typeof n === 'number' && Number.isFinite(n) ? n : 0;
@@ -15044,7 +15054,8 @@ export const saveGamePhysical = onCall(
       ...(heatGrid.length ? { heatGrid, gridRows: rows, gridCols: cols } : {}),
       updatedAt: Date.now(),
     };
-    await ref.set(doc, { merge: true });
+    tx.set(ref, doc, { merge: true });
+    });
     return { ok: true };
   },
 );
@@ -16695,7 +16706,7 @@ export const enableClubSeasons = onCall(
     const groupId = data.groupId as string;
 
     const existing = group.seasons as
-      | { count?: number; enabled?: boolean; roundsAtStart?: number }
+      | { count?: number; enabled?: boolean; roundsAtStart?: number; disabledAt?: number }
       | undefined;
     if (existing?.enabled) {
       throw new HttpsError('failed-precondition', 'seasons already on');
@@ -16787,7 +16798,8 @@ export const enableClubSeasons = onCall(
     // Numbering CONTINUES across the feature being switched off and on again:
     // a club that ran seasons 1-3 and re-enables opens season 4, never 1.
     const closedSoFar = existing?.count ?? 0;
-    const history = closedSoFar > 0 ? 0 : await playedEveningsFromGames(groupId);
+    const reactivation = isSeasonReactivation(existing);
+    const history = reactivation ? 0 : await playedEveningsFromGames(groupId);
     const quiet = await clubIsQuiet(groupId);
     if (!quiet.ok) throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
     // The SAME plan the settings screen and the confirmation sheet computed.
@@ -16797,7 +16809,7 @@ export const enableClubSeasons = onCall(
     // about the club's data, and a rule only the client enforces is a rule an
     // old build or a replayed call walks straight through.
     const choice: HistoryChoice =
-      closedSoFar === 0 && (data.historyChoice === 'sealNow' || data.closeFirstNow === true)
+      !reactivation && (data.historyChoice === 'sealNow' || data.closeFirstNow === true)
         ? 'sealNow'
         : 'continue';
     const today = todayIn(undefined, now);
@@ -16812,7 +16824,7 @@ export const enableClubSeasons = onCall(
     // Absent, season 1 simply runs the chosen length from today, which is what
     // the app did before the picker existed. A client that DOES send a date
     // still gets exactly what the admin chose.
-    const season1EndsOn = isCalendarDate(data.season1EndsOn)
+    const season1EndsOn = !reactivation && isCalendarDate(data.season1EndsOn)
       ? data.season1EndsOn
       : type === 'date' && choice === 'continue' && isValidSeasonMonths(askedMonths)
         ? seasonEndDate(today, askedMonths as number)
@@ -16836,6 +16848,7 @@ export const enableClubSeasons = onCall(
       // A season opened after a close starts at zero, which is what the close
       // itself already writes.
       playedHistory: history,
+      hasHistory: reactivation,
       today,
       season1EndsOn,
     });
@@ -16843,13 +16856,15 @@ export const enableClubSeasons = onCall(
       throw new HttpsError('failed-precondition', `season-plan:${plan.error}`);
     }
     // Store the entire off-period separately before starting a clean season.
-    if (closedSoFar > 0) {
+    if (reactivation) {
       await operation.markMutating();
       const previous = await db.collection('seasonSummary').doc(`${groupId}__s${closedSoFar}`).get();
       const boundary = Number(previous.get('endsAt')) || 0;
       const disabledAt = (group.seasons as { disabledAt?: number })?.disabledAt ?? 0;
       if (boundary > 0 || disabledAt > 0) {
-        const games = await db.collection('games').where('groupId', '==', groupId).where('startsAt', '>=', boundary || disabledAt).get();
+        // With no competitive archive, all live history (including the short
+        // first season) belongs to this non-competitive period, not to s1 again.
+        const games = await db.collection('games').where('groupId', '==', groupId).where('startsAt', '>=', closedSoFar > 0 ? boundary || disabledAt : 0).get();
         for (let start = 0; start < games.size; start += 400) {
           const batch = db.batch();
           for (const game of games.docs.slice(start, start + 400)) {
@@ -16864,13 +16879,13 @@ export const enableClubSeasons = onCall(
       await operation.markMutating();
       await closeSeason({ db, groupId, groupName: group.name ?? '',
         seasonId: `off_${closedSoFar}_${(group.seasons as { disabledAt?: number })?.disabledAt ?? 0}`, seasonNo: closedSoFar,
-        startsAt: (group.seasons as { disabledAt?: number })?.disabledAt ?? 0,
+        startsAt: closedSoFar > 0 ? boundary || disabledAt : 0,
         completedRounds: await playedEveningsFromGames(groupId, `off_${closedSoFar}_${(group.seasons as { disabledAt?: number })?.disabledAt ?? 0}`), nonSeason: true, now });
     }
 
     // Carrying season 1 on under a DATE cadence: the admin picked its last day,
     // and the chosen length only starts applying from season 2.
-    if (type === 'date' && choice === 'continue' && plan.endsOn) {
+    if (!reactivation && type === 'date' && choice === 'continue' && plan.endsOn) {
       cadence.startsOn = null; // season 1 reaches back as far as the club does
       cadence.endsOn = plan.endsOn;
       cadence.endsAt = null;
@@ -16955,6 +16970,7 @@ export const enableClubSeasons = onCall(
         seasons: {
           operation: { phase: false },
           enabled: true,
+          ...(reactivation ? { hasArchivedPeriods: true } : {}),
           // Defence in depth: a stale correction window from before the feature
           // was switched off would stop this club starting an evening the moment
           // it came back on, because the rules block on the stamp's PRESENCE.

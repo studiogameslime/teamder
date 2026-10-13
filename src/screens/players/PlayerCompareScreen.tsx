@@ -58,6 +58,7 @@ import {
 } from '@/services/pairCompareService';
 import { groupService } from '@/services/groupService';
 import { seasonHistoryService } from '@/services/seasonHistoryService';
+import { hasArchivedStats } from '@/utils/statsScope';
 import { useUserStore } from '@/store/userStore';
 import { toast } from '@/components/Toast';
 import { logEvent, AnalyticsEvent } from '@/services/analyticsService';
@@ -117,13 +118,13 @@ export function PlayerCompareScreen() {
       const g = await groupService.get(groupId).catch(() => null);
       if (!alive) return;
       setSeasons(g?.seasons);
-      if (g?.seasons && !g.seasons.enabled && (g.seasons.count ?? 0) > 0) setScope({ k: 'all' });
+      if (g?.seasons && !g.seasons.enabled && hasArchivedStats(g.seasons)) setScope({ k: 'all' });
       // Only a club that has actually closed one pays for the list.
-      if ((g?.seasons?.count ?? 0) > 0) {
-        const list = await seasonHistoryService.list(groupId).catch(() => 'error' as const);
+      if (hasArchivedStats(g?.seasons)) {
+        const list = await seasonHistoryService.list(groupId, true).catch(() => 'error' as const);
         if (!alive) return;
         if (list !== 'error') {
-          setPastSeasons(list.map((s) => ({ seasonId: s.seasonId, no: s.no })));
+          setPastSeasons(list.map((s) => ({ seasonId: s.seasonId, no: s.no, nonSeason:s.nonSeason })));
         }
       }
       if (alive) setSeasonsLoaded(true);

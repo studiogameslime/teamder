@@ -62,7 +62,9 @@ export function HomePersonalStats({ user, onOpen, preview }: { user: User; onOpe
   const [reduced, setReduced] = useState(false);
   const list = useRef<FlatList<string>>(null);
   const [width, setWidth] = useState(330);
+  const { fontScale } = useWindowDimensions();
   const [cardHeights, setCardHeights] = useState<Record<string, number>>({});
+  const layoutKey = `${user.id}:${width}:${fontScale}:`;
   const visibleRef = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => { if (viewableItems[0]?.index != null) setIndex(viewableItems[0].index); }).current;
   useEffect(() => { let alive = true; void AccessibilityInfo.isReduceMotionEnabled().then(v => { if (alive) setReduced(v); }); const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced); return () => { alive = false; sub.remove(); }; }, []);
   useFocusEffect(React.useCallback(() => {
@@ -91,9 +93,15 @@ export function HomePersonalStats({ user, onOpen, preview }: { user: User; onOpe
   useEffect(() => { setIndex(0); list.current?.scrollToOffset({ offset: 0, animated: false }); }, [user.id, preview]);
   const stats = data?.stats;
   const milestone = stats ? nextPersonalMilestone(stats.goals) : null;
-  const renderCard = (slide: string) => <Pressable onLayout={e => { const height = e.nativeEvent.layout.height; setCardHeights(old => Math.abs((old[slide] ?? 0) - height) < 0.5 ? old : { ...old, [slide]: height }); }} onPress={onOpen} accessibilityRole="button" accessibilityLabel="פתיחת הסטטיסטיקה האישית" style={[s.card, { alignSelf: 'flex-start', width: slides.length > 1 ? width - 14 : width }]}>
+  const cardHeight = Math.max(204, ...(slides.length ? slides : ['empty']).map(slide => cardHeights[layoutKey + slide] ?? 0));
+  const renderCard = (slide: string) => <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel="פתיחת הסטטיסטיקה האישית" style={[s.card, { minHeight: cardHeight, width: slides.length > 1 ? width - 14 : width }]}>
         <PitchWatermark />
-        <View>
+        <View onLayout={e => {
+          // Measure natural content, not the stretched card, so width/font changes can shrink too.
+          const height = Math.ceil(e.nativeEvent.layout.height) + 34;
+          const key = layoutKey + slide;
+          setCardHeights(old => old[key] === height ? old : { ...old, [key]: height });
+        }}>
           {!stats ? <View style={s.loading}>{failed ? <Text style={s.subtitle}>לא הצלחנו לטעון את הנתונים שלך</Text> : <ActivityIndicator color="#2467F4" />}</View> : !slides.length ? <>
             <Text style={s.title}>הכדורגל שלך מתחיל כאן</Text><Text style={s.subtitle}>אחרי המחזור הראשון יתחילו להצטבר הציונים, השערים והבישולים שלך</Text>
             <View style={s.art}><StatisticsIllustration kind="boot" size={58} /><StatisticsIllustration kind="ball" size={68} /><StatisticsIllustration kind="trophy" size={54} /></View>
@@ -107,13 +115,14 @@ export function HomePersonalStats({ user, onOpen, preview }: { user: User; onOpe
     <View style={s.header}><Text style={s.heading}>הכדורגל שלך</Text><Pressable onPress={onOpen} accessibilityRole="button" style={s.link}><Text style={s.linkText}>לסטטיסטיקה שלך</Text><Ionicons name="chevron-back" size={16} color="#2467F4" /></Pressable></View>
     <View onLayout={e => setWidth(Math.max(100, e.nativeEvent.layout.width))}>
       <FlatList ref={list} horizontal data={slides.length ? slides : ['empty']} keyExtractor={item => item}
-        style={{ height: cardHeights[slides[current] ?? 'empty'] }}
+        style={{ height: cardHeight }}
+        initialNumToRender={4} maxToRenderPerBatch={4} removeClippedSubviews={false}
         renderItem={({ item }) => renderCard(item)} showsHorizontalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
         snapToInterval={width - 4} decelerationRate="fast" disableIntervalMomentum
         getItemLayout={(_, i) => ({ length: width - 4, offset: (width - 4) * i, index: i })}
         onViewableItemsChanged={visibleRef} viewabilityConfig={{ itemVisiblePercentThreshold: 70 }}
-        extraData={{ stats, width }} />
+        extraData={{ stats, width, cardHeight, layoutKey }} />
     </View>
     {failed && <Pressable onPress={() => setRetry(n => n + 1)} style={s.retry} accessibilityRole="button"><Text style={s.linkText}>נסה שוב</Text></Pressable>}
     {slides.length > 1 && <View style={s.dots}>{slides.map((item, i) => <Pressable key={item} onPress={() => select(i)} accessibilityRole="button" accessibilityLabel={`הצגת ${['המספרים שלך', 'הציונים שלך', 'השותף שלך', 'היעד הבא'][['numbers', 'scores', 'partner', 'milestone'].indexOf(item)]}`} accessibilityState={{ selected: i === current }} style={s.dotTarget}><View style={[s.dot, i === current && s.activeDot]} /></Pressable>)}</View>}

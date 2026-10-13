@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 import { useAuthenticatedAction } from '@/hooks/useAuthenticatedAction';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -73,7 +74,7 @@ export function PlayerDiscovery({ preview }: { preview?: SocialPlayer[] }) {
     </View>:null}
     ListEmptyComponent={!busy&&!failed?<View style={s.empty}><Ionicons name="people-outline" size={40} color="#2563EB"/><Text style={s.title}>{me?.isGuest?'חברים מחכים על המגרש':cursor?'ממשיך לחפש שחקנים':'לא נמצאו שחקנים'}</Text><Text style={s.body}>{me?.isGuest?'הירשם כדי למצוא שחקנים ולהתחבר לחברים':'נסה שם חלקי או שנה את הסינון'}</Text>{me?.isGuest?<SocialAction title="הירשם והכר שחקנים" icon="people-outline" onPress={()=>authAction.requestAuth()}/>:null}</View>:null}
     ListFooterComponent={<View style={{gap:10,marginTop:12}}>{busy?<ActivityIndicator color="#2563EB"/>:null}{failed?<><Text style={s.body}>לא ניתן לטעון כרגע. התוצאות אינן בהכרח ריקות.</Text><SocialAction title="נסה שוב" icon="refresh-outline" secondary onPress={()=>cursor?void more():setRefresh(n=>n+1)}/></>:cursor?<SocialAction title="הצג שחקנים נוספים" icon="chevron-down" secondary disabled={busy} onPress={()=>void more()}/>:list.length?<Text style={[s.body,{fontSize:11,textAlign:'center'}]}>הפרטים מוצגים בהתאם להגדרות הפרטיות של כל שחקן</Text>:null}</View>}/>
-    <Modal visible={filter} transparent animationType="none" onRequestClose={()=>setFilter(false)}><SpringSheet panelStyle={{backgroundColor:'white',borderTopLeftRadius:24,borderTopRightRadius:24,top:'auto',maxHeight:'85%'}} visible={filter} onBackdropPress={()=>setFilter(false)}><ScrollView style={{flexGrow:0}} keyboardShouldPersistTaps="handled" contentContainerStyle={[s.content,{paddingBottom:30}]}>
+    <Modal visible={filter} transparent animationType="none" onRequestClose={()=>setFilter(false)}><SpringSheet panelStyle={{...overlaySurfaces.sheet,top:'auto',maxHeight:'85%'}} visible={filter} onBackdropPress={()=>setFilter(false)}><ScrollView style={{flexGrow:0}} keyboardShouldPersistTaps="handled" contentContainerStyle={[s.content,{paddingBottom:30}]}>
       <View style={s.row}><Text style={s.title}>סינון שחקנים</Text><Pressable accessibilityRole="button" accessibilityLabel="סגור סינון" onPress={()=>setFilter(false)}><Ionicons name="close" size={22} color="#667796"/></Pressable></View>
       <Text style={[s.body,{fontWeight:'700'}]}>עיר</Text>
       <TextInput value={draftCity} onChangeText={setDraftCity} placeholder="כל הערים" accessibilityLabel="סינון לפי עיר" maxLength={120} style={[s.chip,{textAlign:'right',writingDirection:'rtl',fontSize:15,minHeight:44}]}/>

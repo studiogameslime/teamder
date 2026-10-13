@@ -8,6 +8,7 @@ jest.mock('react-native-svg', () => ({ __esModule: true, default: 'Svg', Circle:
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ bottom: 20 }) }));
 jest.mock('@/components/Button', () => ({ Button: 'Button' }));
 jest.mock('@/theme', () => ({ RTL_LABEL_ALIGN: 'left' }));
+jest.mock('@/theme/colors', () => ({ colors: { surface: '#FFFFFF', border: '#E2EAF6' }, isDarkTheme: false }));
 
 import { RoundReviewSheet } from '@/components/games/RoundReviewSheet';
 import type { GameFormValues } from '@/screens/games/GameWizardForm';

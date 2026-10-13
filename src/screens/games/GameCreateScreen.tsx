@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // Create-game screen — thin shell over GameWizardForm. Handles
 // community selection (when the user belongs to more than one) and
 // translates the wizard's GameFormValues into a `createGameV2` call.
@@ -894,18 +895,15 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     fontWeight: '600',
   },
-  dropdownBackdrop: {
+  dropdownBackdrop: { backgroundColor: overlayTheme.popoverBackdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
   },
-  dropdownCard: {
+  dropdownCard: { ...overlaySurfaces.popover,
     width: '100%',
     maxWidth: 360,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
     padding: spacing.xs,
     gap: 2,
   },

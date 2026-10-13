@@ -7,7 +7,7 @@ test('source resolution before guest hydration must wait instead of reporting a 
   expect(entryGuestAfterHydration(true, { id: 'guest', isGuest: true })).toBe(true);
 });
 
-test('restored full accounts do not receive the new guest-entry notification', () => {
+test('restored full accounts are correctly identified as members after hydration', () => {
   expect(entryGuestAfterHydration(false, { id: 'member' })).toBeNull();
   expect(entryGuestAfterHydration(true, { id: 'member' })).toBe(false);
 });

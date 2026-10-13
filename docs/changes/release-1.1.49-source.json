@@ -1,0 +1,39 @@
+{
+  "buildId": "2b860c4b-9633-48f2-983c-4711305ce87f",
+  "version": "1.1.49",
+  "code": "282",
+  "sourceCommit": "b8a8ccf4094225ff151dd2a972079636272f7d0b",
+  "dirtySource": true,
+  "nonRuntimeDifferences": [],
+  "sourceSnapshotSha256": "d77e281f383d7034145d2d4ff3cb5d4642cf30168a7a96bcf17c1eac1c2e54bc",
+  "verifiedSourceFiles": 1712,
+  "archiveUrl": "https://expo.dev/artifacts/eas/c71ZO1YqYFrcavOGFrleZR5S_sm4F4A-Q58PnMi4I3w.aab",
+  "at": "2026-10-13T11:36:12.632Z",
+  "internalVerified": true,
+  "production": {
+    "version": "1.1.46",
+    "code": 279
+  },
+  "tests": {
+    "jest": 3646,
+    "suites": 290,
+    "rules": 346,
+    "server": 62
+  },
+  "deployedFunctions": [
+    "recordOnboardingActivity",
+    "onOnboardingActivity",
+    "commitRoundStats",
+    "saveGamePhysical",
+    "enableClubSeasons",
+    "disableClubSeasons",
+    "endSeasonNow",
+    "onGameRosterChanged",
+    "cronEvery60Min"
+  ],
+  "rulesDeployed": false,
+  "allHistoricalReleaseRecordsPreserved": true,
+  "nonRuntimeChangesAfterSourceVerification": [
+    "docs/RELEASING.md"
+  ]
+}

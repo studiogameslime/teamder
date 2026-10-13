@@ -8,6 +8,7 @@ import { FORM_BLUE } from '@/components/forms/FormTheme';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import { formatDateShort, formatTime, gameFormatLabel, HEBREW_DAYS_LONG } from '@/utils/format';
 import type { GameFormValues } from '@/screens/games/GameWizardForm';
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 
 type Icon = keyof typeof Ionicons.glyphMap;
 type Props = {
@@ -106,7 +107,7 @@ export function RoundReviewSheet({ values: v, maxPlayers, communityName, quick, 
 }
 
 const s = StyleSheet.create({
-  sheet: { flexShrink: 1, maxHeight: '100%', backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
+  sheet: { ...overlaySurfaces.sheet, flexShrink: 1, maxHeight: '100%', overflow: 'hidden' },
   handle: { width: 44, height: 4, borderRadius: 3, backgroundColor: '#D0D7E5', alignSelf: 'center', marginTop: 8, marginBottom: 4 },
   scroll: { flexGrow: 0, flexShrink: 1 }, content: { padding: 16, paddingTop: 8, paddingBottom: 0, gap: 12 },
   heading: { paddingVertical: 10, minHeight: 76, justifyContent: 'center' },
@@ -132,7 +133,7 @@ const s = StyleSheet.create({
   scheduled: { backgroundColor: '#E8F3FF' }, badge: { fontSize: 11, fontWeight: '800', color: FORM_BLUE, backgroundColor: '#CFE5FF', paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8 },
   disclosure: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, minHeight: 44 },
   link: { color: FORM_BLUE, fontSize: 15 },
-  footer: { paddingHorizontal: 16, paddingTop: 8, backgroundColor: '#FFFFFF' },
+  footer: { paddingHorizontal: 16, paddingTop: 8, backgroundColor: overlayTheme.surface },
   confirm: { backgroundColor: FORM_BLUE, borderColor: FORM_BLUE, borderRadius: 14 },
   back: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 6 }, backText: { color: FORM_BLUE, fontSize: 17, fontWeight: '700' },
 });

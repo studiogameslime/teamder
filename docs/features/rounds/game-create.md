@@ -215,3 +215,8 @@ tests/logic/gameCreation.test.ts; בדיקות שיקום טיוטה, תזמון
 `orphanBannerText` מקבל `flex: 1`, גובה שורה 20 ומשקל 600. המלל ב־`createGameOrphanBanner` מופרד לכותרת והסבר בשורה שנייה. נוסף מסלול פיתוח `GameCreateQuick` ב־`QARouteLauncher` לפתיחת הטופס עם `quick: true`; הוא כפוף לשערי הפיתוח הקיימים. נצפה הטופס בפועל באימולטור אנדרואיד מנותק; לא נוצר מחזור ולא נבדק אייפון. בדיקת טיפוסים וכל 3385 הבדיקות עברו. פלט הבדיקות ב־`artifacts/form-redesign/types-quick-banner.txt` וב־`jest-quick-banner.txt`.
 
 [צילום עדכני](../screenshots/quick-round-banner-2026-10-11.png).
+
+
+## מעטפת התקציר — 13.10.2026
+
+המשטח והכפתורים התחתונים ב־RoundReviewSheet משתמשים בתשתית החלוניות המשותפת. אין שינוי שדות, סיכום, סגירה או שמירה. נצפה הרכיב האמיתי עם ערכי בדיקה מנותקים במצב יצירה, סגור ופתוח; מצב עריכה לא הורץ מחדש. [צילום](../screenshots/overlays-round-review-2026-10-13.png) · [פרטים ומגבלות](../shared/menus-and-motion.md). לא נוצר ולא נשמר מחזור בבדיקה.

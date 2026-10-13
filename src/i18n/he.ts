@@ -88,8 +88,8 @@ const TITLE = {
   topWinner: 'מלך הניצחונות',
   mostLoyal: 'מלך ההתמדה',
   cleanSheetKing: 'מלך השער הנקי',
-  penaltyKing: 'מלך הפנדלים',
-  penaltyKeeper: 'מלך העצירות',
+  penaltyKing: 'מלך הבקעות הפנדלים',
+  penaltyKeeper: 'מלך עצירות הפנדלים',
   deadlyDuo: 'הצמד הקטלני',
 } as const;
 
@@ -661,7 +661,7 @@ export const he = {
   // ── Retro goals (admin, post-match) ──
   retroEntryCta: 'השלם גול שהוחמץ',
   retroTitle: 'השלמת גולים',
-  retroNote: 'מזכה את השחקן בגול — לא משנה מי ניצח את המשחקים.',
+  retroNote: 'מעדכן את מוני השערים והבישולים בלבד. תוצאות המשחקים, נתוני הצמדים, הציונים והתארים שכבר נחתמו אינם משתנים.',
   retroEmpty: 'עדיין לא הושלמו גולים',
   retroAddCta: 'הוסף גול שהוחמץ',
   retroPickScorer: 'מי הבקיע?',
@@ -1557,8 +1557,9 @@ export const he = {
   // woman, and the one club that runs seasons prints it beside 'מלך ההתמדה'
   // for the same attendance.
   communityStatsMostLoyal: TITLE.mostLoyal,
-  communityStatsPenaltyKing: TITLE.penaltyKing,
-  communityStatsPenaltyKeeperKing: TITLE.penaltyKeeper,
+  communityStatsPenaltyKing: 'מצטיין הפנדלים',
+  communityStatsPenaltyKeeperKing: 'מצטיין עצירות הפנדלים',
+  communityPenaltyRankingNote: 'מצטייני הפנדלים במועדון נבחרים לפי אחוזי הצלחה וכמות בעיטות. תארי העונה נקבעים לפי מספר ההבקעות או העצירות.',
   // The dubious crown. No season awards it, so it has no TITLE entry — but it
   // was 'מלך השערים העצמיים' and carries the same problem the rename was for,
   // so it wears the same word.
@@ -2763,6 +2764,9 @@ export const he = {
    *  what naming them "מלך" costs. Every surface that prints one reads it
    *  from here. */
   seasonTitleNames: TITLE,
+  seasonsRestartTitle: 'פותחים עונה חדשה ונקייה',
+  seasonsRestartBody: 'העונה החדשה מתחילה מאפס כדי שהנתונים מהתקופה הקודמת לא ייכנסו לתחרות החדשה. הנתונים הקודמים נשמרים בהיסטוריה ובנתוני כל הזמנים. תקופה של פחות משני מחזורים נשמרת ללא חלוקת תארים.',
+  communityStatsAllTimeWithPeriods: 'הנתונים כוללים את העונה הנוכחית, עונות קודמות ותקופות שנשמרו ללא תארים.',
   communityStatsSeasonFresh: (no: number) =>
     `עונה ${no} רק התחילה, אז הטבלה עוד ריקה. שום דבר לא נמחק — כל מה ששיחקתם שמור בעונה הקודמת, והסטטיסטיקה המצטברת בפרופיל לא השתנתה.`,
   communityStatsSeasonFreshCta: 'לראות את העונה הקודמת ואת התארים שחולקו',
@@ -4582,7 +4586,7 @@ export const he = {
   seasonPartialCoverageNote:
     'הבישולים נאספים מאמצע יוני והשערים הנקיים מאמצע אוגוסט. אצל ותיקים האחוזים מחושבים רק מהמשחקים שבהם הנתון כבר נאסף.',
   effPartialNote:
-    'שערים נקיים נאספים מאמצע אוגוסט. אצל ותיקים האחוז מחושב רק מהמשחקים שבהם הנתון נאסף בפועל.',
+    'בישולים ושערים נקיים מחושבים רק במשחקים שבהם נאספו. מקף מציין כיסוי חסר; שערים ובישולים למשחק מוצגים יחד רק כשהכיסוי תואם.',
   pairStatsSharedCommunities: 'מועדונים משותפים',
   pairStatsSharedCommunitiesPlural: (n: number) =>
     n === 1 ? 'מועדון אחד משותף' : `${n} מועדונים משותפים`,

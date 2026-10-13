@@ -179,10 +179,10 @@ describe('the launch source is published, not guessed', () => {
   const home = read(path.join('src', 'screens', 'home', 'GuestHomeScreen.tsx'));
 
   it('App.tsx publishes what it resolved', () => {
-    expect(app).toContain('setEntrySource(source as EntrySource)');
+    expect(app).toContain('setEntrySource(source as EntrySource, details)');
     // Published BEFORE the event, so a reader that runs on the same tick as
     // the report cannot see the stale value.
-    expect(app.indexOf('setEntrySource(source as EntrySource)')).toBeLessThan(
+    expect(app.indexOf('setEntrySource(source as EntrySource, details)')).toBeLessThan(
       app.indexOf('AnalyticsEvent.EntrySourceResolved'),
     );
   });

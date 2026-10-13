@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // WhatsNewModal — the one-time "מה חדש באפליקציה" bottom sheet shown after a
 // version update. Content (highlights) is passed in by WhatsNewGate; this is a
 // pure presentational sheet. Flat list of highlights, newest first — no
@@ -117,12 +118,9 @@ export function WhatsNewModal({ version, items, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  backdrop: { backgroundColor: overlayTheme.backdrop,  flex: 1,  justifyContent: 'flex-end' },
   fill: { flex: 1 },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+  sheet: { ...overlaySurfaces.sheet,
     maxHeight: '86%',
     overflow: 'hidden',
   },

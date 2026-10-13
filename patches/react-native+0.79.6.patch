@@ -61,3 +61,65 @@ diff --git a/node_modules/react-native/Libraries/Components/ScrollView/ScrollVie
  
    /**
     * When true, shows a horizontal scroll indicator.
+diff --git a/node_modules/react-native/Libraries/Components/ScrollView/ScrollViewStickyHeader.js b/node_modules/react-native/Libraries/Components/ScrollView/ScrollViewStickyHeader.js
+--- a/node_modules/react-native/Libraries/Components/ScrollView/ScrollViewStickyHeader.js
++++ b/node_modules/react-native/Libraries/Components/ScrollView/ScrollViewStickyHeader.js
+@@ -105,14 +105,7 @@
+     },
+   );
+
+-  const haveReceivedInitialZeroTranslateY = useRef<boolean>(true);
+   const translateYDebounceTimer = useRef<?TimeoutID>(null);
+-
+-  useEffect(() => {
+-    if (translateY !== 0 && translateY != null) {
+-      haveReceivedInitialZeroTranslateY.current = false;
+-    }
+-  }, [translateY]);
+
+   // This is called whenever the (Interpolated) Animated Value
+   // updates, which is several times per frame during scrolling.
+@@ -130,12 +123,6 @@
+   //    of the current position.
+   const animatedValueListener = useCallback(({value}: $FlowFixMe) => {
+     const debounceTimeout: number = Platform.OS === 'android' ? 15 : 64;
+-    // When the AnimatedInterpolation is recreated, it always initializes
+-    // to a value of zero and emits a value change of 0 to its listeners.
+-    if (value === 0 && !haveReceivedInitialZeroTranslateY.current) {
+-      haveReceivedInitialZeroTranslateY.current = true;
+-      return;
+-    }
+     if (translateYDebounceTimer.current != null) {
+       clearTimeout(translateYDebounceTimer.current);
+     }
+@@ -223,9 +210,18 @@
+     // add the event listener
+     let animatedListenerId;
+     if (isFabric) {
+-      animatedListenerId = newAnimatedTranslateY.addListener(
+-        animatedValueListener,
+-      );
++      // Teamder: only Animated.Value subscribes to native value events in
++      // RN 0.79.6. An interpolation listener cannot keep Fabric measurements
++      // in sync with a natively driven sticky header. The value updates its
++      // JS cache before notifying us, so the original interpolation (including
++      // inverted/hidden headers) is evaluated against the actual scroll offset.
++      const syncTranslateY = () => {
++        animatedValueListener({value: newAnimatedTranslateY.__getValue()});
++      };
++      animatedListenerId = scrollAnimatedValue.addListener(syncTranslateY);
++      // Also reconcile a layout/interpolation change while already stationary.
++      // This is the actual offset, not an interpolation's synthetic initial 0.
++      syncTranslateY();
+     }
+
+     setAnimatedTranslateY(newAnimatedTranslateY);
+@@ -233,7 +229,7 @@
+     // clean up the event listener and timer
+     return () => {
+       if (animatedListenerId) {
+-        newAnimatedTranslateY.removeListener(animatedListenerId);
++        scrollAnimatedValue.removeListener(animatedListenerId);
+       }
+       if (translateYDebounceTimer.current != null) {
+         clearTimeout(translateYDebounceTimer.current);

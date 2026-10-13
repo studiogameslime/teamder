@@ -707,6 +707,7 @@ export function readGroupSeasons(v: unknown): GroupSeasons | undefined {
   return {
     enabled: d.enabled === true,
     ...(typeof d.disabledAt === 'number' ? { disabledAt: d.disabledAt } : {}),
+    ...(d.hasArchivedPeriods === true ? { hasArchivedPeriods: true } : {}),
     ...(d.operation && typeof d.operation === 'object' ? { operation: {
       kind: String((d.operation as Record<string, unknown>).kind ?? ''),
       until: Number((d.operation as Record<string, unknown>).until) || 0,

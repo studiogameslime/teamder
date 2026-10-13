@@ -11,11 +11,12 @@
 // active, so nothing here depends on measuring an x-offset — under `forceRTL`
 // a measured `left` is the one thing that reliably lands on the wrong side.
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { recordDiagnostic } from '@/services/diagnosticJournal';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RTL_LABEL_ALIGN, clubAccent, colors } from '@/theme';
+import { createTabTouchTrace, touchPoint } from '@/utils/tabTouchTrace';
 
 /** The club screen's three. The bar itself is generic — see `ClubTabsProps`. */
 export type ClubTabKey = 'info' | 'players' | 'stats';
@@ -68,17 +69,36 @@ export function ClubTabs<K extends string = ClubTabKey>({
   const dense = tabs.length > 3;
   return (
     <View style={[styles.bar, flush && styles.barFlush]}>
-      {tabs.map((t) => {
-        const isActive = t.key === active && !t.locked;
-        return (
+      {tabs.map(t => <ClubTabButton key={t.key} tab={t} isActive={t.key === active && !t.locked}
+        dense={dense} onChange={onChange} onLockedPress={onLockedPress} />)}
+    </View>
+  );
+}
+
+function ClubTabButton<K extends string>({ tab: t, isActive, dense, onChange, onLockedPress }: {
+  tab: ClubTab<K>; isActive: boolean; dense: boolean;
+  onChange: (key: K) => void; onLockedPress?: (key: K) => void;
+}) {
+  const nativeRef = useRef<View>(null);
+  const traceRef = useRef<ReturnType<typeof createTabTouchTrace> | null>(null);
+  if (!traceRef.current) traceRef.current = createTabTouchTrace(t.key, (name, data) => recordDiagnostic('tap', name, data));
+  const trace = traceRef.current;
+  useEffect(() => () => trace.dispose(), [trace]);
+  return (
           <Pressable
-            key={t.key}
+            ref={nativeRef}
             style={({ pressed }) => [
               styles.tab,
               isActive && styles.tabActive,
               pressed && styles.pressed,
             ]}
-            onPressIn={() => recordDiagnostic('tap','club_tab_press_in',{tab:t.key})}
+            onPressIn={event => trace.pressIn(touchPoint(event), done => nativeRef.current?.measure(
+              (_left, _top, width, height, x, y) => done({ x, y, width, height }),
+            ))}
+            onPressOut={() => trace.pressOut()}
+            onTouchMove={event => trace.move(touchPoint(event))}
+            onTouchEnd={event => trace.finish('touch_end', touchPoint(event))}
+            onTouchCancel={() => trace.finish('touch_cancel')}
             onPress={() => { recordDiagnostic('tap','club_tab_selected',{tab:t.key}); t.locked ? onLockedPress?.(t.key) : onChange(t.key); }}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive, disabled: !!t.locked }}
@@ -103,9 +123,6 @@ export function ClubTabs<K extends string = ClubTabKey>({
               {t.label}
             </Text>
           </Pressable>
-        );
-      })}
-    </View>
   );
 }
 

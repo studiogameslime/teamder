@@ -17,6 +17,7 @@ jest.mock('@/services/errorLog', () => ({ logUnexpected: jest.fn() }));
 
 const sdk = {
   initialize: jest.fn().mockResolvedValue(undefined),
+  getDiagnostics: jest.fn().mockResolvedValue({apiEndpoint: 'test-host'}),
   identify: jest.fn(),
   alias: jest.fn(),
   setAttributes: jest.fn(),

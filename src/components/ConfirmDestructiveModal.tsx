@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // Reusable destructive-action confirmation dialog.
 // Pattern: title + body + irreversible-ack checkbox + cancel/confirm.
 // The confirm button stays disabled until the checkbox is ticked, so a
@@ -136,9 +137,7 @@ export function ConfirmDestructiveModal({
 const styles = StyleSheet.create({
   // backdrop style retired — SpringSheet now owns the dimmed
   // background and the centred panel positioning.
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+  card: { ...overlaySurfaces.dialog,
     padding: spacing.xl,
     gap: spacing.md,
   },

@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // CommunityFilterSheet — modal sheet for filtering the Communities feed.
 //
 // Filter dimensions:
@@ -454,15 +455,11 @@ export function applyGroupFilters(
 // ─── Styles ─────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  sheet: { ...overlaySurfaces.sheet,
     // Fill the SpringSheet panel (top:10%→bottom = 90% of screen) so the
     // sheet has a DEFINITE height — that's what lets the body ScrollView's
     // `flex:1` resolve and scroll, with the footer pinned at the bottom.

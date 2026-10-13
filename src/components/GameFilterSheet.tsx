@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // GameFilterSheet — modal sheet for filtering the matches list.
 //
 // Redesigned (2026-06) to the "סינון מחזורים" mockup:
@@ -504,10 +505,7 @@ function QuickToggle({
 // ─── Styles ─────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  sheet: { ...overlaySurfaces.sheet,
     // Fill the SpringSheet panel (top:10%→bottom = 90% of screen) so the
     // sheet has a DEFINITE height. That's what lets the body ScrollView's
     // `flex:1` resolve and scroll, with the footer pinned at the bottom.

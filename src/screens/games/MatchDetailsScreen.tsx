@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import { HeightReveal } from '@/components/anim/HeightReveal';
 import { recordDiagnostic } from '@/services/diagnosticJournal';
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
@@ -3113,7 +3114,7 @@ export function MatchDetailsScreen() {
               </View> : null}
             </HeightReveal>
             {/* The teams pointer.
-                
+
                 The teams UI moved to the שחקנים tab, where the roster it
                 splits already is. This card is what keeps it findable from
                 the first screen: it states the one fact that decides whether
@@ -3622,7 +3623,7 @@ export function MatchDetailsScreen() {
                   </Pressable>
                 ) : null}
                 {/* The drawn teams, with "פרסם כוחות" and "ייצא כוחות לוואטסאפ".
-                
+
                 This block was lost when the שחקנים tab stopped being a preview
                 and became the embedded players screen: the pane it lived in
                 was replaced wholesale, and the split, the publish button and
@@ -5358,15 +5359,12 @@ const styles = StyleSheet.create({
   // Conflict modal — same shape as ConfirmDestructiveModal but a
   // warning palette (orange, not red) since this is an informative
   // block, not a destructive choice.
-  conflictBackdrop: {
+  conflictBackdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  conflictCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+  conflictCard: { ...overlaySurfaces.dialog,
     padding: spacing.xl,
     gap: spacing.md,
   },

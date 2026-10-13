@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // Penalty shootout (שובר שוויון) — the tiebreaker for a drawn mini-game.
 //
 // Flow (each screen has a "חזור" back button; the board can undo the last kick):
@@ -877,29 +878,24 @@ export function Shootout({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
   },
-  card: {
+  card: { ...overlaySurfaces.dialog,
     width: '100%',
     maxWidth: 380,
-    backgroundColor: colors.bg,
-    borderRadius: 26,
     padding: spacing.lg,
     gap: spacing.sm,
   },
-  sheet: {
+  sheet: { ...overlaySurfaces.dialog,
     width: '100%',
     maxWidth: 400,
     maxHeight: '96%',
     // No minHeight — the sheet hugs its content so there's no dead space at the
     // bottom on the shorter screens (Pulse: "empty space at the bottom").
-    backgroundColor: '#F4F6F9',
-    borderRadius: 26,
     padding: spacing.md,
   },
   title: { ...typography.h2, color: colors.text, fontWeight: '800', textAlign: 'center', writingDirection: 'rtl' },
@@ -1020,11 +1016,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15,23,42,0.45)',
   },
-  confirmCard: {
+  confirmCard: { ...overlaySurfaces.dialog,
     width: '100%',
     maxWidth: 340,
-    backgroundColor: colors.bg,
-    borderRadius: 22,
     padding: spacing.lg,
     gap: spacing.sm,
   },

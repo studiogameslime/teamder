@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // PairCard — one pair's story, in a few seconds.
 //
 // Takes a club and two player ids and nothing else about WHERE it was opened
@@ -204,11 +205,8 @@ function Stat({ value, label }: { value: number; label: string }) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  backdrop: { backgroundColor: overlayTheme.backdrop,  flex: 1,  justifyContent: 'flex-end' },
+  sheet: { ...overlaySurfaces.sheet,
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
     gap: spacing.xs,

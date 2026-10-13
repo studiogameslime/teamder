@@ -337,14 +337,14 @@ export function buildPersonalSeason({
   // The clean-sheet denominator is its own counter: the metric started being
   // collected later than `rounds`, so dividing by rounds understates every
   // veteran. Same correction the club efficiency table carries.
-  const csRounds = typeof mine?.csRounds === 'number' ? mine.csRounds : rounds;
+  const csRounds = typeof mine?.csRounds === 'number' && Number.isFinite(mine.csRounds) && mine.csRounds >= 0 && mine.csRounds <= rounds ? mine.csRounds : 0;
   // And assists have one too, for the same reason and a different date: they
   // began being recorded on 21.06, months after `rounds` started counting. The
   // club's efficiency table has divided by this counter since it shipped, so
   // dividing by `rounds` here gave 4 of the 7 players on the only closed season
   // two different "בישולים למשחקון" for one season, one tap apart. The value
   // was fetched, plumbed through the archive reader and never used.
-  const asRounds = typeof mine?.asRounds === 'number' ? mine.asRounds : rounds;
+  const asRounds = typeof mine?.asRounds === 'number' && Number.isFinite(mine.asRounds) && mine.asRounds >= 0 && mine.asRounds <= rounds ? mine.asRounds : 0;
 
   const g = rankOf(players, me, (r) => num(r.goals));
   const a = rankOf(players, me, (r) => num(r.assists));

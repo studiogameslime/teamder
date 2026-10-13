@@ -583,8 +583,10 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
   const mvpCoverage = ((): { rated: number; of: number } | undefined => {
     const winners = awards.mvp?.winners ?? [];
     if (!winners.length || args.completedRounds <= 0) return undefined;
-    // The holders share a value, so any of them answers "how many nights is
-    // this built on"; the largest is the least alarming true answer.
+    // An equal average does not imply equal sample sizes. A shared note is
+    // truthful only when every holder has the same number of rated evenings.
+    const counts = winners.map((uid) => num(players[uid]?.eveningScoreCount));
+    if (new Set(counts).size !== 1) return undefined;
     const rated = Math.max(
       0,
       ...winners.map((uid) => num(players[uid]?.eveningScoreCount)),
@@ -592,6 +594,15 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     if (rated <= 0 || rated >= args.completedRounds) return undefined;
     return { rated, of: args.completedRounds };
   })();
+  const mvpCoverageByWinner: Record<string, { rated: number; of: number }> = {};
+  if (args.completedRounds > 0) {
+    for (const uid of awards.mvp?.winners ?? []) {
+      const rated = num(players[uid]?.eveningScoreCount);
+      if (rated > 0 && rated <= args.completedRounds) {
+        mvpCoverageByWinner[uid] = { rated, of: args.completedRounds };
+      }
+    }
+  }
   /**
    * True only when the archive already existed and the wipe never finished —
    * i.e. this invocation is picking up after a pass that died.
@@ -698,8 +709,8 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       // by different screens: the hall of fame reads `seasonCards.winners`,
       // the personal summary reads `seasonSummary.awards`, and a note that
       // appears on one and not the other is worse than none.
-      awards: mvpCoverage && awards.mvp
-        ? { ...awards, mvp: { ...awards.mvp, coverage: mvpCoverage } }
+      awards: awards.mvp && Object.keys(mvpCoverageByWinner).length
+        ? { ...awards, mvp: { ...awards.mvp, ...(mvpCoverage ? { coverage: mvpCoverage } : {}), coverageByWinner: mvpCoverageByWinner } }
         : awards,
     });
     await archiveBatch.commit();
@@ -798,7 +809,9 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       ),
       value: award.value,
       // Only on the title whose value is an average.
-      ...(key === 'mvp' && ((resumedAwards?.mvp as { coverage?: unknown } | undefined)?.coverage ?? mvpCoverage) ? { coverage: (resumedAwards?.mvp as { coverage?: unknown } | undefined)?.coverage ?? mvpCoverage } : {}),
+      ...(key === 'mvp' && (resuming ? (resumedAwards?.mvp as { coverage?: unknown } | undefined)?.coverage : mvpCoverage)
+        ? { coverage: resuming ? (resumedAwards?.mvp as { coverage?: unknown } | undefined)?.coverage : mvpCoverage }
+        : {}),
     });
   }
   // Written on BOTH paths now.

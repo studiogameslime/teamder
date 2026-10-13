@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import { ScrollSurface } from '@/components/ScrollSurface';
 import { recordDiagnostic } from '@/services/diagnosticJournal';
 // CommunityDetailsScreen — premium "stadium-style" community page.
@@ -74,6 +75,7 @@ import { logError, isExpectedDenial } from '@/services/errorLog';
 import { pickAndUploadGroupCover } from '@/services/photoService';
 import { gameService } from '@/services/gameService';
 import { seasonHistoryService } from '@/services/seasonHistoryService';
+import { hasArchivedStats } from '@/utils/statsScope';
 import { deepLinkService } from '@/services/deepLinkService';
 import { createShortInviteUrl } from '@/services/inviteLinkService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -399,7 +401,7 @@ export function CommunityDetailsScreen() {
   // and everyone else pays no read for it.
   const closedSeasons = group?.seasons?.count ?? 0;
   useEffect(() => {
-    if (!groupId || !belongs || !clubHasRecord || closedSeasons <= 0) {
+    if (!groupId || !belongs || !clubHasRecord || !hasArchivedStats(group?.seasons)) {
       setArchivedGoals(0);
       setArchivedRounds(0);
       return;
@@ -418,7 +420,7 @@ export function CommunityDetailsScreen() {
     return () => {
       alive = false;
     };
-  }, [groupId, belongs, clubHasRecord, closedSeasons]);
+  }, [groupId, belongs, clubHasRecord, closedSeasons, group?.seasons?.hasArchivedPeriods]);
 
   // Everything the club badges are scored on — all of it LIFETIME. Season
   // scoping any of these made a club's badges collapse the morning after a
@@ -1005,15 +1007,10 @@ export function CommunityDetailsScreen() {
 
   return (
     <View style={styles.root}>
-      {/* The overlay HOST stays mounted for the life of the screen and only
-          its content toggles. Mounting and unmounting a zIndex'd absoluteFill
-          View over a ScrollView leaves a stale native touch region on Fabric —
-          the taps land on a layer that is no longer drawn, and the screen
-          reads as dead until a scroll forces a re-hit-test. That is the shape
-          behind "אני לוחץ על כפתורים וכלום לא נלחץ"; the match screen was
-          changed to this form for the same reason and this screen was left
-          behind. `pointerEvents="none"` means the permanent host never takes a
-          touch itself. */}
+      {/* Keep the decorative host stable and outside touch handling. This
+          avoids a potential source of overlay interception, but is not proof
+          of the cause of the reported dead taps. `pointerEvents="none"`
+          excludes both this host and its decorations from hit testing. */}
       <View pointerEvents="none" style={styles.celebrationLayer}>
         {celebrate ? (
           <CelebrationOverlay
@@ -1048,29 +1045,11 @@ export function CommunityDetailsScreen() {
       <ScrollSurface
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
-        // "I press buttons and nothing is pressed, and after I scroll the
-        // screen a little the presses work" — reported from 1.1.8.
-        //
-        // Scrolling still working while taps do nothing narrows the cause to
-        // exactly one place: ScrollView's onStartShouldSetResponderCapture. An
-        // overlay would swallow the scroll too; a hit-test dead zone would kill
-        // one region, not the page. The capture returns true — taking the touch
-        // away from whatever was under the finger — when RN believes a keyboard
-        // is dismissible, i.e. TextInputState still names a focused input.
-        // Nothing on this page has one, but the feed we arrive from does (its
-        // search box), and that focus survives the navigation.
-        //
-        // The release handler then blurs it, so strictly it is the FIRST tap
-        // after each arrival that is eaten, not all of them — which is how a
-        // page reads as dead until you poke it twice, and why the report's
-        // "scroll a little and it works" is the same story.
-        //
-        // "handled" opts out of that capture entirely: the touch goes to the
-        // button, and only an unclaimed tap falls through. It is what the
-        // app's other tap-heavy scroll surfaces already pass — both wizards,
-        // post-sign-in onboarding and both filter sheets. (Most screens here
-        // still take the default; this is the fix for the ones a focused
-        // search box upstream can reach, not a house rule.)
+        // Let a child button handle a tap while an upstream input retains
+        // focus. This addresses keyboard dismissal only: native momentum,
+        // responder cancellation and stale measured bounds are separate
+        // mechanisms. The diagnostic journal distinguishes press-in, movement,
+        // release and selection; scrolling alone does not prove any one cause.
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
@@ -1848,15 +1827,11 @@ const styles = StyleSheet.create({
   // its place in the hierarchy — taking it out and putting it back is the
   // thing that strands the touch region.
   overlayIdle: { opacity: 0 },
-  inviteBackdrop: {
+  inviteBackdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(7,12,32,0.45)',
     justifyContent: 'flex-end',
   },
-  inviteSheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+  inviteSheet: { ...overlaySurfaces.sheet,
     padding: spacing.lg,
     paddingBottom: spacing.xl,
     gap: spacing.md,

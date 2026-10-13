@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // PlayerActionMenu — a small popover menu ANCHORED to a tapped player (a
 // speech-bubble with a caret pointing at their avatar), not a centred modal.
 // The header makes it obvious WHO was tapped (avatar + name), then a short
@@ -242,21 +243,12 @@ const styles = StyleSheet.create({
   // lives in ONE physical coordinate frame — the same trick InfoTip uses to
   // keep anchoring correct under Android forceRTL. Text stays Hebrew-right via
   // explicit alignment below.
-  backdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.18)', direction: 'ltr' },
-  card: {
+  backdrop: { backgroundColor: overlayTheme.popoverBackdrop,  flex: 1,  direction: 'ltr' },
+  card: { ...overlaySurfaces.popover,
     position: 'absolute',
     direction: 'ltr',
-    backgroundColor: colors.surface,
-    borderRadius: 18,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 10,
   },
   caret: {
     position: 'absolute',

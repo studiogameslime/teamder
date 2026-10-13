@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // RotationPanel — the live "winner stays" surface on LiveMatchScreen.
 // A live-scoreboard card (the two teams on the pitch: trophies + win streak +
 // player count + a single avatar row, fillers starred) plus the waiting-teams
@@ -733,18 +734,15 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
   },
-  sheet: {
+  sheet: { ...overlaySurfaces.dialog,
     width: '100%',
     maxWidth: 360,
-    backgroundColor: colors.bg,
-    borderRadius: 22,
     padding: spacing.lg,
     gap: spacing.md,
     alignItems: 'center',

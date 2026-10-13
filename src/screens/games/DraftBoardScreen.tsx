@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // DraftBoardScreen — Step 2 of חלוקת כוחות (the heart of the feature).
 //
 // Captains pick players in turns. Tapping an available player assigns them
@@ -559,8 +560,8 @@ export function DraftBoardScreen() {
 }
 
 const styles = StyleSheet.create({
-  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  pickerSheet: { width: '100%', maxWidth: 380, backgroundColor: colors.bg, borderRadius: 22, padding: spacing.lg, gap: spacing.md },
+  pickerBackdrop: { backgroundColor: overlayTheme.backdrop,  flex: 1,  alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  pickerSheet: { ...overlaySurfaces.dialog,  width: '100%', maxWidth: 380,   padding: spacing.lg, gap: spacing.md },
   pickerTitle: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: 'center' },
   pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.md },
   pickerItem: { alignItems: 'center', gap: 6, width: 76 },

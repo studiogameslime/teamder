@@ -191,6 +191,22 @@ describe('records', () => {
     expect(e).toMatchObject({ metric: 'assists', userIds: ['a'], value: 4, previousValue: 2, tied: false });
   });
 
+  it('does not attribute an omitted player’s previous record to the selected leader', () => {
+    const e = buildRoundSummary(withBasis({
+      players: [P('a', { goals: 10 }), P('b', { goals: 8 })],
+      personalBests: { a: { goals: 2 }, b: { goals: 7 } },
+    })).events.find((x) => x.type === 'personal_record' && x.metric === 'goals');
+    expect(e).toMatchObject({ userIds: ['a'], value: 10, previousValue: 2 });
+  });
+
+  it('uses only the tied leaders’ baselines for a shared personal record', () => {
+    const e = buildRoundSummary(withBasis({
+      players: [P('a', { goals: 10 }), P('b', { goals: 10 }), P('c', { goals: 9 })],
+      personalBests: { a: { goals: 2 }, b: { goals: 4 }, c: { goals: 8 } },
+    })).events.find((x) => x.type === 'personal_record' && x.metric === 'goals');
+    expect(e).toMatchObject({ userIds: ['a', 'b'], value: 10, previousValue: 4 });
+  });
+
   it('drops the personal record when the same player set the club record for it', () => {
     const events = buildRoundSummary(
       withBasis({

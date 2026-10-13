@@ -222,7 +222,7 @@ function titlesFor(
       key,
       value: num(a.value),
       sharedWith: Math.max(0, holders.length - 1),
-      ...(readSeasonCoverage(a) ? { coverage: readSeasonCoverage(a) } : {}),
+      ...(readSeasonCoverage(a, me) ? { coverage: readSeasonCoverage(a, me) } : {}),
     });
   }
   return out;

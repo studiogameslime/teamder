@@ -107,6 +107,11 @@ export interface ActivationPlan {
  */
 export const MIN_SEASON_ROUNDS = 2;
 
+/** A previous disable starts a clean competition even without a title archive. */
+export function isSeasonReactivation(seasons?: {count?: number; disabledAt?: number}): boolean {
+  return (seasons?.count ?? 0) > 0 || (seasons?.disabledAt ?? 0) > 0;
+}
+
 export function isValidSeasonRounds(n: unknown): boolean {
   return typeof n === 'number' && Number.isInteger(n) && n >= MIN_SEASON_ROUNDS;
 }

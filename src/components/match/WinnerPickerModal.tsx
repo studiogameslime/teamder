@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // "מי ניצחה במשחקון?" — bottom-of-round winner picker. Shows the two teams
 // currently on the pitch as selectable cards; tapping one SELECTS it (it does
 // not save yet), and an explicit "אישור" button records the round winner.
@@ -102,18 +103,15 @@ export function WinnerPickerModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
   },
-  card: {
+  card: { ...overlaySurfaces.dialog,
     width: '100%',
     maxWidth: 380,
-    backgroundColor: colors.bg,
-    borderRadius: 26,
     padding: spacing.lg,
     gap: spacing.sm,
   },
@@ -141,7 +139,8 @@ const styles = StyleSheet.create({
   },
   checkBadge: {
     position: 'absolute',
-    top: 8,
+    // Straddle the card border so the selection mark cannot cover its team name.
+    top: -11,
     left: 8,
     zIndex: 2,
     width: 22,

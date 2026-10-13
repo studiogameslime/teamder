@@ -45,6 +45,7 @@ import {
 } from '@/utils/seasonDates';
 import {
   planActivation,
+  isSeasonReactivation,
   isValidSeasonRounds,
   MIN_SEASON_ROUNDS,
   type ActivationPlan,
@@ -328,7 +329,8 @@ export function SeasonsSettings({
     setCustomRounds(!ROUND_CHOICES.includes(nextRounds as never));
   }, [groupId, seasons?.currentId, seasons?.cadence?.type, seasons?.cadence?.months, seasons?.cadence?.targetRounds]);
 
-  const firstTime = (seasons?.count ?? 0) === 0 && !live;
+  const reactivation = !live && isSeasonReactivation(seasons);
+  const firstTime = !live && !reactivation;
   /** The season this action is about. Numbering CONTINUES across the feature
    *  being switched off and on, so it is never simply 1 — and every label on
    *  this screen used to say so. */
@@ -1158,6 +1160,7 @@ export function SeasonsSettings({
         months={months}
         rounds={rounds}
         seasonNo={thisSeasonNo}
+        reactivation={reactivation}
         busy={busy}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => {

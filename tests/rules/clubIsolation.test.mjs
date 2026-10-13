@@ -116,6 +116,24 @@ test('list communityPairStats where groupId==club: member OK, outsider denied', 
   await assertFails(getDocs(q(OUTSIDER)));
 });
 
+// The compare screen must distinguish a pair that has not played from denied
+// access. Reading a missing document directly cannot satisfy resource.groupId.
+test('exact pair query: existing pair, absent pair and outsiders', async () => {
+  const exact = (uid, a, b) => getDocs(query(
+    collection(db(uid), 'communityPairStats'),
+    where('groupId', '==', GID), where('a', '==', a), where('b', '==', b), limit(1),
+  ));
+  const existing = `${GID}__${MEMBER}__${ADMIN}`;
+  const missing = `${GID}__never__played`;
+  await assertFails(getDoc(doc(db(MEMBER), 'communityPairStats', missing)));
+  const found = await assertSucceeds(exact(MEMBER, ADMIN, MEMBER));
+  if (found.size !== 1 || found.docs[0].id !== existing) throw new Error('Wrong pair returned');
+  const absent = await assertSucceeds(exact(MEMBER, 'never', 'played'));
+  if (!absent.empty) throw new Error('Absent pair should be empty');
+  await assertFails(exact(OUTSIDER, ADMIN, MEMBER));
+  await assertFails(exact(OUTSIDER, 'never', 'played'));
+});
+
 test('list communityStats where groupId==club: member OK, outsider denied', async () => {
   const q = (uid) => query(collection(db(uid), 'communityStats'), where('groupId', '==', GID));
   await assertSucceeds(getDocs(q(MEMBER)));

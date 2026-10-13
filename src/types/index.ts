@@ -985,6 +985,8 @@ export type SeasonCadenceType = 'date' | 'rounds';
 
 export interface GroupSeasons {
   disabledAt?: number;
+  /** Non-competitive archived periods exist even before the first title season. */
+  hasArchivedPeriods?: boolean;
   operation?: { kind: string; until: number; failed?: boolean };
   enabled: boolean;
   /** 1-based. Survives the feature being switched off and on again, so a club

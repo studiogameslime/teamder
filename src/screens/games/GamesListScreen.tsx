@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // Sectioned rounds feed: my rounds first, upcoming registration, then discovery.
 // Club photos and personal status live on the cards; registration stays in the services.
 
@@ -24,6 +25,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '@/components/Button';
+import { ScrollSurface } from '@/components/ScrollSurface';
 import { MatchCardSkeleton } from '@/components/anim/MatchCardSkeleton';
 import { AppearItem } from '@/components/anim/AppearItem';
 import { joinLocation } from '@/utils/format';
@@ -747,7 +749,7 @@ export function GamesListScreen() {
           ) : null}
         </Pressable>
       </View>
-      <ScrollView
+      <ScrollSurface
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -856,7 +858,7 @@ export function GamesListScreen() {
             </>
           )}
         </View>
-      </ScrollView>
+      </ScrollSurface>
 
       <GameFilterSheet
         visible={filterOpen}
@@ -1105,15 +1107,12 @@ export function GamesListScreen() {
 }
 
 const createSheetStyles = StyleSheet.create({
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.55)',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+  card: { ...overlaySurfaces.dialog,
     padding: spacing.lg,
     gap: spacing.md,
   },

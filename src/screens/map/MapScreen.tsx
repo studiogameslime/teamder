@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // MapScreen — full-screen map of games OR communities, one component, two
 // modes. The chrome matches the product mockup: header + subtitle, a search
 // row with a "locate me" button, mode-appropriate filter chips, a colour
@@ -799,19 +800,15 @@ const styles = StyleSheet.create({
   },
   cardCtaText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
 
-  clusterBackdrop: {
+  clusterBackdrop: { backgroundColor: overlayTheme.backdrop,
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  clusterSheet: {
+  clusterSheet: { ...overlaySurfaces.sheet,
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
     maxHeight: '50%',
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
     paddingTop: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,

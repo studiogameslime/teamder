@@ -287,13 +287,13 @@ export const useUserStore = create<UserStore>((set, get) => ({
   signInWithGoogle: async () => {
     const user = await userService.signInWithGoogle();
     set({ currentUser: user });
-    logEvent(AnalyticsEvent.SignInSuccess);
+    logEvent(AnalyticsEvent.SignInSuccess, { method: 'google' });
   },
 
   signInWithApple: async () => {
     const user = await userService.signInWithApple();
     set({ currentUser: user });
-    logEvent(AnalyticsEvent.SignInSuccess);
+    logEvent(AnalyticsEvent.SignInSuccess, { method: 'apple' });
   },
 
   signInAsGuest: async () => {
@@ -322,13 +322,13 @@ export const useUserStore = create<UserStore>((set, get) => ({
   signInWithEmail: async (email, password) => {
     const user = await userService.signInWithEmail(email, password);
     set({ currentUser: user });
-    logEvent(AnalyticsEvent.SignInSuccess);
+    logEvent(AnalyticsEvent.SignInSuccess, { method: 'email' });
   },
 
   signUpWithEmail: async (email, password) => {
     const user = await userService.signUpWithEmail(email, password);
     set({ currentUser: user });
-    logEvent(AnalyticsEvent.SignInSuccess);
+    logEvent(AnalyticsEvent.SignInSuccess, { method: 'email', mode: 'signup' });
   },
 
   sendPasswordReset: async (email) => {

@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // NotificationEducationSheet — the sentence before the OS dialog.
 //
 // A fresh install used to meet "Allow Teamder to send notifications?" before
@@ -124,10 +125,7 @@ export function NotificationEducationSheet({
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  sheet: { ...overlaySurfaces.sheet,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
   },

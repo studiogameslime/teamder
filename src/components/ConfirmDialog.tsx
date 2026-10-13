@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // ConfirmDialog — the app's standard styled popup for confirmations and
 // short notices. Replaces native Alert.alert so dialogs match the rest of
 // the UI (same card, spring entry, themed buttons) instead of the grey OS
@@ -112,9 +113,7 @@ export function ConfirmDialog({
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+  card: { ...overlaySurfaces.dialog,
     padding: spacing.xl,
     gap: spacing.md,
   },

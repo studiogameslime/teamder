@@ -88,7 +88,7 @@ function toPlayer(
   avatarId: string,
   photo: string,
 ): ComparePlayer {
-  const decided = row.wins + row.losses;
+  const played = row.rounds;
   return {
     uid: row.uid,
     name,
@@ -103,7 +103,7 @@ function toPlayer(
     rounds: row.rounds,
     penScored: row.penScored,
     penSaved: row.penSaved,
-    winPct: decided > 0 ? Math.round((row.wins / decided) * 100) : 0,
+    winPct: played > 0 ? Math.round((row.wins / played) * 100) : 0,
     goalsPerGame: row.games > 0 ? Math.round((row.goals / row.games) * 10) / 10 : 0,
   };
 }
