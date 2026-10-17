@@ -62,6 +62,7 @@ export interface ResultsBreakdownProps {
    * they take the same denominator. When it is 0 the ring is not drawn at
    * all: an unmeasured distribution is not a distribution.
    */
+  appearance?: 'club';
   totalRounds: number;
   tiedRounds: number;
   shootoutRounds: number;
@@ -141,6 +142,7 @@ export function ResultsBreakdown({
   shootoutRounds,
   scorelessRounds,
   partial = false,
+  appearance,
 }: ResultsBreakdownProps) {
   const { tie, shootout, regular } = splitRoundResults(
     totalRounds,
@@ -195,6 +197,20 @@ export function ResultsBreakdown({
 
   const pctOf = (n: number) => Math.round((n / totalRounds) * 100);
   const scoreless = Math.max(0, Math.min(scorelessRounds, totalRounds));
+
+  if (appearance === 'club') {
+    const tints = { regular: '#2463F5', tie: '#95A5B8', shootout: '#D8AC43' };
+    return <View style={{ borderRadius: 12, padding: 17, gap: 15, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E0E8F0' }}>
+      <Text style={styles.title}>{he.clubResultsTitle}</Text>
+      <View style={{ height: 11, borderRadius: 6, overflow: 'hidden', flexDirection: 'row' }}>{arcs.map(a => <View key={a.key} style={{ flex: a.fraction, backgroundColor: tints[a.key] }} />)}</View>
+      <View style={{ flexDirection: 'row', gap: 6 }}>{arcs.map(a => <View key={a.key} style={{ flex: 1, alignItems: 'center', gap: 5 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><View style={[styles.dot, { backgroundColor: tints[a.key] }]} /><Text style={{ color: '#13213F', fontSize: 24, fontWeight: '800' }}>{a.value}</Text></View>
+        <Text style={{ color: '#687797', fontSize: 11, textAlign: 'center' }}>{a.label}</Text><Text style={{ color: '#687797', fontSize: 10 }}>{pctOf(a.value)}%</Text>
+      </View>)}</View>
+      <Text style={styles.insight}>{totalRounds} משחקים שנמדדו</Text>
+      {scoreless > 0 ? <Text style={styles.insight}>{he.clubResultsScoreless(scoreless, pctOf(scoreless))}</Text> : null}
+    </View>;
+  }
 
   return (
     <View style={styles.card}>

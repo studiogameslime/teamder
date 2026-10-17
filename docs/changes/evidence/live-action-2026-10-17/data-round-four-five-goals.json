@@ -1,0 +1,317 @@
+{
+  "readAt": "2026-10-16T23:05:05.000770+00:00",
+  "account": {
+    "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "stats": null,
+    "name": "בדיקות לייב"
+  },
+  "club": {
+    "id": "J060YQu6QTcgk3glUDj2",
+    "playerIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "creatorId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "isOpen": false,
+    "adminIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "name": "בדיקות לייב אוקטובר"
+  },
+  "games": [
+    {
+      "game": {
+        "id": "lmUUmQru2HtKvQkRDVeD",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "title": "בדיקות לייב אוקטובר",
+        "maxPlayers": 12,
+        "minPlayers": null,
+        "waitlist": [],
+        "pending": [],
+        "teams": null,
+        "status": "open",
+        "currentMatchIndex": 0,
+        "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "visibility": "community",
+        "format": "4v4",
+        "numberOfTeams": 3,
+        "matchDurationMinutes": 8,
+        "hasPenalties": false,
+        "hasHalfTime": false,
+        "arrivals": null,
+        "autoTeamsAt": null,
+        "autoTeamsMethod": null,
+        "autoTeamsGeneratedAt": null,
+        "autoTeamsGeneratedBy": null,
+        "acceptsFillers": false,
+        "advancedMode": true,
+        "advancedFillMode": "temporary",
+        "createdAt": 1792189508073,
+        "players": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "participantIds": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "guests": [
+          {
+            "id": "mvbjgb67-u04vso",
+            "name": "דניאל בדיקה א",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189664144
+          },
+          {
+            "id": "mvbjilg2-21mb8n",
+            "name": "איתי בדיקה ב",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189770770
+          },
+          {
+            "id": "mvbjiyzz-8ugfdn",
+            "name": "תומר בדיקה ג",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189788335
+          },
+          {
+            "id": "mvbjjc1i-eftlp1",
+            "name": "אורי בדיקה ד",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189805238
+          },
+          {
+            "id": "mvbjjot4-5lpn25",
+            "name": "אלין בדיקה ה",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189821784
+          },
+          {
+            "id": "mvbjk1tn-9phn5y",
+            "name": "בן בדיקה ו",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189838651
+          },
+          {
+            "id": "mvbjkex3-i5vwra",
+            "name": "רון בדיקה ז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189855623
+          },
+          {
+            "id": "mvbjks6b-y7m9ey",
+            "name": "ליאור בדיקה ח",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189872803
+          },
+          {
+            "id": "mvbjl50h-jh9uot",
+            "name": "נועם בדיקה ט",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189889441
+          },
+          {
+            "id": "mvbjlic4-08kp80",
+            "name": "גל בדיקה י",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189906708
+          },
+          {
+            "id": "mvbjlvvj-qf4zqq",
+            "name": "רועי בדיקה יא",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189924255
+          }
+        ],
+        "teamsEditedManually": true,
+        "teamBalanceMeta": null,
+        "teamsNotifiedAt": 1792191152413,
+        "advancedTieMode": "bothOut",
+        "startsAt": 1792192500000,
+        "rotation": {
+          "playing": [
+            0,
+            1
+          ],
+          "waiting": [
+            2
+          ],
+          "loans": [],
+          "wins": {},
+          "round": 1,
+          "updatedAt": 1792191624544,
+          "baseTeams": [
+            {
+              "index": 0,
+              "playerIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "guest:mvbjiyzz-8ugfdn",
+                "guest:mvbjks6b-y7m9ey",
+                "guest:mvbjl50h-jh9uot"
+              ]
+            },
+            {
+              "index": 1,
+              "playerIds": [
+                "guest:mvbjgb67-u04vso",
+                "guest:mvbjjc1i-eftlp1",
+                "guest:mvbjkex3-i5vwra",
+                "guest:mvbjlic4-08kp80"
+              ]
+            },
+            {
+              "index": 2,
+              "playerIds": [
+                "guest:mvbjilg2-21mb8n",
+                "guest:mvbjjot4-5lpn25",
+                "guest:mvbjk1tn-9phn5y",
+                "guest:mvbjlvvj-qf4zqq"
+              ]
+            }
+          ],
+          "roundInstanceId": "r_mvbkmbvw_hoku9lb8",
+          "roundInstanceRound": 1
+        },
+        "draftTeams": {
+          "method": "snake",
+          "numTeams": 3,
+          "createdAt": 1792191091053,
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "teams": [
+            {
+              "index": 0,
+              "captainId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "playerIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "guest:mvbjiyzz-8ugfdn",
+                "guest:mvbjks6b-y7m9ey",
+                "guest:mvbjl50h-jh9uot"
+              ],
+              "colorKey": "yellow"
+            },
+            {
+              "index": 1,
+              "captainId": "guest:mvbjgb67-u04vso",
+              "playerIds": [
+                "guest:mvbjgb67-u04vso",
+                "guest:mvbjjc1i-eftlp1",
+                "guest:mvbjkex3-i5vwra",
+                "guest:mvbjlic4-08kp80"
+              ],
+              "colorKey": "blue"
+            },
+            {
+              "index": 2,
+              "captainId": "guest:mvbjilg2-21mb8n",
+              "playerIds": [
+                "guest:mvbjilg2-21mb8n",
+                "guest:mvbjjot4-5lpn25",
+                "guest:mvbjk1tn-9phn5y",
+                "guest:mvbjlvvj-qf4zqq"
+              ],
+              "colorKey": "green"
+            }
+          ],
+          "originalTeams": [
+            {
+              "index": 0,
+              "captainId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "playerIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "guest:mvbjiyzz-8ugfdn",
+                "guest:mvbjks6b-y7m9ey",
+                "guest:mvbjl50h-jh9uot"
+              ]
+            },
+            {
+              "index": 1,
+              "captainId": "guest:mvbjgb67-u04vso",
+              "playerIds": [
+                "guest:mvbjgb67-u04vso",
+                "guest:mvbjjc1i-eftlp1",
+                "guest:mvbjkex3-i5vwra",
+                "guest:mvbjlic4-08kp80"
+              ]
+            },
+            {
+              "index": 2,
+              "captainId": "guest:mvbjilg2-21mb8n",
+              "playerIds": [
+                "guest:mvbjilg2-21mb8n",
+                "guest:mvbjjot4-5lpn25",
+                "guest:mvbjk1tn-9phn5y",
+                "guest:mvbjlvvj-qf4zqq"
+              ]
+            }
+          ],
+          "published": true
+        },
+        "liveMatch": {
+          "timerEvents": [],
+          "timerRunning": false,
+          "timerAccumulatedMs": 0,
+          "timerLastStartedAt": null,
+          "timerControlledBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "timerControlledByName": "בדיקות לייב",
+          "scoreB": 1,
+          "goalTally": {
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1,
+            "guest:mvbjgb67-u04vso": 1,
+            "guest:mvbjiyzz-8ugfdn": 1
+          },
+          "scoreA": 4,
+          "goals": [
+            {
+              "id": "g_1792191733841_bpe6izece8e",
+              "team": "A",
+              "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "assisterId": "guest:mvbjiyzz-8ugfdn",
+              "assistStatus": "player",
+              "minute": 1,
+              "at": 1792191735019.5
+            },
+            {
+              "id": "g_1792191812633_vrkqelmsv7g",
+              "team": "B",
+              "scorerId": "guest:mvbjgb67-u04vso",
+              "assistStatus": "none",
+              "minute": 1,
+              "at": 1792191813815.5
+            },
+            {
+              "id": "g_1792191830162_swuy59lhzuf",
+              "team": "A",
+              "scorerId": null,
+              "minute": 1,
+              "at": 1792191831344.5
+            },
+            {
+              "id": "g_1792191890243_rk1kpz6bjjq",
+              "team": "A",
+              "scorerId": "guest:mvbjjc1i-eftlp1",
+              "ownGoal": true,
+              "minute": 1,
+              "at": 1792191891425.5
+            },
+            {
+              "id": "g_1792191901072_23ctegl4ufyj",
+              "team": "A",
+              "scorerId": "guest:mvbjiyzz-8ugfdn",
+              "assistStatus": "unknown",
+              "minute": 1,
+              "at": 1792191902254.5
+            }
+          ]
+        },
+        "updatedAt": 1792191902932
+      },
+      "history": [],
+      "commits": [],
+      "playerStats": [],
+      "roundSummary": null
+    }
+  ],
+  "archive": {
+    "source": "tmp/live-action-production/data-round-four-five-goals.json",
+    "originalSha256": "8e1cf2415616a43731ebb53cba51a9a971b5d6ce9300b49bd6c462acb169d49d",
+    "filtered": true,
+    "note": "רק שדות רלוונטיים לנתוני הבדיקה; ללא דואר, קוד הזמנה, כתובת מגרש, מיקום או העדפות חשבון."
+  }
+}

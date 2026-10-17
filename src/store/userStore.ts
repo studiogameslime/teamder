@@ -231,6 +231,15 @@ export const useUserStore = create<UserStore>((set, get) => ({
   profileRestoreFailed: false,
 
   hydrate: async () => {
+    if (__DEV__ && USE_MOCK_DATA && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' &&
+        process.env.EXPO_PUBLIC_QA_ROUTES === '1') {
+      try {
+        const { restoreLocalDemoRound } = require('@/dev/localDemoPersistence') as typeof import('@/dev/localDemoPersistence');
+        await restoreLocalDemoRound();
+      } catch (error) {
+        console.warn('[demo] local round restore failed', error);
+      }
+    }
     // Defensive: each branch wrapped so a single failure (transient
     // network drop on the /users/{uid} read, AsyncStorage corruption)
     // doesn't leave `hydrated: false` forever. RootNavigator gates

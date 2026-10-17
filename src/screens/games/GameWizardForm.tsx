@@ -1,3 +1,4 @@
+import { useSupportStep } from '@/hooks/useSupportStep';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 // 3-step wizard shared by Create / Edit Game.
 //
@@ -269,6 +270,7 @@ export function GameWizardForm({
   registeredCount,
 }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  useSupportStep(step);
   // One scroll view carries all three steps, so moving between them kept the
   // previous step's offset: stepping onto the settings step landed the person
   // at its BOTTOM, mid-form, with the heading off screen (owner report).

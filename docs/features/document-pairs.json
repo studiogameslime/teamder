@@ -484,5 +484,23 @@
     "domain": "shared",
     "simple": "shared/pulse-security.simple.md",
     "technical": "shared/pulse-security.md"
+  },
+  {
+    "title": "שיחות צוות עם משתמשים בפולס",
+    "domain": "shared",
+    "simple": "shared/pulse-support.simple.md",
+    "technical": "shared/pulse-support.md"
+  },
+  {
+    "title": "חלונית שיחה עם צוות התמיכה",
+    "domain": "shared",
+    "simple": "shared/support-chat.simple.md",
+    "technical": "shared/support-chat.md"
+  },
+  {
+    "title": "תיבת משימות ובאגים שלא נפתרו בפולס",
+    "domain": "shared",
+    "simple": "shared/pulse-work-inbox.simple.md",
+    "technical": "shared/pulse-work-inbox.md"
   }
 ]

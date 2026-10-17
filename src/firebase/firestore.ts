@@ -891,6 +891,7 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
             // assist is stripped on every read, so the round-end stats commit
             // never sees it and per-player assist tallies stay 0 forever.
             assisterId: typeof x.assisterId === 'string' ? x.assisterId : undefined,
+            ...(x.assistStatus === 'player' || x.assistStatus === 'none' || x.assistStatus === 'unknown' ? { assistStatus: x.assistStatus } : {}),
             ownGoal: x.ownGoal === true ? true : undefined,
             minute: typeof x.minute === 'number' ? x.minute : 0,
             at: typeof x.at === 'number' ? x.at : 0,
@@ -928,6 +929,7 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
                 keeperId: typeof k.keeperId === 'string' ? (k.keeperId as string) : '',
                 team: k.team as 'A' | 'B',
                 scored: (k as { scored?: unknown }).scored === true,
+                ...(k.outcome === 'goal' || k.outcome === 'save' || k.outcome === 'miss' ? { outcome: k.outcome } : {}),
                 at: typeof k.at === 'number' ? (k.at as number) : 0,
               }))
           : [],
@@ -1217,6 +1219,7 @@ export function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
 
   return {
     method: o.method === 'regular' ? 'regular' : 'snake',
+    ...(o.completionMode === 'balanced' ? { completionMode: 'balanced' as const } : {}),
     numTeams: typeof o.numTeams === 'number' ? o.numTeams : teams.length,
     createdAt: typeof o.createdAt === 'number' ? o.createdAt : 0,
     createdBy: typeof o.createdBy === 'string' ? o.createdBy : '',
@@ -1249,6 +1252,7 @@ export function readRotation(v: unknown): import('@/types').MatchRotation | unde
           playerId: typeof l.playerId === 'string' ? l.playerId : '',
           homeTeam: typeof l.homeTeam === 'number' ? l.homeTeam : 0,
           filledTeam: typeof l.filledTeam === 'number' ? l.filledTeam : 0,
+          ...(typeof l.swapId === 'string' && l.swapId.length > 0 ? { swapId: l.swapId } : {}),
         }))
         .filter((l) => l.playerId)
     : [];
@@ -1262,6 +1266,14 @@ export function readRotation(v: unknown): import('@/types').MatchRotation | unde
       : undefined;
   return {
     playing: [playing[0], playing[1]],
+    ...(o.fillUsage && typeof o.fillUsage === 'object' ? { fillUsage: Object.fromEntries(
+      Object.entries(o.fillUsage as Record<string, unknown>).flatMap(([id, value]) => {
+        if (!value || typeof value !== 'object') return [];
+        const u = value as Record<string, unknown>;
+        if (![u.games, u.fills, u.lastRound].every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0)) return [];
+        return [[id, {games: u.games as number, fills: u.fills as number, lastRound: u.lastRound as number}]];
+      }),
+    ) } : {}),
     waiting,
     loans,
     wins,
@@ -1668,6 +1680,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       draftTeams: readDraftTeams(d.draftTeams),
       draftTeamFeedback: readDraftTeamFeedback(d.draftTeamFeedback),
       rotation: readRotation(d.rotation),
+      lastCommittedRoundId: typeof d.lastCommittedRoundId === 'string' ? d.lastCommittedRoundId : undefined,
       reminderSent: d.reminderSent === true,
       rateReminderSent: d.rateReminderSent === true,
       capacityNoticeSent: d.capacityNoticeSent === true,
@@ -1798,7 +1811,7 @@ export function readTeamBalanceMeta(
   // Both algorithm tags must be accepted: games balanced before the v2 switch
   // still carry 'rating_greedy_v1', and an unknown tag here would silently drop
   // the whole meta object on read.
-  if (o.algorithm !== 'rating_greedy_v1' && o.algorithm !== 'rating_balanced_v2')
+  if (o.algorithm !== 'rating_greedy_v1' && o.algorithm !== 'rating_balanced_v2' && o.algorithm !== 'random_even_v1')
     return undefined;
   return {
     generatedAt: o.generatedAt,
@@ -1960,6 +1973,8 @@ const chatMessageConverter: FirestoreDataConverter<ChatMessage> = {
       senderName: typeof d.senderName === 'string' ? d.senderName : '',
       senderAvatarId: typeof d.senderAvatarId === 'string' ? d.senderAvatarId : undefined,
       senderPhotoUrl: typeof d.senderPhotoUrl === 'string' ? d.senderPhotoUrl : undefined,
+      supportImage: typeof d.supportImage === 'string' ? d.supportImage : undefined,
+      supportContext: d.supportContext && typeof d.supportContext.screen === 'string' ? d.supportContext : undefined,
       createdAt: typeof d.createdAt === 'number' ? d.createdAt : typeof d.createdAt?.toMillis === 'function' ? d.createdAt.toMillis() : Date.now(),
     };
   },

@@ -1,0 +1,98 @@
+{
+  "source": "shots\\four-goal-pass.mp4",
+  "sourceSha256": "edf90b203e36bd2c26b21527465988aee45883fd4dfb4f424d4835d7824c88bc",
+  "output": "native-qa\\frames\\four-goal-pass",
+  "timesMs": [
+    100,
+    250,
+    400,
+    550,
+    700,
+    850,
+    1000,
+    1100
+  ],
+  "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+  "frames": [
+    {
+      "requestedTimeUs": 100000,
+      "durationMs": 1183,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1173385,
+      "file": "frame-000000100000us.png",
+      "sha256": "6b1dc2940e0fc3cd6abeda9ec489748147d77eed8cfaf4ad4cbcae9ac336fd34"
+    },
+    {
+      "requestedTimeUs": 250000,
+      "durationMs": 1183,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1204900,
+      "file": "frame-000000250000us.png",
+      "sha256": "bf7e5f9fd613a42dbcc1cd040d3cd5b913a90aeae3e9fbe2b01c960f0aa4c671"
+    },
+    {
+      "requestedTimeUs": 400000,
+      "durationMs": 1183,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1208042,
+      "file": "frame-000000400000us.png",
+      "sha256": "7d595775c884d2733d8f76fbfd1a3a2aa1033bf3f3b4c494b353521b7e4e98d3"
+    },
+    {
+      "requestedTimeUs": 550000,
+      "durationMs": 1183,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1232908,
+      "file": "frame-000000550000us.png",
+      "sha256": "1fe9a820e6ab00d2613209192a6d9ce0840bb8c4a534825d412dae6ff94c2393"
+    },
+    {
+      "requestedTimeUs": 700000,
+      "durationMs": 1183,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1234995,
+      "file": "frame-000000700000us.png",
+      "sha256": "37ceb401c5295de0fc0d8a18245def1ab4ae159c4411e1168cdd45065ad6414e"
+    },
+    {
+      "requestedTimeUs": 850000,
+      "durationMs": 1183,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1346010,
+      "file": "frame-000000850000us.png",
+      "sha256": "914db0772d75c2863a58d3ed1cf5f4922083adac1188438932a6bbcf81fd80cb"
+    },
+    {
+      "requestedTimeUs": 1000000,
+      "durationMs": 1183,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1345918,
+      "file": "frame-000001000000us.png",
+      "sha256": "a1e3e2728f046536e1f2b5671321f51cdb532eb3d23a7aee236568803bace8c5"
+    },
+    {
+      "requestedTimeUs": 1100000,
+      "durationMs": 1183,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1345551,
+      "file": "frame-000001100000us.png",
+      "sha256": "67da96b4fe2baf930d6828593d5a52fd4ec0c857868b20708ad2022f00b6a573"
+    }
+  ]
+}

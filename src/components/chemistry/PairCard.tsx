@@ -13,6 +13,8 @@ import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
+import { ScrollSurface } from '@/components/ScrollSurface';
+import { Ionicons } from '@expo/vector-icons';
 
 import { UserAvatar } from '@/components/UserAvatar';
 import {
@@ -109,13 +111,16 @@ export function PairCard({
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.grabber} />
-
-          <View style={styles.head}>
-            {a ? <UserAvatar user={{ id: aId, name: aName, avatarId: a.avatarId, photoUrl: a.photoUrl }} size={54} /> : null}
-            <Text style={styles.times}>×</Text>
-            {b ? <UserAvatar user={{ id: bId, name: bName, avatarId: b.avatarId, photoUrl: b.photoUrl }} size={54} /> : null}
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>הסיפור שלכם על המגרש</Text>
+            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="סגירה" hitSlop={10} style={styles.close}><Ionicons name="close" size={22} color="#52698D"/></Pressable>
           </View>
-          <Text style={styles.names}>{`${aName} × ${bName}`}</Text>
+          <ScrollSurface style={{flexShrink:1}} contentContainerStyle={{paddingBottom:12,gap:8}} showsVerticalScrollIndicator={false}>
+          <View style={styles.head}>
+            <View style={styles.person}>{a ? <UserAvatar user={{ id: aId, name: aName, avatarId: a.avatarId, photoUrl: a.photoUrl }} size={60} /> : null}<Text style={styles.personName} numberOfLines={2}>{aName}</Text></View>
+            <View style={styles.pairMark}><Ionicons name="football-outline" size={26} color="#2463F5"/></View>
+            <View style={styles.person}>{b ? <UserAvatar user={{ id: bId, name: bName, avatarId: b.avatarId, photoUrl: b.photoUrl }} size={60} /> : null}<Text style={styles.personName} numberOfLines={2}>{bName}</Text></View>
+          </View>
 
           {titles.length > 0 ? (
             <View style={styles.tags}>
@@ -189,6 +194,7 @@ export function PairCard({
           {since ? (
             <Text style={styles.since}>{he.chemistrySince(formatDateShort(since))}</Text>
           ) : null}
+          </ScrollSurface>
         </Pressable>
       </Pressable>
     </Modal>
@@ -207,6 +213,8 @@ function Stat({ value, label }: { value: number; label: string }) {
 const styles = StyleSheet.create({
   backdrop: { backgroundColor: overlayTheme.backdrop,  flex: 1,  justifyContent: 'flex-end' },
   sheet: { ...overlaySurfaces.sheet,
+    maxHeight:'90%',
+    backgroundColor:'#F7FAFF',
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
     gap: spacing.xs,
@@ -220,6 +228,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md },
+  sheetHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12,marginBottom:12},
+  sheetTitle:{flex:1,fontSize:19,fontWeight:'800',color:'#14264A',textAlign:RTL_LABEL_ALIGN},
+  close:{width:34,height:34,borderRadius:17,backgroundColor:'#EAF1FC',alignItems:'center',justifyContent:'center'},
+  person:{flex:1,alignItems:'center',gap:8},
+  personName:{fontSize:15,fontWeight:'800',color:'#14264A',textAlign:'center',minHeight:40},
+  pairMark:{width:45,height:45,borderRadius:23,backgroundColor:'#E8F0FF',alignItems:'center',justifyContent:'center'},
   times: { fontSize: 20, fontWeight: '800', color: colors.textMuted },
   names: { ...typography.h3, fontWeight: '800', color: colors.text, textAlign: 'center' },
   tags: { flexDirection: 'row', gap: spacing.xs, justifyContent: 'center', flexWrap: 'wrap' },
@@ -262,7 +276,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.sm,
     borderRadius: radius.md,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: '#FFFFFF',
+    borderWidth:1,
+    borderColor:'#DDE7F7',
   },
   statValue: { fontSize: 20, fontWeight: '800', color: colors.primary },
   statLabel: { fontSize: 11, color: colors.textMuted, fontWeight: '600' },

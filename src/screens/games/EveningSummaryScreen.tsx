@@ -62,6 +62,10 @@ export function EveningSummaryScreen() {
     (async () => {
       // Physical/Health-Connect ingestion was removed — the feature is disabled
       // (no wearable data path). The summary is goals/assists/result only now.
+      if (!currentUser || currentUser.isGuest) {
+        if (alive) setLoading(false);
+        return;
+      }
       const m = await eveningSummaryService.getEveningSummary(
         gameId,
         currentUser?.id ?? '',
@@ -99,7 +103,7 @@ export function EveningSummaryScreen() {
     return () => {
       alive = false;
     };
-  }, [gameId, currentUser?.id, currentUser?.name, retryTick]);
+  }, [gameId, currentUser?.id, currentUser?.name, currentUser?.isGuest, retryTick]);
 
   async function onShare() {
     if (!ownsSummary || loading || !cardRef.current || sharing) return;
@@ -161,7 +165,7 @@ export function EveningSummaryScreen() {
       ) : !model || noPlay ? (
         <View style={styles.center}>
           <Text style={styles.empty}>
-            {noPlay ? he.summaryNoPlay : he.summaryUnavailable}
+            {!currentUser || currentUser.isGuest ? 'כדי לראות את הסיכום האישי שלך צריך להתחבר לחשבון' : noPlay ? he.summaryNoPlay : he.summaryUnavailable}
           </Text>
         </View>
       ) : (

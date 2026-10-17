@@ -14,7 +14,13 @@ export function pulseProxyTarget(raw: unknown, method: string): { url: URL; scop
     const prefix = `/v1/projects/${PROJECT}/databases/(default)/documents`;
     if (!p.startsWith(prefix + '/') && ![prefix + ':runQuery', prefix + ':runAggregationQuery'].includes(p)) throw new Error('PULSE_TARGET_DENIED');
     const collection = p.slice(prefix.length + 1).split('/')[0];
-    if (!(read || (method === 'POST' && [prefix + ':runQuery', prefix + ':runAggregationQuery'].includes(p)) ||
+    // Owner-approved local scope: query messages beneath official support DMs.
+    const supportParent = p.slice(prefix.length + 1).match(/^dmConversations\/([^/]+):runQuery$/)?.[1];
+    const supportIds = supportParent?.split('__') ?? [];
+    const supportQuery = method === 'POST' && supportIds.length === 2 &&
+      supportIds.includes('teamder') && supportIds[0] !== supportIds[1] &&
+      [...supportIds].sort().join('__') === supportParent;
+    if (!(read || supportQuery || (method === 'POST' && [prefix + ':runQuery', prefix + ':runAggregationQuery'].includes(p)) ||
       (['PATCH', 'DELETE'].includes(method) && WRITE_COLLECTIONS.has(collection)))) throw new Error('PULSE_TARGET_DENIED');
     return { url, scope: 'datastore', provider: 'google' };
   }

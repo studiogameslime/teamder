@@ -102,12 +102,13 @@ export type ProfileStackParamList = {
   // caller passes and expects.
   MatchDetails: { gameId: string; initialTab?: 'info' | 'games' | 'stats' | 'players' };
   // Draft Teams (חלוקת כוחות) — reachable from MatchDetails' "קביעת כוחות".
-  DraftSetup: { gameId: string };
+  DraftSetup: { gameId: string; resumeManual?: boolean };
   DraftBoard: {
     gameId: string;
     captainIds: string[];
     method: 'snake' | 'regular';
     resume?: boolean;
+    expectedDraftCreatedAt?: number;
     readOnly?: boolean;
   };
   EveningSummary: { gameId: string };

@@ -20,8 +20,8 @@
 //     clean sheets started being collected later, and some evenings have no
 //     per-mini-game history at all — so records are scoped to a basis window
 //     the caller states, and suppressed entirely when that window is too thin.
-//   • Recompute itself later. The caller seals the output once; a goal added
-//     by an admin next week must not rewrite last week's story.
+// Corrections are server-owned: the caller may rebuild corrected evening
+// facts against stored original comparisons, never against later history.
 
 // ─── The shape of an evening ──────────────────────────────────────────────
 
@@ -351,7 +351,8 @@ function crossed(before: number, after: number, steps: number[]): number[] {
 // ─── The four numbers ─────────────────────────────────────────────────────
 
 /**
- * Goals and assists come from the PLAYER rows, not from the mini-game history.
+ * Attributed goals and assists come from the PLAYER rows. Goals with no
+ * individual credit (own goals and unknown scorers) come from the history.
  *
  * Both sources exist and they normally agree — verified on a real evening: 20
  * goals and 17 assists from either. They stop agreeing the moment an admin
@@ -370,10 +371,11 @@ function statsOf(input: RoundSummaryInput): RoundSummary['stats'] {
     goals += n(p.goals);
     assists += n(p.assists);
   }
-  // Own goals are on the scoreboard but on nobody's tally, so they are added
-  // from the history — the only place they are recorded as goals at all.
+  // Own goals and unknown scorers are on the scoreboard but on nobody's
+  // tally. Add each such history event once, including an unidentified own
+  // goal; known regular goals already came from the corrected player rows.
   for (const r of input.rounds) {
-    for (const g of r.goals) if (g.ownGoal) goals += 1;
+    for (const g of r.goals) if (g.ownGoal || !g.scorerId) goals += 1;
   }
   return {
     rounds: input.rounds.length,

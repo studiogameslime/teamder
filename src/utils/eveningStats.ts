@@ -7,12 +7,15 @@
 //   • computeRadar()   — wearable + goals/assists → the DNA radar (0..1 axes)
 //   • computeHeatZones — a heat grid → attack/middle/defense split (%)
 
+import { roundParticipantSides } from './roundParticipants';
+
 export type Side = 'A' | 'B' | 'tie';
 
 export interface RoundGoalRec {
   /** null for an own goal (no scorer); a guest id (`guest:<id>`) for a guest. */
   scorerId: string | null;
   assisterId: string | null;
+  assistStatus?: 'player' | 'none' | 'unknown';
   ownGoal: boolean;
   team: 'A' | 'B';
   /** minute the goal went in (0 when unknown — old games / no clock). */
@@ -25,6 +28,7 @@ export interface RoundPenaltyRec {
   kickerId: string;
   keeperId: string | null;
   scored: boolean;
+  outcome?: 'goal' | 'save' | 'miss';
   team: 'A' | 'B';
 }
 
@@ -108,10 +112,16 @@ export function reduceRounds(
     // keeper faces the OTHER team's kicks). Done before the on-field guard.
     for (const p of r.penalties ?? []) {
       if (p.kickerId === uid) p.scored ? (pen.scored += 1) : (pen.missed += 1);
-      if (p.keeperId === uid) p.scored ? (pen.conceded += 1) : (pen.saved += 1);
+      if (p.keeperId === uid) {
+        if (p.scored) pen.conceded += 1;
+        // New misses outside the frame are not goalkeeper saves. Unclassified
+        // legacy misses retain the historical interpretation, as in the server.
+        else if (p.outcome !== 'miss') pen.saved += 1;
+      }
     }
-    const onA = (r.teamA ?? []).includes(uid);
-    const onB = (r.teamB ?? []).includes(uid);
+    const participants = roundParticipantSides({ teamA: r.teamA ?? [], teamB: r.teamB ?? [], goals: r.goals ?? [] });
+    const onA = participants.teamA.includes(uid);
+    const onB = participants.teamB.includes(uid);
     if (!onA && !onB) {
       // Sitting a round out breaks both streaks — you didn't hold the pitch and
       // your scoring run is interrupted. Reset BEFORE skipping (otherwise two

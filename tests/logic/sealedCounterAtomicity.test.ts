@@ -55,7 +55,7 @@ describe('the two evening counters', () => {
       .join('\n');
     for (const field of COUNTERS) {
       expect(src).toMatch(
-        new RegExp(`${field}:\\s*admin\\.firestore\\.FieldValue\\.increment\\(1\\)`),
+        new RegExp(`(?:${field}|['"]seasons\\.${field}['"]):\\s*admin\\.firestore\\.FieldValue\\.increment\\(1\\)`),
       );
     }
   });

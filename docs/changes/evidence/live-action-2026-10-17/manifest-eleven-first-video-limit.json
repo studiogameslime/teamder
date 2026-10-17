@@ -1,0 +1,22 @@
+{
+  "gameId": "mBO5HqJdnOPWjRE2zMh8",
+  "file": "animation-sources/eleven-goal-assist-pass.mp4",
+  "sha256": "fb7d104ee45f868b931f93141b6a7f4acc525047610297fbaf3c4195a6c872a5",
+  "source": "tmp/live-action-production/shots/eleven-goal-assist-pass.mp4",
+  "durationMs": 6542,
+  "extractionManifest": "animation-manifests/eleven-goal-assist-pass-4500-6500.json",
+  "extractionManifestSha256": "5a72c91748f69c1924870fbe741d9d0af7024b5074dcd3dcfc9a89b0f916dce4",
+  "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+  "timestampExact": false,
+  "observations": [
+    "12 דגימות מבוקשות 900–4000 אלפיות שנייה נבחנו בדף מגע: בחירת מבשל בלבד.",
+    "חמש דגימות 4500–6500 נפתחו בנפרד: שומרים את הגול ללא הצלחה או חגיגה.",
+    "צילומי מקור נפרדים מראים רשת וחגיגה אחרי השמירה, אך ההקלטה מסתיימת לפני אישור השמירה ואינה מוכיחה מסלול מסירה."
+  ],
+  "proofOfPass": false,
+  "separateStills": [
+    "action-pitch-production-eleven-goal-saving-still-2026-10-17.png",
+    "action-pitch-production-eleven-goal-net-still-2026-10-17.png",
+    "action-pitch-production-eleven-goal-celebration-still-2026-10-17.png"
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "createdAtUtc": "2026-10-17T04:10:38.552905+00:00",
+  "gameId": "mBO5HqJdnOPWjRE2zMh8",
+  "groupId": "J060YQu6QTcgk3glUDj2",
+  "phase": "כשל שמירה אמיתי לפני ואחרי תיקון הפריסה, ניסיון חוזר יחיד וביטול אירוע הבדיקה; אינו ארכיון סיום המחזור",
+  "files": [
+    {
+      "file": "data-eleven-offline-fixed-attempt.json",
+      "readAt": "2026-10-17T04:06:17.675637+00:00",
+      "sha256": "216b95a780907e26f806336578ab63136373227a572536bb6710a37c5d7105bc",
+      "originalSha256": "377b2862cb6f0acbc7c597e2f6c5decd62876cbe8d8139b4b795a5c2f0e1da42",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-offline-fixed-retried.json",
+      "readAt": "2026-10-17T04:06:56.161069+00:00",
+      "sha256": "a094af947cd3450f589cb1972a812afe4a09f3cf7a7edf1fb91c61e40416b5a5",
+      "originalSha256": "a7d540a00d72daf6c00254d2f87203511570f7412bbe55e6893240fb74f2dfd0",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-offline-fixed-undone.json",
+      "readAt": "2026-10-17T04:07:51.793385+00:00",
+      "sha256": "7055205b75e5f846357c33008d59b7d2cf126408f380aa62f40d539a24ff28cb",
+      "originalSha256": "ac49ef384fd353fd85a8febd1630a0a1a23164acdf506872091ce97c8169986f",
+      "filtered": true
+    },
+    {
+      "file": "eleven-offline-retry-fixed-ui-before.xml",
+      "sha256": "9d0309ced5bc6d4a37b8b22b8748085b3f9981d76c0613a8bf0bf77f6d33d8da",
+      "originalSha256": "9d0309ced5bc6d4a37b8b22b8748085b3f9981d76c0613a8bf0bf77f6d33d8da",
+      "filtered": false
+    }
+  ],
+  "snapshots": [
+    {
+      "file": "data-eleven-offline-fixed-attempt.json",
+      "readAt": "2026-10-17T04:06:17.675637+00:00",
+      "goals": 0,
+      "scoreA": 0,
+      "scoreB": 0,
+      "eventIds": [],
+      "historyCount": 2,
+      "playerStatsCount": 32
+    },
+    {
+      "file": "data-eleven-offline-fixed-retried.json",
+      "readAt": "2026-10-17T04:06:56.161069+00:00",
+      "goals": 1,
+      "scoreA": 1,
+      "scoreB": 0,
+      "eventIds": [
+        "g_1792209959389_hk6a2b1wg76"
+      ],
+      "historyCount": 2,
+      "playerStatsCount": 32
+    },
+    {
+      "file": "data-eleven-offline-fixed-undone.json",
+      "readAt": "2026-10-17T04:07:51.793385+00:00",
+      "goals": 0,
+      "scoreA": 0,
+      "scoreB": 0,
+      "eventIds": [],
+      "historyCount": 2,
+      "playerStatsCount": 32
+    }
+  ],
+  "notes": [
+    "לא הועתק פלט ביקורת נתונים פעיל. המקורות כאן הם שלוש קריאות ייעודיות לניסיון המתוקן.",
+    "הכשל הוא ניתוק מערכת אמיתי; שחזור החיבור ושתי לחיצות ניסיון חוזר תועדו בידי המוביל דרך הממשק. הנתונים עצמם מוכיחים את רצף האירועים שנשמר 0→1→0.",
+    "מדידת ביטול הגול היא מקריאת device.dump המקורית של המוביל; לא נשמר קובץ XML נפרד שלה."
+  ],
+  "nativeMeasurements": {
+    "retry": {
+      "source": "eleven-offline-retry-fixed-ui-before.xml",
+      "boundsPx": [
+        47,
+        856,
+        530,
+        943
+      ],
+      "heightPx": 87,
+      "densityReportedByLead": 1.8,
+      "heightDp": 48.33333333333333,
+      "errorTextBoundsPx": [
+        47,
+        751,
+        530,
+        841
+      ]
+    },
+    "undo": {
+      "source": "תוצאת device.dump המקורית שנבחנה בידי המוביל; ללא קובץ XML שמור",
+      "boundsPx": [
+        53,
+        470,
+        132,
+        549
+      ],
+      "sizePx": 79,
+      "densityReportedByLead": 1.8,
+      "sizeDp": 43.888888888888886,
+      "label": "ביטול הגול של בדיקות לייב"
+    }
+  },
+  "retryVideo": {
+    "file": "animation-sources/eleven-offline-retry-fixed.mp4",
+    "source": "tmp/live-action-production/shots/eleven-offline-retry-fixed.mp4",
+    "sha256": "1d03a999fe04c6336bc3990939e5d350f243058087117ed47f1049b86385a4b8",
+    "note": "הקלטת פעולת הניסיון החוזר נשמרה לעיון; לא יוחסו לצילומי המקור הנפרדים זמני פריים בסרטון, ולא נעשתה בסבב הזה מדידת תנועה ממנו."
+  }
+}

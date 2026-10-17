@@ -35,6 +35,7 @@ export interface FillRequestView {
 }
 
 interface Props {
+  visible?: boolean;
   request: FillRequestView | null;
   onConfirm: (chosenIds: string[]) => void;
   /** Dismiss the picker without filling — aborts the round transition (the
@@ -43,7 +44,7 @@ interface Props {
   onCancel: () => void;
 }
 
-export function FillerPickerModal({ request, onConfirm, onCancel }: Props) {
+export function FillerPickerModal({ request, onConfirm, onCancel, visible = true }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
 
   // Reset to the recommendation each time a new request opens.
@@ -63,7 +64,7 @@ export function FillerPickerModal({ request, onConfirm, onCancel }: Props) {
 
   return (
     <Modal
-      visible={!!request}
+      visible={visible && !!request}
       transparent
       animationType="slide"
       onRequestClose={onCancel}

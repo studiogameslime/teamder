@@ -10,6 +10,17 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { logNotification } from './notifLog';
 import { navRef } from '../navigation/navRef';
+import { supportNotificationTarget } from './supportInbox';
+
+function openNotification(data: Record<string, unknown> | undefined): boolean {
+  if (!data || !navRef.isReady()) return false;
+  const support = supportNotificationTarget(data);
+  if (support) { (navRef as any).navigate('Messages', support); return true; }
+  if (data.type === 'onboardingActivity') {
+    (navRef as any).navigate('OnboardingActivity', { sessionId: data.sessionId }); return true;
+  }
+  return false;
+}
 
 const isExpoGo = Constants.executionEnvironment === 'storeClient';
 
@@ -19,8 +30,9 @@ let Notifications: NotificationsModule | null = null;
 export async function openInitialOnboardingNotification(): Promise<void> {
   const response = await Notifications?.getLastNotificationResponseAsync();
   const data = response?.notification.request.content.data;
-  if (data?.type === 'onboardingActivity' && navRef.isReady()) {
-    (navRef as any).navigate('OnboardingActivity', { sessionId: data.sessionId });
+  if (openNotification(data)) {
+    const content = response!.notification.request.content;
+    await logNotification(content.title ?? '', content.body ?? '', data);
     await Notifications?.clearLastNotificationResponseAsync();
   }
 }
@@ -45,8 +57,9 @@ if (!isExpoGo) {
   });
   Notifications.addNotificationResponseReceivedListener(response => {
     const data = response.notification.request.content.data;
-    if (data?.type === 'onboardingActivity' && navRef.isReady()) {
-      (navRef as any).navigate('OnboardingActivity', { sessionId: data.sessionId });
+    if (openNotification(data)) {
+      const content = response.notification.request.content;
+      void logNotification(content.title ?? '', content.body ?? '', data);
       void Notifications?.clearLastNotificationResponseAsync();
     }
   });

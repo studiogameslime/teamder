@@ -130,3 +130,10 @@
 
 
 כניסה מאובטחת לפולס: [הסבר פשוט](../../pulse/docs/secure-access.simple.md) · [הסבר טכני](../../pulse/docs/secure-access.md). הוכן מקומית; המסך טרם צולם.
+
+
+| שיחות צוות עם משתמשים בפולס | [הסבר פשוט](shared/pulse-support.simple.md) | [הסבר מעמיק](shared/pulse-support.md) |
+
+| שיחה עם צוות התמיכה | [הסבר פשוט](shared/support-chat.simple.md) | [הסבר מעמיק](shared/support-chat.md) |
+
+| תיבת משימות ובאגים שלא נפתרו בפולס | [הסבר פשוט](shared/pulse-work-inbox.simple.md) | [מסמך טכני](shared/pulse-work-inbox.md) |

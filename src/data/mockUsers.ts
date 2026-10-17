@@ -7,7 +7,7 @@ export const mockCurrentUser: User = {
   id: mockPlayers[6].id, // "דניאל"
   name: mockPlayers[6].displayName,
   email: 'daniel@example.com',
-  avatarId: 'a13', // built-in avatar
+  avatarId: mockPlayers[6].avatarId,
   createdAt: Date.now() - 1000 * 60 * 60 * 24 * 90,
   onboardingCompleted: true,
   // Accepted, mutual demo friendships; never written to Firebase.

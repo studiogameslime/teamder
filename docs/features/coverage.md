@@ -1,5 +1,19 @@
 # כיסוי מסכי המקור
 
+17.10.2026: `UpdateBanner` הוא כרטיס בתוך `HomeHero` במסך `Profile` הקיים, ומחליף את שורת הכותרת רק בהצעה רגילה. `UpdateModal` נשאר לשער חובה; אין מסך או מסלול ניווט נוסף. [מצבים, אירועים וראיות](shared/global-gates.md#חלונית-עדכון-לפי-החנות-ומדידת-השלמה--17102026).
+
+17.10.2026: בחירת ההכרעה משובצת בתוך חלונית הפנדלים הקיימת; אין חלונית מערכת שנייה במעבר ביניהן. תצוגת הרכב בהחזקה היא שכבה בתוך הגיליון. אין נתיב חדש. [החוזה והראיות](rounds/penalties.md#החזקה-להרכב-וחלון-משותף-לבחירת-הכרעה--17102026).
+
+17.10.2026: כפתור החזרה ב־`ShootoutWizard` פותח מחדש את בחירת ההכרעה הקיימת ב־`AdvancedLiveMatchScreen`; אין מסך חדש. חזרה והמשך שומרים בעיטות, ואישור הכרעה חלופית בלבד מוחק אותן. [התנהגות, נתונים וראיות](rounds/penalties.md#שינוי-שיטת-הכרעה-בלי-לאבד-סדרה--17102026).
+
+17.10.2026: `MatchActionPitch` ו־`MatchPlayerPicker` משותפים לחלוניות הגול והפנדל בתוך `AdvancedLiveMatchScreen`. החלוניות שומרות בחירה ישירה והנפשה לאחר אישור שמירה. אין נתיב ניווט חדש. `MatchSteps` אינו משמש עוד את שתי החלוניות האלה. [גול ולייב](rounds/live-advanced.md) · [פנדלים](rounds/penalties.md) · [ביקורת וראיות](../changes/2026-10-17-live-action-pitch.md).
+
+16.10.2026: `TeamShirtIllustration` בקובץ `src/components/match/TeamShirt.tsx` משותף ל־`DraftGenerationPreview`, ללוח הלייב, לחלונות התוצאה ולשורות הקבוצות הנכנסות; אין מסך או מסלול ניווט חדש. [חלוקת כוחות](rounds/draft-setup.md) · [לוח המשחק והראיות](rounds/live-advanced.md).
+
+16.10.2026: `TieDecisionModal` ב־`Shootout.tsx` עוצב מחדש בתוך `AdvancedLiveMatchScreen`, עם אישור יציאה כפולה באותו חלון. `MatchResultPanel` הוא רכיב תוצאה משותף לחלון התיקו ול־`EndMatchModal`. אין מסך או מסלול ניווט חדש. [מצבים וראיות](rounds/live-advanced.md) · [הכרעה ופנדלים](rounds/penalties.md).
+
+16.10.2026: `src/components/match/EndMatchModal.tsx` מחליף את אישור סיום המשחק הכללי בתוך `AdvancedLiveMatchScreen`; אין מסך או מסלול ניווט חדש. `TeamShirt` הוא רכיב ציור משותף לחלון וללוח הלייב. [מצבים, נתונים, בדיקות וצילומים](rounds/live-advanced.md).
+
 13.10.2026: נוסף `src/components/joryio/NativeCampaignView.tsx` כמציג משותף למארח הקמפיין הקיים ולכלי הדמו. אינו מסך ואינו נתיב מוצר חדש; [מסלול, בדיקות וצילומים](shared/menus-and-motion.md).
 
 12.10.2026: נוסף `src/dev/OverlayAuditPreview.tsx` כקיצור תצוגה מנותק לרכיבי חלוניות קיימים. אינו מסך מוצר ואינו רשום במחסניות. נדרש פיתוח, דגל נתוני דמו ודגל קיצורי בדיקה. ראיות ומגבלות: [תפריטים וחלוניות](shared/menus-and-motion.md), [מיפוי המארחים](../audits/2026-10-12-overlay-audit.md).
@@ -229,4 +243,43 @@
 
 ## שער כניסה מאובטח לפולס — 11.10.2026
 
-`pulse/src/screens/AdminLoginScreen.tsx` נוסף כשער לפני לוח הניטור. [התיעוד](../../pulse/docs/secure-access.md). נבדק בקוד ובבדיקת טיפוסים בלבד; לא הורץ ולא צולם. אין צילום שניתן להציג כראיה לתצוגה או לכיווניות.
+`pulse/src/screens/AdminLoginScreen.tsx` נוסף כשער לפני לוח הניטור. [התיעוד](../../pulse/docs/secure-access.md). ב־13.10.2026 הותקן פולס `1.0.93 / 100` באמולטור ומסך הכניסה צולם. אין הוכחת התחברות אמיתית.
+
+
+## שיחות צוות בפולס — 13.10.2026
+
+`pulse/src/screens/MessagesScreen.tsx` נשאר בנתיב `Messages` ומשמש מסך ייעודי למעקב ומענה, בתווית ״שיחות עם משתמשים״. החלונית הקיימת `TeamderChatSheet` הורחבה; לא נוסף מסך בטימדר. [התיעוד והראיות](shared/pulse-support.md). רינדור דפדפן עם נתוני בדיקה נצפה; נוסף רכיב הגדרות ותור ליווי במסך הקיים. מסך הכניסה צולם באמולטור; מסך השיחות וההגדרות נבדקו ברינדור דפדפן עם נתוני דמו בלבד. אין הוכחת דחיפה חדשה.
+
+
+### הרחבת חלוקת הכוחות — 14.10.2026
+
+בתוך `DraftSetup` נוסף מצב `free` עם [`ManualAllocation`](../../src/components/draft/ManualAllocation.tsx), מתועד ב־[חלוקת כוחות](rounds/draft-setup.md). אין מסלול משתמש חדש. מסלולי QA בלבד `ManualAllocationThree` ו־`ManualAllocationFour` מציגים מצבים מבודדים בתנאי פיתוח ודמו, ללא שמירת שרת.
+
+
+14.10.2026: רכיב `src/components/match/BalancedFillModal.tsx` נוסף לתהליך הלייב הקיים; תיעוד במפת [לייב מתקדם](rounds/live-advanced.md). תצוגות הדמו `balanced_teams` ו־`balanced_fill` אינן מסכי מוצר חדשים.
+
+
+## תמיכה זמינה — 14.10.2026
+
+נוספו רכיבי חלונית גלובלית `src/components/support/SupportChatHost.tsx`, בתוך מכל הניווט הקיים, ובפולס `NewSupportChatPicker` בתוך מסך `Messages` הקיים. אין מסלול מוצר חדש. תצוגת אנדרואיד בדמו, בדיקות אבטחה, בדיקות מסד מקומי ומגבלות מתועדות ב־[תמיכה](shared/support-chat.md). קיצורי QA `_support_open` ו־`_support_draft` דורשים פיתוח, דגל קיצורים ודגל דמו; אינם פתוחים בייצור.
+
+
+עדכון 15.10.2026: סקשן ״באגים שלא נפתרו״ נוסף למסך `pulse/src/screens/TasksScreen.tsx` הקיים; אין מסך או מסלול חדש. [תיבת העבודה בפולס](shared/pulse-work-inbox.md).
+
+עדכון 15.10.2026 — מבנה סטטיסטיקות המועדון: `src/components/community/ClubStatsDashboard.tsx` משמר בחירה בין סקירה, הטבלה וצמדים ושיאים. `src/components/community/ClubStatusCard.tsx` מוסיף כרטיס מצב הכולל מונים ומובילים יחד, תצוגת צילום נקייה וייצוא תמונה לחלונית השיתוף של המכשיר. הכול בתוך `CommunityStatsScreen` הקיים, ללא מסלול חדש. העונות משותפות לכל האזורים; הטבלה נשארת מורכבת ושומרת מצב במעבר פנימי. רכיב הקישוט `FootballStatsBackdrop` והגלריה האופקית הוסרו. [מבנה המסך והראיות](statistics/club-leaders-and-table.md).
+
+
+עדכון 15.10.2026 — עיצוב מלא: `ClubStatsDashboard` כולל כותרת מגרש, פס מונים, ניווט פנימי וכרטיסי מובילים. רכיבי הטבלה, בחירת העונה, הצמדים, השיאים ותרשים התוצאות תומכים במראה מקומי `appearance="club"`. `ClubStatusCard` משתמש באותה שפה לתמונת השיתוף. מסלולי הכניסה לא השתנו; מעטפת המצב המוטמע נשמרת. [ראיות ומגבלות](statistics/club-leaders-and-table.md).
+
+
+עדכון 15.10.2026 — הסקיצה המאושרת נבנתה בתוך `CommunityDetails > stats`, באמצעות `CommunityStatsScreen` המוטמע. `ClubStatsDashboard` מספק מגרש, דשא, רשימת כל התארים, אזורי תוכן וכותרת טבלה. `CommunityDetailsScreen` מעביר נראות לתנועה דרך `active`. `ChemistrySection preview` מציג צמד מנצח בסקירה, וכל כרטיסי הצמדים משתמשים בסמל חיבור. מסלולים רשומים לא נוספו ולא הוסרו. [תיעוד וראיות](statistics/club-leaders-and-table.md).
+
+
+עדכון 15.10.2026 — `src/components/chemistry/PairChemistryIcon.tsx` החליף את רכיב לחיצת היד ומציג סמל הישג מקומי עם תנועה סופית בכרטיסי `ChemistrySection`, בתוך לשונית הסטטיסטיקה של `CommunityDetails`. `motionEnabled` משמר נראות הלשונית, ו־`useAmbientMotion` מכבד הפחתת תנועה, מיקוד, רקע וגלילה. אין מסלול חדש. [מימוש וראיות](statistics/chemistry-and-records.md).
+
+
+עדכון 15.10.2026 — `PairHandshake.tsx` הוסר והוחלף ב־`PairChemistryIcon.tsx`; חמשת סמלי ההישג מוצגים בין השחקנים במקום סמל חיבור זהה. הפסדים משתמשים בריבוע עם ×, וכל הסמלים בטורקיז. השינוי חל גם על הצמד המנצח בסקירה. לא נוסף מסך או מסלול. [מימוש, צילומים ובדיקות](statistics/chemistry-and-records.md).
+
+## מסכי המשחק המחודשים — 16.10.2026
+
+בתוך `LiveMatch` נוספו מצבי רכיב, ללא נתיב רשום חדש: `src/components/match/OpeningTeamsPanel.tsx`, `GoalEntryModal.tsx`, `SubstitutionModal.tsx`, `ShootoutWizard.tsx` ו־`MatchSteps.tsx`. הם מתועדים ב־[לייב מתקדם](rounds/live-advanced.md), [משלימים](rounds/fillers.md) ו־[פנדלים](rounds/penalties.md). חלון ההשלמות הקיים נשמר; בורר הפנדלים הישן ולוח המגרש הוחלפו, וחלון צפייה נפרד בהרכב המתנה אינו נדרש כשכל ההרכב גלוי. קיצורי `_live_design_*` הם תרחישי פיתוח ודמו בלבד, עם משחקים ושחקנים בזיכרון ללא יצירת חשבונות או מועדונים. הם אינם מסכי מוצר.

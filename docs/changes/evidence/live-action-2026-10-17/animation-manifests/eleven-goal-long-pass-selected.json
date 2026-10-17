@@ -1,0 +1,76 @@
+{
+  "source": "shots\\eleven-goal-long-pass.mp4",
+  "sourceSha256": "dbc17d47954153d04b3944c33c9ad333781207efabb21fb53c362e65f8c686ba",
+  "output": "native-qa\\frames\\eleven-goal-long-pass",
+  "timesMs": [
+    5000,
+    6750,
+    7250,
+    7350,
+    7500,
+    8000
+  ],
+  "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+  "frames": [
+    {
+      "requestedTimeUs": 5000000,
+      "durationMs": 10456,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1201963,
+      "file": "frame-000005000000us.png",
+      "sha256": "834e844692186d64e028967e0086ecc5d6241b95d50182e17257355239de7279"
+    },
+    {
+      "requestedTimeUs": 6750000,
+      "durationMs": 10456,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1199274,
+      "file": "frame-000006750000us.png",
+      "sha256": "7669eb26839500e174c5484a1fcca42007f9603e1c71448046061cfd821a7ba9"
+    },
+    {
+      "requestedTimeUs": 7250000,
+      "durationMs": 10456,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1198432,
+      "file": "frame-000007250000us.png",
+      "sha256": "d0f4aacef0a1eba6b7a4fe8e231449b8f6ca4611b8259aef2270dad48b66617b"
+    },
+    {
+      "requestedTimeUs": 7350000,
+      "durationMs": 10456,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1198077,
+      "file": "frame-000007350000us.png",
+      "sha256": "4c8d1f307888586d4f827b01824ec1ed43447c32da6cfc8a6c7a73858f4453ba"
+    },
+    {
+      "requestedTimeUs": 7500000,
+      "durationMs": 10456,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1196420,
+      "file": "frame-000007500000us.png",
+      "sha256": "a5ff8b80717108125472da3168cff5f40ae7f85e86a3e961cef4985e5c51a5de"
+    },
+    {
+      "requestedTimeUs": 8000000,
+      "durationMs": 10456,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1172249,
+      "file": "frame-000008000000us.png",
+      "sha256": "2fb84d6750a7ab9c83b2919619644ca68e175c209786dbaf33d5700cca6d46c6"
+    }
+  ]
+}

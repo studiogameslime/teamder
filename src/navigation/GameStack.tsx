@@ -113,7 +113,7 @@ export type GameStackParamList = {
   MatchPlayers: { gameId: string };
   /** Admin-only "ניהול משחק" surface. */
   /** Draft Teams (חלוקת כוחות) — step 1: pick captains + draft order. */
-  DraftSetup: { gameId: string };
+  DraftSetup: { gameId: string; resumeManual?: boolean; editExisting?: boolean };
   /** Draft Teams — step 2: the live draft board + summary. */
   DraftBoard: {
     gameId: string;
@@ -122,6 +122,8 @@ export type GameStackParamList = {
     /** Reconstruct picks from the game's saved draftTeams → opens on the
      *  summary (editable). */
     resume?: boolean;
+    /** The acknowledged generated draft; older reads must not display it. */
+    expectedDraftCreatedAt?: number;
     /** View-only (non-managers): summary without edit/finish actions. */
     readOnly?: boolean;
   };

@@ -1,3 +1,6 @@
+import { upsertSavedGuest } from '@/utils/savedGuest';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { hasManualDraft, manualDraftRevision } from '@/utils/manualAllocation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import { HeightReveal } from '@/components/anim/HeightReveal';
 import { recordDiagnostic } from '@/services/diagnosticJournal';
@@ -77,9 +80,12 @@ import {
 import { MatchStadiumHero } from '@/components/match/MatchStadiumHero';
 import { DraftTeamCard } from '@/components/draft/DraftTeamCard';
 import { MatchDetailsGrid } from '@/components/match/MatchDetailsGrid';
+import { RoundGameFacts, RoundPeopleCard } from '@/components/match/RoundInfoDetails';
+import { useRoundForecast } from '@/hooks/useRoundForecast';
 import { ClubTabs, type ClubTab } from '@/components/club/ClubTabs';
 import { TabScroll, TabEmpty } from '@/components/match/tabs/MatchTabShell';
 import { MatchStatsTab } from '@/components/match/tabs/MatchStatsTab';
+import { PlayerRecruitmentActions } from '@/components/match/PlayerRecruitmentActions';
 import { MatchPlayerCounters } from '@/components/match/tabs/MatchPlayersTab';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { MatchRoundsScreen } from '@/screens/games/MatchRoundsScreen';
@@ -93,7 +99,7 @@ import { isFinalRoundOfSeason } from '@/utils/seasonFinalRound';
 import { GameChampionship } from '@/components/match/GameChampionship';
 import { RetroGoalsSheet } from '@/components/match/RetroGoalsSheet';
 import { MatchFactsRow } from '@/components/match/MatchFactsRow';
-import { gameService, type RegistrationConflict } from '@/services/gameService';
+import { gameService, resolveRosterEntry, type RegistrationConflict } from '@/services/gameService';
 import { seriesService } from '@/services/seriesService';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { handleFillerOpportunityAction } from '@/services/notificationActionService';
@@ -124,11 +130,6 @@ import {
   useIsGuest,
 } from '@/hooks/useAuthenticatedAction';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import {
-  getForecastFor,
-  weatherIcon,
-  type WeatherForecast,
-} from '@/services/weatherService';
 import {
   Game,
   FieldType,
@@ -216,8 +217,7 @@ type SessionStatus =
  * on-field teams" using the chosen format.
  */
 function effectiveMinPlayers(game: Game): number {
-  if (game.minPlayers && game.minPlayers > 0) return game.minPlayers;
-  return teamSizeFromFormat(game.format) * 2;
+  return Math.max(game.minPlayers ?? 0, teamSizeFromFormat(game.format) * 2);
 }
 
 /**
@@ -459,6 +459,95 @@ function weatherRowIcon(code?: number): keyof typeof Ionicons.glyphMap {
   }
 }
 
+/** Guests belong to the evening, not the public-user cache. Keep their roster
+ * identity for the avatar; unknown/removed guests remain unnamed. */
+function resolveMatchSummaryUser(
+  id: string,
+  game: Pick<Game, 'guests'> | null,
+  players: Record<string, { displayName?: string; avatarId?: string; photoUrl?: string }>,
+) {
+  // Older recap paths also accept bare guest ids. Resolve one only when there
+  // is an exact local guest and no real user occupying that id.
+  const rosterId = !id.startsWith('guest:') && !players[id]
+    && game?.guests?.some((guest) => guest.id === id) ? toGuestRosterId(id) : id;
+  const entry = resolveRosterEntry(rosterId, game);
+  if (entry.kind === 'guest') {
+    const guest = game?.guests?.find((candidate) => candidate.id === entry.guest.id);
+    return { id: rosterId, name: (guest?.name ?? '').trim() };
+  }
+  const player = players[entry.userId];
+  return {
+    id: rosterId,
+    name: (player?.displayName ?? '').trim(),
+    avatarId: player?.avatarId,
+    photoUrl: player?.photoUrl,
+  };
+}
+
+/** Read ownership is checked during render as well as when the read settles.
+ * A different evening/account cannot briefly inherit the preceding summary. */
+function useMatchRoundSummary(
+  gameId: string | undefined,
+  viewerId: string | undefined,
+  enabled: boolean,
+  refreshKey: number,
+  hydrateSummary: (summary: RoundSummary) => void,
+  groupId?: string,
+) {
+  const owner = JSON.stringify([gameId ?? null, viewerId ?? null]);
+  const currentOwner = useRef(owner);
+  currentOwner.current = owner;
+  const request = useRef(0);
+  const [retryKey, setRetryKey] = useState(0);
+  const [read, setRead] = useState<{
+    owner: string;
+    summary: RoundSummary | null;
+    status: 'loading' | 'ready' | 'error';
+  }>(() => ({ owner, summary: null, status: 'loading' }));
+  const retry = React.useCallback(() => setRetryKey((key) => key + 1), []);
+
+  useFocusEffect(React.useCallback(() => {
+    if (!enabled || !gameId || !viewerId) return;
+    let alive = true;
+    let stopWatching: (() => void) | undefined;
+    const attempt = ++request.current;
+    const ownsRead = () => alive && request.current === attempt
+      && currentOwner.current === owner
+      && useUserStore.getState().currentUser?.id === viewerId;
+    setRead((previous) => ({
+      owner,
+      summary: previous.owner === owner ? previous.summary : null,
+      status: 'loading',
+    }));
+    const accept = (summary: RoundSummary | null) => {
+      if (!ownsRead()) return;
+      setRead({ owner, summary, status: 'ready' });
+      if (summary) hydrateSummary(summary);
+    };
+    roundSummaryService.get(gameId, groupId).then((summary) => {
+      if (!ownsRead()) return;
+      accept(summary);
+      if (!summary && groupId) stopWatching = roundSummaryService.watch(gameId, groupId, accept, () => {
+        if (ownsRead()) setRead(previous => ({ ...previous, status: 'error' }));
+      });
+    }).catch(() => {
+      if (!ownsRead()) return;
+      setRead((previous) => ({
+        owner,
+        summary: previous.owner === owner ? previous.summary : null,
+        status: 'error',
+      }));
+    });
+    return () => { alive = false; stopWatching?.(); };
+  }, [enabled, gameId, viewerId, owner, refreshKey, retryKey, hydrateSummary, groupId]));
+
+  return {
+    summary: read.owner === owner ? read.summary : null,
+    status: read.owner === owner ? read.status : 'loading' as const,
+    retry,
+  };
+}
+
 export function MatchDetailsScreen() {
   const [tab, setTab] = useState<GameTabKey>('info');
   const [seen, setSeen] = useState<Set<GameTabKey>>(
@@ -469,9 +558,6 @@ export function MatchDetailsScreen() {
     setTab(k);
     setSeen((prev) => (prev.has(k) ? prev : new Set(prev).add(k)));
   };
-  /** The sealed evening summary — the ONLY source the statistics tab reads. */
-  const [roundSummary, setRoundSummary] = useState<RoundSummary | null>(null);
-
   const insets = useSafeAreaInsets();
   const nav = useNavigation<Nav>();
   const route = useRoute<Params>();
@@ -512,6 +598,20 @@ export function MatchDetailsScreen() {
   );
 
   const [game, setGame] = useState<Game | null>(null);
+  const savedDraftRevision = manualDraftRevision(game?.draftTeams);
+  const [manualDraftScope, setManualDraftScope] = useState<string | null>(null);
+  const manualDraftKey = user?.id && gameId ? `manual-allocation:${user.id}:${gameId}` : null;
+  const hasLocalManualDraft = !!manualDraftKey && manualDraftScope === manualDraftKey;
+  useFocusEffect(React.useCallback(() => {
+    let active = true;
+    setManualDraftScope(null);
+    if (manualDraftKey) {
+      AsyncStorage.getItem(manualDraftKey).then(raw => {
+        if (active) setManualDraftScope(hasManualDraft(raw, savedDraftRevision) ? manualDraftKey : null);
+      }).catch(error => logError('manualDraftLookup', error, { gameId }));
+    }
+    return () => { active = false; };
+  }, [manualDraftKey, gameId, savedDraftRevision]));
 
   /**
    * Tonight is the season's last evening.
@@ -599,7 +699,7 @@ export function MatchDetailsScreen() {
   // Open when the user taps "cancel" and we're already past the
   // cancel-deadline window. Soft-confirm — the cancellation is
   // allowed, but we ask once with a destructive-styled prompt.
-  const [forecast, setForecast] = useState<WeatherForecast | null>(null);
+  const forecast = useRoundForecast(game, myCommunities.find(g => g.id === game?.groupId));
   // Local-only dismiss for the post-game "rate teammates" banner.
   // Intentionally not persisted — re-entering the screen is a fine
   // place to surface the prompt again if the user navigated away
@@ -710,6 +810,7 @@ export function MatchDetailsScreen() {
         // "ביטלו השתתפות" rows all read the generic "שחקן".
         const uids = Array.from(
           new Set([
+            ...(g.createdBy ? [g.createdBy] : []),
             ...g.players,
             ...g.waitlist,
             ...(g.pending ?? []),
@@ -784,7 +885,8 @@ export function MatchDetailsScreen() {
       logEvent(AnalyticsEvent.GameViewed, { gameId: g.id, status: g.status });
       const uids = Array.from(
         new Set([
-          ...g.players,
+          ...(g.createdBy ? [g.createdBy] : []),
+            ...g.players,
           ...g.waitlist,
           ...(g.pending ?? []),
           ...Object.keys(g.cancellations ?? {}),
@@ -876,46 +978,6 @@ export function MatchDetailsScreen() {
     };
   }, [game, user]);
 
-  // Fetch the forecast once we know the field's coordinates and the
-  // game's start time. We fall back to the parent community's lat/lng
-  // when the game itself wasn't pinned to a precise location — most
-  // real games today only carry a free-text fieldName, so without the
-  // fallback the chip would never render.
-  //
-  // Open-Meteo only serves forecasts for "now or future, up to ~16
-  // days"; the service returns null outside that window and the chip
-  // below stays hidden.
-  useEffect(() => {
-    if (!game?.startsAt) return;
-    const groupForGame = myCommunities.find((g) => g.id === game.groupId);
-    const lat = game.fieldLat ?? groupForGame?.lat;
-    const lng = game.fieldLng ?? groupForGame?.lng;
-    const city = groupForGame?.city;
-    // weatherService falls back to city geocoding when lat/lng is
-    // missing. Both the top-level coords path and the city path are
-    // memoised so the cost of repeated screen visits is one network
-    // call max.
-    if (
-      (typeof lat !== 'number' || typeof lng !== 'number') &&
-      (!city || city.trim().length === 0)
-    ) {
-      return;
-    }
-    let alive = true;
-    getForecastFor({ lat, lng, city, startsAt: game.startsAt }).then((f) => {
-      if (alive) setForecast(f);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [
-    game?.fieldLat,
-    game?.fieldLng,
-    game?.startsAt,
-    game?.groupId,
-    myCommunities,
-  ]);
-
   const isAdmin = useMemo(() => {
     if (!user || !game) return false;
     if (game.createdBy === user.id) return true;
@@ -937,8 +999,8 @@ export function MatchDetailsScreen() {
           avatarId: p?.avatarId,
           photoUrl: p?.photoUrl,
         };
-      }),
-    [game?.players, playersMap],
+      }).concat((game?.guests ?? []).filter(g=>!g.waitlisted).map(g=>({id:`guest:${g.id}`,name:g.name,avatarId:undefined,photoUrl:undefined}))),
+    [game?.players, game?.guests, playersMap],
   );
 
   // ─── The four tabs ───────────────────────────────────────────────────
@@ -957,7 +1019,7 @@ export function MatchDetailsScreen() {
     game && !game.isOrphanContext && game.groupId
       ? myCommunities.find((c) => c.id === game.groupId)
       : undefined;
-  const [publicHeroCover, setPublicHeroCover] = useState<{groupId:string;ownerId:string;cover: {coverPhotoUrl?:string;coverImageId?:string}|null}|null>(null);
+  const [publicHeroCover, setPublicHeroCover] = useState<{groupId:string;ownerId:string;cover: {name?:string;coverPhotoUrl?:string;coverImageId?:string}|null}|null>(null);
   const heroGroupId = game && !game.isOrphanContext ? game.groupId : undefined;
   useEffect(() => {
     if (!heroGroupId || memberHeroClub || !user?.id) return;
@@ -992,21 +1054,22 @@ export function MatchDetailsScreen() {
   // someone straight to a locked tab would show them a pane the tab bar says
   // they cannot open; when that happens the request is dropped and they land
   // on מידע, the same place every other caller lands.
-  const initialTabApplied = React.useRef(false);
+  const initialTabApplied = React.useRef<string | null>(null);
   useEffect(() => {
-    if (initialTabApplied.current || !game) return;
-    const want = route.params?.initialTab;
-    if (!want || want === 'info') {
-      initialTabApplied.current = true;
+    if (!game || game.id !== route.params.gameId) return;
+    const want = route.params?.initialTab ?? 'info';
+    const owner = `${game.id}:${want}`;
+    if (initialTabApplied.current === owner) return;
+    initialTabApplied.current = owner;
+    if ((want === 'games' || want === 'stats') && dataTabsLocked) {
+      showTab('info');
       return;
     }
-    initialTabApplied.current = true;
-    if ((want === 'games' || want === 'stats') && dataTabsLocked) return;
     showTab(want);
-    // `showTab` is a plain function over setState — stable enough for an effect
-    // that runs once, and listing it would only re-arm the guard above.
+    // The explicit destination is consumed once per game/request, not once
+    // per component lifetime: navigation can reuse this mounted screen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game, dataTabsLocked, route.params?.initialTab]);
+  }, [game, dataTabsLocked, route.params?.gameId, route.params?.initialTab]);
 
   const gameTabs = useMemo<ClubTab<GameTabKey>[]>(
     // Order is right-to-left on screen, so this array reads מידע · שחקנים ·
@@ -1029,57 +1092,32 @@ export function MatchDetailsScreen() {
   // the tabs show: "עדיין לא שוחק" or "אין נתונים למחזור הזה".
   const eveningHasPlayed = useMemo(() => didEveningHappen(game), [game]);
 
-  // The sealed summary for the statistics tab. Fetched once per game, and only
-  // when that tab is first opened — an evening whose statistics nobody looks at
-  // costs no read. A miss is a legitimate answer (the document only exists for
-  // evenings closed since `roundSummaries` shipped), so a failure leaves it null
-  // and the tab renders its no-coverage state.
-  const summaryFetched = React.useRef<string | null>(null);
-  useEffect(() => {
-    if (!gameId || !seen.has('stats')) return;
-    if (summaryFetched.current === gameId) return;
-    summaryFetched.current = gameId;
-    let alive = true;
-    roundSummaryService
-      .get(gameId)
-      .then((s) => {
-        if (!alive || !s) return;
-        setRoundSummary(s);
-        // Names and faces for the leaders, the pair and the event lines. The
-        // same hydration the standalone summary screen does, for the same
-        // reason: the summary stores uids only.
-        const ids = new Set<string>();
-        for (const l of Object.values(s.leaders)) {
-          for (const u of (l as { userIds?: string[] } | null)?.userIds ?? []) ids.add(u);
-        }
-        for (const e of s.events) if ('userIds' in e) e.userIds.forEach((u) => ids.add(u));
-        if (s.pairHighlight) s.pairHighlight.userIds.forEach((u) => ids.add(u));
-        const real = Array.from(ids).filter((u) => !u.startsWith('guest:'));
-        if (real.length > 0) hydratePlayers(real);
-      })
-      .catch(() => {
-        // Left null on purpose — the tab's no-coverage state is the answer.
-      });
-    return () => {
-      alive = false;
-    };
-  }, [gameId, seen, hydratePlayers]);
+  // Lazy first read, then refresh on focus and after a retro correction. Only
+  // a successful missing document can render the no-coverage state.
+  const statsSeen = seen.has('stats');
+  const hydrateSummary = React.useCallback((s: RoundSummary) => {
+    // The summary stores identities; the public player cache supplies faces.
+    const ids = new Set<string>();
+    for (const l of Object.values(s.leaders)) {
+      for (const u of (l as { userIds?: string[] } | null)?.userIds ?? []) ids.add(u);
+    }
+    for (const e of s.events) if ('userIds' in e) e.userIds.forEach((u) => ids.add(u));
+    if (s.pairHighlight) s.pairHighlight.userIds.forEach((u) => ids.add(u));
+    const real = Array.from(ids).filter((u) => !u.startsWith('guest:'));
+    if (real.length > 0) void hydratePlayers(real);
+  }, [hydratePlayers]);
+  const summaryRead = useMatchRoundSummary(gameId, user?.id, statsSeen && game?.status === 'finished', retroRefreshKey, hydrateSummary, game?.groupId);
 
   const summaryNameOf = React.useCallback(
-    (uid: string) => (playersMap[uid]?.displayName ?? '').trim(),
-    [playersMap],
+    (uid: string) => resolveMatchSummaryUser(uid, game, playersMap).name,
+    [game, playersMap],
   );
   const summaryUserOf = React.useCallback(
     (uid: string) => {
-      const p = playersMap[uid];
-      return {
-        id: uid,
-        name: (p?.displayName ?? '').trim() || he.genericUserName,
-        avatarId: p?.avatarId,
-        photoUrl: p?.photoUrl,
-      };
+      const resolved = resolveMatchSummaryUser(uid, game, playersMap);
+      return { ...resolved, name: resolved.name || he.genericUserName };
     },
-    [playersMap],
+    [game, playersMap],
   );
 
   // Filler candidate: a signed-in user who is NOT a member of this game's
@@ -1329,7 +1367,7 @@ export function MatchDetailsScreen() {
           };
         });
       } else {
-        const result = await gameService.requestJoinGame(game.id, user.id, 'match_details');
+        const result = await gameService.requestJoinGame(game.id, user.id, 'match_details', game.startsAt);
         setGame((prev) => {
           if (!prev) return prev;
           const next = { ...prev };
@@ -2466,7 +2504,7 @@ export function MatchDetailsScreen() {
         // action, and the match is now read-only.
         ...(isAdmin &&
         !isTerminalGame(game) &&
-        game.players.length + activeGuestCount(game.guests) >= 2
+        game.players.length + activeGuestCount(game.guests) >= 2 * teamSizeFromFormat(game.format)
           ? [
               {
                 id: 'draftTeams',
@@ -2520,46 +2558,6 @@ export function MatchDetailsScreen() {
                     readOnly: true,
                   });
                 },
-              },
-            ]
-          : []),
-        // ── Regular actions first ──────────────────────────────────
-        // Organizer-only: find players whose availability matches this
-        // game and invite them. Only useful while the game is still open
-        // and has room. (This is the only entry point to the
-        // AvailablePlayers screen — it was previously unreachable.)
-        ...(isAdmin && game.status === 'open'
-          ? [
-              {
-                id: 'inviteAvailable',
-                label: he.matchInviteAvailable,
-                icon: 'person-add-outline' as const,
-                onPress: () =>
-                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                    'AvailablePlayers',
-                    { gameId: game.id },
-                  ),
-              },
-            ]
-          : []),
-        // Register members straight from the community into the game (admin
-        // only). Distinct from "invite" — these are added to the roster
-        // directly and get a push. ONE unified entry ("צרף חברים מהמועדון"),
-        // always available while the game isn't finished/cancelled (the
-        // adminAddPlayers callable allows every non-terminal status). When
-        // registration hasn't opened yet the flow still reserves the spots
-        // under the hood (`reserve`), it's just no longer a separate menu item.
-        ...(isAdmin && !isFinished(game) && !isCancelled(game)
-          ? [
-              {
-                id: 'addMembers',
-                label: he.matchMenuAddMembers,
-                icon: 'people-circle-outline' as const,
-                onPress: () =>
-                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                    'AddMembers',
-                    { gameId: game.id, reserve: isScheduled(game) },
-                  ),
               },
             ]
           : []),
@@ -2648,7 +2646,7 @@ export function MatchDetailsScreen() {
   // never displays the placeholder name nor a broken-looking blank.
   const communityName = game.isOrphanContext
     ? he.matchDetailsCommunityOrphan
-    : myCommunities.find((g) => g.id === game.groupId)?.name;
+    : myCommunities.find((g) => g.id === game.groupId)?.name ?? heroClub?.name;
   // Community rules (free text set in the community form) — surfaced here
   // so every participant sees them before the game (no kickers, no late,
   // bring water, …). Only available for members (myCommunities).
@@ -2731,13 +2729,9 @@ export function MatchDetailsScreen() {
   const gameWasPlayed =
     game.status === 'finished' || game.liveMatch?.startedAt != null;
 
-  // The "הכוחות שחולקו" section is a RECORD of the starting split — it must NOT
-  // change when a player goes home or is substituted mid-match (user request).
-  // Once a rotation has started, `rotation.baseTeams` is the frozen snapshot of
-  // the starting rosters (preserved across rounds in gameService); before that,
-  // `draftTeams.teams` is the split as created. `draftTeams.teams` itself is the
-  // LIVE/working roster (mutated by went-home + permanent-fill), so it is used
-  // only by the live-match rotation panel, never for this fixed display.
+  // Latest deliberately saved split. saveDraftTeams replaces its snapshot
+  // together with the rotation baseline whenever any allocation method saves.
+  // Working-roster departures/fills do not independently replace that split.
   const splitTeams = resolveSplitTeams(draftTeams, game.rotation);
 
   // Teams go "stale" when someone registered AFTER the split was saved — i.e. a
@@ -2851,7 +2845,9 @@ export function MatchDetailsScreen() {
   };
 
   // "צרו כוחות" nudge: admin, no split yet, enough draftable people, and
-  // kickoff is close (≤24h away, not yet started). Otherwise the only path
+  // kickoff is close (≤24h away) or has passed while the evening is active.
+  // There is no two-hour expiry: teams can still be created during live play.
+  // Otherwise the only path
   // to create teams is buried in the ☰ menu — easy to miss (feedback).
   const draftablePeople =
     (game.players?.length ?? 0) + activeGuestCount(game.guests);
@@ -2859,23 +2855,28 @@ export function MatchDetailsScreen() {
   const showCreateTeamsBanner =
     isAdmin &&
     !draftTeams &&
+    !hasLocalManualDraft &&
     !isTerminalGame(game) &&
-    draftablePeople >= 2 &&
-    msToKickoff > -2 * 60 * 60 * 1000 && // allow up to 2h after kickoff
+    draftablePeople >= 2 * teamSizeFromFormat(game.format) &&
     msToKickoff <= 24 * 60 * 60 * 1000;
 
   // Teams already exist → the admin manages them (edit / rebalance / redo)
   // from a "נהל כוחות" banner instead of "create".
   const showManageTeamsBanner =
-    isAdmin && !!draftTeams && !isTerminalGame(game);
+    isAdmin && (!!draftTeams || hasLocalManualDraft) && !isTerminalGame(game) && draftablePeople >= 2 * teamSizeFromFormat(game.format);
 
+  const missingDraftPlayers = Math.max(0, 2 * teamSizeFromFormat(game.format) - draftablePeople);
+  const missingDraftPlayersLabel = missingDraftPlayers === 1
+    ? 'חסר עוד שחקן אחד לשתי קבוצות מלאות'
+    : `חסרים עוד ${missingDraftPlayers} שחקנים לשתי קבוצות מלאות`;
   const openDraftSetup = (source: 'create_banner' | 'manage_banner') => {
+    if (missingDraftPlayers > 0) return;
     logEvent(AnalyticsEvent.TeamsFlowOpened, {
       gameId: game.id,
       source,
       hasTeams: !!draftTeams,
     });
-    nav.navigate('DraftSetup', { gameId: game.id });
+    nav.navigate('DraftSetup', { gameId: game.id, resumeManual: hasLocalManualDraft });
   };
 
   // Tapping the teams section just VIEWS the split (read-only) — no stray
@@ -2899,15 +2900,6 @@ export function MatchDetailsScreen() {
       readOnly: true,
     });
   };
-
-  // Field-type label (אספלט / סינטטי / דשא) — null when unset.
-  const fieldTypeLabel: string | null = game.fieldType
-    ? game.fieldType === 'asphalt'
-      ? he.fieldTypeAsphalt
-      : game.fieldType === 'synthetic'
-        ? he.fieldTypeSynthetic
-        : he.fieldTypeGrass
-    : null;
 
   // Build the participant list — only registered players (not
   // waitlist/pending) for the on-screen preview. The "הצג הכל"
@@ -2972,17 +2964,8 @@ export function MatchDetailsScreen() {
   // `MatchTabShell` for why. `heroNode` leaves the screen with the content;
   // `tabBarNode` is pinned by `stickyHeaderIndices` and always stays.
   //
-  // `compact` reclaims the 56 points of photo the hero used to leave empty for
-  // the old floating stats strip to overlap. Those three facts now live as
-  // ordinary rows: two inside "פרטי המחזור", one on the שחקנים tab.
+  // The shared hero scrolls away; each tab keeps the existing sticky bar.
   const heroNode = (
-    // The -22 overlap that tucks the tab bar under the hero's bottom now
-    // lives HERE, as the hero's own negative bottom margin, instead of on
-    // the bar. `stickyHeaderIndices` pins the bar's LAYOUT box at y=0, and
-    // a box whose own top sits 22pt above that point loses those 22pt —
-    // which is exactly the clipped tab labels the owner reported. Moving
-    // the offset to the hero keeps the visual join identical and leaves
-    // the sticky child's box starting at its true top.
     <View style={styles.heroWrap}>
         <MatchStadiumHero
           roundId={game.id}
@@ -2991,6 +2974,9 @@ export function MatchDetailsScreen() {
           coverLoading={!!heroGroupId && !memberHeroClub && !publicCoverResolved}
           startsAt={game.startsAt}
           title={game.title}
+          statusLabel={game.status === 'cancelled' ? 'המחזור בוטל' : game.status === 'finished' ? 'המחזור הסתיים' : isActiveGame(game) ? 'המחזור פעיל' : status === 'joined' ? 'נרשמת למחזור' : status === 'pending' ? 'ממתין לאישור' : status === 'waitlist' ? 'ברשימת המתנה' : game.status === 'scheduled' ? 'ההרשמה טרם נפתחה' : game.locked ? 'ההרשמה סגורה' : isFull ? 'הרשמה לרשימת המתנה' : 'ההרשמה פתוחה'}
+          occupancy={{registered: heroOccupancy, capacity: game.maxPlayers, reserved: !!game.pendingPromotion?.uid}}
+          weather={forecast ? {tempC: forecast.tempC, description: skyLabel(forecast.weatherCode), icon: weatherRowIcon(forecast.weatherCode), rainProb: forecast.rainProb} : undefined}
           // Which season this evening counts in. An evening already stamped
           // shows its own stamp; one that has not kicked off shows the season
           // it WILL land in, which is the club's running one — the stamp is
@@ -3104,6 +3090,26 @@ export function MatchDetailsScreen() {
             refreshing={refreshing}
             onRefresh={() => reload({ pullToRefresh: true })}
           >
+            <RoundGameFacts game={game} />
+            {locationStr ? (
+              <Pressable
+                onPress={openWaze}
+                accessibilityRole="button"
+                accessibilityLabel={he.matchDetailsNavigateWaze}
+                style={({ pressed }) => [
+                  styles.navigateCta,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <View style={styles.navigateCtaContent}>
+                <Text style={styles.navigateCtaText}>
+                  {he.matchDetailsNavigateButton}
+                </Text>
+                <Ionicons name="navigate" size={20} color={colors.primary} />
+                </View>
+              </Pressable>
+            ) : null}
+
             <HeightReveal visible={status === 'waitlist'}>
               {status === 'waitlist' ? <View style={[styles.teamsPointer, { backgroundColor: '#FFF3E6' }]}>
                 <Ionicons name="hourglass-outline" size={24} color="#C2410C" />
@@ -3113,43 +3119,23 @@ export function MatchDetailsScreen() {
                 </View>
               </View> : null}
             </HeightReveal>
-            {/* The teams pointer.
-
-                The teams UI moved to the שחקנים tab, where the roster it
-                splits already is. This card is what keeps it findable from
-                the first screen: it states the one fact that decides whether
-                to split yet — how many are in — and hands over. It is not a
-                second way to create teams; tapping it only changes tab. */}
-            {showCreateTeamsBanner || showManageTeamsBanner ? (
-              <View style={styles.teamsPointer}>
-                <View style={styles.teamsPointerText}>
-                  <View style={styles.teamsPointerHead}>
-                    <Ionicons name="football" size={17} color="#B45309" />
-                    <Text style={styles.teamsPointerTitle}>
-                      {he.gdTeamsPointerTitle(totalParticipants)}
-                    </Text>
+            {/* Existing management permissions and draft visibility apply to
+                this summary, just as they do on the players tab. */}
+            {!isTerminalGame(game) && (showCreateTeamsBanner || showManageTeamsBanner || teamsVisibleToViewer || (isAdmin && missingDraftPlayers > 0)) ? (
+              <View style={styles.preparationSection}>
+                <View style={[styles.preparationCard, styles.preparationCardCompact]}>
+                  <Ionicons name="people-outline" size={26} color="#15803D" />
+                  <View style={styles.preparationCopy}>
+                    <Text style={styles.preparationTitle}>{he.gdTeamsPointerTitle(totalParticipants)}</Text>
+                    <Text style={styles.preparationBody}>{missingDraftPlayers > 0 ? missingDraftPlayersLabel : hasLocalManualDraft ? 'הטיוטה הידנית שמורה — אפשר להמשיך לשבץ' : teamsVisibleToViewer ? teamsStale || sessionStatus === 'teams_invalid' ? 'צריך לעדכן את הכוחות' : teamsAreDraft ? 'הכוחות בטיוטה — טרם פורסמו' : 'הכוחות מוכנים' : 'אפשר להתחיל לחלק כוחות'}</Text>
                   </View>
-                  <Text style={styles.teamsPointerBody}>
-                    {showCreateTeamsBanner
-                      ? he.gdTeamsPointerCreateBody
-                      : he.gdTeamsPointerManageBody}
-                  </Text>
+                  {showCreateTeamsBanner || showManageTeamsBanner ? <Pressable
+                    onPress={() => openDraftSetup(showCreateTeamsBanner ? 'create_banner' : 'manage_banner')}
+                    style={styles.preparationAction} accessibilityRole="button">
+                    <Text style={styles.preparationActionText}>{hasLocalManualDraft ? 'המשך חלוקה' : showCreateTeamsBanner ? he.gdTeamsPointerCreateCta : he.gdTeamsPointerManageCta}</Text>
+                    <Ionicons name="options-outline" size={17} color={colors.primary} />
+                  </Pressable> : null}
                 </View>
-                <Pressable
-                  onPress={() => showTab('players')}
-                  style={({ pressed }) => [
-                    styles.teamsPointerCta,
-                    pressed && { opacity: 0.85 },
-                  ]}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.teamsPointerCtaTx}>
-                    {showCreateTeamsBanner
-                      ? he.gdTeamsPointerCreateCta
-                      : he.gdTeamsPointerManageCta}
-                  </Text>
-                  <Ionicons name="arrow-back" size={16} color={colors.primary} />
-                </Pressable>
               </View>
             ) : null}
 
@@ -3249,6 +3235,17 @@ export function MatchDetailsScreen() {
               }}
             />
 
+            <RoundPeopleCard
+              createdAt={game.createdAt}
+              club={!game.isOrphanContext && communityName ? {name: communityName, coverPhotoUrl: heroClub?.coverPhotoUrl, coverImageId: heroClub?.coverImageId} : undefined}
+              organizer={game.createdBy ? {id: game.createdBy, name: organizerName || he.genericUserName, avatarId: playersMap[game.createdBy]?.avatarId, photoUrl: playersMap[game.createdBy]?.photoUrl} : undefined}
+              onClub={heroGroupId ? () => nav.navigate(clubRouteFor(heroGroupId), {groupId: heroGroupId}) : undefined}
+              onOrganizer={game.createdBy ? () => { const userId = game.createdBy; if (userId) nav.navigate('PlayerCard', {userId, groupId: game.groupId}); } : undefined}
+            />
+            <MatchDetailsGrid title="מידע נוסף" items={[
+              ...(typeof game.notes === 'string' && game.notes.trim() ? [{icon: 'reader-outline' as const, label: he.matchDetailsLabelNotes, value: game.notes, multiline: true}] : []),
+            ]} />
+
             {/* Rule chips — `ruleTags` (new) with a graceful fallback
                 to the legacy hasReferee/Penalties/HalfTime booleans on
                 not-yet-edited games. Component returns null if there's
@@ -3304,175 +3301,6 @@ export function MatchDetailsScreen() {
                 was briefly moved below and moved straight back). The location
                 row keeps its own small icon; this is the full-width version of
                 the same action, and it renders only with enough for Waze. */}
-            {locationStr ? (
-              <Pressable
-                onPress={openWaze}
-                accessibilityRole="button"
-                accessibilityLabel={he.matchDetailsNavigateWaze}
-                style={({ pressed }) => [
-                  styles.navigateCta,
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Text style={styles.navigateCtaText}>
-                  {he.matchDetailsNavigateButton}
-                </Text>
-                <Ionicons name="navigate" size={20} color={colors.primary} />
-              </Pressable>
-            ) : null}
-
-            <MatchDetailsGrid
-              title={he.matchDetailsCardTitle}
-              items={[
-                // What the organiser wrote about the evening leads the card —
-                // it is the only row in free prose, and it is what a person
-                // scans for first. Omitted entirely when there is none: the
-                // grid prints an absent value as "—", and a row reading
-                // "הערות —" is an empty section, not a fact.
-                ...(typeof game.notes === 'string' && game.notes.trim()
-                  ? [
-                      {
-                        icon: 'reader-outline' as const,
-                        label: he.matchDetailsLabelNotes,
-                        value: game.notes,
-                        multiline: true, // show the full note, never clamp it
-                      },
-                    ]
-                  : []),
-                // Field-name row removed per user feedback (Pulse AbwW4G) — the
-                // location row below already answers "where do I drive?", so the
-                // venue nickname was a redundant extra line.
-                // Unified city + address row. The two fields conceptually
-                // describe the same thing ("where do I drive?"), and the
-                // Waze button belongs HERE — not on the field-name row
-                // (which is just the venue's nickname). We join them as
-                // "<city>, <address>" when both exist; otherwise show
-                // whichever one we have.
-                {
-                  icon: 'location-outline',
-                  label: he.matchDetailsLabelLocation,
-                  // Only prepend the city when the address doesn't already
-                  // contain it — most free-text games store the full address
-                  // ("עזריה 21, תל־אביב–יפו") so a naive join repeated the city.
-                  value: (() => {
-                    const addr = (game.fieldAddress ?? '').trim();
-                    const city = (game.city ?? '').trim();
-                    if (addr && city && !addr.toLowerCase().includes(city.toLowerCase())) {
-                      return `${city}, ${addr}`;
-                    }
-                    return addr || city || null;
-                  })(),
-                  action: locationStr
-                    ? {
-                        icon: 'navigate',
-                        onPress: openWaze,
-                        accessibilityLabel: he.matchDetailsNavigateWaze,
-                      }
-                    : undefined,
-                },
-                {
-                  icon: 'leaf-outline',
-                  label: he.matchDetailsLabelFieldType,
-                  value: fieldTypeLabel,
-                },
-                {
-                  icon: 'grid-outline',
-                  label: he.matchDetailsLabelFormat,
-                  value: game.format
-                    ? gameFormatLabel(game.format).replace(/ /g, '')
-                    : null,
-                },
-                // One-time games (or any game with no real community to show)
-                // OMIT the "מועדון" row entirely — the grid renders empty values
-                // as "—", so a one-time game would otherwise read "מועדון —".
-                // Keyed on the resolved name (not just isOrphanContext, which
-                // older quick-created games may not have set). (Pulse odLGvyv.)
-                ...(game.isOrphanContext || !communityName
-                  ? []
-                  : [
-                      {
-                        icon: 'people-outline' as const,
-                        label: he.matchDetailsLabelCommunity,
-                        value: communityName,
-                        action:
-                          communityName && game.groupId
-                            ? {
-                                icon: 'open-outline' as const,
-                                onPress: () =>
-                                  (
-                                    nav as {
-                                      navigate: (s: string, p: unknown) => void;
-                                    }
-                                  ).navigate(clubRouteFor(game.groupId), {
-                                    groupId: game.groupId,
-                                  }),
-                                accessibilityLabel: 'פתח את עמוד המועדון',
-                              }
-                            : undefined,
-                      },
-                    ]),
-                {
-                  icon: 'person-outline',
-                  label: he.matchDetailsLabelOrganizer,
-                  value: organizerName,
-                  // Tap the organizer's row → open the creator's player card.
-                  action: game.createdBy
-                    ? {
-                        icon: 'open-outline',
-                        onPress: () =>
-                          (
-                            nav as {
-                              navigate: (s: string, p: unknown) => void;
-                            }
-                          ).navigate('PlayerCard', {
-                            userId: game.createdBy,
-                            groupId: game.groupId,
-                          }),
-                        accessibilityLabel: he.matchDetailsLabelOrganizer,
-                      }
-                    : undefined,
-                },
-                {
-                  icon: 'calendar-outline',
-                  label: he.matchDetailsLabelCreatedAt,
-                  value: game.createdAt
-                    ? formatShortDate(game.createdAt)
-                    : null,
-                },
-                // Duration and weather: two facts that used to sit in a strip
-                // of cards above this card. They are properties of the evening
-                // like every other row here, and a row is all they need.
-                ...(typeof game.matchDurationMinutes === 'number' &&
-                game.matchDurationMinutes > 0
-                  ? [
-                      {
-                        icon: 'time-outline' as const,
-                        label: he.matchStatsDuration,
-                        value: he.gdDetailDuration(game.matchDurationMinutes),
-                      },
-                    ]
-                  : []),
-                // No forecast, no row. The grid prints an absent value as "—",
-                // and "מזג אוויר —" is worse than saying nothing: it reads as a
-                // fact we are withholding rather than one we never had.
-                ...(forecast
-                  ? [
-                      {
-                        icon: weatherRowIcon(forecast.weatherCode),
-                        label: he.matchStatsWeather,
-                        value: he.gdDetailWeather(
-                          forecast.tempC,
-                          skyLabel(forecast.weatherCode),
-                          // A rain chance is only worth the words when there is
-                          // one. Below a fifth, it is noise on a dry evening.
-                          forecast.rainProb >= 20 ? forecast.rainProb : null,
-                        ),
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-
             {primaryDestructive && canCancelRegistration(game) ? (
               <Pressable
                 onPress={handlePrimary}
@@ -3515,7 +3343,9 @@ export function MatchDetailsScreen() {
             header={heroNode}
             stickyHeader={tabBarNode}
             game={game}
-            summary={roundSummary}
+            summary={summaryRead.summary}
+            readStatus={summaryRead.status}
+            onRetry={summaryRead.retry}
             nameOf={summaryNameOf}
             userOf={summaryUserOf}
             hasPlayed={eveningHasPlayed}
@@ -3562,12 +3392,17 @@ export function MatchDetailsScreen() {
               The two summary counters ride above it as `leading`. */}
           <MatchPlayersScreen
             gameId={game.id}
+            gameState={{ game, setGame }}
             embedded
             header={heroNode}
             stickyHeader={tabBarNode}
             bottomInset={ctaHeight}
             leading={
               <>
+                {isAdmin && !isTerminalGame(game) && missingDraftPlayers > 0 && <View style={[styles.preparationCard, styles.preparationCardCompact]}>
+                  <Ionicons name="people-outline" size={24} color={colors.primary}/>
+                  <View style={styles.preparationCopy}><Text style={styles.preparationTitle}>מתכוננים לחלוקת כוחות</Text><Text style={styles.preparationBody}>{missingDraftPlayersLabel}</Text></View>
+                </View>}
                 {/* The teams section, moved here from מידע: it splits the
                     roster, and the roster is on this tab. */}
                 {/* "צרו כוחות" nudge — kickoff is close and no split exists yet.
@@ -3602,7 +3437,7 @@ export function MatchDetailsScreen() {
                   </Pressable>
                 ) : null}
 
-                {showManageTeamsBanner ? (
+                {showManageTeamsBanner && !teamsVisibleToViewer ? (
                   <Pressable
                     style={styles.createTeamsBanner}
                     onPress={() => openDraftSetup('manage_banner')}
@@ -3613,10 +3448,10 @@ export function MatchDetailsScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.createTeamsTitle}>
-                        {he.matchManageTeamsBannerTitle}
+                        {hasLocalManualDraft ? 'המשך חלוקה ידנית' : he.matchManageTeamsBannerTitle}
                       </Text>
                       <Text style={styles.createTeamsSub}>
-                        {he.matchManageTeamsBannerSub}
+                        {hasLocalManualDraft ? 'הטיוטה שמורה במכשיר הזה — אפשר להמשיך לשבץ' : he.matchManageTeamsBannerSub}
                       </Text>
                     </View>
                     <Ionicons name="chevron-back" size={20} color={colors.primary} />
@@ -3632,15 +3467,16 @@ export function MatchDetailsScreen() {
                 above the roster it divides, on the tab that owns the roster. */}
                 {teamsVisibleToViewer ? (
                   <View style={styles.draftSection}>
+                    <View style={styles.teamsOverviewHeader}>
                     <Pressable
-                      style={styles.draftSectionHeader}
+                      style={styles.teamsOverviewTitle}
                       onPress={openDraftView}
                       accessibilityRole="button"
                     >
                       {/* RTL: title sits on the right (the leading edge), the
                           chevron affordance on the left (QA request). */}
                       <View style={styles.draftTitleRow}>
-                        <Text style={styles.draftSectionTitle}>{he.draftTeamsSectionTitle}</Text>
+                        <Text style={styles.draftSectionTitle}>הכוחות למחזור</Text>
                         {teamsAreDraft ? (
                           <View style={styles.draftBadge}>
                             <Ionicons name="eye-off-outline" size={12} color={colors.warning} />
@@ -3653,8 +3489,10 @@ export function MatchDetailsScreen() {
                           </View>
                         ) : null}
                       </View>
-                      <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+                      <Text style={styles.teamsOverviewCount}>{`${splitTeams.reduce((sum,team)=>sum+team.playerIds.length,0)} שחקנים · ${splitTeams.length} קבוצות`}</Text>
                     </Pressable>
+                    {showManageTeamsBanner && <Pressable style={styles.teamsManageButton} onPress={()=>openDraftSetup('manage_banner')} accessibilityRole="button" accessibilityLabel={hasLocalManualDraft ? 'המשך חלוקה ידנית' : 'נהל כוחות'}><Text style={styles.teamsManageText}>{hasLocalManualDraft ? 'המשך חלוקה ידנית' : 'נהל כוחות'}</Text><Ionicons name="options-outline" size={19} color={colors.primary}/></Pressable>}
+                    </View>
                     {teamsAreDraft ? (
                       <Text style={styles.draftHint}>{he.draftTeamsDraftHint}</Text>
                     ) : null}
@@ -3667,6 +3505,8 @@ export function MatchDetailsScreen() {
                         .map((t) => (
                           <ChangeMotion key={t.index} triggerKey={`${game.id}:${teamsAreDraft}:${t.playerIds.join(',')}`} enter duration={300} delay={Math.min(t.index, 3) * 50}>
                           <DraftTeamCard
+                            summary
+                            completionCapacity={game.draftTeams?.completionMode === 'balanced' ? teamSizeFromFormat(game.format) : undefined}
                             index={t.index}
                             colorKey={t.colorKey}
                             captain={resolveDraftUser(t.captainId)}
@@ -3702,7 +3542,7 @@ export function MatchDetailsScreen() {
                     >
                       {/* Icon AFTER text → visual-left under forceRTL (user request). */}
                       <Text style={styles.exportTeamsText}>
-                        {he.draftExportWhatsapp}
+                        שיתוף הכוחות בוואטסאפ
                       </Text>
                       <Ionicons
                         name="share-social-outline"
@@ -3823,6 +3663,7 @@ export function MatchDetailsScreen() {
                 ) : null}
 
                 <MatchPlayerCounters
+                  compact
                   registered={`${totalParticipants}/${game.maxPlayers}`}
                   waiting={
                     (game.waitlist ?? []).length +
@@ -3830,39 +3671,18 @@ export function MatchDetailsScreen() {
                   }
                 />
 
-                {/* "הוסף אורח". It used to hang off the roster preview's
-                    header, and vanished with that preview when this tab became
-                    the embedded players screen (owner: "תחזיר את ה'הוסף אורח'!
-                    הוא נעלם!"). The modal and `canAddGuest` were never touched
-                    — only the button that opens them went — so this is the
-                    same gate and the same sheet, given a place to live.
-                    Directly above the roster, which is what it adds to. */}
-                {canAddGuest(game, {
-                  isOrganizerOrAdmin: isAdmin,
-                  isParticipant:
-                    !!user &&
-                    (game.players.includes(user.id) ||
-                      (game.waitlist ?? []).includes(user.id)),
-                }) ? (
-                  <Pressable
-                    onPress={() => setGuestModalOpen(true)}
-                    style={({ pressed }) => [
-                      styles.addGuestRow,
-                      pressed && { opacity: 0.85 },
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel={he.guestAddButton}
-                  >
-                    <Ionicons
-                      name="person-add-outline"
-                      size={17}
-                      color={colors.primary}
-                    />
-                    <Text style={styles.addGuestRowText}>
-                      {he.guestAddButton}
-                    </Text>
-                  </Pressable>
-                ) : null}
+                <PlayerRecruitmentActions
+                  onAddMembers={isAdmin && !isTerminalGame(game)
+                    ? () => nav.navigate('AddMembers', { gameId: game.id, reserve: isScheduled(game) })
+                    : undefined}
+                  onInviteAvailable={isAdmin && game.status === 'open'
+                    ? () => nav.navigate('AvailablePlayers', { gameId: game.id })
+                    : undefined}
+                  onAddGuest={canAddGuest(game, {
+                    isOrganizerOrAdmin: isAdmin,
+                    isParticipant: !!user && (game.players.includes(user.id) || (game.waitlist ?? []).includes(user.id)),
+                  }) ? () => setGuestModalOpen(true) : undefined}
+                />
               </>
             }
           />
@@ -3898,12 +3718,12 @@ export function MatchDetailsScreen() {
                   pressed && { opacity: 0.9 },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={ctaState.label}
+                accessibilityLabel={busy && primary?.onPress === handlePrimary && !primaryDestructive ? 'שומרים את ההרשמה' : ctaState.label}
                 accessibilityState={{busy, disabled: busy}}
               >
                 {/* Text first so the icon lands on the visual LEFT (forceRTL
                     flips `row`: last child → visual left). */}
-                <Text style={styles.inviteCtaText}>{ctaState.label}</Text>
+                <Text style={styles.inviteCtaText}>{busy && primary?.onPress === handlePrimary && !primaryDestructive ? 'שומרים את ההרשמה…' : ctaState.label}</Text>
                 {busy ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons name={ctaState.icon} size={18} color="#FFFFFF" />}
               </Pressable>
               {ctaState.tone === 'blocked' ? (
@@ -3935,13 +3755,9 @@ export function MatchDetailsScreen() {
           onChanged={(action, saved) => {
             setGame((prev) => {
               if (!prev) return prev;
-              const guests = prev.guests ?? [];
-              if (action === 'added') {
-                return { ...prev, guests: [...guests, saved] };
-              }
               return {
                 ...prev,
-                guests: guests.map((g) => (g.id === saved.id ? saved : g)),
+                guests: upsertSavedGuest(prev.guests, saved),
               };
             });
           }}
@@ -4260,6 +4076,16 @@ function InfoCell({
 }
 
 const styles = StyleSheet.create({
+  preparationSection: {gap: 10},
+  infoHeading: {fontSize: 18, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN},
+  preparationCardCompact: {padding: 10, gap: 8, borderRadius: 16},
+  preparationCard: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: 14, borderRadius: 18, backgroundColor: '#F0FBF6', borderWidth: 1, borderColor: '#CBEEDE'},
+  preparationCopy: {flex: 1, minWidth: 130, gap: 5},
+  preparationTitle: {fontSize: 15, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN},
+  preparationBody: {fontSize: 12, lineHeight: 18, color: '#166534', textAlign: RTL_LABEL_ALIGN},
+  preparationAction: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.surface, paddingHorizontal: 10, paddingVertical: 8},
+  preparationActionText: {fontSize: 13, fontWeight: '700', color: colors.primary},
+
   // A tab pane is hidden, not unmounted, so it keeps its scroll position and
   // its loaded data. `display:'none'` is what makes that free — the subtree
   // stays mounted but is skipped by layout entirely.
@@ -4319,7 +4145,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.primary,
   },
-  heroWrap: { marginBottom: -22 },
+  heroWrap: { marginBottom: 0 },
   pane: { flex: 1 },
   paneHidden: { display: 'none' },
   root: { flex: 1, backgroundColor: colors.bg },
@@ -4521,6 +4347,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 50,
     gap: spacing.sm,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
@@ -4529,8 +4356,18 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.primary,
   },
+  navigateCtaContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    maxWidth: '100%',
+  },
   navigateCtaText: {
-    ...typography.label,
+    ...typography.button,
+    flexGrow: 0,
+    flexShrink: 1,
+    textAlign: 'center',
     color: colors.primary,
     fontWeight: '700',
   },
@@ -5038,6 +4875,11 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   draftSection: { marginTop: spacing.lg, gap: spacing.sm },
+  teamsOverviewHeader: {flexDirection:'row',alignItems:'center',gap:10,marginBottom:4},
+  teamsOverviewTitle: {flex:1,minWidth:0,minHeight:48,justifyContent:'center',gap:4},
+  teamsOverviewCount: {fontSize:12,color:colors.textMuted,textAlign:RTL_LABEL_ALIGN},
+  teamsManageButton: {flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,minHeight:44,maxWidth:'46%',paddingHorizontal:12,paddingVertical:9,borderRadius:15,backgroundColor:colors.primaryLight,borderWidth:1,borderColor:colors.primary+'30'},
+  teamsManageText: {fontSize:14,fontWeight:'800',color:colors.primary,flexShrink:1,textAlign:'center'},
   draftSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -5046,7 +4888,7 @@ const styles = StyleSheet.create({
   },
   draftSectionTitle: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
   },
@@ -5055,13 +4897,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight:48,
     gap: spacing.xs,
     marginTop: spacing.sm,
     paddingVertical: spacing.sm,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.surface,
   },
   exportTeamsText: {
     ...typography.body,
@@ -5612,3 +5455,4 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
 });
+

@@ -1,4 +1,5 @@
-import { isOfficialSender } from '@/utils/officialAccount';
+import { isOfficialSender, TEAMDER_UID } from '@/utils/officialAccount';
+import { mergeSupportMessages } from '@/utils/supportTimeline';
 import { socialPlayersService } from './socialPlayersService';
 // chatService — realtime messaging for the two chat scopes (game +
 // community). Both map onto the same /…/messages subcollection shape, so
@@ -19,6 +20,7 @@ import {
   query,
   setDoc,
   where,
+  Timestamp,
 } from 'firebase/firestore';
 
 import { httpsCallable } from 'firebase/functions';
@@ -187,6 +189,26 @@ export const chatService = {
         const user = getFirebase().auth.currentUser ?? (await waitForAuthRestore());
         if (cancelled) return;
         if (!user) throw new Error('chat: not signed in');
+        if (scope === 'dm' && parentId === dmConvId(user.uid, TEAMDER_UID)) {
+          // Firestore orders numbers before timestamps by TYPE, not by date.
+          // Keep a bounded recent window of each historical representation.
+          const windows: Array<ChatMessage[] | undefined> = [undefined, undefined];
+          const stops: Array<() => void> = [];
+          let listening = true;
+          real = () => { listening = false; stops.forEach(stop => stop()); };
+          const fail = (err: unknown) => { if (!cancelled) { real?.(); onError?.(err); } };
+          try {
+            [0, Timestamp.fromMillis(0)].forEach((minimum, index) => {
+              const typed = query(messagesCol(scope, parentId), where('createdAt', '>=', minimum), where('createdAt', '<=', index === 0 ? Number.MAX_SAFE_INTEGER : Timestamp.fromMillis(253402300799999)), orderBy('createdAt', 'desc'), limit(WINDOW));
+              stops.push(onSnapshot(typed, snap => {
+                if (cancelled || !listening) return;
+                windows[index] = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+                if (windows.every(window => window !== undefined)) onMessages(mergeSupportMessages(windows as ChatMessage[][], WINDOW));
+              }, fail));
+            });
+          } catch (err) { real(); throw err; }
+          return;
+        }
         real = onSnapshot(
           q,
           (snap) => { if (!cancelled) onMessages(snap.docs.map((d) => ({ ...d.data(), id: d.id })).reverse()); },

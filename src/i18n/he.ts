@@ -203,10 +203,12 @@ export const he = {
   // App-update prompts
   updateForceTitle: 'נדרש עדכון',
   updateForceBody: 'יש גרסה חדשה לאפליקציה. חובה לעדכן כדי להמשיך להשתמש.',
-  updateOptionalTitle: 'גרסה חדשה זמינה',
-  updateOptionalBody: 'יש גרסה חדשה זמינה לאפליקציה.',
-  updateNow: 'עדכן עכשיו',
-  updateLater: 'אולי אחר כך',
+  updateOptionalTitle: 'יש עדכון חדש',
+  updateOptionalBody: 'שיפורים קטנים לחוויה טובה יותר',
+  updateNow: 'לעדכון',
+  updateLater: 'אחר כך',
+  updateDismiss: 'סגירת הצעת העדכון',
+  updateStoreFailed: 'לא הצלחנו לפתוח את החנות. אפשר לנסות שוב.',
 
   // Destructive confirmation (irreversible delete dialog)
   confirmDeleteAck: 'אני מבין שהפעולה בלתי הפיכה',
@@ -394,6 +396,7 @@ export const he = {
   liveStartMatch: 'התחל מחזור',
   liveResumeMatch: 'המשך מחזור',
   liveTimerOfTotal: (total: number) => `מתוך ${total} דקות`,
+  liveTimerCompactTotal: (total: number) => `${total} דק׳`,
   /** Label above the "+MM:SS" added-time counter shown once the configured
    *  duration is exceeded (the main clock freezes at the duration). */
   liveTimerOvertime: 'תוספת זמן',
@@ -478,7 +481,7 @@ export const he = {
   // stats and mini-game management they'd turned on were not running.
   liveNoTeamsTitle: 'עוד לא חולקו כוחות',
   liveNoTeamsBody:
-    'המחזור הזה מוגדר עם מסך לייב מתקדם, אבל עוד לא חולקו כוחות — אז אי אפשר להפעיל אותו.\n\nאם תמשיכו בלי כוחות תקבלו טיימר בלבד: בלי ניהול משחקים, בלי גולים ובישולים, ובלי סטטיסטיקות שנספרות לשחקנים.',
+    'חלקו את השחקנים לקבוצות כדי לנהל משחקים, שערים ובישולים ולשמור את הסטטיסטיקות.\n\nאפשר גם להמשיך עם שעון בלבד, ללא תיעוד ביצועי השחקנים.',
   liveNoTeamsGoDraft: 'לחלוקת כוחות',
   liveNoTeamsContinue: 'המשך בלי כוחות',
   rotationStartRound: 'התחל משחק',
@@ -493,6 +496,16 @@ export const he = {
   // step, so the admin ended a match without being told who was coming on —
   // the one case where BOTH teams can leave the pitch at once.
   rotationEndRoundConfirmOk: 'סיים משחק',
+  liveEndMatchTitle: 'לסיים את המשחק?',
+  liveEndMatchWinner: (team: string) => `${team} ניצחו`,
+  liveEndMatchNext: 'במשחק הבא',
+  liveEndMatchVersus: 'מול',
+  liveEndMatchStaying: 'נשארים',
+  liveEndMatchIncoming: 'עולים',
+  liveEndMatchWaiting: (team: string) => `${team} עוברים להמתנה`,
+  liveEndMatchNoWaiting: 'אותן קבוצות ממשיכות למשחק הבא',
+  liveEndMatchConfirm: 'אישור וסיום משחק',
+  liveEndMatchReturn: 'חזרה למשחק',
   /** `team` arrives WITHOUT its leading ה — see teamNameAfterPreposition. */
   fillPickerTitle: (team: string) => `השלמת שחקנים ל${team}`,
   /**
@@ -661,7 +674,7 @@ export const he = {
   // ── Retro goals (admin, post-match) ──
   retroEntryCta: 'השלם גול שהוחמץ',
   retroTitle: 'השלמת גולים',
-  retroNote: 'מעדכן את מוני השערים והבישולים בלבד. תוצאות המשחקים, נתוני הצמדים, הציונים והתארים שכבר נחתמו אינם משתנים.',
+  retroNote: 'השלמת שערים ובישולים מעדכנת גם את הציונים ואת סיכום המחזור. תוצאות המשחקים נשארות כפי שנרשמו.',
   retroEmpty: 'עדיין לא הושלמו גולים',
   retroAddCta: 'הוסף גול שהוחמץ',
   retroPickScorer: 'מי הבקיע?',
@@ -677,16 +690,21 @@ export const he = {
   winnerPickCancel: 'ביטול',
   winnerPickConfirm: 'אישור',
   // ── Penalty shootout (drawn-round tiebreaker) ──
-  shDecideTitle: 'איך מכריעים את התיקו?',
+  shDecideTitle: 'תיקו במשחק',
+  shTieLabel: 'תיקו',
+  shDecideQuestion: 'איך ממשיכים?',
+  shDecideConfirm: 'אישור',
+  shDecideIncoming: (a: string, b: string) => `${a} ו${b} עולים`,
   shDecideSubtitle: 'המשחק נגמר בתיקו — בחרו איך לקבוע מנצחת',
-  shDecideManual: 'בחירה ידנית',
-  shDecideManualHint: 'בוחרים קבוצה מנצחת בלי פנדלים',
-  shDecidePenalties: 'שובר שוויון בפנדלים',
-  shDecidePenaltiesHint: 'סבב בעיטות פנדל עד להכרעה',
+  shDecideManual: 'בחירת מנצחים',
+  shDecideManualHint: 'בחירה ידנית של אחת הקבוצות',
+  shDecidePenalties: 'פנדלים',
+  shDecidePenaltiesHint: 'מכריעים מהנקודה הלבנה',
   // Third way out of a draw, offered only when there are teams waiting: send
   // BOTH sides off and bring the next two on. Used to be a create-form toggle
   // that applied itself silently; it is a choice made at the whistle now.
-  shDecideBothOut: 'שתי הקבוצות יורדות',
+  shDecideBothOut: 'שתי הקבוצות יוצאות',
+  shDecideBothOutInlineHint: 'המשחק ייסגר בתיקו ללא מנצחים',
   shDecideBothOutHint: 'אף אחת לא ניצחה — שתיהן יורדות ועולות הבאות בתור',
   shDecideBothOutConfirmTitle: 'שתי הקבוצות יורדות?',
   shDecideBothOutConfirmBody: (a: string, b: string) =>
@@ -4325,7 +4343,7 @@ export const he = {
   // ריק: המחזור טרם שוחק — הפיצ'ר זמין, פשוט אין עדיין תוכן.
   gdGamesEmptyTitle: 'המחזור עוד לא שוחק',
   gdGamesEmptyBody: 'כאן יופיעו המשחקים והתוצאות לאחר תחילת המחזור.',
-  gdStatsEmptyTitle: 'הסטטיסטיקות יופיעו אחרי שהמחזור יתחיל',
+  gdStatsEmptyTitle: 'הסטטיסטיקות יופיעו אחרי שהמחזור יסתיים',
   gdStatsEmptyBody: 'לאחר שיירשמו משחקים, הנתונים והסיכומים יופיעו כאן.',
   // ⚠️ ריק מסוג אחר לגמרי: המחזור כן שוחק, אבל הוא קדם לאיסוף הנתונים. אסור
   // לומר לו "עוד לא שוחק" — זה פשוט לא נכון.
@@ -4380,7 +4398,7 @@ export const he = {
   matchDetailsLabelCity: 'עיר',
   matchDetailsLabelAddress: 'כתובת',
   matchDetailsLabelLocation: 'מיקום',
-  matchDetailsNavigateButton: 'נווט למגרש ב-Waze',
+  matchDetailsNavigateButton: 'נווט למגרש',
   matchDetailsLabelFieldType: 'סוג מגרש',
   matchDetailsLabelNotes: 'הערות',
   matchDetailsLabelOrganizer: 'יוצר המחזור',
@@ -4625,7 +4643,7 @@ export const he = {
   matchManageAdminOnly: 'רק מנהל יכול לנהל את המחזור',
   // Manage section toggle title
   matchManageToggle: 'ניהול מחזור',
-  matchInviteAvailable: 'הזמן שחקנים פנויים',
+  matchInviteAvailable: 'הזמן שחקנים זמינים מהאפליקציה',
   matchInviteAvailableHelper: 'שחקנים שזמינים ביום ובשעה של המחזור, באזור',
   // Admin "register members from the community" flow (MatchDetails menu →
   // AddMembersScreen).
@@ -5088,3 +5106,4 @@ export const he = {
   clubTabLockedBody: 'הצטרפו למועדון כדי לראות את הסגל ואת הסטטיסטיקות.',
   clubPairsEmpty: 'עוד אין מספיק משחקונים כדי לזהות צמדים',
 } as const;
+

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "1.1.49",
+    "version": "1.1.55",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -99,6 +99,7 @@
       ]
     },
     "plugins": [
+      "./plugins/withStoreUpdate.js",
       "./plugins/withNotificationColorMerge.js",
       "./plugins/withLegacyBackHandling.js",
       "expo-localization",

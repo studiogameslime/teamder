@@ -19,9 +19,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -34,6 +34,10 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScrollSurface } from '@/components/ScrollSurface';
+import { UserAvatar } from '@/components/UserAvatar';
+import { FormDesignContext } from '@/components/forms/FormTheme';
+import Svg, { Circle, Line, Rect } from 'react-native-svg';
 import { InputField } from '@/components/InputField';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { InfoTip } from '@/components/InfoTip';
@@ -47,7 +51,7 @@ import { logError } from '@/services/errorLog';
 import { Game, UserId } from '@/types';
 import { useUserStore } from '@/store/userStore';
 import { useGameStore } from '@/store/gameStore';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN, shadows } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN, shadows } from '@/theme';
 import { he } from '@/i18n/he';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
@@ -69,6 +73,7 @@ export function PromoteOrphanScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [rules, setRules] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [city, setCity] = useState('');
@@ -139,6 +144,7 @@ export function PromoteOrphanScreen() {
     setIncludedIds((prev) => ({ ...prev, [uid]: !prev[uid] }));
 
   const submit = async () => {
+    if (submitting) return;
     const trimmedName = name.trim();
     if (trimmedName.length < 2) {
       appAlert(he.promoteOrphanNameTooShortTitle, he.promoteOrphanNameTooShortBody);
@@ -215,16 +221,34 @@ export function PromoteOrphanScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.banner}>
-          <Ionicons name="people" size={20} color="#1D4ED8" />
-          <Text style={styles.bannerText}>{he.promoteOrphanBanner}</Text>
+      <FormDesignContext.Provider value={true}>
+      <ScrollSurface contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <View style={styles.brand} accessible={false}>
+          <Ionicons name="football-outline" size={27} color="#2861F4" />
+          <Text style={styles.brandName}>Teamder</Text>
+        </View>
+        <View style={styles.hero}>
+          <View style={styles.pitch} pointerEvents="none" accessible={false}>
+            <Svg width={125} height={102} viewBox="0 0 140 110">
+              <Rect x={4} y={4} width={132} height={102} fill="none" stroke="#D8E7FF" strokeWidth={1.5}/>
+              <Line x1={70} y1={4} x2={70} y2={106} stroke="#D8E7FF"/>
+              <Circle cx={70} cy={55} r={20} fill="none" stroke="#D8E7FF"/>
+              <Rect x={4} y={33} width={20} height={44} fill="none" stroke="#D8E7FF"/>
+              <Rect x={116} y={33} width={20} height={44} fill="none" stroke="#D8E7FF"/>
+            </Svg>
+          </View>
+          <Image source={require('../../assets/images/form-toggle-football-3d.png')} style={styles.heroBall} resizeMode="contain" accessible={false}/>
+          <View style={styles.heroCopy}>
+            <Text style={styles.heroTitle}>{'היה טוב?\nממשיכים יחד'}</Text>
+            <Text style={styles.heroSubtitle}>הפכו את המחזור החד־פעמי למועדון קבוע והמשיכו לשחק יחד.</Text>
+          </View>
         </View>
 
         {/* Same field set as the regular "create community" form, so a
             community made from a game is just as complete. All optional
             except the name. */}
         <View style={styles.fields}>
+          <Text style={styles.cardTitle}>פרטי המועדון</Text>
           <InputField
             label={he.promoteOrphanNameLabel}
             value={name}
@@ -234,7 +258,7 @@ export function PromoteOrphanScreen() {
             required
           />
           <InputField
-            label={he.createGroupDescription}
+            label="תיאור קצר"
             value={description}
             onChangeText={setDescription}
             multiline
@@ -247,9 +271,11 @@ export function PromoteOrphanScreen() {
           >
             <View style={styles.toggleText}>
               <View style={styles.toggleLabelRow}>
+                <Ionicons name="people-outline" size={21} color="#16264B" />
                 <Text style={styles.toggleLabel}>{he.createGroupIsOpen}</Text>
                 <InfoTip title={he.createGroupIsOpen} text={he.createGroupIsOpenHint} />
               </View>
+              <Text style={styles.toggleHint}>{isOpen ? 'כל שחקן יכול להצטרף למועדון' : 'הצטרפות באישור מנהל'}</Text>
             </View>
             <BallSwitch
               accessibilityLabel={he.createGroupIsOpen}
@@ -259,6 +285,16 @@ export function PromoteOrphanScreen() {
               thumbColor="#fff"
             />
           </Pressable>
+        </View>
+        <View style={styles.fields}>
+          <Pressable onPress={()=>setDetailsExpanded(v=>!v)} accessibilityRole="button" accessibilityState={{expanded:detailsExpanded}} style={styles.detailsHeading}>
+            <View style={styles.playerCopy}>
+              <Text style={styles.detailsTitle}>עוד פרטים למועדון</Text>
+              <Text style={styles.cardHint}>עיר, טלפון וחוקים — אפשר להשלים בהמשך</Text>
+            </View>
+            <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#6682B3"/>
+          </Pressable>
+          {detailsExpanded ? <>
           <RichRulesInput
             label={he.communityDetailsRules}
             value={rules}
@@ -286,12 +322,16 @@ export function PromoteOrphanScreen() {
             placeholder={he.createGroupCityPlaceholder}
             fetchSuggestions={(q) => searchCities(q)}
           />
+          </> : null}
         </View>
 
-        <Text style={styles.sectionHeader}>
-          {he.promoteOrphanInviteHeader(selectedCount, roster.length)}
-        </Text>
-
+        <View style={styles.inviteCard}>
+          <View style={styles.inviteHeading}>
+            <Ionicons name="person-add-outline" size={24} color="#16264B" />
+            <Text style={styles.cardTitle}>את מי מזמינים?</Text>
+          </View>
+          <Text style={styles.cardHint}>בחרו את השחקנים שתרצו להזמין למועדון</Text>
+          <Text style={styles.selectedCount}>{selectedCount} מתוך {roster.length} נבחרו</Text>
         {roster.length === 0 ? (
           <Text style={styles.empty}>{he.promoteOrphanNoOthers}</Text>
         ) : (
@@ -302,6 +342,10 @@ export function PromoteOrphanScreen() {
               <Pressable
                 key={uid}
                 onPress={() => togglePlayer(uid)}
+                disabled={submitting}
+                accessibilityRole="checkbox"
+                accessibilityLabel={player?.displayName ?? 'שחקן מהמחזור'}
+                accessibilityState={{checked, disabled: submitting}}
                 style={({ pressed }) => [
                   styles.row,
                   pressed && { opacity: 0.85 },
@@ -317,19 +361,24 @@ export function PromoteOrphanScreen() {
                     <Ionicons name="checkmark" size={16} color="#FFFFFF" />
                   ) : null}
                 </View>
-                <Text style={styles.rowName}>
-                  {player?.displayName ?? uid.slice(0, 6)}
-                </Text>
+                <View style={styles.playerCopy}>
+                  <Text style={styles.rowName} numberOfLines={2}>{player?.displayName ?? 'שחקן מהמחזור'}</Text>
+                  <Text style={styles.playerHint}>{game?.players?.includes(uid) ? 'נרשם למחזור' : game?.waitlist?.includes(uid) ? 'ברשימת ההמתנה למחזור' : 'ביקש להצטרף למחזור'}</Text>
+                </View>
+                <UserAvatar size={43} user={{id:uid,name:player?.displayName ?? '',avatarId:player?.avatarId,photoUrl:player?.photoUrl ?? player?.avatarUrl}}/>
               </Pressable>
             );
           })
         )}
-      </ScrollView>
-
-      <View style={styles.footer}>
+          <View style={styles.inviteNote}>
+            <Ionicons name="information-circle-outline" size={22} color="#4366A1" />
+            <Text style={styles.inviteNoteText}>תישלח הזמנה רק לשחקנים שבחרתם. הם יצטרפו למועדון לאחר שיאשרו אותה.</Text>
+          </View>
         <Pressable
           onPress={submit}
           disabled={submitting || name.trim().length < 2}
+          accessibilityRole="button"
+          accessibilityState={{disabled:submitting || name.trim().length < 2, busy:submitting}}
           style={({ pressed }) => [
             styles.submit,
             (submitting || name.trim().length < 2) && { opacity: 0.5 },
@@ -339,57 +388,62 @@ export function PromoteOrphanScreen() {
           {submitting ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.submitText}>
-              {he.promoteOrphanSubmit(selectedCount)}
-            </Text>
+            <>
+              <Text style={styles.submitText}>{selectedCount ? 'צור מועדון ושלח הזמנות' : 'צור מועדון'}</Text>
+              <Ionicons name={selectedCount ? 'paper-plane-outline' : 'add-circle-outline'} size={24} color="#FFFFFF" />
+            </>
           )}
         </Pressable>
       </View>
+      </ScrollSurface>
+      </FormDesignContext.Provider>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+  root: { flex: 1, backgroundColor: '#F3F7FE' },
   scroll: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
+    padding: 16,
+    paddingBottom: 28,
+    gap: 16,
   },
+  brand: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  brandName: { fontSize: 26, fontWeight: '900', color: '#10214A' },
+  hero: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 20, minHeight: 170, backgroundColor: '#F8FBFF', borderRadius: 26, borderWidth: 1, borderColor: '#DBE9FC', overflow: 'hidden' },
+  pitch: { position: 'absolute', end: -24, top: 14, opacity: 0.65, transform: [{rotate:'-12deg'}] },
+  heroBall: { width: 62, height: 68 },
+  heroCopy: { flex: 1 },
+  heroTitle: { color: '#10214A', fontSize: 27, lineHeight: 35, fontWeight: '900', textAlign: RTL_LABEL_ALIGN },
+  heroSubtitle: { color: '#7386A8', fontSize: 14, lineHeight: 21, marginTop: 6, textAlign: RTL_LABEL_ALIGN },
+  cardTitle: { color: '#142449', fontSize: 21, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  cardHint: { color: '#7688A6', fontSize: 13, lineHeight: 20, textAlign: RTL_LABEL_ALIGN },
+  inviteCard: { padding: 16, borderRadius: 25, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DFE9F8', ...shadows.card },
+  inviteHeading: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 5 },
+  selectedCount: { color: '#2861F4', fontSize: 13, fontWeight: '700', marginTop: 10, marginBottom: 8, textAlign: RTL_LABEL_ALIGN },
+  playerCopy: { flex: 1, gap: 3 },
+  detailsHeading: {flexDirection:'row',alignItems:'center',gap:10},
+  detailsTitle: {color:'#28436D',fontSize:16,fontWeight:'700',textAlign:RTL_LABEL_ALIGN},
+  playerHint: { color: '#8491A8', fontSize: 12, textAlign: RTL_LABEL_ALIGN },
+  toggleHint: { color: '#7587A5', fontSize: 12, lineHeight: 18, marginTop: 4, textAlign: RTL_LABEL_ALIGN },
+  inviteNote: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 14, backgroundColor: '#EDF4FF', padding: 12, marginTop: 14, marginBottom: 14 },
+  inviteNoteText: { flex: 1, color: '#4366A1', fontSize: 12, lineHeight: 19, textAlign: RTL_LABEL_ALIGN },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#EFF6FF',
-    padding: spacing.md,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    marginBottom: spacing.lg,
-  },
-  bannerText: {
-    flex: 1,
-    color: '#1D4ED8',
-    fontSize: 14,
-    fontWeight: '700',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  fields: { gap: spacing.md },
+  fields: { gap: 16, padding: 18, backgroundColor: '#FFFFFF', borderRadius: 25, borderWidth: 1, borderColor: '#DFE9F8', ...shadows.card },
   toggleCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: '#E2EBF8',
+    paddingTop: 16,
+    paddingBottom: 2,
     gap: spacing.md,
-    ...shadows.card,
   },
   toggleText: { flexShrink: 1, alignItems: 'flex-start' },
   toggleLabelRow: {
@@ -400,7 +454,7 @@ const styles = StyleSheet.create({
   toggleLabel: {
     ...typography.body,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,
     flexShrink: 1,
   },
@@ -408,33 +462,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.danger,
     marginTop: spacing.xs,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  fieldGroup: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    ...typography.label,
-    color: colors.textMuted,
-    marginBottom: 6,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  sectionHeader: {
-    ...typography.h3,
-    color: colors.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
     textAlign: RTL_LABEL_ALIGN,
   },
   empty: {
@@ -447,43 +474,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: 12,
-    paddingHorizontal: spacing.md,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    paddingVertical: 13,
+    borderTopWidth: 1,
+    borderColor: '#E8EDF6',
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 7,
     borderWidth: 2,
     borderColor: '#CBD5E1',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxOn: {
-    backgroundColor: '#1D4ED8',
-    borderColor: '#1D4ED8',
+    backgroundColor: '#2861F4',
+    borderColor: '#2861F4',
   },
   rowName: {
     ...typography.body,
     color: colors.text,
-    flex: 1,
+    fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,
   },
-  footer: {
-    padding: spacing.lg,
-    backgroundColor: colors.bg,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
   submit: {
-    backgroundColor: '#1D4ED8',
-    paddingVertical: 14,
-    borderRadius: 14,
+    backgroundColor: '#2861F4',
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    minHeight: 56,
+    borderRadius: 18,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
     alignItems: 'center',
   },
   submitText: {

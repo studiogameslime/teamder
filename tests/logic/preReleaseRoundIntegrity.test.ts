@@ -5,6 +5,7 @@ import ts from 'typescript';
 import { matchesLiveRound } from '../../functions/src/liveRoundCommit';
 import { decideSpotOffer } from '../../functions/src/spotOfferDecision';
 import { rotationWriteSource } from '../../src/services/rotationWriteSource';
+import { isGuestId, toGuestRosterId } from '../../src/types';
 
 // Execute the actual service methods; isolated I/O, no account or production writes.
 const file = path.resolve(__dirname, '../../src/services/gameService.ts');
@@ -15,9 +16,10 @@ function visit(node: ts.Node) {
   ts.forEachChild(node, visit);
 }
 visit(source);
-const names = ['endEvening', '_commitRoundStatsAndClear', 'recordGoal', 'removeGoal', 'prepareRoundResult', '_persistRotation', 'commitFilledRotation'];
+const names = ['endEvening', '_commitRoundStatsAndClear', 'recordGoal', 'removeGoal', 'prepareRoundResult', '_persistRotation', 'commitFilledRotation', 'changeShootoutFirstTeam'];
 const methods = names.map(name => service.properties.find(property => property.name?.getText(source) === name)!.getText(source));
-const compiled = ts.transpileModule('module.exports = {' + methods.join(',') + '}', {
+const rosterGuard = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'assertLiveRosterMember')!.getText(source);
+const compiled = ts.transpileModule(rosterGuard + '; module.exports = {' + methods.join(',') + '}', {
   compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
 }).outputText;
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -59,6 +61,7 @@ function world(state = initial(), callable?: (payload: any, world: any) => Promi
     rotationWriteSource,
     resolveRoundInstance: (rotation: any) => ({ roundInstanceId: `r${rotation.round}_mint`, roundInstanceRound: rotation.round }),
     effectiveRosterOf: (index: number, teams: any[]) => teams.find(team => team.index === index)?.playerIds ?? [],
+    isGuestId, toGuestRosterId,
     buildShootoutPenaltyPayload: (shootout: any) => shootout?.kicks ?? [],
     playersPerTeamFor: () => 5, effFillMode: () => 'off',
     recordWinnerSkeleton: (index: number) => ({ pickedWinnerIndex: index }),
@@ -85,6 +88,57 @@ function world(state = initial(), callable?: (payload: any, world: any) => Promi
 }
 
 describe('final round integrity using the real service methods', () => {
+  it('anchors the next lineup to the acknowledged server clock while preserving the committed round',async()=>{
+    const w=world(initial(),async(_payload,current)=>{current.patch({'liveMatch.timerRunning':false,'liveMatch.timerLastStartedAt':null,'liveMatch.timerAccumulatedMs':9000});});
+    const result=await w.service.prepareRoundResult('g','admin');
+    expect(result.skeleton.source).toBe(rotationWriteSource(w.read()));
+    expect(w.applied()).toBe(1);
+  });
+  it('a round advancing during the callable response cannot produce a stale next-lineup proposal',async()=>{
+    const w=world(initial(),async(payload,current)=>{current.patch({lastCommittedRoundId:payload.roundId,rotation:{...initial().rotation,roundInstanceId:'r2'},'liveMatch.goals':[]});});
+    await expect(w.service.prepareRoundResult('g','admin')).rejects.toThrow('התוצאה נשמרה');
+    expect(w.read().rotation.roundInstanceId).toBe('r2');
+  });
+  it('first kicking team can change before the first kick without erasing the keepers',async()=>{
+    const w=world();w.patch({'liveMatch.shootout':{firstTeam:'A',keeperA:'a',keeperB:'b',kicks:[]}});
+    await w.service.changeShootoutFirstTeam('g','B','r1');
+    expect(w.read().liveMatch.shootout).toEqual({firstTeam:'B',keeperA:'a',keeperB:'b',kicks:[]});
+  });
+  it('first kicking team cannot change after a kick or for another round',async()=>{
+    const w=world();w.patch({'liveMatch.shootout':{firstTeam:'A',kicks:[{id:'kick'}]}});
+    const saved=w.read();await expect(w.service.changeShootoutFirstTeam('g','B','r1')).rejects.toThrow();expect(w.read()).toEqual(saved);
+    w.patch({'liveMatch.shootout.kicks':[]});await expect(w.service.changeShootoutFirstTeam('g','B','other')).rejects.toThrow();
+  });
+  it('locks the saved game until an atomic next-lineup commit, then accepts goals only for the new game',async()=>{
+    const w=world();const before=w.read();
+    await w.service._commitRoundStatsAndClear('g',before.liveMatch,before.rotation,before.draftTeams,'A');
+    const saved=w.read();
+    await expect(w.service.recordGoal('g',{team:'A',scorerId:'a',minute:2})).rejects.toThrow('כבר נשמר');
+    await expect(w.service.removeGoal('g','g1')).rejects.toThrow('כבר נשמר');
+    expect(w.applied()).toBe(1);expect(w.read()).toEqual(saved);
+    await w.service.commitFilledRotation('g',saved.draftTeams,
+      {rotation:{...saved.rotation,round:2,playing:[0,1],updatedAt:2},teams:saved.draftTeams.teams},undefined,
+      {userId:'admin',userName:''},rotationWriteSource(saved));
+    expect(w.read().liveMatch.timerRunning).toBe(false);
+    expect(w.read().liveMatch.timerAccumulatedMs).toBe(0);
+    await w.service.recordGoal('g',{team:'B',scorerId:'b',minute:1});
+    expect(w.read().liveMatch.scoreB).toBe(1);expect(w.applied()).toBe(1);
+  });
+  it('recovery cannot commit a current uncompleted match or a newer rotation', async () => {
+    const w=world();
+    expect(await w.service.prepareRoundResult('g','admin','A',undefined,true)).toBeNull();
+    w.patch({lastCommittedRoundId:'old'});
+    expect(await w.service.prepareRoundResult('g','admin','A',undefined,true)).toBeNull();
+    expect(w.commits).toHaveLength(0);
+  });
+  it('recovery reads the stored result without crediting it again', async () => {
+    const w=world(initial(),async()=>({winnerSide:'B'}));
+    w.patch({lastCommittedRoundId:'r1','liveMatch.goals':[],'liveMatch.scoreA':0});
+    const recovered=await w.service.prepareRoundResult('g','admin','A',undefined,true);
+    expect(recovered.outcome).toBe('B');
+    expect(recovered.skeleton.pickedWinnerIndex).toBe(1);
+    expect(w.applied()).toBe(0);
+  });
   it('does not overwrite an already advanced round or its new goal with a second fill', async () => {
     const w = world(); w.patch({ 'liveMatch.goals': [], 'liveMatch.scoreA': 0 });
     const before = w.read(); const source = rotationWriteSource(before);

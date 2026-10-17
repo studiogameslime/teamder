@@ -1,0 +1,1277 @@
+{
+  "generatedAtUtc": "2026-10-17T00:59:45.386554+00:00",
+  "phase": "preliminary",
+  "scope": "אימות קבצים מקומיים בלבד; ללא רשת, ממשק או כתיבת מוצר",
+  "readyForRelease": false,
+  "gameId": "YEdIR3MviDK82D581ELk",
+  "groupId": "J060YQu6QTcgk3glUDj2",
+  "latestSource": "data-seven-reconnected.json",
+  "counts": {
+    "passed": 36,
+    "unproven": 8
+  },
+  "sources": [
+    {
+      "file": "data-round-seven-created.json",
+      "sha256": "81cdd1d6303141b97115bb604bbf7f610b279ab619a0a845d922a409f2da76ea",
+      "readAt": "2026-10-16T23:29:18.662144+00:00"
+    },
+    {
+      "file": "data-round-seven-host-joined.json",
+      "sha256": "dc1864656453ff4bd7fb651e0b5919a6778288de814137f11ac4daae6ae2a87e",
+      "readAt": "2026-10-16T23:31:02.573825+00:00"
+    },
+    {
+      "file": "data-round-seven-first-guest.json",
+      "sha256": "dcfd7eae10cfc073ed77675f05fd0093ab43f0d4edad865d3b09710fb9b86fd3",
+      "readAt": "2026-10-16T23:33:01.204650+00:00"
+    },
+    {
+      "file": "data-round-seven-full-roster.json",
+      "sha256": "3e4362943eb7f97085208dfbe523095a8baccbd8769c04928b0989165cb7b5cc",
+      "readAt": "2026-10-16T23:43:59.312339+00:00"
+    },
+    {
+      "file": "data-round-seven-rated-club.json",
+      "sha256": "34df4a675b701de53895c99f10d0e7190ed69d77c26bef722b476d71002e56d0",
+      "readAt": "2026-10-16T23:54:33.969604+00:00"
+    },
+    {
+      "file": "data-round-seven-auto.json",
+      "sha256": "a2edd20c9ce70f1113027ab4a31f6d43f1ad877cdb1c71e220a431d78cacc273",
+      "readAt": "2026-10-16T23:59:41.692398+00:00"
+    },
+    {
+      "file": "data-round-seven-auto-clean.json",
+      "sha256": "822298873a06de1167209178b8258520a5d4583b5e5144ebedbbc3b4337a7f11",
+      "readAt": "2026-10-17T00:18:35.227127+00:00"
+    },
+    {
+      "file": "data-seven-regenerate-version.json",
+      "sha256": "8b6e23b8a2c4e277657fe5bcfac5c195e6b0005e41f3657b49f93402201970e3",
+      "readAt": "2026-10-17T00:40:08.160132+00:00"
+    },
+    {
+      "file": "data-round-seven-ready.json",
+      "sha256": "7d80c6b287fab1ea97c1fc8ab9bde2778b80a5a2612d882496b2f86607c1bef2",
+      "readAt": "2026-10-17T00:44:08.076555+00:00"
+    },
+    {
+      "file": "data-seven-reduced-goal.json",
+      "sha256": "fc99a2b12a9ea7b7cb1650e721adb0639a92d54fd0b8743a83182a65f7195a66",
+      "readAt": "2026-10-17T00:50:23.531710+00:00"
+    },
+    {
+      "file": "data-seven-tie-goals.json",
+      "sha256": "4594d83f0a5e4785f47a2adc8a3839cfeaaa84a893f614e381e9b32db47eefd5",
+      "readAt": "2026-10-17T00:52:10.790821+00:00"
+    },
+    {
+      "file": "data-seven-kick-one.json",
+      "sha256": "eebea9578906e547a7b220eed4657508cfd0e4ced88136a19282268ff123754a",
+      "readAt": "2026-10-17T00:56:06.128152+00:00"
+    },
+    {
+      "file": "data-seven-reconnected.json",
+      "sha256": "940b7ac5288ce53cf211ae83f8cdd6b4e6e37e1ad67f5105f5d0764a2d56d154",
+      "readAt": "2026-10-17T00:57:25.600738+00:00"
+    },
+    {
+      "file": "seven-native-draft-members-proof.json",
+      "sha256": "ef2386f77bb8f21c60212ecee0f17548077e6f1c5a07c3a3e0c20560b809f720",
+      "readAt": null
+    }
+  ],
+  "identities": [
+    {
+      "role": "כובש לצד א׳ ללא בישול",
+      "id": "guest:mvbm3ekm-bwv413",
+      "name": "משה שבע טז"
+    },
+    {
+      "role": "כובש לצד ב׳",
+      "id": "guest:mvbm1i0e-fn72ab",
+      "name": "אסף שבע יב"
+    },
+    {
+      "role": "מבשל לצד ב׳",
+      "id": "guest:mvblzjh8-sqyjaj",
+      "name": "ליאור שבע ח"
+    }
+  ],
+  "firstRoundId": "r_mvboblq9_ynnomoks",
+  "teams": [
+    {
+      "index": 0,
+      "color": "red",
+      "label": "האדומים",
+      "role": "ממתינה",
+      "players": [
+        {
+          "id": "guest:mvbm5h1y-qz8250",
+          "name": "אלכסנדר בדיקת שבע כ"
+        },
+        {
+          "id": "guest:mvblz1wa-09tytj",
+          "name": "רון שבע ז"
+        },
+        {
+          "id": "guest:mvblx3in-fi5e6t",
+          "name": "תומר שבע ג"
+        },
+        {
+          "id": "guest:mvbls3w3-qut4pc",
+          "name": "דניאל שבע א"
+        },
+        {
+          "id": "guest:mvblylnr-huvc9y",
+          "name": "בן שבע ו"
+        },
+        {
+          "id": "guest:mvbm4gz2-r90mh5",
+          "name": "עמית שבע יח"
+        },
+        {
+          "id": "guest:mvbm00m2-rk55cp",
+          "name": "נועם שבע ט"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "color": "green",
+      "label": "הירוקים",
+      "role": "א׳",
+      "players": [
+        {
+          "id": "guest:mvbm3ekm-bwv413",
+          "name": "משה שבע טז"
+        },
+        {
+          "id": "guest:mvblxnik-8zuslm",
+          "name": "אורי שבע ד"
+        },
+        {
+          "id": "guest:mvbm4zwg-e3ggog",
+          "name": "עומר שבע יט"
+        },
+        {
+          "id": "guest:mvbm2xhv-yzilc4",
+          "name": "יוסי שבע טו"
+        },
+        {
+          "id": "guest:mvbm2gjb-1c84fv",
+          "name": "נדב שבע יד"
+        },
+        {
+          "id": "guest:mvbly3u1-bpeqbv",
+          "name": "אלין שבע ה"
+        },
+        {
+          "id": "guest:mvbm1z93-flw4fb",
+          "name": "עידן שבע יג"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "color": "white",
+      "label": "הלבנים",
+      "role": "ב׳",
+      "players": [
+        {
+          "id": "guest:mvbm1i0e-fn72ab",
+          "name": "אסף שבע יב"
+        },
+        {
+          "id": "guest:mvblzjh8-sqyjaj",
+          "name": "ליאור שבע ח"
+        },
+        {
+          "id": "guest:mvbm108b-57st7y",
+          "name": "רועי שבע יא"
+        },
+        {
+          "id": "guest:mvblukkd-mqv80v",
+          "name": "איתי שבע ב"
+        },
+        {
+          "id": "guest:mvbm0j6i-mkdjg5",
+          "name": "גל שבע י"
+        },
+        {
+          "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "name": "בדיקות לייב"
+        },
+        {
+          "id": "guest:mvbm3vl4-zsisrg",
+          "name": "לירן שבע יז"
+        }
+      ]
+    }
+  ],
+  "goals": [
+    {
+      "id": "g_1792198217132_ktus20y6u6q",
+      "team": "A",
+      "scorerId": "guest:mvbm3ekm-bwv413",
+      "assistStatus": "none",
+      "minute": 1,
+      "at": 1792198217402.5
+    },
+    {
+      "id": "g_1792198324917_psuloczqwdi",
+      "team": "B",
+      "scorerId": "guest:mvbm1i0e-fn72ab",
+      "assisterId": "guest:mvblzjh8-sqyjaj",
+      "assistStatus": "player",
+      "minute": 1,
+      "at": 1792198325186.5
+    }
+  ],
+  "kickCheckpoints": [
+    {
+      "source": "data-seven-kick-one.json",
+      "roundId": "r_mvboblq9_ynnomoks",
+      "firstTeam": "A",
+      "penaltyScore": {
+        "A": 1,
+        "B": 0
+      },
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        }
+      ]
+    },
+    {
+      "source": "data-seven-reconnected.json",
+      "roundId": "r_mvboblq9_ynnomoks",
+      "firstTeam": "A",
+      "penaltyScore": {
+        "A": 1,
+        "B": 0
+      },
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        }
+      ]
+    }
+  ],
+  "latestFacts": {
+    "status": "open",
+    "rotation": {
+      "playing": [
+        1,
+        2
+      ],
+      "waiting": [
+        0
+      ],
+      "loans": [],
+      "wins": {},
+      "round": 1,
+      "updatedAt": 1792197842571,
+      "baseTeams": [
+        {
+          "index": 0,
+          "playerIds": [
+            "guest:mvbm5h1y-qz8250",
+            "guest:mvblz1wa-09tytj",
+            "guest:mvblx3in-fi5e6t",
+            "guest:mvbls3w3-qut4pc",
+            "guest:mvblylnr-huvc9y",
+            "guest:mvbm4gz2-r90mh5",
+            "guest:mvbm00m2-rk55cp"
+          ]
+        },
+        {
+          "index": 1,
+          "playerIds": [
+            "guest:mvbm3ekm-bwv413",
+            "guest:mvblxnik-8zuslm",
+            "guest:mvbm4zwg-e3ggog",
+            "guest:mvbm2xhv-yzilc4",
+            "guest:mvbm2gjb-1c84fv",
+            "guest:mvbly3u1-bpeqbv",
+            "guest:mvbm1z93-flw4fb"
+          ]
+        },
+        {
+          "index": 2,
+          "playerIds": [
+            "guest:mvbm1i0e-fn72ab",
+            "guest:mvblzjh8-sqyjaj",
+            "guest:mvbm108b-57st7y",
+            "guest:mvblukkd-mqv80v",
+            "guest:mvbm0j6i-mkdjg5",
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvbm3vl4-zsisrg"
+          ]
+        }
+      ],
+      "roundInstanceId": "r_mvboblq9_ynnomoks",
+      "roundInstanceRound": 1
+    },
+    "shootout": {
+      "firstTeam": "A",
+      "keeperA": null,
+      "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        }
+      ]
+    },
+    "history": [],
+    "commits": [],
+    "playerStats": [],
+    "roundSummary": null,
+    "finishProof": {
+      "attendanceCredit": null,
+      "stages": [],
+      "qaEveningStanding": null
+    }
+  },
+  "checks": [
+    {
+      "id": "scope",
+      "title": "כל קריאות הנתונים שייכות לאותו מחזור בדיקה ולמועדון שלו",
+      "status": "passed",
+      "expected": {
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "groupId": "J060YQu6QTcgk3glUDj2"
+      },
+      "observed": [
+        [
+          "YEdIR3MviDK82D581ELk",
+          "J060YQu6QTcgk3glUDj2"
+        ]
+      ],
+      "evidence": [
+        "data-round-seven-auto-clean.json",
+        "data-round-seven-auto.json",
+        "data-round-seven-created.json",
+        "data-round-seven-first-guest.json",
+        "data-round-seven-full-roster.json",
+        "data-round-seven-host-joined.json",
+        "data-round-seven-rated-club.json",
+        "data-round-seven-ready.json",
+        "data-seven-kick-one.json",
+        "data-seven-reconnected.json",
+        "data-seven-reduced-goal.json",
+        "data-seven-regenerate-version.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "format",
+      "title": "המחזור מוגדר לשבעה מול שבעה, שלוש קבוצות וקיבולת 21",
+      "status": "passed",
+      "expected": {
+        "format": "7v7",
+        "numberOfTeams": 3,
+        "maxPlayers": 21
+      },
+      "observed": {
+        "data-round-seven-auto-clean.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-auto.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-created.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-first-guest.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-full-roster.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-host-joined.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-rated-club.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-ready.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-kick-one.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-reconnected.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-reduced-goal.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-regenerate-version.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-tie-goals.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        }
+      },
+      "evidence": [
+        "data-round-seven-auto-clean.json",
+        "data-round-seven-auto.json",
+        "data-round-seven-created.json",
+        "data-round-seven-first-guest.json",
+        "data-round-seven-full-roster.json",
+        "data-round-seven-host-joined.json",
+        "data-round-seven-rated-club.json",
+        "data-round-seven-ready.json",
+        "data-seven-kick-one.json",
+        "data-seven-reconnected.json",
+        "data-seven-reduced-goal.json",
+        "data-seven-regenerate-version.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "dedicated-roster",
+      "title": "חשבון הבדיקה ועשרים אורחים ייעודיים, ללא כפילות או ממתינים",
+      "status": "passed",
+      "expected": {
+        "accounts": 1,
+        "guests": 20,
+        "unique": 21,
+        "waitlist": []
+      },
+      "observed": {
+        "players": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "guests": 20,
+        "unique": 21,
+        "waitlist": []
+      },
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "allocation-first",
+      "title": "שלוש קבוצות של שבעה עם כל הרשומים פעם אחת — הגול הראשון",
+      "status": "passed",
+      "expected": "שלוש קבוצות מלאות; אין כפילויות או זרים; כל קפטן בסגלו",
+      "observed": {
+        "sizes": [
+          7,
+          7,
+          7
+        ],
+        "unique": 21,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "opening-sides-first",
+      "title": "שיוך הצדדים וההמתנה נשמר — הגול הראשון",
+      "status": "passed",
+      "expected": {
+        "playing": [
+          1,
+          2
+        ],
+        "waiting": [
+          0
+        ],
+        "colors": {
+          "0": "red",
+          "1": "green",
+          "2": "white"
+        }
+      },
+      "observed": {
+        "playing": [
+          1,
+          2
+        ],
+        "waiting": [
+          0
+        ],
+        "colors": {
+          "0": "red",
+          "1": "green",
+          "2": "white"
+        }
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "published-first",
+      "title": "הכוחות פורסמו וצבעי שלוש הקבוצות ייחודיים — הגול הראשון",
+      "status": "passed",
+      "expected": {
+        "published": true,
+        "uniqueColors": 3
+      },
+      "observed": {
+        "published": true,
+        "colors": [
+          "red",
+          "green",
+          "white"
+        ]
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "no-timer-first",
+      "title": "הזנת שער ללא הפעלת השעון — הגול הראשון",
+      "status": "passed",
+      "expected": "שעון עצור; אפס זמן; אין מקטעי ריצה או אירועי שעון",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "timerLastStartedAt": null,
+        "activeIntervals": null,
+        "timerEvents": []
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "before-commit-first",
+      "title": "לפני סיום אין היסטוריה, סימן שמירה, מוני שחקנים או סיכום — הגול הראשון",
+      "status": "passed",
+      "expected": {
+        "history": [],
+        "commits": [],
+        "playerStats": [],
+        "roundSummary": null,
+        "lastCommittedRoundId": null
+      },
+      "observed": {
+        "history": [],
+        "commits": [],
+        "playerStats": [],
+        "roundSummary": null,
+        "lastCommittedRoundId": null
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "event-side-roster-first",
+      "title": "זהויות הכובשים והמבשל שייכות לסגל הצד הנכון — הגול הראשון",
+      "status": "passed",
+      "expected": "כל שחקן מוכר ונמצא בהרכב קבוצת האירוע",
+      "observed": [
+        {
+          "id": "g_1792198217132_ktus20y6u6q",
+          "team": "A",
+          "scorerId": "guest:mvbm3ekm-bwv413",
+          "assisterId": null
+        }
+      ],
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "goal-tally-first",
+      "title": "מוני הכובשים שווים לאירועים שנשמרו — הגול הראשון",
+      "status": "passed",
+      "expected": {
+        "guest:mvbm3ekm-bwv413": 1
+      },
+      "observed": {
+        "guest:mvbm3ekm-bwv413": 1
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "allocation-tie",
+      "title": "שלוש קבוצות של שבעה עם כל הרשומים פעם אחת — התיקו",
+      "status": "passed",
+      "expected": "שלוש קבוצות מלאות; אין כפילויות או זרים; כל קפטן בסגלו",
+      "observed": {
+        "sizes": [
+          7,
+          7,
+          7
+        ],
+        "unique": 21,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "opening-sides-tie",
+      "title": "שיוך הצדדים וההמתנה נשמר — התיקו",
+      "status": "passed",
+      "expected": {
+        "playing": [
+          1,
+          2
+        ],
+        "waiting": [
+          0
+        ],
+        "colors": {
+          "0": "red",
+          "1": "green",
+          "2": "white"
+        }
+      },
+      "observed": {
+        "playing": [
+          1,
+          2
+        ],
+        "waiting": [
+          0
+        ],
+        "colors": {
+          "0": "red",
+          "1": "green",
+          "2": "white"
+        }
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "published-tie",
+      "title": "הכוחות פורסמו וצבעי שלוש הקבוצות ייחודיים — התיקו",
+      "status": "passed",
+      "expected": {
+        "published": true,
+        "uniqueColors": 3
+      },
+      "observed": {
+        "published": true,
+        "colors": [
+          "red",
+          "green",
+          "white"
+        ]
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "no-timer-tie",
+      "title": "הזנת שער ללא הפעלת השעון — התיקו",
+      "status": "passed",
+      "expected": "שעון עצור; אפס זמן; אין מקטעי ריצה או אירועי שעון",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "timerLastStartedAt": null,
+        "activeIntervals": null,
+        "timerEvents": []
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "before-commit-tie",
+      "title": "לפני סיום אין היסטוריה, סימן שמירה, מוני שחקנים או סיכום — התיקו",
+      "status": "passed",
+      "expected": {
+        "history": [],
+        "commits": [],
+        "playerStats": [],
+        "roundSummary": null,
+        "lastCommittedRoundId": null
+      },
+      "observed": {
+        "history": [],
+        "commits": [],
+        "playerStats": [],
+        "roundSummary": null,
+        "lastCommittedRoundId": null
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "event-side-roster-tie",
+      "title": "זהויות הכובשים והמבשל שייכות לסגל הצד הנכון — התיקו",
+      "status": "passed",
+      "expected": "כל שחקן מוכר ונמצא בהרכב קבוצת האירוע",
+      "observed": [
+        {
+          "id": "g_1792198217132_ktus20y6u6q",
+          "team": "A",
+          "scorerId": "guest:mvbm3ekm-bwv413",
+          "assisterId": null
+        },
+        {
+          "id": "g_1792198324917_psuloczqwdi",
+          "team": "B",
+          "scorerId": "guest:mvbm1i0e-fn72ab",
+          "assisterId": "guest:mvblzjh8-sqyjaj"
+        }
+      ],
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "goal-tally-tie",
+      "title": "מוני הכובשים שווים לאירועים שנשמרו — התיקו",
+      "status": "passed",
+      "expected": {
+        "guest:mvbm3ekm-bwv413": 1,
+        "guest:mvbm1i0e-fn72ab": 1
+      },
+      "observed": {
+        "guest:mvbm3ekm-bwv413": 1,
+        "guest:mvbm1i0e-fn72ab": 1
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "first-goal-once",
+      "title": "הגול הראשון נשמר פעם אחת ובסיווג ללא בישול",
+      "status": "passed",
+      "expected": {
+        "events": 1,
+        "score": [
+          1,
+          0
+        ],
+        "assistStatus": "none"
+      },
+      "observed": {
+        "events": 1,
+        "score": [
+          1,
+          0
+        ],
+        "event": {
+          "id": "g_1792198217132_ktus20y6u6q",
+          "team": "A",
+          "scorerId": "guest:mvbm3ekm-bwv413",
+          "assistStatus": "none",
+          "minute": 1,
+          "at": 1792198217402.5
+        }
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "opposite-goal-with-assist",
+      "title": "לצד היריב נשמר גול עם מבשל נפרד ובסיווג בישול שחקן",
+      "status": "passed",
+      "expected": "כובש ומבשל נפרדים מאותו צד; בישול שחקן",
+      "observed": {
+        "id": "g_1792198324917_psuloczqwdi",
+        "team": "B",
+        "scorerId": "guest:mvbm1i0e-fn72ab",
+        "assisterId": "guest:mvblzjh8-sqyjaj",
+        "assistStatus": "player",
+        "minute": 1,
+        "at": 1792198325186.5
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "tie-two-unique-events",
+      "title": "בתיקו 1:1 נשמרו בדיוק שני מזהי שער שונים ולכל צד שער אחד",
+      "status": "passed",
+      "expected": {
+        "events": 2,
+        "unique": 2,
+        "score": [
+          1,
+          1
+        ]
+      },
+      "observed": {
+        "events": 2,
+        "unique": 2,
+        "score": [
+          1,
+          1
+        ]
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "same-round-instance",
+      "title": "שני השערים נשמרו באותו משחק ראשון ובאותה חלוקה",
+      "status": "passed",
+      "expected": {
+        "round": 1,
+        "roundId": "r_mvboblq9_ynnomoks"
+      },
+      "observed": {
+        "firstRoundId": "r_mvboblq9_ynnomoks",
+        "tieRoundId": "r_mvboblq9_ynnomoks",
+        "sameDraft": true
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "native-all-members",
+      "title": "כל 21 הזהויות בקבוצות תואמות בין מסד והוכחת המכשיר",
+      "status": "passed",
+      "expected": {
+        "draftCreatedAt": 1792197590117,
+        "teams": [
+          [
+            "אלכסנדר בדיקת שבע כ",
+            "רון שבע ז",
+            "תומר שבע ג",
+            "דניאל שבע א",
+            "בן שבע ו",
+            "עמית שבע יח",
+            "נועם שבע ט"
+          ],
+          [
+            "משה שבע טז",
+            "אורי שבע ד",
+            "עומר שבע יט",
+            "יוסי שבע טו",
+            "נדב שבע יד",
+            "אלין שבע ה",
+            "עידן שבע יג"
+          ],
+          [
+            "אסף שבע יב",
+            "ליאור שבע ח",
+            "רועי שבע יא",
+            "איתי שבע ב",
+            "גל שבע י",
+            "בדיקות לייב",
+            "לירן שבע יז"
+          ]
+        ]
+      },
+      "observed": {
+        "draftCreatedAt": 1792197590117,
+        "nativeTeams": [
+          [
+            "עמית שבע יח",
+            "בן שבע ו",
+            "דניאל שבע א",
+            "תומר שבע ג",
+            "רון שבע ז",
+            "אלכסנדר בדיקת שבע כ",
+            "נועם שבע ט"
+          ],
+          [
+            "אלין שבע ה",
+            "נדב שבע יד",
+            "יוסי שבע טו",
+            "עומר שבע יט",
+            "אורי שבע ד",
+            "משה שבע טז",
+            "עידן שבע יג"
+          ],
+          [
+            "בדיקות לייב",
+            "גל שבע י",
+            "איתי שבע ב",
+            "רועי שבע יא",
+            "ליאור שבע ח",
+            "אסף שבע יב",
+            "לירן שבע יז"
+          ]
+        ],
+        "declaredMatch": true
+      },
+      "evidence": [
+        "data-seven-tie-goals.json",
+        "seven-native-draft-members-proof.json"
+      ]
+    },
+    {
+      "id": "double-tap-ui",
+      "title": "פעולת לחיצה כפולה במכשיר אינה מוכחת מקריאת נתונים בלבד",
+      "status": "unproven",
+      "reason": "הנתונים מוכיחים אירוע אחד, מונה אחד ותוצאה 1:0 אחרי התרחיש הראשון. תיעוד שתי הלחיצות עצמן נמצא בראיות הממשק הנפרדות.",
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "color-transition-ui",
+      "title": "רצף החלפת הצבעים בממשק",
+      "status": "unproven",
+      "reason": "המסד מוכיח את שלושת הצבעים הסופיים ואת שימורם. אין בתמונות הנתונים שלפני הסיום יומן לכל בחירת צבע ולפעולת החלפת צבע תפוס.",
+      "evidence": [
+        "data-seven-reduced-goal.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "goal-animation-ui",
+      "title": "אנימציות, הפחתת תנועה ומספר הלחיצות",
+      "status": "unproven",
+      "reason": "מקור הנתונים מאמת אירועים וזהויות; תנועה ומספר לחיצות דורשים ראיות מכשיר.",
+      "evidence": [
+        "data-seven-reduced-goal.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-identities-data-seven-kick-one.json",
+      "title": "בכל בעיטה הבועט מקבוצתו והשוער רק מהיריבה — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": "בועט מהצד הבועט, שוער מהצד היריב, אין שחקנים מקבוצה ממתינה",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "kick-outcomes-data-seven-kick-one.json",
+      "title": "תוצאה מפורשת תואמת לסימון הגול — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": "גול=true; עצירה/החטאה=false; כל בעיטה מסווגת",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "outcome": "goal",
+          "scored": true
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "kick-ids-data-seven-kick-one.json",
+      "title": "אין בעיטות כפולות לפי מזהה — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": 1,
+      "observed": 1,
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "kick-field-separation-data-seven-kick-one.json",
+      "title": "בעיטות ההכרעה אינן משנות את שערי השדה — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "observed": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "evidence": [
+        "data-seven-kick-one.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-alternating-data-seven-kick-one.json",
+      "title": "הבעיטות השמורות מתחלפות בין הצדדים — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": "סדר לסירוגין החל מהצד הראשון",
+      "observed": [
+        "A"
+      ],
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "kick-zero-timer-data-seven-kick-one.json",
+      "title": "רישום ההכרעה עובד ללא הפעלת השעון — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": "אין זמן ריצה או מקטעי פעילות",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "activeIntervals": null
+      },
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "kick-identities-data-seven-reconnected.json",
+      "title": "בכל בעיטה הבועט מקבוצתו והשוער רק מהיריבה — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": "בועט מהצד הבועט, שוער מהצד היריב, אין שחקנים מקבוצה ממתינה",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        }
+      ],
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "kick-outcomes-data-seven-reconnected.json",
+      "title": "תוצאה מפורשת תואמת לסימון הגול — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": "גול=true; עצירה/החטאה=false; כל בעיטה מסווגת",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "outcome": "goal",
+          "scored": true
+        }
+      ],
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "kick-ids-data-seven-reconnected.json",
+      "title": "אין בעיטות כפולות לפי מזהה — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": 1,
+      "observed": 1,
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "kick-field-separation-data-seven-reconnected.json",
+      "title": "בעיטות ההכרעה אינן משנות את שערי השדה — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "observed": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "evidence": [
+        "data-seven-reconnected.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-alternating-data-seven-reconnected.json",
+      "title": "הבעיטות השמורות מתחלפות בין הצדדים — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": "סדר לסירוגין החל מהצד הראשון",
+      "observed": [
+        "A"
+      ],
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "kick-zero-timer-data-seven-reconnected.json",
+      "title": "רישום ההכרעה עובד ללא הפעלת השעון — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": "אין זמן ריצה או מקטעי פעילות",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "activeIntervals": null
+      },
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "first-kick-once",
+      "title": "הבעיטה הראשונה נשמרה כאירוע יחיד: כובש א׳ מול שוער חשבון הבדיקה מהיריבה",
+      "status": "passed",
+      "expected": "בעיטה אחת א׳, גול; שוער ב׳ נשמר, שוער א׳ טרם נבחר",
+      "observed": {
+        "firstTeam": "A",
+        "keeperA": null,
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "kicks": [
+          {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          }
+        ]
+      },
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "reconnect-data-stability",
+      "title": "אחרי תרחיש חידוש החיבור נשמרו אותה בעיטה, זהויות, שערים ורוטציה ללא כפילות",
+      "status": "passed",
+      "expected": "אותו מצב לייב ורוטציה; אירוע בעיטה יחיד",
+      "observed": {
+        "sameLive": true,
+        "sameRotation": true,
+        "kickCount": 1
+      },
+      "evidence": [
+        "data-seven-kick-one.json",
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "offline-interaction",
+      "title": "אין הוכחת כתיבה ללא חיבור או תגובה אבודה",
+      "status": "unproven",
+      "reason": "התרחיש כלל ניתוק וחיבור ללא פעולה עסקית בזמן הניתוק. המסד מוכיח יציבות בלבד; הצלחה או ניסיון חוזר של כתיבה בזמן ניתוק לא הופעלו.",
+      "evidence": [
+        "data-seven-kick-one.json",
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "kick-double-tap-ui",
+      "title": "שתי לחיצות על תוצאת בעיטה במכשיר",
+      "status": "unproven",
+      "reason": "מקור הנתונים מוכיח אירוע יחיד; עצם שתי הלחיצות והסדר שלהן מתועדים בנפרד במכשיר.",
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "shootout-branches-pending",
+      "title": "כיסוי גול, עצירה והחטאה בבעיטות נפרדות",
+      "status": "unproven",
+      "reason": "התוצאות שנקראו עד כה: goal; מקורות יתר הבעיטות טרם זמינים",
+      "evidence": [
+        "data-seven-kick-one.json",
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "commit-pending",
+      "title": "שמירת משחק, היסטוריה, רוטציה ומוני שחקנים",
+      "status": "unproven",
+      "reason": "שני מקורות השערים הם לפני סיום המשחק; אין עדיין חוזה שרת להשוואה",
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "finish-pending",
+      "title": "סיכום מחזור, נוכחות וחתימה",
+      "status": "unproven",
+      "reason": "המחזור עדיין לא הסתיים במקור האחרון",
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    }
+  ]
+}

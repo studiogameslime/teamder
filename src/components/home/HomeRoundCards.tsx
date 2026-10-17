@@ -27,6 +27,7 @@ import { HeightReveal } from '@/components/anim/HeightReveal';
 import React, { useRef, useState } from 'react';
 import { resolveRoundCover, type RoundCoverClub } from '@/data/roundCover';
 import {
+  ActivityIndicator,
   ImageBackground,
   Pressable,
   StyleSheet,
@@ -498,15 +499,15 @@ function PrimaryCta({
       haptic={false}
       style={[styles.cta, { backgroundColor: tone.ink }, busy && { opacity: 0.6 }]}
       accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !!busy }}
+      accessibilityLabel={busy ? 'שומרים את ההרשמה' : label}
+      accessibilityState={{ disabled: !!busy, busy: !!busy }}
     >
       {/* The row lives on this inner View, not on PressableScale: a style
           given to it reaches the Pressable, whose only child is its transform
           wrapper, so the row would never touch these two. */}
       <View style={styles.ctaRow}>
-        <Text style={styles.ctaText}>{label}</Text>
-        <Ionicons name={icon} size={17} color="#FFFFFF" />
+        <Text style={styles.ctaText}>{busy ? 'שומרים את ההרשמה…' : label}</Text>
+        {busy ? <ActivityIndicator size="small" color="#FFFFFF"/> : <Ionicons name={icon} size={17} color="#FFFFFF" />}
       </View>
     </PressableScale>
   );

@@ -20,8 +20,8 @@
 
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
+import { doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,6 +46,19 @@ before(async () => {
   });
 });
 after(async () => { await env.cleanup(); });
+
+test('dispatch can read an absent marker but an existing recipient-private marker denies the sender', async () => {
+  await seed();
+  const sender = env.authenticatedContext(ADMIN).firestore();
+  const absent = await assertSucceeds(getDoc(doc(sender, 'notifications', 'absent-marker')));
+  assert.equal(absent.exists(), false);
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'notifications', 'private-marker'), {
+    type: 'approved', recipientId: VICTIM, payload: { groupId: GID }, createdByUid: ADMIN,
+  }));
+  await assertFails(getDoc(doc(sender, 'notifications', 'private-marker')));
+  const recipient = env.authenticatedContext(VICTIM).firestore();
+  assert.equal((await assertSucceeds(getDoc(doc(recipient, 'notifications', 'private-marker')))).exists(), true);
+});
 
 async function seed() {
   await env.clearFirestore();

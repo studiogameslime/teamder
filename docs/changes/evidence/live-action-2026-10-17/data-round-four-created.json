@@ -1,0 +1,74 @@
+{
+  "readAt": "2026-10-16T22:25:31.230611+00:00",
+  "account": {
+    "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "name": "בדיקות לייב",
+    "stats": null
+  },
+  "club": {
+    "id": "J060YQu6QTcgk3glUDj2",
+    "isOpen": false,
+    "adminIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "playerIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "creatorId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "name": "בדיקות לייב אוקטובר"
+  },
+  "games": [
+    {
+      "game": {
+        "id": "lmUUmQru2HtKvQkRDVeD",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "title": "בדיקות לייב אוקטובר",
+        "startsAt": 1792267200000,
+        "maxPlayers": 12,
+        "minPlayers": null,
+        "players": [],
+        "waitlist": [],
+        "pending": [],
+        "participantIds": [],
+        "teams": null,
+        "status": "open",
+        "currentMatchIndex": 0,
+        "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "visibility": "community",
+        "format": "4v4",
+        "numberOfTeams": 3,
+        "matchDurationMinutes": 8,
+        "hasPenalties": false,
+        "hasHalfTime": false,
+        "liveMatch": null,
+        "draftTeams": null,
+        "rotation": null,
+        "arrivals": null,
+        "autoTeamsAt": null,
+        "autoTeamsMethod": null,
+        "teamsNotifiedAt": null,
+        "autoTeamsGeneratedAt": null,
+        "autoTeamsGeneratedBy": null,
+        "teamsEditedManually": false,
+        "teamBalanceMeta": null,
+        "acceptsFillers": false,
+        "advancedMode": true,
+        "advancedFillMode": "temporary",
+        "advancedTieMode": null,
+        "guests": [],
+        "createdAt": 1792189508073,
+        "updatedAt": 1792189508073
+      },
+      "history": [],
+      "commits": [],
+      "playerStats": [],
+      "roundSummary": null
+    }
+  ],
+  "archive": {
+    "source": "tmp/live-action-production/data-round-four-created.json",
+    "originalSha256": "362faff2f3160063e56b782b863a3be1bd68fe00587731fb2e3db577dc9119d1",
+    "filtered": true,
+    "note": "רק שדות רלוונטיים לנתוני הבדיקה; ללא דואר, קוד הזמנה, כתובת מגרש, מיקום או העדפות חשבון."
+  }
+}

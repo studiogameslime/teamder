@@ -7,8 +7,8 @@ import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // (so 2–4 never get cramped); available players are a clean photo+name
 // list. When everyone is placed it flips to a summary with "סיים".
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { TEAM_PALETTE } from '@/components/match/rotationView';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useNavigation,
   useRoute,
+  useFocusEffect,
   type RouteProp,
 } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -39,7 +40,7 @@ import { colors, radius, spacing, typography, shadows, RTL_LABEL_ALIGN } from '@
 import { he } from '@/i18n/he';
 import type { DraftTeamsResult, Game } from '@/types';
 import { toGuestRosterId, isGuestId } from '@/types';
-import { buildPickOrder, reconstructPicks } from '@/utils/draft';
+import { buildPickOrder, reconstructPicks, playersPerTeam } from '@/utils/draft';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
 type Nav = NativeStackNavigationProp<GameStackParamList>;
@@ -47,7 +48,7 @@ type Params = RouteProp<GameStackParamList, 'DraftBoard'>;
 
 export function DraftBoardScreen() {
   const nav = useNavigation<Nav>();
-  const { gameId, captainIds, method, resume, readOnly } =
+  const { gameId, captainIds, method, resume, readOnly, expectedDraftCreatedAt } =
     useRoute<Params>().params;
 
   const playersMap = useGameStore((s) => s.players);
@@ -55,7 +56,18 @@ export function DraftBoardScreen() {
   const currentUser = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
 
+  // A regenerated draft may reuse this route, game and captains. Its saved
+  // revision is still a new read context: never flash the old team's members
+  // while the focus effect is waiting to run, or accept that effect's reply.
+  const ownerKey = JSON.stringify([gameId, currentUser?.id, resume, readOnly, method, captainIds, expectedDraftCreatedAt]);
+  const currentOwner = useRef(ownerKey);
+  currentOwner.current = ownerKey;
+  const [requestOwner, setRequestOwner] = useState<string | null>(null);
+
   const [game, setGame] = useState<Game | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retryLoad, setRetryLoad] = useState(0);
   /** uids in the order they were picked; team = order[k]. Captains excluded. */
   const [picks, setPicks] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -64,27 +76,46 @@ export function DraftBoardScreen() {
   /** Team index whose colour picker is open (null = closed). */
   const [pickerTeam, setPickerTeam] = useState<number | null>(null);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     let alive = true;
+    const controller = new AbortController();
+    setRequestOwner(ownerKey);
+    setLoading(true);
+    setLoadFailed(false);
     (async () => {
       try {
-        const g = await gameService.getGameById(gameId);
-        if (!alive) return;
+        const g = await (resume && expectedDraftCreatedAt !== undefined
+          ? gameService.getGameById(gameId, { source: 'server', expectedDraftCreatedAt, signal: controller.signal })
+          : gameService.getGameById(gameId));
+        if (!alive || currentOwner.current !== ownerKey) return;
+        if (!g || g.id !== gameId) throw new Error('GAME_NOT_FOUND');
+        // Generation navigates only after the write is acknowledged. A cached
+        // or late read of an older draft is not that result, even if the game,
+        // captain list and player count happen to be identical.
+        if (resume && (!g.draftTeams?.teams.length ||
+          (expectedDraftCreatedAt !== undefined && g.draftTeams.createdAt !== expectedDraftCreatedAt))) {
+          throw new Error('SAVED_DRAFT_UNAVAILABLE');
+        }
         // Editing teams is manager-only; viewing (readOnly) stays open to
         // everyone. Bounce a non-manager who reaches the editable board.
-        if (g && !readOnly) {
+        if (g) {
           const grp = myCommunities.find((c) => c.id === g.groupId);
           const isAdmin =
             !!currentUser &&
             (g.createdBy === currentUser.id ||
               (!!grp && grp.adminIds.includes(currentUser.id)));
-          if (!isAdmin) {
+          if (!readOnly && !isAdmin) {
             toast.info(he.draftAdminOnly);
             if (nav.canGoBack()) nav.goBack();
             return;
           }
+          if (readOnly && !isAdmin && g.draftTeams?.published === false) {
+            toast.info('הכוחות עדיין בטיוטה. אפשר לצפות בהם לאחר שהמנהל יפרסם אותם.');
+            if (nav.canGoBack()) nav.goBack();
+            return;
+          }
         }
-        if (g && !readOnly) {
+        if (g && !readOnly && !resume) {
           const active = new Set([
             ...(g.players ?? []),
             ...(g.guests ?? []).filter((guest) => !guest.waitlisted).map((guest) => toGuestRosterId(guest.id)),
@@ -103,7 +134,8 @@ export function DraftBoardScreen() {
             numTeams: captainIds.length,
           });
         }
-        if (g?.players?.length) hydratePlayers(g.players);
+        const identityIds = [...new Set([...(g?.players ?? []), ...(g?.draftTeams?.teams ?? []).flatMap(team => team.playerIds)])].filter(id => !isGuestId(id));
+        if (identityIds.length) hydratePlayers(identityIds);
         // Resuming a saved draft → reconstruct the picks so we land on the
         // summary (and can still step back to edit).
         if (resume && g?.draftTeams) {
@@ -122,16 +154,21 @@ export function DraftBoardScreen() {
           for (const t of g.draftTeams.teams) {
             if (t.colorKey) restored[t.index] = t.colorKey;
           }
-          if (Object.keys(restored).length) setTeamColors(restored);
+          setTeamColors(restored);
         }
       } catch (err) {
+        if (!alive || currentOwner.current !== ownerKey) return;
+        setLoadFailed(true);
         logError('draftBoardLoad', err, { gameId });
+      } finally {
+        if (alive && currentOwner.current === ownerKey) setLoading(false);
       }
     })();
     return () => {
       alive = false;
+      controller.abort();
     };
-  }, [gameId, hydratePlayers, readOnly, currentUser, myCommunities, nav]);
+  }, [gameId, hydratePlayers, readOnly, currentUser, myCommunities, nav, resume, captainIds, method, expectedDraftCreatedAt, ownerKey, retryLoad]));
 
   // Everyone attached to the game, waitlist included — this is the NAME
   // directory, so a person already sitting on a team still resolves to their
@@ -277,6 +314,7 @@ export function DraftBoardScreen() {
   const finish = useCallback(async () => {
     if (!currentUser) return;
     const result: DraftTeamsResult = {
+      ...(game?.draftTeams?.completionMode === 'balanced' ? {completionMode:'balanced' as const, fillMode:'temporary' as const} : {}),
       method,
       numTeams,
       createdAt: Date.now(),
@@ -299,7 +337,7 @@ export function DraftBoardScreen() {
         appAlert(he.draftTitle, 'הסגל השתנה. יש לחזור לבחירת הקפטנים ולחלק מחדש.');
         return;
       }
-      await gameService.saveDraftTeams(gameId, result, undefined, true);
+      await gameService.saveDraftTeams(gameId, result, undefined, true, game ?? undefined);
       logEvent(AnalyticsEvent.TeamsSaved, {
         gameId,
         numTeams,
@@ -318,9 +356,29 @@ export function DraftBoardScreen() {
     // teamColors MUST be here — the summary screen sets colours AFTER this
     // callback was memoised, so without it `finish` saved the stale (empty)
     // colours and the user's picks silently vanished.
-  }, [currentUser, method, numTeams, captainIds, membersOf, gameId, nav, teamColors, picks]);
+  }, [currentUser, method, numTeams, captainIds, membersOf, gameId, nav, teamColors, picks, game?.draftTeams?.completionMode]);
 
   // ── Summary view ────────────────────────────────────────────────────
+  // A reused board must not display the previous saved split while its new
+  // focus read is pending, nor keep that stale split after a failed read.
+  const waitingForCurrent = loading || requestOwner !== ownerKey;
+  if (waitingForCurrent || loadFailed || !game || game.id !== gameId) {
+    return <SafeAreaView style={styles.root} edges={['top','bottom']}><ScreenHeader title="הכוחות"/>
+      <View style={{flex:1,justifyContent:'center',alignItems:'center',padding:24,gap:16}}>
+        {waitingForCurrent ? <><ActivityIndicator color={colors.primary}/><Text style={{color:colors.textMuted}}>טוענים את הכוחות המעודכנים</Text></> : <><Text style={{color:colors.text,textAlign:'center'}}>לא הצלחנו לטעון את הכוחות המעודכנים</Text><Button title={he.retry} onPress={()=>setRetryLoad(value=>value+1)}/></>}
+      </View></SafeAreaView>;
+  }
+  if (resume && game?.draftTeams) {
+    return <SafeAreaView style={styles.root} edges={['top','bottom']}><ScreenHeader title="הכוחות"/>
+      <ScrollView contentContainerStyle={[styles.body,{gap:14}]}>
+        <View style={styles.savedSummaryHead}><Text style={styles.savedSummaryTitle}>הכוחות למחזור</Text><Text style={styles.savedSummaryCount}>{`${game.draftTeams.teams.reduce((n,t)=>n+t.playerIds.length,0)} שחקנים · ${game.draftTeams.teams.length} קבוצות`}</Text></View>
+        {game.draftTeams.completionMode === 'balanced' && <Text style={styles.summarySub}>קבוצות עם השלמות · לפני כל משחק בוחרים משלימים מהקבוצות שממתינות</Text>}
+        {game.draftTeams.teams.map(t=><DraftTeamCard summary key={t.index} index={t.index} colorKey={t.colorKey} captain={resolve(t.playerIds[0])} members={t.playerIds.slice(1).map(resolve)} completionCapacity={game.draftTeams?.completionMode === 'balanced' ? playersPerTeam(game.format) : undefined} onPressUser={openCard}/>)}
+        {game.draftTeams.completionMode === 'balanced' && <Text style={styles.summarySub}>קבוצות הבסיס נשמרות. ההשלמות הן למשחק אחד בלבד.</Text>}
+      </ScrollView><View style={styles.footer}><Button title="לפרטי המחזור" onPress={()=>nav.navigate('MatchDetails',{gameId})} fullWidth size="lg"/>
+        {!readOnly && <Button title="עריכת הכוחות" iconLeft="options-outline" variant="outline" onPress={()=>nav.navigate('DraftSetup',{gameId,editExisting:true})} fullWidth/>}
+      </View></SafeAreaView>;
+  }
   if (done) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -337,10 +395,12 @@ export function DraftBoardScreen() {
             <Text style={styles.summarySub}>{he.draftSummarySubtitle}</Text>
           </View>
           <View style={styles.summaryList}>
+            {game?.draftTeams?.completionMode === 'balanced' && <Text style={styles.summarySub}>קבוצות עם השלמות · לפני כל משחק משלימים מהקבוצה שממתינה</Text>}
             {Array.from({ length: numTeams }, (_, t) => (
               <DraftTeamCard
                 key={t}
                 index={t}
+                completionCapacity={game?.draftTeams?.completionMode === 'balanced' ? playersPerTeam(game.format) : undefined}
                 captain={resolve(captainIds[t])}
                 members={membersOf(t).map(resolve)}
                 onPressUser={openCard}
@@ -468,7 +528,7 @@ export function DraftBoardScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.stepChip}>
-          <Text style={styles.stepText}>{he.draftStepLabel(2, 2)}</Text>
+          <Text style={styles.stepText}>{he.draftStepLabel(3, 3)}</Text>
         </View>
 
         {/* Pick path — captain avatars; the active pick is enlarged + ringed.
@@ -658,6 +718,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
   },
+  savedSummaryHead: {gap:4,paddingBottom:2},
+  savedSummaryTitle: {fontSize:23,fontWeight:'800',color:colors.text,textAlign:RTL_LABEL_ALIGN},
+  savedSummaryCount: {fontSize:14,color:colors.textMuted,textAlign:RTL_LABEL_ALIGN},
   summarySub: {
     ...typography.body,
     color: colors.textMuted,
@@ -666,6 +729,7 @@ const styles = StyleSheet.create({
   },
   summaryList: { gap: spacing.md },
   footer: {
+    gap: spacing.md,
     padding: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.divider,

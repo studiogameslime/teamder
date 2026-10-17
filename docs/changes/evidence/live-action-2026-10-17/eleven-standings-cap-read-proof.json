@@ -1,0 +1,74 @@
+{
+  "gameId": "mBO5HqJdnOPWjRE2zMh8",
+  "source": "data-eleven-sealed-proof.json",
+  "generatedAtUtc": "2026-10-17T04:17:11.535Z",
+  "codeSources": [
+    {
+      "file": "src/services/gameService.ts",
+      "sha256": "323e73ee0d0d0165c95b709b5d667852e017c3da400d022cf083988668bbe5fb"
+    },
+    {
+      "file": "src/components/match/tabs/MatchStatsTab.tsx",
+      "sha256": "826324140de859b798e0a792ea3c2e762bcdfaf769f072816c392e248ac0d053"
+    },
+    {
+      "file": "src/components/match/GameChampionship.tsx",
+      "sha256": "8197a5adee96d0d91a41dd93b8db0d244b5dd24342e1c26856a3d84ed86738e8"
+    },
+    {
+      "file": "src/components/community/CommunityStatsTable.tsx",
+      "sha256": "e543463e73d95f6b2acb1dc033975aa17a1c51d8c7adc98804861eb4c5e03899"
+    },
+    {
+      "file": "src/utils/championship.ts",
+      "sha256": "f4066788911ada56359768db7688684b677eb289b49b96b021eb3b1c7393b400"
+    },
+    {
+      "file": "src/utils/eveningScoreColumn.ts",
+      "sha256": "8e7fa656c2e5bc6e7260dc2ac67e22cd895b02f54d6817dbb122db847fbf8dc6"
+    }
+  ],
+  "actualServiceRows": 33,
+  "actualAttendeeExpressionCount": 33,
+  "storedStats": 32,
+  "defaultDisplayLimit": 30,
+  "shownCount": 30,
+  "hidden": [
+    {
+      "id": "guest:mvbrv1ua-a8fw8t",
+      "name": "אביב אחד עשר כא",
+      "rounds": 1
+    },
+    {
+      "id": "guest:mvbrw1ea-3kwy60",
+      "name": "גיא אחד עשר כו",
+      "rounds": 1
+    },
+    {
+      "id": "guest:mvbrwtux-c4hh1c",
+      "name": "יובל אחד עשר ל",
+      "rounds": 1
+    }
+  ],
+  "zeroRow": [
+    {
+      "rank": 28,
+      "uid": "guest:mvbrtfek-zy1qup",
+      "goals": 0,
+      "assists": 0,
+      "rounds": 0,
+      "wins": 0,
+      "ties": 0,
+      "losses": 0,
+      "games": 0,
+      "penTaken": 0,
+      "penScored": 0,
+      "penFaced": 0,
+      "penSaved": 0,
+      "ownGoals": 0,
+      "cleanSheets": 0,
+      "isGuest": true,
+      "name": "עידן אחד עשר יג"
+    }
+  ]
+}

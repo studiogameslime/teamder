@@ -16,24 +16,27 @@
 //   טבלת המחזור       GameChampionship  ← last, per the brief
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { GameChampionship } from '@/components/match/GameChampionship';
 import { TabScroll, TabSectionTitle, TabEmpty } from '@/components/match/tabs/MatchTabShell';
 import { summaryLines } from '@/utils/roundSummaryLines';
-import { teamName, teamNameAfterPreposition } from '@/components/match/rotationView';
+import { teamName } from '@/components/match/rotationView';
 import type { RoundSummary, Leader } from '@/utils/roundSummary';
 import type { Game } from '@/types';
-import { clubAccent, clubCardTint } from '@/theme/clubAccents';
+import { clubAccent } from '@/theme/clubAccents';
+import { ClubStatsSummary, ClubStatsAwards, clubStatsPalette } from '@/components/community/ClubStatsDashboard';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
-import { he, iso } from '@/i18n/he';
+import { he } from '@/i18n/he';
 
 export interface MatchStatsTabProps {
   game: Game;
   summary: RoundSummary | null;
+  /** Only a completed successful read may claim that no summary exists. */
+  readStatus?: 'loading' | 'ready' | 'error';
+  onRetry?: () => void;
   /** Resolves a uid to a display name. Empty string when unknown. */
   nameOf: (uid: string) => string;
   /** Minimal user shape for the avatars, by uid. */
@@ -60,6 +63,8 @@ export interface MatchStatsTabProps {
 export function MatchStatsTab({
   game,
   summary,
+  readStatus = 'ready',
+  onRetry,
   nameOf,
   userOf,
   hasPlayed,
@@ -81,7 +86,11 @@ export function MatchStatsTab({
   if (!summary) {
     return (
       <TabScroll bottomInset={bottomInset} header={header} stickyHeader={stickyHeader}>
-        {hasPlayed ? (
+        {game.status !== 'finished' ? (
+          <StatsPreview />
+        ) : readStatus !== 'ready' ? (
+          <SummaryReadNotice status={readStatus} onRetry={onRetry} />
+        ) : hasPlayed ? (
           <TabEmpty
             icon="document-text-outline"
             title={he.gdStatsNoCoverageTitle}
@@ -106,22 +115,20 @@ export function MatchStatsTab({
   // brief: never invent a winner to fill a slot.
   const star = (
     label: string,
-    unit: (n: number) => string,
+    unit: string,
     leader: Leader | null,
-    icon: keyof typeof Ionicons.glyphMap,
-    tint: string,
   ) => {
     if (!leader || leader.value <= 0) return null;
     const named = leader.userIds.filter((u) => nameOf(u));
     if (named.length === 0) return null;
-    return { label, unit: unit(leader.value), value: leader.value, ids: named, icon, tint };
+    return { label, unit, value: leader.value, ids: named };
   };
 
   const stars = [
-    star(he.roundSummaryKingGoals, (n) => `${n}`, summary.leaders.topScorers, 'football', clubAccent.blue),
-    star(he.roundSummaryKingAssists, (n) => `${n}`, summary.leaders.topAssisters, 'git-network', clubAccent.purple),
-    star(he.roundSummaryKingInvolvement, (n) => `${n}`, summary.leaders.topGoalInvolvement, 'flash', clubAccent.green),
-    star(he.roundSummaryKingWins, (n) => `${n}`, summary.leaders.topWinners, 'trophy', clubAccent.gold),
+    star(he.roundSummaryKingGoals, 'שערים', summary.leaders.topScorers),
+    star(he.roundSummaryKingAssists, 'בישולים', summary.leaders.topAssisters),
+    star(he.roundSummaryKingInvolvement, 'מעורבויות', summary.leaders.topGoalInvolvement),
+    star(he.roundSummaryKingWins, 'ניצחונות', summary.leaders.topWinners),
   ].filter(Boolean) as NonNullable<ReturnType<typeof star>>[];
 
   const best = (summary.teamHighlights?.best ?? [])[0] ?? null;
@@ -131,6 +138,11 @@ export function MatchStatsTab({
 
   return (
     <TabScroll bottomInset={bottomInset} header={header} stickyHeader={stickyHeader}>
+      {game.status !== 'finished' ? (
+          <StatsPreview />
+        ) : readStatus !== 'ready' ? (
+        <SummaryReadNotice status={readStatus} refreshing onRetry={onRetry} />
+      ) : null}
       {/* A link, not a banner: it leads somewhere rather than saying something,
           and the numbers below are what the tab is for. */}
       {showPersonalSummary ? (
@@ -147,46 +159,15 @@ export function MatchStatsTab({
       ) : null}
 
       <TabSectionTitle icon="grid" text={he.gdStatsNumbersTitle} />
-      <View style={styles.numbers}>
-        <NumberTile icon="football" tint={clubAccent.green} value={s.rounds} label={he.gdStatsNumGames} />
-        <NumberTile icon="grid" tint={clubAccent.blue} value={s.goals} label={he.gdStatsNumGoals} />
-        <NumberTile icon="git-network" tint={clubAccent.purple} value={s.assists} label={he.gdStatsNumAssists} />
-        <NumberTile icon="disc" tint={clubAccent.red} value={s.shootouts} label={he.gdStatsNumShootouts} />
-      </View>
+      <ClubStatsSummary games={s.rounds} goals={s.goals} assists={s.assists} shootouts={s.shootouts} />
 
-      {stars.length > 0 ? (
-        <>
-          <TabSectionTitle icon="star" text={he.gdStatsStarsTitle} tint={clubAccent.gold} />
-          <View style={styles.grid}>
-            {stars.map((st) => (
-              <View key={st.label} style={[styles.starCard, { backgroundColor: clubCardTint(st.tint) }]}>
-                <View style={styles.starHead}>
-                  <Ionicons name={st.icon} size={14} color={st.tint} />
-                  <Text style={[styles.starLabel, { color: st.tint }]} numberOfLines={1}>
-                    {st.label}
-                  </Text>
-                </View>
-                <Text style={[styles.starValue, { color: st.tint }]}>{st.unit}</Text>
-                <View style={styles.starFaces}>
-                  {st.ids.slice(0, 3).map((u) => (
-                    <UserAvatar key={u} user={userOf(u)} size={26} ring />
-                  ))}
-                </View>
-                {/* Every name in a bidi isolate, and "+2" behind a LRM.
-                    Two different jobs: the isolates stop a Hebrew name caught
-                    between two Latin ones from having its words pulled apart
-                    (reported 01.10 — "שלומי צדוק" landed on two ends of a
-                    line), and the LRM keeps the plus on the left of its digit
-                    instead of the far side of the sentence. */}
-                <Text style={styles.starNames} numberOfLines={1}>
-                  {st.ids.slice(0, 2).map((u) => iso(nameOf(u))).join(' · ')}
-                  {st.ids.length > 2 ? `\u200E +${st.ids.length - 2}` : ''}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </>
-      ) : null}
+      {stars.length > 0 ? <>
+        <TabSectionTitle icon="trophy-outline" text={he.gdStatsStarsTitle} />
+        <ClubStatsAwards leaders={stars.map(st => ({
+          title: st.label, value: st.value, unit: st.unit,
+          user: userOf(st.ids[0]), tiedUsers: st.ids.slice(1).map(userOf),
+        }))} />
+      </> : null}
 
       {best || worst ? (
         <>
@@ -194,19 +175,17 @@ export function MatchStatsTab({
           <View style={styles.grid}>
             {best ? (
               <TeamCard
-                tint={clubAccent.green}
                 icon="trophy"
                 label={he.gdTeamMostWins}
-                team={teamName(best.colourIndex)}
+                team={teamName(best.colourIndex, game.draftTeams?.teams)}
                 detail={he.gdTeamWinsUnit(best.wins)}
               />
             ) : null}
             {worst ? (
               <TeamCard
-                tint={clubAccent.red}
                 icon="trending-down"
                 label={he.gdTeamMostLosses}
-                team={teamName(worst.colourIndex)}
+                team={teamName(worst.colourIndex, game.draftTeams?.teams)}
                 detail={he.gdTeamLossesUnit(worst.losses)}
               />
             ) : null}
@@ -216,37 +195,35 @@ export function MatchStatsTab({
 
       {pair && pairNamed ? (
         <>
-          <TabSectionTitle icon="people" text={he.gdStatsPairTitle} tint={clubAccent.purple} />
-          <Card style={{ ...styles.pairCard, backgroundColor: clubCardTint(clubAccent.purple) }}>
+          <TabSectionTitle icon="people" text={he.gdStatsPairTitle} tint={clubStatsPalette.teal} />
+          <View style={styles.pairCard}>
             <View style={styles.pairRow}>
-              <UserAvatar user={userOf(pair.userIds[0])} size={38} ring />
-              <View style={styles.pairMid}>
-                <Text style={styles.pairValue}>{pair.goals}</Text>
-                <Text style={styles.pairCaption} numberOfLines={2}>
-                  {he.roundSummaryPairText(
-                    nameOf(pair.userIds[0]),
-                    nameOf(pair.userIds[1]),
-                    pair.goals,
-                  )}
-                </Text>
+              <View style={styles.pairPlayer}>
+                <UserAvatar user={userOf(pair.userIds[0])} size={72} />
+                <Text style={styles.pairName} numberOfLines={2}>{nameOf(pair.userIds[0])}</Text>
               </View>
-              <UserAvatar user={userOf(pair.userIds[1])} size={38} ring />
+              <View style={styles.pairLink}><Ionicons name="trophy-outline" size={24} color={clubStatsPalette.teal} /></View>
+              <View style={styles.pairPlayer}>
+                <UserAvatar user={userOf(pair.userIds[1])} size={72} />
+                <Text style={styles.pairName} numberOfLines={2}>{nameOf(pair.userIds[1])}</Text>
+              </View>
             </View>
-          </Card>
+            <Text style={styles.pairCaption}>{he.roundSummaryPairText(nameOf(pair.userIds[0]), nameOf(pair.userIds[1]), pair.goals)}</Text>
+          </View>
         </>
       ) : null}
 
       {lines.length > 0 ? (
         <>
-          <TabSectionTitle icon="sparkles" text={he.gdStatsEventsTitle} tint={clubAccent.gold} />
-          <Card style={styles.eventsCard}>
+          <TabSectionTitle icon="sparkles" text={he.gdStatsEventsTitle} tint={clubStatsPalette.teal} />
+          <View style={styles.eventsCard}>
             {lines.map((l, i) => (
               <View key={`${l.text}-${i}`} style={[styles.eventRow, i > 0 && styles.eventDivider]}>
                 <Text style={styles.eventIcon}>{l.icon}</Text>
                 <Text style={styles.eventText}>{l.text}</Text>
               </View>
             ))}
-          </Card>
+          </View>
         </>
       ) : null}
 
@@ -273,61 +250,95 @@ export function MatchStatsTab({
   );
 }
 
-function NumberTile({
-  icon,
-  tint,
-  value,
-  label,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  tint: string;
-  value: number;
-  label: string;
+function SummaryReadNotice({ status, refreshing = false, onRetry }: {
+  status: 'loading' | 'error';
+  refreshing?: boolean;
+  onRetry?: () => void;
 }) {
+  const loading = status === 'loading';
   return (
-    <View style={styles.numTile}>
-      <View style={[styles.numIcon, { backgroundColor: clubCardTint(tint) }]}>
-        <Ionicons name={icon} size={17} color={tint} />
-      </View>
-      <Text style={styles.numValue}>{value}</Text>
-      <Text style={styles.numLabel} numberOfLines={1}>{label}</Text>
+    <View style={styles.readNotice} testID="match-stats-read-notice" accessibilityLiveRegion="polite">
+      {loading ? <ActivityIndicator color={colors.primary} /> : (
+        <Ionicons name="cloud-offline-outline" size={25} color={colors.textMuted} />
+      )}
+      <Text style={styles.readTitle}>
+        {loading
+          ? refreshing ? 'מעדכנים את נתוני המחזור…' : 'טוענים את נתוני המחזור…'
+          : refreshing ? 'לא הצלחנו לעדכן את נתוני המחזור' : 'לא הצלחנו לטעון את נתוני המחזור'}
+      </Text>
+      {!loading ? <>
+        <Text style={styles.readBody}>
+          {refreshing ? 'הנתונים שכבר נטענו נשארו מוצגים.' : 'בדקו את החיבור ונסו שוב.'}
+        </Text>
+        {onRetry ? <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="ניסיון חוזר"
+          testID="match-stats-retry"
+          onPress={onRetry}
+          style={styles.retry}
+        ><Text style={styles.retryText}>ניסיון חוזר</Text></Pressable> : null}
+      </> : null}
     </View>
   );
 }
 
+/** A preview of the sections, never fabricated results or player rankings. */
+function StatsPreview() {
+  return <View style={{gap:spacing.md}}>
+    <View style={[styles.readNotice,{backgroundColor:'#EFF5FF',gap:8}]}>
+      <Ionicons name="stats-chart-outline" size={28} color={colors.primary} />
+      <Text style={[styles.readBody,{color:colors.primary,fontWeight:'700'}]}>תצוגה מקדימה</Text>
+      <Text style={styles.readTitle}>הסטטיסטיקה תופיע בסיום המחזור</Text>
+      <Text style={styles.readBody}>אחרי סיום המחזור נציג כאן את התוצאות והביצועים של השחקנים.</Text>
+    </View>
+    <TabSectionTitle icon="grid" text={he.gdStatsNumbersTitle} />
+    <ClubStatsSummary games="—" goals="—" assists="—" shootouts="—" />
+    <TabSectionTitle icon="trophy-outline" text={he.gdStatsStarsTitle} />
+    <ClubStatsAwards leaders={[
+      { title: he.roundSummaryKingGoals, value: '—', unit: 'שערים' },
+      { title: he.roundSummaryKingAssists, value: '—', unit: 'בישולים' },
+      { title: he.roundSummaryKingInvolvement, value: '—', unit: 'מעורבויות' },
+      { title: he.roundSummaryKingWins, value: '—', unit: 'ניצחונות' },
+    ]} />
+  </View>;
+}
+
 function TeamCard({
-  tint,
   icon,
   label,
   team,
   detail,
 }: {
-  tint: string;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   team: string;
   detail: string;
 }) {
   return (
-    <View style={[styles.teamCard, { backgroundColor: clubCardTint(tint) }]}>
+    <View style={styles.teamCard}>
       <View style={styles.starHead}>
-        <Ionicons name={icon} size={14} color={tint} />
-        <Text style={[styles.starLabel, { color: tint }]} numberOfLines={1}>{label}</Text>
+        <Ionicons name={icon} size={14} color={clubStatsPalette.teal} />
+        <Text style={styles.starLabel} numberOfLines={1}>{label}</Text>
       </View>
-      <Text style={[styles.teamName, { color: tint }]} numberOfLines={1}>{team}</Text>
+      <Text style={styles.teamName} numberOfLines={1}>{team}</Text>
       <Text style={styles.teamDetail} numberOfLines={1}>{detail}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  readNotice: { alignItems: 'center', gap: spacing.sm, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: colors.surface },
+  readTitle: { ...typography.bodyBold, color: colors.text, textAlign: 'center' },
+  readBody: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
+  retry: { minHeight: 48, minWidth: 140, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.md, borderRadius: radius.lg, backgroundColor: colors.primary },
+  retryText: { ...typography.bodyBold, color: '#FFFFFF' },
   personal: {
     // `row` → first child rightmost under forceRTL: bolt, label, then the
     // chevron closing the row on the left, pointing the way it navigates.
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: clubCardTint(clubAccent.blue),
+    backgroundColor: '#EFF5FF',
     borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
     height: 48,
@@ -339,53 +350,19 @@ const styles = StyleSheet.create({
     color: clubAccent.blue,
     textAlign: RTL_LABEL_ALIGN,
   },
-  numbers: { flexDirection: 'row', gap: spacing.sm },
-  numTile: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: 4,
-    shadowColor: '#1E293B',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  numIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  numValue: { fontSize: 20, fontWeight: '800', color: colors.text },
-  numLabel: { ...typography.caption, fontSize: 11, color: colors.textMuted },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  starCard: {
-    // Two per row, with the gap taken out of the half.
-    width: '48.5%',
-    flexGrow: 1,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: 6,
-  },
-  starHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  starLabel: { ...typography.caption, fontSize: 12, fontWeight: '800', flexShrink: 1, textAlign: RTL_LABEL_ALIGN },
-  starValue: { fontSize: 22, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
-  starFaces: { flexDirection: 'row', gap: 4 },
-  starNames: { ...typography.caption, fontSize: 11, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
-  teamCard: { width: '48.5%', flexGrow: 1, borderRadius: radius.lg, padding: spacing.md, gap: 6 },
-  teamName: { fontSize: 17, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
-  teamDetail: { ...typography.caption, fontSize: 12, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
-  pairCard: { padding: spacing.md },
+  grid: { gap: spacing.sm },
+  starHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  starLabel: { fontSize: 12, color: clubStatsPalette.muted, textAlign: RTL_LABEL_ALIGN },
+  teamCard: { borderWidth: 1, borderColor: clubStatsPalette.border, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, gap: 6 },
+  teamName: { fontSize: 17, fontWeight: '800', color: clubStatsPalette.ink, textAlign: RTL_LABEL_ALIGN },
+  teamDetail: { fontSize: 12, color: clubStatsPalette.muted, textAlign: RTL_LABEL_ALIGN },
+  pairCard: { padding: spacing.md, borderWidth: 1, borderColor: clubStatsPalette.border, borderRadius: 12, backgroundColor: '#FFFFFF' },
   pairRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  pairMid: { flex: 1, alignItems: 'center', gap: 2 },
-  pairValue: { fontSize: 22, fontWeight: '800', color: clubAccent.purple },
-  pairCaption: { ...typography.caption, fontSize: 11, color: colors.textMuted, textAlign: 'center' },
-  eventsCard: { padding: 0, overflow: 'hidden', borderRadius: radius.lg },
+  pairPlayer: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6 },
+  pairName: { color: clubStatsPalette.ink, fontWeight: '800', fontSize: 14, textAlign: 'center', alignSelf: 'stretch' },
+  pairLink: { width: 44, height: 72, alignItems: 'center', justifyContent: 'center' },
+  pairCaption: { fontSize: 14, fontWeight: '600', color: clubStatsPalette.ink, textAlign: 'center', borderTopWidth: 1, borderTopColor: '#EAF0F5', paddingTop: 9, marginTop: 12 },
+  eventsCard: { backgroundColor: '#FFFFFF', padding: 0, overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: clubStatsPalette.border },
   eventRow: {
     flexDirection: 'row',
     alignItems: 'center',

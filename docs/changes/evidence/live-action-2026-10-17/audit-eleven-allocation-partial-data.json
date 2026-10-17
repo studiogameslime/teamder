@@ -1,0 +1,3405 @@
+{
+  "generatedAtUtc": "2026-10-17T03:07:28.374376+00:00",
+  "scope": "קבצים מקומיים בלבד; ללא רשת, ממשק או כתיבת מוצר",
+  "readyForRelease": false,
+  "phase": "roster",
+  "gameId": "mBO5HqJdnOPWjRE2zMh8",
+  "groupId": "J060YQu6QTcgk3glUDj2",
+  "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+  "latestSource": "data-eleven-time-confirm-check.json",
+  "counts": {
+    "passed": 43,
+    "unproven": 5
+  },
+  "configuration": {
+    "format": "11v11",
+    "numberOfTeams": 3,
+    "maxPlayers": 33,
+    "matchDurationMinutes": 8,
+    "visibility": "community",
+    "advancedMode": true,
+    "advancedFillMode": "permanent",
+    "advancedTieMode": "bothOut",
+    "startsAt": 1792267200000
+  },
+  "registeredRoster": [
+    {
+      "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "name": "בדיקות לייב",
+      "kind": "חשבון"
+    },
+    {
+      "id": "guest:mvbrlplt-nn6m4j",
+      "name": "דניאל אחד עשר א",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrqq3y-aa1f5c",
+      "name": "איתי אחד עשר ב",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrr03x-76x6ci",
+      "name": "תומר אחד עשר ג",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrr9y8-hdrkws",
+      "name": "אורי אחד עשר ד",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrrjqx-3w9zua",
+      "name": "אלין אחד עשר ה",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrrthu-bvepbd",
+      "name": "בן אחד עשר ו",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrs3c0-cpau3c",
+      "name": "רון אחד עשר ז",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrsdd9-pnwz91",
+      "name": "ליאור אחד עשר ח",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrsn40-1h3mgk",
+      "name": "נועם אחד עשר ט",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrsu7l-3vqv6g",
+      "name": "גל אחד עשר י",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrt19w-8moc7a",
+      "name": "רועי אחד עשר יא",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrt87d-qicwa1",
+      "name": "אסף אחד עשר יב",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrtfek-zy1qup",
+      "name": "עידן אחד עשר יג",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrtmfs-egnzku",
+      "name": "נדב אחד עשר יד",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrttf7-8zcgh1",
+      "name": "יוסי אחד עשר טו",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbru1fk-izwwd0",
+      "name": "משה אחד עשר טז",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbru8hr-v8qtre",
+      "name": "לירן אחד עשר יז",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrufkc-apouh0",
+      "name": "עמית אחד עשר יח",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrun38-ihk3va",
+      "name": "עומר אחד עשר יט",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbruugj-4rhbli",
+      "name": "אלכסנדר אחד עשר כ",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrv1ua-a8fw8t",
+      "name": "אביב אחד עשר כא",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrv8vy-bkeqrl",
+      "name": "אופק אחד עשר כב",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrvg8q-a3l7tc",
+      "name": "אדם אחד עשר כג",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrvne9-0pc4lu",
+      "name": "אייל אחד עשר כד",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrvuew-fwzknb",
+      "name": "ברק אחד עשר כה",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrw1ea-3kwy60",
+      "name": "גיא אחד עשר כו",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrw8ps-a5aqlc",
+      "name": "דוד אחד עשר כז",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrwfqk-rmhfw6",
+      "name": "חיים אחד עשר כח",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrwmt7-ocott0",
+      "name": "טל אחד עשר כט",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrwtux-c4hh1c",
+      "name": "יובל אחד עשר ל",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrx0y1-91p8cl",
+      "name": "מאור אחד עשר לא",
+      "kind": "אורח"
+    },
+    {
+      "id": "guest:mvbrx7w0-fqxe6b",
+      "name": "אלכסנדר הארוך עשר לב",
+      "kind": "אורח"
+    }
+  ],
+  "canonicalIdentityResult": {
+    "guestIds": [
+      "guest:mvbrlplt-nn6m4j",
+      "guest:mvbrqq3y-aa1f5c",
+      "guest:mvbrr03x-76x6ci",
+      "guest:mvbrr9y8-hdrkws",
+      "guest:mvbrrjqx-3w9zua",
+      "guest:mvbrrthu-bvepbd",
+      "guest:mvbrs3c0-cpau3c",
+      "guest:mvbrsdd9-pnwz91",
+      "guest:mvbrsn40-1h3mgk",
+      "guest:mvbrsu7l-3vqv6g",
+      "guest:mvbrt19w-8moc7a",
+      "guest:mvbrt87d-qicwa1",
+      "guest:mvbrtfek-zy1qup",
+      "guest:mvbrtmfs-egnzku",
+      "guest:mvbrttf7-8zcgh1",
+      "guest:mvbru1fk-izwwd0",
+      "guest:mvbru8hr-v8qtre",
+      "guest:mvbrufkc-apouh0",
+      "guest:mvbrun38-ihk3va",
+      "guest:mvbruugj-4rhbli",
+      "guest:mvbrv1ua-a8fw8t",
+      "guest:mvbrv8vy-bkeqrl",
+      "guest:mvbrvg8q-a3l7tc",
+      "guest:mvbrvne9-0pc4lu",
+      "guest:mvbrvuew-fwzknb",
+      "guest:mvbrw1ea-3kwy60",
+      "guest:mvbrw8ps-a5aqlc",
+      "guest:mvbrwfqk-rmhfw6",
+      "guest:mvbrwmt7-ocott0",
+      "guest:mvbrwtux-c4hh1c",
+      "guest:mvbrx0y1-91p8cl",
+      "guest:mvbrx7w0-fqxe6b"
+    ],
+    "rawIds": [
+      "mvbrlplt-nn6m4j",
+      "mvbrqq3y-aa1f5c",
+      "mvbrr03x-76x6ci",
+      "mvbrr9y8-hdrkws",
+      "mvbrrjqx-3w9zua",
+      "mvbrrthu-bvepbd",
+      "mvbrs3c0-cpau3c",
+      "mvbrsdd9-pnwz91",
+      "mvbrsn40-1h3mgk",
+      "mvbrsu7l-3vqv6g",
+      "mvbrt19w-8moc7a",
+      "mvbrt87d-qicwa1",
+      "mvbrtfek-zy1qup",
+      "mvbrtmfs-egnzku",
+      "mvbrttf7-8zcgh1",
+      "mvbru1fk-izwwd0",
+      "mvbru8hr-v8qtre",
+      "mvbrufkc-apouh0",
+      "mvbrun38-ihk3va",
+      "mvbruugj-4rhbli",
+      "mvbrv1ua-a8fw8t",
+      "mvbrv8vy-bkeqrl",
+      "mvbrvg8q-a3l7tc",
+      "mvbrvne9-0pc4lu",
+      "mvbrvuew-fwzknb",
+      "mvbrw1ea-3kwy60",
+      "mvbrw8ps-a5aqlc",
+      "mvbrwfqk-rmhfw6",
+      "mvbrwmt7-ocott0",
+      "mvbrwtux-c4hh1c",
+      "mvbrx0y1-91p8cl",
+      "mvbrx7w0-fqxe6b"
+    ],
+    "activeGuestCount": 32,
+    "members": [
+      {
+        "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "isGuest": false,
+        "parsedGuestId": null
+      }
+    ],
+    "effectiveFillMode": "permanent"
+  },
+  "allocations": [
+    {
+      "source": "data-eleven-manual-saved.json",
+      "createdAt": 1792204877111,
+      "method": "regular",
+      "published": false,
+      "teams": [
+        {
+          "index": 0,
+          "captainId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "playerIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvbrlplt-nn6m4j",
+            "guest:mvbrqq3y-aa1f5c",
+            "guest:mvbrr03x-76x6ci",
+            "guest:mvbrr9y8-hdrkws",
+            "guest:mvbrrjqx-3w9zua",
+            "guest:mvbrrthu-bvepbd",
+            "guest:mvbrs3c0-cpau3c",
+            "guest:mvbrsdd9-pnwz91",
+            "guest:mvbrsn40-1h3mgk",
+            "guest:mvbrsu7l-3vqv6g"
+          ]
+        },
+        {
+          "index": 1,
+          "captainId": "guest:mvbrt19w-8moc7a",
+          "playerIds": [
+            "guest:mvbrt19w-8moc7a",
+            "guest:mvbrt87d-qicwa1",
+            "guest:mvbrtfek-zy1qup",
+            "guest:mvbrtmfs-egnzku",
+            "guest:mvbrttf7-8zcgh1",
+            "guest:mvbru1fk-izwwd0",
+            "guest:mvbru8hr-v8qtre",
+            "guest:mvbrufkc-apouh0",
+            "guest:mvbrun38-ihk3va",
+            "guest:mvbruugj-4rhbli",
+            "guest:mvbrv1ua-a8fw8t"
+          ]
+        },
+        {
+          "index": 2,
+          "captainId": "guest:mvbrv8vy-bkeqrl",
+          "playerIds": [
+            "guest:mvbrv8vy-bkeqrl",
+            "guest:mvbrvg8q-a3l7tc",
+            "guest:mvbrvne9-0pc4lu",
+            "guest:mvbrvuew-fwzknb",
+            "guest:mvbrw1ea-3kwy60",
+            "guest:mvbrw8ps-a5aqlc",
+            "guest:mvbrwfqk-rmhfw6",
+            "guest:mvbrwmt7-ocott0",
+            "guest:mvbrwtux-c4hh1c",
+            "guest:mvbrx0y1-91p8cl",
+            "guest:mvbrx7w0-fqxe6b"
+          ]
+        }
+      ]
+    },
+    {
+      "source": "data-eleven-regenerated.json",
+      "createdAt": 1792204996256,
+      "method": "snake",
+      "published": false,
+      "teams": [
+        {
+          "index": 0,
+          "captainId": "guest:mvbrlplt-nn6m4j",
+          "playerIds": [
+            "guest:mvbrlplt-nn6m4j",
+            "guest:mvbrx7w0-fqxe6b",
+            "guest:mvbrrthu-bvepbd",
+            "guest:mvbrt87d-qicwa1",
+            "guest:mvbrufkc-apouh0",
+            "guest:mvbrvuew-fwzknb",
+            "guest:mvbrvne9-0pc4lu",
+            "guest:mvbrs3c0-cpau3c",
+            "guest:mvbrv8vy-bkeqrl",
+            "guest:mvbrsn40-1h3mgk",
+            "guest:mvbrqq3y-aa1f5c"
+          ]
+        },
+        {
+          "index": 1,
+          "captainId": "guest:mvbrr9y8-hdrkws",
+          "playerIds": [
+            "guest:mvbrr9y8-hdrkws",
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvbrsdd9-pnwz91",
+            "guest:mvbrvg8q-a3l7tc",
+            "guest:mvbrtmfs-egnzku",
+            "guest:mvbru8hr-v8qtre",
+            "guest:mvbrx0y1-91p8cl",
+            "guest:mvbrwfqk-rmhfw6",
+            "guest:mvbrw8ps-a5aqlc",
+            "guest:mvbru1fk-izwwd0",
+            "guest:mvbrv1ua-a8fw8t"
+          ]
+        },
+        {
+          "index": 2,
+          "captainId": "guest:mvbruugj-4rhbli",
+          "playerIds": [
+            "guest:mvbruugj-4rhbli",
+            "guest:mvbrw1ea-3kwy60",
+            "guest:mvbrrjqx-3w9zua",
+            "guest:mvbrwmt7-ocott0",
+            "guest:mvbrsu7l-3vqv6g",
+            "guest:mvbrr03x-76x6ci",
+            "guest:mvbrt19w-8moc7a",
+            "guest:mvbrttf7-8zcgh1",
+            "guest:mvbrtfek-zy1qup",
+            "guest:mvbrun38-ihk3va",
+            "guest:mvbrwtux-c4hh1c"
+          ]
+        }
+      ]
+    },
+    {
+      "source": "data-eleven-regenerated-traced.json",
+      "createdAt": 1792205344866,
+      "method": "snake",
+      "published": false,
+      "teams": [
+        {
+          "index": 0,
+          "captainId": "guest:mvbru8hr-v8qtre",
+          "playerIds": [
+            "guest:mvbru8hr-v8qtre",
+            "guest:mvbrtmfs-egnzku",
+            "guest:mvbrs3c0-cpau3c",
+            "guest:mvbrr03x-76x6ci",
+            "guest:mvbrun38-ihk3va",
+            "guest:mvbrrjqx-3w9zua",
+            "guest:mvbrsu7l-3vqv6g",
+            "guest:mvbrt19w-8moc7a",
+            "guest:mvbrx0y1-91p8cl",
+            "guest:mvbru1fk-izwwd0",
+            "guest:mvbrv1ua-a8fw8t"
+          ]
+        },
+        {
+          "index": 1,
+          "captainId": "guest:mvbrw1ea-3kwy60",
+          "playerIds": [
+            "guest:mvbrw1ea-3kwy60",
+            "guest:mvbrtfek-zy1qup",
+            "guest:mvbrttf7-8zcgh1",
+            "guest:mvbrufkc-apouh0",
+            "guest:mvbrvuew-fwzknb",
+            "guest:mvbrv8vy-bkeqrl",
+            "guest:mvbrr9y8-hdrkws",
+            "guest:mvbruugj-4rhbli",
+            "guest:mvbrrthu-bvepbd",
+            "guest:mvbrvne9-0pc4lu",
+            "guest:mvbrx7w0-fqxe6b"
+          ]
+        },
+        {
+          "index": 2,
+          "captainId": "guest:mvbrsn40-1h3mgk",
+          "playerIds": [
+            "guest:mvbrsn40-1h3mgk",
+            "guest:mvbrwmt7-ocott0",
+            "guest:mvbrlplt-nn6m4j",
+            "guest:mvbrt87d-qicwa1",
+            "guest:mvbrqq3y-aa1f5c",
+            "guest:mvbrwtux-c4hh1c",
+            "guest:mvbrwfqk-rmhfw6",
+            "guest:mvbrvg8q-a3l7tc",
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvbrw8ps-a5aqlc",
+            "guest:mvbrsdd9-pnwz91"
+          ]
+        }
+      ]
+    },
+    {
+      "source": "data-eleven-regenerated-stream.json",
+      "createdAt": 1792206143482,
+      "method": "snake",
+      "published": false,
+      "teams": [
+        {
+          "index": 0,
+          "captainId": "guest:mvbrtfek-zy1qup",
+          "playerIds": [
+            "guest:mvbrtfek-zy1qup",
+            "guest:mvbruugj-4rhbli",
+            "guest:mvbrsn40-1h3mgk",
+            "guest:mvbrsu7l-3vqv6g",
+            "guest:mvbrt87d-qicwa1",
+            "guest:mvbrtmfs-egnzku",
+            "guest:mvbrrthu-bvepbd",
+            "guest:mvbru1fk-izwwd0",
+            "guest:mvbrx7w0-fqxe6b",
+            "guest:mvbrw8ps-a5aqlc",
+            "guest:mvbrrjqx-3w9zua"
+          ]
+        },
+        {
+          "index": 1,
+          "captainId": "guest:mvbrv8vy-bkeqrl",
+          "playerIds": [
+            "guest:mvbrv8vy-bkeqrl",
+            "guest:mvbrufkc-apouh0",
+            "guest:mvbrx0y1-91p8cl",
+            "guest:mvbrvuew-fwzknb",
+            "guest:mvbrwmt7-ocott0",
+            "guest:mvbrr03x-76x6ci",
+            "guest:mvbrr9y8-hdrkws",
+            "guest:mvbrvne9-0pc4lu",
+            "guest:mvbrwfqk-rmhfw6",
+            "guest:mvbru8hr-v8qtre",
+            "guest:mvbrqq3y-aa1f5c"
+          ]
+        },
+        {
+          "index": 2,
+          "captainId": "guest:mvbrs3c0-cpau3c",
+          "playerIds": [
+            "guest:mvbrs3c0-cpau3c",
+            "guest:mvbrlplt-nn6m4j",
+            "guest:mvbrv1ua-a8fw8t",
+            "guest:mvbrt19w-8moc7a",
+            "guest:mvbrttf7-8zcgh1",
+            "guest:mvbrun38-ihk3va",
+            "guest:mvbrw1ea-3kwy60",
+            "guest:mvbrwtux-c4hh1c",
+            "guest:mvbrsdd9-pnwz91",
+            "guest:mvbrvg8q-a3l7tc",
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ]
+        }
+      ]
+    },
+    {
+      "source": "data-eleven-published-time-ready.json",
+      "createdAt": 1792206143482,
+      "method": "snake",
+      "published": true,
+      "teams": [
+        {
+          "index": 0,
+          "captainId": "guest:mvbrtfek-zy1qup",
+          "playerIds": [
+            "guest:mvbrtfek-zy1qup",
+            "guest:mvbruugj-4rhbli",
+            "guest:mvbrsn40-1h3mgk",
+            "guest:mvbrsu7l-3vqv6g",
+            "guest:mvbrt87d-qicwa1",
+            "guest:mvbrtmfs-egnzku",
+            "guest:mvbrrthu-bvepbd",
+            "guest:mvbru1fk-izwwd0",
+            "guest:mvbrx7w0-fqxe6b",
+            "guest:mvbrw8ps-a5aqlc",
+            "guest:mvbrrjqx-3w9zua"
+          ]
+        },
+        {
+          "index": 1,
+          "captainId": "guest:mvbrv8vy-bkeqrl",
+          "playerIds": [
+            "guest:mvbrv8vy-bkeqrl",
+            "guest:mvbrufkc-apouh0",
+            "guest:mvbrx0y1-91p8cl",
+            "guest:mvbrvuew-fwzknb",
+            "guest:mvbrwmt7-ocott0",
+            "guest:mvbrr03x-76x6ci",
+            "guest:mvbrr9y8-hdrkws",
+            "guest:mvbrvne9-0pc4lu",
+            "guest:mvbrwfqk-rmhfw6",
+            "guest:mvbru8hr-v8qtre",
+            "guest:mvbrqq3y-aa1f5c"
+          ]
+        },
+        {
+          "index": 2,
+          "captainId": "guest:mvbrs3c0-cpau3c",
+          "playerIds": [
+            "guest:mvbrs3c0-cpau3c",
+            "guest:mvbrlplt-nn6m4j",
+            "guest:mvbrv1ua-a8fw8t",
+            "guest:mvbrt19w-8moc7a",
+            "guest:mvbrttf7-8zcgh1",
+            "guest:mvbrun38-ihk3va",
+            "guest:mvbrw1ea-3kwy60",
+            "guest:mvbrwtux-c4hh1c",
+            "guest:mvbrsdd9-pnwz91",
+            "guest:mvbrvg8q-a3l7tc",
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ]
+        }
+      ]
+    },
+    {
+      "source": "data-eleven-time-confirm-check.json",
+      "createdAt": 1792206143482,
+      "method": "snake",
+      "published": true,
+      "teams": [
+        {
+          "index": 0,
+          "captainId": "guest:mvbrtfek-zy1qup",
+          "playerIds": [
+            "guest:mvbrtfek-zy1qup",
+            "guest:mvbruugj-4rhbli",
+            "guest:mvbrsn40-1h3mgk",
+            "guest:mvbrsu7l-3vqv6g",
+            "guest:mvbrt87d-qicwa1",
+            "guest:mvbrtmfs-egnzku",
+            "guest:mvbrrthu-bvepbd",
+            "guest:mvbru1fk-izwwd0",
+            "guest:mvbrx7w0-fqxe6b",
+            "guest:mvbrw8ps-a5aqlc",
+            "guest:mvbrrjqx-3w9zua"
+          ]
+        },
+        {
+          "index": 1,
+          "captainId": "guest:mvbrv8vy-bkeqrl",
+          "playerIds": [
+            "guest:mvbrv8vy-bkeqrl",
+            "guest:mvbrufkc-apouh0",
+            "guest:mvbrx0y1-91p8cl",
+            "guest:mvbrvuew-fwzknb",
+            "guest:mvbrwmt7-ocott0",
+            "guest:mvbrr03x-76x6ci",
+            "guest:mvbrr9y8-hdrkws",
+            "guest:mvbrvne9-0pc4lu",
+            "guest:mvbrwfqk-rmhfw6",
+            "guest:mvbru8hr-v8qtre",
+            "guest:mvbrqq3y-aa1f5c"
+          ]
+        },
+        {
+          "index": 2,
+          "captainId": "guest:mvbrs3c0-cpau3c",
+          "playerIds": [
+            "guest:mvbrs3c0-cpau3c",
+            "guest:mvbrlplt-nn6m4j",
+            "guest:mvbrv1ua-a8fw8t",
+            "guest:mvbrt19w-8moc7a",
+            "guest:mvbrttf7-8zcgh1",
+            "guest:mvbrun38-ihk3va",
+            "guest:mvbrw1ea-3kwy60",
+            "guest:mvbrwtux-c4hh1c",
+            "guest:mvbrsdd9-pnwz91",
+            "guest:mvbrvg8q-a3l7tc",
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ]
+        }
+      ]
+    }
+  ],
+  "manualLocalProof": {
+    "gameId": "mBO5HqJdnOPWjRE2zMh8",
+    "ownerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "value": {
+      "teams": [
+        [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvbrlplt-nn6m4j",
+          "guest:mvbrqq3y-aa1f5c",
+          "guest:mvbrr03x-76x6ci",
+          "guest:mvbrr9y8-hdrkws",
+          "guest:mvbrrjqx-3w9zua",
+          "guest:mvbrrthu-bvepbd",
+          "guest:mvbrs3c0-cpau3c",
+          "guest:mvbrsdd9-pnwz91",
+          "guest:mvbrsn40-1h3mgk",
+          "guest:mvbrsu7l-3vqv6g"
+        ],
+        [
+          "guest:mvbrt19w-8moc7a",
+          "guest:mvbrt87d-qicwa1",
+          "guest:mvbrtfek-zy1qup",
+          "guest:mvbrtmfs-egnzku",
+          "guest:mvbrttf7-8zcgh1",
+          "guest:mvbru1fk-izwwd0",
+          "guest:mvbru8hr-v8qtre",
+          "guest:mvbrufkc-apouh0",
+          "guest:mvbrun38-ihk3va",
+          "guest:mvbruugj-4rhbli",
+          "guest:mvbrv1ua-a8fw8t"
+        ],
+        []
+      ],
+      "baseDraftRevision": ""
+    },
+    "counts": [
+      11,
+      11,
+      0
+    ],
+    "decodedLayers": 2,
+    "canonicalResult": {
+      "revision": "",
+      "resumable": true,
+      "restoredTeams": [
+        [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvbrlplt-nn6m4j",
+          "guest:mvbrqq3y-aa1f5c",
+          "guest:mvbrr03x-76x6ci",
+          "guest:mvbrr9y8-hdrkws",
+          "guest:mvbrrjqx-3w9zua",
+          "guest:mvbrrthu-bvepbd",
+          "guest:mvbrs3c0-cpau3c",
+          "guest:mvbrsdd9-pnwz91",
+          "guest:mvbrsn40-1h3mgk",
+          "guest:mvbrsu7l-3vqv6g"
+        ],
+        [
+          "guest:mvbrt19w-8moc7a",
+          "guest:mvbrt87d-qicwa1",
+          "guest:mvbrtfek-zy1qup",
+          "guest:mvbrtmfs-egnzku",
+          "guest:mvbrttf7-8zcgh1",
+          "guest:mvbru1fk-izwwd0",
+          "guest:mvbru8hr-v8qtre",
+          "guest:mvbrufkc-apouh0",
+          "guest:mvbrun38-ihk3va",
+          "guest:mvbruugj-4rhbli",
+          "guest:mvbrv1ua-a8fw8t"
+        ],
+        []
+      ]
+    },
+    "unassignedIds": [
+      "guest:mvbrv8vy-bkeqrl",
+      "guest:mvbrvg8q-a3l7tc",
+      "guest:mvbrvne9-0pc4lu",
+      "guest:mvbrvuew-fwzknb",
+      "guest:mvbrw1ea-3kwy60",
+      "guest:mvbrw8ps-a5aqlc",
+      "guest:mvbrwfqk-rmhfw6",
+      "guest:mvbrwmt7-ocott0",
+      "guest:mvbrwtux-c4hh1c",
+      "guest:mvbrx0y1-91p8cl",
+      "guest:mvbrx7w0-fqxe6b"
+    ]
+  },
+  "nativeDraftProof": {
+    "gameId": "mBO5HqJdnOPWjRE2zMh8",
+    "draftCreatedAt": 1792206143482,
+    "dataSource": "data-eleven-regenerated-stream.json",
+    "nativeSource": "eleven-regenerate-stream-ui-proof.xml",
+    "checksPassed": 10,
+    "checks": [
+      {
+        "id": "native-full-roster",
+        "passed": true,
+        "expected": 33,
+        "observed": 33
+      },
+      {
+        "id": "native-team-members-0",
+        "passed": true,
+        "expected": [
+          "guest:mvbrtfek-zy1qup",
+          "guest:mvbruugj-4rhbli",
+          "guest:mvbrsn40-1h3mgk",
+          "guest:mvbrsu7l-3vqv6g",
+          "guest:mvbrt87d-qicwa1",
+          "guest:mvbrtmfs-egnzku",
+          "guest:mvbrrthu-bvepbd",
+          "guest:mvbru1fk-izwwd0",
+          "guest:mvbrx7w0-fqxe6b",
+          "guest:mvbrw8ps-a5aqlc",
+          "guest:mvbrrjqx-3w9zua"
+        ],
+        "observed": [
+          "guest:mvbrtmfs-egnzku",
+          "guest:mvbrt87d-qicwa1",
+          "guest:mvbrsu7l-3vqv6g",
+          "guest:mvbrsn40-1h3mgk",
+          "guest:mvbruugj-4rhbli",
+          "guest:mvbrtfek-zy1qup",
+          "guest:mvbrrjqx-3w9zua",
+          "guest:mvbrw8ps-a5aqlc",
+          "guest:mvbrx7w0-fqxe6b",
+          "guest:mvbru1fk-izwwd0",
+          "guest:mvbrrthu-bvepbd"
+        ]
+      },
+      {
+        "id": "native-physical-source-order-0",
+        "passed": true,
+        "expected": [
+          "guest:mvbrtfek-zy1qup",
+          "guest:mvbruugj-4rhbli",
+          "guest:mvbrsn40-1h3mgk",
+          "guest:mvbrsu7l-3vqv6g",
+          "guest:mvbrt87d-qicwa1",
+          "guest:mvbrtmfs-egnzku",
+          "guest:mvbrrthu-bvepbd",
+          "guest:mvbru1fk-izwwd0",
+          "guest:mvbrx7w0-fqxe6b",
+          "guest:mvbrw8ps-a5aqlc",
+          "guest:mvbrrjqx-3w9zua"
+        ],
+        "observed": [
+          "guest:mvbrtfek-zy1qup",
+          "guest:mvbruugj-4rhbli",
+          "guest:mvbrsn40-1h3mgk",
+          "guest:mvbrsu7l-3vqv6g",
+          "guest:mvbrt87d-qicwa1",
+          "guest:mvbrtmfs-egnzku",
+          "guest:mvbrrthu-bvepbd",
+          "guest:mvbru1fk-izwwd0",
+          "guest:mvbrx7w0-fqxe6b",
+          "guest:mvbrw8ps-a5aqlc",
+          "guest:mvbrrjqx-3w9zua"
+        ]
+      },
+      {
+        "id": "native-captain-0",
+        "passed": true,
+        "expected": "guest:mvbrtfek-zy1qup",
+        "observed": "guest:mvbrtfek-zy1qup"
+      },
+      {
+        "id": "native-team-members-1",
+        "passed": true,
+        "expected": [
+          "guest:mvbrv8vy-bkeqrl",
+          "guest:mvbrufkc-apouh0",
+          "guest:mvbrx0y1-91p8cl",
+          "guest:mvbrvuew-fwzknb",
+          "guest:mvbrwmt7-ocott0",
+          "guest:mvbrr03x-76x6ci",
+          "guest:mvbrr9y8-hdrkws",
+          "guest:mvbrvne9-0pc4lu",
+          "guest:mvbrwfqk-rmhfw6",
+          "guest:mvbru8hr-v8qtre",
+          "guest:mvbrqq3y-aa1f5c"
+        ],
+        "observed": [
+          "guest:mvbrr03x-76x6ci",
+          "guest:mvbrwmt7-ocott0",
+          "guest:mvbrvuew-fwzknb",
+          "guest:mvbrx0y1-91p8cl",
+          "guest:mvbrufkc-apouh0",
+          "guest:mvbrv8vy-bkeqrl",
+          "guest:mvbrqq3y-aa1f5c",
+          "guest:mvbru8hr-v8qtre",
+          "guest:mvbrwfqk-rmhfw6",
+          "guest:mvbrvne9-0pc4lu",
+          "guest:mvbrr9y8-hdrkws"
+        ]
+      },
+      {
+        "id": "native-physical-source-order-1",
+        "passed": true,
+        "expected": [
+          "guest:mvbrv8vy-bkeqrl",
+          "guest:mvbrufkc-apouh0",
+          "guest:mvbrx0y1-91p8cl",
+          "guest:mvbrvuew-fwzknb",
+          "guest:mvbrwmt7-ocott0",
+          "guest:mvbrr03x-76x6ci",
+          "guest:mvbrr9y8-hdrkws",
+          "guest:mvbrvne9-0pc4lu",
+          "guest:mvbrwfqk-rmhfw6",
+          "guest:mvbru8hr-v8qtre",
+          "guest:mvbrqq3y-aa1f5c"
+        ],
+        "observed": [
+          "guest:mvbrv8vy-bkeqrl",
+          "guest:mvbrufkc-apouh0",
+          "guest:mvbrx0y1-91p8cl",
+          "guest:mvbrvuew-fwzknb",
+          "guest:mvbrwmt7-ocott0",
+          "guest:mvbrr03x-76x6ci",
+          "guest:mvbrr9y8-hdrkws",
+          "guest:mvbrvne9-0pc4lu",
+          "guest:mvbrwfqk-rmhfw6",
+          "guest:mvbru8hr-v8qtre",
+          "guest:mvbrqq3y-aa1f5c"
+        ]
+      },
+      {
+        "id": "native-captain-1",
+        "passed": true,
+        "expected": "guest:mvbrv8vy-bkeqrl",
+        "observed": "guest:mvbrv8vy-bkeqrl"
+      },
+      {
+        "id": "native-team-members-2",
+        "passed": true,
+        "expected": [
+          "guest:mvbrs3c0-cpau3c",
+          "guest:mvbrlplt-nn6m4j",
+          "guest:mvbrv1ua-a8fw8t",
+          "guest:mvbrt19w-8moc7a",
+          "guest:mvbrttf7-8zcgh1",
+          "guest:mvbrun38-ihk3va",
+          "guest:mvbrw1ea-3kwy60",
+          "guest:mvbrwtux-c4hh1c",
+          "guest:mvbrsdd9-pnwz91",
+          "guest:mvbrvg8q-a3l7tc",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "observed": [
+          "guest:mvbrun38-ihk3va",
+          "guest:mvbrttf7-8zcgh1",
+          "guest:mvbrt19w-8moc7a",
+          "guest:mvbrv1ua-a8fw8t",
+          "guest:mvbrlplt-nn6m4j",
+          "guest:mvbrs3c0-cpau3c",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvbrvg8q-a3l7tc",
+          "guest:mvbrsdd9-pnwz91",
+          "guest:mvbrwtux-c4hh1c",
+          "guest:mvbrw1ea-3kwy60"
+        ]
+      },
+      {
+        "id": "native-physical-source-order-2",
+        "passed": true,
+        "expected": [
+          "guest:mvbrs3c0-cpau3c",
+          "guest:mvbrlplt-nn6m4j",
+          "guest:mvbrv1ua-a8fw8t",
+          "guest:mvbrt19w-8moc7a",
+          "guest:mvbrttf7-8zcgh1",
+          "guest:mvbrun38-ihk3va",
+          "guest:mvbrw1ea-3kwy60",
+          "guest:mvbrwtux-c4hh1c",
+          "guest:mvbrsdd9-pnwz91",
+          "guest:mvbrvg8q-a3l7tc",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "observed": [
+          "guest:mvbrs3c0-cpau3c",
+          "guest:mvbrlplt-nn6m4j",
+          "guest:mvbrv1ua-a8fw8t",
+          "guest:mvbrt19w-8moc7a",
+          "guest:mvbrttf7-8zcgh1",
+          "guest:mvbrun38-ihk3va",
+          "guest:mvbrw1ea-3kwy60",
+          "guest:mvbrwtux-c4hh1c",
+          "guest:mvbrsdd9-pnwz91",
+          "guest:mvbrvg8q-a3l7tc",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ]
+      },
+      {
+        "id": "native-captain-2",
+        "passed": true,
+        "expected": "guest:mvbrs3c0-cpau3c",
+        "observed": "guest:mvbrs3c0-cpau3c"
+      }
+    ],
+    "teams": [
+      {
+        "index": 0,
+        "label": "האדומים",
+        "membershipMatches": true,
+        "physicalLeftToRightRowOrderMatches": true,
+        "sourceIds": [
+          "guest:mvbrtfek-zy1qup",
+          "guest:mvbruugj-4rhbli",
+          "guest:mvbrsn40-1h3mgk",
+          "guest:mvbrsu7l-3vqv6g",
+          "guest:mvbrt87d-qicwa1",
+          "guest:mvbrtmfs-egnzku",
+          "guest:mvbrrthu-bvepbd",
+          "guest:mvbru1fk-izwwd0",
+          "guest:mvbrx7w0-fqxe6b",
+          "guest:mvbrw8ps-a5aqlc",
+          "guest:mvbrrjqx-3w9zua"
+        ],
+        "nativeXmlOrder": [
+          {
+            "id": "guest:mvbrtmfs-egnzku",
+            "name": "נדב אחד עשר יד",
+            "xmlPosition": 35,
+            "bounds": {
+              "x1": 679,
+              "y1": 377,
+              "x2": 784,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbrt87d-qicwa1",
+            "name": "אסף אחד עשר יב",
+            "xmlPosition": 39,
+            "bounds": {
+              "x1": 563,
+              "y1": 377,
+              "x2": 668,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbrsu7l-3vqv6g",
+            "name": "גל אחד עשר י",
+            "xmlPosition": 43,
+            "bounds": {
+              "x1": 448,
+              "y1": 377,
+              "x2": 553,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbrsn40-1h3mgk",
+            "name": "נועם אחד עשר ט",
+            "xmlPosition": 47,
+            "bounds": {
+              "x1": 332,
+              "y1": 377,
+              "x2": 437,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbruugj-4rhbli",
+            "name": "אלכסנדר אחד עשר כ",
+            "xmlPosition": 51,
+            "bounds": {
+              "x1": 217,
+              "y1": 377,
+              "x2": 322,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbrtfek-zy1qup",
+            "name": "עידן אחד עשר יג",
+            "xmlPosition": 55,
+            "bounds": {
+              "x1": 101,
+              "y1": 377,
+              "x2": 206,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbrrjqx-3w9zua",
+            "name": "אלין אחד עשר ה",
+            "xmlPosition": 60,
+            "bounds": {
+              "x1": 621,
+              "y1": 559,
+              "x2": 726,
+              "y2": 730
+            }
+          },
+          {
+            "id": "guest:mvbrw8ps-a5aqlc",
+            "name": "דוד אחד עשר כז",
+            "xmlPosition": 64,
+            "bounds": {
+              "x1": 505,
+              "y1": 559,
+              "x2": 610,
+              "y2": 730
+            }
+          },
+          {
+            "id": "guest:mvbrx7w0-fqxe6b",
+            "name": "אלכסנדר הארוך עשר לב",
+            "xmlPosition": 68,
+            "bounds": {
+              "x1": 390,
+              "y1": 559,
+              "x2": 495,
+              "y2": 730
+            }
+          },
+          {
+            "id": "guest:mvbru1fk-izwwd0",
+            "name": "משה אחד עשר טז",
+            "xmlPosition": 72,
+            "bounds": {
+              "x1": 274,
+              "y1": 559,
+              "x2": 379,
+              "y2": 730
+            }
+          },
+          {
+            "id": "guest:mvbrrthu-bvepbd",
+            "name": "בן אחד עשר ו",
+            "xmlPosition": 76,
+            "bounds": {
+              "x1": 159,
+              "y1": 559,
+              "x2": 264,
+              "y2": 730
+            }
+          }
+        ],
+        "physicalSourceOrder": [
+          {
+            "id": "guest:mvbrtfek-zy1qup",
+            "name": "עידן אחד עשר יג",
+            "xmlPosition": 55,
+            "bounds": {
+              "x1": 101,
+              "y1": 377,
+              "x2": 206,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbruugj-4rhbli",
+            "name": "אלכסנדר אחד עשר כ",
+            "xmlPosition": 51,
+            "bounds": {
+              "x1": 217,
+              "y1": 377,
+              "x2": 322,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbrsn40-1h3mgk",
+            "name": "נועם אחד עשר ט",
+            "xmlPosition": 47,
+            "bounds": {
+              "x1": 332,
+              "y1": 377,
+              "x2": 437,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbrsu7l-3vqv6g",
+            "name": "גל אחד עשר י",
+            "xmlPosition": 43,
+            "bounds": {
+              "x1": 448,
+              "y1": 377,
+              "x2": 553,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbrt87d-qicwa1",
+            "name": "אסף אחד עשר יב",
+            "xmlPosition": 39,
+            "bounds": {
+              "x1": 563,
+              "y1": 377,
+              "x2": 668,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbrtmfs-egnzku",
+            "name": "נדב אחד עשר יד",
+            "xmlPosition": 35,
+            "bounds": {
+              "x1": 679,
+              "y1": 377,
+              "x2": 784,
+              "y2": 548
+            }
+          },
+          {
+            "id": "guest:mvbrrthu-bvepbd",
+            "name": "בן אחד עשר ו",
+            "xmlPosition": 76,
+            "bounds": {
+              "x1": 159,
+              "y1": 559,
+              "x2": 264,
+              "y2": 730
+            }
+          },
+          {
+            "id": "guest:mvbru1fk-izwwd0",
+            "name": "משה אחד עשר טז",
+            "xmlPosition": 72,
+            "bounds": {
+              "x1": 274,
+              "y1": 559,
+              "x2": 379,
+              "y2": 730
+            }
+          },
+          {
+            "id": "guest:mvbrx7w0-fqxe6b",
+            "name": "אלכסנדר הארוך עשר לב",
+            "xmlPosition": 68,
+            "bounds": {
+              "x1": 390,
+              "y1": 559,
+              "x2": 495,
+              "y2": 730
+            }
+          },
+          {
+            "id": "guest:mvbrw8ps-a5aqlc",
+            "name": "דוד אחד עשר כז",
+            "xmlPosition": 64,
+            "bounds": {
+              "x1": 505,
+              "y1": 559,
+              "x2": 610,
+              "y2": 730
+            }
+          },
+          {
+            "id": "guest:mvbrrjqx-3w9zua",
+            "name": "אלין אחד עשר ה",
+            "xmlPosition": 60,
+            "bounds": {
+              "x1": 621,
+              "y1": 559,
+              "x2": 726,
+              "y2": 730
+            }
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "label": "הכחולים",
+        "membershipMatches": true,
+        "physicalLeftToRightRowOrderMatches": true,
+        "sourceIds": [
+          "guest:mvbrv8vy-bkeqrl",
+          "guest:mvbrufkc-apouh0",
+          "guest:mvbrx0y1-91p8cl",
+          "guest:mvbrvuew-fwzknb",
+          "guest:mvbrwmt7-ocott0",
+          "guest:mvbrr03x-76x6ci",
+          "guest:mvbrr9y8-hdrkws",
+          "guest:mvbrvne9-0pc4lu",
+          "guest:mvbrwfqk-rmhfw6",
+          "guest:mvbru8hr-v8qtre",
+          "guest:mvbrqq3y-aa1f5c"
+        ],
+        "nativeXmlOrder": [
+          {
+            "id": "guest:mvbrr03x-76x6ci",
+            "name": "תומר אחד עשר ג",
+            "xmlPosition": 83,
+            "bounds": {
+              "x1": 681,
+              "y1": 814,
+              "x2": 786,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrwmt7-ocott0",
+            "name": "טל אחד עשר כט",
+            "xmlPosition": 87,
+            "bounds": {
+              "x1": 566,
+              "y1": 814,
+              "x2": 671,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrvuew-fwzknb",
+            "name": "ברק אחד עשר כה",
+            "xmlPosition": 91,
+            "bounds": {
+              "x1": 450,
+              "y1": 814,
+              "x2": 555,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrx0y1-91p8cl",
+            "name": "מאור אחד עשר לא",
+            "xmlPosition": 95,
+            "bounds": {
+              "x1": 335,
+              "y1": 814,
+              "x2": 440,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrufkc-apouh0",
+            "name": "עמית אחד עשר יח",
+            "xmlPosition": 99,
+            "bounds": {
+              "x1": 219,
+              "y1": 814,
+              "x2": 324,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrv8vy-bkeqrl",
+            "name": "אופק אחד עשר כב",
+            "xmlPosition": 103,
+            "bounds": {
+              "x1": 104,
+              "y1": 814,
+              "x2": 209,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrqq3y-aa1f5c",
+            "name": "איתי אחד עשר ב",
+            "xmlPosition": 108,
+            "bounds": {
+              "x1": 623,
+              "y1": 996,
+              "x2": 728,
+              "y2": 1168
+            }
+          },
+          {
+            "id": "guest:mvbru8hr-v8qtre",
+            "name": "לירן אחד עשר יז",
+            "xmlPosition": 112,
+            "bounds": {
+              "x1": 508,
+              "y1": 996,
+              "x2": 613,
+              "y2": 1168
+            }
+          },
+          {
+            "id": "guest:mvbrwfqk-rmhfw6",
+            "name": "חיים אחד עשר כח",
+            "xmlPosition": 116,
+            "bounds": {
+              "x1": 392,
+              "y1": 996,
+              "x2": 497,
+              "y2": 1168
+            }
+          },
+          {
+            "id": "guest:mvbrvne9-0pc4lu",
+            "name": "אייל אחד עשר כד",
+            "xmlPosition": 120,
+            "bounds": {
+              "x1": 277,
+              "y1": 996,
+              "x2": 382,
+              "y2": 1168
+            }
+          },
+          {
+            "id": "guest:mvbrr9y8-hdrkws",
+            "name": "אורי אחד עשר ד",
+            "xmlPosition": 124,
+            "bounds": {
+              "x1": 161,
+              "y1": 996,
+              "x2": 266,
+              "y2": 1168
+            }
+          }
+        ],
+        "physicalSourceOrder": [
+          {
+            "id": "guest:mvbrv8vy-bkeqrl",
+            "name": "אופק אחד עשר כב",
+            "xmlPosition": 103,
+            "bounds": {
+              "x1": 104,
+              "y1": 814,
+              "x2": 209,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrufkc-apouh0",
+            "name": "עמית אחד עשר יח",
+            "xmlPosition": 99,
+            "bounds": {
+              "x1": 219,
+              "y1": 814,
+              "x2": 324,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrx0y1-91p8cl",
+            "name": "מאור אחד עשר לא",
+            "xmlPosition": 95,
+            "bounds": {
+              "x1": 335,
+              "y1": 814,
+              "x2": 440,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrvuew-fwzknb",
+            "name": "ברק אחד עשר כה",
+            "xmlPosition": 91,
+            "bounds": {
+              "x1": 450,
+              "y1": 814,
+              "x2": 555,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrwmt7-ocott0",
+            "name": "טל אחד עשר כט",
+            "xmlPosition": 87,
+            "bounds": {
+              "x1": 566,
+              "y1": 814,
+              "x2": 671,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrr03x-76x6ci",
+            "name": "תומר אחד עשר ג",
+            "xmlPosition": 83,
+            "bounds": {
+              "x1": 681,
+              "y1": 814,
+              "x2": 786,
+              "y2": 986
+            }
+          },
+          {
+            "id": "guest:mvbrr9y8-hdrkws",
+            "name": "אורי אחד עשר ד",
+            "xmlPosition": 124,
+            "bounds": {
+              "x1": 161,
+              "y1": 996,
+              "x2": 266,
+              "y2": 1168
+            }
+          },
+          {
+            "id": "guest:mvbrvne9-0pc4lu",
+            "name": "אייל אחד עשר כד",
+            "xmlPosition": 120,
+            "bounds": {
+              "x1": 277,
+              "y1": 996,
+              "x2": 382,
+              "y2": 1168
+            }
+          },
+          {
+            "id": "guest:mvbrwfqk-rmhfw6",
+            "name": "חיים אחד עשר כח",
+            "xmlPosition": 116,
+            "bounds": {
+              "x1": 392,
+              "y1": 996,
+              "x2": 497,
+              "y2": 1168
+            }
+          },
+          {
+            "id": "guest:mvbru8hr-v8qtre",
+            "name": "לירן אחד עשר יז",
+            "xmlPosition": 112,
+            "bounds": {
+              "x1": 508,
+              "y1": 996,
+              "x2": 613,
+              "y2": 1168
+            }
+          },
+          {
+            "id": "guest:mvbrqq3y-aa1f5c",
+            "name": "איתי אחד עשר ב",
+            "xmlPosition": 108,
+            "bounds": {
+              "x1": 623,
+              "y1": 996,
+              "x2": 728,
+              "y2": 1168
+            }
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "label": "הירוקים",
+        "membershipMatches": true,
+        "physicalLeftToRightRowOrderMatches": true,
+        "sourceIds": [
+          "guest:mvbrs3c0-cpau3c",
+          "guest:mvbrlplt-nn6m4j",
+          "guest:mvbrv1ua-a8fw8t",
+          "guest:mvbrt19w-8moc7a",
+          "guest:mvbrttf7-8zcgh1",
+          "guest:mvbrun38-ihk3va",
+          "guest:mvbrw1ea-3kwy60",
+          "guest:mvbrwtux-c4hh1c",
+          "guest:mvbrsdd9-pnwz91",
+          "guest:mvbrvg8q-a3l7tc",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "nativeXmlOrder": [
+          {
+            "id": "guest:mvbrun38-ihk3va",
+            "name": "עומר אחד עשר יט",
+            "xmlPosition": 131,
+            "bounds": {
+              "x1": 686,
+              "y1": 1251,
+              "x2": 791,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "guest:mvbrttf7-8zcgh1",
+            "name": "יוסי אחד עשר טו",
+            "xmlPosition": 135,
+            "bounds": {
+              "x1": 571,
+              "y1": 1251,
+              "x2": 676,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "guest:mvbrt19w-8moc7a",
+            "name": "רועי אחד עשר יא",
+            "xmlPosition": 139,
+            "bounds": {
+              "x1": 455,
+              "y1": 1251,
+              "x2": 560,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "guest:mvbrv1ua-a8fw8t",
+            "name": "אביב אחד עשר כא",
+            "xmlPosition": 143,
+            "bounds": {
+              "x1": 340,
+              "y1": 1251,
+              "x2": 445,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "guest:mvbrlplt-nn6m4j",
+            "name": "דניאל אחד עשר א",
+            "xmlPosition": 147,
+            "bounds": {
+              "x1": 224,
+              "y1": 1251,
+              "x2": 329,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "guest:mvbrs3c0-cpau3c",
+            "name": "רון אחד עשר ז",
+            "xmlPosition": 151,
+            "bounds": {
+              "x1": 109,
+              "y1": 1251,
+              "x2": 214,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "name": "בדיקות לייב",
+            "xmlPosition": 156,
+            "bounds": {
+              "x1": 628,
+              "y1": 1433,
+              "x2": 733,
+              "y2": 1605
+            }
+          },
+          {
+            "id": "guest:mvbrvg8q-a3l7tc",
+            "name": "אדם אחד עשר כג",
+            "xmlPosition": 160,
+            "bounds": {
+              "x1": 513,
+              "y1": 1433,
+              "x2": 618,
+              "y2": 1605
+            }
+          },
+          {
+            "id": "guest:mvbrsdd9-pnwz91",
+            "name": "ליאור אחד עשר ח",
+            "xmlPosition": 164,
+            "bounds": {
+              "x1": 397,
+              "y1": 1433,
+              "x2": 502,
+              "y2": 1605
+            }
+          },
+          {
+            "id": "guest:mvbrwtux-c4hh1c",
+            "name": "יובל אחד עשר ל",
+            "xmlPosition": 168,
+            "bounds": {
+              "x1": 282,
+              "y1": 1433,
+              "x2": 387,
+              "y2": 1605
+            }
+          },
+          {
+            "id": "guest:mvbrw1ea-3kwy60",
+            "name": "גיא אחד עשר כו",
+            "xmlPosition": 172,
+            "bounds": {
+              "x1": 166,
+              "y1": 1433,
+              "x2": 271,
+              "y2": 1605
+            }
+          }
+        ],
+        "physicalSourceOrder": [
+          {
+            "id": "guest:mvbrs3c0-cpau3c",
+            "name": "רון אחד עשר ז",
+            "xmlPosition": 151,
+            "bounds": {
+              "x1": 109,
+              "y1": 1251,
+              "x2": 214,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "guest:mvbrlplt-nn6m4j",
+            "name": "דניאל אחד עשר א",
+            "xmlPosition": 147,
+            "bounds": {
+              "x1": 224,
+              "y1": 1251,
+              "x2": 329,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "guest:mvbrv1ua-a8fw8t",
+            "name": "אביב אחד עשר כא",
+            "xmlPosition": 143,
+            "bounds": {
+              "x1": 340,
+              "y1": 1251,
+              "x2": 445,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "guest:mvbrt19w-8moc7a",
+            "name": "רועי אחד עשר יא",
+            "xmlPosition": 139,
+            "bounds": {
+              "x1": 455,
+              "y1": 1251,
+              "x2": 560,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "guest:mvbrttf7-8zcgh1",
+            "name": "יוסי אחד עשר טו",
+            "xmlPosition": 135,
+            "bounds": {
+              "x1": 571,
+              "y1": 1251,
+              "x2": 676,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "guest:mvbrun38-ihk3va",
+            "name": "עומר אחד עשר יט",
+            "xmlPosition": 131,
+            "bounds": {
+              "x1": 686,
+              "y1": 1251,
+              "x2": 791,
+              "y2": 1422
+            }
+          },
+          {
+            "id": "guest:mvbrw1ea-3kwy60",
+            "name": "גיא אחד עשר כו",
+            "xmlPosition": 172,
+            "bounds": {
+              "x1": 166,
+              "y1": 1433,
+              "x2": 271,
+              "y2": 1605
+            }
+          },
+          {
+            "id": "guest:mvbrwtux-c4hh1c",
+            "name": "יובל אחד עשר ל",
+            "xmlPosition": 168,
+            "bounds": {
+              "x1": 282,
+              "y1": 1433,
+              "x2": 387,
+              "y2": 1605
+            }
+          },
+          {
+            "id": "guest:mvbrsdd9-pnwz91",
+            "name": "ליאור אחד עשר ח",
+            "xmlPosition": 164,
+            "bounds": {
+              "x1": 397,
+              "y1": 1433,
+              "x2": 502,
+              "y2": 1605
+            }
+          },
+          {
+            "id": "guest:mvbrvg8q-a3l7tc",
+            "name": "אדם אחד עשר כג",
+            "xmlPosition": 160,
+            "bounds": {
+              "x1": 513,
+              "y1": 1433,
+              "x2": 618,
+              "y2": 1605
+            }
+          },
+          {
+            "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "name": "בדיקות לייב",
+            "xmlPosition": 156,
+            "bounds": {
+              "x1": 628,
+              "y1": 1433,
+              "x2": 733,
+              "y2": 1605
+            }
+          }
+        ]
+      }
+    ],
+    "namesToIdsFromData": true,
+    "nativeIdsExposed": false,
+    "pixelScreenshotInspectedByDataAgent": true,
+    "routeExpectedVersionCapturedHere": false,
+    "orderInterpretation": "Stored source order matches top-to-bottom rows sorted physically left-to-right. The inherited DraftTeamCard row-reverse places the captain at the left; XML and Hebrew right-to-left reading order reverse each row. This is not an RTL usability approval.",
+    "limits": [
+      "Full accessibility names identify players; the two Alexander visual labels are shortened and not distinguishable from first names alone.",
+      "Loading and absence of a retry were observed by the lead; this frozen XML is the ready state only.",
+      "The route version was reported by the lead, not captured independently in this XML.",
+      "No device actions, network, or writes were performed by this script."
+    ],
+    "sources": [
+      {
+        "file": "data-eleven-regenerated-stream.json",
+        "sha256": "d5adb8e4da5f87d8978657c79a21f46d0d856ea6310536676668918247a0097a"
+      },
+      {
+        "file": "eleven-regenerate-stream-ui-proof.xml",
+        "sha256": "e01de415fb6736bc4fb931f6e1e6075ab1c3aae105098301028020ef4b649337"
+      },
+      {
+        "file": "shots/eleven-regenerate-stream-ready.png",
+        "sha256": "7c4aadecdf216cb250b8babb3a49304183f57b2005e9cc9c244d664aa7d45085"
+      }
+    ]
+  },
+  "modelSources": [
+    {
+      "file": "src/types/index.ts",
+      "sha256": "5a2d53777fd9b6dc06449034807952fdbc896f70ea2920a3786afc83c2dfe895"
+    },
+    {
+      "file": "src/services/gameService.ts",
+      "sha256": "323e73ee0d0d0165c95b709b5d667852e017c3da400d022cf083988668bbe5fb"
+    },
+    {
+      "file": "src/utils/manualAllocation.ts",
+      "sha256": "1b9f74aa01648323e901f2691730b3d8f8c4386cfed7b1a75f51b9024f76a1c1"
+    }
+  ],
+  "sources": [
+    {
+      "file": "data-eleven-created.json",
+      "readAt": "2026-10-17T02:14:43.591058+00:00",
+      "sha256": "25d8b6943337935de7d7a50bb701b4493e2e5393f75e444babbb087dfbd861bd"
+    },
+    {
+      "file": "data-round-eleven-first-guest.json",
+      "readAt": "2026-10-17T02:15:55.505635+00:00",
+      "sha256": "be154ccd6658505ce1d1ca2ec3d6240a315cd8d4fe5acbc933b349e90e5861aa"
+    },
+    {
+      "file": "data-eleven-date-edited.json",
+      "readAt": "2026-10-17T02:18:52.833154+00:00",
+      "sha256": "3ac681b550cdb95f80227c941dea6b245d2dc692556c0a913d7cbf56ced97e0f"
+    },
+    {
+      "file": "data-eleven-host-joined.json",
+      "readAt": "2026-10-17T02:19:12.288936+00:00",
+      "sha256": "afc956051357a07796492f78645b49f794594a71fe658a7f812155df6b063da8"
+    },
+    {
+      "file": "data-eleven-full-roster.json",
+      "readAt": "2026-10-17T02:25:17.201948+00:00",
+      "sha256": "3bf2070cf67f78da263ece05ab151486893bd8f4e5472172f9c0f465619c84dc"
+    },
+    {
+      "file": "data-eleven-partial-manual.json",
+      "readAt": "2026-10-17T02:30:47.021232+00:00",
+      "sha256": "5a474b9d4ce2c7b46ffeeeca034b8796b0346ca19a6a3b5b4e9bd9fb276d208e"
+    },
+    {
+      "file": "data-eleven-manual-saved.json",
+      "readAt": "2026-10-17T02:41:20.306589+00:00",
+      "sha256": "5cfce0f0ffac6ef9b73adc922d2b1d684b673bd92b66485cf2b706863f4373df"
+    },
+    {
+      "file": "data-eleven-regenerated.json",
+      "readAt": "2026-10-17T02:43:20.653843+00:00",
+      "sha256": "24e9c53f93999f9b203e6823122969cde730e7ca4508c054c305fc50c30c1797"
+    },
+    {
+      "file": "data-eleven-regenerated-traced.json",
+      "readAt": "2026-10-17T02:49:09.514356+00:00",
+      "sha256": "be4c1a818c95cb529f01d2c3a0e30387671b5f1dd4ef4ffa729bedf0b2a1fee7"
+    },
+    {
+      "file": "data-eleven-regenerated-stream.json",
+      "readAt": "2026-10-17T03:02:36.531653+00:00",
+      "sha256": "d5adb8e4da5f87d8978657c79a21f46d0d856ea6310536676668918247a0097a"
+    },
+    {
+      "file": "data-eleven-published-time-ready.json",
+      "readAt": "2026-10-17T03:06:15.899749+00:00",
+      "sha256": "62d3959f1fc4d40fbdc57bf6bcc2582df2864501738b4ce2f2ad1c6a39288745"
+    },
+    {
+      "file": "data-eleven-time-confirm-check.json",
+      "readAt": "2026-10-17T03:06:54.668518+00:00",
+      "sha256": "eacf611984593ae92be129fbba3411295faa679be02cd2c221305f3445607821"
+    },
+    {
+      "file": "test-identities.json",
+      "sha256": "e6709573a4f3ca99c8a147fb126387fd9e37aa64b02adc177640d1f64bd26922"
+    },
+    {
+      "file": "guests-eleven-receipt.json",
+      "sha256": "3dad0370a71cccc5f35c6d8c716382c2832b09fda380610f51cd564a886d1a35"
+    },
+    {
+      "file": "eleven-manual-local-proof.json",
+      "sha256": "90adac4a8934d21ed1f0f4b9c8a6bc6f4616d4d2a8e63fc3791cf2c2a345f706"
+    },
+    {
+      "file": "eleven-native-draft-stream-proof.json",
+      "sha256": "62a87214b649b524777fc5638bb60338ac5db471bf05f16129a245f1746a29a3"
+    }
+  ],
+  "beforeCreationSources": [
+    {
+      "file": "data-round-eleven-created.json",
+      "sha256": "0eb703631856b15a9a35d70186268423e0a8f76a42c4904a5f1f4b9ab662a84f",
+      "readAt": "2026-10-17T00:37:03.044645+00:00",
+      "reason": "טרם הופיע מחזור אחד עשר; מקור מוקדם אינו מעיד שנוצר מחזור נוסף."
+    }
+  ],
+  "latestFacts": {
+    "history": [],
+    "commits": [],
+    "playerStats": [],
+    "roundSummary": null,
+    "finishProof": {
+      "attendanceCredit": null,
+      "stages": [],
+      "qaEveningStanding": null
+    }
+  },
+  "checks": [
+    {
+      "id": "approved-three-round-scope",
+      "title": "שלושה מזהי מחזור מאושרים, כולל מחזור אחד עשר, ללא מזהה רביעי",
+      "status": "passed",
+      "expected": {
+        "approved": true,
+        "roundIdsCount": 3,
+        "capturedRounds": 3
+      },
+      "observed": {
+        "approved": true,
+        "allowedIds": [
+          "lmUUmQru2HtKvQkRDVeD",
+          "YEdIR3MviDK82D581ELk",
+          "mBO5HqJdnOPWjRE2zMh8"
+        ],
+        "capturedIds": [
+          "YEdIR3MviDK82D581ELk",
+          "lmUUmQru2HtKvQkRDVeD",
+          "mBO5HqJdnOPWjRE2zMh8"
+        ]
+      },
+      "evidence": [
+        "test-identities.json",
+        "data-eleven-time-confirm-check.json"
+      ]
+    },
+    {
+      "id": "read-scope",
+      "title": "מקור הקריאה תחום לחשבון ולמועדון הבדיקה ולמזהים המאושרים",
+      "status": "passed",
+      "expected": {
+        "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "clubId": "J060YQu6QTcgk3glUDj2",
+        "roundId": "mBO5HqJdnOPWjRE2zMh8"
+      },
+      "observed": {
+        "data-eleven-created.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        },
+        "data-eleven-date-edited.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        },
+        "data-eleven-full-roster.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        },
+        "data-eleven-host-joined.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        },
+        "data-eleven-manual-saved.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        },
+        "data-eleven-partial-manual.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        },
+        "data-eleven-published-time-ready.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        },
+        "data-eleven-regenerated-stream.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        },
+        "data-eleven-regenerated-traced.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        },
+        "data-eleven-regenerated.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        },
+        "data-eleven-time-confirm-check.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        },
+        "data-round-eleven-first-guest.json": {
+          "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "clubId": "J060YQu6QTcgk3glUDj2",
+          "allowedRoundIds": [
+            "YEdIR3MviDK82D581ELk",
+            "lmUUmQru2HtKvQkRDVeD",
+            "mBO5HqJdnOPWjRE2zMh8"
+          ],
+          "access": "document GET and documents:runQuery only; no product writes"
+        }
+      },
+      "evidence": [
+        "data-eleven-created.json",
+        "data-eleven-date-edited.json",
+        "data-eleven-full-roster.json",
+        "data-eleven-host-joined.json",
+        "data-eleven-manual-saved.json",
+        "data-eleven-partial-manual.json",
+        "data-eleven-published-time-ready.json",
+        "data-eleven-regenerated-stream.json",
+        "data-eleven-regenerated-traced.json",
+        "data-eleven-regenerated.json",
+        "data-eleven-time-confirm-check.json",
+        "data-round-eleven-first-guest.json"
+      ]
+    },
+    {
+      "id": "one-product-identity",
+      "title": "כל השלבים שייכים לאותו מסמך מחזור שנוצר במוצר",
+      "status": "passed",
+      "expected": {
+        "gameId": "mBO5HqJdnOPWjRE2zMh8",
+        "clubId": "J060YQu6QTcgk3glUDj2",
+        "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "createdAt": 1792203269877
+      },
+      "observed": [
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        },
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        },
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        },
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        },
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        },
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        },
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        },
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        },
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        },
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        },
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        },
+        {
+          "id": "mBO5HqJdnOPWjRE2zMh8",
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "createdAt": 1792203269877
+        }
+      ],
+      "evidence": [
+        "data-eleven-created.json",
+        "data-eleven-date-edited.json",
+        "data-eleven-full-roster.json",
+        "data-eleven-host-joined.json",
+        "data-eleven-manual-saved.json",
+        "data-eleven-partial-manual.json",
+        "data-eleven-published-time-ready.json",
+        "data-eleven-regenerated-stream.json",
+        "data-eleven-regenerated-traced.json",
+        "data-eleven-regenerated.json",
+        "data-eleven-time-confirm-check.json",
+        "data-round-eleven-first-guest.json"
+      ]
+    },
+    {
+      "id": "format-and-capacity",
+      "title": "אחד עשר מול אחד עשר, שלוש קבוצות וקיבולת 33 נשמרו בכל השלבים",
+      "status": "passed",
+      "expected": {
+        "format": "11v11",
+        "numberOfTeams": 3,
+        "maxPlayers": 33,
+        "matchDurationMinutes": 8
+      },
+      "observed": {
+        "format": "11v11",
+        "numberOfTeams": 3,
+        "maxPlayers": 33,
+        "matchDurationMinutes": 8
+      },
+      "evidence": [
+        "data-eleven-created.json",
+        "data-eleven-date-edited.json",
+        "data-eleven-full-roster.json",
+        "data-eleven-host-joined.json",
+        "data-eleven-manual-saved.json",
+        "data-eleven-partial-manual.json",
+        "data-eleven-published-time-ready.json",
+        "data-eleven-regenerated-stream.json",
+        "data-eleven-regenerated-traced.json",
+        "data-eleven-regenerated.json",
+        "data-eleven-time-confirm-check.json",
+        "data-round-eleven-first-guest.json"
+      ]
+    },
+    {
+      "id": "permanent-actual-setting",
+      "title": "הגדרת ההשלמה הקבועה נשמרה בשדה המשחק המפורש",
+      "status": "passed",
+      "expected": {
+        "advancedMode": true,
+        "advancedFillMode": "permanent"
+      },
+      "observed": {
+        "advancedMode": true,
+        "advancedFillMode": "permanent"
+      },
+      "evidence": [
+        "data-eleven-created.json",
+        "data-eleven-date-edited.json",
+        "data-eleven-full-roster.json",
+        "data-eleven-host-joined.json",
+        "data-eleven-manual-saved.json",
+        "data-eleven-partial-manual.json",
+        "data-eleven-published-time-ready.json",
+        "data-eleven-regenerated-stream.json",
+        "data-eleven-regenerated-traced.json",
+        "data-eleven-regenerated.json",
+        "data-eleven-time-confirm-check.json",
+        "data-round-eleven-first-guest.json"
+      ]
+    },
+    {
+      "id": "private-product-setting",
+      "title": "המחזור מוגבל למועדון סגור ואינו מפורסם לכלל האפליקציה",
+      "status": "passed",
+      "expected": {
+        "visibility": "community",
+        "publicOpenAt": null,
+        "clubIsOpen": false
+      },
+      "observed": {
+        "visibility": "community",
+        "publicOpenAt": null,
+        "clubIsOpen": false
+      },
+      "evidence": [
+        "data-eleven-created.json",
+        "data-eleven-date-edited.json",
+        "data-eleven-full-roster.json",
+        "data-eleven-host-joined.json",
+        "data-eleven-manual-saved.json",
+        "data-eleven-partial-manual.json",
+        "data-eleven-published-time-ready.json",
+        "data-eleven-regenerated-stream.json",
+        "data-eleven-regenerated-traced.json",
+        "data-eleven-regenerated.json",
+        "data-eleven-time-confirm-check.json",
+        "data-round-eleven-first-guest.json"
+      ]
+    },
+    {
+      "id": "qa-membership-only",
+      "title": "במועדון הבדיקה רק חשבון הבדיקה כחבר וכמנהל; האורחים אינם חשבונות חדשים",
+      "status": "passed",
+      "expected": {
+        "members": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "admins": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ]
+      },
+      "observed": {
+        "members": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "admins": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ]
+      },
+      "evidence": [
+        "data-eleven-full-roster.json"
+      ]
+    },
+    {
+      "id": "creation-without-unregistered-owner",
+      "title": "יצירת מחזור המועדון לא רשמה את המארח אוטומטית לפני הצטרפותו",
+      "status": "passed",
+      "expected": {
+        "players": [],
+        "participantIds": [],
+        "guests": []
+      },
+      "observed": {
+        "players": [],
+        "participantIds": [],
+        "guests": []
+      },
+      "evidence": [
+        "data-eleven-created.json"
+      ]
+    },
+    {
+      "id": "date-edited-same-round",
+      "title": "התאריך עודכן ביום אחד באותו מחזור לפני הצטרפות המארח",
+      "status": "passed",
+      "expected": {
+        "sameId": true,
+        "shiftMs": 86400000,
+        "playersBeforeJoin": []
+      },
+      "observed": {
+        "sameId": true,
+        "shiftMs": 86400000,
+        "playersBeforeJoin": []
+      },
+      "evidence": [
+        "data-eleven-created.json",
+        "data-eleven-date-edited.json"
+      ]
+    },
+    {
+      "id": "host-selfjoin-recorded",
+      "title": "הצטרפות המארח נשמרה פעם אחת לאחר עדכון התאריך ועם חותמת הצטרפות",
+      "status": "passed",
+      "expected": {
+        "players": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "participantIds": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "joinBeforeStart": true
+      },
+      "observed": {
+        "players": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "participantIds": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "joinedAt": {
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1792203544885
+        },
+        "startsAt": 1792267200000
+      },
+      "evidence": [
+        "data-eleven-date-edited.json",
+        "data-eleven-host-joined.json"
+      ]
+    },
+    {
+      "id": "full-registered-roster",
+      "title": "הסגל המלא הוא חשבון אחד ו־32 אורחים פעילים, 33 זהויות שונות",
+      "status": "passed",
+      "expected": {
+        "accounts": 1,
+        "guests": 32,
+        "uniqueRegistered": 33
+      },
+      "observed": {
+        "accounts": 1,
+        "guests": 32,
+        "uniqueRegistered": 33
+      },
+      "evidence": [
+        "data-eleven-full-roster.json"
+      ]
+    },
+    {
+      "id": "all-guests-created-by-qa",
+      "title": "כל אורחי הבדיקה נוצרו בידי מנהל הבדיקה עם שמות ומזהים נפרדים",
+      "status": "passed",
+      "expected": "32 מזהים גולמיים ושמות ייעודיים, ללא ערבוב חשבונות ומזהי סגל",
+      "observed": [
+        {
+          "id": "mvbrlplt-nn6m4j",
+          "name": "דניאל אחד עשר א",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrqq3y-aa1f5c",
+          "name": "איתי אחד עשר ב",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrr03x-76x6ci",
+          "name": "תומר אחד עשר ג",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrr9y8-hdrkws",
+          "name": "אורי אחד עשר ד",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrrjqx-3w9zua",
+          "name": "אלין אחד עשר ה",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrrthu-bvepbd",
+          "name": "בן אחד עשר ו",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrs3c0-cpau3c",
+          "name": "רון אחד עשר ז",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrsdd9-pnwz91",
+          "name": "ליאור אחד עשר ח",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrsn40-1h3mgk",
+          "name": "נועם אחד עשר ט",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrsu7l-3vqv6g",
+          "name": "גל אחד עשר י",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrt19w-8moc7a",
+          "name": "רועי אחד עשר יא",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrt87d-qicwa1",
+          "name": "אסף אחד עשר יב",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrtfek-zy1qup",
+          "name": "עידן אחד עשר יג",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrtmfs-egnzku",
+          "name": "נדב אחד עשר יד",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrttf7-8zcgh1",
+          "name": "יוסי אחד עשר טו",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbru1fk-izwwd0",
+          "name": "משה אחד עשר טז",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbru8hr-v8qtre",
+          "name": "לירן אחד עשר יז",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrufkc-apouh0",
+          "name": "עמית אחד עשר יח",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrun38-ihk3va",
+          "name": "עומר אחד עשר יט",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbruugj-4rhbli",
+          "name": "אלכסנדר אחד עשר כ",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrv1ua-a8fw8t",
+          "name": "אביב אחד עשר כא",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrv8vy-bkeqrl",
+          "name": "אופק אחד עשר כב",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrvg8q-a3l7tc",
+          "name": "אדם אחד עשר כג",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrvne9-0pc4lu",
+          "name": "אייל אחד עשר כד",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrvuew-fwzknb",
+          "name": "ברק אחד עשר כה",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrw1ea-3kwy60",
+          "name": "גיא אחד עשר כו",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrw8ps-a5aqlc",
+          "name": "דוד אחד עשר כז",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrwfqk-rmhfw6",
+          "name": "חיים אחד עשר כח",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrwmt7-ocott0",
+          "name": "טל אחד עשר כט",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrwtux-c4hh1c",
+          "name": "יובל אחד עשר ל",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrx0y1-91p8cl",
+          "name": "מאור אחד עשר לא",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "mvbrx7w0-fqxe6b",
+          "name": "אלכסנדר הארוך עשר לב",
+          "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        }
+      ],
+      "evidence": [
+        "data-eleven-full-roster.json"
+      ]
+    },
+    {
+      "id": "no-waiting-registration",
+      "title": "בסגל המלא אין ממתינים, בקשות או אורחים שסומנו כממתינים",
+      "status": "passed",
+      "expected": {
+        "waitlist": [],
+        "pending": [],
+        "pendingPromotion": null
+      },
+      "observed": {
+        "waitlist": [],
+        "pending": [],
+        "pendingPromotion": null
+      },
+      "evidence": [
+        "data-eleven-full-roster.json"
+      ]
+    },
+    {
+      "id": "real-participant-index",
+      "title": "מפתח החשבונות המשתתפים מכיל את המארח בלבד; אורחים נשארים בסגל המחזור",
+      "status": "passed",
+      "expected": {
+        "participantIds": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "guestRosterCount": 32
+      },
+      "observed": {
+        "participantIds": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "guestRosterCount": 32
+      },
+      "evidence": [
+        "data-eleven-full-roster.json"
+      ]
+    },
+    {
+      "id": "capacity-reached",
+      "title": "ההרשמה הגיעה לקיבולת המדויקת ונשמר סימן הודעת המילוי",
+      "status": "passed",
+      "expected": {
+        "occupancy": 33,
+        "capacity": 33,
+        "capacityNoticeSent": true
+      },
+      "observed": {
+        "occupancy": 33,
+        "capacity": 33,
+        "capacityNoticeSent": true
+      },
+      "evidence": [
+        "data-eleven-full-roster.json"
+      ]
+    },
+    {
+      "id": "canonical-guest-identity",
+      "title": "פונקציות הזהות האמיתיות ממירות את כל האורחים וחוזרות למזהים הגולמיים",
+      "status": "passed",
+      "expected": {
+        "activeGuestCount": 32,
+        "roundTrips": 32,
+        "qaIsGuest": false
+      },
+      "observed": {
+        "guestIds": [
+          "guest:mvbrlplt-nn6m4j",
+          "guest:mvbrqq3y-aa1f5c",
+          "guest:mvbrr03x-76x6ci",
+          "guest:mvbrr9y8-hdrkws",
+          "guest:mvbrrjqx-3w9zua",
+          "guest:mvbrrthu-bvepbd",
+          "guest:mvbrs3c0-cpau3c",
+          "guest:mvbrsdd9-pnwz91",
+          "guest:mvbrsn40-1h3mgk",
+          "guest:mvbrsu7l-3vqv6g",
+          "guest:mvbrt19w-8moc7a",
+          "guest:mvbrt87d-qicwa1",
+          "guest:mvbrtfek-zy1qup",
+          "guest:mvbrtmfs-egnzku",
+          "guest:mvbrttf7-8zcgh1",
+          "guest:mvbru1fk-izwwd0",
+          "guest:mvbru8hr-v8qtre",
+          "guest:mvbrufkc-apouh0",
+          "guest:mvbrun38-ihk3va",
+          "guest:mvbruugj-4rhbli",
+          "guest:mvbrv1ua-a8fw8t",
+          "guest:mvbrv8vy-bkeqrl",
+          "guest:mvbrvg8q-a3l7tc",
+          "guest:mvbrvne9-0pc4lu",
+          "guest:mvbrvuew-fwzknb",
+          "guest:mvbrw1ea-3kwy60",
+          "guest:mvbrw8ps-a5aqlc",
+          "guest:mvbrwfqk-rmhfw6",
+          "guest:mvbrwmt7-ocott0",
+          "guest:mvbrwtux-c4hh1c",
+          "guest:mvbrx0y1-91p8cl",
+          "guest:mvbrx7w0-fqxe6b"
+        ],
+        "rawIds": [
+          "mvbrlplt-nn6m4j",
+          "mvbrqq3y-aa1f5c",
+          "mvbrr03x-76x6ci",
+          "mvbrr9y8-hdrkws",
+          "mvbrrjqx-3w9zua",
+          "mvbrrthu-bvepbd",
+          "mvbrs3c0-cpau3c",
+          "mvbrsdd9-pnwz91",
+          "mvbrsn40-1h3mgk",
+          "mvbrsu7l-3vqv6g",
+          "mvbrt19w-8moc7a",
+          "mvbrt87d-qicwa1",
+          "mvbrtfek-zy1qup",
+          "mvbrtmfs-egnzku",
+          "mvbrttf7-8zcgh1",
+          "mvbru1fk-izwwd0",
+          "mvbru8hr-v8qtre",
+          "mvbrufkc-apouh0",
+          "mvbrun38-ihk3va",
+          "mvbruugj-4rhbli",
+          "mvbrv1ua-a8fw8t",
+          "mvbrv8vy-bkeqrl",
+          "mvbrvg8q-a3l7tc",
+          "mvbrvne9-0pc4lu",
+          "mvbrvuew-fwzknb",
+          "mvbrw1ea-3kwy60",
+          "mvbrw8ps-a5aqlc",
+          "mvbrwfqk-rmhfw6",
+          "mvbrwmt7-ocott0",
+          "mvbrwtux-c4hh1c",
+          "mvbrx0y1-91p8cl",
+          "mvbrx7w0-fqxe6b"
+        ],
+        "activeGuestCount": 32,
+        "members": [
+          {
+            "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "isGuest": false,
+            "parsedGuestId": null
+          }
+        ],
+        "effectiveFillMode": "permanent"
+      },
+      "evidence": [
+        "data-eleven-full-roster.json",
+        "src/types/index.ts"
+      ]
+    },
+    {
+      "id": "canonical-permanent-mode",
+      "title": "בחירת מצב ההשלמה בקוד משתמשת בהגדרה הקבועה של המחזור",
+      "status": "passed",
+      "expected": "permanent",
+      "observed": "permanent",
+      "evidence": [
+        "data-eleven-full-roster.json",
+        "src/services/gameService.ts"
+      ]
+    },
+    {
+      "id": "guest-product-receipt",
+      "title": "קבלת הוספת 31 האורחים תואמת למסד, בנוסף לאורח הראשון שנבדק בנפרד",
+      "status": "passed",
+      "expected": {
+        "batchGuests": 31,
+        "firstGuest": 1,
+        "sameGameId": true
+      },
+      "observed": {
+        "batchGuests": 31,
+        "firstGuest": [
+          {
+            "id": "mvbrlplt-nn6m4j",
+            "name": "דניאל אחד עשר א",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203353057
+          }
+        ],
+        "idAndNameMatch": true
+      },
+      "evidence": [
+        "guests-eleven-receipt.json",
+        "data-round-eleven-first-guest.json",
+        "data-eleven-full-roster.json"
+      ]
+    },
+    {
+      "id": "before-live-no-credit",
+      "title": "בנקודת הסגל המלא טרם נוצרו חלוקה, לייב, היסטוריה, זקיפות או סיכום",
+      "status": "passed",
+      "expected": "סגל מלא בלבד; אין עדיין משחקים או סטטיסטיקות למחזור זה",
+      "observed": {
+        "draftTeams": null,
+        "rotation": null,
+        "liveMatch": null,
+        "history": [],
+        "commits": [],
+        "playerStats": [],
+        "roundSummary": null
+      },
+      "evidence": [
+        "data-eleven-full-roster.json"
+      ]
+    },
+    {
+      "id": "allocation-data-eleven-manual-saved.json",
+      "title": "שלוש קבוצות של אחד עשר עם כל הרשומים פעם אחת — data-eleven-manual-saved.json",
+      "status": "passed",
+      "expected": {
+        "teams": 3,
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "captainsValid": true
+      },
+      "observed": {
+        "method": "regular",
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "registered": 33
+      },
+      "evidence": [
+        "data-eleven-manual-saved.json"
+      ]
+    },
+    {
+      "id": "allocation-data-eleven-regenerated.json",
+      "title": "שלוש קבוצות של אחד עשר עם כל הרשומים פעם אחת — data-eleven-regenerated.json",
+      "status": "passed",
+      "expected": {
+        "teams": 3,
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "captainsValid": true
+      },
+      "observed": {
+        "method": "snake",
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "registered": 33
+      },
+      "evidence": [
+        "data-eleven-regenerated.json"
+      ]
+    },
+    {
+      "id": "allocation-data-eleven-regenerated-traced.json",
+      "title": "שלוש קבוצות של אחד עשר עם כל הרשומים פעם אחת — data-eleven-regenerated-traced.json",
+      "status": "passed",
+      "expected": {
+        "teams": 3,
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "captainsValid": true
+      },
+      "observed": {
+        "method": "snake",
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "registered": 33
+      },
+      "evidence": [
+        "data-eleven-regenerated-traced.json"
+      ]
+    },
+    {
+      "id": "allocation-data-eleven-regenerated-stream.json",
+      "title": "שלוש קבוצות של אחד עשר עם כל הרשומים פעם אחת — data-eleven-regenerated-stream.json",
+      "status": "passed",
+      "expected": {
+        "teams": 3,
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "captainsValid": true
+      },
+      "observed": {
+        "method": "snake",
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "registered": 33
+      },
+      "evidence": [
+        "data-eleven-regenerated-stream.json"
+      ]
+    },
+    {
+      "id": "allocation-data-eleven-published-time-ready.json",
+      "title": "שלוש קבוצות של אחד עשר עם כל הרשומים פעם אחת — data-eleven-published-time-ready.json",
+      "status": "passed",
+      "expected": {
+        "teams": 3,
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "captainsValid": true
+      },
+      "observed": {
+        "method": "snake",
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "registered": 33
+      },
+      "evidence": [
+        "data-eleven-published-time-ready.json"
+      ]
+    },
+    {
+      "id": "allocation-data-eleven-time-confirm-check.json",
+      "title": "שלוש קבוצות של אחד עשר עם כל הרשומים פעם אחת — data-eleven-time-confirm-check.json",
+      "status": "passed",
+      "expected": {
+        "teams": 3,
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "captainsValid": true
+      },
+      "observed": {
+        "method": "snake",
+        "sizes": [
+          11,
+          11,
+          11
+        ],
+        "uniquePlayers": 33,
+        "registered": 33
+      },
+      "evidence": [
+        "data-eleven-time-confirm-check.json"
+      ]
+    },
+    {
+      "id": "manual-partial-local-scope",
+      "title": "הטיוטה הידנית החלקית שייכת למחזור ולמנהל הנכונים, עם 22 שחקנים שונים ומוכרים",
+      "status": "passed",
+      "expected": {
+        "teams": [
+          11,
+          11,
+          0
+        ],
+        "assigned": 22,
+        "unique": 22,
+        "sameGameAndOwner": true
+      },
+      "observed": {
+        "gameId": "mBO5HqJdnOPWjRE2zMh8",
+        "ownerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "counts": [
+          11,
+          11,
+          0
+        ],
+        "unique": 22,
+        "decodeLayers": 2
+      },
+      "evidence": [
+        "eleven-manual-local-proof.json",
+        "data-eleven-partial-manual.json"
+      ]
+    },
+    {
+      "id": "manual-partial-not-database-split",
+      "title": "שמירת טיוטה חלקית לא יצרה כוחות או משחקים במסד",
+      "status": "passed",
+      "expected": "טיוטה מקומית בלבד; הכוחות והלייב במסד חסרים",
+      "observed": {
+        "draftTeams": null,
+        "rotation": null,
+        "liveMatch": null,
+        "history": 0
+      },
+      "evidence": [
+        "eleven-manual-local-proof.json",
+        "data-eleven-partial-manual.json"
+      ]
+    },
+    {
+      "id": "manual-partial-canonical-resume",
+      "title": "פונקציות הטיוטה האמיתיות מאשרות המשך ומשחזרות בדיוק 11,11,0",
+      "status": "passed",
+      "expected": {
+        "resumable": true,
+        "counts": [
+          11,
+          11,
+          0
+        ],
+        "sameOrderAndIds": true
+      },
+      "observed": {
+        "revision": "",
+        "resumable": true,
+        "restoredTeams": [
+          [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvbrlplt-nn6m4j",
+            "guest:mvbrqq3y-aa1f5c",
+            "guest:mvbrr03x-76x6ci",
+            "guest:mvbrr9y8-hdrkws",
+            "guest:mvbrrjqx-3w9zua",
+            "guest:mvbrrthu-bvepbd",
+            "guest:mvbrs3c0-cpau3c",
+            "guest:mvbrsdd9-pnwz91",
+            "guest:mvbrsn40-1h3mgk",
+            "guest:mvbrsu7l-3vqv6g"
+          ],
+          [
+            "guest:mvbrt19w-8moc7a",
+            "guest:mvbrt87d-qicwa1",
+            "guest:mvbrtfek-zy1qup",
+            "guest:mvbrtmfs-egnzku",
+            "guest:mvbrttf7-8zcgh1",
+            "guest:mvbru1fk-izwwd0",
+            "guest:mvbru8hr-v8qtre",
+            "guest:mvbrufkc-apouh0",
+            "guest:mvbrun38-ihk3va",
+            "guest:mvbruugj-4rhbli",
+            "guest:mvbrv1ua-a8fw8t"
+          ],
+          []
+        ]
+      },
+      "evidence": [
+        "eleven-manual-local-proof.json",
+        "data-eleven-partial-manual.json",
+        "src/utils/manualAllocation.ts"
+      ]
+    },
+    {
+      "id": "manual-complete-database-save",
+      "title": "החלוקה הידנית המלאה נשמרה כטיוטה עם תמונת מקור חדשה לכל 33 השחקנים",
+      "status": "passed",
+      "expected": {
+        "method": "regular",
+        "published": false,
+        "originalMatchesSaved": true,
+        "liveStarted": false
+      },
+      "observed": {
+        "method": "regular",
+        "published": false,
+        "originalMatchesSaved": true,
+        "createdAt": 1792204877111
+      },
+      "evidence": [
+        "data-eleven-manual-saved.json"
+      ]
+    },
+    {
+      "id": "regenerate-replaces-split-version",
+      "title": "יצירה מחדש החליפה את גרסת החלוקה ואת ההרכבים, תוך שמירת אותו סגל ואותו מחזור",
+      "status": "passed",
+      "expected": {
+        "newVersion": true,
+        "method": "snake",
+        "sameGameAndRoster": true,
+        "liveStarted": false
+      },
+      "observed": {
+        "beforeVersion": 1792204877111,
+        "afterVersion": 1792204996256,
+        "method": "snake",
+        "sameRoster": true
+      },
+      "evidence": [
+        "data-eleven-manual-saved.json",
+        "data-eleven-regenerated.json"
+      ]
+    },
+    {
+      "id": "regenerate-invalidates-older-local-copy",
+      "title": "טיוטת 11,11,0 הישנה אינה זכאית להמשך על גבי החלוקה החדשה",
+      "status": "passed",
+      "expected": {
+        "resumable": false,
+        "differentBaseRevision": true
+      },
+      "observed": {
+        "revision": "[1792204996256,[{\"index\":0,\"captainId\":\"guest:mvbrlplt-nn6m4j\",\"playerIds\":[\"guest:mvbrlplt-nn6m4j\",\"guest:mvbrx7w0-fqxe6b\",\"guest:mvbrrthu-bvepbd\",\"guest:mvbrt87d-qicwa1\",\"guest:mvbrufkc-apouh0\",\"guest:mvbrvuew-fwzknb\",\"guest:mvbrvne9-0pc4lu\",\"guest:mvbrs3c0-cpau3c\",\"guest:mvbrv8vy-bkeqrl\",\"guest:mvbrsn40-1h3mgk\",\"guest:mvbrqq3y-aa1f5c\"]},{\"index\":1,\"captainId\":\"guest:mvbrr9y8-hdrkws\",\"playerIds\":[\"guest:mvbrr9y8-hdrkws\",\"8HYLuzxlnOeZAAoCQwfd8tnPWCq1\",\"guest:mvbrsdd9-pnwz91\",\"guest:mvbrvg8q-a3l7tc\",\"guest:mvbrtmfs-egnzku\",\"guest:mvbru8hr-v8qtre\",\"guest:mvbrx0y1-91p8cl\",\"guest:mvbrwfqk-rmhfw6\",\"guest:mvbrw8ps-a5aqlc\",\"guest:mvbru1fk-izwwd0\",\"guest:mvbrv1ua-a8fw8t\"]},{\"index\":2,\"captainId\":\"guest:mvbruugj-4rhbli\",\"playerIds\":[\"guest:mvbruugj-4rhbli\",\"guest:mvbrw1ea-3kwy60\",\"guest:mvbrrjqx-3w9zua\",\"guest:mvbrwmt7-ocott0\",\"guest:mvbrsu7l-3vqv6g\",\"guest:mvbrr03x-76x6ci\",\"guest:mvbrt19w-8moc7a\",\"guest:mvbrttf7-8zcgh1\",\"guest:mvbrtfek-zy1qup\",\"guest:mvbrun38-ihk3va\",\"guest:mvbrwtux-c4hh1c\"]}]]",
+        "resumable": false,
+        "restoredTeams": [
+          [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvbrlplt-nn6m4j",
+            "guest:mvbrqq3y-aa1f5c",
+            "guest:mvbrr03x-76x6ci",
+            "guest:mvbrr9y8-hdrkws",
+            "guest:mvbrrjqx-3w9zua",
+            "guest:mvbrrthu-bvepbd",
+            "guest:mvbrs3c0-cpau3c",
+            "guest:mvbrsdd9-pnwz91",
+            "guest:mvbrsn40-1h3mgk",
+            "guest:mvbrsu7l-3vqv6g"
+          ],
+          [
+            "guest:mvbrt19w-8moc7a",
+            "guest:mvbrt87d-qicwa1",
+            "guest:mvbrtfek-zy1qup",
+            "guest:mvbrtmfs-egnzku",
+            "guest:mvbrttf7-8zcgh1",
+            "guest:mvbru1fk-izwwd0",
+            "guest:mvbru8hr-v8qtre",
+            "guest:mvbrufkc-apouh0",
+            "guest:mvbrun38-ihk3va",
+            "guest:mvbruugj-4rhbli",
+            "guest:mvbrv1ua-a8fw8t"
+          ],
+          []
+        ]
+      },
+      "evidence": [
+        "eleven-manual-local-proof.json",
+        "data-eleven-regenerated.json",
+        "src/utils/manualAllocation.ts"
+      ]
+    },
+    {
+      "id": "proof-native-full-roster",
+      "title": "התאמת סיכום הכוחות המקורי: native-full-roster",
+      "status": "passed",
+      "expected": 33,
+      "observed": 33,
+      "evidence": [
+        "eleven-native-draft-stream-proof.json",
+        "data-eleven-regenerated-stream.json",
+        "eleven-regenerate-stream-ui-proof.xml"
+      ]
+    },
+    {
+      "id": "proof-native-team-members-0",
+      "title": "התאמת סיכום הכוחות המקורי: native-team-members-0",
+      "status": "passed",
+      "expected": [
+        "guest:mvbrtfek-zy1qup",
+        "guest:mvbruugj-4rhbli",
+        "guest:mvbrsn40-1h3mgk",
+        "guest:mvbrsu7l-3vqv6g",
+        "guest:mvbrt87d-qicwa1",
+        "guest:mvbrtmfs-egnzku",
+        "guest:mvbrrthu-bvepbd",
+        "guest:mvbru1fk-izwwd0",
+        "guest:mvbrx7w0-fqxe6b",
+        "guest:mvbrw8ps-a5aqlc",
+        "guest:mvbrrjqx-3w9zua"
+      ],
+      "observed": [
+        "guest:mvbrtmfs-egnzku",
+        "guest:mvbrt87d-qicwa1",
+        "guest:mvbrsu7l-3vqv6g",
+        "guest:mvbrsn40-1h3mgk",
+        "guest:mvbruugj-4rhbli",
+        "guest:mvbrtfek-zy1qup",
+        "guest:mvbrrjqx-3w9zua",
+        "guest:mvbrw8ps-a5aqlc",
+        "guest:mvbrx7w0-fqxe6b",
+        "guest:mvbru1fk-izwwd0",
+        "guest:mvbrrthu-bvepbd"
+      ],
+      "evidence": [
+        "eleven-native-draft-stream-proof.json",
+        "data-eleven-regenerated-stream.json",
+        "eleven-regenerate-stream-ui-proof.xml"
+      ]
+    },
+    {
+      "id": "proof-native-physical-source-order-0",
+      "title": "התאמת סיכום הכוחות המקורי: native-physical-source-order-0",
+      "status": "passed",
+      "expected": [
+        "guest:mvbrtfek-zy1qup",
+        "guest:mvbruugj-4rhbli",
+        "guest:mvbrsn40-1h3mgk",
+        "guest:mvbrsu7l-3vqv6g",
+        "guest:mvbrt87d-qicwa1",
+        "guest:mvbrtmfs-egnzku",
+        "guest:mvbrrthu-bvepbd",
+        "guest:mvbru1fk-izwwd0",
+        "guest:mvbrx7w0-fqxe6b",
+        "guest:mvbrw8ps-a5aqlc",
+        "guest:mvbrrjqx-3w9zua"
+      ],
+      "observed": [
+        "guest:mvbrtfek-zy1qup",
+        "guest:mvbruugj-4rhbli",
+        "guest:mvbrsn40-1h3mgk",
+        "guest:mvbrsu7l-3vqv6g",
+        "guest:mvbrt87d-qicwa1",
+        "guest:mvbrtmfs-egnzku",
+        "guest:mvbrrthu-bvepbd",
+        "guest:mvbru1fk-izwwd0",
+        "guest:mvbrx7w0-fqxe6b",
+        "guest:mvbrw8ps-a5aqlc",
+        "guest:mvbrrjqx-3w9zua"
+      ],
+      "evidence": [
+        "eleven-native-draft-stream-proof.json",
+        "data-eleven-regenerated-stream.json",
+        "eleven-regenerate-stream-ui-proof.xml"
+      ]
+    },
+    {
+      "id": "proof-native-captain-0",
+      "title": "התאמת סיכום הכוחות המקורי: native-captain-0",
+      "status": "passed",
+      "expected": "guest:mvbrtfek-zy1qup",
+      "observed": "guest:mvbrtfek-zy1qup",
+      "evidence": [
+        "eleven-native-draft-stream-proof.json",
+        "data-eleven-regenerated-stream.json",
+        "eleven-regenerate-stream-ui-proof.xml"
+      ]
+    },
+    {
+      "id": "proof-native-team-members-1",
+      "title": "התאמת סיכום הכוחות המקורי: native-team-members-1",
+      "status": "passed",
+      "expected": [
+        "guest:mvbrv8vy-bkeqrl",
+        "guest:mvbrufkc-apouh0",
+        "guest:mvbrx0y1-91p8cl",
+        "guest:mvbrvuew-fwzknb",
+        "guest:mvbrwmt7-ocott0",
+        "guest:mvbrr03x-76x6ci",
+        "guest:mvbrr9y8-hdrkws",
+        "guest:mvbrvne9-0pc4lu",
+        "guest:mvbrwfqk-rmhfw6",
+        "guest:mvbru8hr-v8qtre",
+        "guest:mvbrqq3y-aa1f5c"
+      ],
+      "observed": [
+        "guest:mvbrr03x-76x6ci",
+        "guest:mvbrwmt7-ocott0",
+        "guest:mvbrvuew-fwzknb",
+        "guest:mvbrx0y1-91p8cl",
+        "guest:mvbrufkc-apouh0",
+        "guest:mvbrv8vy-bkeqrl",
+        "guest:mvbrqq3y-aa1f5c",
+        "guest:mvbru8hr-v8qtre",
+        "guest:mvbrwfqk-rmhfw6",
+        "guest:mvbrvne9-0pc4lu",
+        "guest:mvbrr9y8-hdrkws"
+      ],
+      "evidence": [
+        "eleven-native-draft-stream-proof.json",
+        "data-eleven-regenerated-stream.json",
+        "eleven-regenerate-stream-ui-proof.xml"
+      ]
+    },
+    {
+      "id": "proof-native-physical-source-order-1",
+      "title": "התאמת סיכום הכוחות המקורי: native-physical-source-order-1",
+      "status": "passed",
+      "expected": [
+        "guest:mvbrv8vy-bkeqrl",
+        "guest:mvbrufkc-apouh0",
+        "guest:mvbrx0y1-91p8cl",
+        "guest:mvbrvuew-fwzknb",
+        "guest:mvbrwmt7-ocott0",
+        "guest:mvbrr03x-76x6ci",
+        "guest:mvbrr9y8-hdrkws",
+        "guest:mvbrvne9-0pc4lu",
+        "guest:mvbrwfqk-rmhfw6",
+        "guest:mvbru8hr-v8qtre",
+        "guest:mvbrqq3y-aa1f5c"
+      ],
+      "observed": [
+        "guest:mvbrv8vy-bkeqrl",
+        "guest:mvbrufkc-apouh0",
+        "guest:mvbrx0y1-91p8cl",
+        "guest:mvbrvuew-fwzknb",
+        "guest:mvbrwmt7-ocott0",
+        "guest:mvbrr03x-76x6ci",
+        "guest:mvbrr9y8-hdrkws",
+        "guest:mvbrvne9-0pc4lu",
+        "guest:mvbrwfqk-rmhfw6",
+        "guest:mvbru8hr-v8qtre",
+        "guest:mvbrqq3y-aa1f5c"
+      ],
+      "evidence": [
+        "eleven-native-draft-stream-proof.json",
+        "data-eleven-regenerated-stream.json",
+        "eleven-regenerate-stream-ui-proof.xml"
+      ]
+    },
+    {
+      "id": "proof-native-captain-1",
+      "title": "התאמת סיכום הכוחות המקורי: native-captain-1",
+      "status": "passed",
+      "expected": "guest:mvbrv8vy-bkeqrl",
+      "observed": "guest:mvbrv8vy-bkeqrl",
+      "evidence": [
+        "eleven-native-draft-stream-proof.json",
+        "data-eleven-regenerated-stream.json",
+        "eleven-regenerate-stream-ui-proof.xml"
+      ]
+    },
+    {
+      "id": "proof-native-team-members-2",
+      "title": "התאמת סיכום הכוחות המקורי: native-team-members-2",
+      "status": "passed",
+      "expected": [
+        "guest:mvbrs3c0-cpau3c",
+        "guest:mvbrlplt-nn6m4j",
+        "guest:mvbrv1ua-a8fw8t",
+        "guest:mvbrt19w-8moc7a",
+        "guest:mvbrttf7-8zcgh1",
+        "guest:mvbrun38-ihk3va",
+        "guest:mvbrw1ea-3kwy60",
+        "guest:mvbrwtux-c4hh1c",
+        "guest:mvbrsdd9-pnwz91",
+        "guest:mvbrvg8q-a3l7tc",
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      ],
+      "observed": [
+        "guest:mvbrun38-ihk3va",
+        "guest:mvbrttf7-8zcgh1",
+        "guest:mvbrt19w-8moc7a",
+        "guest:mvbrv1ua-a8fw8t",
+        "guest:mvbrlplt-nn6m4j",
+        "guest:mvbrs3c0-cpau3c",
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "guest:mvbrvg8q-a3l7tc",
+        "guest:mvbrsdd9-pnwz91",
+        "guest:mvbrwtux-c4hh1c",
+        "guest:mvbrw1ea-3kwy60"
+      ],
+      "evidence": [
+        "eleven-native-draft-stream-proof.json",
+        "data-eleven-regenerated-stream.json",
+        "eleven-regenerate-stream-ui-proof.xml"
+      ]
+    },
+    {
+      "id": "proof-native-physical-source-order-2",
+      "title": "התאמת סיכום הכוחות המקורי: native-physical-source-order-2",
+      "status": "passed",
+      "expected": [
+        "guest:mvbrs3c0-cpau3c",
+        "guest:mvbrlplt-nn6m4j",
+        "guest:mvbrv1ua-a8fw8t",
+        "guest:mvbrt19w-8moc7a",
+        "guest:mvbrttf7-8zcgh1",
+        "guest:mvbrun38-ihk3va",
+        "guest:mvbrw1ea-3kwy60",
+        "guest:mvbrwtux-c4hh1c",
+        "guest:mvbrsdd9-pnwz91",
+        "guest:mvbrvg8q-a3l7tc",
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      ],
+      "observed": [
+        "guest:mvbrs3c0-cpau3c",
+        "guest:mvbrlplt-nn6m4j",
+        "guest:mvbrv1ua-a8fw8t",
+        "guest:mvbrt19w-8moc7a",
+        "guest:mvbrttf7-8zcgh1",
+        "guest:mvbrun38-ihk3va",
+        "guest:mvbrw1ea-3kwy60",
+        "guest:mvbrwtux-c4hh1c",
+        "guest:mvbrsdd9-pnwz91",
+        "guest:mvbrvg8q-a3l7tc",
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      ],
+      "evidence": [
+        "eleven-native-draft-stream-proof.json",
+        "data-eleven-regenerated-stream.json",
+        "eleven-regenerate-stream-ui-proof.xml"
+      ]
+    },
+    {
+      "id": "proof-native-captain-2",
+      "title": "התאמת סיכום הכוחות המקורי: native-captain-2",
+      "status": "passed",
+      "expected": "guest:mvbrs3c0-cpau3c",
+      "observed": "guest:mvbrs3c0-cpau3c",
+      "evidence": [
+        "eleven-native-draft-stream-proof.json",
+        "data-eleven-regenerated-stream.json",
+        "eleven-regenerate-stream-ui-proof.xml"
+      ]
+    },
+    {
+      "id": "publish-same-allocation",
+      "title": "הפרסום שומר בדיוק את גרסת החלוקה והשחקנים שנבדקו במכשיר",
+      "status": "passed",
+      "expected": {
+        "published": true,
+        "sameVersion": true,
+        "sameTeamsAndOriginal": true
+      },
+      "observed": {
+        "published": true,
+        "version": 1792206143482
+      },
+      "evidence": [
+        "data-eleven-regenerated-stream.json",
+        "data-eleven-published-time-ready.json"
+      ]
+    },
+    {
+      "id": "publish-does-not-start-or-credit",
+      "title": "פרסום הכוחות אינו מפעיל שעון או לייב ואינו זוקף משחק או נוכחות",
+      "status": "passed",
+      "expected": "מחזור פתוח; כוחות פורסמו בלבד; ללא משחקים, מונים או סימן נוכחות",
+      "observed": {
+        "status": "open",
+        "rotation": null,
+        "live": null,
+        "history": 0,
+        "playerStats": 0,
+        "attendanceCredit": null
+      },
+      "evidence": [
+        "data-eleven-published-time-ready.json"
+      ]
+    },
+    {
+      "id": "live-pending",
+      "title": "קבוצות פותחות, שערים, שעון, חילופים ותוצאות",
+      "status": "unproven",
+      "reason": "טרם התקבל מקור לייב למחזור זה.",
+      "evidence": [
+        "data-eleven-time-confirm-check.json"
+      ]
+    },
+    {
+      "id": "commit-pending",
+      "title": "שמירת משחק, סגלי אחד עשר, אורחים וסטטיסטיקות",
+      "status": "unproven",
+      "reason": "טרם התקבלה היסטוריה או זקיפת משחק למחזור זה.",
+      "evidence": [
+        "data-eleven-time-confirm-check.json"
+      ]
+    },
+    {
+      "id": "finish-pending",
+      "title": "סיכום המחזור, נוכחות וחתימה",
+      "status": "unproven",
+      "reason": "המחזור טרם הסתיים ולא נוצר סיכום במקור האחרון.",
+      "evidence": [
+        "data-eleven-time-confirm-check.json"
+      ]
+    },
+    {
+      "id": "arrival-not-registration",
+      "title": "סגל רשום אינו הוכחת הגעה או דקות השתתפות",
+      "status": "unproven",
+      "reason": "הנתונים מוכיחים 33 רשומים פעילים. מפת הגעה חסרה בנקודת הסגל; נוכחות בפועל וזקיפה בסיום יאומתו בנפרד.",
+      "evidence": [
+        "data-eleven-full-roster.json"
+      ]
+    },
+    {
+      "id": "ui-not-source",
+      "title": "כלל הפריסה, הכיווניות, הלחיצות והאנימציות בלייב",
+      "status": "unproven",
+      "reason": "לסיכום הכוחות קיימת הוכחת חברות וסדר מקור מתוך עץ מכשיר קפוא, אם נמסרה. היא אינה בדיקת כלל הלייב או אישור לפריסת כיווניות; תיקון רכיב מאוחר מחייב צילום חדש.",
+      "evidence": [
+        "data-eleven-time-confirm-check.json"
+      ]
+    }
+  ]
+}

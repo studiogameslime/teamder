@@ -67,6 +67,7 @@ export type StoreReviewTrigger = 'gameFilled' | 'matchFinished';
 // prompt for the same context within a session. Keyed by trigger +
 // optional contextId (e.g. gameId).
 const sessionShown = new Set<string>();
+let reviewInFlight = false;
 
 function sessionKey(trigger: StoreReviewTrigger, contextId?: string): string {
   return contextId ? `${trigger}:${contextId}` : trigger;
@@ -83,7 +84,7 @@ export async function maybeRequestStoreReview(
 ): Promise<boolean> {
   // Mock / dev — log only so we can verify the trigger fires
   // without spamming the real OS prompt.
-  if (USE_MOCK_DATA) {
+  if (USE_MOCK_DATA || __DEV__) {
     if (__DEV__) {
       console.log('[storeReview] would prompt', trigger, contextId);
     }
@@ -95,8 +96,9 @@ export async function maybeRequestStoreReview(
   // a second caller (e.g. a re-render firing the same effect again
   // while the first call is awaiting AsyncStorage) can pass the
   // `has(key)` check and we'd end up calling requestReview twice.
-  if (sessionShown.has(key)) return false;
+  if (sessionShown.has(key) || reviewInFlight) return false;
   sessionShown.add(key);
+  reviewInFlight = true;
 
   try {
     // Remotely tunable: disable the prompt entirely, or change the
@@ -113,16 +115,18 @@ export async function maybeRequestStoreReview(
     const available = await StoreReview.isAvailableAsync();
     if (!available) return false;
 
+    await StoreReview.requestReview();
     await storage.setStoreReviewLastShownAt(Date.now());
     logEvent(AnalyticsEvent.StoreReviewPrompted, {
       trigger,
       contextId,
     });
-    await StoreReview.requestReview();
     return true;
   } catch (err) {
     logError('maybeRequestStoreReview', err, { trigger, contextId });
     if (__DEV__) console.warn('[storeReview] requestReview failed', err);
     return false;
+  } finally {
+    reviewInFlight = false;
   }
 }

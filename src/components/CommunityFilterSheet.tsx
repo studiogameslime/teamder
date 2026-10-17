@@ -226,7 +226,7 @@ export function CommunityFilterSheet({
                           color={colors.success}
                         />
                         <Text style={styles.nearbyActiveTitle}>
-                          {he.gameFiltersNearbyActive}
+                          מועדונים בקרבת מקום
                         </Text>
                       </View>
                       {nearbyCaption ? (
@@ -237,13 +237,13 @@ export function CommunityFilterSheet({
                     <>
                       <Text style={styles.nearbyPromptTitle}>
                         {locationGranted
-                          ? he.gameFiltersNearbyEnableTitle
+                          ? 'מועדונים בקרבת מקום'
                           : he.gameFiltersNearbyNeedPermission}
                       </Text>
                       <Text style={styles.nearbyPromptHint}>
                         {locationGranted
                           ? he.gameFiltersNearbyEnableHint
-                          : he.gameFiltersNearbyPermissionHint}
+                          : 'כדי להציג מועדונים בקרבתך'}
                       </Text>
                       <Pressable
                         onPress={() => {
@@ -267,7 +267,7 @@ export function CommunityFilterSheet({
                         />
                         <Text style={styles.nearbyAllowText}>
                           {locationGranted
-                            ? he.gameFiltersNearbyEnable
+                            ? 'הצג מועדונים קרובים'
                             : he.gameFiltersNearbyAllow}
                         </Text>
                       </Pressable>

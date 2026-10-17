@@ -6,10 +6,10 @@
 // own-goal) and — when the mini-game was decided on penalties — the shootout
 // kicks (kicker → keeper, scored/missed). Pure read/display: all the data is
 // already persisted by commitRoundStats. Access is gated to game participants
-// (same rule as the evening summary); a denied read degrades to the empty
-// state, never a crash.
+// (same rule as the evening summary); unavailable reads show retry and retain
+// an already loaded snapshot instead of claiming that no games were played.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -27,9 +27,11 @@ import { TabScroll } from '@/components/match/tabs/MatchTabShell';
 import { UserAvatar } from '@/components/UserAvatar';
 import { gameService } from '@/services/gameService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 import { teamName, type TeamLike } from '@/utils/draft';
 import { teamColor } from '@/components/match/rotationView';
 import { useGameStore } from '@/store/gameStore';
+import { useUserStore } from '@/store/userStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import {
@@ -143,9 +145,20 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
   const live = props.live ?? route.params?.live === true;
   const players = useGameStore((s) => s.players);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
+  const viewerId = useUserStore(s => s.currentUser?.id ?? '');
+  const viewerIsGuest = useUserStore(s => s.currentUser?.isGuest === true);
+  const owner = JSON.stringify([gameId, viewerId, viewerIsGuest]);
+  const currentOwner = useRef(owner);
+  currentOwner.current = owner;
+  const loadRevision = useRef(0);
 
-  const [game, setGame] = useState<Game | null>(null);
-  const [rounds, setRounds] = useState<RoundHistoryDoc[]>([]);
+  const [snapshot, setSnapshot] = useState<{ owner: string; game: Game; rounds: RoundHistoryDoc[] } | null>(null);
+  // Hide the old account/round synchronously, before its effects are cleaned up.
+  const hasCurrentData = snapshot?.owner === owner;
+  const game = hasCurrentData ? snapshot.game : null;
+  const rounds = hasCurrentData ? snapshot.rounds : [];
+  const [failedOwner, setFailedOwner] = useState<string | null>(null);
+  const failed = failedOwner === owner;
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   /**
@@ -159,27 +172,39 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
    */
   const [colourFilter, setColourFilter] = useState<number | null>(null);
 
-  /** Bumped to re-run the loader. Live only — see `live`. */
+  /** Bumped on a live refocus or an explicit retry. */
   const [reloadKey, setReloadKey] = useState(0);
+  const focusedOwner = useRef<string | null>(null);
   useFocusEffect(
     React.useCallback(() => {
       // Skip the first focus: the mount effect below is already loading.
       if (!live) return;
+      if (focusedOwner.current !== owner) { focusedOwner.current = owner; return; }
       setReloadKey((k) => k + 1);
-    }, [live]),
+    }, [live, owner]),
   );
+
+  useEffect(() => { setExpanded({}); setColourFilter(null); }, [owner]);
 
   useEffect(() => {
     let alive = true;
+    const revision = ++loadRevision.current;
+    const current = () => {
+      const viewer = useUserStore.getState().currentUser;
+      return alive && revision === loadRevision.current && currentOwner.current === owner &&
+        (viewer?.id ?? '') === viewerId && (viewer?.isGuest === true) === viewerIsGuest;
+    };
     setLoading(true);
     (async () => {
+      if (!gameId || !viewerId) throw new Error('MATCH_ROUNDS_CONTEXT_UNAVAILABLE');
       const [g, rs] = await Promise.all([
-        gameService.getGameById(gameId).catch(() => null),
-        gameService.getRoundHistory(gameId).catch(() => []),
+        gameService.getGameById(gameId),
+        gameService.getRoundHistory(gameId),
       ]);
-      if (!alive) return;
-      setGame(g);
-      setRounds(rs);
+      if (!current()) return;
+      if (!g) throw new Error('MATCH_ROUNDS_GAME_UNAVAILABLE');
+      setSnapshot({ owner, game: g, rounds: rs });
+      setFailedOwner(null);
       logEvent(AnalyticsEvent.MatchRoundsOpened, {
         gameId,
         rounds: rs.length,
@@ -205,13 +230,18 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
         }
       }
       const realIds = [...ids].filter((id) => !isGuestId(id));
-      if (realIds.length) hydratePlayers(realIds);
-      setLoading(false);
-    })();
+      if (realIds.length) void hydratePlayers(realIds);
+    })().catch(error => {
+      if (!current()) return;
+      // Keep this context's previous snapshot on a refresh failure. An initial
+      // failure has no snapshot and renders the error instead of an empty list.
+      setFailedOwner(owner);
+      if (gameId && viewerId) logError('loadMatchRounds', error, { gameId });
+    }).finally(() => { if (current()) setLoading(false); });
     return () => {
       alive = false;
     };
-  }, [gameId, hydratePlayers, reloadKey]);
+  }, [gameId, viewerId, viewerIsGuest, owner, hydratePlayers, reloadKey]);
 
   const guestsById = useMemo(() => {
     const m = new Map<string, GameGuest>();
@@ -245,9 +275,11 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
   // count. Prefer the authoritative draft split; fall back to whatever indices
   // the rounds recorded (old games with a real index but no draftTeams). −1
   // (index-less legacy rounds) is dropped: there's no colour to show.
-  // Same array the rounds below are coloured from — the admin's chosen bibs.
-  const splitForColors =
-    game?.draftTeams?.originalTeams ?? game?.draftTeams?.teams;
+  // originalTeams freezes the allocated PLAYERS. Opening preparation can
+  // change colours afterwards, so identity comes from the same teams as live.
+  // Round history has indices but no per-round colour snapshot.
+  const splitForColors = game?.draftTeams?.teams ?? game?.draftTeams?.originalTeams;
+  const originalRosters = game?.draftTeams?.originalTeams ?? game?.draftTeams?.teams;
   const cycleTeams = useMemo<number[]>(() => {
     const fromDraft = (game?.draftTeams?.teams ?? [])
       .map((t) => t.index)
@@ -268,7 +300,7 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
           (r) => r.teamAIndex === colourFilter || r.teamBIndex === colourFilter,
         );
 
-  if (loading) {
+  if (!hasCurrentData && !failed) {
     const spinner = (
       <View style={styles.center}>
         <SoccerBallLoader />
@@ -322,8 +354,22 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
             body: he.matchRoundsEmptySub,
           };
   const pinned = props.header != null && props.stickyHeader != null;
+  const loadNotice = failed ? <View style={styles.loadNotice} accessibilityRole="alert">
+    <Text style={styles.loadNoticeTitle}>{hasCurrentData ? 'לא הצלחנו לעדכן את המשחקים' : 'לא הצלחנו לטעון את המשחקים'}</Text>
+    <Text style={styles.loadNoticeBody}>{hasCurrentData ? 'המשחקים שכבר נטענו עדיין מוצגים. אפשר לנסות שוב לעדכון.' : 'המידע אינו זמין כרגע. אפשר לנסות שוב.'}</Text>
+    <Pressable testID="match-rounds-retry" accessibilityRole="button" accessibilityLabel="ניסיון חוזר לטעינת המשחקים" accessibilityState={{ disabled: loading }} disabled={loading}
+      onPress={() => setReloadKey(k => k + 1)} style={[styles.retryButton, loading && styles.retryDisabled]}>
+      <Text style={styles.retryText}>{loading ? 'טוענים…' : 'ניסיון חוזר'}</Text>
+    </Pressable>
+  </View> : null;
   const body =
-    rounds.length === 0 ? (
+    !hasCurrentData && failed ? (
+      <ScrollSurface style={styles.flex} stickyHeaderIndices={pinned ? [1] : undefined} showsVerticalScrollIndicator={false}>
+        <View>{props.header}</View>
+        <View>{props.stickyHeader}</View>
+        <View style={styles.center}>{loadNotice}</View>
+      </ScrollSurface>
+    ) : rounds.length === 0 ? (
       // Scrollable even with nothing in it: the header rides inside this view,
       // and a plain <View> would leave the tab bar with nothing to stick to.
       <ScrollSurface
@@ -336,6 +382,7 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
         <View>{props.header}</View>
         <View>{props.stickyHeader}</View>
         <View style={styles.center}>
+          {loadNotice}
           <Ionicons name={empty.icon} size={46} color={colors.textMuted} />
           <Text style={styles.emptyTitle}>{empty.title}</Text>
           <Text style={styles.emptySub}>{empty.body}</Text>
@@ -370,6 +417,7 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
               : undefined
           }
         >
+        {loadNotice}
         <View style={styles.summaryPill}>
           <Ionicons name="list" size={15} color={colors.primary} />
           <Text style={styles.summaryPillTx}>
@@ -446,7 +494,8 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
             round={r}
             index={rounds.indexOf(r)}
             resolve={resolve}
-            teams={game?.draftTeams?.originalTeams ?? game?.draftTeams?.teams}
+            teams={originalRosters}
+            identityTeams={splitForColors}
             expanded={!!expanded[r.roundId || String(idx)]}
             onToggle={() =>
               setExpanded((s) => ({
@@ -475,6 +524,7 @@ function RoundCard({
   index,
   resolve,
   teams,
+  identityTeams,
   expanded,
   onToggle,
 }: {
@@ -482,6 +532,7 @@ function RoundCard({
   index: number;
   resolve: (id: string | null | undefined) => Resolved;
   teams?: readonly DraftTeam[];
+  identityTeams?: readonly TeamLike[];
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -497,8 +548,8 @@ function RoundCard({
     typeof round.teamBIndex === 'number' && round.teamBIndex >= 0
       ? round.teamBIndex
       : resolveTeamIndex(round.teamB, teams);
-  const A = teamStyle(aIdx, 'A', teams);
-  const B = teamStyle(bIdx, 'B', teams);
+  const A = teamStyle(aIdx, 'A', identityTeams ?? teams);
+  const B = teamStyle(bIdx, 'B', identityTeams ?? teams);
   const pens = round.penalties ?? [];
   const penA = pens.filter((p) => p.team === 'A' && p.scored).length;
   const penB = pens.filter((p) => p.team === 'B' && p.scored).length;
@@ -574,16 +625,18 @@ function RoundCard({
                     size={15}
                     color={g.ownGoal ? colors.textMuted : t.color}
                   />
-                  <Text style={styles.goalScorer} numberOfLines={1}>
-                    {scorer.name}
-                  </Text>
-                  {g.ownGoal ? (
-                    <Text style={styles.goalOwn}>{he.matchRoundsOwnGoal}</Text>
-                  ) : assist ? (
-                    <Text style={styles.goalAssist} numberOfLines={1}>
-                      {he.matchRoundsAssist(assist.name)}
+                  <View style={styles.goalCopy}>
+                    <Text style={styles.goalScorer}>
+                      {scorer.name}
                     </Text>
-                  ) : null}
+                    {g.ownGoal ? (
+                      <Text style={styles.goalOwn}>{he.matchRoundsOwnGoal}</Text>
+                    ) : assist ? (
+                      <Text style={styles.goalAssist}>
+                        {he.matchRoundsAssist(assist.name)}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
                 {g.minute ? (
                   <Text style={styles.goalMinute}>{g.minute}׳</Text>
@@ -611,12 +664,14 @@ function RoundCard({
           {pens.map((p, i) => {
             const kicker = resolve(p.kickerId);
             const keeper = resolve(p.keeperId);
+            const result = p.scored ? 'גול' : p.outcome === 'save' ? 'עצירה' : p.outcome === 'miss' ? 'החטאה' : 'לא הובקע';
+            const resultColor = p.scored ? colors.success : p.outcome === 'save' ? '#B45309' : colors.danger;
             return (
               <View key={i} style={styles.penRow}>
                 <Ionicons
-                  name={p.scored ? 'checkmark-circle' : 'close-circle'}
+                  name={p.scored ? 'checkmark-circle' : p.outcome === 'save' ? 'hand-left' : 'close-circle'}
                   size={15}
-                  color={p.scored ? colors.success : colors.danger}
+                  color={resultColor}
                 />
                 <View
                   style={[
@@ -624,12 +679,11 @@ function RoundCard({
                     { backgroundColor: p.team === 'A' ? A.color : B.color },
                   ]}
                 />
-                <Text style={styles.penKicker}>{kicker.name}</Text>
-                {keeper.id ? (
-                  <Text style={styles.penKeeper}>
-                    {he.matchRoundsVsKeeper(keeper.name)}
-                  </Text>
-                ) : null}
+                <View style={styles.penPeople}>
+                  <Text style={styles.penKicker}>{kicker.name}</Text>
+                  {keeper.id ? <Text style={styles.penKeeper}>{he.matchRoundsVsKeeper(keeper.name)}</Text> : null}
+                </View>
+                <Text style={[styles.penResult, { color: resultColor }]}>{result}</Text>
               </View>
             );
           })}
@@ -729,6 +783,12 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
   },
+  loadNotice: { alignSelf: 'stretch', backgroundColor: '#FFF7ED', borderColor: '#FED7AA', borderWidth: 1, borderRadius: 16, padding: 14, gap: 9, marginBottom: spacing.md },
+  loadNoticeTitle: { ...typography.body, fontWeight: '800', color: '#9A3412', textAlign: RTL_LABEL_ALIGN },
+  loadNoticeBody: { ...typography.body, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  retryButton: { minHeight: 44, alignSelf: 'flex-start', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  retryDisabled: { opacity: 0.5 },
+  retryText: { ...typography.body, fontWeight: '800', color: '#FFF', textAlign: 'center' },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
   summaryPill: {
     alignSelf: 'flex-start',
@@ -862,20 +922,24 @@ const styles = StyleSheet.create({
   },
   goalMain: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 7,
-    flexShrink: 1,
+    flex: 1,
+    minWidth: 0,
   },
+  goalCopy: { flex: 1, minWidth: 0, gap: 2 },
   goalMinute: {
     ...typography.caption,
     color: colors.textMuted,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
     marginStart: spacing.sm,
+    alignSelf: 'flex-start',
+    flexShrink: 0,
   },
-  goalScorer: { ...typography.body, fontWeight: '700', color: colors.text },
-  goalAssist: { ...typography.caption, color: colors.textMuted, flexShrink: 1 },
-  goalOwn: { ...typography.caption, color: colors.textMuted, fontStyle: 'italic' },
+  goalScorer: { ...typography.body, fontWeight: '700', color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  goalAssist: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  goalOwn: { ...typography.caption, color: colors.textMuted, fontStyle: 'italic', textAlign: RTL_LABEL_ALIGN },
   noGoals: {
     ...typography.caption,
     color: colors.textMuted,
@@ -901,6 +965,8 @@ const styles = StyleSheet.create({
   pensHeadTx: { ...typography.body, fontWeight: '800', color: colors.text },
   pensScore: { ...typography.body, fontWeight: '900', color: colors.text },
   penRow: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 3 },
+  penPeople: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', columnGap: 5 },
+  penResult: { ...typography.caption, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   penKicker: { ...typography.caption, fontWeight: '700', color: colors.text },
   penKeeper: { ...typography.caption, color: colors.textMuted, flexShrink: 1 },
 

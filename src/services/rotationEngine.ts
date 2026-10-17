@@ -18,11 +18,24 @@
 // randomness source beyond an injectable picker so it's deterministic in tests.
 
 import type { FillMode, MatchRotation, RotationLoan } from '@/types';
+import { retainRotationLoans } from '@/utils/rotationLoans';
 
 export interface RotationTeam {
   index: number;
   /** Home roster (after any permanent reassignments). */
   playerIds: string[];
+}
+
+/** Called only after the result has been committed, before selecting the next
+ * lineup. Recomputing a skeleton on retry cannot double-count persisted usage. */
+export function prepareBalancedNext(state: RotationFillState, previous: MatchRotation): RotationFillState {
+  const usage = { ...(previous.fillUsage ?? {}) };
+  const played = new Set(previous.playing.flatMap(i => rosterOf(i, state.teams, previous.loans)));
+  for (const id of played) {
+    const old = usage[id] ?? {games:0, fills:0, lastRound:0};
+    usage[id] = {games:old.games+1, fills:old.fills + (previous.loans.some(l => l.playerId === id) ? 1 : 0), lastRound:previous.round ?? 1};
+  }
+  return {...state, fillMode:'temporary', rotation:{...state.rotation, loans:[], fillUsage:usage, ...(previous.baseTeams ? {baseTeams:previous.baseTeams} : {})}};
 }
 
 /** Default random picker — chooses `n` distinct items. Override in tests.
@@ -295,6 +308,7 @@ export function recordWinnerSkeleton(
       loserFirst: null,
       rotation: {
         ...rotation,
+        loans: rotation.loans.filter(l => !l.swapId),
         wins,
         round: (rotation.round ?? 1) + 1,
         lastRoundWinners,
@@ -305,12 +319,13 @@ export function recordWinnerSkeleton(
     };
   }
 
-  const newPlaying: [number, number] = [winner, incoming];
+  // Replace only the losing side. The team that stays keeps its A/B slot,
+  // so the next scoreboard, rosters and goal buttons do not swap sides.
+  const newPlaying: [number, number] = winner === a ? [a, incoming] : [incoming, b];
   const newWaiting = [...rotation.waiting.slice(1), loser];
   // The incoming team comes ON → any temporary loans whose HOME is `incoming`
   // return home; drop loans tied to the loser's stint that just ended.
-  let loans = rotation.loans.filter((l) => l.homeTeam !== incoming);
-  loans = loans.filter((l) => l.filledTeam !== loser);
+  const loans = retainRotationLoans(rotation.loans, l => l.homeTeam !== incoming && l.filledTeam !== loser);
 
   return {
     teams,
@@ -389,15 +404,14 @@ export function recordTieSkeleton(
   const noOneWaiting = rotation.waiting[0] == null;
   if (noOneWaiting) {
     // Nobody to swap in → both stay, just advance the round (no fill).
-    return state(rotation.playing, { ...rotation, ...base }, null);
+    return state(rotation.playing, { ...rotation, ...base, loans: rotation.loans.filter(l => !l.swapId) }, null);
   }
 
   // Helper: rotate so `out` goes to the back and `stay` is joined by `incoming`.
   const rotateOneOut = (stay: number, out: number, incoming: number): RotationFillState => {
     const newPlaying: [number, number] = [stay, incoming];
     const newWaiting = [...rotation.waiting.filter((w) => w !== incoming), out];
-    let loans = rotation.loans.filter((l) => l.homeTeam !== incoming);
-    loans = loans.filter((l) => l.filledTeam !== out);
+    const loans = retainRotationLoans(rotation.loans, l => l.homeTeam !== incoming && l.filledTeam !== out);
     return state(newPlaying, { ...base, playing: newPlaying, waiting: newWaiting, loans }, out);
   };
 
@@ -423,8 +437,7 @@ export function recordTieSkeleton(
   const newWaiting = [...rotation.waiting.slice(2), b, a];
   // Incoming teams come on → return their loaned-out players; drop loans into
   // the two teams going off.
-  let loans = rotation.loans.filter((l) => l.homeTeam !== inc1 && l.homeTeam !== inc2);
-  loans = loans.filter((l) => l.filledTeam !== a && l.filledTeam !== b);
+  const loans = retainRotationLoans(rotation.loans, l => l.homeTeam !== inc1 && l.homeTeam !== inc2 && l.filledTeam !== a && l.filledTeam !== b);
   return state(newPlaying, { ...base, playing: newPlaying, waiting: newWaiting, loans }, null);
 }
 

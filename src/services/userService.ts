@@ -648,8 +648,8 @@ export const userService = {
       return {
         id: p.id,
         name: p.displayName,
-        avatarId: undefined,
-        photoUrl: p.avatarUrl,
+        avatarId: p.avatarId,
+        photoUrl: p.photoUrl,
         createdAt: Date.now(),
         stats:
           idx < 8

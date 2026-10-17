@@ -4,21 +4,20 @@ import type { RoundHistoryDoc } from '@/utils/eveningStats';
 // 25 mock players for a realistic community size. The first 15 are the same
 // names used across earlier mocks so screenshots/demos stay consistent.
 const HEBREW_NAMES = [
-  'אלין',     'אלוואי',   'משה',     'נדב',     'אורי',
+  'אלין',     'אלרואי',   'משה',     'נדב',     'אורי',
   'רון',      'דניאל',    'יוסי',    'תומר',    'עידו',
   'גל',       'בן',       'ליאור',   'נועם',    'איתן',
   'יואב',     'עמית',    'שחר',     'רועי',    'גיא',
   'אסף',      'ערן',     'דוד',     'אריאל',   'ניר',
 ];
 
-function avatar(seed: string) {
-  return `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
-}
+// Stable bundled portraits for the named demo roster; no remote image loading.
+const DEMO_AVATAR_IDS = ['a05','a07','a09','a11','a13','a15','a17','a19','a21','a22','a23','a24','a25','a26','a27','a28','a29','a30','a31','a32','a33','a34'];
 
 export const mockPlayers: Player[] = HEBREW_NAMES.map((name, i) => ({
   id: `p${i + 1}`,
   displayName: name,
-  avatarUrl: avatar(`footy-${i + 1}-${name}`),
+  avatarId: DEMO_AVATAR_IDS[i % DEMO_AVATAR_IDS.length],
   stats: {
     gamesPlayed: 30 + Math.floor(Math.random() * 20),
     wins: 15 + Math.floor(Math.random() * 15),

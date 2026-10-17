@@ -1,0 +1,166 @@
+{
+  "createdAtUtc": "2026-10-17T01:07:20.041061+00:00",
+  "phase": "ביקורת קפואה עד בעיטה ראשונה וחידוש חיבור; תוספת נתוני בעיטה שנייה ושלישית וצילומים רגילים ללא סיום",
+  "gameId": "YEdIR3MviDK82D581ELk",
+  "groupId": "J060YQu6QTcgk3glUDj2",
+  "counts": {
+    "passed": 36,
+    "unproven": 8
+  },
+  "notes": [
+    "נתוני מחזור שבעה מול שבעה ייעודי בלבד; מחזורים אחרים סוננו.",
+    "אין שמירת משחק, סיום מחזור או זקיפות סטטיסטיקה בשלב הזה.",
+    "הספירה36/8 שייכת לביקורת הקפואה עד בעיטה ראשונה; נתוני בעיטה שנייה ושלישית הם תוספת נפרדת שנקראה לאחריה.",
+    "חותמות ביקורת המקור מתייחסות לקבצים המלאים; חותמות העותקים המסוננים רשומות בנפרד."
+  ],
+  "files": [
+    {
+      "file": "data-round-seven-created.json",
+      "readAt": "2026-10-16T23:29:18.662144+00:00",
+      "originalSha256": "81cdd1d6303141b97115bb604bbf7f610b279ab619a0a845d922a409f2da76ea",
+      "sha256": "dde5820025640ed40666ba7c325e1defed22f4b0f31a67114abe2f58ba73910b",
+      "filtered": true
+    },
+    {
+      "file": "data-round-seven-host-joined.json",
+      "readAt": "2026-10-16T23:31:02.573825+00:00",
+      "originalSha256": "dc1864656453ff4bd7fb651e0b5919a6778288de814137f11ac4daae6ae2a87e",
+      "sha256": "24bf9a603beb717e75b0049edbd165b603ce3cbf232630ac31652efe077239a6",
+      "filtered": true
+    },
+    {
+      "file": "data-round-seven-first-guest.json",
+      "readAt": "2026-10-16T23:33:01.204650+00:00",
+      "originalSha256": "dcfd7eae10cfc073ed77675f05fd0093ab43f0d4edad865d3b09710fb9b86fd3",
+      "sha256": "3eecd44b633d531e86dd1fd50a76dbbd9b2c3b6a158ed85b365e71405cdd247f",
+      "filtered": true
+    },
+    {
+      "file": "data-round-seven-full-roster.json",
+      "readAt": "2026-10-16T23:43:59.312339+00:00",
+      "originalSha256": "3e4362943eb7f97085208dfbe523095a8baccbd8769c04928b0989165cb7b5cc",
+      "sha256": "caf9be6246d7f3d055a0b3d8060d07df1e09092045df04a1620e91499565129d",
+      "filtered": true
+    },
+    {
+      "file": "data-round-seven-rated-club.json",
+      "readAt": "2026-10-16T23:54:33.969604+00:00",
+      "originalSha256": "34df4a675b701de53895c99f10d0e7190ed69d77c26bef722b476d71002e56d0",
+      "sha256": "d9792f846ddc235fbd00f469c7e80a9eade3ced172573d2b1fe9274432e64563",
+      "filtered": true
+    },
+    {
+      "file": "data-round-seven-auto.json",
+      "readAt": "2026-10-16T23:59:41.692398+00:00",
+      "originalSha256": "a2edd20c9ce70f1113027ab4a31f6d43f1ad877cdb1c71e220a431d78cacc273",
+      "sha256": "7b7cc28562c5f9a29be6e206ea37c742e62e88a0ef0e0361f43ec23c6fc25d83",
+      "filtered": true
+    },
+    {
+      "file": "data-round-seven-auto-clean.json",
+      "readAt": "2026-10-17T00:18:35.227127+00:00",
+      "originalSha256": "822298873a06de1167209178b8258520a5d4583b5e5144ebedbbc3b4337a7f11",
+      "sha256": "1720739acd7d94d314a56c1a864f06f2ee7c7b6f29832e41b18ef9185262cbca",
+      "filtered": true
+    },
+    {
+      "file": "data-seven-regenerate-version.json",
+      "readAt": "2026-10-17T00:40:08.160132+00:00",
+      "originalSha256": "8b6e23b8a2c4e277657fe5bcfac5c195e6b0005e41f3657b49f93402201970e3",
+      "sha256": "28987bc0ef5e21c8350d7e21729d662784be5c59255e8feb98997bc032fbcf11",
+      "filtered": true
+    },
+    {
+      "file": "data-round-seven-ready.json",
+      "readAt": "2026-10-17T00:44:08.076555+00:00",
+      "originalSha256": "7d80c6b287fab1ea97c1fc8ab9bde2778b80a5a2612d882496b2f86607c1bef2",
+      "sha256": "5fc90cdfc89394239ccd9c1fc7f407cb6dcaef70958f3798f3e36ef6e1cab708",
+      "filtered": true
+    },
+    {
+      "file": "data-seven-reduced-goal.json",
+      "readAt": "2026-10-17T00:50:23.531710+00:00",
+      "originalSha256": "fc99a2b12a9ea7b7cb1650e721adb0639a92d54fd0b8743a83182a65f7195a66",
+      "sha256": "f8995f9c0b8a1a2a708153692f64ebd95fa73cea06314873f0359b5fc6023af1",
+      "filtered": true
+    },
+    {
+      "file": "data-seven-tie-goals.json",
+      "readAt": "2026-10-17T00:52:10.790821+00:00",
+      "originalSha256": "4594d83f0a5e4785f47a2adc8a3839cfeaaa84a893f614e381e9b32db47eefd5",
+      "sha256": "dfe63e3051fbfb25b3b5d77695538183f59db911c809c20fb23929830a912ec5",
+      "filtered": true
+    },
+    {
+      "file": "data-seven-kick-one.json",
+      "readAt": "2026-10-17T00:56:06.128152+00:00",
+      "originalSha256": "eebea9578906e547a7b220eed4657508cfd0e4ced88136a19282268ff123754a",
+      "sha256": "3851db1d582afd724128845c352c54a43f12fa0ca2fca7776605b1a256f0b4f9",
+      "filtered": true
+    },
+    {
+      "file": "data-seven-reconnected.json",
+      "readAt": "2026-10-17T00:57:25.600738+00:00",
+      "originalSha256": "940b7ac5288ce53cf211ae83f8cdd6b4e6e37e1ad67f5105f5d0764a2d56d154",
+      "sha256": "383df0d99d18d7a40ebaa3eb29657e88558a5204700258250bb7b43d6c51bfa8",
+      "filtered": true
+    },
+    {
+      "file": "seven-native-draft-members-proof.json",
+      "readAt": null,
+      "originalSha256": "ef2386f77bb8f21c60212ecee0f17548077e6f1c5a07c3a3e0c20560b809f720",
+      "sha256": "ef2386f77bb8f21c60212ecee0f17548077e6f1c5a07c3a3e0c20560b809f720",
+      "filtered": false
+    },
+    {
+      "file": "data-seven-kick-two.json",
+      "readAt": "2026-10-17T01:01:55.200489+00:00",
+      "originalSha256": "32a8f8c38425577712ceb32aae766bc75cc140793622ee9cf0bfa03af979e2e2",
+      "sha256": "f3b1efde67bcb946318e235c9106ad8ff39163ebadc2d8ba7ea11f91bbf0401c",
+      "filtered": true
+    },
+    {
+      "file": "data-seven-kick-three.json",
+      "readAt": "2026-10-17T01:04:22.392098+00:00",
+      "originalSha256": "7859892b93d1070b724dae69f9b5198fac97b4a5546f8c8e6263c576bbfcb480",
+      "sha256": "973cf526c9eaedaf7ac84fc654d4555de7135f536dc40a64c98884c5bd756748",
+      "filtered": true
+    },
+    {
+      "file": "audit-seven-partial-data.md",
+      "originalSha256": "b415e58aab1b782d640a4215618edf43f8e5623a09545a470dfe105d5a952c58",
+      "sha256": "b415e58aab1b782d640a4215618edf43f8e5623a09545a470dfe105d5a952c58",
+      "filtered": false
+    },
+    {
+      "file": "audit-seven-partial-data.json",
+      "originalSha256": "c4823f8d1f8101d10cde02ae22fe1bd99ebb60c2731a29f1ca4fdb18d7c09e71",
+      "sha256": "c4823f8d1f8101d10cde02ae22fe1bd99ebb60c2731a29f1ca4fdb18d7c09e71",
+      "filtered": false
+    },
+    {
+      "file": "seven-cold-small-motion-runtime.json",
+      "originalSha256": "33f5a0ad07a232a382151c2ac077d1fac86a683d4f7245f4db188446ef42b6e0",
+      "sha256": "33f5a0ad07a232a382151c2ac077d1fac86a683d4f7245f4db188446ef42b6e0",
+      "filtered": false
+    },
+    {
+      "file": "seven-regenerate-version-runtime.json",
+      "originalSha256": "6668424181367f44ed40c29a902e4c56d067c5c255a4f187e4472274cccbee81",
+      "sha256": "6668424181367f44ed40c29a902e4c56d067c5c255a4f187e4472274cccbee81",
+      "filtered": false
+    },
+    {
+      "file": "seven-reduced-motion-pref.json",
+      "originalSha256": "7e8a3b28fc67f9a7ac2f76c38d18f1f61ce229270ee7c898c3cfc3d55bce82c7",
+      "sha256": "7e8a3b28fc67f9a7ac2f76c38d18f1f61ce229270ee7c898c3cfc3d55bce82c7",
+      "filtered": false
+    },
+    {
+      "file": "seven-kick-two-motion-pref.json",
+      "originalSha256": "655dd26b3d7c2b8189883f6bafff91c456fb8c5c1ea77825955cce89a58066c1",
+      "sha256": "655dd26b3d7c2b8189883f6bafff91c456fb8c5c1ea77825955cce89a58066c1",
+      "filtered": false
+    }
+  ]
+}

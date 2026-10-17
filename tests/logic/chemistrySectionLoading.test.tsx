@@ -8,6 +8,7 @@ jest.mock('react', () => ({ ...jest.requireActual('react'), useCallback: (fn: un
 jest.mock('react-native', () => ({ Text:'Text',View:'View',Pressable:'Pressable',StyleSheet:{create:(x:unknown)=>x} }));
 jest.mock('@expo/vector-icons', () => ({ Ionicons:'Icon' }));
 jest.mock('@/components/UserAvatar', () => ({ UserAvatar:'Avatar' }));
+jest.mock('@/components/chemistry/PairChemistryIcon', () => ({ PairChemistryIcon:'PairIcon' }));
 jest.mock('@/components/chemistry/PairCard', () => ({ PairCard:'PairCard',CHEMISTRY_EMOJI:{},CHEMISTRY_LABEL:{} }));
 jest.mock('@/services/clubChemistryService', () => ({ clubChemistryService:{get:jest.fn()} }));
 jest.mock('@/services/groupService', () => ({ groupService:{hydrateUsers:jest.fn().mockResolvedValue([])} }));

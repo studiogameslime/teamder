@@ -7,6 +7,12 @@ test('Pulse accepts only explicitly allowlisted full-account UIDs', () => {
   expect(pulseAdminAllowed('owner', false, '')).toBe(false);
 });
 const firestore = 'https://firestore.googleapis.com/v1/projects/soccer-app-52b6b/databases/(default)/documents';
+test('official support subqueries are permitted only for canonical two-person parents', () => {
+  expect(pulseProxyTarget(firestore + '/dmConversations/alice__teamder:runQuery', 'POST').scope).toBe('datastore');
+  for (const suffix of ['/dmConversations/alice__bob:runQuery', '/dmConversations/teamder__alice:runQuery', '/groups/club:runQuery', '/dmConversations/alice__teamder/messages:runQuery', '/dmConversations/teamder__teamder:runQuery']) {
+    expect(() => pulseProxyTarget(firestore + suffix, 'POST')).toThrow('PULSE_TARGET_DENIED');
+  }
+});
 test.each([
   [firestore + '/feedback/report', 'PATCH'], [firestore + ':runQuery', 'POST'],
   ['https://analyticsdata.googleapis.com/v1beta/properties/534662166:runReport', 'POST'],

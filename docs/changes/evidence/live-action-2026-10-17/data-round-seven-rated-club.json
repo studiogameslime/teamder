@@ -1,0 +1,250 @@
+{
+  "readAt": "2026-10-16T23:54:33.969604+00:00",
+  "account": {
+    "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "stats": {
+      "goals": 1,
+      "wins": 1,
+      "cleanSheets": 1
+    },
+    "name": "בדיקות לייב"
+  },
+  "club": {
+    "id": "J060YQu6QTcgk3glUDj2",
+    "creatorId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "name": "בדיקות לייב אוקטובר",
+    "adminIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "playerIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "isOpen": false
+  },
+  "games": [
+    {
+      "game": {
+        "id": "YEdIR3MviDK82D581ELk",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "title": "בדיקות לייב אוקטובר",
+        "startsAt": 1792194600000,
+        "maxPlayers": 21,
+        "minPlayers": null,
+        "waitlist": [],
+        "pending": [],
+        "teams": null,
+        "status": "open",
+        "currentMatchIndex": 0,
+        "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "visibility": "community",
+        "format": "7v7",
+        "numberOfTeams": 3,
+        "matchDurationMinutes": 8,
+        "hasPenalties": false,
+        "hasHalfTime": false,
+        "draftTeams": null,
+        "rotation": null,
+        "arrivals": null,
+        "autoTeamsAt": null,
+        "autoTeamsMethod": null,
+        "teamsNotifiedAt": null,
+        "teamsEditedManually": false,
+        "acceptsFillers": false,
+        "advancedMode": true,
+        "advancedFillMode": "temporary",
+        "advancedTieMode": null,
+        "createdAt": 1792193353028,
+        "players": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "participantIds": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "liveMatch": {
+          "phase": "organizing",
+          "assignments": {
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": "teamA",
+            "guest:mvbls3w3-qut4pc": "teamB"
+          },
+          "benchOrder": [],
+          "scoreA": 0,
+          "scoreB": 0,
+          "updatedAt": 1792193586480
+        },
+        "teamBalanceMeta": {
+          "generatedAt": 1792193586480,
+          "algorithm": "rating_balanced_v2",
+          "unratedCount": 1,
+          "teamRatings": [
+            3,
+            3.9
+          ],
+          "gap": 0.9,
+          "band": "over",
+          "repeat": 0,
+          "fallback": true,
+          "historyGames": 1
+        },
+        "autoTeamsGeneratedBy": "system",
+        "autoTeamsGeneratedAt": 1792193586480,
+        "guests": [
+          {
+            "id": "mvbls3w3-qut4pc",
+            "name": "דניאל שבע א",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193573811,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvblukkd-mqv80v",
+            "name": "איתי שבע ב",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193688733,
+            "estimatedRating": 3.1
+          },
+          {
+            "id": "mvblx3in-fi5e6t",
+            "name": "תומר שבע ג",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193806607,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvblxnik-8zuslm",
+            "name": "אורי שבע ד",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193832524,
+            "estimatedRating": 4.8
+          },
+          {
+            "id": "mvbly3u1-bpeqbv",
+            "name": "אלין שבע ה",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193853673,
+            "estimatedRating": 2.3
+          },
+          {
+            "id": "mvblylnr-huvc9y",
+            "name": "בן שבע ו",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193876775,
+            "estimatedRating": 3.1
+          },
+          {
+            "id": "mvblz1wa-09tytj",
+            "name": "רון שבע ז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193897818,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvblzjh8-sqyjaj",
+            "name": "ליאור שבע ח",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193920604,
+            "estimatedRating": 4.8
+          },
+          {
+            "id": "mvbm00m2-rk55cp",
+            "name": "נועם שבע ט",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193942810,
+            "estimatedRating": 2.3
+          },
+          {
+            "id": "mvbm0j6i-mkdjg5",
+            "name": "גל שבע י",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193966874,
+            "estimatedRating": 3.1
+          },
+          {
+            "id": "mvbm108b-57st7y",
+            "name": "רועי שבע יא",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193988971,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvbm1i0e-fn72ab",
+            "name": "אסף שבע יב",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194012014,
+            "estimatedRating": 4.8
+          },
+          {
+            "id": "mvbm1z93-flw4fb",
+            "name": "עידן שבע יג",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194034359,
+            "estimatedRating": 2.3
+          },
+          {
+            "id": "mvbm2gjb-1c84fv",
+            "name": "נדב שבע יד",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194056759,
+            "estimatedRating": 3.1
+          },
+          {
+            "id": "mvbm2xhv-yzilc4",
+            "name": "יוסי שבע טו",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194078739,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvbm3ekm-bwv413",
+            "name": "משה שבע טז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194100870,
+            "estimatedRating": 4.8
+          },
+          {
+            "id": "mvbm3vl4-zsisrg",
+            "name": "לירן שבע יז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194122920,
+            "estimatedRating": 2.3
+          },
+          {
+            "id": "mvbm4gz2-r90mh5",
+            "name": "עמית שבע יח",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194150638
+          },
+          {
+            "id": "mvbm4zwg-e3ggog",
+            "name": "עומר שבע יט",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194175168,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvbm5h1y-qz8250",
+            "name": "אלכסנדר בדיקת שבע כ",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194197398,
+            "estimatedRating": 4.8
+          }
+        ],
+        "updatedAt": 1792194198313
+      },
+      "history": [],
+      "commits": [],
+      "playerStats": [],
+      "roundSummary": null,
+      "finishProof": {
+        "attendanceCredit": null,
+        "stages": [],
+        "qaEveningStanding": null
+      }
+    }
+  ],
+  "archive": {
+    "source": "tmp/live-action-production/data-round-seven-rated-club.json",
+    "originalSha256": "34df4a675b701de53895c99f10d0e7190ed69d77c26bef722b476d71002e56d0",
+    "filtered": true,
+    "note": "רק מחזור שבעה מול שבעה; ללא דואר, קוד הזמנה, מיקום או העדפות חשבון."
+  }
+}

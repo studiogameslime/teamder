@@ -34,11 +34,16 @@ export function GameChampionship({
   const [players, setPlayers] = useState<ChampionshipRow[] | null>(null);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [scoresFailed, setScoresFailed] = useState(false);
+  const [playersFailed, setPlayersFailed] = useState(false);
+  const [loadedOwner, setLoadedOwner] = useState('');
   const [retry, setRetry] = useState(0);
   const attendedKey = (attendedUids ?? []).join(',');
+  const owner = JSON.stringify([gameId, refreshKey, attendedKey, retry]);
 
   useEffect(() => {
     let alive = true;
+    setLoadedOwner(owner);
+    setPlayersFailed(false);
     setPlayers(null);
     setScores({});
     setScoresFailed(false);
@@ -51,7 +56,7 @@ export function GameChampionship({
         if (alive) setPlayers(d.players);
       })
       .catch(() => {
-        if (alive) setPlayers([]);
+        if (alive) { setPlayers([]); setPlayersFailed(true); }
       });
     return () => {
       alive = false;
@@ -59,6 +64,10 @@ export function GameChampionship({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, refreshKey, attendedKey, retry]);
 
+  if (loadedOwner !== owner) return null;
+  if (playersFailed) return <Pressable accessibilityRole="button" onPress={() => setRetry(n => n + 1)} style={[styles.wrap, styles.retry]}>
+    <Text style={styles.note}>לא ניתן לטעון את טבלת המחזור. לחצו לניסיון נוסף.</Text>
+  </Pressable>;
   if (!players || players.length === 0) return null;
 
   // Guest name lookup (roster id `guest:<id>` → name) so the table can label
@@ -76,12 +85,13 @@ export function GameChampionship({
           was removed per user feedback — the numbers speak for themselves. */}
       <CommunityStatsTable
         players={players}
+        limit={players.length}
         groupId={groupId}
         hideAppearances
         guestNames={guestNames}
         eveningScores={scores}
       />
-      {scoresFailed ? <Pressable accessibilityRole="button" onPress={() => setRetry(n => n + 1)}>
+      {scoresFailed ? <Pressable accessibilityRole="button" onPress={() => setRetry(n => n + 1)} style={styles.retry}>
         <Text style={styles.note}>לא ניתן לטעון את ציוני המחזור. לחץ לניסיון נוסף.</Text>
       </Pressable> : null}
     </View>
@@ -92,4 +102,5 @@ const styles = StyleSheet.create({
   wrap: { gap: spacing.sm, marginTop: spacing.md },
   title: { ...typography.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   note: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  retry: { minHeight: 44, justifyContent: 'center' },
 });

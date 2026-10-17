@@ -924,7 +924,7 @@ export function ProfileScreen() {
       if (joiningId) return;
       setJoiningId(game.id);
       try {
-        const { bucket } = await gameService.requestJoinGame(game.id, user.id, 'home');
+        const { bucket } = await gameService.requestJoinGame(game.id, user.id, 'home', game.startsAt);
         toast.success(
           bucket === 'waitlist'
             ? he.toastGameJoinedWaitlist

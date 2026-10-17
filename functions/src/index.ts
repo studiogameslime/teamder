@@ -1,4 +1,5 @@
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
+import { guestJoinNotices, guestJoinMessage, joinNoticeRecipients } from './guestJoinNotice';
 import { clickDocumentId, clickSource } from './linkClickInput';
 import { readServerAdminRatings, prunePrivateClubRatings } from './clubAdminRatings';
 export { setClubAdminRating, getClubAdminRatings } from './clubAdminRatings';
@@ -8,6 +9,7 @@ export { getReceivedInvitations, joinSocialClub } from './socialPlayers';
 export { getPlayerIdentities, getMyPlayerReferrals, findAvailableSocialPlayers, checkSocialMessaging, sendSocialFriendRequest, searchSocialPlayers, getSocialPlayerProfile, setSocialPrivacy, inviteSocialPlayerToClub } from './socialPlayers';
 import { publicInviterFields, publicGameFields, publicCover, previewId } from './invitePreviewFields';
 export { recordOnboardingActivity, onOnboardingActivity } from './onboardingActivity';
+export { sendSupportMessage } from './supportMessage';
 import { clubReminderEligibility } from './clubRegistrationReminder';
 export { recordClientError } from './clientDiagnostics';
 import { requireRecentAuth } from './recentAuth';
@@ -46,13 +48,16 @@ import { commitRoundInOrder } from './commitProtocol';
 import { liveRoundKey, matchesLiveRound } from './liveRoundCommit';
 import { decideSpotOffer } from './spotOfferDecision';
 import { eveningScoreServer } from './eveningScoreCore';
+import { prepareRetroScores } from './retroScores';
 import { readGameEveningScores, EveningScoresAccessError } from './gameEveningScores';
 import { occupancyOf, inFillerQuietHours } from './fillerRules';
 import { promoteWaitingGuests } from './guestPromotion';
 import { acquireSeasonOperation } from './seasonOperation';
 import { closeSeason, reopenSeason } from './seasonRollover';
 import { assertSeasonOpenForGame } from './seasonLock';
+import { liveSeasonStamp } from './liveSeasonStamp';
 import { buildRoundSides } from './roundSides';
+import { roundParticipantSides } from './roundParticipants';
 import { seasonSeed } from './seasonSeed';
 import {
   countPlayedEvenings,
@@ -74,6 +79,7 @@ import {
 import { planActivation, MIN_SEASON_ROUNDS, isSeasonReactivation, type HistoryChoice } from './seasonActivation';
 import {
   eveningPlayState,
+  playEvidence,
   didEveningHappen,
   type PlayableEvening,
 } from './eveningPlayed';
@@ -112,6 +118,7 @@ import {
   type RoundRec,
 } from './roundSummary';
 import { pushToAdmins } from './adminPush';
+import { onboardingGuestNumber } from './onboardingGuest';
 import { processCampaign, sweepDueCampaigns, recordCampaignMetric } from './adminUserPush';
 import {
   NotificationKind as DedupeKind,
@@ -680,7 +687,7 @@ async function createNotificationOnce(input: {
     // existence/read read here is racy with a parallel update; that
     // race is benign because both racers want to merge into the
     // same doc.
-    if (AGGREGATE_ON_DUPLICATE[input.type]) {
+    if (AGGREGATE_ON_DUPLICATE[input.type] && !payload.guestId) {
       try {
         const snap = await ref.get();
         const data = snap.data() as
@@ -929,6 +936,8 @@ function buildMessage(
       };
     }
     case 'gamePlayersJoined': {
+      const guestMessage = guestJoinMessage(payload, gameTitle);
+      if (guestMessage) return guestMessage;
       // Batched admin push — N joiners in the LATEST window are
       // consolidated into ONE notification. The flushPendingJoinerNotifs
       // cron assembles `joinerNames` (CSV) + `count`. The count is
@@ -1108,7 +1117,7 @@ function buildMessage(
       const name = (payload.groupName as string) || groupName;
       return {
         title: 'הזמנה למועדון',
-        body: `${inviter} מזמין אותך להצטרף ל"${name}". להיכנס ולאשר?`,
+        body: `${inviter} מזמין אותך להצטרף ל"${name}". פתח את ההזמנה והצטרף למועדון`,
       };
     }
     case 'friendRequest': {
@@ -1508,18 +1517,20 @@ async function resolveRecipients(
     // self-exclude — an admin who joined their own game shouldn't
     // get a "you joined" push.
     const groupId = (payload.groupId as string) || '';
-    if (!groupId) return [];
-    const grpSnap = await db.collection('groups').doc(groupId).get();
-    if (!grpSnap.exists) return [];
-    const grp = grpSnap.data() as { adminIds?: string[] };
+    const gameId = typeof payload.gameId === 'string' ? payload.gameId : '';
+    const [grpSnap, gameSnap] = await Promise.all([
+      groupId ? db.collection('groups').doc(groupId).get() : Promise.resolve(null),
+      gameId ? db.collection('games').doc(gameId).get() : Promise.resolve(null),
+    ]);
+    const grp = grpSnap?.data() as { adminIds?: string[] } | undefined;
+    const game = gameSnap?.data() as { createdBy?: string } | undefined;
     const joinerCsv =
       typeof payload.joinerIds === 'string'
         ? (payload.joinerIds as string)
         : '';
-    const joinerSet = new Set(joinerCsv.split(',').filter(Boolean));
-    const recipients = (grp.adminIds || []).filter(
-      (uid) => !joinerSet.has(uid),
-    );
+    const excluded = joinerCsv.split(',').filter(Boolean);
+    if (typeof payload.guestId === 'string' && typeof payload.addedBy === 'string') excluded.push(payload.addedBy);
+    const recipients = joinNoticeRecipients(grp?.adminIds, game?.createdBy, excluded);
     return loadUsers(recipients);
   }
 
@@ -2579,7 +2590,7 @@ async function enqueueGameMoments(
 // whoever tapped first, not whoever's network was fastest. Mirrors the pure
 // `assignJoins` in src/services/joinFairness.ts (kept in sync by hand; the app
 // side has the exhaustive unit tests).
-const JOIN_SETTLE_MS = 2000;
+const JOIN_SETTLE_MS = 500;
 const TAP_BACKDATE_GRACE_MS = 15_000;
 
 async function reconcileGameJoins(gameId: string): Promise<void> {
@@ -4776,12 +4787,13 @@ async function guardFinishSeasonBatch(
   batch: admin.firestore.WriteBatch,
   groupId: string,
   seasonId?: string,
+  fields: admin.firestore.UpdateData<admin.firestore.DocumentData> = {},
 ): Promise<void> {
   const ref = db.collection('groups').doc(groupId);
   const snapshot = await ref.get();
   if (!snapshot.exists) throw new HttpsError('not-found', 'community missing');
   assertSeasonOpenForGame(snapshot.data(), { seasonId });
-  batch.update(ref, { updatedAt: Date.now() }, { lastUpdateTime: snapshot.updateTime! });
+  batch.update(ref, { ...fields, updatedAt: Date.now() }, { lastUpdateTime: snapshot.updateTime! });
 }
 
 async function rollUpClubPairs(args: {
@@ -5229,7 +5241,7 @@ async function sealRoundSummary(args: {
     };
   })();
 
-  const summary = buildRoundSummary({
+  const correctionBasis = {
     gameId,
     groupId,
     at: args.at,
@@ -5263,7 +5275,8 @@ async function sealRoundSummary(args: {
       ? { seasonEvenings: eveningsSealed + 1 - tableZeroedAt }
       : {}),
     now: Date.now(),
-  });
+  };
+  const summary = buildRoundSummary(correctionBasis);
 
   // Summary, baseline, season mirror and player bests are ONE create-latched
   // batch. A failure leaves none of them written; a retry can finish safely.
@@ -5271,6 +5284,7 @@ async function sealRoundSummary(args: {
   const batch = db.batch();
   batch.create(summaryRef, {
     ...(summary as unknown as admin.firestore.DocumentData),
+    correctionBasis,
     ...(lateConfirmation ? { lateConfirmation: true } : {}),
   });
   batch.set(
@@ -5319,21 +5333,12 @@ async function sealRoundSummary(args: {
   // אחרי 24 מחזורים" read identically on evening 1 and evening 23. One field
   // on a document the app already reads, written on the same batch that seals
   // the evening, and zeroed by every path that opens a season.
-  if (seasonRoundsAtStart !== null) {
-    batch.set(
-      db.collection('groups').doc(groupId),
-      // Incremented for the same reason as the counter it mirrors — computing
-      // it from the same stale read would reintroduce the lost update on the
-      // number the app actually SHOWS ("2 מתוך 3 מחזורים"). Every path that
-      // opens a season zeroes this field, so counting up from there is exact.
-      {
-        seasons: {
-          playedRounds: admin.firestore.FieldValue.increment(1),
-        },
-      },
-      { merge: true },
-    );
-  }
+  // The season increment and version guard must be ONE mutation. A merge-set
+  // followed by a guarded update of the same group is rejected by Firestore
+  // because the two writes have different version preconditions.
+  const seasonFields = seasonRoundsAtStart !== null
+    ? { 'seasons.playedRounds': admin.firestore.FieldValue.increment(1) }
+    : {};
   // Each player's own high-water mark, for next time.
   for (const p of players) {
     if (p.isGuest) continue;
@@ -5353,7 +5358,7 @@ async function sealRoundSummary(args: {
       { merge: true },
     );
   }
-  await guardFinishSeasonBatch(batch, groupId, args.seasonId);
+  await guardFinishSeasonBatch(batch, groupId, args.seasonId, seasonFields);
   try {
     await batch.commit();
   } catch (error) {
@@ -5580,6 +5585,29 @@ export const onGameRosterChanged = onDocumentWritten(
       });
       return p;
     };
+
+    // Guest admission is a roster event even though guests have no user uid.
+    // Mint on the server so a regular player's successful guest write can
+    // notify managers without client fan-out permissions. Event time/id keep
+    // redelivery on the same notification, even across cooldown buckets.
+    if (after.status === 'open' && (after.groupId || after.createdBy)) {
+      for (const guest of guestJoinNotices(before?.guests, after.guests)) {
+        const addedByName = guest.addedBy ? await adminAlertUserName(guest.addedBy) : 'שחקן';
+        const result = await createNotificationOnce({
+          type: 'gamePlayersJoined',
+          recipientId: after.groupId || after.createdBy!,
+          reason: `guest-${guest.action}:${event.id}:${guest.id}`,
+          nowMs: Date.parse(event.time),
+          payload: {
+            gameId:event.params.gameId,groupId:after.groupId ?? '',
+            gameTitle:after.title || 'המחזור',startsAt:after.startsAt ?? null,
+            guestId:guest.id,guestName:guest.name,addedBy:guest.addedBy,addedByName,
+            guestWaitlisted:guest.waitlisted,guestAction:guest.action,
+          },
+        });
+        if (result.skipped === 'error') throw new Error('Guest admission notification write failed');
+      }
+    }
 
     // ── Scheduling switched OFF → open the game NOW ───────────────────────
     //
@@ -5927,13 +5955,14 @@ export const onGameRosterChanged = onDocumentWritten(
     // reads keep failing writes it once and stops, rather than re-triggering
     // itself in a loop.
     const stampStatusChanged = before?.status !== after.status;
+    const timerlessEvidence = !['finished', 'cancelled', 'scheduled'].includes(after.status ?? '') && !!playEvidence(after as PlayableEvening);
     const stampRetryPending =
       (after as { seasonStampRetry?: boolean }).seasonStampRetry === true;
     if (
       after.groupId &&
-      (stampStatusChanged || stampRetryPending) &&
+      (stampStatusChanged || stampRetryPending || timerlessEvidence) &&
       !(after as { seasonId?: string }).seasonId &&
-      (after.status === 'active' || after.status === 'finished')
+      (after.status === 'active' || after.status === 'finished' || timerlessEvidence)
     ) {
       try {
         const gSnap = await groupOnce();
@@ -5946,7 +5975,13 @@ export const onGameRosterChanged = onDocumentWritten(
         const clearRetry = stampRetryPending
           ? { seasonStampRetry: admin.firestore.FieldValue.delete() }
           : {};
-        if (seasons?.enabled && seasons.currentId) {
+        const timerlessStamp = liveSeasonStamp(gSnap.data(), after as PlayableEvening, event.data!.after.createTime?.toMillis());
+        if (timerlessEvidence && after.status !== 'active') {
+          if (timerlessStamp) {
+            await event.data!.after.ref.update({ seasonId: timerlessStamp, ...clearRetry }, { lastUpdateTime: event.data!.after.updateTime! });
+            stampedSeasonId = timerlessStamp;
+          }
+        } else if (seasons?.enabled && seasons.currentId) {
           await event.data!.after.ref.update({
             seasonId: seasons.currentId,
             ...clearRetry,
@@ -6437,7 +6472,7 @@ export const onGameRosterChanged = onDocumentWritten(
             const seasonGroup = await groupOnce();
             assertSeasonOpenForGame(seasonGroup.data(), after as unknown as Record<string, unknown>);
           }
-          standingBatch.create(standingsLatch, { at: Date.now(), hadPointsTable });
+          standingBatch.create(standingsLatch, { at: Date.now(), hadPointsTable, summaryRefreshVersion:1, scoreCalibration:{goalsFor10,assistsFor10} });
           for (const uid of attendees) {
             const e = evStat[uid];
             const score = eveningScore(
@@ -6472,6 +6507,7 @@ export const onGameRosterChanged = onDocumentWritten(
                 userId: uid,
                 groupId: gid,
                 score,
+                scoreBasis:{goalsFor10,assistsFor10,previousScore:prev,previousAt:prevRow?.lastScoreAt??null,counted:e.rounds>0},
                 scoreDelta:
                   prev == null ? null : Math.round((score - prev) * 10) / 10,
                 rank: rankNow > 0 ? rankNow : null,
@@ -6958,7 +6994,7 @@ export const onGameRosterChanged = onDocumentWritten(
     // first joiner in the 5-min bucket fires the push; any further joiners
     // (while the notice is still unread) AGGREGATE into it (count + names)
     // without a second push — so a join rush still collapses to one ping.
-    if (after.status === 'open' && after.groupId) {
+    if (after.status === 'open' && (after.groupId || after.createdBy)) {
       const beforePlayers = new Set(before?.players ?? []);
       const newJoiners = (after.players ?? []).filter(
         (uid) => !beforePlayers.has(uid),
@@ -6983,10 +7019,10 @@ export const onGameRosterChanged = onDocumentWritten(
         try {
           await createNotificationOnce({
             type: 'gamePlayersJoined',
-            recipientId: after.groupId,
+            recipientId: after.groupId || after.createdBy!,
             payload: {
               gameId: event.params.gameId,
-              groupId: after.groupId,
+              groupId: after.groupId ?? '',
               gameTitle: after.title || 'המשחק',
               startsAt: after.startsAt ?? null,
               joinerIds: newJoiners.join(','),
@@ -9071,62 +9107,63 @@ export const ensurePersonalGroup = onCall(
     }
     const uid = request.auth.uid;
     const userRef = db.collection('users').doc(uid);
-    const userSnap = await userRef.get();
-    if (!userSnap.exists) {
-      throw new HttpsError('not-found', 'user doc missing');
-    }
-    const userData = userSnap.data() as {
-      personalGroupId?: string;
-      name?: string;
-    };
-
-    // Fast path: already provisioned. Verify the group still exists AND is
-    // still a personal group — if it was deleted, OR PROMOTED to a real
-    // community (isPersonal flipped to false), we re-provision rather than
-    // handing back its id. Otherwise the next one-off game would be created
-    // INSIDE that public community (its members, chat, feed) — the personal
-    // group id is never reset on promotion.
-    if (
-      typeof userData.personalGroupId === 'string' &&
-      userData.personalGroupId.length > 0
-    ) {
-      const existing = await db
-        .collection('groups')
-        .doc(userData.personalGroupId)
-        .get();
-      if (existing.exists && existing.data()?.isPersonal === true) {
-        return { groupId: userData.personalGroupId, created: false };
-      }
-    }
-
-    // Create a fresh hidden group. We don't write a /groupsPublic
-    // mirror — `hidden: true` keeps it out of every feed.
+    // The group and its owner pointer must land together. Retrying a partial
+    // provisioning or two concurrent callers must not mint orphan groups.
     const groupRef = db.collection('groups').doc();
-    const now = Date.now();
-    const inviteCode = randomInviteCode();
-    const userName =
-      typeof userData.name === 'string' && userData.name.length > 0
-        ? userData.name
-        : 'משתמש';
-    await groupRef.set({
-      name: `המשחקים של ${userName}`,
-      normalizedName: `המשחקים של ${userName}`.toLowerCase().trim(),
-      adminIds: [uid],
-      playerIds: [uid],
-      pendingPlayerIds: [],
-      creatorId: uid,
-      inviteCode,
-      isOpen: false,
-      isPersonal: true,
-      hidden: true,
-      createdAt: now,
-      updatedAt: now,
+    return db.runTransaction(async (tx) => {
+      const userSnap = await tx.get(userRef);
+      if (!userSnap.exists) {
+        throw new HttpsError('not-found', 'user doc missing');
+      }
+      const userData = userSnap.data() as {
+        personalGroupId?: string;
+        name?: string;
+      };
+
+      // Fast path: already provisioned. Verify the group still exists AND is
+      // still a personal group — if it was deleted, OR PROMOTED to a real
+      // community (isPersonal flipped to false), we re-provision rather than
+      // handing back its id. Otherwise the next one-off game would be created
+      // INSIDE that public community (its members, chat, feed) — the personal
+      // group id is never reset on promotion.
+      if (
+        typeof userData.personalGroupId === 'string' &&
+        userData.personalGroupId.length > 0
+      ) {
+        const existing = await tx.get(db.collection('groups').doc(userData.personalGroupId));
+        if (existing.exists && existing.data()?.isPersonal === true) {
+          return { groupId: userData.personalGroupId, created: false };
+        }
+      }
+
+      // Create a fresh hidden group. We don't write a /groupsPublic
+      // mirror — `hidden: true` keeps it out of every feed.
+      const now = Date.now();
+      const inviteCode = randomInviteCode();
+      const userName =
+        typeof userData.name === 'string' && userData.name.length > 0
+          ? userData.name
+          : 'משתמש';
+      tx.create(groupRef, {
+        name: `המשחקים של ${userName}`,
+        normalizedName: `המשחקים של ${userName}`.toLowerCase().trim(),
+        adminIds: [uid],
+        playerIds: [uid],
+        pendingPlayerIds: [],
+        creatorId: uid,
+        inviteCode,
+        isOpen: false,
+        isPersonal: true,
+        hidden: true,
+        createdAt: now,
+        updatedAt: now,
     });
-    await userRef.set(
+    tx.set(userRef,
       { personalGroupId: groupRef.id, updatedAt: now },
       { merge: true },
     );
     return { groupId: groupRef.id, created: true };
+    });
   },
 );
 
@@ -12945,7 +12982,7 @@ export const onNewUserJoined = onDocumentCreated('users/{uid}', async (event) =>
   await pushToAdmins(
     'newUser',
     'Teamder',
-    `מישהו נרשם לאפליקציה! 🎉 (${name})${via}`,
+    `מישהו נרשם לאפליקציה! 🎉 (${name})${await onboardingGuestNumber(uid).then(number => number ? ` · אורח ${number}` : '')}${via}`,
     { uid },
   );
 });
@@ -13968,6 +14005,7 @@ export const commitRoundStats = onCall(
       goals?: {
         scorerId?: string | null;
         assisterId?: string | null;
+        assistStatus?: 'player' | 'none' | 'unknown';
         ownGoal?: boolean;
         minute?: number;
         // The side that GETS the point (beneficiary) — mirrors the live score,
@@ -13983,6 +14021,7 @@ export const commitRoundStats = onCall(
         kickerId?: string | null;
         keeperId?: string | null;
         scored?: boolean;
+        outcome?: 'goal' | 'save' | 'miss';
       }[];
     };
     if (!gameId || (winnerSide !== 'A' && winnerSide !== 'B' && winnerSide !== 'tie')) {
@@ -14032,6 +14071,7 @@ export const commitRoundStats = onCall(
           }));
           const kickShape = (rows: Record<string, unknown>[]) => rows.map(row => ({
             kickerId: row.kickerId || null, keeperId: row.keeperId || null, scored: !!row.scored,
+            ...(row.outcome === 'goal' || row.outcome === 'save' || row.outcome === 'miss' ? { outcome: row.outcome } : {}),
           }));
           if (JSON.stringify(goalShape(history.get('goals') ?? [])) !== JSON.stringify(goalShape(goals ?? [])) ||
               JSON.stringify(kickShape(history.get('penalties') ?? [])) !== JSON.stringify(kickShape(penalties ?? []))) {
@@ -14061,7 +14101,10 @@ export const commitRoundStats = onCall(
     // the mini-game's goals, wins and pair stats would land on the season that
     // opened after it — credited to players for a night played in a season
     // they are no longer in.
-    if (grpData) assertSeasonOpenForGame(grpData, game);
+    const pendingLiveSeasonStamp = liveGoalIds !== undefined
+      ? liveSeasonStamp(grpData, game as PlayableEvening, snap.createTime?.toMillis())
+      : undefined;
+    if (grpData) assertSeasonOpenForGame(grpData, pendingLiveSeasonStamp ? { ...game, seasonId: pendingLiveSeasonStamp } : game);
 
     // Bind the credited sides to the game's ACTUAL registered roster. Without
     // this an admin of a throwaway game could name ANY uid on a side and
@@ -14109,17 +14152,19 @@ export const commitRoundStats = onCall(
           `and were no longer on a side: ${restored.join(', ')}`,
       );
     }
-    // Bound the sides before anything is written. This batch holds
-    // against-pairs (|A|×|B|) + same-team pairs + per-player tallies + the
-    // latch, roughly 2n² + 15n, which crosses Firestore's 500-op ceiling
-    // around n≈13 — and because the idempotency latch is IN the batch, a
-    // commit that overflows cannot be retried past. Checked AFTER the
-    // restoration, which is the only step that can grow a side.
+    // The current lineup is at most eleven per side. A scorer/assister who
+    // was substituted out still belongs in the credited participants above:
+    // eleven current players plus one restored scorer must not reject a
+    // perfectly valid 11-a-side game. The exact StatBatch operation guard
+    // below bounds the expanded participant set before any write occurs.
     const MAX_SIDE = 11;
-    if (A.length > MAX_SIDE || B.length > MAX_SIDE) {
+    const restoredSet = new Set(restored);
+    const currentA = A.filter(id => !restoredSet.has(id)).length;
+    const currentB = B.filter(id => !restoredSet.has(id)).length;
+    if (currentA > MAX_SIDE || currentB > MAX_SIDE) {
       throw new HttpsError(
         'invalid-argument',
-        `side too large (A=${A.length}, B=${B.length}, max ${MAX_SIDE})`,
+        `side too large (A=${currentA}, B=${currentB}, max ${MAX_SIDE})`,
       );
     }
     const onField = new Set<string>([...A, ...B]);
@@ -14145,17 +14190,16 @@ export const commitRoundStats = onCall(
     // also costs one gamePlayerStats operation in the round batch — an
     // unbounded guest list was an unbounded batch.
     const MAX_DISPLAY_SIDE = 25;
-    const fseen = new Set<string>();
-    const fullA: string[] = [];
-    const fullB: string[] = [];
-    for (const id of sideA ?? []) {
-      if (fullA.length >= MAX_DISPLAY_SIDE) break;
-      if (typeof id === 'string' && id && !fseen.has(id) && okForDisplay(id)) { fseen.add(id); fullA.push(id); }
-    }
-    for (const id of sideB ?? []) {
-      if (fullB.length >= MAX_DISPLAY_SIDE) break;
-      if (typeof id === 'string' && id && !fseen.has(id) && okForDisplay(id)) { fseen.add(id); fullB.push(id); }
-    }
+    // A goal/assist also proves that a registered GUEST played before leaving
+    // the current lineup. Recover them for history and per-game tallies only;
+    // real-only A/B still bound global statistics and quadratic pair writes.
+    const { teamA: fullA, teamB: fullB } = roundParticipantSides({
+      teamA: [...(sideA ?? []), ...A],
+      teamB: [...(sideB ?? []), ...B],
+      goals: cappedGoals,
+      eligible: okForDisplay,
+      maxSide: MAX_DISPLAY_SIDE,
+    });
     const inc = (n: number) => admin.firestore.FieldValue.increment(n);
     const now = Date.now();
     // ONE write per DOCUMENT, not one per stat. See functions/src/statBatch.ts:
@@ -14286,8 +14330,9 @@ export const commitRoundStats = onCall(
               .map((g) => ({
                 // null for own goals; the guest/real id otherwise.
                 scorerId: g.scorerId ?? null,
+                ...(g.assistStatus ? { assistStatus: g.assistStatus } : {}),
                 assisterId:
-                  g.assisterId && isReal(g.assisterId) && onField.has(g.assisterId)
+                  !g.ownGoal && g.scorerId && g.assisterId && g.assisterId !== g.scorerId && okForDisplay(g.assisterId)
                     ? g.assisterId
                     : null,
                 ownGoal: !!g.ownGoal,
@@ -14316,12 +14361,13 @@ export const commitRoundStats = onCall(
             // so every guest kicker would have been labelled team B.
             penalties: (penalties ?? [])
               .filter((p) => p.kickerId && okForDisplay(p.kickerId))
-              .slice(0, 100)
+              .slice(0, Array.isArray(liveGoalIds) ? undefined : 100)
               .map((p) => ({
                 kickerId: p.kickerId as string,
                 keeperId:
                   p.keeperId && okForDisplay(p.keeperId) ? p.keeperId : null,
                 scored: !!p.scored,
+                ...(p.outcome ? { outcome: p.outcome } : {}),
                 team: fullA.includes(p.kickerId as string) ? 'A' : 'B',
               })),
             at: now,
@@ -14414,13 +14460,14 @@ export const commitRoundStats = onCall(
     //     NOT mini-game goals — they never touch score/goals, only these
     //     pen-specific fields. Both kicker + keeper gated through `onField`,
     //     exactly like goals/assists. Deduped per player so each writes once.
-    //     CAP: the batch already runs near Firestore's 500-op ceiling at 11-a-
-    //     side (~385 ops). A cap of 16 kicks bounds the added ops to ≤ 16
-    //     kickers + 16 keepers × 3 stores ≈ 96 (total stays < 500). A
-    //     forged/oversized payload is clipped rather than overflowing the batch.
+    //     Repeated kicks fold into the same player's StatBatch entries, so
+    //     verified live series count every attempt. Only legacy unverified
+    //     payloads retain their historical 16-kick input bound.
     // ⚠️ This loop MIRRORS `aggregatePenalties` in src/utils/penaltyStats.ts
     //    (the unit-tested canonical spec). Keep the two in sync.
-    const pens = (penalties ?? []).slice(0, 16);
+    // The live snapshot was verified above. Repeated kicks are folded by player
+    // into StatBatch; they do not add document writes. Legacy callers stay capped.
+    const pens = Array.isArray(liveGoalIds) ? (penalties ?? []) : (penalties ?? []).slice(0, 16);
     const kickerPen: Record<string, { taken: number; scored: number; missed: number }> = {};
     const keeperPen: Record<string, { faced: number; saved: number; conceded: number }> = {};
     for (const p of pens) {
@@ -14437,7 +14484,7 @@ export const commitRoundStats = onCall(
         const s = (keeperPen[gk] ??= { faced: 0, saved: 0, conceded: 0 });
         s.faced += 1;
         if (scored) s.conceded += 1;
-        else s.saved += 1;
+        else if (p.outcome !== 'miss') s.saved += 1;
       }
     }
     for (const [kicker, s] of Object.entries(kickerPen)) {
@@ -14774,10 +14821,9 @@ export const commitRoundStats = onCall(
     // `sb.opCount` is the exact operation count the commit will issue. Firestore
     // rejects a batch over 500, and that rejection is UNRECOVERABLE here: the
     // idempotency latch is inside this batch, so it never lands, and every
-    // retry of the same payload overflows identically. MAX_SIDE bounds the
-    // quadratic pair writes and the caps on goals/penalties bound the rest, so
-    // this should be unreachable — which is exactly why it must shout if it
-    // ever isn't, instead of silently overflowing.
+    // retry of the same payload overflows identically. MAX_SIDE bounds each
+    // current lineup; restored scorers can expand it, so the exact count must
+    // remain authoritative rather than silently dropping credited events.
     if (sb.opCount + (grpSnap ? 1 : 0) + (roundHistoryDoc ? 1 : 0) + (liveGoalIds !== undefined ? 1 : 0) > MAX_ROUND_BATCH_OPS) {
       console.error(
         `[commitRoundStats] batch too large: ${sb.opCount} ops ` +
@@ -14821,6 +14867,7 @@ export const commitRoundStats = onCall(
           // Any goal, undo, lineup or shootout edit since the snapshot rejects
           // the WHOLE batch. Nothing is credited or erased from a stale board.
           batch.update(snap.ref, {
+            ...(pendingLiveSeasonStamp ? { seasonId: pendingLiveSeasonStamp } : {}),
             'liveMatch.scoreA': 0,
             'liveMatch.scoreB': 0,
             'liveMatch.goals': [],
@@ -15188,16 +15235,15 @@ export const addRetroGoal = onCall(
     };
     if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
     if (!retroGoalId) throw new HttpsError('invalid-argument', 'retroGoalId required');
-    if (!scorerId || !isReal(scorerId)) {
-      throw new HttpsError('invalid-argument', 'a real (non-guest) scorer is required');
-    }
-    // Assister optional; ignore a guest / self-assist rather than failing.
+    if (!scorerId) throw new HttpsError('invalid-argument', 'scorer is required');
+    // Assister optional; self-assists never credit another counter.
     const assister =
-      assisterId && isReal(assisterId) && assisterId !== scorerId ? assisterId : null;
+      assisterId && assisterId !== scorerId ? assisterId : null;
     const { game, groupId } = await loadRetroGameContext(uid, gameId);
     // Scorer (and assister) must be on the game's registered roster — includes
-    // players who went home (they stay in players[]); excludes guests already.
-    const players = (game.players as string[] | undefined) ?? [];
+    // players who went home and registered guests; excludes waitlisted guests.
+    const players = [...((game.players as string[] | undefined) ?? []),
+      ...((game.guests as {id:string;waitlisted?:boolean}[] | undefined) ?? []).filter(g=>!g.waitlisted).map(g=>`guest:${g.id}`)];
     if (!players.includes(scorerId)) {
       throw new HttpsError('invalid-argument', 'scorer is not on this game roster');
     }
@@ -15206,56 +15252,58 @@ export const addRetroGoal = onCall(
     }
     const inc = (n: number) => admin.firestore.FieldValue.increment(n);
     const now = Date.now();
-    const batch = db.batch();
+    return db.runTransaction(async tx=>{
+    const marker=db.collection('games').doc(gameId as string).collection('retroGoals').doc(retroGoalId);
+    if((await tx.get(marker)).exists)return {ok:true,duplicate:true};
+    const currentClub=await tx.get(db.collection('groups').doc(groupId));
+    assertSeasonOpenForGame(currentClub.data(),game);
+    const applyScores=await prepareRetroScores(tx,db,gameId as string,groupId,game,{scorerId,assisterId:assister,step:1});
     // Idempotency marker + audit (create → collides on retry/double-tap).
-    batch.create(
+    tx.create(
       db.collection('games').doc(gameId as string).collection('retroGoals').doc(retroGoalId),
       { scorerId, assisterId: assister, addedBy: uid, at: now },
     );
     // Goal → the SAME four stores commitRoundStats writes (no rounds/wins/pairs).
-    batch.set(db.collection('users').doc(scorerId), { stats: { goals: inc(1) } }, { merge: true });
-    batch.set(
+    if (isReal(scorerId)) {
+    tx.set(db.collection('users').doc(scorerId), { stats: { goals: inc(1) } }, { merge: true });
+    tx.set(
       db.collection('communityPlayerStats').doc(`${groupId}__${scorerId}`),
       { groupId, userId: scorerId, goals: inc(1), updatedAt: now },
       { merge: true },
     );
-    batch.set(
+    }
+    tx.set(
       db.collection('gamePlayerStats').doc(`${gameId}__${scorerId}`),
-      { gameId, userId: scorerId, goals: inc(1), updatedAt: now },
+      { gameId, userId: scorerId, ...(!isReal(scorerId)?{isGuest:true}:{}), goals: inc(1), updatedAt: now },
       { merge: true },
     );
-    batch.set(
+    tx.set(
       db.collection('communityStats').doc(groupId),
       { groupId, goals: inc(1), updatedAt: now },
       { merge: true },
     );
     if (assister) {
-      batch.set(
+      if (isReal(assister)) {
+      tx.set(
         db.collection('users').doc(assister),
         { stats: { assists: inc(1) } },
         { merge: true },
       );
-      batch.set(
+      tx.set(
         db.collection('communityPlayerStats').doc(`${groupId}__${assister}`),
         { groupId, userId: assister, assists: inc(1), updatedAt: now },
         { merge: true },
       );
-      batch.set(
+      }
+      tx.set(
         db.collection('gamePlayerStats').doc(`${gameId}__${assister}`),
-        { gameId, userId: assister, assists: inc(1), updatedAt: now },
+        { gameId, userId: assister, ...(!isReal(assister)?{isGuest:true}:{}), assists: inc(1), updatedAt: now },
         { merge: true },
       );
     }
-    try {
-      await guardFinishSeasonBatch(batch, groupId, game.seasonId as string | undefined);
-      await batch.commit();
-    } catch (err) {
-      // Marker already existed → this exact retro goal was already applied.
-      // Treat as success (idempotent) instead of double-counting.
-      if (isAlreadyExists(err)) return { ok: true, duplicate: true };
-      throw err;
-    }
+    applyScores();
     return { ok: true };
+    });
   },
 );
 
@@ -15285,6 +15333,8 @@ export const removeRetroGoal = onCall(
       const d = m.data() as { scorerId?: string; assisterId?: string | null };
       const scorerId = d.scorerId;
       const assister = d.assisterId ?? null;
+      if(!scorerId)throw new HttpsError('failed-precondition','score-marker:missing');
+      const applyScores=await prepareRetroScores(tx,db,gameId as string,groupId,game,{scorerId,assisterId:assister,step:-1});
       tx.delete(markerRef);
       if (scorerId && isReal(scorerId)) {
         tx.set(db.collection('users').doc(scorerId), { stats: { goals: inc(-1) } }, { merge: true });
@@ -15293,6 +15343,8 @@ export const removeRetroGoal = onCall(
           { goals: inc(-1), updatedAt: now },
           { merge: true },
         );
+      }
+      {
         tx.set(
           db.collection('gamePlayerStats').doc(`${gameId}__${scorerId}`),
           { goals: inc(-1), updatedAt: now },
@@ -15315,12 +15367,15 @@ export const removeRetroGoal = onCall(
           { assists: inc(-1), updatedAt: now },
           { merge: true },
         );
+      }
+      if (assister) {
         tx.set(
           db.collection('gamePlayerStats').doc(`${gameId}__${assister}`),
           { assists: inc(-1), updatedAt: now },
           { merge: true },
         );
       }
+      applyScores();
     });
     return { ok: true };
   },
@@ -18042,3 +18097,4 @@ export const getClubReminderStatus = onCall({ enforceAppCheck: ENFORCE_APP_CHECK
 export { onClubDeletedNotice } from './clubDeletedNotice';
 
 // Pulse administration has a separate, not-yet-deployed entry point (pulseEntry.ts).
+export { onSupportClubCreated, onSupportOutreachConfigChanged, cronSupportOutreach } from './supportOutreach';

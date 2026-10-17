@@ -1,0 +1,125 @@
+{
+  "createdAtUtc": "2026-10-17T03:30:32.777583+00:00",
+  "gameId": "mBO5HqJdnOPWjRE2zMh8",
+  "platform": "Android",
+  "environment": "ייצור, חשבון ומועדון בדיקה ייעודיים, לקוח פיתוח מקומי",
+  "sourceCommit": "4a3cb346 עם שינויים מקומיים",
+  "file": "animation-sources/eleven-goal-long-pass.mp4",
+  "sha256": "dbc17d47954153d04b3944c33c9ad333781207efabb21fb53c362e65f8c686ba",
+  "durationMs": 10456,
+  "extractionManifest": "animation-manifests/eleven-goal-long-pass-selected.json",
+  "extractionManifestSha256": "9696d1a024cf439747d5008871c20a90ff86dcdc6cf56bdcbf6cdc137bbf0002",
+  "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+  "timestampExact": false,
+  "proofOfPass": true,
+  "notes": [
+    "הראיה המקורית מראה שמירה, ולאחר אישור מסירה מנדב לאלכסנדר, הגעה לכובש, בעיטה לשער ורשת וחגיגה.",
+    "הזמנים הם בקשות חילוץ של הפריים הקרוב ביותר, ללא טענת זמן פריים מדויק או קצב תמונות.",
+    "כל הפריימים נשמרו ללא חיתוך, שינוי גודל או ציור. דף המגע היה לסקירה בלבד.",
+    "שם הכובש הארוך מקוצר במגרש ובתא השחקן; זו מגבלת קריאות נפרדת מהצלחת התנועה."
+  ],
+  "frames": [
+    {
+      "file": "action-pitch-production-eleven-goal-long-saving-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-eleven-goal-long-saving-2026-10-17.png",
+      "sha256": "834e844692186d64e028967e0086ecc5d6241b95d50182e17257355239de7279",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/eleven-goal-long-pass.mp4",
+      "sourceVideoSha256": "dbc17d47954153d04b3944c33c9ad333781207efabb21fb53c362e65f8c686ba",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/eleven-goal-long-pass-selected.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 5000000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T03:29:25.128411+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-eleven-goal-long-pass-start-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-eleven-goal-long-pass-start-2026-10-17.png",
+      "sha256": "7669eb26839500e174c5484a1fcca42007f9603e1c71448046061cfd821a7ba9",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/eleven-goal-long-pass.mp4",
+      "sourceVideoSha256": "dbc17d47954153d04b3944c33c9ad333781207efabb21fb53c362e65f8c686ba",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/eleven-goal-long-pass-selected.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 6750000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T03:29:26.478127+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-eleven-goal-long-pass-moving-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-eleven-goal-long-pass-moving-2026-10-17.png",
+      "sha256": "d0f4aacef0a1eba6b7a4fe8e231449b8f6ca4611b8259aef2270dad48b66617b",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/eleven-goal-long-pass.mp4",
+      "sourceVideoSha256": "dbc17d47954153d04b3944c33c9ad333781207efabb21fb53c362e65f8c686ba",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/eleven-goal-long-pass-selected.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 7250000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T03:29:27.981885+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-eleven-goal-long-scorer-contact-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-eleven-goal-long-scorer-contact-2026-10-17.png",
+      "sha256": "4c8d1f307888586d4f827b01824ec1ed43447c32da6cfc8a6c7a73858f4453ba",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/eleven-goal-long-pass.mp4",
+      "sourceVideoSha256": "dbc17d47954153d04b3944c33c9ad333781207efabb21fb53c362e65f8c686ba",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/eleven-goal-long-pass-selected.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 7350000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T03:29:29.527830+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-eleven-goal-long-shot-moving-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-eleven-goal-long-shot-moving-2026-10-17.png",
+      "sha256": "a5ff8b80717108125472da3168cff5f40ae7f85e86a3e961cef4985e5c51a5de",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/eleven-goal-long-pass.mp4",
+      "sourceVideoSha256": "dbc17d47954153d04b3944c33c9ad333781207efabb21fb53c362e65f8c686ba",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/eleven-goal-long-pass-selected.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 7500000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T03:29:30.994572+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-eleven-goal-long-net-celebration-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-eleven-goal-long-net-celebration-2026-10-17.png",
+      "sha256": "2fb84d6750a7ab9c83b2919619644ca68e175c209786dbaf33d5700cca6d46c6",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/eleven-goal-long-pass.mp4",
+      "sourceVideoSha256": "dbc17d47954153d04b3944c33c9ad333781207efabb21fb53c362e65f8c686ba",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/eleven-goal-long-pass-selected.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 8000000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T03:29:32.548672+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "generatedWith": "כלי יצירת התמונות המובנה",
+  "date": "2026-10-16",
+  "asset": "src/assets/images/match-action-grass.png",
+  "purpose": "רקע דשא בלבד למגרש המשותף של הזנת גול ופנדלים; הקווים, השער, השחקנים והכדור נבנים ברכיבים חיים",
+  "prompt": "Use case: stylized-concept. Asset type: production bitmap background for a mobile football goal-entry and penalty dialog. Generate ONLY a full-bleed rectangular football grass surface viewed from an elevated slightly oblique camera facing the far end. Landscape 3:2 composition. Rich realistic fine green turf texture, alternating long dark and light mowing stripes converging gently toward the center of the top edge, like a polished adult sports app. Bright grass in center, restrained darker corners, uniform daylight. IMPORTANT: NO football field white markings, NO goal, NO ball, NO people, NO avatars, NO lettering, NO interface, NO borders, NO stadium, NO sky, NO logos. Grass must fill every pixel. We will render accurate white pitch markings, goal net, players and animated ball as live code over this asset. Mature clean premium sports treatment, not cartoon or children's game. Subtle realistic grass blades, readable beneath thin white lines."
+}

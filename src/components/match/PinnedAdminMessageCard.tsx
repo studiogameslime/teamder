@@ -124,14 +124,10 @@ export function PinnedAdminMessageCard({ message, isAdmin, onSave }: Props) {
             ]}
           >
             <View style={styles.cardHeader}>
+              <Ionicons name="chatbubble-ellipses" size={18} color="#1D4ED8" />
               <Text style={styles.cardHeaderText}>
-                {he.pinnedMessageHeader}
+                הודעת המארגן
               </Text>
-              <Ionicons
-                name="megaphone"
-                size={16}
-                color="#1D4ED8"
-              />
             </View>
             <Text style={styles.cardBody}>{trimmed}</Text>
             {isAdmin ? (
@@ -243,19 +239,19 @@ export function PinnedAdminMessageCard({ message, isAdmin, onSave }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
-    marginTop: spacing.md,
+    borderColor: colors.border,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginBottom: 6,
+    paddingEnd: 25,
   },
   cardHeaderText: {
     color: '#1D4ED8',
@@ -270,7 +266,6 @@ const styles = StyleSheet.create({
   cardBody: {
     ...typography.body,
     color: '#0F172A',
-    fontStyle: 'italic',
     fontWeight: '500',
     fontSize: 15,
     textAlign: RTL_LABEL_ALIGN,
@@ -283,7 +278,7 @@ const styles = StyleSheet.create({
     // logical-start (= visual RIGHT) edge. The pencil hint should
     // sit on the visual-LEFT edge so it doesn't crowd the megaphone
     // icon over by the title — use `right` to land there in RTL.
-    right: 12,
+    end: 12,
   },
   emptyCard: {
     flexDirection: 'row',
@@ -291,11 +286,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: '#BFDBFE',
-    marginTop: spacing.md,
   },
   plusCircle: {
     width: 44,

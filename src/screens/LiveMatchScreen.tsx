@@ -14,7 +14,7 @@ import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // `useSyncedTimer`, so every phone AND watch sees the same time without
 // per-tick pushes.
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { HamburgerMenu } from '@/components/profile/HamburgerMenu';
+import { useSupportChat } from '@/services/supportChat';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,7 +37,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 
 import { toast } from '@/components/Toast';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
@@ -143,36 +144,52 @@ type Params = RouteProp<GameStackParamList, 'LiveMatch'>;
 // Router: a game created with `advancedMode` gets the full teams/rotation
 // live screen (כוחות + מי ניצחה); every other game gets the plain timer
 // below. The two implementations are fully isolated so the timer path is
-// never affected by the advanced UI — and hiding the creation toggle hides
-// the whole advanced feature.
+// never affected by the advanced UI. Re-read on focus after settings/drafting;
+// retain the mounted child when the mode stays the same (pending fills survive).
+// A failed read cannot establish that a game uses the plain timer.
 export function LiveMatchScreen() {
   const route = useRoute<Params>();
+  const nav = useNavigation();
   const gameId = route.params?.gameId ?? null;
-  const [advanced, setAdvanced] = useState<boolean | null>(null);
-  useEffect(() => {
+  const [selection, setSelection] = useState<{gameId:string|null;advanced?:boolean;failed?:boolean}>({gameId:null});
+  const [retry, setRetry] = useState(0);
+  useFocusEffect(useCallback(() => {
     let alive = true;
     if (!gameId) {
-      setAdvanced(false);
+      setSelection({gameId,failed:true});
       return;
     }
     gameService
       .getGameById(gameId)
       .then((g) => {
-        if (alive) setAdvanced(g?.advancedMode === true);
+        if (!g) throw new Error('GAME_NOT_FOUND');
+        if (alive) setSelection({gameId,advanced:g.advancedMode === true || g.draftTeams?.completionMode === 'balanced'});
       })
-      .catch(() => {
-        if (alive) setAdvanced(false);
+      .catch((error) => {
+        if (!alive) return;
+        logError('liveModeLoad',error,{gameId});
+        setSelection({gameId,failed:true});
       });
     return () => {
       alive = false;
     };
-  }, [gameId]);
-  if (advanced === null) {
-    return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  }, [gameId,retry]));
+  if (selection.gameId === gameId && selection.failed) {
+    return <SafeAreaView style={{flex:1,backgroundColor:colors.bg,justifyContent:'center',padding:24,gap:18}}>
+      <Text style={{color:colors.text,fontSize:19,fontWeight:'700',textAlign:'center'}}>לא הצלחנו לטעון את הגדרות הלייב</Text>
+      <Text style={{color:colors.textMuted,fontSize:15,lineHeight:23,textAlign:'center'}}>נסו שוב כדי לפתוח את תצוגת הלייב המתאימה למחזור.</Text>
+      <Pressable accessibilityRole="button" onPress={()=>{setSelection({gameId});setRetry(value=>value+1);}} style={{padding:16,borderRadius:16,backgroundColor:colors.primary}}>
+        <Text style={{color:'#FFFFFF',fontWeight:'700',textAlign:'center'}}>{he.retry}</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" onPress={()=>nav.goBack()} style={{padding:16}}><Text style={{color:colors.primary,textAlign:'center'}}>חזרה למסך הקודם</Text></Pressable>
+    </SafeAreaView>;
+  }
+  if (selection.gameId !== gameId || selection.advanced === undefined) {
+    return <View style={{ flex: 1, backgroundColor: colors.bg,justifyContent:'center',alignItems:'center' }}><ActivityIndicator color={colors.primary}/></View>;
   }
   return (
     <LiveMatchEntrance>
-      {advanced ? <AdvancedLiveMatchScreen /> : <PlainLiveMatchScreen />}
+      {selection.advanced ? <AdvancedLiveMatchScreen /> : <PlainLiveMatchScreen />}
     </LiveMatchEntrance>
   );
 }
@@ -554,9 +571,8 @@ function PlainLiveMatchScreen() {
         <Text style={styles.title} numberOfLines={1}>
           {game.title}
         </Text>
-        {/* Only once there is an evening to end — before the first press the
-            menu would open on a single disabled row. */}
-        {isAdmin && timerStarted ? (
+        {/* Clock use is optional; management actions are available immediately. */}
+        {isAdmin ? (
           <Pressable
             onPress={() => setMenuOpen(true)}
             hitSlop={12}
@@ -567,7 +583,7 @@ function PlainLiveMatchScreen() {
             <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
           </Pressable>
         ) : (
-          <View style={styles.headerSpacer} />
+          <Pressable style={styles.backBtn} accessibilityRole="button" accessibilityLabel="עזרה" onPress={() => { if (me?.id) useSupportChat.getState().open(me.id); }}><Ionicons name="headset-outline" size={23} color={colors.text}/></Pressable>
         )}
       </View>
 
@@ -807,6 +823,7 @@ function PlainLiveMatchScreen() {
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         sections={[{ id: 'live', items: [
+          { id: 'liveHelp', label: 'עזרה', icon: 'headset-outline', onPress: () => { setMenuOpen(false); if (me?.id) useSupportChat.getState().open(me.id); } },
           { id: 'liveMenuRounds', label: he.liveMenuRounds, icon: 'list', onPress: () => {
                 (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate(
                   'MatchRounds',

@@ -17,3 +17,10 @@
 [חזרה למפת המוצר](../README.md)
 
 | מסלול ההצטרפות בפולס | [הסבר פשוט](onboarding-activity.simple.md) | [מאחורי הקלעים](onboarding-activity.md) |
+
+
+| שיחות צוות עם משתמשים בפולס | [הסבר פשוט](pulse-support.simple.md) | [מאחורי הקלעים](pulse-support.md) |
+
+| שיחה עם צוות התמיכה | [הסבר פשוט](support-chat.simple.md) | [הסבר מעמיק](support-chat.md) |
+
+| תיבת משימות ובאגים שלא נפתרו בפולס | [הסבר פשוט](pulse-work-inbox.simple.md) | [מסמך טכני](pulse-work-inbox.md) |

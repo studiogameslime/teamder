@@ -15,21 +15,18 @@ import { ScrollSurface } from '@/components/ScrollSurface';
 
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ClubStatusOverview } from '@/components/community/ClubStatusCard';
 import { CommunityStatsWelcome } from '@/components/community/CommunityStatsWelcome';
+import { ClubStatsHero, ClubStatsAwards, ClubStatsSummary } from '@/components/community/ClubStatsDashboard';
 import { useUserStore } from '@/store/userStore';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { UserAvatar } from '@/components/UserAvatar';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
-import { CountUp } from '@/components/anim/CountUp';
-import { AppearItem } from '@/components/anim/AppearItem';
-import { StatDonut } from '@/components/community/StatDonut';
 import { CommunityChampionship } from '@/components/community/CommunityChampionship';
 import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
@@ -40,15 +37,13 @@ import { penaltyKing, penaltyKeeperKing, pctOf } from '@/utils/penaltyStats';
 import {
   RTL_LABEL_ALIGN,
   clubAccent,
-  clubCardTint,
-  clubShadow,
   clubSurface,
   colors,
-  radius,
   spacing,
   typography,
 } from '@/theme';
 import { ChemistrySection } from '@/components/chemistry/ChemistrySection';
+import { FootballStatGlyph } from '@/components/chemistry/PairChemistryIcon';
 import {
   SeasonScopeBar,
   buildScopeOptions,
@@ -81,8 +76,6 @@ type Params = RouteProp<CommunitiesStackParamList, 'CommunityStats'>;
 // step. Aliased rather than renamed so this file reads as it always has.
 type Scope = StatsScope;
 type Resolved = Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>;
-
-const MEDALS = ['#F4B73E', '#9AA4B2', '#CD7F32']; // gold / silver / bronze
 
 interface ChampData {
   totalGoals: number;
@@ -164,10 +157,11 @@ export interface CommunityStatsScreenProps {
   groupId?: string;
   /** The shell's hero + tab bar. Sticks to the top of the scroll. */
   header?: React.ReactElement | null;
+  active?: boolean;
 }
 
 export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
-  const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
+  const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void; goBack: () => void }>();
   const routeParams = useRoute<Params>().params as Params['params'] | undefined;
   // One of the two always holds it: embedded, the shell passes it; standalone,
   // the CommunityStats route cannot be reached without it.
@@ -214,6 +208,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
   const [scope, setScope] = useState<Scope>({ k: 'current' });
   // The scope list is collapsed behind the summary row, as in the reference.
   const [scopeOpen, setScopeOpen] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
   /**
    * The club's sealed evenings, for the three evening records.
    *
@@ -909,15 +904,83 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
   // still shows the attendance/evenings tiles + achievements, just not leaders.
   const hasScoring = derived.totalGoals > 0 && derived.players.length > 0;
 
+  const leaderItems = ([
+                derived.topScorer && {
+                  title: he.communityStatsTopScorer,
+                  uid: derived.topScorer.uid,
+                  value: derived.topScorer.goals,
+                  unit: 'שערים',
+                  tint: clubAccent.blue,
+                },
+                derived.topAssister && {
+                  title: he.communityStatsTopAssister,
+                  uid: derived.topAssister.uid,
+                  value: derived.topAssister.assists,
+                  unit: 'בישולים',
+                  tint: clubAccent.blue,
+                },
+                derived.topWinner && {
+                  title: he.communityStatsTopWinner,
+                  uid: derived.topWinner.uid,
+                  value: derived.topWinner.wins,
+                  unit: 'נצחונות',
+                  tint: clubAccent.blue,
+                },
+                derived.cleanSheetKing && {
+                  title: he.communityStatsCleanSheetKing,
+                  uid: derived.cleanSheetKing.uid,
+                  value: derived.cleanSheetKing.cleanSheets,
+                  unit: 'שערים נקיים',
+                  tint: colors.info,
+                },
+                mostLoyal && {
+                  title: he.communityStatsMostLoyal,
+                  uid: mostLoyal.uid,
+                  value: mostLoyal.nights,
+                  unit: 'מחזורים',
+                  tint: colors.success,
+                },
+                derived.penaltyKing && {
+                  title: he.communityStatsPenaltyKing,
+                  uid: derived.penaltyKing.userId,
+                  // Headline the CONVERSION RATE (8% of 1000 ≠ 80% of 5). The raw
+                  // "scored / attempts" sits below as the ratio.
+                  value: derived.penaltyKing.pct,
+                  suffix: '%',
+                  unit: `${derived.penaltyKing.count}/${derived.penaltyKing.attempts}`,
+                  tint: '#EF4444',
+                },
+                derived.penaltyKeeperKing && {
+                  title: he.communityStatsPenaltyKeeperKing,
+                  uid: derived.penaltyKeeperKing.userId,
+                  value: derived.penaltyKeeperKing.pct,
+                  suffix: '%',
+                  unit: `${derived.penaltyKeeperKing.count}/${derived.penaltyKeeperKing.attempts}`,
+                  tint: '#16A34A',
+                },
+                // The dubious crown — most own goals. Only when someone has one.
+                derived.ownGoalKing && {
+                  title: he.communityStatsOwnGoalKing,
+                  uid: derived.ownGoalKing.uid,
+                  value: derived.ownGoalKing.ownGoals,
+                  unit: 'עצמיים',
+                  // An own-goal crown is the one dubious title here — the
+                  // only negative in the list, and the only red.
+                  tint: clubAccent.red,
+                },
+              ].filter(Boolean) as {
+                title: string;
+                uid: string;
+                value: number;
+                unit: string;
+                tint: string;
+                suffix?: string;
+              }[]);
+
   return (
     // Embedded, the shell above already claimed the top inset.
     <SafeAreaView style={styles.root} edges={embedded ? [] : ['top']}>
-      {embedded ? null : (
-        <ScreenHeader
-          title={he.communityStatsScreenTitle}
-          subtitle={subtitle || undefined}
-        />
-      )}
+
 
       {/* ONE container for all three states.
        *
@@ -932,6 +995,9 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
        *  Now the ScrollView and the header are the same elements in every
        *  state and only what sits BELOW the header changes. */}
       <ScrollSurface
+        ref={scrollRef}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerStyle={[
           styles.scroll,
           // `center` is flex:1, which needs a growable content container to
@@ -940,6 +1006,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {!embedded ? <ClubStatsHero name={subtitle} onBack={() => nav.goBack()} /> : null}
         {embedded && props.header ? (
           <View style={styles.headerBleed}>{props.header}</View>
         ) : null}
@@ -965,7 +1032,16 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               : undefined}
           />
         ) : (
-          <ChangeMotion triggerKey={`${groupId}:${scope.k}:${scope.k === 'season' ? scope.id : ''}:${scopeLoading}`} duration={220} style={{ gap: spacing.sm }}>
+          <ChangeMotion triggerKey={`${groupId}:${scope.k}:${scope.k === 'season' ? scope.id : ''}:${scopeLoading}`} duration={220} style={{ gap: 12 }}>
+          {/* Keep the selector above scope-specific notices so it never moves when a scope changes. */}
+          {hasArchivedStats(seasons) || seasons?.enabled ? <View style={styles.statsToolbar}>
+            <View style={{ flex: 1 }}>
+              {hasArchivedStats(seasons) ? <SeasonScopeBar appearance="club" options={scopeOptions} open={scopeOpen}
+                onToggle={() => setScopeOpen(v => !v)} onSelect={sc => { setScope(sc); setScopeOpen(false); }} title={scopeTitle} />
+                : <Text style={styles.periodLabel}>{scopeTitle}</Text>}
+            </View>
+          </View> : null}
+
           {/* בורר התצוגה. מופיע לכל מועדון שמנהל עונות — גם לפני שנסגרה
               עונה ראשונה, כי בלעדיו אי אפשר לדעת שהמספרים על המסך הם של
               העונה ולא של כל הזמנים. זו בדיוק השאלה שנשאלה. */}
@@ -984,29 +1060,6 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   row does not pop in when the archive finishes loading.
                   The banner below still says the numbers belong to a season —
                   that was this row's other job, and it keeps doing it. */}
-              {hasArchivedStats(seasons) ? (
-              <View>
-              {/* The reference's scope control: a white row with a calendar on
-                  the leading edge and the chosen scope closing it on the left.
-                  Tapping opens the list in place — the club can have any number
-                  of past seasons, and a chip row for eight of them was a
-                  horizontal scroll nobody found. */}
-              {/* The shared control. Same bar, same drop-list, same option
-                  order as the two-player screen — one component, so the two
-                  can never disagree about what a scope is called. `title`
-                  keeps this screen's own closed-bar wording. */}
-              <SeasonScopeBar
-                options={scopeOptions}
-                open={scopeOpen}
-                onToggle={() => setScopeOpen((v) => !v)}
-                onSelect={(sc) => {
-                  setScope(sc);
-                  setScopeOpen(false);
-                }}
-                title={scopeTitle}
-              />
-              </View>
-              ) : null}
               {/* The table below belongs to ONE season. Said out loud, because
                   otherwise the numbers reset one day with no explanation.
                   BELOW the picker, not above it: this block renders only for
@@ -1116,141 +1169,23 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               הבישולים is the assists column's. It is now the first row of
               מובילי המועדון, where it is compared with its peers instead of
               being staged above them. (Owner, 22.09.) */}
-          {/* ── המועדון במספרים (4) ── */}
-          <Card style={styles.heroCard}>
-          <Text style={styles.cardTitle}>{he.communityStatsSectionNumbers}</Text>
-          <View style={styles.heroGrid}>
-            <HeroTile icon={<MaterialCommunityIcons name="soccer" size={28} color={clubAccent.blue} />} tint={clubAccent.blue} value={derived.totalGoals} label={he.communityStatsGoals} />
-            <HeroTile icon={<MaterialCommunityIcons name="shoe-cleat" size={28} color={clubAccent.purple} />} tint={clubAccent.purple} value={derived.totalAssists} label={he.communityStatsAssists} />
-            <HeroTile icon={<MaterialCommunityIcons name="soccer-field" size={28} color={clubAccent.green} />} tint={clubAccent.green} value={derived.totalRounds} label={he.communityStatsMiniGames} />
-            <HeroTile icon={<MaterialCommunityIcons name="calendar-month" size={28} color={clubAccent.gold} />} tint={clubAccent.gold} value={eveningsInScope ?? 0} label={he.communityStatsEvenings} />
-          </View>
-          </Card>
-
-          {/* ── מובילי המועדון ── (only once goals exist; else all "—") */}
-          {hasScoring ? (
           <>
-          <SectionTitle icon="trophy" text={he.communityStatsSectionLeaders} />
-          {/* All eight titles, one list, right-aligned: avatar on the right,
-              category + name, animated value on the left. מלך השערים leads it
-              — goals before assists, the order the club table itself sorts by. */}
-          <Card style={styles.leadersCard}>
-            {(
-              [
-                derived.topScorer && {
-                  title: he.communityStatsTopScorer,
-                  uid: derived.topScorer.uid,
-                  value: derived.topScorer.goals,
-                  unit: 'שערים',
-                  tint: clubAccent.blue,
-                },
-                derived.topAssister && {
-                  title: he.communityStatsTopAssister,
-                  uid: derived.topAssister.uid,
-                  value: derived.topAssister.assists,
-                  unit: 'בישולים',
-                  tint: clubAccent.blue,
-                },
-                derived.topWinner && {
-                  title: he.communityStatsTopWinner,
-                  uid: derived.topWinner.uid,
-                  value: derived.topWinner.wins,
-                  unit: 'נצחונות',
-                  tint: clubAccent.blue,
-                },
-                derived.cleanSheetKing && {
-                  title: he.communityStatsCleanSheetKing,
-                  uid: derived.cleanSheetKing.uid,
-                  value: derived.cleanSheetKing.cleanSheets,
-                  unit: 'שערים נקיים',
-                  tint: colors.info,
-                },
-                mostLoyal && {
-                  title: he.communityStatsMostLoyal,
-                  uid: mostLoyal.uid,
-                  value: mostLoyal.nights,
-                  unit: 'ערבים',
-                  tint: colors.success,
-                },
-                derived.penaltyKing && {
-                  title: he.communityStatsPenaltyKing,
-                  uid: derived.penaltyKing.userId,
-                  // Headline the CONVERSION RATE (8% of 1000 ≠ 80% of 5). The raw
-                  // "scored / attempts" sits below as the ratio.
-                  value: derived.penaltyKing.pct,
-                  suffix: '%',
-                  unit: `${derived.penaltyKing.count}/${derived.penaltyKing.attempts}`,
-                  tint: '#EF4444',
-                },
-                derived.penaltyKeeperKing && {
-                  title: he.communityStatsPenaltyKeeperKing,
-                  uid: derived.penaltyKeeperKing.userId,
-                  value: derived.penaltyKeeperKing.pct,
-                  suffix: '%',
-                  unit: `${derived.penaltyKeeperKing.count}/${derived.penaltyKeeperKing.attempts}`,
-                  tint: '#16A34A',
-                },
-                // The dubious crown — most own goals. Only when someone has one.
-                derived.ownGoalKing && {
-                  title: he.communityStatsOwnGoalKing,
-                  uid: derived.ownGoalKing.uid,
-                  value: derived.ownGoalKing.ownGoals,
-                  unit: 'עצמיים',
-                  // An own-goal crown is the one dubious title here — the
-                  // only negative in the list, and the only red.
-                  tint: clubAccent.red,
-                },
-              ].filter(Boolean) as {
-                title: string;
-                uid: string;
-                value: number;
-                unit: string;
-                tint: string;
-                suffix?: string;
-              }[]
-            ).map((r) => r)
-              .reduce<React.ReactNode[]>((out, _r, _i, arr) => {
-                // The first three become the headline cards, the rest stay
-                // rows. The reference shows three; this club crowns up to
-                // eight, and dropping five titles to match a screenshot would
-                // delete five kings. The hierarchy that DOES exist is between
-                // the three cards and the list under them — never inside the
-                // three.
-                if (out.length) return out;
-                const top = arr.slice(0, 3);
-                const rest = arr.slice(3);
-                out.push(
-                  <LeaderTrio
-                    key="trio"
-                    items={top.map((r) => ({
-                      ...r,
-                      user: resolved(r.uid),
-                      icon: LEADER_ICON[r.title] ?? 'star',
-                    }))}
-                  />,
-                );
-                rest.forEach((r, i) =>
-                  out.push(
-                    <LeaderRow
-                      key={r.title}
-                      title={r.title}
-                      user={resolved(r.uid)}
-                      value={r.value}
-                      unit={r.unit}
-                      suffix={r.suffix}
-                      tint={r.tint}
-                      index={i}
-                      last={i === rest.length - 1}
-                    />,
-                  ),
-                );
-                return out;
-              }, [])}
-            {derived.penaltyKing || derived.penaltyKeeperKing ? <Text style={{color:colors.textMuted,fontSize:13,textAlign:RTL_LABEL_ALIGN,marginTop:12}}>{he.communityPenaltyRankingNote}</Text> : null}
-          </Card>
+            <View style={styles.overviewHeading}>
+              <Text style={[styles.sectionTitleText, {flex: 1}]}>{seasons?.enabled && scope.k !== 'all' ? "העונה במבט אחד" : "המועדון במבט אחד"}</Text>
+              <ClubStatusOverview compact clubName={subtitle}
+                scope={seasons?.enabled || hasArchivedStats(seasons) ? scopeTitle : he.communityStatsScopeAllTime}
+                goals={derived.totalGoals} assists={derived.totalAssists} games={derived.totalRounds} evenings={eveningsInScope ?? 0}
+                leaders={hasScoring ? leaderItems.map(r => ({ ...r, user: resolved(r.uid) })) : []} />
+            </View>
+            <ClubStatsSummary goals={derived.totalGoals} assists={derived.totalAssists} games={derived.totalRounds} evenings={eveningsInScope ?? 0} animate={props.active !== false} />
+            {hasScoring ? <>
+              <SectionTitle icon="trophy-outline" text="תארי המועדון" />
+              <ClubStatsAwards leaders={leaderItems.map(r => ({ ...r, user: resolved(r.uid) }))}
+ />
+            </> : null}
           </>
-          ) : null}
 
+          <>
           {/* ── כימיה במועדון ── */}
           {/* After the leaders and before the fun facts: the leaders are about
               individuals, this is about who they play WITH, and the fun facts
@@ -1273,6 +1208,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                 <Text style={styles.chemistryNote}>{he.chemistryAllTimeNote}</Text>
               ) : null}
               <ChemistrySection
+                appearance="club"
+                motionEnabled={props.active !== false}
                 groupId={groupId}
                 pairs={chemistryPairs}
                 // The chip above already names the window whenever the club
@@ -1288,6 +1225,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           {/* After the pairs and before the club-wide facts, which is the
               reference's order: one person, then two, then everybody. */}
           <ClubRecords
+            appearance="club"
             records={clubRecords}
             onHolderPress={(uid) =>
               (nav as { navigate: (s: string, p: unknown) => void }).navigate(
@@ -1306,6 +1244,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             }
           />
 
+          </>
+          <>
           {/* ── נתונים מעניינים ──
               Three measures, one row component, one card.
 
@@ -1338,7 +1278,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               const rows = [
                 {
                   key: 'assisted',
-                  icon: 'git-network' as const,
+                  icon: 'assist' as const,
                   tint: clubAccent.blue,
                   pct:
                     derived.totalGoals > 0 && derived.totalAssists > 0
@@ -1348,7 +1288,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                 },
                 {
                   key: 'scoreless',
-                  icon: 'remove-circle' as const,
+                  icon: 'scoreless' as const,
                   tint: clubAccent.green,
                   pct: sampled ? derived.scorelessPct : null,
                   count: derived.scorelessRounds,
@@ -1357,7 +1297,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                 },
                 {
                   key: 'penRate',
-                  icon: 'football' as const,
+                  icon: 'penalty' as const,
                   tint: clubAccent.purple,
                   pct: derived.penTakenTotal > 0 ? derived.penAccuracyPct : null,
                   text: he.funPenaltyRate,
@@ -1397,6 +1337,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               same denominator; as slices of one ring they add up on screen,
               which is the thing a reader wanted from them. */}
           <ResultsBreakdown
+            appearance="club"
             // The MEASURED set, the same one the bars above divide by. See the
             // prop's own note for the production numbers that forced this.
             totalRounds={derived.countedRounds}
@@ -1407,15 +1348,16 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           />
 
 
+          </>
+
           {/* "הישגי המועדון" moved to CommunityDetails, under the club's
               numbers — the owner asked for it on the club page, not buried at
               the bottom of the stats screen. */}
 
-          <View style={{ height: spacing.xl }} />
-
-          {/* טבלת הליגה המלאה — האזור האחרון במסך. היא ארוכה מכל השאר גם יחד,
-              ולכן כל אזור שהיה מתחתיה היה נקבר. */}
+          {/* The table shares the same season scope as the continuous page. */}
+          <View>
           <CommunityChampionship
+            appearance="club"
             groupId={groupId}
             memberIds={memberIds}
             attendedByUser={attended}
@@ -1433,6 +1375,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
             // prints this exact number as "מחזורים".
             clubEvenings={eveningsInScope}
           />
+          </View>
           </ChangeMotion>
         )}
       </ScrollSurface>
@@ -1442,197 +1385,9 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
 
 // ── Sub-components ─────────────────────────────────────────────────────────
 
-function SectionTitle({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
-  return (
-    <View style={styles.sectionTitle}>
-      <Ionicons name={icon} size={16} color={colors.primary} />
-      <Text style={styles.sectionTitleText}>{text}</Text>
-    </View>
-  );
+function SectionTitle({ text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
+  return <View style={styles.sectionTitle}><Text style={styles.sectionTitleText}>{text}</Text></View>;
 }
-
-function HeroTile({
-  icon,
-  tint,
-  value,
-  label,
-}: {
-  icon: React.ReactNode;
-  tint: string;
-  value: number | string;
-  label: string;
-}) {
-  return (
-    // A plain cell, not a Card: in the reference the four cells sit INSIDE one
-    // white card, so a second elevation here would stack two shadows.
-    <View style={styles.heroTile}>
-      <View style={styles.heroIcon}>{icon}</View>
-      <View style={styles.heroText}>
-        {/* Numbers count up (0 → value) as the stats resolve. */}
-        {typeof value === 'number' ? (
-          <CountUp from={0} to={value} durationMs={1000} style={styles.heroValue} />
-        ) : (
-          <Text style={styles.heroValue}>{value}</Text>
-        )}
-        <Text style={styles.heroLabel} numberOfLines={1}>{label}</Text>
-      </View>
-    </View>
-  );
-}
-
-/**
- * The club's three headline leaders, as three EQUAL cards.
- *
- * Deliberately not a podium, and this is a correction of an earlier design
- * rather than a style preference. These are three different CATEGORIES — top
- * scorer, top assister, top winner — not three placings in one contest. The
- * previous version gave the middle card more width, more height, a bigger
- * avatar, a bigger number and a stronger tint, which reads as gold / silver /
- * bronze and says something about the club that is simply untrue.
- *
- * So every card shares one style contract: same flex, same padding, same
- * avatar, same metric size, same border, same accent. No card is raised, and
- * no index is printed anywhere — a "1" beside the first card would re-create
- * the ranking the layout just stopped implying. They differ by their icon,
- * their title, their number and their player, and by nothing else.
- *
- * All three carry Teamder blue. A colour per category was decoration: it made
- * the area a rainbow and told the reader nothing, because the categories are
- * not positive-vs-negative, they are just different.
- */
-/**
- * One glyph per title. This map, the title text, the number and the player are
- * the entire difference between the three cards — there is no colour, size or
- * position cue, by design.
- */
-const LEADER_ICON: Record<string, React.ComponentProps<typeof Ionicons>['name']> = {
-  [he.communityStatsTopScorer]: 'football',
-  [he.communityStatsTopAssister]: 'git-network',
-  [he.communityStatsTopWinner]: 'trophy',
-  [he.communityStatsCleanSheetKing]: 'shield-checkmark',
-  [he.communityStatsMostLoyal]: 'calendar',
-  [he.communityStatsPenaltyKing]: 'disc',
-  [he.communityStatsPenaltyKeeperKing]: 'hand-left',
-  [he.communityStatsOwnGoalKing]: 'alert-circle',
-};
-
-/**
- * The three headline categories, by position in the leaders list.
- *
- * Colour identifies the CATEGORY and nothing else. The three cards are
- * identical in every dimension that could imply rank — size, height, padding,
- * avatar, metric, shadow — so a reader can tell them apart without being told
- * one of them won.
- */
-const TRIO_ACCENT = [clubAccent.blue, clubAccent.purple, clubAccent.gold];
-
-function LeaderTrio({
-  items,
-}: {
-  items: {
-    title: string;
-    user: Resolved;
-    value: number;
-    unit: string;
-    icon: React.ComponentProps<typeof Ionicons>['name'];
-    suffix?: string;
-  }[];
-}) {
-  if (!items.length) return null;
-  return (
-    <View style={styles.trio}>
-      {items.map((r, i) => {
-        const accent = TRIO_ACCENT[i] ?? clubAccent.blue;
-        return (
-          <View
-            key={r.title}
-            style={[styles.trioCard, { backgroundColor: clubCardTint(accent) }]}
-          >
-            {/* Rides the card's top edge, filled with the category colour. */}
-            {/* The ring takes the CARD's tint, not the page ground. Ringing
-                it in the page colour cut a hole in a tinted card and the badge
-                read as pasted on rather than part of it. */}
-            <View
-              style={[
-                styles.trioBadge,
-                { backgroundColor: accent, borderColor: clubCardTint(accent) },
-              ]}
-            >
-              <Ionicons name={r.icon} size={17} color="#FFFFFF" />
-            </View>
-            <Text style={styles.trioTitle} numberOfLines={2}>
-              {r.title}
-            </Text>
-            {/* Number first, face second (owner, 28.09). The figure is what
-                the card is FOR — how many goals, how many wins — and it now
-                reads before the person it belongs to. */}
-            <CountUp
-              from={0}
-              to={r.value}
-              durationMs={1000}
-              suffix={r.suffix}
-              style={[styles.trioValue, { color: accent }]}
-            />
-            <UserAvatar user={r.user} size={56} ring />
-            <Text style={styles.trioName} numberOfLines={1}>
-              {fullName(r.user.name)}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-// One leader = a right-aligned list row: avatar (right), category + name
-// (right-aligned) beside it, and the value (counts up) pinned to the left.
-function LeaderRow({
-  title,
-  user,
-  value,
-  unit,
-  tint,
-  index,
-  last,
-  suffix,
-}: {
-  title: string;
-  user: Resolved;
-  value: number;
-  unit: string;
-  tint: string;
-  index: number;
-  last?: boolean;
-  /** e.g. "%" for penalty leaders whose headline value is a success rate. */
-  suffix?: string;
-}) {
-  return (
-    <AppearItem index={index}>
-      <View style={[styles.leaderRow, !last && styles.funDivider]}>
-        <UserAvatar user={user} size={40} ring />
-        <View style={styles.leaderMid}>
-          <Text style={styles.leaderCat} numberOfLines={1}>{title}</Text>
-          <Text style={styles.leaderName} numberOfLines={1}>{fullName(user.name)}</Text>
-        </View>
-        <View style={styles.leaderVal}>
-          <CountUp
-            from={0}
-            to={value}
-            durationMs={1000}
-            suffix={suffix}
-            style={[styles.leaderValNum, { color: tint }]}
-          />
-          <Text style={styles.leaderValUnit}>{unit}</Text>
-        </View>
-      </View>
-    </AppearItem>
-  );
-}
-
-// One row = a single flowing sentence (not columns), with the stat number and
-// the player names emphasised inline (user request). `em:'num'` → bold + the
-// row tint; `em:'name'` → bold in the main text colour.
-type FunPart = { t: string; em?: 'num' | 'name' };
 
 function FunDonutRow({
   pct,
@@ -1662,7 +1417,7 @@ function FunDonutRow({
   tint: string;
   text: string;
   /** The reference gives every row its own glyph; the bar alone is anonymous. */
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: React.ComponentProps<typeof FootballStatGlyph>['kind'];
   last?: boolean;
 }) {
   const measured = pct !== null;
@@ -1707,19 +1462,18 @@ function FunDonutRow({
           </>
         )}
       </View>
-      <View
-        style={[
-          styles.funIcon,
-          { backgroundColor: measured ? tint + '1A' : clubSurface.divider },
-        ]}
-      >
-        <Ionicons name={icon} size={18} color={measured ? tint : '#94A3B8'} />
+      <View style={styles.funIcon}>
+        <FootballStatGlyph kind={icon} size={24} color={measured ? '#2463F5' : '#94A3B8'} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  overviewHeading: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  statsToolbar: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, paddingTop: 4 },
+  periodLabel: { color: '#687797', fontSize: 12, textAlign: RTL_LABEL_ALIGN },
+  sectionRule: { flex: 1, height: 1, backgroundColor: '#E1E8F2', marginStart: spacing.sm },
   seasonBanner: {
     backgroundColor: colors.surfaceMuted,
     borderRadius: 12,
@@ -1738,15 +1492,14 @@ const styles = StyleSheet.create({
     color: colors.primary,
     textAlign: RTL_LABEL_ALIGN,
   },
-  // Local club ground — cool and a step below white, so the cards on it
-  // have an edge. See `clubSurface`.
-  root: { flex: 1, backgroundColor: clubSurface.ground },
+  // Editorial white ground; saturated accents belong to the data.
+  root: { flex: 1, backgroundColor: '#F7FAFC' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
   loadingText: { ...typography.body, color: colors.textMuted },
-  scroll: { padding: spacing.md, gap: spacing.sm },
+  scroll: { padding: 16, gap: 12, paddingBottom: 32 },
   scrollFill: { flexGrow: 1 },
   // The shell's hero is full-bleed; this scroll's content container is not.
-  headerBleed: { marginHorizontal: -spacing.md, marginTop: -spacing.md },
+  headerBleed: { marginHorizontal: -16, marginTop: -16 },
 
   scopeNoteRow: {
     flexDirection: 'row',
@@ -1757,24 +1510,13 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
-    // The note opens with a number on the seasons-off club ("סכום של 2 עונות
-    // שנסגרו…"), and a right-aligned paragraph whose base direction is still
-    // being guessed puts that number and the full stop on the wrong side.
-    writingDirection: 'rtl',
+    // forceRTL owns alignment; do not add a conflicting writingDirection.
     lineHeight: 18,
     paddingHorizontal: spacing.xs,
   },
 
-  sectionTitle: {
-    // Under forceRTL, 'row' packs the first child (icon) to the RIGHT and
-    // anchors the whole header right. ('row-reverse' wrongly pushed it left.)
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  sectionTitleText: { ...typography.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 2 },
+  sectionTitleText: { fontSize: 18, color: '#13213F', fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
 
   // MVP hero (top scorer) — the dominant element at the top.
   // The mvp* styles that dressed the hero card are gone with it — a style
@@ -1790,113 +1532,21 @@ const styles = StyleSheet.create({
   // The four cells live inside one card, as in the reference.
   // A hairline edge on every card: white on the club ground needs one to read
   // as a layer rather than as a lighter patch of the same sheet.
-  heroCard: { gap: spacing.md, ...clubShadow },
-  heroGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  heroTile: {
-    flexGrow: 1,
-    flexBasis: '47%',
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-    borderRadius: 14,
-    backgroundColor: colors.surface,
-    ...clubShadow,
-  },
   // The reference uses a bare coloured glyph on the trailing edge — no tinted
   // plate behind it. The plate made four cells read as four buttons.
-  heroIcon: { width: 30, alignItems: 'center', justifyContent: 'center' },
-  heroText: { flex: 1, minWidth: 0 },
-  heroValue: {
-    fontSize: 27,
-    lineHeight: 33,
-    color: '#0F172A',
-    fontWeight: '900',
-    fontVariant: ['tabular-nums'],
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  heroLabel: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '600',
-    textAlign: RTL_LABEL_ALIGN,
-    marginTop: 1,
-  },
   // One row, three equal cards. `alignItems: 'stretch'` so they share a height
   // even when one title wraps to two lines and the others do not — an uneven
   // bottom edge is the last thing left that could read as a ranking.
-  trio: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: spacing.sm,
-    // Clearance for the badges riding the cards' top edges.
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  trioCard: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'center',
-    gap: 6,
-    // Room above for the badge that rides the top edge.
-    paddingTop: spacing.lg + 8,
-    paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.xs,
-    borderRadius: 16,
-    // No border: the reference's cards have a tint and a shadow, and a grey
-    // outline over both is what made these read as table cells.
-    ...clubShadow,
-  },
-  trioBadge: {
-    position: 'absolute',
-    top: -16,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-  },
-  trioTitle: {
-    fontSize: 12.5,
-    lineHeight: 16,
-    fontWeight: '700',
-    color: '#64748B',
-    textAlign: 'center',
-    writingDirection: 'rtl',
-  },
-  trioValue: {
-    fontSize: 34,
-    fontWeight: '900',
-    letterSpacing: -0.8,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
-  trioName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.text,
-    textAlign: 'center',
-    writingDirection: 'rtl',
-  },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-  },
 
   // leaders — right-aligned list rows
-  leadersCard: { padding: 0, overflow: 'hidden', ...clubShadow },
+  leadersCard: { gap: 0, paddingHorizontal: 14, backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8DF' },
   // `row` (not row-reverse): under forceRTL the first child (avatar) sits on the
   // visual RIGHT, category/name flow to its left, value pinned far LEFT.
   // The five titles BELOW the podium are deliberately quieter than it: shorter
   // rows, a smaller number, a lighter name. They carry titles the podium has
   // no room for — they are not a second podium, and when they had the same
   // weight the area read as eight equal winners with three of them decorated.
-  leaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md },
+  leaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md, backgroundColor: '#FFFFFF', borderRadius: 14 },
   leaderMid: { flex: 1, minWidth: 0, alignItems: 'flex-start' },
   leaderCat: { fontSize: 12, color: clubSurface.subtle, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   leaderName: { fontSize: 15, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
@@ -1925,7 +1575,7 @@ const styles = StyleSheet.create({
   goalsPillText: { ...typography.body, color: colors.primary, fontWeight: '900', fontVariant: ['tabular-nums'] },
 
   // fun facts
-  funCard: { padding: 0, overflow: 'hidden', ...clubShadow },
+  funCard: { padding: 0, overflow: 'hidden', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8DF', elevation: 0, shadowOpacity: 0 },
   // `row` (not row-reverse): under forceRTL the first child (icon) sits on the
   // visual RIGHT, with the sentence flowing to its left (user request).
   funRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg - 2, paddingHorizontal: spacing.lg },
@@ -1935,8 +1585,8 @@ const styles = StyleSheet.create({
   // does this under forceRTL; `row-reverse` was an earlier misreading of the
   // reference and shipped a bar that grew the wrong way.
   funTrack: {
-    height: 12,
-    borderRadius: 6,
+    height: 5,
+    borderRadius: 3,
     backgroundColor: clubSurface.divider,
     overflow: 'hidden',
     flexDirection: 'row',
@@ -1946,7 +1596,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   funPctPending: { color: '#94A3B8' },
   funPct: {
@@ -1957,7 +1606,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
   funDivider: { borderBottomWidth: 1, borderBottomColor: clubSurface.divider },
-  funIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  funIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   funSentence: { fontSize: 14.5, flex: 1, color: clubSurface.subtle, textAlign: RTL_LABEL_ALIGN, lineHeight: 20 },
   funEm: { fontWeight: '900', fontVariant: ['tabular-nums'] },
   funEmName: { fontWeight: '800', color: colors.text },
@@ -1990,7 +1639,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
     marginTop: -4,
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.md,

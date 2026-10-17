@@ -3,11 +3,24 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { KJUR, KEYUTIL } from 'jsrsasign';
 import { pulseProxyTarget, pulseAdminAllowed } from './pulseProxyPolicy';
+import { pulseResponseBytes } from './pulseResponseEncoding';
+import { pulseRequestQueue } from './pulseRequestQueue';
 
 const adminUids = defineSecret('PULSE_ADMIN_UIDS');
 const upstreamKeys = defineSecret('PULSE_UPSTREAM_CREDENTIALS');
 type Keys = { googleServiceAccount?: { clientEmail: string; privateKey: string }; googleOAuth?: { clientId: string; clientSecret: string; refreshToken: string }; appStoreConnect?: { issuerId: string; keyId: string; privateKeyP8: string } };
 const tokens = new Map<string, { value: string; until: number }>();
+const reserveRequest = pulseRequestQueue(async (uid, count) => {
+  const quota = admin.firestore().doc(`serverRateLimits/${uid}_pulse`);
+  return admin.firestore().runTransaction(async tx => {
+    const now = Date.now(), old = (await tx.get(quota)).data() ?? {};
+    const fresh = typeof old.start !== 'number' || now - old.start >= 60000;
+    const used = fresh ? 0 : old.count;
+    const allowed = Math.max(0, Math.min(count, 500 - used));
+    if (allowed) tx.set(quota, { start: fresh ? now : old.start, count: used + allowed });
+    return allowed;
+  });
+});
 
 async function upstreamToken(provider: 'google' | 'oauth' | 'apple', scope: string, keys: Keys): Promise<string> {
   const cacheKey = `${provider}:${scope}`, cached = tokens.get(cacheKey), now = Math.floor(Date.now() / 1000);
@@ -70,13 +83,7 @@ export const pulseAdminProxy = onRequest({ region: 'us-central1', cors: false, s
           typeof fields.qa?.booleanValue !== 'boolean' || target.url.searchParams.getAll('updateMask.fieldPaths').some(k => k !== 'qa')) { res.status(403).json({ error: 'PULSE_TARGET_DENIED' }); return; }
       target.url.searchParams.set('currentDocument.exists', 'true');
     }
-    const quota = admin.firestore().doc(`serverRateLimits/${uid}_pulse`), now = Date.now();
-    await admin.firestore().runTransaction(async tx => {
-      const old = (await tx.get(quota)).data() ?? {};
-      const fresh = typeof old.start !== 'number' || now - old.start >= 60000;
-      if (!fresh && old.count >= 500) throw new Error('PULSE_RATE_LIMIT');
-      tx.set(quota, { start: fresh ? now : old.start, count: fresh ? 1 : old.count + 1 });
-    });
+    await reserveRequest(uid);
     const token = await upstreamToken(target.provider, target.scope, keys);
     const upstream = await fetch(target.url, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(body !== undefined ? { body } : {}), redirect: 'error', signal: AbortSignal.timeout(45000) });
     if (!upstream.ok) {
@@ -96,7 +103,10 @@ export const pulseAdminProxy = onRequest({ region: 'us-central1', cors: false, s
         chunks.push(data);
       }
     } finally { reader.releaseLock(); }
-    res.json({ status: upstream.status, body: Buffer.concat(chunks).toString('base64'), encoding: 'base64', contentType: upstream.headers.get('content-type') });
+    const contentType = upstream.headers.get('content-type');
+    const responseBytes = pulseResponseBytes(Buffer.concat(chunks), contentType);
+    if (responseBytes.length > 23000000) throw new Error('PULSE_RESPONSE_TOO_LARGE');
+    res.json({ status: upstream.status, body: responseBytes.toString('base64'), encoding: 'base64', contentType });
   } catch (error) {
     const code = error instanceof Error ? error.message : '';
     res.status(code === 'PULSE_RATE_LIMIT' ? 429 : code === 'PULSE_TARGET_DENIED' ? 403 : 502).json({ error: code.startsWith('PULSE_') ? code : 'PULSE_REQUEST_FAILED' });

@@ -1,0 +1,67 @@
+{
+  "createdAtUtc": "2026-10-17T04:30:42.991964+00:00",
+  "gameId": "mBO5HqJdnOPWjRE2zMh8",
+  "notes": [
+    "שמונה צילומי סיום מקור לפני תיקון התצוגה, שמונה צילומים אחרי תיקונים ממוקדים ושלושה צילומים אחרי תיקון הלשוניות, שניים קטנים ואחד רגיל, נשמרו בנפרד.",
+    "צילומי before-tabs ועץ all33-small קודמים לתיקון הלשוניות; הצילומים והעצים עם tabs-final מאוחרים ומאמתים אותו.",
+    "צילומים אינם מקור עצמאי לזהויות שלא נראות או לחתימת השרת."
+  ],
+  "screenshots": [
+    "action-pitch-production-eleven-summary-counts-before-label-fix-2026-10-17.png",
+    "action-pitch-production-eleven-personal-final-2026-10-17.png",
+    "action-pitch-production-eleven-history-first-final-2026-10-17.png",
+    "action-pitch-production-eleven-history-second-final-2026-10-17.png",
+    "action-pitch-production-eleven-standings-before-rank-fix-2026-10-17.png",
+    "action-pitch-production-eleven-standings-games-before-rank-fix-2026-10-17.png",
+    "action-pitch-production-eleven-standings-guests-before-rank-fix-2026-10-17.png",
+    "action-pitch-production-eleven-standings-cap-before-fix-2026-10-17.png",
+    "action-pitch-production-eleven-home-guests-fixed-normal-2026-10-17.png",
+    "action-pitch-production-eleven-summary-labels-fixed-normal-2026-10-17.png",
+    "action-pitch-production-eleven-standings-assists-column-full-2026-10-17.png",
+    "action-pitch-production-eleven-standings-rank-fixed-normal-2026-10-17.png",
+    "action-pitch-production-eleven-standings-all33-fixed-normal-2026-10-17.png",
+    "action-pitch-production-eleven-home-guests-fixed-small-2026-10-17.png",
+    "action-pitch-production-eleven-summary-labels-fixed-small-before-tabs-2026-10-17.png",
+    "action-pitch-production-eleven-standings-all33-fixed-small-before-tabs-2026-10-17.png",
+    "action-pitch-production-eleven-tabs-summary-final-small-2026-10-17.png",
+    "action-pitch-production-eleven-tabs-standings-final-small-2026-10-17.png",
+    "action-pitch-production-eleven-tabs-summary-final-normal-2026-10-17.png"
+  ],
+  "files": [
+    {
+      "file": "eleven-standings-all33-normal-ui.xml",
+      "sha256": "26bd85b085952418d813ac4aff123d6a943087162a7df568c87ba1d833e70aca",
+      "originalSha256": "26bd85b085952418d813ac4aff123d6a943087162a7df568c87ba1d833e70aca",
+      "filtered": false,
+      "note": "עץ מכשיר מקורי של סוף טבלה מתוקן; העץ הקטן עדיין לפני תיקון לשוניות."
+    },
+    {
+      "file": "eleven-standings-all33-small-ui.xml",
+      "sha256": "21f4e696c0b797bb53258d9a817d3e8c3d2eb472b3f7866de310d434f7cc71ac",
+      "originalSha256": "21f4e696c0b797bb53258d9a817d3e8c3d2eb472b3f7866de310d434f7cc71ac",
+      "filtered": false,
+      "note": "עץ מכשיר מקורי של סוף טבלה מתוקן; העץ הקטן עדיין לפני תיקון לשוניות."
+    },
+    {
+      "file": "eleven-tabs-summary-final-small-ui.xml",
+      "sha256": "55672be9db5ba2b54f271d5c7f31bb948ffa6f8bf58cee948910b338d729ac53",
+      "originalSha256": "55672be9db5ba2b54f271d5c7f31bb948ffa6f8bf58cee948910b338d729ac53",
+      "filtered": false,
+      "note": "עץ מכשיר מקורי אחרי תיקון הלשוניות."
+    },
+    {
+      "file": "eleven-tabs-standings-final-small-ui.xml",
+      "sha256": "551c7a0ba1b2ed3548197f5c2174ed978c2c55c5b46e93cfcd54d1f15b3a866d",
+      "originalSha256": "551c7a0ba1b2ed3548197f5c2174ed978c2c55c5b46e93cfcd54d1f15b3a866d",
+      "filtered": false,
+      "note": "עץ מכשיר מקורי אחרי תיקון הלשוניות."
+    },
+    {
+      "file": "eleven-tabs-summary-final-normal-ui.xml",
+      "sha256": "73dd14a9f10e559658fa8165bb5ba2398bc021593f5a12eca60e15ad5281bb9d",
+      "originalSha256": "73dd14a9f10e559658fa8165bb5ba2398bc021593f5a12eca60e15ad5281bb9d",
+      "filtered": false,
+      "note": "עץ מכשיר מקורי אחרי תיקון הלשוניות."
+    }
+  ]
+}

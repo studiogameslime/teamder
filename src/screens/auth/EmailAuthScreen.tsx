@@ -4,12 +4,14 @@
 // currentUser and RootNavigator routes onward (onboarding fills name/avatar,
 // exactly like an Apple sign-in — the provider gives us neither).
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useEntryStore } from '@/store/entryStore';
 import {
   ActivityIndicator,
+  Image,
   Platform,
   Pressable,
+  type ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -22,18 +24,30 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { appAlert } from '@/components/AppDialog';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScrollSurface } from '@/components/ScrollSurface';
+import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
+import { upgradeAnonymous } from '@/services/authUpgrade';
 import { useUserStore } from '@/store/userStore';
 import { EmailRegisteredWithProviderError } from '@/firebase/auth';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import { resumePendingAction } from '@/services/actionCoordinator';
 import { reportResumeOutcome } from '@/services/resumeFeedback';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { AuthStackParamList } from '@/navigation/AuthStack';
 
-const ACCENT = '#1E40AF';
+const ACCENT = '#2861F4';
+
+/** Four brand colours; vector stays crisp at native display density. */
+function GoogleMark() {
+  return <Svg width={25} height={25} viewBox="0 0 24 24" accessible={false}>
+    <Path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.89-1.74 2.98-4.3 2.98-7.36Z"/>
+    <Path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.42l-3.24-2.51c-.9.6-2.05.96-3.38.96-2.6 0-4.81-1.76-5.6-4.13H3.05v2.59A10 10 0 0 0 12 22Z"/>
+    <Path fill="#FBBC05" d="M6.4 13.9a6 6 0 0 1 0-3.8V7.51H3.05a10 10 0 0 0 0 8.98L6.4 13.9Z"/>
+    <Path fill="#EA4335" d="M12 5.97c1.47 0 2.79.5 3.82 1.5l2.87-2.87A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.95 5.51L6.4 10.1c.79-2.37 3-4.13 5.6-4.13Z"/>
+  </Svg>;
+}
 
 type Nav = NativeStackNavigationProp<AuthStackParamList, 'EmailAuth'>;
 
@@ -58,6 +72,12 @@ export function EmailAuthScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [provider, setProvider] = useState<'google' | 'apple' | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const inFlight = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (focusTimer.current) clearTimeout(focusTimer.current); }, []);
 
   const isSignUp = mode === 'signUp';
   const emailOk = EMAIL_RE.test(email.trim());
@@ -77,6 +97,7 @@ export function EmailAuthScreen() {
       trigger,
     });
     setMode(to);
+    setConfirmPassword('');
   };
 
   /**
@@ -103,7 +124,8 @@ export function EmailAuthScreen() {
   };
 
   const submit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || inFlight.current) return;
+    inFlight.current = true;
     logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'email_submit_tapped', step: 'authentication', mode });
     setBusy(true);
     try {
@@ -136,6 +158,7 @@ export function EmailAuthScreen() {
     } catch (err) {
       handleAuthError(err);
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -189,6 +212,7 @@ export function EmailAuthScreen() {
   };
 
   const onForgotPassword = async () => {
+    if (inFlight.current) return;
     if (!emailOk) {
       logEvent(AnalyticsEvent.PasswordResetRequested, {
         result: 'blocked',
@@ -197,10 +221,14 @@ export function EmailAuthScreen() {
       appAlert(he.error, he.emailAuthResetNeedEmail);
       return;
     }
+    inFlight.current = true;
+    setBusy(true);
+    setResetting(true);
+    const resetEmail = email.trim();
     try {
-      await sendPasswordReset(email);
+      await sendPasswordReset(resetEmail);
       logEvent(AnalyticsEvent.PasswordResetRequested, { result: 'sent' });
-      appAlert(he.emailAuthResetSentTitle, he.emailAuthResetSentBody(email.trim()));
+      appAlert(he.emailAuthResetSentTitle, he.emailAuthResetSentBody(resetEmail));
     } catch (err) {
       // Don't reveal whether the address exists — generic confirmation either
       // way is the safe default, but a network/invalid error is worth showing.
@@ -214,197 +242,172 @@ export function EmailAuthScreen() {
       } else {
         // user-not-found etc. → still show "sent" so we don't leak accounts.
         logEvent(AnalyticsEvent.PasswordResetRequested, { result: 'sent', code });
-        appAlert(he.emailAuthResetSentTitle, he.emailAuthResetSentBody(email.trim()));
+        appAlert(he.emailAuthResetSentTitle, he.emailAuthResetSentBody(resetEmail));
       }
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+      setResetting(false);
     }
   };
 
+  // Use the same credential-linking path as the contextual sign-in sheet.
+  // New profiles stay with RootNavigator; only completed profiles resume an action.
+  const onProvider = async (method: 'google' | 'apple') => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setProvider(method);
+    logEvent(AnalyticsEvent.SignInAttempted, { method });
+    try {
+      const outcome = await upgradeAnonymous(method);
+      if (outcome.status === 'cancelled') {
+        logEvent(AnalyticsEvent.SignInCancelled, { method });
+      } else if (outcome.status === 'failed') {
+        logEvent(AnalyticsEvent.SignInFailed, { method, code: outcome.code });
+        appAlert(he.error, /network|unavailable|offline/i.test(outcome.code) ? he.signInNetworkError : he.signInFailed);
+      } else {
+        await useUserStore.getState().refreshFromSession(outcome.uid);
+        logEvent(AnalyticsEvent.SignInSuccess, { method });
+        if (useUserStore.getState().hasCompletedOnboarding()) await finishParkedAction();
+      }
+    } catch (err) {
+      // refreshFromSession keeps a failed profile restore retryable at the root.
+      appAlert(he.error, he.signInFailed);
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+      setProvider(null);
+    }
+  };
+
+  const fieldLabel = (text: string, icon: keyof typeof Ionicons.glyphMap) => (
+    <View style={styles.labelRow}><Ionicons name={icon} size={20} color="#53678D" /><Text style={styles.label}>{text}</Text></View>
+  );
+  const passwordField = (confirmation = false) => (
+    <View style={[styles.passwordRow, confirmation && confirmError && styles.inputError]}>
+      <TextInput
+        onFocus={() => {
+          // Wait for the IME resize before exposing the last field and submit.
+          if (focusTimer.current) clearTimeout(focusTimer.current);
+          if (confirmation) focusTimer.current = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 350);
+        }}
+        value={confirmation ? confirmPassword : password}
+        onChangeText={confirmation ? setConfirmPassword : setPassword}
+        placeholder={confirmation ? he.emailAuthConfirmPasswordPlaceholder : he.emailAuthPasswordPlaceholder}
+        accessibilityLabel={confirmation ? he.emailAuthConfirmPasswordLabel : he.emailAuthPasswordLabel}
+        placeholderTextColor="#6D7E9E" secureTextEntry={!showPassword}
+        editable={!busy} autoCapitalize="none" autoCorrect={false}
+        autoComplete={isSignUp ? 'password-new' : 'password'}
+        textContentType={isSignUp ? 'newPassword' : 'password'}
+        style={styles.passwordInput} textAlign="right"
+      />
+      <Pressable onPress={() => {
+        logEvent(AnalyticsEvent.OnboardingInteraction, { action: confirmation ? 'confirmation_visibility_toggled' : 'password_visibility_toggled', step: 'authentication' });
+        setShowPassword(v => !v);
+      }} hitSlop={8} style={styles.eyeBtn} accessibilityRole="button" accessibilityLabel={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}>
+        <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={23} color="#53678D" />
+      </Pressable>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader
-        title={isSignUp ? he.emailAuthSignUpTitle : he.emailAuthSignInTitle}
-      />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.body}>
-          <Text style={styles.label}>{he.emailAuthEmailLabel}</Text>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder={he.emailAuthEmailPlaceholder}
-            placeholderTextColor={colors.textMuted}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="email"
-            textContentType="emailAddress"
-            style={styles.input}
-            textAlign="right"
-          />
-
-          <Text style={styles.label}>{he.emailAuthPasswordLabel}</Text>
-          <View style={styles.passwordRow}>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={he.emailAuthPasswordPlaceholder}
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete={isSignUp ? 'password-new' : 'password'}
-              textContentType={isSignUp ? 'newPassword' : 'password'}
-              style={[styles.input, styles.passwordInput]}
-              textAlign="right"
-            />
-            <Pressable
-              onPress={() => { logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'password_visibility_toggled', step: 'authentication' }); setShowPassword((v) => !v); }}
-              hitSlop={8}
-              style={styles.eyeBtn}
-              accessibilityLabel={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
-            >
-              <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color={colors.textMuted}
-              />
-            </Pressable>
+      <View style={styles.header}>
+        <Pressable onPress={() => nav.canGoBack() && nav.goBack()} hitSlop={8} style={styles.back} accessibilityRole="button" accessibilityLabel="חזרה">
+          <Ionicons name="chevron-forward" size={25} color="#0B1A47" />
+          <Text style={styles.headerTitle}>{isSignUp ? 'הרשמה' : 'התחברות'}</Text>
+        </Pressable>
+        <View style={styles.brand}><Text style={styles.brandName}>Teamder</Text><Ionicons name="football" color={ACCENT} size={25} /></View>
+        <View style={styles.headerSpacer} />
+      </View>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollSurface ref={scrollRef} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+          <View pointerEvents="none" style={styles.pitch} accessible={false}>
+            <Svg width={150} height={110} viewBox="0 0 185 145">
+              <Rect x={2} y={2} width={180} height={136} fill="none" stroke="#D8E7F9" strokeWidth={1.5}/>
+              <Line x1={92} y1={2} x2={92} y2={138} stroke="#D8E7F9" strokeWidth={1.5}/>
+              <Circle cx={92} cy={70} r={27} fill="none" stroke="#D8E7F9" strokeWidth={1.5}/>
+              <Circle cx={92} cy={70} r={2} fill="#D8E7F9"/>
+              <Rect x={2} y={35} width={27} height={70} fill="none" stroke="#D8E7F9" strokeWidth={1.5}/>
+              <Rect x={155} y={35} width={27} height={70} fill="none" stroke="#D8E7F9" strokeWidth={1.5}/>
+            </Svg>
           </View>
-
-          {/* Sign-up only: re-enter the password to catch typos. Shares the
-              same show/hide eye state as the password above. */}
-          {isSignUp ? (
-            <>
-              <Text style={styles.label}>{he.emailAuthConfirmPasswordLabel}</Text>
-              <View style={styles.passwordRow}>
-                <TextInput
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder={he.emailAuthConfirmPasswordPlaceholder}
-                  placeholderTextColor={colors.textMuted}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="password-new"
-                  textContentType="newPassword"
-                  style={[
-                    styles.input,
-                    styles.passwordInput,
-                    confirmError && styles.inputError,
-                  ]}
-                  textAlign="right"
-                />
-                <Pressable
-                  onPress={() => { logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'confirmation_visibility_toggled', step: 'authentication' }); setShowPassword((v) => !v); }}
-                  hitSlop={8}
-                  style={styles.eyeBtn}
-                  accessibilityLabel={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color={colors.textMuted}
-                  />
-                </Pressable>
-              </View>
-              {confirmError ? (
-                <Text style={styles.errorText}>{he.emailAuthPasswordMismatch}</Text>
-              ) : null}
-            </>
-          ) : null}
-
-          {!isSignUp ? (
-            <Pressable onPress={onForgotPassword} hitSlop={8} style={styles.forgot}>
-              <Text style={styles.forgotText}>{he.emailAuthForgot}</Text>
+          <View style={styles.hero}>
+            <Image source={require('../../assets/images/form-toggle-football-3d.png')} style={styles.ball} resizeMode="contain" accessible={false}/>
+            <Text style={styles.heroTitle}>{isSignUp ? 'מצטרפים למגרש' : 'טוב שחזרת למגרש'}</Text>
+            <Text style={styles.subtitle}>{isSignUp ? 'פותחים חשבון ומתחילים לשחק' : 'נכנסים לחשבון וממשיכים לשחק'}</Text>
+          </View>
+          <View style={styles.card}>
+            <View style={styles.tabs} accessibilityRole="tablist">
+              {(['signIn', 'signUp'] as const).map(tab => <Pressable key={tab} onPress={() => switchMode(tab, 'link')} disabled={busy} accessibilityRole="tab" accessibilityState={{ selected: mode === tab, disabled: busy }} style={[styles.tab, mode === tab && styles.activeTab]}>
+                <Text style={[styles.tabText, mode === tab && styles.activeTabText]}>{tab === 'signIn' ? 'כניסה' : 'הרשמה'}</Text>
+              </Pressable>)}
+            </View>
+            {fieldLabel('כתובת דואר אלקטרוני', 'mail-outline')}
+            <TextInput value={email} onChangeText={setEmail} placeholder="name@example.com" accessibilityLabel={he.emailAuthEmailLabel} placeholderTextColor="#6D7E9E" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" textContentType="emailAddress" editable={!busy} style={styles.input} textAlign="right" />
+            {fieldLabel(he.emailAuthPasswordLabel, 'lock-closed-outline')}
+            {passwordField()}
+            {isSignUp && <>{fieldLabel(he.emailAuthConfirmPasswordLabel, 'lock-closed-outline')}{passwordField(true)}{confirmError && <Text style={styles.errorText}>{he.emailAuthPasswordMismatch}</Text>}</>}
+            {!isSignUp && <Pressable onPress={onForgotPassword} disabled={busy} hitSlop={8} style={styles.forgot} accessibilityRole="button" accessibilityLabel={he.emailAuthForgot} accessibilityState={{ disabled: busy, busy: resetting }}>{resetting ? <ActivityIndicator color={ACCENT}/> : <Text style={styles.forgotText}>{he.emailAuthForgot}</Text>}</Pressable>}
+            <Pressable onPress={submit} disabled={!canSubmit} accessibilityRole="button" accessibilityState={{ disabled: !canSubmit, busy: busy && !provider }} style={({ pressed }) => [styles.cta, pressed && styles.pressed, !canSubmit && styles.ctaDisabled]}>
+              {busy && !provider && !resetting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.ctaText}>{isSignUp ? 'יצירת חשבון' : 'כניסה לחשבון'}</Text>}
             </Pressable>
-          ) : null}
-
-          <Pressable
-            onPress={submit}
-            disabled={!canSubmit}
-            style={({ pressed }) => [
-              styles.cta,
-              pressed && { opacity: 0.92 },
-              !canSubmit && { opacity: 0.5 },
-            ]}
-            accessibilityRole="button"
-          >
-            {busy ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.ctaText}>
-                {isSignUp ? he.emailAuthSignUpCta : he.emailAuthSignInCta}
-              </Text>
-            )}
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              switchMode(isSignUp ? 'signIn' : 'signUp', 'link');
-              setConfirmPassword('');
-            }}
-            hitSlop={8}
-            style={styles.toggle}
-          >
-            <Text style={styles.toggleText}>
-              {isSignUp ? he.emailAuthToggleToSignIn : he.emailAuthToggleToSignUp}
-            </Text>
-          </Pressable>
-        </View>
+            <View style={styles.divider}><View style={styles.line}/><Text style={styles.dividerText}>או באמצעות</Text><View style={styles.line}/></View>
+            <View style={styles.providers}>
+              {(['google', ...(Platform.OS === 'ios' ? ['apple'] as const : [])] as const).map(method => <Pressable key={method} onPress={() => onProvider(method)} disabled={busy} accessibilityRole="button" accessibilityLabel={method === 'google' ? he.signInGoogle : he.signInApple} accessibilityState={{ disabled: busy, busy: provider === method }} style={({ pressed }) => [styles.provider, pressed && styles.pressed]}>
+                {provider === method ? <ActivityIndicator color={ACCENT}/> : <><Text style={styles.providerText}>{method === 'google' ? 'גוגל' : 'אפל'}</Text>{method === 'google' ? <GoogleMark/> : <Ionicons name="logo-apple" size={25} color="#111111"/>}</>}
+              </Pressable>)}
+            </View>
+            <View style={styles.privacy}><Ionicons name="shield-checkmark-outline" size={20} color="#64779A"/><Text style={styles.privacyText}>הפרטים שלך נשארים מוגנים</Text></View>
+          </View>
+        </ScrollSurface>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+  root: { flex: 1, backgroundColor: '#F2F7FE' },
   flex: { flex: 1 },
-  body: { padding: spacing.lg, gap: spacing.sm },
-  label: {
-    ...typography.caption,
-    color: colors.text,
-    fontWeight: '700',
-    textAlign: RTL_LABEL_ALIGN,
-    marginTop: spacing.sm,
-  },
-  input: {
-    height: 50,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    color: colors.text,
-    ...typography.body,
-  },
-  passwordRow: { position: 'relative', justifyContent: 'center' },
-  passwordInput: { paddingLeft: 44 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12 },
+  back: { flex: 1, flexDirection: 'row', gap: 4, alignItems: 'center', minHeight: 44 },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: '#0B1A47' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  brandName: { fontSize: 25, fontWeight: '900', color: ACCENT },
+  headerSpacer: { flex: 1 },
+  body: { paddingHorizontal: 22, paddingBottom: 28, flexGrow: 1 },
+  pitch: { position: 'absolute', end: -32, top: 0, transform: [{ rotate: '17deg' }] },
+  hero: { alignItems: 'center', paddingTop: 5, paddingBottom: 22 },
+  ball: { width: 104, height: 104, marginBottom: 6 },
+  heroTitle: { fontSize: 29, fontWeight: '900', color: '#091943', textAlign: 'center' },
+  subtitle: { fontSize: 17, color: '#5C6E91', textAlign: 'center', marginTop: 5 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 28, padding: 18, shadowColor: '#ACC7EC', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 22, elevation: 2 },
+  tabs: { flexDirection: 'row', backgroundColor: '#F0F6FE', borderRadius: 19, padding: 3, marginBottom: 8 },
+  tab: { flex: 1, minHeight: 48, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  activeTab: { backgroundColor: ACCENT },
+  tabText: { fontSize: 19, fontWeight: '800', color: '#163566' },
+  activeTabText: { color: '#FFFFFF' },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 17, marginBottom: 8 },
+  label: { fontSize: 15, color: '#0B1A47', fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  input: { height: 48, backgroundColor: '#F7F9FD', borderRadius: 11, borderWidth: 1, borderColor: '#CDDAED', paddingHorizontal: 13, color: '#0B1A47', ...typography.body },
+  passwordRow: { flexDirection: 'row', alignItems: 'center', height: 48, backgroundColor: '#F7F9FD', borderRadius: 11, borderWidth: 1, borderColor: '#CDDAED' },
+  passwordInput: { flex: 1, height: '100%', paddingHorizontal: 13, color: '#0B1A47', ...typography.body },
+  eyeBtn: { minWidth: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   inputError: { borderColor: colors.danger },
-  errorText: {
-    ...typography.caption,
-    color: colors.danger,
-    textAlign: RTL_LABEL_ALIGN,
-    marginTop: -2,
-  },
-  eyeBtn: {
-    position: 'absolute',
-    left: spacing.md,
-    height: 50,
-    justifyContent: 'center',
-  },
-  forgot: { alignSelf: 'flex-start', paddingVertical: spacing.xs },
-  forgotText: { ...typography.caption, color: ACCENT, fontWeight: '700' },
-  cta: {
-    marginTop: spacing.md,
-    backgroundColor: ACCENT,
-    borderRadius: 999,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
-  toggle: { alignSelf: 'center', paddingVertical: spacing.md },
-  toggleText: { ...typography.body, color: ACCENT, fontWeight: '700' },
+  errorText: { ...typography.caption, color: colors.danger, textAlign: RTL_LABEL_ALIGN, marginTop: 5 },
+  forgot: { alignSelf: 'flex-start', paddingVertical: 12, minHeight: 44 },
+  forgotText: { fontSize: 14, color: ACCENT, textDecorationLine: 'underline' },
+  cta: { marginTop: 10, backgroundColor: ACCENT, borderRadius: 15, minHeight: 54, alignItems: 'center', justifyContent: 'center' },
+  ctaDisabled: { backgroundColor: '#4B78E8' },
+  ctaText: { color: '#FFFFFF', fontSize: 19, fontWeight: '800' },
+  pressed: { opacity: 0.8 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 23 },
+  line: { flex: 1, height: 1, backgroundColor: '#CDDAED' },
+  dividerText: { fontSize: 14, color: '#64779A' },
+  providers: { flexDirection: 'row', gap: 12 },
+  provider: { flex: 1, flexDirection: 'row', minHeight: 48, alignItems: 'center', justifyContent: 'center', gap: 12, borderRadius: 12, borderWidth: 1, borderColor: '#CDDAED' },
+  providerText: { fontSize: 18, fontWeight: '700', color: '#0B1A47' },
+  privacy: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 26, marginBottom: 6 },
+  privacyText: { fontSize: 12, color: '#64779A' },
 });

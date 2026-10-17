@@ -4,6 +4,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { PairChemistryIcon } from './PairChemistryIcon';
 
 import { UserAvatar } from '@/components/UserAvatar';
 import {
@@ -111,6 +112,9 @@ export function ChemistrySection({
   groupId,
   pairs,
   seasonScoped = false,
+  appearance,
+  preview = false,
+  motionEnabled = true,
 }: {
   groupId: string;
   pairs?: Record<string, PairTotals> | null;
@@ -126,6 +130,9 @@ export function ChemistrySection({
    * chip naming the window and keeps the line.
    */
   seasonScoped?: boolean;
+  appearance?: 'club';
+  preview?: boolean;
+  motionEnabled?: boolean;
 }) {
   const [loaded, setLoaded] = useState<{ groupId: string; source: typeof pairs; data: ClubChemistry | null; failed: boolean } | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -190,6 +197,7 @@ export function ChemistrySection({
   );
 
   if (!data) return <ChemistryLoadNotice failed={current?.failed === true} onRetry={() => setAttempt(x => x + 1)} />;
+  if (preview && !data.picks.some(p => p.kind === 'winningDuo')) return <></>;
   if (data.picks.length === 0) {
     return <Text style={styles.empty}>{he.chemistryEmpty}</Text>;
   }
@@ -202,7 +210,7 @@ export function ChemistrySection({
           the row wraps rather than reserving slots. */}
       <View style={styles.grid}>
         {(() => {
-          const drawn = GRID_KINDS.filter((k) => data.picks.some((x) => x.kind === k));
+          const drawn = GRID_KINDS.filter((k) => (!preview || k === 'winningDuo') && data.picks.some((x) => x.kind === k));
           return drawn;
         })().map((kind, idx, drawn) => {
           const p = data.picks.find((x) => x.kind === kind)!;
@@ -217,6 +225,28 @@ export function ChemistrySection({
           const [x, y] = pairMembers(p.pairs[0]);
           const px = person(x);
           const py = person(y);
+          if (appearance === 'club') return <View key={kind} style={{ width: '100%', gap: 8 }}>
+            {preview ? <Text style={styles.clubHeading}>צמד מנצח</Text> : null}
+            <Pressable accessibilityRole="button" accessibilityLabel={`${CHEMISTRY_LABEL[kind]}: ${px?.name ?? ''} ${py?.name ?? ''}`} onPress={() => { logEvent(AnalyticsEvent.ScreenView, { screen: 'PairCard', kind }); setOpen([x, y]); }} style={({ pressed }) => [styles.clubPair, pressed && { opacity: 0.75 }]}>
+              <View style={styles.clubPairTitle}>
+                <Text style={styles.clubPairLabel}>{CHEMISTRY_LABEL[kind]}</Text>
+                <Ionicons name="chevron-back" size={18} color="#687797" />
+              </View>
+              <View style={styles.clubPairBody}>
+                <View style={styles.clubPairPlayer}>
+                  {px ? <UserAvatar user={{ ...px, id: x }} size={72} /> : null}
+                  <Text numberOfLines={2} style={styles.clubPairNames}>{px?.name ?? ''}</Text>
+                </View>
+                <View style={styles.clubPairLink}><PairChemistryIcon kind={kind} active={motionEnabled} delay={400 + idx * 120} /></View>
+                <View style={styles.clubPairPlayer}>
+                  {py ? <UserAvatar user={{ ...py, id: y }} size={72} /> : null}
+                  <Text numberOfLines={2} style={styles.clubPairNames}>{py?.name ?? ''}</Text>
+                </View>
+              </View>
+              <Text style={styles.clubPairMetric}>{p.kind === 'bestRatio' ? metricText(p) : headline(p)}</Text>
+              {p.tied ? <Text style={styles.tied}>{he.chemistryTied}</Text> : null}
+            </Pressable>
+          </View>;
           return (
             <Pressable
               key={kind}
@@ -300,6 +330,15 @@ export function ChemistrySection({
 }
 
 const styles = StyleSheet.create({
+  clubHeading: { fontSize: 18, fontWeight: '800', color: '#13213F', textAlign: RTL_LABEL_ALIGN, marginTop: 8 },
+  clubPair: { width: '100%', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E0E8F0', alignItems: 'center' },
+  clubPairTitle: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%' },
+  clubPairLabel: { flex: 1, fontSize: 13, fontWeight: '700', color: '#13213F', textAlign: RTL_LABEL_ALIGN },
+  clubPairBody: { width: '100%', flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  clubPairPlayer: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6 },
+  clubPairLink: { width: 44, height: 72, alignItems: 'center', justifyContent: 'center' },
+  clubPairNames: { color: '#13213F', fontWeight: '800', fontSize: 14, textAlign: 'center', alignSelf: 'stretch' },
+  clubPairMetric: { color: '#13213F', fontSize: 14, fontWeight: '600', textAlign: 'center', width: '100%', borderTopWidth: 1, borderTopColor: '#EAF0F5', paddingTop: 9 },
   loadNotice: { gap: spacing.sm },
   retry: { alignSelf: 'flex-start', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: 12, backgroundColor: clubCardTint(clubAccent.blue) },
   retryText: { ...typography.label, color: colors.primary, textAlign: RTL_LABEL_ALIGN },

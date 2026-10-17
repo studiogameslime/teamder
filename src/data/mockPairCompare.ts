@@ -40,10 +40,7 @@ export function mockPairCompare(input: PairCompareInput): PairCompareModel {
   const { viewerId, otherId, groupId, scope } = input;
   const nameOf = (uid: string) =>
     mockPlayers.find((p) => p.id === uid)?.displayName ?? 'שחקן';
-  // The mock roster carries a URL, not a built-in avatar id — the screen's
-  // avatar falls back to the initial, which is the demo's own look.
-  const photoOf = (uid: string) =>
-    mockPlayers.find((p) => p.id === uid)?.avatarUrl;
+  const playerOf = (uid: string) => mockPlayers.find((p) => p.id === uid);
 
   // A historical season is deliberately THINNER than the running one, so the
   // screenshot run can show that the scope actually changes the numbers.
@@ -93,8 +90,8 @@ export function mockPairCompare(input: PairCompareInput): PairCompareModel {
   const side = (uid: string, r: ChampionshipRow): PairSide => ({
     uid,
     name: nameOf(uid),
-    avatarId: undefined,
-    photoUrl: photoOf(uid),
+    avatarId: playerOf(uid)?.avatarId,
+    photoUrl: playerOf(uid)?.photoUrl,
     played: true,
     row: r,
   });

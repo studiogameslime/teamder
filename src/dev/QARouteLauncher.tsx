@@ -53,6 +53,7 @@ import {
 import { SafeModal as Modal } from '@/components/SafeModal';
 
 import { mockGame, mockGamesV2, mockRoundHistory } from '@/data/mockData';
+import { ProfileSetupScreen } from '@/screens/auth/ProfileSetupScreen';
 import { IntentScreen } from '@/screens/entry/IntentScreen';
 import { useEntryStore } from '@/store/entryStore';
 import { SeasonsSettings } from '@/components/community/SeasonsSettings';
@@ -106,7 +107,11 @@ const ROUTES: Array<
   ['GameCreate', 'GameCreate', 'ProfileTab'],
   ['GameCreateQuick', 'GameCreate', 'ProfileTab', { quick: true }],
   ['DraftSetup', 'DraftSetup', 'ProfileTab', { gameId: 'gv2-live' }],
+  ['ManualAllocationThree', 'DraftSetup', 'ProfileTab', { gameId: 'gv2-live', manualPreview:3 }],
+  ['ManualAllocationFour', 'DraftSetup', 'ProfileTab', { gameId: 'gv2-live', manualPreview:4 }],
   ['DraftBoard', 'DraftBoard', 'ProfileTab', { gameId: 'gv2-live', captainIds: ['p1', 'p7'], method: 'snake', readOnly: false }],
+  ['SavedDraftBoard', 'DraftBoard', 'ProfileTab', { gameId: 'gv2-live', captainIds: ['p1', 'p6'], method: 'snake', resume: true }],
+  ['RoundAddMembers', 'AddMembers', 'ProfileTab', { gameId: 'gv2-live' }],
   ['— CLUB —', '', ''],
   ['CommunitiesFeed', 'CommunitiesFeed', 'CommunitiesTab'],
   ['CommunityDetails', 'CommunityDetails', 'ProfileTab', { groupId: 'g1' }],
@@ -124,8 +129,9 @@ const ROUTES: Array<
   ['CommunitiesMap', 'CommunitiesMap', 'CommunitiesTab'],
   ['AddMembers', 'AddMembers', 'ProfileTab', { groupId: 'g1' }],
   ['AdminApproval', 'AdminApproval', 'ProfileTab', { groupId: 'g1' }],
-  ['AvailablePlayers', 'AvailablePlayers', 'ProfileTab', { groupId: 'g1' }],
-  ['PromoteOrphan', 'PromoteOrphan', 'GameTab', { gameId: 'gv2-live' }],
+  ['AvailablePlayers', 'AvailablePlayers', 'ProfileTab', { gameId: 'gv2-live' }],
+  ['AvailablePlayersPreview', 'AvailablePlayers', 'ProfileTab', { gameId: 'gv2-live', previewCandidates: true }],
+  ['PromoteOrphan', 'PromoteOrphan', 'GameTab', { groupId: 'g1', gameId: 'gv2-live' }],
   ['— GAME —', '', ''],
   ['GamesList', 'GamesList', 'GameTab'],
   ['GamesMap', 'GamesMap', 'GameTab', { mode: 'games', items: mockGamesV2.filter(g => g.fieldLat && g.fieldLng).slice(0, 2).map((g, i) => ({ id: g.id, lat: g.fieldLat! + i * 0.025, lng: g.fieldLng! + i * 0.025, title: g.title, subtitle: g.fieldName, kind: 'game', dateBucket: 'today', timeLabel: 'היום · 20:00' })) }],
@@ -269,7 +275,7 @@ function navigateTo(route: string) {
  *  Anything else → null. */
 function routeFromUrl(url: string | null): string | null {
   if (!url) return null;
-  const m = /^[a-z.]+:\/\/qa\/([A-Za-z_]+)/i.exec(url.trim());
+  const m = /^[a-z.]+:\/\/qa\/([A-Za-z_0-9]+)/i.exec(url.trim());
   return m ? m[1] : null;
 }
 
@@ -320,6 +326,7 @@ export function QARouteLauncher(): React.ReactElement | null {
   const [open, setOpen] = useState(false);
   const [motionPreview, setMotionPreview] = useState(false);
   const [entryPreview, setEntryPreview] = useState(false);
+  const [profileSetupPreview, setProfileSetupPreview] = useState(false);
   const [seasonsPreview, setSeasonsPreview] = useState(false);
   const [scheduledPreview, setScheduledPreview] = useState(false);
   const [registeredPreview, setRegisteredPreview] = useState(false);
@@ -344,6 +351,26 @@ export function QARouteLauncher(): React.ReactElement | null {
       const target = routeFromUrl(url);
       if (!target) return;
       setOpen(false);
+      if (target === '_live_mode_no_teams' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {mockGamesV2}=require('@/data/mockData') as typeof import('@/data/mockData');
+        const source=mockGamesV2.find(g=>g.id==='gv2-live');
+        if(!source)return;
+        const id='qa-live-mode-no-teams';
+        const fixture={...source,id,title:'בדיקת לייב — ללא כוחות',status:'active' as const,startsAt:Date.now()-5*3600000,
+          advancedMode:true,draftTeams:undefined,rotation:undefined,updatedAt:Date.now()};
+        const index=mockGamesV2.findIndex(g=>g.id===id);
+        if(index<0)mockGamesV2.push(fixture);else mockGamesV2[index]=fixture;
+        (navigationRef as unknown as {navigate:(r:string,p:object)=>void}).navigate('ProfileTab',{screen:'MatchDetails',initial:false,params:{gameId:id}});
+        return;
+      }
+      if (target === '_live_mode_read_failure' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {gameService}=require('@/services/gameService') as typeof import('@/services/gameService');
+        const original=gameService.getGameById;
+        gameService.getGameById=async()=>{gameService.getGameById=original;throw new Error('QA_LIVE_MODE_LOAD_FAILURE');};
+        (navigationRef as unknown as {navigate:(r:string,p:object)=>void}).navigate('ProfileTab',{screen:'LiveMatch',initial:false,params:{gameId:'gv2-live'}});
+        return;
+      }
+      if (target === 'ProfileSetup' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setProfileSetupPreview(true); return; }
       if (target === '_entry_invite' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setEntryPreview(true); return; }
       if (target === '_friends_load_failure' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
         const { friendsService } = require('@/services/friendsService') as typeof import('@/services/friendsService');
@@ -460,6 +487,41 @@ export function QARouteLauncher(): React.ReactElement | null {
         (navigationRef as unknown as {navigate:(r:string,p?:object)=>void}).navigate('ChatTab',{screen:'PlayerCard',initial:false,params:{userId:'qa-noam'}});
         return;
       }
+      if (target === '_support_timeline' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {useUserStore}=require('@/store/userStore') as typeof import('@/store/userStore');
+        const {useSupportChat}=require('@/services/supportChat') as typeof import('@/services/supportChat');
+        const {chatService}=require('@/services/chatService') as typeof import('@/services/chatService');
+        const {captureFullScreenBase64}=require('@/native/screenCapture') as typeof import('@/native/screenCapture');
+        const uid=useUserStore.getState().currentUser?.id;
+        if(uid) void captureFullScreenBase64({quality:0.35,maxWidth:540}).then(image=>{
+          if(!image)return;
+          const original=chatService.subscribeMessages;
+          chatService.subscribeMessages=(scope,parentId,receive,onError)=>{
+            chatService.subscribeMessages=original;
+            const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);yesterday.setHours(20,27,0,0);
+            receive([{id:'qa-team',senderId:'teamder',senderName:'Teamder',text:'היי, הסתדרת עם המועדון?',createdAt:yesterday.getTime()},
+              {id:'qa-reply',senderId:uid,senderName:'בדיקה',text:'עובד!',createdAt:yesterday.getTime()+60000},
+              {id:'qa-photo',senderId:uid,senderName:'בדיקה',text:'דוגמה',supportImage:image,createdAt:Date.now()}]);
+            return ()=>{};
+          };
+          useSupportChat.getState().open(uid);
+        });
+        return;
+      }
+      if (target === '_support_open' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {useUserStore}=require('@/store/userStore') as typeof import('@/store/userStore');
+        const {useSupportChat}=require('@/services/supportChat') as typeof import('@/services/supportChat');
+        const uid=useUserStore.getState().currentUser?.id;
+        if(uid)useSupportChat.getState().open(uid);
+        return;
+      }
+      if (target === '_support_draft' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {useUserStore}=require('@/store/userStore') as typeof import('@/store/userStore');
+        const {useSupportChat}=require('@/services/supportChat') as typeof import('@/services/supportChat');
+        const uid=useUserStore.getState().currentUser?.id;
+        if(uid){const {captureSupportContext}=require('@/services/supportChat') as typeof import('@/services/supportChat');if(!useSupportChat.getState().drafts[uid])useSupportChat.getState().open(uid);useSupportChat.getState().patch(uid,{text:'היי, אני מנסה ליצור מועדון ולא בטוח איך ממשיכים.\nצירפתי צילום של המסך.',context:captureSupportContext(),attemptId:undefined});}
+        return;
+      }
       if (target === '_chat_sender' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
         const {useChatStore}=require('@/store/chatStore') as typeof import('@/store/chatStore');
         const {useGroupStore}=require('@/store/groupStore') as typeof import('@/store/groupStore');
@@ -498,7 +560,33 @@ export function QARouteLauncher(): React.ReactElement | null {
       if (target === '_round_cover_library' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setRoundCoverLibraryPreview(true); return; }
       if (target === '_guest_rating_decimal' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setGuestRatingPreview(true); return; }
       if (target === '_admin_rating_decimal' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setAdminRatingPreview(true); return; }
+      if (['_forces_audit_recovery','_forces_audit_recovery_legacy','_forces_audit_live'].includes(target) && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        // In-memory only: reproduce a banked result whose next lineup was interrupted.
+        const game=mockGamesV2.find(g=>g.id==='gv2-live3');
+        if(!game?.draftTeams || !game.rotation || !game.liveMatch)return;
+        const ids=mockGame.players.concat(mockGamesV2.find(g=>g.id==='gv2-live4')?.players??[]).filter((id,i,all)=>all.indexOf(id)===i).slice(0,13);
+        game.players=ids;game.numberOfTeams=3;game.format='5v5';
+        game.draftTeams={...game.draftTeams,completionMode:target==='_forces_audit_recovery_legacy'?undefined:'balanced',fillMode:'temporary',teams:[ids.slice(0,4),ids.slice(4,9),ids.slice(9,13)].map((playerIds,index)=>({index,captainId:playerIds[0],playerIds}))};
+        game.rotation={...game.rotation,playing:[0,1],waiting:[2],round:1,roundInstanceId:'qa-recovery-1',roundInstanceRound:1,loans:[{playerId:ids[9],homeTeam:2,filledTeam:0}]};
+        game.lastCommittedRoundId=target==='_forces_audit_live'?undefined:'qa-recovery-1';
+        const goals=[0,1].map(index=>({id:'qa-goal-'+index,scorerId:ids[0],assisterId:ids[1],ownGoal:false,minute:1,team:'A' as const,at:Date.now()+index}));
+        game.liveMatch={...game.liveMatch,scoreA:target==='_forces_audit_live'?2:0,scoreB:0,goals:target==='_forces_audit_live'?goals:[],timerRunning:false,timerAccumulatedMs:120000,timerLastStartedAt:null,goalTally:{[ids[0]]:2}};
+        game.updatedAt=Date.now();
+        mockRoundHistory[game.id]=[{roundId:'qa-recovery-1',teamA:[...ids.slice(0,4),ids[9]],teamB:ids.slice(4,9),teamAIndex:0,teamBIndex:1,scoreA:2,scoreB:1,winnerSide:'A',goals,at:Date.now()}];
+        if(target==='_forces_audit_live')mockRoundHistory[game.id]=[];
+        (navigationRef as unknown as {navigate:(route:string,params:object)=>void}).navigate('ProfileTab',{screen:'LiveMatch',initial:false,params:{gameId:game.id}});
+        return;
+      }
       if (target.startsWith('_overlay_audit_') && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setOverlayAudit(target.slice('_overlay_audit_'.length)); return; }
+      if (target.startsWith('_live_design_') && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const { useUserStore } = require('@/store/userStore') as typeof import('@/store/userStore');
+        const { liveGameFixture } = require('./liveGameFixture') as typeof import('./liveGameFixture');
+        const me = useUserStore.getState().currentUser;
+        if (!me) return;
+        const preview = liveGameFixture(target.slice('_live_design_'.length), me.id);
+        (navigationRef as unknown as {navigate:(route:string,params:object)=>void}).navigate('ProfileTab',{screen:'LiveMatch',initial:false,params:{gameId:preview.id}});
+        return;
+      }
       if (target === '_home_registered' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setRegisteredPreview(true); return; }
       if (target === '_home_scheduled' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setScheduledPreview(true); return; }
       if (target === '_seasons_live' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setSeasonsPreview(true); return; }
@@ -614,10 +702,11 @@ export function QARouteLauncher(): React.ReactElement | null {
           <CommunityStatsWelcome onCreate={() => setStatsWelcomePreview(false)} />
         </ScrollView>
       </Modal> : null}
+      {profileSetupPreview && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <Modal visible onRequestClose={() => setProfileSetupPreview(false)}><ProfileSetupScreen onClose={() => setProfileSetupPreview(false)} /></Modal> : null}
       {entryPreview ? <Modal visible onRequestClose={() => setEntryPreview(false)}><EntryInvitePreview /></Modal> : null}
       {motionPreview ? <MotionPreview onClose={() => setMotionPreview(false)} /> : null}
       {/* Keep the statistics proof unobstructed; deep links remain available. */}
-      {here !== 'Statistics' && process.env.EXPO_PUBLIC_SCREENSHOT_MODE !== '1' ? <Pressable style={s.fab} onPress={() => setOpen(true)} testID="qa-fab">
+      {here !== 'Statistics' && here !== 'LiveMatch' && process.env.EXPO_PUBLIC_SCREENSHOT_MODE !== '1' ? <Pressable style={s.fab} onPress={() => setOpen(true)} testID="qa-fab">
         <Text style={s.fabTxt}>QA</Text>
       </Pressable> : null}
       {/* `pointerEvents: none` — a census must never have its own badge

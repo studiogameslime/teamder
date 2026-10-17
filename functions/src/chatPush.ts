@@ -21,10 +21,12 @@
 
 import * as admin from 'firebase-admin';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { notifySupportReply, updateSupportSummary } from './supportReply';
 
 type ChatScope = 'game' | 'community' | 'dm';
 
 interface ChatMessageData {
+  supportOrigin?: string;
   messageId?: string;
   text?: string;
   senderId?: string;
@@ -350,7 +352,7 @@ async function handleChatMessage(
   }
 
   const targets = recipients.filter(
-    (uid) => typeof uid === 'string' && uid && uid !== senderId,
+    (uid) => typeof uid === 'string' && uid && uid !== senderId && uid !== TEAMDER_UID,
   );
   if (targets.length === 0) return;
 
@@ -432,6 +434,10 @@ export const onDmChatMessage = onDocumentCreated(
     const snap = event.data;
     if (!snap) return;
     const convId = event.params.convId;
-    await handleChatMessage('dm', convId, await trustedChatMessage(snap));
+    const message = await trustedChatMessage(snap);
+    await updateSupportSummary(convId, snap.id, message);
+    // A reply is an operator alert, not an unread row for a fictional user.
+    await notifySupportReply(convId, snap.id, message);
+    await handleChatMessage('dm', convId, message);
   },
 );

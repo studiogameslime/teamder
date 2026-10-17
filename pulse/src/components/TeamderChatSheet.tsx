@@ -4,10 +4,13 @@
 // whole thread with that person, lets you quote any report they've ever filed,
 // and sends as the brand rather than as a personal profile.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   Alert,
+  Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -28,6 +31,11 @@ import {
   quoteReport,
   REPORTS_LIMIT,
   sendTeamderMessage,
+  newTeamderMessageId,
+  resolveSupportThread,
+  reopenSupportThread,
+  MAX_TEXT,
+  THREAD_WINDOW,
   type TeamderThread,
   type UserReport,
 } from '../services/teamderChatService';
@@ -52,11 +60,13 @@ export function TeamderChatSheet({
   userId,
   userName,
   onClose,
+  onStatusChanged,
 }: {
   visible: boolean;
   userId: string;
   userName: string;
   onClose: () => void;
+  onStatusChanged?: () => void;
 }) {
   const [thread, setThread] = useState<TeamderThread | null>(null);
   const [reports, setReports] = useState<UserReport[]>([]);
@@ -64,55 +74,102 @@ export function TeamderChatSheet({
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [pickingQuote, setPickingQuote] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const scroll = useRef<ScrollView>(null), nearBottom = useRef(true);
+  const drafts = useRef<Record<string, string>>({});
+  const updateText = (value: string | ((previous: string) => string)) => setText(previous => {
+    const next = typeof value === 'function' ? value(previous) : value;
+    drafts.current[userId] = next;
+    return next;
+  });
+  const request = useRef(0), sendingRef = useRef(false);
+  const currentTarget = useRef({ userId, visible, userName });
+  currentTarget.current = { userId, visible, userName };
+  const pending = useRef<Record<string,{ userId: string; body: string; id: string; at: number }>>({});
 
   const load = useCallback(
-    async (force = false) => {
+    async (force = false, quiet = false) => {
       if (!userId) return;
-      setLoading(true);
+      const serial = ++request.current;
+      if (!quiet) setLoading(true);
       try {
         const [t, r] = await Promise.all([
-          loadThread(userId, userName, force),
-          listUserReports(userId),
+          loadThread(userId, currentTarget.current.userName, force),
+          listUserReports(userId).catch(() => []),
         ]);
+        if (request.current !== serial) return;
         setThread(t);
         setReports(r);
+        setFailed(false);
       } catch {
-        /* leave whatever's on screen */
+        if (request.current === serial) setFailed(true);
       } finally {
-        setLoading(false);
+        if (request.current === serial) setLoading(false);
       }
     },
-    [userId, userName],
+    [userId],
   );
 
   useEffect(() => {
     if (visible) {
-      setText('');
+      setText(drafts.current[userId] ?? '');
+      setPreview(null); nearBottom.current = true;
+      setThread(null);
+      setReports([]);
+      setFailed(false);
       setPickingQuote(false);
-      void load();
+      void load(true);
+      const timer = setInterval(() => { if (AppState.currentState === 'active' && !sendingRef.current) void load(true, true); }, 15_000);
+      return () => { ++request.current; clearInterval(timer); };
     }
   }, [visible, load]);
 
   const send = async () => {
     const body = text.trim();
-    if (!body || sending) return;
+    if (!body || sendingRef.current || body.length > MAX_TEXT) return;
+    sendingRef.current = true;
     setSending(true);
+    if (pending.current[userId]?.body !== body) {
+      const at = Date.now();
+      pending.current[userId] = { userId, body, at, id: newTeamderMessageId(at) };
+    }
     try {
-      const ok = await sendTeamderMessage(userId, body, Date.now());
+      const attempt = pending.current[userId];
+      const ok = await sendTeamderMessage(userId, body, attempt.at, attempt.id);
       if (!ok) throw new Error('send failed');
+      delete pending.current[userId];
+      drafts.current[userId] = '';
+      if (currentTarget.current.userId !== userId || !currentTarget.current.visible) return;
       setText('');
       await load(true);
     } catch {
-      Alert.alert('השליחה נכשלה', 'נסה שוב');
+      if (currentTarget.current.userId === userId && currentTarget.current.visible) Alert.alert('השליחה נכשלה', 'נסה שוב');
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   };
 
+  const changeResolution = async () => {
+    const last = thread?.messages[thread.messages.length - 1];
+    if (!last || loading || failed || sendingRef.current) return;
+    sendingRef.current = true; setResolving(true);
+    try {
+      const ok = await (thread?.resolved ? reopenSupportThread(userId) : resolveSupportThread(userId, last.id, last.createdAt));
+      if (!ok) throw new Error('RESOLUTION_FAILED');
+      onStatusChanged?.();
+      if (currentTarget.current.userId === userId && currentTarget.current.visible) await load(true, true);
+    } catch {
+      if (currentTarget.current.userId === userId && currentTarget.current.visible) Alert.alert('הסימון לא נשמר', 'השיחה נשארה במצבה הקודם. נסו שוב.');
+    } finally { sendingRef.current = false; setResolving(false); }
+  };
+
   const applyQuote = (r: UserReport) => {
     // Prepend, so a template already typed stays underneath the quote.
-    setText((prev) => quoteReport(r, userName) + prev);
+    updateText((prev) => quoteReport(r, userName) + prev);
     setPickingQuote(false);
   };
 
@@ -123,20 +180,32 @@ export function TeamderChatSheet({
           It had neither: the send button sat behind the gesture bar. */}
       <KeyboardAvoidingView
         style={st.wrap}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
       >
         <View style={[st.sheet, { paddingBottom: 14 + insets.bottom }]}>
           <View style={st.head}>
             <View style={st.headText}>
               <Text style={font.h2}>{userName || 'שיחה'}</Text>
-              <Text style={st.sub}>נשלח בשם Teamder</Text>
+              <Text style={st.sub}>נשלח בשם ⁦Teamder⁩ · תשובות מתעדכנות אוטומטית</Text>
             </View>
-            <Pressable onPress={onClose} hitSlop={10}>
+            <Pressable accessibilityLabel="סגירת השיחה" onPress={() => { Keyboard.dismiss(); onClose(); }} hitSlop={10}>
               <Ionicons name="close" size={22} color={colors.textSoft} />
             </Pressable>
           </View>
 
-          <ScrollView style={st.thread} contentContainerStyle={st.threadBody}>
+          {!loading && !failed && !!thread?.messages.length ? <Pressable
+            accessibilityRole="button" accessibilityLabel={thread.resolved ? 'פתיחת השיחה מחדש לטיפול' : 'סמן שיחה כפתורה ללא שליחת הודעה'}
+            accessibilityState={{disabled: sending || resolving, busy: resolving}}
+            disabled={sending || resolving} onPress={changeResolution}
+            style={{flexDirection:'row',direction:'rtl',alignItems:'center',justifyContent:'center',gap:8,padding:12,minHeight:44,borderRadius:radius.md,backgroundColor:colors.primarySoft,marginBottom:10,opacity:sending||resolving?0.6:1}}>
+            {resolving ? <ActivityIndicator size="small" color={colors.text}/> : <Ionicons name={thread.resolved ? 'refresh-outline' : 'checkmark-circle-outline'} size={20} color={colors.text}/>}
+            <Text style={{...font.body,color:colors.text,fontWeight:'700'}}>{resolving ? 'שומרים…' : thread.resolved ? 'פתורה · פתיחה מחדש' : 'סמן כפתורה ללא תשובה'}</Text>
+          </Pressable> : null}
+
+          <ScrollView ref={scroll} style={st.thread} contentContainerStyle={st.threadBody} keyboardShouldPersistTaps="handled" scrollEventThrottle={100}
+            onScroll={e => { const n=e.nativeEvent; nearBottom.current=n.contentSize.height-n.layoutMeasurement.height-n.contentOffset.y<90; }}
+            onContentSizeChange={() => { if(nearBottom.current) scroll.current?.scrollToEnd({animated:true}); }}>
+            {failed ? <Pressable onPress={() => load(true)}><Text style={st.error}>טעינת השיחה נכשלה — לחצו לניסיון חוזר</Text></Pressable> : null}
             {loading && !thread ? (
               <ActivityIndicator color={colors.primary} style={{ marginTop: 20 }} />
             ) : thread && thread.messages.length > 0 ? (
@@ -145,12 +214,16 @@ export function TeamderChatSheet({
                   key={m.id}
                   style={[st.bubble, m.fromTeamder ? st.mine : st.theirs]}
                 >
-                  <Text style={st.bubbleText}>{m.text}</Text>
+                  {m.supportContext ? <View style={st.source}><Text style={st.sourceText}>מתוך: {m.supportContext.screenLabel || m.supportContext.screen}{m.supportContext.step ? ` · שלב ${m.supportContext.step}` : ''}</Text><Text selectable style={st.sourceText}>{[m.supportContext.groupId && `מועדון: ${m.supportContext.groupId}`, m.supportContext.gameId && `מחזור: ${m.supportContext.gameId}`, m.supportContext.appVersion && `גרסה ${m.supportContext.appVersion}`,m.supportContext.platform].filter(Boolean).join(' · ')}</Text></View> : null}
+                  {m.supportImage ? <Pressable onPress={() => setPreview(m.supportImage!)} accessibilityLabel="הגדלת צילום המסך"><Image source={{uri:`data:image/jpeg;base64,${m.supportImage}`}} style={st.photo} resizeMode="contain" /></Pressable> : null}
+                  <Text selectable style={st.bubbleText}>{m.text}</Text>
+                  <Text style={st.time}>{new Date(m.createdAt).toLocaleString('he-IL',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'})}</Text>
                 </View>
               ))
-            ) : (
+            ) : !failed ? (
               <Text style={st.empty}>עוד לא דיברתם. זו תהיה ההודעה הראשונה.</Text>
-            )}
+            ) : null}
+            {thread && thread.messages.length >= THREAD_WINDOW ? <Text style={st.empty}>מוצגות {THREAD_WINDOW} ההודעות האחרונות</Text> : null}
           </ScrollView>
 
           {pickingQuote ? (
@@ -197,7 +270,7 @@ export function TeamderChatSheet({
                   starts at x=0 — the LEFT — so in this right-to-left layout
                   the first chip ended up off-screen past the right edge. The
                   primary action can't depend on the user scrolling to find it. */}
-              <Pressable onPress={() => setPickingQuote(true)} style={[st.chip, st.chipAccent]}>
+              <Pressable disabled={sending || resolving} onPress={() => setPickingQuote(true)} style={[st.chip, st.chipAccent]}>
                 <Ionicons name="chatbox-ellipses-outline" size={14} color="#fff" />
                 <Text style={[st.chipTxt, { color: '#fff' }]}>צטט דיווח</Text>
               </Pressable>
@@ -205,7 +278,8 @@ export function TeamderChatSheet({
                 {TEMPLATES.map((t) => (
                   <Pressable
                     key={t}
-                    onPress={() => setText((prev) => (prev ? `${prev}\n${t}` : t))}
+                    disabled={sending || resolving}
+                    onPress={() => updateText((prev) => (prev ? `${prev}\n${t}` : t))}
                     style={st.chip}
                   >
                     <Text style={st.chipTxt} numberOfLines={1}>
@@ -220,16 +294,20 @@ export function TeamderChatSheet({
           <View style={st.composer}>
             <TextInput
               value={text}
-              onChangeText={setText}
+              onChangeText={updateText}
+              maxLength={MAX_TEXT}
+              editable={!sending}
               placeholder="כתוב הודעה…"
               placeholderTextColor={colors.textMuted}
               style={st.input}
               multiline
               textAlign="right"
+              accessibilityLabel="כתיבת תשובה למשתמש"
             />
             <Pressable
               onPress={send}
-              disabled={!text.trim() || sending}
+              accessibilityLabel="שליחת תשובה למשתמש"
+              disabled={!text.trim() || sending || resolving}
               style={[st.send, (!text.trim() || sending) && { opacity: 0.4 }]}
             >
               {sending ? (
@@ -240,6 +318,7 @@ export function TeamderChatSheet({
             </Pressable>
           </View>
         </View>
+        <Modal visible={!!preview} transparent animationType="fade" onRequestClose={() => setPreview(null)}><View style={{flex:1,backgroundColor:'#000',paddingTop:insets.top+12,paddingBottom:insets.bottom}}><Pressable accessibilityLabel="סגירת צילום" onPress={()=>setPreview(null)} style={{padding:16,alignSelf:'flex-end'}}><Ionicons name="close" size={28} color="#fff"/></Pressable>{preview?<Image source={{uri:`data:image/jpeg;base64,${preview}`}} style={{flex:1,width:'100%'}} resizeMode="contain"/>:null}</View></Modal>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -252,22 +331,18 @@ const st = StyleSheet.create({
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
     padding: 14,
-    // maxHeight, not height. At a fixed 86% the sheet always left a 14% band at
-    // the top, and the screen underneath showed ITS header through it — which
-    // read as the same name appearing twice, one greyed out above the other.
-    // Now a short thread makes a short sheet.
-    maxHeight: '86%',
+    height: '90%',
   },
   head: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-  headText: { alignItems: 'flex-end' },
+  headText: { flex: 1 },
   sub: { ...font.small, color: colors.textMuted, textAlign: 'right' },
   thread: { flex: 1 },
-  threadBody: { gap: 8, paddingBottom: 8 },
+  threadBody: { gap: 8, paddingBottom: 8, direction: 'rtl' },
   bubble: { maxWidth: '85%', padding: 10, borderRadius: radius.md },
   mine: { alignSelf: 'flex-start', backgroundColor: colors.primarySoft },
   theirs: { alignSelf: 'flex-end', backgroundColor: colors.surfaceAlt },
@@ -279,14 +354,14 @@ const st = StyleSheet.create({
   },
   empty: { ...font.small, color: colors.textMuted, textAlign: 'center', marginTop: 16 },
   chipRow: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl',
     alignItems: 'center',
     gap: 6,
     marginVertical: 8,
   },
   chips: { flexGrow: 0, flexShrink: 1 },
   chip: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl',
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 11,
@@ -322,10 +397,10 @@ const st = StyleSheet.create({
     textAlign: 'right',
     writingDirection: 'rtl',
   },
-  quoteMeta: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, marginTop: 3 },
+  quoteMeta: { flexDirection: 'row', direction: 'rtl', alignItems: 'center', gap: 6, marginTop: 3 },
   quoteMetaTxt: { ...font.small, color: colors.textMuted, textAlign: 'right' },
   paneClose: { alignItems: 'center', paddingTop: 8 },
-  composer: { flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 8 },
+  composer: { flexDirection: 'row', direction: 'rtl', alignItems: 'flex-end', gap: 8 },
   input: {
     flex: 1,
     backgroundColor: colors.surface,
@@ -335,7 +410,9 @@ const st = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     color: colors.text,
-    maxHeight: 120,
+    minHeight: 64,
+    maxHeight: 140,
+    textAlignVertical: 'top',
     writingDirection: 'rtl',
   },
   send: {
@@ -346,4 +423,9 @@ const st = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  source: {paddingBottom:8,marginBottom:8,borderBottomWidth:1,borderBottomColor:colors.border},
+  sourceText: {...font.small,color:colors.textMuted,textAlign:'right'},
+  photo: {width:190,height:240,borderRadius:10,marginBottom:8},
+  time: {...font.small,color:colors.textMuted,fontSize:10,marginTop:6},
+  error: { ...font.small, color: colors.amber, padding: 10 },
 });

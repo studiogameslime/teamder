@@ -1,0 +1,85 @@
+{
+  "readAt": "2026-10-16T22:28:01.186164+00:00",
+  "account": {
+    "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "stats": null,
+    "name": "בדיקות לייב"
+  },
+  "club": {
+    "id": "J060YQu6QTcgk3glUDj2",
+    "creatorId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "adminIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "name": "בדיקות לייב אוקטובר",
+    "playerIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "isOpen": false
+  },
+  "games": [
+    {
+      "game": {
+        "id": "lmUUmQru2HtKvQkRDVeD",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "title": "בדיקות לייב אוקטובר",
+        "startsAt": 1792267200000,
+        "maxPlayers": 12,
+        "minPlayers": null,
+        "waitlist": [],
+        "pending": [],
+        "teams": null,
+        "status": "open",
+        "currentMatchIndex": 0,
+        "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "visibility": "community",
+        "format": "4v4",
+        "numberOfTeams": 3,
+        "matchDurationMinutes": 8,
+        "hasPenalties": false,
+        "hasHalfTime": false,
+        "liveMatch": null,
+        "draftTeams": null,
+        "rotation": null,
+        "arrivals": null,
+        "autoTeamsAt": null,
+        "autoTeamsMethod": null,
+        "teamsNotifiedAt": null,
+        "autoTeamsGeneratedAt": null,
+        "autoTeamsGeneratedBy": null,
+        "teamsEditedManually": false,
+        "teamBalanceMeta": null,
+        "acceptsFillers": false,
+        "advancedMode": true,
+        "advancedFillMode": "temporary",
+        "advancedTieMode": null,
+        "createdAt": 1792189508073,
+        "players": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "participantIds": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "guests": [
+          {
+            "id": "mvbjgb67-u04vso",
+            "name": "דניאל בדיקה א",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189664144
+          }
+        ],
+        "updatedAt": 1792189664841
+      },
+      "history": [],
+      "commits": [],
+      "playerStats": [],
+      "roundSummary": null
+    }
+  ],
+  "archive": {
+    "source": "tmp/live-action-production/data-round-four-first-guest.json",
+    "originalSha256": "717591aaacfa914584ab72db33e91a5ec62d9334bdc7b4f4b72d46b57174ec24",
+    "filtered": true,
+    "note": "רק שדות רלוונטיים לנתוני הבדיקה; ללא דואר, קוד הזמנה, כתובת מגרש, מיקום או העדפות חשבון."
+  }
+}

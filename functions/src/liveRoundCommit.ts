@@ -7,7 +7,7 @@ export function liveRoundKey(rotation: { round?: number; roundInstanceId?: strin
 export function matchesLiveRound(
   game: { rotation?: Parameters<typeof liveRoundKey>[0]; liveMatch?: {
     goals?: { id?: string }[];
-    shootout?: { kicks?: { kickerId?: string | null; keeperId?: string | null; scored?: boolean }[] };
+    shootout?: { kicks?: { kickerId?: string | null; keeperId?: string | null; scored?: boolean; outcome?: string }[] };
   } },
   roundId: string | number | null | undefined,
   goalIds: unknown,
@@ -19,8 +19,9 @@ export function matchesLiveRound(
   if (stored.length !== goalIds.length || !stored.every((id, index) => id === goalIds[index])) return false;
   if (snapshot) {
     if ((game.rotation.updatedAt ?? null) !== snapshot.rotationUpdatedAt) return false;
-    const normalize = (kicks: { kickerId?: string | null; keeperId?: string | null; scored?: boolean }[]) =>
-      kicks.map(kick => ({ kickerId: kick.kickerId || null, keeperId: kick.keeperId || null, scored: !!kick.scored }));
+    const normalize = (kicks: { kickerId?: string | null; keeperId?: string | null; scored?: boolean; outcome?: string }[]) =>
+      kicks.map(kick => ({ kickerId: kick.kickerId || null, keeperId: kick.keeperId || null, scored: !!kick.scored,
+        ...(kick.outcome === 'goal' || kick.outcome === 'save' || kick.outcome === 'miss' ? { outcome: kick.outcome } : {}) }));
     if (!Array.isArray(snapshot.penalties) || JSON.stringify(normalize(game.liveMatch?.shootout?.kicks ?? [])) !==
         JSON.stringify(normalize(snapshot.penalties))) return false;
   }

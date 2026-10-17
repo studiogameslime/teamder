@@ -93,8 +93,6 @@ export function RoundReviewSheet({ values: v, maxPlayers, communityName, quick, 
         </> : null}
         <Row label="חיפוש שחקנים להשלמה" value={yesNo(v.acceptsFillers)} icon="search-outline" />
         {v.acceptsFillers ? <Row label="סף אמינות להשלמה" value={v.fillerMinTrust ? `${v.fillerMinTrust}` : 'ללא סף'} icon="shield-checkmark-outline" /> : null}
-        <Row label="כדור" value={v.bringBall ? 'יש להביא' : 'לא נדרש'} icon="football-outline" />
-        <Row label="גופיות" value={v.bringShirts ? 'יש להביא' : 'לא נדרש'} icon="shirt-outline" />
         {v.inviteFriendIds?.length ? <Row label="חברים שיוזמנו" value={`${v.inviteFriendIds.length}`} icon="people-outline" /> : null}
         {v.notes.trim() ? <Row label="הערות" value={v.notes.trim()} icon="document-text-outline" /> : null}
       </View> : null}

@@ -1,0 +1,76 @@
+{
+  "source": "shots\\seven-normal-penalty-save.mp4",
+  "sourceSha256": "e0966e738a9e7095a5386e9c58f3ad2ce9f90e9a6269ed68160dd9bc9a167d69",
+  "output": "native-qa\\frames\\seven-normal-penalty-save",
+  "timesMs": [
+    1500,
+    1800,
+    2100,
+    2400,
+    2700,
+    3000
+  ],
+  "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+  "frames": [
+    {
+      "requestedTimeUs": 1500000,
+      "durationMs": 4915,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1028674,
+      "file": "frame-000001500000us.png",
+      "sha256": "d74fb9b12f7c5fab4bf992bd795e234e20c8b59f3098c43e26148719b07b18fc"
+    },
+    {
+      "requestedTimeUs": 1800000,
+      "durationMs": 4915,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1028891,
+      "file": "frame-000001800000us.png",
+      "sha256": "3e1e7499fd247a558e604eaa68e30d9ee591980b3d57f918cfb21eb1dc185994"
+    },
+    {
+      "requestedTimeUs": 2100000,
+      "durationMs": 4915,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1044934,
+      "file": "frame-000002100000us.png",
+      "sha256": "1647060f82baa5cecaf9722473a0e682005c1921552411e8058dfef83fc0f939"
+    },
+    {
+      "requestedTimeUs": 2400000,
+      "durationMs": 4915,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1057845,
+      "file": "frame-000002400000us.png",
+      "sha256": "e5b42926d5eca04a27291655fa268a3f492dd298a8a0772f9bbac10b4287824d"
+    },
+    {
+      "requestedTimeUs": 2700000,
+      "durationMs": 4915,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1051966,
+      "file": "frame-000002700000us.png",
+      "sha256": "1f801817fd358cfa36e4802f856638e4e2daa658e3fa163d88c6b94354315a0d"
+    },
+    {
+      "requestedTimeUs": 3000000,
+      "durationMs": 4915,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1052340,
+      "file": "frame-000003000000us.png",
+      "sha256": "449eb1f65f82e3c875cf74f9c1ac27676975f04936c14621603625edab32f779"
+    }
+  ]
+}

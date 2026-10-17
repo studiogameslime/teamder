@@ -1,19 +1,12 @@
+import { roundSaveError } from '@/utils/roundSaveError';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
-// LiveMatchScreen — pure match timer.
-//
-// Deliberately minimal: NO teams, NO "כוחות"/balancing, NO formations,
-// scores, rounds, bench or drag-and-drop. The live surface is now nothing
-// but a shared stopwatch — start / pause / resume / reset — plus an
-// "end game" action. Everything the watch needs (timerRunning,
-// timerLastStartedAt, timerAccumulatedMs) is written by the same
-// gameService timer methods, so the paired Wear OS app reconstructs the
-// identical clock and stays in lockstep on every start/stop/resume.
-//
-// The clock is derived from three Firestore primitives via
-// `useSyncedTimer`, so every phone AND watch sees the same time without
-// per-tick pushes.
+// Advanced match preparation and live control. The shared timer is derived
+// from Firestore primitives through useSyncedTimer, also used by the watch.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { OpeningTeamsPanel } from '@/components/match/OpeningTeamsPanel';
+import { initialOpeningPlan, openingFingerprint, type OpeningPlan } from '@/utils/openingTeams';
 import {
   ActivityIndicator,
   Pressable,
@@ -21,6 +14,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { HamburgerMenu } from '@/components/profile/HamburgerMenu';
@@ -40,6 +34,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { toast } from '@/components/Toast';
 import { gameService, resolveRosterEntry } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
+import {BalancedFillModal, type BalancedFillRequest} from '@/components/match/BalancedFillModal';
 import { communityEventsService } from '@/services/communityEventsService';
 import {
   EquipmentHandoffModal,
@@ -48,6 +43,9 @@ import {
 import { logError } from '@/services/errorLog';
 import { lightHaptic, successHaptic, warningHaptic } from '@/utils/haptics';
 import { tallyCreditFor } from '@/utils/goalTally';
+import { savedRoundLive } from '@/utils/savedRoundView';
+import { shootoutFingerprint, type ShootoutDecisionContext } from '@/utils/shootoutDecision';
+import { didEveningHappen } from '@/utils/eveningPlayed';
 import {
   emptyWaitingTeams,
   remainingTeams,
@@ -67,17 +65,15 @@ import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult, team
 import { RotationPanel } from '@/components/match/RotationPanel';
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
 import { WinnerPickerModal } from '@/components/match/WinnerPickerModal';
+import { EndMatchModal } from '@/components/match/EndMatchModal';
 import { Shootout, TieDecisionModal } from '@/components/match/Shootout';
 import { LiveScoreboardCard } from '@/components/match/LiveScoreboardCard';
-import {
-  FillerPickerModal,
-  type FillRequestView,
-} from '@/components/match/FillerPickerModal';
+import type { FillRequestView } from '@/components/match/FillerPickerModal';
 import {
   nextFillNeeded,
   applyChosenFill,
-  pickRandom,
   rosterOf,
+    roundCommitKey,
   type RotationFillState,
   type RotationTeam,
 } from '@/services/rotationEngine';
@@ -87,6 +83,7 @@ import { he } from '@/i18n/he';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
+import { useSupportChat } from '@/services/supportChat';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
 /** mm:ss from a millisecond elapsed value. */
@@ -185,6 +182,11 @@ function buildStoppages(
 type Params = RouteProp<GameStackParamList, 'LiveMatch'>;
 
 export function AdvancedLiveMatchScreen() {
+  const { width, height, fontScale } = useWindowDimensions();
+  const compactControls = width < 360 || fontScale > 1.2;
+  // On short screens a pinned score plus the fixed actions can consume the
+  // entire roster viewport. Keep the score in the same scroll flow there.
+  const pinScore = !compactControls || height >= 650;
   const route = useRoute<Params>();
   const nav = useNavigation();
   const gameId = route.params?.gameId ?? null;
@@ -220,13 +222,19 @@ export function AdvancedLiveMatchScreen() {
   } | null>(null);
   const [stoppagesOpen, setStoppagesOpen] = useState(false);
   const [winnerOpen, setWinnerOpen] = useState(false);
+  const [endRoundPrompt,setEndRoundPrompt]=useState<{gameId:string;roundKey:string;playing:string}|null>(null);
   // Drawn-round tiebreaker: a decision chooser (manual vs penalties) then the
   // penalty shootout modal.
   const [decisionOpen, setDecisionOpen] = useState(false);
   const [shootoutOpen, setShootoutOpen] = useState(false);
+  const [shootoutDecision, setShootoutDecision] = useState<ShootoutDecisionContext | null>(null);
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [goalRequest, setGoalRequest] = useState<{ side: 'A' | 'B'; key: number }>();
   // Interactive team-completion flow. The modal request is render state; the
   // in-progress working rosters + queue live in a ref (mutated between popups).
   const [fillRequest, setFillRequest] = useState<FillRequestView | null>(null);
+  const [balancedRequest,setBalancedRequest]=useState<BalancedFillRequest|null>(null);
+  const [fillDeferred,setFillDeferred]=useState(false);
   const fillFlowRef = useRef<{
     draft: DraftTeamsResult;
     baseTeams?: { index: number; playerIds: string[] }[];
@@ -283,10 +291,6 @@ export function AdvancedLiveMatchScreen() {
     (live?.goals?.length ?? 0) > 0 ||
     (live?.scoreA ?? 0) > 0 ||
     (live?.scoreB ?? 0) > 0;
-
-  // Synced stoppages log — drives the "history of stops/resumes" chip + sheet.
-  const stoppages = buildStoppages(live?.timerEvents, nowTick);
-  const totalStoppedMs = stoppages.totalStoppedMs + stoppages.ongoingStoppedMs;
 
   // ─── Load the game once + lifecycle guard ──────────────────────────────
   useEffect(() => {
@@ -353,6 +357,70 @@ export function AdvancedLiveMatchScreen() {
   const playersMap = useGameStore((s) => s.players);
   const [rotation, setRotation] = useState<MatchRotation | null>(null);
   const [draftTeams, setDraftTeams] = useState<DraftTeamsResult | null>(null);
+  const [lastCommittedRoundId,setLastCommittedRoundId]=useState<string>();
+  const pendingSavedRound = !!rotation && lastCommittedRoundId === roundCommitKey(rotation);
+  const [savedRoundView,setSavedRoundView]=useState<{gameId:string;key:string;live:LiveMatchState;capturedAt?:number;endedAt?:number}|null>(null);
+  const savedRoundViewRef=useRef<typeof savedRoundView>(null);
+  const [savedResultRetry,setSavedResultRetry]=useState(0);
+  const [savedResultLoadFailed,setSavedResultLoadFailed]=useState(false);
+  const currentRoundKey=rotation ? roundCommitKey(rotation) : null;
+  const currentPlayingKey=rotation?.playing.join(':') ?? null;
+  // An approved lineup is playable even when nobody uses the clock.
+  const roundLive:LiveMatchState|null=live ?? (rotation && !pendingSavedRound
+    ? {phase:'roundReady',assignments:{},benchOrder:[],scoreA:0,scoreB:0,timerRunning:false,timerAccumulatedMs:0}
+    : null);
+  useEffect(()=>{
+    if(endRoundPrompt && (endRoundPrompt.gameId!==gameId || endRoundPrompt.roundKey!==currentRoundKey ||
+      endRoundPrompt.playing!==currentPlayingKey || pendingSavedRound || !live || live.scoreA===live.scoreB || live.shootout)) {
+      setEndRoundPrompt(null);
+    }
+    const reconsidering = shootoutDecision?.gameId === gameId && shootoutDecision?.roundId === currentRoundKey && shootoutDecision?.playing === currentPlayingKey;
+    if (shootoutDecision && (!reconsidering || pendingSavedRound)) { setShootoutDecision(null); setWinnerOpen(false); setDecisionOpen(false); }
+    if(decisionOpen && (pendingSavedRound || !roundLive || roundLive.scoreA!==roundLive.scoreB || (roundLive.shootout && !reconsidering)))setDecisionOpen(false);
+  },[endRoundPrompt,decisionOpen,gameId,currentRoundKey,currentPlayingKey,pendingSavedRound,live?.scoreA,live?.scoreB,!!live?.shootout,shootoutDecision]);
+  const displayLive=pendingSavedRound
+    ? (savedRoundView?.gameId===gameId && savedRoundView.key===currentRoundKey ? savedRoundView.live : null)
+    : live;
+  // A local capture is provisional. Only this round's saved history supplies
+  // the shared end time; lineup preparation is outside the finished match.
+  const savedRoundEndedAt = pendingSavedRound && savedRoundView?.gameId === gameId && savedRoundView.key === currentRoundKey
+    && typeof savedRoundView.endedAt === 'number' && Number.isFinite(savedRoundView.endedAt) && savedRoundView.endedAt > 0
+    ? savedRoundView.endedAt : null;
+  // Keep the current listener's timer log: the pre-result capture can precede
+  // delivery of the final pause. Never use wall time for a banked result.
+  const stoppages = buildStoppages(live?.timerEvents, pendingSavedRound ? savedRoundEndedAt ?? 0 : nowTick);
+  const totalStoppedMs = pendingSavedRound && savedRoundEndedAt === null
+    ? null : stoppages.totalStoppedMs + stoppages.ongoingStoppedMs;
+  const stoppagesUnavailableText = savedResultLoadFailed ? 'זמן העצירות לא נטען' : 'טוענים זמני עצירות…';
+  const stoppagesText = totalStoppedMs === null ? stoppagesUnavailableText
+    : he.rotationStoppagesInline(stoppages.stopCount, formatTime(totalStoppedMs));
+  const showOngoingStoppage = totalStoppedMs !== null && stoppages.ongoingStoppedMs > 0 && !timerRunning;
+  const ongoingStoppageText = pendingSavedRound
+    ? `העצירה האחרונה · ${formatTime(stoppages.ongoingStoppedMs)}`
+    : he.liveStoppageStoppedNow(formatTime(stoppages.ongoingStoppedMs));
+  // Capture before the result endpoint clears the live fields. The marker,
+  // not this optimistic snapshot, decides whether a game is actually closed.
+  const captureRoundForResult=(omitShootout=false)=>{
+    if(!gameId || !rotation || !roundLive)return;
+    const value={gameId,key:roundCommitKey(rotation),capturedAt:serverNow(),live:{...roundLive,...(omitShootout ? {shootout:undefined} : {}),timerRunning:false,goals:roundLive.goals?.map(g=>({...g}))}};
+    savedRoundViewRef.current=value;setSavedRoundView(value);
+  };
+  useEffect(()=>{
+    if(!pendingSavedRound || !gameId || !currentRoundKey)return;
+    let alive=true;setSavedResultLoadFailed(false);
+    (async()=>{
+      try {
+        const history=(await gameService.getRoundHistory(gameId)).find(row=>row.roundId===currentRoundKey);
+        if(!history)throw new Error('SAVED_RESULT_NOT_LOADED');
+        if(!alive)return;
+        setSavedRoundView(previous=>({gameId,key:currentRoundKey,
+          ...(previous?.gameId===gameId && previous.key===currentRoundKey && previous.capturedAt ? {capturedAt:previous.capturedAt} : {}),
+          ...(Number.isFinite(history.at) && history.at > 0 ? {endedAt:history.at} : {}),
+          live:savedRoundLive(previous?.gameId===gameId && previous.key===currentRoundKey ? previous.live : live!,history)}));
+      } catch(error){if(alive){setSavedResultLoadFailed(true);logError('loadSavedRoundView',error,{gameId});}}
+    })();
+    return()=>{alive=false;};
+  },[gameId,currentRoundKey,pendingSavedRound,savedResultRetry]);
   // The live listener has delivered at least once. `draftTeams === null` alone
   // can't tell "no teams" from "not loaded yet", and the no-teams warning below
   // must not fire on the empty first frame.
@@ -363,7 +431,27 @@ export function AdvancedLiveMatchScreen() {
   // The two team indices the admin chose to play FIRST (the rest wait in
   // order). Admin-selectable (was a fixed random first-two); seeded with a
   // random pair when teams load.
-  const [firstTwo, setFirstTwo] = useState<number[]>([]);
+  const [openingPlan, setOpeningPlan] = useState<OpeningPlan | null>(null);
+  const [openingLoading, setOpeningLoading] = useState(true);
+  const [openingBusy, setOpeningBusy] = useState(false);
+  const openingSource = draftTeams ? openingFingerprint(draftTeams) : '';
+  const openingStorageKey = `match-opening:${me?.id ?? 'viewer'}:${gameId ?? ''}`;
+  useEffect(() => {
+    if (rotation || !draftTeams) return;
+    let alive = true;
+    setOpeningLoading(true);
+    void AsyncStorage.getItem(openingStorageKey).then(raw => {
+      let restored: Partial<OpeningPlan> | undefined;
+      try { const value = raw ? JSON.parse(raw) : null; if (value?.source === openingSource) restored = value.plan; } catch { /* An invalid local draft is discarded. */ }
+      if (alive) { setOpeningPlan(initialOpeningPlan(draftTeams, restored)); setOpeningLoading(false); }
+    }).catch(() => { if (alive) { setOpeningPlan(initialOpeningPlan(draftTeams)); setOpeningLoading(false); } });
+    return () => { alive = false; };
+  }, [openingSource, openingStorageKey, !!rotation]);
+  const changeOpening = (plan: OpeningPlan) => {
+    setOpeningPlan(plan);
+    void AsyncStorage.setItem(openingStorageKey, JSON.stringify({ source: openingSource, plan })).catch(() => {});
+  };
+  const firstTwo = openingPlan?.selected ?? [];
 
   // Goals per player for the WHOLE evening — shown in each roster row's badge.
   // Prefer the persistent `goalTally` (accumulates across rounds); fall back to
@@ -393,10 +481,11 @@ export function AdvancedLiveMatchScreen() {
     if (!gameId) return;
     const unsub = gameService.subscribeLiveGame(
       gameId,
-      ({ liveMatch, rotation: r, draftTeams: d }) => {
+      ({ liveMatch, rotation: r, draftTeams: d, lastCommittedRoundId: committedId }) => {
         setLive(liveMatch ?? null);
         setRotation(r ?? null);
         setDraftTeams(d ?? null);
+        setLastCommittedRoundId(committedId);
         setLiveLoaded(true);
         // Hydrate team players AND anyone who went home (they're off their team
         // now, so they wouldn't be fetched otherwise — their name would be
@@ -482,6 +571,11 @@ export function AdvancedLiveMatchScreen() {
     // needs to be told: by the time it opens, the board behind it says 0:0.
     savedResult?: { a: number; b: number; winner: string | null },
   ) => {
+    const captured=savedRoundViewRef.current;
+    if(!keepClock && !savedResult && captured?.gameId===gameId && captured.key===currentRoundKey){
+      savedResult={a:captured.live.scoreA,b:captured.live.scoreB,winner:null};
+    }
+    setFillDeferred(false);
     const working = {
       teams: skeleton.teams,
       loans: skeleton.rotation.loans,
@@ -507,6 +601,44 @@ export function AdvancedLiveMatchScreen() {
       keepClock,
       savedResult,
     };
+    if (draft.completionMode === 'balanced' && short.length) {
+      setFillDeferred(false);
+      const sides = skeleton.playing.map(index=>{
+        const playerIds=rosterOf(index,working.teams,working.loans);
+        return {index,label:teamName(index,draft.teams),color:teamColor(index,draft.teams),playerIds,
+          members:playerIds.map(id=>{
+            const loan=working.loans.find(l=>l.playerId===id && l.filledTeam===index);
+            return {...resolveFillPlayer(id),...(loan?{homeLabel:teamName(loan.homeTeam,draft.teams)}:{})};
+          })};
+      }) as BalancedFillRequest['sides'];
+      const occupied=new Set(sides.flatMap(s=>s.playerIds));
+      const donors=[...new Set(working.teams.filter(t=>!skeleton.playing.includes(t.index)).flatMap(t=>rosterOf(t.index,working.teams,working.loans)))].filter(id=>!occupied.has(id));
+      const club=myCommunities.find(c=>c.id===game?.groupId);
+      const ratings:Record<string,number>={...(club?.internalRating ? club.adminRatings : {})};
+      for(const guest of game?.guests??[]) if(!guest.waitlisted && guest.estimatedRating) ratings[`guest:${guest.id}`]=guest.estimatedRating;
+      setBalancedRequest({sides,players:donors.map(id=>({...resolveFillPlayer(id),homeLabel:teamName(working.teams.find(t=>t.playerIds.includes(id))?.index??0,draft.teams)})),capacity:skeleton.perTeam,ratings,usage:skeleton.rotation.fillUsage??{},...(savedResult?{savedResult:`התוצאה נשמרה: ⁦${savedResult.a}–${savedResult.b}⁩`}:{})});
+      return;
+    }
+    advanceFillFlow();
+  };
+
+  const onBalancedConfirm=(picks:[string[],string[]])=>{
+    const flow=fillFlowRef.current;
+    if(!flow || !balancedRequest) return;
+    if(balancedRequest.editableSide!==undefined){
+      const side=balancedRequest.editableSide;
+      const chosen=picks[side];
+      if(!fillRequest || flow.current!==flow.playing[side] || picks[side===0?1:0].length || chosen.length!==fillRequest.requiredCount || new Set(chosen).size!==chosen.length || chosen.some(id=>!fillRequest.players.some(p=>p.id===id)))return;
+      setBalancedRequest(null);
+      onFillConfirm(chosen);
+      return;
+    }
+    const all=picks.flat();
+    const candidates=new Set(balancedRequest.players.map(p=>p.id));
+    if(new Set(all).size!==all.length || all.some(id=>!candidates.has(id)) || picks.some((ids,i)=>ids.length>Math.max(0,flow.perTeam-balancedRequest.sides[i].playerIds.length))) return;
+    for(const side of [0,1] as const) flow.working=applyChosenFill(flow.working.teams,flow.working.loans,flow.playing[side],picks[side],'temporary');
+    flow.queue=[];
+    setBalancedRequest(null);
     advanceFillFlow();
   };
 
@@ -555,9 +687,25 @@ export function AdvancedLiveMatchScreen() {
         setFillRequest({
           teamLabel: teamName(team, draftTeams?.teams),
           players: req.donors.map(resolveFillPlayer),
-          recommendedIds: pickRandom(req.donors, need),
+          recommendedIds: [],
           requiredCount: need,
           savedResult: flow.savedResult,
+        });
+        // Reuse the new visual surface while preserving sequential selection,
+        // donor eligibility and temporary/permanent semantics of this flow.
+        const sides=flow.playing.map(index=>{
+          const playerIds=rosterOf(index,flow.working.teams,flow.working.loans);
+          return {index,label:teamName(index,flow.draft.teams),color:teamColor(index,flow.draft.teams),playerIds,
+            members:playerIds.map(id=>{
+              const loan=flow.working.loans.find(l=>l.playerId===id && l.filledTeam===index);
+              return {...resolveFillPlayer(id),...(loan?{homeLabel:teamName(loan.homeTeam,flow.draft.teams)}:{})};
+            })};
+        }) as BalancedFillRequest['sides'];
+        setBalancedRequest({
+          sides,capacity:flow.perTeam,editableSide:flow.playing[0]===team?0:1,
+          players:req.donors.map(id=>({...resolveFillPlayer(id),homeLabel:teamName(flow.working.teams.find(t=>t.playerIds.includes(id))?.index??0,flow.draft.teams)})),
+          ratings:{},usage:{},showComparison:false,showUsage:false,fillMode:flow.fillMode,keepClock:flow.keepClock,
+          ...(flow.savedResult?{savedResult:`התוצאה נשמרה: ⁦${flow.savedResult.a}–${flow.savedResult.b}⁩`}:{}),
         });
         return; // wait for the admin to confirm
       }
@@ -585,11 +733,33 @@ export function AdvancedLiveMatchScreen() {
       );
     } catch (err) {
       logError('liveCommitFilledRotation', err, { gameId });
+      toast.error('שמירת ההרכבים נכשלה. יש לפתוח מחדש את בחירת ההרכבים לפי מצב המשחק המעודכן.');
       if (__DEV__) console.warn('[live] commitFilledRotation failed', err);
     } finally {
       committingRef.current = false;
       markBusy(-1);
     }
+  };
+
+  // Recover the server-banked result after a reload, or a failed lineup save.
+  // committedOnly rechecks the exact current rotation before contacting the
+  // idempotent result endpoint, so this cannot finish a different/new match.
+  const resumeSavedRound = async () => {
+    if (!gameId || !me || startingRef.current || committingRef.current || fillFlowRef.current) return;
+    startingRef.current=true;markBusy(1);
+    try {
+      const current=await gameService.getGameById(gameId);
+      if (!current?.rotation || current.lastCommittedRoundId !== roundCommitKey(current.rotation)) return;
+      const history=(await gameService.getRoundHistory(gameId)).find(row=>row.roundId===current.lastCommittedRoundId);
+      if (!history) throw new Error('תוצאת המשחק השמור טרם נטענה. נסו שוב.');
+      const result=await gameService.prepareRoundResult(gameId,me.id,'A',undefined,true);
+      if (result && result.outcome!==null) beginFillFlow(result.skeleton,result.draft,undefined,false,{
+        a:history.scoreA,b:history.scoreB,
+        winner:history.winnerSide==='tie'?null:teamName(history.winnerSide==='A' ? history.teamAIndex ?? current.rotation.playing[0] : history.teamBIndex ?? current.rotation.playing[1],current.draftTeams?.teams),
+      });
+    } catch(error) {
+      logError('resumeSavedRound',error,{gameId});toast.error('לא הצלחנו לחדש את המעבר למשחק הבא. התוצאה נשמרה; נסו שוב.');
+    } finally {startingRef.current=false;markBusy(-1);}
   };
 
   // Admin confirmed who completes the current team → apply + advance.
@@ -614,26 +784,15 @@ export function AdvancedLiveMatchScreen() {
     advanceFillFlow();
   };
 
-  // Admin dismissed the fill picker (e.g. the donor pool can't satisfy the
-  // deficit, or it popped up unexpectedly). Abort the in-memory fill flow
-  // WITHOUT committing — the round result already recorded stands, and the
-  // admin can adjust the rosters manually from the rotation panel. Prevents a
-  // stuck modal (user report).
+  // Dismissing a banked result's picker only hides it. Never mint a new
+  // round identity, rotate, or permit another score on the ended game.
   const onFillCancel = () => {
-    fillFlowRef.current = null;
-    setFillRequest(null);
-    // The round's stats were already committed; aborting here leaves the
-    // rotation frozen. Advance its identity so the NEXT round-commit by the
-    // same teams gets a fresh idempotency key and isn't dropped as a duplicate
-    // (B03/B04). Fire-and-forget — a failure only risks the rare collision.
-    if (gameId) {
-      logEvent(AnalyticsEvent.LineupFillResolved, {
-        gameId,
-        result: 'cancelled',
-        count: 0,
-      });
-      void gameService.nudgeRotationAfterFillCancel(gameId);
-    }
+    if(fillFlowRef.current?.savedResult || pendingSavedRound){setFillDeferred(true);return;}
+    fillFlowRef.current=null;setBalancedRequest(null);setFillRequest(null);
+  };
+  const continuePendingRound=()=>{
+    if(fillFlowRef.current){setFillDeferred(false);return;}
+    void resumeSavedRound();
   };
 
   // "סיים משחק" → confirm first, naming the winner + who comes on next, so
@@ -641,7 +800,8 @@ export function AdvancedLiveMatchScreen() {
   // A tie skips straight to the manual winner picker.
   const confirmEndRound = () => {
     // Same re-entry guard as onEndRound — also covers the confirm-dialog path.
-    if (finalizingRef.current || committingRef.current || fillFlowRef.current || winnerOpen) return;
+    if(pendingSavedRound){continuePendingRound();return;}
+    if (finalizingRef.current || committingRef.current || fillFlowRef.current || winnerOpen || decisionOpen || shootoutOpen) return;
     if (!rotation || !live) {
       void onEndRound();
       return;
@@ -670,20 +830,18 @@ export function AdvancedLiveMatchScreen() {
       void onEndRound();
       return;
     }
-    const next = rotation.waiting[0];
-    appAlert(
-      he.rotationEndRoundConfirmTitle(teamName(winnerIdx, draftTeams?.teams)),
-      next != null
-        ? he.rotationEndRoundConfirmBody(teamName(next, draftTeams?.teams))
-        : he.rotationEndRoundConfirmBodyNoNext,
-      [
-        { text: he.cancel, style: 'cancel' },
-        { text: he.rotationEndRoundConfirmOk, onPress: () => void onEndRound() },
-      ],
-    );
+    if(gameId && currentRoundKey) setEndRoundPrompt({gameId,roundKey:currentRoundKey,playing:rotation.playing.join(':')});
+  };
+
+  const acceptEndRound = () => {
+    if(!endRoundPrompt || endRoundPrompt.gameId!==gameId || endRoundPrompt.roundKey!==currentRoundKey ||
+      endRoundPrompt.playing!==currentPlayingKey || pendingSavedRound || !live || live.scoreA===live.scoreB || live.shootout) return;
+    setEndRoundPrompt(null);
+    void onEndRound();
   };
 
   const onEndRound = async () => {
+    if (pendingSavedRound && !fillFlowRef.current) { void resumeSavedRound(); return; }
     // Block re-entry while a round transition is already in flight: finalizing,
     // the manual winner picker is open, or a fill flow is mid-way. Without this
     // a second "סיים משחק" tap (the ref clears in `finally` BEFORE the async
@@ -706,7 +864,9 @@ export function AdvancedLiveMatchScreen() {
       // STOP (don't reset) the clock the moment the round ends — it shouldn't
       // keep ticking through the fill flow. It's zeroed after the new round is
       // committed (see advanceFillFlow).
-      await gameService.pauseTimer(gameId, me.id, me.name ?? '').catch(() => {});
+      await gameService.pauseTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined).catch(error => {
+        if ((error as { code?: string })?.code === 'TIMER_CHANGED') throw error;
+      });
       // Read the score NOW. `prepareRoundResult` below commits the round's
       // stats and zeroes the live score in the same breath, so this is the
       // last moment the finished game's result exists on the client — and the
@@ -728,11 +888,10 @@ export function AdvancedLiveMatchScreen() {
                 ? teamName(playB, draftTeams?.teams)
                 : null,
       };
-      // Commit stats + build the post-round skeleton (no rotate yet). A 4-team
-      // tie auto-resolves; a 2–3 team tie returns outcome null → tie chooser
-      // (manual pick vs penalty shootout).
+      // A draw always opens the decision chooser, including an untimed 0:0.
+      captureRoundForResult();
       const res = await gameService.prepareRoundResult(gameId, me.id);
-      if (!res) return;
+      if (!res) throw new Error(he.roundFinalizeFailed);
       if (res.outcome === null) {
         setDecisionOpen(true);
         return;
@@ -748,7 +907,7 @@ export function AdvancedLiveMatchScreen() {
       beginFillFlow(res.skeleton, res.draft, undefined, false, endedResult);
     } catch (err) {
       logError('liveFinalizeRound', err, { gameId, userId: me.id });
-      toast.error(he.roundFinalizeFailed);
+      toast.error(roundSaveError(err, he.roundFinalizeFailed));
       if (__DEV__) console.warn('[live] finalizeRound failed', err);
     } finally {
       finalizingRef.current = false;
@@ -779,7 +938,9 @@ export function AdvancedLiveMatchScreen() {
     // screen the latch was written to prevent, and reported it.
     markBusy(1);
     try {
-      const res = await gameService.prepareRoundResult(gameId, me.id, side);
+      if (shootoutDecision) await gameService.clearShootout(gameId, shootoutDecision);
+      captureRoundForResult(!!shootoutDecision);
+      const res = await gameService.prepareRoundResult(gameId, me.id, side, undefined, false, shootoutDecision ?? undefined);
       if (res && res.outcome !== null) {
         logEvent(AnalyticsEvent.MatchRoundCompleted, {
           gameId,
@@ -789,10 +950,11 @@ export function AdvancedLiveMatchScreen() {
           goals: live?.goals?.length ?? 0,
         });
         beginFillFlow(res.skeleton, res.draft);
-      }
+      } else throw new Error('לא התקבל אישור לסיום הפנדלים. נסו שוב.');
     } catch (err) {
       logError('liveFinalizeRoundTie', err, { gameId, userId: me.id });
-      toast.error(he.roundFinalizeFailed);
+      toast.error(roundSaveError(err, he.roundFinalizeFailed));
+      if (shootoutDecision) setDecisionOpen(true);
       if (__DEV__) console.warn('[live] finalizeRound (tie) failed', err);
     } finally {
       finalizingRef.current = false;
@@ -823,6 +985,7 @@ export function AdvancedLiveMatchScreen() {
   };
   const onDecidePenalties = () => {
     setDecisionOpen(false);
+    setShootoutDecision(null);
     logEvent(AnalyticsEvent.RoundTieDecision, {
       gameId,
       round: rotation?.round ?? 0,
@@ -832,33 +995,17 @@ export function AdvancedLiveMatchScreen() {
   };
   // Third way out of a draw: nobody wins, both sides come off, the next two go
   // on. Only offered when there ARE two waiting — with 3 teams or fewer this
-  // would empty the pitch. Confirmed before it runs, because unlike the other
-  // two options it ends the match with no winner at all.
+  // would empty the pitch. Called only by the chooser's inline confirm button.
   const onDecideBothOut = () => {
     const [inc1, inc2] = rotation?.waiting ?? [];
-    if (inc1 == null || inc2 == null) return;
-    appAlert(
-      he.shDecideBothOutConfirmTitle,
-      he.shDecideBothOutConfirmBody(
-        teamName(inc1, draftTeams?.teams),
-        teamName(inc2, draftTeams?.teams),
-      ),
-      [
-        { text: he.cancel, style: 'cancel' },
-        {
-          text: he.shDecideBothOutConfirmOk,
-          onPress: () => {
-            setDecisionOpen(false);
-            logEvent(AnalyticsEvent.RoundTieDecision, {
-              gameId,
-              round: rotation?.round ?? 0,
-              method: 'both_out',
-            });
-            void resolveTie('bothOut');
-          },
-        },
-      ],
-    );
+    if ((draftTeams?.teams.length ?? 0) <= 3 || inc1 == null || inc2 == null) return;
+    setDecisionOpen(false);
+    logEvent(AnalyticsEvent.RoundTieDecision, {
+      gameId,
+      round: rotation?.round ?? 0,
+      method: 'both_out',
+    });
+    void resolveTie('bothOut');
   };
   // Shared tail for a tie resolved WITHOUT a winner — mirrors onTieWinner,
   // which does the same for a tie the admin resolved in favour of one side.
@@ -871,7 +1018,9 @@ export function AdvancedLiveMatchScreen() {
     // screen the latch was written to prevent, and reported it.
     markBusy(1);
     try {
-      const res = await gameService.prepareRoundResult(gameId, me.id, undefined, mode);
+      if (shootoutDecision) await gameService.clearShootout(gameId, shootoutDecision);
+      captureRoundForResult(!!shootoutDecision);
+      const res = await gameService.prepareRoundResult(gameId, me.id, undefined, mode, false, shootoutDecision ?? undefined);
       if (!res || res.outcome === null) return;
       logEvent(AnalyticsEvent.MatchRoundCompleted, {
         gameId,
@@ -884,7 +1033,8 @@ export function AdvancedLiveMatchScreen() {
       beginFillFlow(res.skeleton, res.draft);
     } catch (err) {
       logError('liveResolveTie', err, { gameId, userId: me.id, mode });
-      toast.error(he.roundFinalizeFailed);
+      toast.error(roundSaveError(err, he.roundFinalizeFailed));
+      if (shootoutDecision) setDecisionOpen(true);
     } finally {
       finalizingRef.current = false;
       markBusy(-1);
@@ -895,7 +1045,6 @@ export function AdvancedLiveMatchScreen() {
   // the round winner (same commit path as a manual tie pick; the shootout kicks
   // ride along and credit penalty stats via prepareRoundResult).
   const onShootoutDecided = async (side: 'A' | 'B') => {
-    setShootoutOpen(false);
     if (
       !gameId ||
       !me ||
@@ -904,7 +1053,7 @@ export function AdvancedLiveMatchScreen() {
       committingRef.current ||
       fillFlowRef.current
     )
-      return;
+      throw new Error('לא ניתן לסיים את הפנדלים כרגע. נסו שוב.');
     finalizingRef.current = true;
     // Same busy latch as onEndRound. A round that ends level takes the SAME
     // second or two to commit, but the latch lived only on the score path —
@@ -912,6 +1061,7 @@ export function AdvancedLiveMatchScreen() {
     // screen the latch was written to prevent, and reported it.
     markBusy(1);
     try {
+      captureRoundForResult();
       const res = await gameService.prepareRoundResult(gameId, me.id, side);
       if (res && res.outcome !== null) {
         logEvent(AnalyticsEvent.MatchRoundCompleted, {
@@ -921,12 +1071,14 @@ export function AdvancedLiveMatchScreen() {
           outcome: side,
           goals: live?.goals?.length ?? 0,
         });
+        setShootoutOpen(false);
         beginFillFlow(res.skeleton, res.draft);
+      } else {
+        throw new Error('לא התקבל אישור לסיום הפנדלים. הבעיטות נשמרו; נסו שוב.');
       }
     } catch (err) {
       logError('liveShootoutDecided', err, { gameId, userId: me.id });
-      toast.error(he.roundFinalizeFailed);
-      if (__DEV__) console.warn('[live] shootout decided failed', err);
+      throw err;
     } finally {
       finalizingRef.current = false;
       markBusy(-1);
@@ -940,21 +1092,20 @@ export function AdvancedLiveMatchScreen() {
     setWinnerOpen(true);
   };
 
-  // Admin backed out of the shootout entirely → clear the state; the round
-  // stays drawn and can be re-decided from "סיים משחק".
+  // Closing keeps every confirmed kick and lets the manager resume later.
   const onShootoutExit = () => {
     setShootoutOpen(false);
-    if (gameId) {
-      logEvent(AnalyticsEvent.ShootoutAbandoned, {
-        gameId,
-        round: rotation?.round ?? 0,
-      });
-      void gameService.clearShootout(gameId);
-    }
+    logEvent(AnalyticsEvent.ShootoutClosed, { gameId, preserved: true, round: rotation?.round ?? 0 });
   };
 
-  // "התחל משחק" — kick off a round: draft rotation + start the match clock
-  // together so the live state goes straight to "running" (matches the design).
+  const onChangeShootoutDecision = () => {
+    if (!gameId || !rotation || roundBusy || finalizingRef.current || committingRef.current || pendingSavedRound) return;
+    setShootoutDecision({ gameId, roundId: roundCommitKey(rotation), playing: rotation.playing.join(':'), fingerprint: shootoutFingerprint(live?.shootout) });
+    setShootoutOpen(false);
+    setDecisionOpen(true);
+  };
+
+  // "התחל משחק" prepares the opening lineup; clock start is a separate action.
   const onStartRound = async () => {
     if (!gameId || !me || startingRef.current || committingRef.current) return;
     startingRef.current = true;
@@ -964,21 +1115,13 @@ export function AdvancedLiveMatchScreen() {
       const prep = await gameService.prepareStartRotation(
         gameId,
         effectiveStartOrder,
+        openingPlan ? { colors: openingPlan.colors, fingerprint: openingSource } : undefined,
       );
       if (!prep) return; // gate: not enough players for two teams
-      await gameService.markGameStarted(gameId);
-      logEvent(AnalyticsEvent.GameStarted, {
-        gameId,
-        mode: 'advanced',
-        teams: draftTeams?.teams.length ?? 0,
-      });
-      await gameService.startTimer(gameId, me.id, me.name ?? '');
-      logEvent(AnalyticsEvent.RoundStarted, {
-        gameId,
-        round: rotation?.round ?? 0,
-        teams: draftTeams?.teams.length ?? 0,
-        perTeam,
-      });
+      // Every fill method approves the lineup before changing lifecycle or
+      // clock. Starting the clock here invalidated the source snapshot that
+      // commitFilledRotation must check, so the app rejected its own change.
+      // The user starts the clock separately after the rosters are saved.
       beginFillFlow(prep.skeleton, prep.draft, prep.baseTeams);
     } catch (err) {
       // §4 — the season is mid-close and the club may not start an evening.
@@ -987,6 +1130,7 @@ export function AdvancedLiveMatchScreen() {
         return;
       }
       logError('liveStartRound', err, { gameId, userId: me?.id });
+      toast.error((err as Error)?.message || 'לא ניתן לאשר את הקבוצות. נסו שוב.');
       if (__DEV__) console.warn('[live] startRound failed', err);
     } finally {
       startingRef.current = false;
@@ -1065,12 +1209,14 @@ export function AdvancedLiveMatchScreen() {
           : []),
         { text: he.liveNoTeamsContinue, style: 'cancel' as const },
       ],
-      { tone: 'warning' },
+      { tone: 'warning', football: true },
     );
   }, [liveLoaded, rotation, draftTeams, isAdmin, gameId, nav]);
 
   // ─── Timer controls (flow through Firestore transactions) ──────────────
   const onTimerStart = async () => {
+    if (pendingSavedRound && !fillFlowRef.current) { void resumeSavedRound(); return; }
+    if (fillFlowRef.current) { if(balancedRequest) setFillDeferred(false); return; }
     if (!gameId || !me || startingRef.current || committingRef.current) return;
     startingRef.current = true;
     try {
@@ -1085,7 +1231,11 @@ export function AdvancedLiveMatchScreen() {
           teams: draftTeams?.teams.length ?? 0,
         });
       }
-      await gameService.startTimer(gameId, me.id, me.name ?? '');
+      await gameService.startTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined);
+      if (!timerStarted) logEvent(AnalyticsEvent.RoundStarted, {
+        gameId, round: rotation?.round ?? 0,
+        teams: draftTeams?.teams.length ?? 0, perTeam,
+      });
       logEvent(AnalyticsEvent.LiveTimerAction, {
         gameId,
         action: 'start',
@@ -1099,6 +1249,7 @@ export function AdvancedLiveMatchScreen() {
         return;
       }
       logError('liveTimerStart', err, { gameId, userId: me?.id });
+      toast.error((err as { code?: string })?.code === 'TIMER_CHANGED' ? (err as Error).message : 'פעולת השעון לא נשמרה. נסו שוב.');
       if (__DEV__) console.warn('[live] startTimer failed', err);
     } finally {
       startingRef.current = false;
@@ -1107,7 +1258,7 @@ export function AdvancedLiveMatchScreen() {
   const onTimerPause = async () => {
     if (!gameId || !me) return;
     try {
-      await gameService.pauseTimer(gameId, me.id, me.name ?? '');
+      await gameService.pauseTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined);
       logEvent(AnalyticsEvent.LiveTimerAction, {
         gameId,
         action: 'pause',
@@ -1116,13 +1267,16 @@ export function AdvancedLiveMatchScreen() {
       });
     } catch (err) {
       logError('liveTimerPause', err, { gameId, userId: me?.id });
+      toast.error((err as { code?: string })?.code === 'TIMER_CHANGED' ? (err as Error).message : 'פעולת השעון לא נשמרה. נסו שוב.');
       if (__DEV__) console.warn('[live] pauseTimer failed', err);
     }
   };
   const onTimerResume = async () => {
+    if (pendingSavedRound && !fillFlowRef.current) { void resumeSavedRound(); return; }
+    if (fillFlowRef.current) { if(balancedRequest) setFillDeferred(false); return; }
     if (!gameId || !me) return;
     try {
-      await gameService.startTimer(gameId, me.id, me.name ?? '');
+      await gameService.startTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined);
       logEvent(AnalyticsEvent.LiveTimerAction, {
         gameId,
         action: 'resume',
@@ -1131,11 +1285,12 @@ export function AdvancedLiveMatchScreen() {
       });
     } catch (err) {
       logError('liveTimerResume', err, { gameId, userId: me?.id });
+      toast.error((err as { code?: string })?.code === 'TIMER_CHANGED' ? (err as Error).message : 'פעולת השעון לא נשמרה. נסו שוב.');
       if (__DEV__) console.warn('[live] resumeTimer failed', err);
     }
   };
   const onTimerReset = () => {
-    if (!gameId || !me) return;
+    if (!gameId || !me || pendingSavedRound || roundBusy) return;
     // Reset is the one irreversible timer control — confirm before wiping
     // the running clock.
     appAlert(
@@ -1148,7 +1303,7 @@ export function AdvancedLiveMatchScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await gameService.resetTimer(gameId, me.id, me.name ?? '');
+              await gameService.resetTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined);
               logEvent(AnalyticsEvent.LiveTimerAction, {
                 gameId,
                 action: 'reset',
@@ -1157,6 +1312,7 @@ export function AdvancedLiveMatchScreen() {
               });
             } catch (err) {
               logError('liveTimerReset', err, { gameId, userId: me?.id });
+              toast.error((err as { code?: string })?.code === 'TIMER_CHANGED' ? (err as Error).message : 'פעולת השעון לא נשמרה. נסו שוב.');
               if (__DEV__) console.warn('[live] resetTimer failed', err);
             }
           },
@@ -1176,17 +1332,9 @@ export function AdvancedLiveMatchScreen() {
     try {
       await gameService.endEvening(gameId);
       setEndOpen(false);
-      // Only ask about equipment if the evening was ACTUALLY played (the timer
-      // started at least once). Ending a called-off game that no one played must
-      // not overwrite the community's real ball/jersey holder state.
-      // Read from the LIVE-synced state, not the `game` snapshot: `game` is
-      // fetched once on mount and never refreshed by the listener, so in the
-      // common flow (open screen before kickoff → start → play → end) its
-      // startedAt is still null and the handoff prompt would be skipped.
-      const wasPlayed =
-        game?.status === 'finished' ||
-        live?.startedAt != null ||
-        (live?.goals?.length ?? 0) > 0;
+      // Successful manual completion is evidence even without a clock.
+      // Keep this decision in the canonical evening-play policy.
+      const wasPlayed = didEveningHappen({...game,status:'finished',endedBy:'admin',liveMatch:live ?? undefined});
       logEvent(AnalyticsEvent.MatchCompleted, {
         gameId,
         mode: 'advanced',
@@ -1346,30 +1494,15 @@ export function AdvancedLiveMatchScreen() {
     if (!inOvertime) enteredOvertimeRef.current = false;
   }, [timerRunning, inLastMinute, inOvertime, remainingMs]);
 
-  // Seed a random starting PAIR once teams are drafted (re-seed if the team
-  // set changes). Stable across renders. MUST stay above the early returns so
-  // the hook order never changes (no conditional hooks).
-  useEffect(() => {
-    if (rotation || !draftTeams) return;
-    const idx = draftTeams.teams.map((t) => t.index);
-    setFirstTwo((prev) => {
-      const stillValid = prev.length === 2 && prev.every((i) => idx.includes(i));
-      if (stillValid) return prev;
-      return [...idx].sort(() => Math.random() - 0.5).slice(0, 2);
-    });
-  }, [draftTeams, rotation]);
-
-  // Effective opening order = the two chosen starters first, then the rest in
-  // index order. Empty until exactly two valid starters are picked (gates the
-  // preview + the start button). Above the early returns for stable hooks.
+  // Chosen pair followed by the explicitly ordered waiting queue.
   const effectiveStartOrder = useMemo<number[]>(() => {
     if (!draftTeams) return [];
     const idx = draftTeams.teams.map((t) => t.index);
     const starters = firstTwo.filter((i) => idx.includes(i));
     if (starters.length !== 2) return [];
-    const rest = idx.filter((i) => !starters.includes(i)).sort((a, b) => a - b);
+    const rest = [...new Set([...(openingPlan?.waiting ?? []), ...idx])].filter(i => idx.includes(i) && !starters.includes(i));
     return [...starters, ...rest];
-  }, [draftTeams, firstTwo]);
+  }, [draftTeams, openingPlan]);
 
   // ─── Not found ─────────────────────────────────────────────────────────
   // Game was deleted or failed to load — give the user an explanation and
@@ -1417,6 +1550,12 @@ export function AdvancedLiveMatchScreen() {
   // Control-state derivation for the bottom bar.
   const hasTeams = !!draftTeams && draftTeams.teams.length >= 2;
   const rotationActive = !!rotation;
+  // An approved first lineup may precede the first persisted timer state.
+  // Show the same board, without manufacturing a saved result or starting time.
+  const scoreboardLive: LiveMatchState | null = displayLive ?? (!pendingSavedRound && rotationActive
+    ? { phase: 'roundReady', assignments: {}, benchOrder: [], scoreA: 0, scoreB: 0 }
+    : null);
+  const canEnterGoals = isAdmin && rotationActive && !!scoreboardLive && !pendingSavedRound && !roundBusy && !live?.shootout && game.status !== 'finished' && game.status !== 'cancelled';
   const totalDrafted = (draftTeams?.teams ?? []).reduce(
     (s, t) => s + t.playerIds.length,
     0,
@@ -1442,25 +1581,6 @@ export function AdvancedLiveMatchScreen() {
   /** Short of the format, but playable — said out loud rather than blocked. */
   const shortOfFormat =
     canStartRound && totalDrafted < perTeam * 2;
-
-  const reshuffleStart = () => {
-    if (!draftTeams) return;
-    const idx = draftTeams.teams.map((t) => t.index);
-    setFirstTwo([...idx].sort(() => Math.random() - 0.5).slice(0, 2));
-    logEvent(AnalyticsEvent.PlayersShuffled, {
-      gameId,
-      teams: draftTeams.teams.length,
-    });
-  };
-  // Tap a team to select/deselect it as one of the two starters. Capped at
-  // two: tapping a third replaces the older selection so you always converge
-  // on exactly two.
-  const toggleStartTeam = (teamIdx: number) =>
-    setFirstTwo((prev) => {
-      if (prev.includes(teamIdx)) return prev.filter((i) => i !== teamIdx);
-      if (prev.length < 2) return [...prev, teamIdx];
-      return [prev[1], teamIdx];
-    });
 
   // ─── Per-player actions from the live roster popover menu ───────────────
   // "כרטיס שחקן" → open the player's card (community-scoped for head-to-head).
@@ -1531,6 +1651,7 @@ export function AdvancedLiveMatchScreen() {
   };
 
   const onPlayerWentHome = (player: { id: string; name: string }) => {
+    if(pendingSavedRound || roundBusy)return;
     if (!gameId) return;
     appAlert(
       he.wentHomeConfirmTitle(player.name),
@@ -1575,6 +1696,7 @@ export function AdvancedLiveMatchScreen() {
           },
         },
       ],
+      { football: true },
     );
   };
   // "החזר למחזור" — bring a departed player back onto their team. Allowed
@@ -1582,6 +1704,7 @@ export function AdvancedLiveMatchScreen() {
   // them (drops the loan / ejects the over-fill, B01) WITHOUT touching the
   // timer, so the running round's clock is unaffected.
   const onRestorePlayer = (player: { id: string; name: string }) => {
+    if(pendingSavedRound || roundBusy)return;
     if (!gameId) return;
     appAlert(
       he.restoreConfirmTitle(player.name),
@@ -1610,66 +1733,35 @@ export function AdvancedLiveMatchScreen() {
           },
         },
       ],
+      { football: true },
     );
   };
 
-  // "החלפה" — swap two on-field players between their teams. No confirm dialog:
-  // picking a source + a target IS the confirmation. Guarded against a
-  // double-fire like the other roster mutations.
-  const onSwapPlayers = (aId: string, bId: string) => {
-    if (!gameId || !aId || !bId || aId === bId) return;
-    if (homeActionRef.current) return;
+  // The row picker confirms the two effective positions before this write.
+  const onSwapPlayers = async (aId: string, bId: string) => {
+    if (pendingSavedRound || roundBusy || !gameId || !aId || !bId || aId === bId || homeActionRef.current) throw new Error('החילוף אינו זמין כרגע');
     homeActionRef.current = true;
-    void (async () => {
-      try {
-        await gameService.swapPlayers(gameId, aId, bId);
-        // Both outcomes of "החלפה" now confirm themselves. Without this, a move
-        // announced itself and a swap said nothing — and on a crowded live
-        // board two avatars trading places is easy to miss.
-        toast.info(
-          he.swapDoneSwapped(
-            resolveFillPlayer(aId)?.name ?? '',
-            resolveFillPlayer(bId)?.name ?? '',
-          ),
-        );
-        logEvent(AnalyticsEvent.LiveRosterAction, {
-          gameId,
-          action: 'swapped',
-          midRound: timerRunning,
-        });
-      } catch (err) {
-        logError('swapPlayers', err, { gameId, aId, bId });
-      } finally {
-        homeActionRef.current = false;
-      }
-    })();
+    try {
+      await gameService.swapPlayers(gameId, aId, bId, rotation ? roundCommitKey(rotation) : undefined);
+      toast.info(he.swapDoneSwapped(resolveFillPlayer(aId)?.name ?? '', resolveFillPlayer(bId)?.name ?? ''));
+      logEvent(AnalyticsEvent.LiveRosterAction, { gameId, action: 'swapped', midRound: timerRunning });
+    } catch (err) { logError('swapPlayers', err, { gameId, aId, bId }); throw err; }
+    finally { homeActionRef.current = false; }
   };
 
   // "מקום פנוי" — the other half of the same gesture. Where onSwapPlayers
   // exchanges two players and cannot change a team's size, this moves ONE, and
   // is therefore the only manual fix for a team drafted short (13 players over
   // three fives is 5/4/4) or left short by a cancellation.
-  const onMovePlayer = (playerId: string, teamIndex: number) => {
-    if (!gameId || !playerId) return;
-    if (homeActionRef.current) return;
+  const onMovePlayer = async (playerId: string, teamIndex: number) => {
+    if (pendingSavedRound || roundBusy || !gameId || !playerId || homeActionRef.current) throw new Error('העברה אינה זמינה כרגע');
     homeActionRef.current = true;
-    void (async () => {
-      try {
-        await gameService.movePlayerToTeam(gameId, playerId, teamIndex);
-        const who = resolveFillPlayer(playerId)?.name ?? '';
-        toast.info(he.swapDoneMoved(who, teamName(teamIndex, draftTeams?.teams)));
-        logEvent(AnalyticsEvent.LiveRosterAction, {
-          gameId,
-          action: 'moved',
-          teamIndex,
-          midRound: timerRunning,
-        });
-      } catch (err) {
-        logError('movePlayerToTeam', err, { gameId, playerId, teamIndex });
-      } finally {
-        homeActionRef.current = false;
-      }
-    })();
+    try {
+      await gameService.movePlayerToTeam(gameId, playerId, teamIndex, rotation ? roundCommitKey(rotation) : undefined);
+      toast.info(he.swapDoneMoved(resolveFillPlayer(playerId)?.name ?? '', teamName(teamIndex, draftTeams?.teams)));
+      logEvent(AnalyticsEvent.LiveRosterAction, { gameId, action: 'moved', teamIndex, midRound: timerRunning });
+    } catch (err) { logError('movePlayerToTeam', err, { gameId, playerId, teamIndex }); throw err; }
+    finally { homeActionRef.current = false; }
   };
 
   // Before the round starts, synthesize a PREVIEW rotation (the chosen two
@@ -1694,7 +1786,7 @@ export function AdvancedLiveMatchScreen() {
   // queue) only makes sense with MORE than 2 teams. With exactly 2 teams there's
   // nothing to choose, shuffle, or queue — go straight to the match preview.
   const showStartCtrl =
-    !rotationActive && hasTeams && isAdmin && !!draftTeams && draftTeams.teams.length > 2;
+    !rotationActive && hasTeams && isAdmin && !!draftTeams;
 
   // edges: top only. This screen lives inside the bottom tab navigator, which
   // already reserves the gesture-bar inset for the tab bar — letting
@@ -1719,7 +1811,7 @@ export function AdvancedLiveMatchScreen() {
         <Text style={styles.title} numberOfLines={1}>
           {game.title}
         </Text>
-        {isAdmin && (timerStarted || rotationActive) ? (
+        {isAdmin ? (
           <Pressable
             onPress={() => setMenuOpen(true)}
             hitSlop={12}
@@ -1730,19 +1822,27 @@ export function AdvancedLiveMatchScreen() {
             <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
           </Pressable>
         ) : (
-          <View style={styles.headerSpacer} />
+          <Pressable style={styles.backBtn} accessibilityRole="button" accessibilityLabel="עזרה" onPress={() => { if (me?.id) useSupportChat.getState().open(me.id); }}><Ionicons name="headset-outline" size={23} color={colors.text}/></Pressable>
         )}
       </View>
 
       {/* Timer card (+ rotation scoreboard) — scrollable so teams fit below. */}
-      <ScrollView style={styles.center} contentContainerStyle={styles.centerContent}>
+      {showStartCtrl ? (draftTeams && openingPlan ? <OpeningTeamsPanel gameId={gameId!} draft={draftTeams} plan={openingPlan} playersMap={playersMap} guests={game.guests} capacity={perTeam} totalMinutes={totalMinutes || undefined} needsFill busy={openingLoading || openingBusy || roundBusy || !!balancedRequest || !!fillRequest} onChange={changeOpening} onConfirm={async () => { setOpeningBusy(true); try { await onStartRound(); } finally { setOpeningBusy(false); } }}/> : <View style={styles.center}><ActivityIndicator color={colors.primary}/></View>) : <>
+      <ScrollView style={styles.center} contentContainerStyle={styles.centerContent} stickyHeaderIndices={rotationActive && pinScore ? [0] : undefined}>
+        <View style={styles.pinnedScore}>
         {/* Hierarchy: timer + scores at top, then the two playing teams, then
             the waiting queue. During an active round the timer is MERGED with
             the two team scores into one card; otherwise a plain timer card. */}
-        {rotationActive && live && draftTeams && rotation ? (
+        {pendingSavedRound && !displayLive ? (
+          <View style={styles.timerCard}>
+            <ActivityIndicator color={colors.primary}/>
+            <Text style={styles.hintText}>המשחק הסתיים · טוענים את התוצאה השמורה</Text>
+            {savedResultLoadFailed && <Pressable accessibilityRole="button" onPress={()=>setSavedResultRetry(n=>n+1)}><Text style={styles.hintText}>טעינת התוצאה נכשלה · נסו שוב</Text></Pressable>}
+          </View>
+        ) : rotationActive && scoreboardLive && draftTeams && rotation ? (
           <LiveScoreboardCard
             gameId={gameId!}
-            live={live}
+            live={scoreboardLive}
             draftTeams={draftTeams}
             rotation={rotation}
             playersMap={playersMap}
@@ -1758,23 +1858,22 @@ export function AdvancedLiveMatchScreen() {
             // לגול רק לשער עצמי ולא לשאר הגולים?" — those other goals just
             // happened to be scored in the first minute.
             minute={Math.floor((totalMs > 0 ? clockMs : timerMs) / 60000) + 1}
-            canEdit={isAdmin}
+            canEdit={canEnterGoals}
+            goalRequest={goalRequest}
+            hideGoalButtons
             roundNumber={rotation?.round ?? 1}
             totalMinutes={totalMinutes || undefined}
             timerText={formatTime(totalMs > 0 ? clockMs : timerMs)}
-            statusLabel={statusLabel}
-            running={timerRunning}
+            statusLabel={pendingSavedRound ? '' : statusLabel}
+            running={timerRunning && !pendingSavedRound}
             danger={danger}
             overtimeText={inOvertime ? formatTime(overtimeMs) : null}
-            stoppagesText={he.rotationStoppagesInline(
-              stoppages.stopCount,
-              formatTime(totalStoppedMs),
-            )}
+            stoppagesText={stoppagesText}
             onStoppages={() => {
               logEvent(AnalyticsEvent.LiveStoppagesOpened, {
                 gameId,
                 stopCount: stoppages.stopCount,
-                totalStoppedSec: Math.round(totalStoppedMs / 1000),
+                ...(totalStoppedMs !== null ? { totalStoppedSec: Math.round(totalStoppedMs / 1000) } : {}),
               });
               setStoppagesOpen(true);
             }}
@@ -1828,7 +1927,7 @@ export function AdvancedLiveMatchScreen() {
                     logEvent(AnalyticsEvent.LiveStoppagesOpened, {
                       gameId,
                       stopCount: stoppages.stopCount,
-                      totalStoppedSec: Math.round(totalStoppedMs / 1000),
+                      ...(totalStoppedMs !== null ? { totalStoppedSec: Math.round(totalStoppedMs / 1000) } : {}),
                     });
                     setStoppagesOpen(true);
                   }}
@@ -1837,7 +1936,7 @@ export function AdvancedLiveMatchScreen() {
                 >
                   <Ionicons name="stopwatch-outline" size={16} color="#64748B" />
                   <Text style={styles.stoppagesRowText}>
-                    {he.rotationStoppagesInline(stoppages.stopCount, formatTime(totalStoppedMs))}
+                    {stoppagesText}
                   </Text>
                 </Pressable>
               </>
@@ -1845,87 +1944,43 @@ export function AdvancedLiveMatchScreen() {
           </Animated.View>
         )}
 
+        </View>
         {/* Live rotation scoreboard (2 playing teams) + waiting queue. Before
             the round starts we show a PREVIEW (who's vs who / who waits). */}
         <View style={styles.rotationWrap}>
           {previewRotation && !showStartCtrl ? (
             <Text style={styles.previewLabel}>{he.rotationPreviewLabel}</Text>
           ) : null}
-          {showStartCtrl && draftTeams ? (
-            <View style={styles.startCtrl}>
-              <View style={styles.startCtrlHead}>
-                <Text style={styles.startCtrlTitle}>
-                  {he.rotationPickStartingTeams}
-                </Text>
-                <Pressable onPress={reshuffleStart} style={styles.shuffleBtn}>
-                  <Ionicons name="shuffle" size={16} color={colors.primary} />
-                  <Text style={styles.shuffleBtnText}>{he.rotationShuffle}</Text>
-                </Pressable>
-              </View>
-              <View style={styles.startChips}>
-                {draftTeams.teams.map((t) => {
-                  const idx = t.index;
-                  const selected = firstTwo.includes(idx);
-                  return (
-                    <Pressable
-                      key={idx}
-                      onPress={() => toggleStartTeam(idx)}
-                      style={[
-                        styles.teamChip,
-                        selected ? styles.teamChipPlaying : styles.teamChipWaiting,
-                      ]}
-                    >
-                      <View
-                        style={[styles.teamDot, { backgroundColor: teamColor(idx, draftTeams?.teams) }]}
-                      />
-                      <Text
-                        style={[
-                          styles.teamChipText,
-                          selected && styles.teamChipTextPlaying,
-                        ]}
-                      >
-                        {teamName(idx, draftTeams?.teams)}
-                      </Text>
-                      {selected ? (
-                        <Ionicons name="checkmark-circle" size={13} color={colors.primary} />
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <Text style={styles.startCtrlHint}>
-                {firstTwo.length === 2
-                  ? he.rotationPickStartingHint
-                  : he.rotationPickStartingNeedTwo}
-              </Text>
-            </View>
-          ) : null}
           {/* The admin start-control already lists every team, so don't also
               render the RotationPanel on top of it (would duplicate each team
               title). Show the panel only when the start-control ISN'T up:
               live rounds, or a non-admin viewer in preview. */}
           {!showStartCtrl ? (
-            <ChangeMotion triggerKey={rotation?.round ?? 0} duration={280}>
+            <ChangeMotion triggerKey={rotation?.round ?? 0} duration={280} style={{width:'100%'}}>
              <RotationPanel
               draftTeams={draftTeams ?? undefined}
               rotation={rotation ?? previewRotation ?? undefined}
               playersMap={playersMap}
               guests={game?.guests}
               goalsByPlayer={goalsByPlayer}
-              isAdmin={isAdmin}
+              isAdmin={isAdmin && !pendingSavedRound && !roundBusy && !live?.shootout}
               // Marking "went home" (and restoring) is allowed at any point in
               // an active rotation — mid-round too. A mid-round removal offers an
               // immediate replacement and keeps the clock running.
-              canMarkHome={isAdmin && rotationActive}
+              canMarkHome={isAdmin && rotationActive && !pendingSavedRound && !roundBusy && !live?.shootout}
               onPlayerCard={openPlayerCard}
               // Reordering the queue only changes who comes on NEXT, so it is
               // allowed mid-round — but not while a round is committing, or the
               // order would race the rotation the commit is about to write.
               onReorderWaiting={
-                isAdmin && rotationActive && !roundBusy ? onReorderWaiting : undefined
+                isAdmin && rotationActive && !roundBusy && !pendingSavedRound ? onReorderWaiting : undefined
               }
               onPlayerWentHome={onPlayerWentHome}
               onRestorePlayer={onRestorePlayer}
+              swapOpen={swapOpen}
+              onSwapClose={() => setSwapOpen(false)}
+              running={timerRunning}
+              fillMode={draftTeams?.completionMode === 'balanced' ? 'temporary' : game.advancedFillMode ?? draftTeams?.fillMode ?? 'temporary'}
               onSwapPlayers={onSwapPlayers}
               onMovePlayer={onMovePlayer}
               perTeam={perTeam}
@@ -1936,7 +1991,7 @@ export function AdvancedLiveMatchScreen() {
       </ScrollView>
 
       {/* Controls */}
-      <View style={styles.controls}>
+      <View style={[styles.controls, compactControls && styles.compactControls]}>
         {!isAdmin ? (
           <Text style={styles.viewerHint}>{he.liveTimerViewerHint}</Text>
         ) : !hasTeams ? (
@@ -2003,63 +2058,40 @@ export function AdvancedLiveMatchScreen() {
               </Text>
             ) : null}
           </>
-        ) : (
-          // ── Active rotation → [השהה זמן / התחל זמן]  [סיים משחק] ─────────
-          //
-          // The clock is the PRIMARY action and takes the width to say so. It
-          // is the control an admin touches over and over through the evening —
-          // every stoppage, every restart — while "סיים משחק" is once per
-          // mini-game. The old row had it as an 84px square beside a
-          // half-screen "סיים משחק", which is exactly backwards.
-          //
-          // Reset moved into the header's ⋯ menu: it is irreversible (it wipes
-          // the running clock and the round's goals) and it sat one thumb-width
-          // from the two buttons pressed all night.
-          //
-          // Order matters under forceRTL — the FIRST child renders RIGHTMOST,
-          // so the clock leads on the right and "סיים משחק" sits to its left.
-          <View style={styles.controlRow}>
-            {timerRunning ? (
-              <Pressable
-                style={[styles.timerBtn, roundBusy && styles.timerBtnBusy]}
-                onPress={onTimerPause}
-                disabled={roundBusy}
-              >
-                <Text style={styles.timerBtnText}>{he.liveTimerPause}</Text>
-                <Ionicons name="pause" size={24} color="#FFFFFF" />
-              </Pressable>
-            ) : (
-              <Pressable
-                style={[styles.timerBtn, roundBusy && styles.timerBtnBusy]}
-                onPress={timerStarted ? onTimerResume : onTimerStart}
-                disabled={roundBusy}
-              >
-                <Text style={styles.timerBtnText}>
-                  {timerStarted ? he.liveTimerResume : he.liveTimerStart}
-                </Text>
-                <Ionicons name="play" size={24} color="#FFFFFF" />
-              </Pressable>
-            )}
-            <Pressable
-              style={[styles.endRoundBtn, roundBusy && styles.endRoundBtnBusy]}
-              onPress={confirmEndRound}
-              disabled={roundBusy}
-              accessibilityState={{ disabled: roundBusy, busy: roundBusy }}
-            >
-              {roundBusy ? (
-                <>
-                  <Text style={styles.endRoundBtnText}>{he.rotationEndRoundBusy}</Text>
-                  <ActivityIndicator color="#1D4ED8" size="small" />
-                </>
-              ) : (
-                <>
-                  {/* Text before icon: under RTL the row is flipped, so the
-                      first child renders rightmost. The flag belongs left. */}
-                  <Text style={styles.endRoundBtnText}>{he.rotationEndRound}</Text>
-                  <Ionicons name="flag" size={20} color="#1D4ED8" />
-                </>
-              )}
+        ) : pendingSavedRound ? (
+          <View style={{gap:10}}>
+            <Text style={styles.hintText}>משחק {rotation?.round ?? 1} הסתיים והתוצאה נשמרה. משלימים את ההרכבים לפני המעבר למשחק הבא.</Text>
+            {((live?.goals?.length ?? 0)>0 || (live?.scoreA ?? 0)>0 || (live?.scoreB ?? 0)>0) && <Text style={styles.hintText}>נוסף עדכון לתוצאה לאחר שמירת המשחק. יש לבדוק אותו לפני המעבר; העדכון לא נמחק.</Text>}
+            <Pressable style={[styles.timerBtn,{flex:0,minHeight:64,paddingHorizontal:16},roundBusy && styles.timerBtnBusy]} accessibilityRole="button" accessibilityLabel={roundBusy ? 'שומרים את ההרכבים…' : 'המשך להכנת המשחק הבא'} accessibilityState={{disabled:roundBusy}} disabled={roundBusy} onPress={continuePendingRound}>
+              <Text style={[styles.timerBtnText,styles.pendingContinueText,compactControls && styles.compactPendingContinueText]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85} maxFontSizeMultiplier={1.2}>{roundBusy ? 'שומרים את ההרכבים…' : 'המשך להכנת המשחק הבא'}</Text>
+              {roundBusy ? <ActivityIndicator color="#FFFFFF"/> : <Ionicons name="chevron-back" size={24} color="#FFFFFF"/>}
             </Pressable>
+          </View>
+        ) : (
+          <View style={{ gap: 8 }}>
+            {live?.shootout ? <View style={{ gap: 8, padding: 10, borderRadius: 14, backgroundColor: '#EFF6FF' }}>
+              <Text style={styles.hintText}>הפנדלים עדיין נמשכים</Text>
+              <Pressable style={[styles.timerBtn,styles.shootoutResumeBtn,roundBusy && styles.timerBtnBusy]} disabled={roundBusy} onPress={() => setShootoutOpen(true)} accessibilityRole="button" accessibilityLabel="המשך פנדלים" accessibilityState={{disabled:roundBusy}}><Text style={[styles.timerBtnText,styles.shootoutResumeText]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>המשך פנדלים</Text></Pressable>
+            </View> : <>
+              <View style={styles.row}>
+                {(['A','B'] as const).map((side,index) => {
+                  const teamIndex = rotation!.playing[index];
+                  const label = `גול ל${teamName(teamIndex,draftTeams?.teams).slice(1)}`;
+                  const ink = draftTeams?.teams.find(team => team.index === teamIndex)?.colorKey === 'white' ? '#000000' : '#FFFFFF';
+                  return (
+                    <Pressable key={side} disabled={!canEnterGoals} accessibilityRole="button" accessibilityState={{disabled:!canEnterGoals}} accessibilityLabel={label} style={[styles.quickGoal,compactControls && styles.compactQuickGoal,{backgroundColor:teamColor(teamIndex,draftTeams?.teams)},!canEnterGoals && {opacity:0.5}]} onPress={()=>setGoalRequest({side,key:Date.now()})}>
+                      <Text style={[styles.quickGoalText,compactControls && styles.compactQuickGoalText,{color:ink}]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{label}</Text>
+                      <Ionicons name="football" size={19} color={ink}/>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={[styles.controlRow, compactControls && styles.compactControlRow]}>
+                <Pressable style={[styles.quickControl,compactControls && styles.compactQuickControl,styles.quickClock]} disabled={roundBusy} onPress={timerRunning ? onTimerPause : timerStarted ? onTimerResume : onTimerStart} accessibilityRole="button"><Text style={styles.quickClockText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>{timerRunning ? 'השהיה' : timerStarted ? 'המשך' : 'התחל זמן'}</Text><Ionicons name={timerRunning ? 'pause' : 'play'} size={21} color="#FFF"/></Pressable>
+                <Pressable style={[styles.quickControl,compactControls && styles.compactQuickControl]} disabled={roundBusy} onPress={()=>setSwapOpen(true)} accessibilityRole="button"><Text style={styles.quickControlText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>חילוף</Text><Ionicons name="swap-horizontal" size={21} color="#1D4ED8"/></Pressable>
+                <Pressable style={[styles.quickControl,compactControls && styles.compactQuickControl]} disabled={roundBusy} onPress={confirmEndRound} accessibilityRole="button" accessibilityLabel="סיום משחק" accessibilityState={{disabled:roundBusy}}>{roundBusy ? <ActivityIndicator color="#1D4ED8"/> : <><Text style={styles.quickControlText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>סיום משחק</Text><Ionicons name="flag-outline" size={19} color="#1D4ED8"/></>}</Pressable>
+              </View>
+            </>}
           </View>
         )}
         {/* Ending the evening lives ONLY in the header menu now — see the
@@ -2068,6 +2100,7 @@ export function AdvancedLiveMatchScreen() {
             night (reported from a real evening). */}
       </View>
 
+      </>}
       {/* Stoppages history — the synced log of every start / pause / resume
           so players can see exactly when (and for how long) the clock was
           stopped. */}
@@ -2085,8 +2118,13 @@ export function AdvancedLiveMatchScreen() {
           <View style={styles.stoppagesHandle} />
           <Text style={styles.stoppagesTitle}>{he.liveStoppagesTitle}</Text>
           <Text style={styles.stoppagesTotal}>
-            {he.liveStoppagesTotal(formatTime(totalStoppedMs))}
+            {totalStoppedMs === null ? stoppagesUnavailableText : he.liveStoppagesTotal(formatTime(totalStoppedMs))}
           </Text>
+          {totalStoppedMs === null && savedResultLoadFailed ? (
+            <Pressable style={styles.stoppagesClose} accessibilityRole="button" onPress={()=>setSavedResultRetry(n=>n+1)}>
+              <Text style={styles.stoppagesCloseText}>{he.retry}</Text>
+            </Pressable>
+          ) : null}
           {stoppages.rows.length === 0 ? (
             <Text style={styles.stoppagesEmpty}>{he.liveStoppagesEmpty}</Text>
           ) : (
@@ -2134,17 +2172,15 @@ export function AdvancedLiveMatchScreen() {
                   </View>
                 );
               })}
-              {/* Currently paused → show the open stoppage ticking up. */}
-              {stoppages.ongoingStoppedMs > 0 && !timerRunning ? (
+              {/* Active pauses tick; banked results use their saved end time. */}
+              {showOngoingStoppage ? (
                 <View style={styles.stoppageRow}>
                   <View style={[styles.stoppageIcon, styles.stoppageIconPause]}>
                     <Ionicons name="hourglass" size={13} color="#FFFFFF" />
                   </View>
                   <View style={styles.stoppageBody}>
                     <Text style={[styles.stoppageLabel, styles.stoppageOngoing]}>
-                      {he.liveStoppageStoppedNow(
-                        formatTime(stoppages.ongoingStoppedMs),
-                      )}
+                      {ongoingStoppageText}
                     </Text>
                   </View>
                 </View>
@@ -2195,6 +2231,12 @@ export function AdvancedLiveMatchScreen() {
         </Pressable>
       </Modal>
 
+      {draftTeams && rotation && live ? <EndMatchModal
+        visible={isAdmin && !!endRoundPrompt && endRoundPrompt.gameId===gameId && endRoundPrompt.roundKey===currentRoundKey && endRoundPrompt.playing===currentPlayingKey && !pendingSavedRound && !roundBusy && !live.shootout}
+        draftTeams={draftTeams} rotation={rotation} live={live} busy={roundBusy}
+        onClose={()=>setEndRoundPrompt(null)} onConfirm={acceptEndRound}
+      /> : null}
+
       {/* Round winner picker — "מי ניצחה במשחק?" */}
       <WinnerPickerModal
         visible={winnerOpen}
@@ -2203,25 +2245,13 @@ export function AdvancedLiveMatchScreen() {
         playersMap={playersMap}
         guests={game?.guests}
         onPick={(idx) => onTieWinner(idx)}
-        onClose={() => setWinnerOpen(false)}
-      />
-
-      {/* Tie chooser — manual pick vs penalty shootout */}
-      <TieDecisionModal
-        visible={decisionOpen}
-        onManual={onDecideManual}
-        onPenalties={onDecidePenalties}
-        // Needs TWO waiting teams — i.e. 4+ teams in the round. With 3 or
-        // fewer there is nobody to replace the pair coming off.
-        onBothOut={
-          rotation?.waiting?.[1] != null ? onDecideBothOut : undefined
-        }
-        onClose={() => setDecisionOpen(false)}
+        discardedPenaltyCount={shootoutDecision ? live?.shootout?.kicks.length : undefined}
+        onClose={() => { setWinnerOpen(false); if (shootoutDecision && !finalizingRef.current) setDecisionOpen(true); }}
       />
 
       {/* Penalty shootout (שובר שוויון) */}
       <Shootout
-        visible={shootoutOpen}
+        visible={(shootoutOpen || (isAdmin && decisionOpen)) && !pendingSavedRound && !roundBusy}
         gameId={gameId ?? ''}
         shootout={live?.shootout}
         draftTeams={draftTeams ?? undefined}
@@ -2231,15 +2261,29 @@ export function AdvancedLiveMatchScreen() {
         onDecided={onShootoutDecided}
         onTie={onShootoutTie}
         onExit={onShootoutExit}
+        onChangeDecision={onChangeShootoutDecision}
+        onDecisionClose={() => { setDecisionOpen(false); setShootoutDecision(null); }}
+        decisionContent={isAdmin && decisionOpen ? (
+<TieDecisionModal embedded
+        visible={isAdmin && decisionOpen && !pendingSavedRound && !roundBusy}
+        draftTeams={draftTeams ?? undefined} rotation={rotation ?? undefined} live={roundLive ?? undefined} busy={roundBusy}
+        onManual={onDecideManual}
+        discardedPenaltyCount={shootoutDecision ? live?.shootout?.kicks.length : undefined}
+        onPenalties={onDecidePenalties}
+        // Needs TWO waiting teams — i.e. 4+ teams in the round. With 3 or
+        // fewer there is nobody to replace the pair coming off.
+        onBothOut={
+          rotation?.waiting?.[1] != null ? onDecideBothOut : undefined
+        }
+        onClose={() => { setDecisionOpen(false); setShootoutDecision(null); }}
+      />
+        ) : undefined}
       />
 
       {/* Team-completion picker — admin chooses who comes up to fill a short
           playing team (random order when both are short). */}
-      <FillerPickerModal
-        request={fillRequest}
-        onConfirm={onFillConfirm}
-        onCancel={onFillCancel}
-      />
+      <BalancedFillModal request={balancedRequest} visible={!fillDeferred} onConfirm={onBalancedConfirm} onCancel={onFillCancel}/>
+
 
       {/* End-of-evening handoff — who took the ball / jerseys home (community
           games only). Saved on the group so the next game knows. */}
@@ -2260,6 +2304,7 @@ export function AdvancedLiveMatchScreen() {
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         sections={[{ id: 'live', items: [
+          { id: 'liveHelp', label: 'עזרה', icon: 'headset-outline', onPress: () => { setMenuOpen(false); if (me?.id) useSupportChat.getState().open(me.id); } },
           { id: 'liveMenuRounds', label: he.liveMenuRounds, icon: 'list', onPress: () => {
                 (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate(
                   'MatchRounds',
@@ -2284,6 +2329,18 @@ export function AdvancedLiveMatchScreen() {
 }
 
 const styles = StyleSheet.create({
+  quickGoal: {flex:1,minHeight:48,borderRadius:12,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,padding:8},
+  quickGoalText: {flexShrink:1,minWidth:0,fontSize:16,fontWeight:'800',color:'#FFF',textAlign:'center'},
+  quickControl: {flex:1,minHeight:48,borderRadius:12,borderWidth:1,borderColor:'#D8E5F8',backgroundColor:'#FFF',flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,paddingHorizontal:8},
+  quickControlText: {flexShrink:1,minWidth:0,color:'#1D4ED8',fontSize:14,fontWeight:'800',textAlign:'center'},
+  quickClock: {backgroundColor:'#2563EB',borderColor:'#2563EB'},
+  quickClockText: {flexShrink:1,minWidth:0,color:'#FFF',fontSize:14,fontWeight:'800',textAlign:'center'},
+  compactControls: {paddingHorizontal:12},
+  compactQuickGoal: {minHeight:56,paddingHorizontal:6},
+  compactQuickGoalText: {fontSize:14},
+  compactControlRow: {gap:8},
+  compactQuickControl: {minHeight:56,paddingHorizontal:6,gap:4},
+  pinnedScore: { width: '100%', backgroundColor: '#F6F9FF', paddingBottom: 8 },
   root: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -2337,7 +2394,7 @@ const styles = StyleSheet.create({
   center: { flex: 1 },
   centerContent: {
     flexGrow: 1,
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'flex-start',
     gap: 16,
     paddingTop: 8,
@@ -2375,7 +2432,7 @@ const styles = StyleSheet.create({
     // row-reverse, not row: under forceRTL a `row` renders its first child on
     // the RIGHT, so an icon written before the label lands on the wrong side.
     // Same convention as approveAllBtn / addBtn elsewhere in the app.
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingVertical: 4,
@@ -2496,6 +2553,10 @@ const styles = StyleSheet.create({
   },
   timerBtnBusy: { opacity: 0.45 },
   timerBtnText: { color: '#FFFFFF', fontSize: 19, fontWeight: '800' },
+  shootoutResumeBtn: {flex:0,minHeight:52,paddingHorizontal:16,paddingVertical:12},
+  shootoutResumeText: {flexShrink:1,textAlign:'center'},
+  pendingContinueText: {flex:1,flexShrink:1,minWidth:0,textAlign:'center'},
+  compactPendingContinueText: {fontSize:17},
   // Ending the mini-game — SECONDARY. Once per round, not once a minute, so it
   // reads as available without competing with the clock for the eye.
   endRoundBtn: {
@@ -2712,7 +2773,7 @@ const styles = StyleSheet.create({
     // row-reverse, not row: under forceRTL a `row` renders its first child on
     // the RIGHT, so an icon written before the label lands on the wrong side.
     // Same convention as approveAllBtn / addBtn elsewhere in the app.
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
@@ -2737,7 +2798,7 @@ const styles = StyleSheet.create({
     // row-reverse, not row: under forceRTL a `row` renders its first child on
     // the RIGHT, so an icon written before the label lands on the wrong side.
     // Same convention as approveAllBtn / addBtn elsewhere in the app.
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,

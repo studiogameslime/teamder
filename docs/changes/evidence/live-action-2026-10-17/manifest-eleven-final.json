@@ -1,0 +1,326 @@
+{
+  "createdAtUtc": "2026-10-17T04:30:42.735755+00:00",
+  "gameId": "mBO5HqJdnOPWjRE2zMh8",
+  "groupId": "J060YQu6QTcgk3glUDj2",
+  "phase": "מחזור אחד עשר הסתיים אחרי שני משחקים חתומים; משחק שלישי מוכן ואירועי ניסוי שבוטלו לא נזקפו",
+  "counts": {
+    "passed": 240,
+    "observed-dependency": 4,
+    "unproven": 5
+  },
+  "latestSource": "data-eleven-sealed-proof.json",
+  "notes": [
+    "240 אימותים שעברו, ארבע בדיקות פער בשתי משפחות שרת וחמישה תחומים לא מוכחים.",
+    "נשמרו רק מחזור אחד עשר, חשבון ומועדון הבדיקה. אין דואר, סודות, מיקום או קוד הזמנה. קבצים קודמים נשארו ללא שינוי.",
+    "קוד בדיקת תקרת הדירוג ופלטו נשמרו כפי שנקראו לפני תיקון התצוגה הממוקד; לא הורצו מחדש על קוד משתנה.",
+    "קבלת האורחים המאוחרת מכילה 31 אורחים; האורח הראשון מתועד בנפרד. הסגל הסופי מכיל את כל 32 מזהי האורחים."
+  ],
+  "files": [
+    {
+      "file": "data-eleven-created.json",
+      "readAt": "2026-10-17T02:14:43.591058+00:00",
+      "originalSha256": "25d8b6943337935de7d7a50bb701b4493e2e5393f75e444babbb087dfbd861bd",
+      "sha256": "c5d15046845c4df8c97df1480554b77f1edfa3ff394299e549ad26591c148b92",
+      "filtered": true
+    },
+    {
+      "file": "data-round-eleven-first-guest.json",
+      "readAt": "2026-10-17T02:15:55.505635+00:00",
+      "originalSha256": "be154ccd6658505ce1d1ca2ec3d6240a315cd8d4fe5acbc933b349e90e5861aa",
+      "sha256": "b0526e60bd80e5e9caf3af727090adc4033ac02164f44f26c0b4bf848f2efee1",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-date-edited.json",
+      "readAt": "2026-10-17T02:18:52.833154+00:00",
+      "originalSha256": "3ac681b550cdb95f80227c941dea6b245d2dc692556c0a913d7cbf56ced97e0f",
+      "sha256": "b06d6acc57157f0311668c78d620eba655e356bafe3974ac5cd8a2637e694253",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-host-joined.json",
+      "readAt": "2026-10-17T02:19:12.288936+00:00",
+      "originalSha256": "afc956051357a07796492f78645b49f794594a71fe658a7f812155df6b063da8",
+      "sha256": "04a295ebb2b88c226583e10cd579f4179a3e12a3a77dba62307bb7ad2785659c",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-full-roster.json",
+      "readAt": "2026-10-17T02:25:17.201948+00:00",
+      "originalSha256": "3bf2070cf67f78da263ece05ab151486893bd8f4e5472172f9c0f465619c84dc",
+      "sha256": "1446ac0aa5b14eb9d0fd0057d3cd16dfd682c6279d195f0d8cee827fc93ec235",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-partial-manual.json",
+      "readAt": "2026-10-17T02:30:47.021232+00:00",
+      "originalSha256": "5a474b9d4ce2c7b46ffeeeca034b8796b0346ca19a6a3b5b4e9bd9fb276d208e",
+      "sha256": "0d42ee241185652d65947e672dbf0623bc75adc05974efc7a622d6d901a63dd6",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-manual-saved.json",
+      "readAt": "2026-10-17T02:41:20.306589+00:00",
+      "originalSha256": "5cfce0f0ffac6ef9b73adc922d2b1d684b673bd92b66485cf2b706863f4373df",
+      "sha256": "fdf51e121b11c9843ae27ded2d4729343f4aa0e6c789c4293d51e576e9e9b086",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-regenerated.json",
+      "readAt": "2026-10-17T02:43:20.653843+00:00",
+      "originalSha256": "24e9c53f93999f9b203e6823122969cde730e7ca4508c054c305fc50c30c1797",
+      "sha256": "3424fc4f630f5f434d98aa75a229cc93e930d067c0cde1e3fe83fd72cc75e88d",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-regenerated-traced.json",
+      "readAt": "2026-10-17T02:49:09.514356+00:00",
+      "originalSha256": "be4c1a818c95cb529f01d2c3a0e30387671b5f1dd4ef4ffa729bedf0b2a1fee7",
+      "sha256": "a7717d76f0fea11b6d7d48c771f436a69faa0052e3061af72b654063fccbb3b8",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-regenerated-stream.json",
+      "readAt": "2026-10-17T03:02:36.531653+00:00",
+      "originalSha256": "d5adb8e4da5f87d8978657c79a21f46d0d856ea6310536676668918247a0097a",
+      "sha256": "30da40524089973bf8bff4cae175796d3fa8beea4e2f939887a32bd7eb8176f9",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-published-time-ready.json",
+      "readAt": "2026-10-17T03:06:15.899749+00:00",
+      "originalSha256": "62d3959f1fc4d40fbdc57bf6bcc2582df2864501738b4ce2f2ad1c6a39288745",
+      "sha256": "3a1ba481dc062da15987301266ae1c7b91b320e0d48f6c732384891773fc3556",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-time-confirm-check.json",
+      "readAt": "2026-10-17T03:06:54.668518+00:00",
+      "originalSha256": "eacf611984593ae92be129fbba3411295faa679be02cd2c221305f3445607821",
+      "sha256": "9cef79795cdb192052ab515b003617a4fa595cbd7de3a7344e3463a2f7a09eb5",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-time-ready-confirmed.json",
+      "readAt": "2026-10-17T03:10:10.286975+00:00",
+      "originalSha256": "1c244cf551d1fae61c7e04ca0bf6488583e9c724fbe0bf77caa77902d0728ff3",
+      "sha256": "6a0a72a9650ea9de3276a3c761e09768d0c2fed8dc7c908bf2921cfeeba392c2",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-ready.json",
+      "readAt": "2026-10-17T03:14:25.386288+00:00",
+      "originalSha256": "0a36dd6f28c7d6d054b6898f58258b580637cb738f82339bb7d37881b98874bf",
+      "sha256": "9bc7ad904220d8b8b5eebe137a733c03b650b210fe066fc448ce7b04c1d3972e",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-first-goal.json",
+      "readAt": "2026-10-17T03:15:27.462851+00:00",
+      "originalSha256": "82781e2ea0830d27e9e79af304ada50c69946a1295393788af8523153ac75f52",
+      "sha256": "c0ed7202a3adfc2736dffd8b3171f62304174d3c4cd1a8b05dc3ce175fe1052d",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-permanent-substitution.json",
+      "readAt": "2026-10-17T03:16:50.789353+00:00",
+      "originalSha256": "734bdb0e5a9ea3491c31666b11f37cb637dbffcd3021cc78a3946cc5c89d3c66",
+      "sha256": "01572dd441f020ca2ea7e7ce02a70a16019c79e6f8fdac3d17353f9677ffcc1a",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-permanent-fill.json",
+      "readAt": "2026-10-17T03:18:52.880881+00:00",
+      "originalSha256": "bddc6d676144c62d6c0534c8f5a0ca8c4e65668d7ffef0ad32d87ef7085aa159",
+      "sha256": "b43f870c6913d470158267eaa3e2e17073a1181d56ab73aadd78622e7fdae09c",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-tie-goals.json",
+      "readAt": "2026-10-17T03:20:04.342303+00:00",
+      "originalSha256": "bd7957daede9a4d4be7cc500e33cde84bf61a178bcb1dbc35b8f141081e61575",
+      "sha256": "802564d34044160113682bbaa00fd72ee8b05db26eed639d782dc86078b69172",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-clock-start.json",
+      "readAt": "2026-10-17T03:22:27.083820+00:00",
+      "originalSha256": "e6e6731ccac2a9dd93425eb05ffcb1b24175686d46c7d785a140ff861e378fd6",
+      "sha256": "700e86fd3e10625120a874b276ad381f02710a65021156368062f8061303920e",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-clock-paused.json",
+      "readAt": "2026-10-17T03:23:14.207719+00:00",
+      "originalSha256": "557be61fb9eab2278d17062eb4c20268c84b712c1d708b54864401440b99a83d",
+      "sha256": "43f26060e7aada4a2fb9f9a733837d62d97b08ff392dbae6eb6a6b5cd203c649",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-clock-resumed.json",
+      "readAt": "2026-10-17T03:23:22.448682+00:00",
+      "originalSha256": "28c4d2fb03ff7555cfc9dec88a57aed937a88bc7e60aa3457251297ef7029cac",
+      "sha256": "5060d1411c42592b08924f82bcd8a1ce264324c53068273d2459ffca3a2b7a10",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-first-commit.json",
+      "readAt": "2026-10-17T03:25:20.867632+00:00",
+      "originalSha256": "ae8400733399c07c596741df3a87a71cbd3e451d51866de8676b45754d69a4a6",
+      "sha256": "bb70c3b53c05ec9dcf4505a4fa4ffc7c41481f13c677219515ad2df3ee772591",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-first-commit-settled.json",
+      "readAt": "2026-10-17T03:29:58.535887+00:00",
+      "originalSha256": "718c42119ae5dfe61b9ad0623a577e252d04c30bc49fbcaf5b4befbad11a51d7",
+      "sha256": "e865882d1e2b22731fc4890b377ca49adad1c233e31dbb346a0d5567c27c22dc",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-pending-cold-recovered.json",
+      "readAt": "2026-10-17T03:44:50.019162+00:00",
+      "originalSha256": "5e144b66ac6978250a431578b0213c02939015f60dca97ce7229b53054372e54",
+      "sha256": "f990e8977df9a7c23fd8b3bc910d3f280d578a56d4469e302b496a566bb9e62f",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-second-ready.json",
+      "readAt": "2026-10-17T03:46:27.960196+00:00",
+      "originalSha256": "6b7da0bdeac2e832233995f4b2e424348e8f52542defc2232af384cab334348a",
+      "sha256": "b7c0425da357e3706bbb5e8e46bf5a13bdc09f9ddb60284b73b08e53f00e2e82",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-second-goal.json",
+      "readAt": "2026-10-17T03:48:30.747180+00:00",
+      "originalSha256": "0908f744b0042d4f08e8ce3d5f67c7994e5565ab7d25c9db90647e4de370978a",
+      "sha256": "0fc08b04ae79e33982b34abb33f4afdd69a14c5946e78cbf3162e453a7201e81",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-second-commit.json",
+      "readAt": "2026-10-17T03:49:22.982648+00:00",
+      "originalSha256": "c0df46075c7bf6ba3f7435a8e0c24967c5ba121d2696296e6dde78879abf7863",
+      "sha256": "b9c5d9a6c3cf6a3219706c4730e78f51f5609134ac719da8b12b9ee159bd4a0e",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-third-ready.json",
+      "readAt": "2026-10-17T03:51:37.599789+00:00",
+      "originalSha256": "2cd827a54f283884b42ece1f3b50801c9a82e3dfbf7d5348f56a807b9574e291",
+      "sha256": "3143512a6988ac71c88c66ac5f2d8e2aa96ab59eb6152b4ecb60084521b8861e",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-offline-attempt.json",
+      "readAt": "2026-10-17T03:53:22.397014+00:00",
+      "originalSha256": "d86a96db3f76806906ff4b7c7aa67e6efaf838c5aaf2c9495e41f37e06fdbb4b",
+      "sha256": "ccdcca901ec9f835d330262a9dd16f1720efc037e80911d5494dbac5eb4093be",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-offline-retried.json",
+      "readAt": "2026-10-17T03:55:01.061302+00:00",
+      "originalSha256": "85bd7a9aee2138a35421a4dc653a68f1e5c39fb64182f38be032d8f2ed3bfa12",
+      "sha256": "7941b4cd230aaeb0c9f44a33cad2eb05900268358fc8e743176d728bd9a41971",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-offline-goal-undone.json",
+      "readAt": "2026-10-17T03:57:30.540732+00:00",
+      "originalSha256": "f9bf06f1c5c98457dd1b63ff127fe73be584fe9a40f8791e85f23809865d9be7",
+      "sha256": "54bc8d49bfcd1b35f7a1ad4c97fa92b98851f97fb75e44e29a232b10617ccdef",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-offline-fixed-attempt.json",
+      "readAt": "2026-10-17T04:06:17.675637+00:00",
+      "originalSha256": "377b2862cb6f0acbc7c597e2f6c5decd62876cbe8d8139b4b795a5c2f0e1da42",
+      "sha256": "216b95a780907e26f806336578ab63136373227a572536bb6710a37c5d7105bc",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-offline-fixed-retried.json",
+      "readAt": "2026-10-17T04:06:56.161069+00:00",
+      "originalSha256": "a7d540a00d72daf6c00254d2f87203511570f7412bbe55e6893240fb74f2dfd0",
+      "sha256": "a094af947cd3450f589cb1972a812afe4a09f3cf7a7edf1fb91c61e40416b5a5",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-offline-fixed-undone.json",
+      "readAt": "2026-10-17T04:07:51.793385+00:00",
+      "originalSha256": "ac49ef384fd353fd85a8febd1630a0a1a23164acdf506872091ce97c8169986f",
+      "sha256": "7055205b75e5f846357c33008d59b7d2cf126408f380aa62f40d539a24ff28cb",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-finished.json",
+      "readAt": "2026-10-17T04:08:55.323262+00:00",
+      "originalSha256": "06769d894c816b4d503541cea3aa990bd7493e00487c7e7c6eb4744cac0cbcf7",
+      "sha256": "93c6bf8805b6a88c7db24045136a1ef53d086b8cb5878026fb69549f4c2f1fdc",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-sealed-proof.json",
+      "readAt": "2026-10-17T04:09:23.582410+00:00",
+      "originalSha256": "6d4658efa0c924e09be7203d40a0f50dbf15891904e9091b74ad648fc48a9f41",
+      "sha256": "2fe510dd9bb081bbbef67474eb3c615c3a31893d9ad8f5ccc465b31b2c80e014",
+      "filtered": true
+    },
+    {
+      "file": "test-identities.json",
+      "readAt": null,
+      "originalSha256": "e6709573a4f3ca99c8a147fb126387fd9e37aa64b02adc177640d1f64bd26922",
+      "sha256": "e6709573a4f3ca99c8a147fb126387fd9e37aa64b02adc177640d1f64bd26922",
+      "filtered": false
+    },
+    {
+      "file": "guests-eleven-receipt.json",
+      "readAt": null,
+      "originalSha256": "3dad0370a71cccc5f35c6d8c716382c2832b09fda380610f51cd564a886d1a35",
+      "sha256": "3dad0370a71cccc5f35c6d8c716382c2832b09fda380610f51cd564a886d1a35",
+      "filtered": false
+    },
+    {
+      "file": "eleven-manual-local-proof.json",
+      "readAt": null,
+      "originalSha256": "90adac4a8934d21ed1f0f4b9c8a6bc6f4616d4d2a8e63fc3791cf2c2a345f706",
+      "sha256": "90adac4a8934d21ed1f0f4b9c8a6bc6f4616d4d2a8e63fc3791cf2c2a345f706",
+      "filtered": false
+    },
+    {
+      "file": "eleven-native-draft-stream-proof.json",
+      "readAt": null,
+      "originalSha256": "62a87214b649b524777fc5638bb60338ac5db471bf05f16129a245f1746a29a3",
+      "sha256": "62a87214b649b524777fc5638bb60338ac5db471bf05f16129a245f1746a29a3",
+      "filtered": false
+    },
+    {
+      "file": "eleven-standings-cap-read-proof.json",
+      "readAt": null,
+      "originalSha256": "f3ed5f4cddec6b8332d41e6a6b8f8678f169223551b81ea0caa9a3fa4a367535",
+      "sha256": "f3ed5f4cddec6b8332d41e6a6b8f8678f169223551b81ea0caa9a3fa4a367535",
+      "filtered": false
+    },
+    {
+      "file": "inspect-eleven-standings-cap.cjs",
+      "readAt": null,
+      "originalSha256": "14df142f4ac62341c6a66ffcfddbae857a41f208aeba15f4753926448b6686a1",
+      "sha256": "14df142f4ac62341c6a66ffcfddbae857a41f208aeba15f4753926448b6686a1",
+      "filtered": false
+    },
+    {
+      "file": "audit-eleven-final-data.md",
+      "originalSha256": "ec33d5a2ed5f37f6a48b8ac8ba1ec6a24c6b192a557f3d26700534e72f6d2efb",
+      "sha256": "ec33d5a2ed5f37f6a48b8ac8ba1ec6a24c6b192a557f3d26700534e72f6d2efb",
+      "filtered": false
+    },
+    {
+      "file": "audit-eleven-final-data.json",
+      "originalSha256": "3751846ad61572ad1f6c2689400a28045c5912a413dd15fe538152b792eee026",
+      "sha256": "3751846ad61572ad1f6c2689400a28045c5912a413dd15fe538152b792eee026",
+      "filtered": false
+    }
+  ]
+}

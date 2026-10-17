@@ -64,6 +64,12 @@ export function LocationPickerMap({
         lat?: number;
         lng?: number;
       };
+      // The first React effects can run before the map defines its bridge.
+      // Replay the latest staged choice once the map is ready.
+      if (msg.type === 'ready') {
+        if (pin) ref.current?.injectJavaScript(`window.setPin && window.setPin(${pin.lat}, ${pin.lng}); true;`);
+        if (focusOn) ref.current?.injectJavaScript(`window.flyTo && window.flyTo(${focusOn.lat}, ${focusOn.lng}, ${focusOn.zoom ?? 15}); true;`);
+      }
       if (
         msg.type === 'pick' &&
         typeof msg.lat === 'number' &&

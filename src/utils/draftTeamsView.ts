@@ -34,12 +34,13 @@ interface RotationLike {
 }
 
 /**
- * The split AS DIVIDED — the record of how the evening started.
+ * The latest deliberately saved split. Every explicit save refreshes both
+ * originalTeams and rotation.baseTeams; working-roster fills do not.
  *
  * Precedence, and why:
  *  1. `originalTeams` — the frozen snapshot. `teams` is the live/working roster
  *     (go-home and permanent-fill mutate it), so it is the wrong thing to show
- *     as "how we split up".
+ *     as "how we split up". This snapshot is replaced on every explicit save.
  *  2. `rotation.baseTeams` — older games predate the snapshot but froze the
  *     starting rosters here. `playerIds[0]` is the captain by construction.
  *  3. `teams` — legacy games with neither.

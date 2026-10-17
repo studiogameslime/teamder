@@ -14,10 +14,11 @@
 import { has } from '../capabilities';
 import {
   getDoc,
-  listAll,
   patchDoc,
   queryArrayContains,
   queryEquals,
+  queryCollectionRecent,
+  createDocOnly,
 } from './firestoreRest';
 import { cached, invalidate } from './cache';
 
@@ -26,7 +27,16 @@ export const TEAMDER_UID = 'teamder';
 const TEAMDER_NAME = 'Teamder';
 const TEAMDER_PHOTO = 'https://teamderfc.web.app/logo.png';
 /** Max message length the chat rules accept. */
-const MAX_TEXT = 1000;
+export const MAX_TEXT = 1000;
+export const THREAD_WINDOW = 100;
+
+export function newTeamderMessageId(now = Date.now()): string {
+  return `tm-${now}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function validUserId(userId: string): boolean {
+  return !!userId && userId !== TEAMDER_UID && !/[\/\s]/.test(userId) && !userId.includes('__');
+}
 
 export interface TeamderMessage {
   id: string;
@@ -35,15 +45,19 @@ export interface TeamderMessage {
   /** True when Teamder sent it; false when the user replied. */
   fromTeamder: boolean;
   createdAt: number;
+  supportImage?: string;
+  supportContext?: { screen: string; screenLabel?: string; step?: number; groupId?: string; gameId?: string; appVersion?: string; platform?: string };
 }
 
 export interface TeamderThread {
   userId: string;
   userName: string;
   messages: TeamderMessage[];
-  /** True when the LAST message came from the user — i.e. they're waiting. */
+  /** Last sender is the user and that exact message has not been resolved. */
   awaitingReply: boolean;
   lastMessageAt: number;
+  lastMessageId?: string;
+  resolved?: boolean;
 }
 
 /** A report this user filed, offered for quoting. */
@@ -88,21 +102,23 @@ export async function sendTeamderMessage(
   userId: string,
   text: string,
   now: number,
+  messageId = newTeamderMessageId(now),
 ): Promise<boolean> {
   if (!has.firebase()) return false;
-  const body = text.trim().slice(0, MAX_TEXT);
-  if (!body || !userId) return false;
+  const body = text.trim();
+  if (!body || body.length > MAX_TEXT || !validUserId(userId) || !/^tm-[a-zA-Z0-9-]+$/.test(messageId)) return false;
 
   const convId = convIdFor(userId);
   // The conversation doc must exist and carry both participants — the app's
   // rules authorise reads off it (and off the id itself).
-  await patchDoc(`dmConversations/${convId}`, {
+  const ready = await patchDoc(`dmConversations/${convId}`, {
     participants: [userId, TEAMDER_UID].sort(),
     updatedAt: now,
   });
+  if (!ready) return false;
 
-  const msgId = `tm-${now}-${Math.floor(now % 1e6).toString(36)}`;
-  const ok = await patchDoc(`dmConversations/${convId}/messages/${msgId}`, {
+  const path = `dmConversations/${convId}/messages/${messageId}`;
+  const outcome = await createDocOnly(path, {
     text: body,
     senderId: TEAMDER_UID,
     // Denormalised on the message, which is how the app renders a chat row
@@ -112,6 +128,11 @@ export async function sendTeamderMessage(
     senderPhotoUrl: TEAMDER_PHOTO,
     createdAt: now,
   });
+  let ok = outcome === 'created';
+  if (outcome === 'conflict') {
+    const existing = await getDoc(path);
+    ok = existing?.senderId === TEAMDER_UID && existing?.text === body;
+  }
   invalidate(`teamderThread.${userId}`);
   invalidate('teamderThreadList');
   return ok;
@@ -129,9 +150,10 @@ export async function loadThread(
     `teamderThread.${userId}`,
     async () => {
       const convId = convIdFor(userId);
-      const docs = await listAll(`dmConversations/${convId}/messages`).catch(
-        () => [],
-      );
+      const [docs, conversation] = await Promise.all([
+        queryCollectionRecent(`dmConversations/${convId}/messages`, THREAD_WINDOW),
+        getDoc(`dmConversations/${convId}`),
+      ]);
       const messages: TeamderMessage[] = docs
         .map((d) => ({
           id: d.id,
@@ -139,6 +161,8 @@ export async function loadThread(
           senderId: str(d.senderId),
           fromTeamder: str(d.senderId) === TEAMDER_UID,
           createdAt: num(d.createdAt),
+          supportImage: typeof d.supportImage === 'string' && d.supportImage.length <= 180_000 && d.supportImage.startsWith('/9j/') ? d.supportImage : undefined,
+          supportContext: d.supportContext && typeof d.supportContext.screen === 'string' ? d.supportContext : undefined,
         }))
         .sort((a, b) => a.createdAt - b.createdAt);
       const last = messages[messages.length - 1];
@@ -146,7 +170,9 @@ export async function loadThread(
         userId,
         userName,
         messages,
-        awaitingReply: !!last && !last.fromTeamder,
+        awaitingReply: !!last && !last.fromTeamder && !isSupportResolved(conversation, last.id, last.createdAt),
+        resolved: !!last && isSupportResolved(conversation, last.id, last.createdAt),
+        lastMessageId: last?.id,
         lastMessageAt: last?.createdAt ?? 0,
       };
     },
@@ -197,9 +223,8 @@ function toMs(v: unknown): number {
 /**
  * All conversations that have a user reply we haven't answered yet.
  *
- * There's no separate "messages" screen, so without this a reply could sit
- * unread forever. The tasks screen surfaces the count, and the poller turns
- * new ones into a local push.
+ * Shared by the tasks badge and the dedicated operator inbox. The server
+ * sends operator reply notifications independently of the local poller.
  */
 /** One row in the Teamder inbox. */
 export interface ThreadSummary {
@@ -207,7 +232,9 @@ export interface ThreadSummary {
   userName: string;
   lastText: string;
   lastMessageAt: number;
-  /** The last message came from the USER — they're waiting on us. */
+  lastMessageId?: string;
+  resolved?: boolean;
+  /** User wrote last, without an explicit resolution of that message. */
   awaitingReply: boolean;
 }
 
@@ -236,16 +263,22 @@ export async function listThreads(force = false): Promise<ThreadSummary[]> {
         'dmConversations',
         'participants',
         TEAMDER_UID,
-      ).catch(() => []);
+      );
       const out: ThreadSummary[] = [];
-      for (const c of mine) {
-        const userId = c.id.split('__').find((x) => x !== TEAMDER_UID) ?? '';
-        if (!userId) continue;
-        const msgs = await listAll(`dmConversations/${c.id}/messages`).catch(
-          () => [],
-        );
+      let next = 0;
+      // Resolve a bounded number of independent conversations in parallel.
+      // A cold name/message lookup must not serialize every later thread.
+      const worker = async () => { while (next < mine.length) {
+        const c = mine[next++];
+        const participants = Array.isArray(c.participants) ? c.participants : [];
+        const userId = participants.find((x: unknown) => typeof x === 'string' && x !== TEAMDER_UID) ?? '';
+        if (!validUserId(userId) || participants.length !== 2 || c.id !== convIdFor(userId)) continue;
+        const msgs = typeof c.supportLastMessageId === 'string' && typeof c.supportLastSenderId === 'string' && typeof c.supportLastMessageAt === 'number'
+          ? [{ id: c.supportLastMessageId, senderId: c.supportLastSenderId, text: c.supportLastText, createdAt: c.supportLastMessageAt }]
+          : await queryCollectionRecent(`dmConversations/${c.id}/messages`, 1);
         const sorted = msgs
           .map((m) => ({
+            id: str(m.id),
             senderId: str(m.senderId),
             text: str(m.text),
             createdAt: num(m.createdAt),
@@ -258,9 +291,12 @@ export async function listThreads(force = false): Promise<ThreadSummary[]> {
           userName: await userNameOf(userId),
           lastText: last.text,
           lastMessageAt: last.createdAt,
-          awaitingReply: last.senderId !== TEAMDER_UID,
+          lastMessageId: last.id,
+          resolved: isSupportResolved(c, last.id, last.createdAt),
+          awaitingReply: last.senderId !== TEAMDER_UID && !isSupportResolved(c, last.id, last.createdAt),
         });
-      }
+      } };
+      await Promise.all(Array.from({ length: Math.min(4, mine.length) }, worker));
       return out.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
     },
     { force },
@@ -279,6 +315,34 @@ export async function listAwaitingReply(
 
 /** Display name for a uid, for the thread header. */
 export async function userNameOf(userId: string): Promise<string> {
-  const d = await getDoc(`users/${userId}`).catch(() => null);
-  return str(d?.name);
+  return cached(`teamderUserName.${userId}`, async () => {
+    const d = await getDoc(`users/${userId}`);
+    return str(d?.name);
+  });
+}
+
+/** The exact last message is the boundary: even a same-clock new reply reopens. */
+export function isSupportResolved(conversation: Record<string, unknown> | null | undefined, messageId: string, at: number): boolean {
+  return !!messageId && at > 0 && conversation?.supportResolvedMessageId === messageId && conversation?.supportResolvedMessageAt === at;
+}
+
+/** Administrative metadata only; never creates a message or changes the last sender. */
+export async function resolveSupportThread(userId: string, messageId: string, messageAt: number): Promise<boolean> {
+  if (!has.firebase() || !validUserId(userId) || !messageId || /[\/\s]/.test(messageId) || !Number.isFinite(messageAt) || messageAt <= 0) return false;
+  const ok = await patchDoc(`dmConversations/${convIdFor(userId)}`, {
+    supportResolvedMessageId: messageId,
+    supportResolvedMessageAt: messageAt,
+    supportResolvedAt: Date.now(),
+  }, { mustExist: true });
+  if (ok) { invalidate(`teamderThread.${userId}`); invalidate('teamderThreadList'); }
+  return ok;
+}
+
+export async function reopenSupportThread(userId: string): Promise<boolean> {
+  if (!has.firebase() || !validUserId(userId)) return false;
+  const ok = await patchDoc(`dmConversations/${convIdFor(userId)}`, {
+    supportResolvedMessageId: '', supportResolvedMessageAt: 0, supportResolvedAt: 0,
+  }, { mustExist: true });
+  if (ok) { invalidate(`teamderThread.${userId}`); invalidate('teamderThreadList'); }
+  return ok;
 }

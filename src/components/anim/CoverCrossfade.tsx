@@ -4,7 +4,7 @@ import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withTiming
 import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 
 /** Keep the last loaded image visible until its replacement actually loads. */
-export function CoverCrossfade({ source, imageKey }: { source: ImageSourcePropType; imageKey: string }) {
+export function CoverCrossfade({ source, imageKey, fallbackSource }: { source: ImageSourcePropType; imageKey: string; fallbackSource?: ImageSourcePropType }) {
   const reduced = useReducedMotion();
   const [previous, setPrevious] = useState<ImageSourcePropType | null>(null);
   const loaded = useRef(source);
@@ -24,6 +24,7 @@ export function CoverCrossfade({ source, imageKey }: { source: ImageSourcePropTy
   useEffect(() => () => cancelAnimation(opacity), [opacity]);
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return <View style={styles.viewport} pointerEvents="none">
+    {fallbackSource && <Image source={fallbackSource} style={[StyleSheet.absoluteFill, styles.image]} resizeMode="cover" resizeMethod="resize" />}
     {previous && <Image source={previous} style={styles.image} resizeMode="cover" resizeMethod="resize" />}
     <Animated.View style={[StyleSheet.absoluteFill, style]} pointerEvents="none">
       <Image key={imageKey} source={source} style={styles.image} resizeMode="cover" resizeMethod="resize"

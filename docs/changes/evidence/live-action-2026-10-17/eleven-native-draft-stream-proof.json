@@ -1,0 +1,1035 @@
+{
+  "gameId": "mBO5HqJdnOPWjRE2zMh8",
+  "draftCreatedAt": 1792206143482,
+  "dataSource": "data-eleven-regenerated-stream.json",
+  "nativeSource": "eleven-regenerate-stream-ui-proof.xml",
+  "checksPassed": 10,
+  "checks": [
+    {
+      "id": "native-full-roster",
+      "passed": true,
+      "expected": 33,
+      "observed": 33
+    },
+    {
+      "id": "native-team-members-0",
+      "passed": true,
+      "expected": [
+        "guest:mvbrtfek-zy1qup",
+        "guest:mvbruugj-4rhbli",
+        "guest:mvbrsn40-1h3mgk",
+        "guest:mvbrsu7l-3vqv6g",
+        "guest:mvbrt87d-qicwa1",
+        "guest:mvbrtmfs-egnzku",
+        "guest:mvbrrthu-bvepbd",
+        "guest:mvbru1fk-izwwd0",
+        "guest:mvbrx7w0-fqxe6b",
+        "guest:mvbrw8ps-a5aqlc",
+        "guest:mvbrrjqx-3w9zua"
+      ],
+      "observed": [
+        "guest:mvbrtmfs-egnzku",
+        "guest:mvbrt87d-qicwa1",
+        "guest:mvbrsu7l-3vqv6g",
+        "guest:mvbrsn40-1h3mgk",
+        "guest:mvbruugj-4rhbli",
+        "guest:mvbrtfek-zy1qup",
+        "guest:mvbrrjqx-3w9zua",
+        "guest:mvbrw8ps-a5aqlc",
+        "guest:mvbrx7w0-fqxe6b",
+        "guest:mvbru1fk-izwwd0",
+        "guest:mvbrrthu-bvepbd"
+      ]
+    },
+    {
+      "id": "native-physical-source-order-0",
+      "passed": true,
+      "expected": [
+        "guest:mvbrtfek-zy1qup",
+        "guest:mvbruugj-4rhbli",
+        "guest:mvbrsn40-1h3mgk",
+        "guest:mvbrsu7l-3vqv6g",
+        "guest:mvbrt87d-qicwa1",
+        "guest:mvbrtmfs-egnzku",
+        "guest:mvbrrthu-bvepbd",
+        "guest:mvbru1fk-izwwd0",
+        "guest:mvbrx7w0-fqxe6b",
+        "guest:mvbrw8ps-a5aqlc",
+        "guest:mvbrrjqx-3w9zua"
+      ],
+      "observed": [
+        "guest:mvbrtfek-zy1qup",
+        "guest:mvbruugj-4rhbli",
+        "guest:mvbrsn40-1h3mgk",
+        "guest:mvbrsu7l-3vqv6g",
+        "guest:mvbrt87d-qicwa1",
+        "guest:mvbrtmfs-egnzku",
+        "guest:mvbrrthu-bvepbd",
+        "guest:mvbru1fk-izwwd0",
+        "guest:mvbrx7w0-fqxe6b",
+        "guest:mvbrw8ps-a5aqlc",
+        "guest:mvbrrjqx-3w9zua"
+      ]
+    },
+    {
+      "id": "native-captain-0",
+      "passed": true,
+      "expected": "guest:mvbrtfek-zy1qup",
+      "observed": "guest:mvbrtfek-zy1qup"
+    },
+    {
+      "id": "native-team-members-1",
+      "passed": true,
+      "expected": [
+        "guest:mvbrv8vy-bkeqrl",
+        "guest:mvbrufkc-apouh0",
+        "guest:mvbrx0y1-91p8cl",
+        "guest:mvbrvuew-fwzknb",
+        "guest:mvbrwmt7-ocott0",
+        "guest:mvbrr03x-76x6ci",
+        "guest:mvbrr9y8-hdrkws",
+        "guest:mvbrvne9-0pc4lu",
+        "guest:mvbrwfqk-rmhfw6",
+        "guest:mvbru8hr-v8qtre",
+        "guest:mvbrqq3y-aa1f5c"
+      ],
+      "observed": [
+        "guest:mvbrr03x-76x6ci",
+        "guest:mvbrwmt7-ocott0",
+        "guest:mvbrvuew-fwzknb",
+        "guest:mvbrx0y1-91p8cl",
+        "guest:mvbrufkc-apouh0",
+        "guest:mvbrv8vy-bkeqrl",
+        "guest:mvbrqq3y-aa1f5c",
+        "guest:mvbru8hr-v8qtre",
+        "guest:mvbrwfqk-rmhfw6",
+        "guest:mvbrvne9-0pc4lu",
+        "guest:mvbrr9y8-hdrkws"
+      ]
+    },
+    {
+      "id": "native-physical-source-order-1",
+      "passed": true,
+      "expected": [
+        "guest:mvbrv8vy-bkeqrl",
+        "guest:mvbrufkc-apouh0",
+        "guest:mvbrx0y1-91p8cl",
+        "guest:mvbrvuew-fwzknb",
+        "guest:mvbrwmt7-ocott0",
+        "guest:mvbrr03x-76x6ci",
+        "guest:mvbrr9y8-hdrkws",
+        "guest:mvbrvne9-0pc4lu",
+        "guest:mvbrwfqk-rmhfw6",
+        "guest:mvbru8hr-v8qtre",
+        "guest:mvbrqq3y-aa1f5c"
+      ],
+      "observed": [
+        "guest:mvbrv8vy-bkeqrl",
+        "guest:mvbrufkc-apouh0",
+        "guest:mvbrx0y1-91p8cl",
+        "guest:mvbrvuew-fwzknb",
+        "guest:mvbrwmt7-ocott0",
+        "guest:mvbrr03x-76x6ci",
+        "guest:mvbrr9y8-hdrkws",
+        "guest:mvbrvne9-0pc4lu",
+        "guest:mvbrwfqk-rmhfw6",
+        "guest:mvbru8hr-v8qtre",
+        "guest:mvbrqq3y-aa1f5c"
+      ]
+    },
+    {
+      "id": "native-captain-1",
+      "passed": true,
+      "expected": "guest:mvbrv8vy-bkeqrl",
+      "observed": "guest:mvbrv8vy-bkeqrl"
+    },
+    {
+      "id": "native-team-members-2",
+      "passed": true,
+      "expected": [
+        "guest:mvbrs3c0-cpau3c",
+        "guest:mvbrlplt-nn6m4j",
+        "guest:mvbrv1ua-a8fw8t",
+        "guest:mvbrt19w-8moc7a",
+        "guest:mvbrttf7-8zcgh1",
+        "guest:mvbrun38-ihk3va",
+        "guest:mvbrw1ea-3kwy60",
+        "guest:mvbrwtux-c4hh1c",
+        "guest:mvbrsdd9-pnwz91",
+        "guest:mvbrvg8q-a3l7tc",
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      ],
+      "observed": [
+        "guest:mvbrun38-ihk3va",
+        "guest:mvbrttf7-8zcgh1",
+        "guest:mvbrt19w-8moc7a",
+        "guest:mvbrv1ua-a8fw8t",
+        "guest:mvbrlplt-nn6m4j",
+        "guest:mvbrs3c0-cpau3c",
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "guest:mvbrvg8q-a3l7tc",
+        "guest:mvbrsdd9-pnwz91",
+        "guest:mvbrwtux-c4hh1c",
+        "guest:mvbrw1ea-3kwy60"
+      ]
+    },
+    {
+      "id": "native-physical-source-order-2",
+      "passed": true,
+      "expected": [
+        "guest:mvbrs3c0-cpau3c",
+        "guest:mvbrlplt-nn6m4j",
+        "guest:mvbrv1ua-a8fw8t",
+        "guest:mvbrt19w-8moc7a",
+        "guest:mvbrttf7-8zcgh1",
+        "guest:mvbrun38-ihk3va",
+        "guest:mvbrw1ea-3kwy60",
+        "guest:mvbrwtux-c4hh1c",
+        "guest:mvbrsdd9-pnwz91",
+        "guest:mvbrvg8q-a3l7tc",
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      ],
+      "observed": [
+        "guest:mvbrs3c0-cpau3c",
+        "guest:mvbrlplt-nn6m4j",
+        "guest:mvbrv1ua-a8fw8t",
+        "guest:mvbrt19w-8moc7a",
+        "guest:mvbrttf7-8zcgh1",
+        "guest:mvbrun38-ihk3va",
+        "guest:mvbrw1ea-3kwy60",
+        "guest:mvbrwtux-c4hh1c",
+        "guest:mvbrsdd9-pnwz91",
+        "guest:mvbrvg8q-a3l7tc",
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      ]
+    },
+    {
+      "id": "native-captain-2",
+      "passed": true,
+      "expected": "guest:mvbrs3c0-cpau3c",
+      "observed": "guest:mvbrs3c0-cpau3c"
+    }
+  ],
+  "teams": [
+    {
+      "index": 0,
+      "label": "האדומים",
+      "membershipMatches": true,
+      "physicalLeftToRightRowOrderMatches": true,
+      "sourceIds": [
+        "guest:mvbrtfek-zy1qup",
+        "guest:mvbruugj-4rhbli",
+        "guest:mvbrsn40-1h3mgk",
+        "guest:mvbrsu7l-3vqv6g",
+        "guest:mvbrt87d-qicwa1",
+        "guest:mvbrtmfs-egnzku",
+        "guest:mvbrrthu-bvepbd",
+        "guest:mvbru1fk-izwwd0",
+        "guest:mvbrx7w0-fqxe6b",
+        "guest:mvbrw8ps-a5aqlc",
+        "guest:mvbrrjqx-3w9zua"
+      ],
+      "nativeXmlOrder": [
+        {
+          "id": "guest:mvbrtmfs-egnzku",
+          "name": "נדב אחד עשר יד",
+          "xmlPosition": 35,
+          "bounds": {
+            "x1": 679,
+            "y1": 377,
+            "x2": 784,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbrt87d-qicwa1",
+          "name": "אסף אחד עשר יב",
+          "xmlPosition": 39,
+          "bounds": {
+            "x1": 563,
+            "y1": 377,
+            "x2": 668,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbrsu7l-3vqv6g",
+          "name": "גל אחד עשר י",
+          "xmlPosition": 43,
+          "bounds": {
+            "x1": 448,
+            "y1": 377,
+            "x2": 553,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbrsn40-1h3mgk",
+          "name": "נועם אחד עשר ט",
+          "xmlPosition": 47,
+          "bounds": {
+            "x1": 332,
+            "y1": 377,
+            "x2": 437,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbruugj-4rhbli",
+          "name": "אלכסנדר אחד עשר כ",
+          "xmlPosition": 51,
+          "bounds": {
+            "x1": 217,
+            "y1": 377,
+            "x2": 322,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbrtfek-zy1qup",
+          "name": "עידן אחד עשר יג",
+          "xmlPosition": 55,
+          "bounds": {
+            "x1": 101,
+            "y1": 377,
+            "x2": 206,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbrrjqx-3w9zua",
+          "name": "אלין אחד עשר ה",
+          "xmlPosition": 60,
+          "bounds": {
+            "x1": 621,
+            "y1": 559,
+            "x2": 726,
+            "y2": 730
+          }
+        },
+        {
+          "id": "guest:mvbrw8ps-a5aqlc",
+          "name": "דוד אחד עשר כז",
+          "xmlPosition": 64,
+          "bounds": {
+            "x1": 505,
+            "y1": 559,
+            "x2": 610,
+            "y2": 730
+          }
+        },
+        {
+          "id": "guest:mvbrx7w0-fqxe6b",
+          "name": "אלכסנדר הארוך עשר לב",
+          "xmlPosition": 68,
+          "bounds": {
+            "x1": 390,
+            "y1": 559,
+            "x2": 495,
+            "y2": 730
+          }
+        },
+        {
+          "id": "guest:mvbru1fk-izwwd0",
+          "name": "משה אחד עשר טז",
+          "xmlPosition": 72,
+          "bounds": {
+            "x1": 274,
+            "y1": 559,
+            "x2": 379,
+            "y2": 730
+          }
+        },
+        {
+          "id": "guest:mvbrrthu-bvepbd",
+          "name": "בן אחד עשר ו",
+          "xmlPosition": 76,
+          "bounds": {
+            "x1": 159,
+            "y1": 559,
+            "x2": 264,
+            "y2": 730
+          }
+        }
+      ],
+      "physicalSourceOrder": [
+        {
+          "id": "guest:mvbrtfek-zy1qup",
+          "name": "עידן אחד עשר יג",
+          "xmlPosition": 55,
+          "bounds": {
+            "x1": 101,
+            "y1": 377,
+            "x2": 206,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbruugj-4rhbli",
+          "name": "אלכסנדר אחד עשר כ",
+          "xmlPosition": 51,
+          "bounds": {
+            "x1": 217,
+            "y1": 377,
+            "x2": 322,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbrsn40-1h3mgk",
+          "name": "נועם אחד עשר ט",
+          "xmlPosition": 47,
+          "bounds": {
+            "x1": 332,
+            "y1": 377,
+            "x2": 437,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbrsu7l-3vqv6g",
+          "name": "גל אחד עשר י",
+          "xmlPosition": 43,
+          "bounds": {
+            "x1": 448,
+            "y1": 377,
+            "x2": 553,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbrt87d-qicwa1",
+          "name": "אסף אחד עשר יב",
+          "xmlPosition": 39,
+          "bounds": {
+            "x1": 563,
+            "y1": 377,
+            "x2": 668,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbrtmfs-egnzku",
+          "name": "נדב אחד עשר יד",
+          "xmlPosition": 35,
+          "bounds": {
+            "x1": 679,
+            "y1": 377,
+            "x2": 784,
+            "y2": 548
+          }
+        },
+        {
+          "id": "guest:mvbrrthu-bvepbd",
+          "name": "בן אחד עשר ו",
+          "xmlPosition": 76,
+          "bounds": {
+            "x1": 159,
+            "y1": 559,
+            "x2": 264,
+            "y2": 730
+          }
+        },
+        {
+          "id": "guest:mvbru1fk-izwwd0",
+          "name": "משה אחד עשר טז",
+          "xmlPosition": 72,
+          "bounds": {
+            "x1": 274,
+            "y1": 559,
+            "x2": 379,
+            "y2": 730
+          }
+        },
+        {
+          "id": "guest:mvbrx7w0-fqxe6b",
+          "name": "אלכסנדר הארוך עשר לב",
+          "xmlPosition": 68,
+          "bounds": {
+            "x1": 390,
+            "y1": 559,
+            "x2": 495,
+            "y2": 730
+          }
+        },
+        {
+          "id": "guest:mvbrw8ps-a5aqlc",
+          "name": "דוד אחד עשר כז",
+          "xmlPosition": 64,
+          "bounds": {
+            "x1": 505,
+            "y1": 559,
+            "x2": 610,
+            "y2": 730
+          }
+        },
+        {
+          "id": "guest:mvbrrjqx-3w9zua",
+          "name": "אלין אחד עשר ה",
+          "xmlPosition": 60,
+          "bounds": {
+            "x1": 621,
+            "y1": 559,
+            "x2": 726,
+            "y2": 730
+          }
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "label": "הכחולים",
+      "membershipMatches": true,
+      "physicalLeftToRightRowOrderMatches": true,
+      "sourceIds": [
+        "guest:mvbrv8vy-bkeqrl",
+        "guest:mvbrufkc-apouh0",
+        "guest:mvbrx0y1-91p8cl",
+        "guest:mvbrvuew-fwzknb",
+        "guest:mvbrwmt7-ocott0",
+        "guest:mvbrr03x-76x6ci",
+        "guest:mvbrr9y8-hdrkws",
+        "guest:mvbrvne9-0pc4lu",
+        "guest:mvbrwfqk-rmhfw6",
+        "guest:mvbru8hr-v8qtre",
+        "guest:mvbrqq3y-aa1f5c"
+      ],
+      "nativeXmlOrder": [
+        {
+          "id": "guest:mvbrr03x-76x6ci",
+          "name": "תומר אחד עשר ג",
+          "xmlPosition": 83,
+          "bounds": {
+            "x1": 681,
+            "y1": 814,
+            "x2": 786,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrwmt7-ocott0",
+          "name": "טל אחד עשר כט",
+          "xmlPosition": 87,
+          "bounds": {
+            "x1": 566,
+            "y1": 814,
+            "x2": 671,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrvuew-fwzknb",
+          "name": "ברק אחד עשר כה",
+          "xmlPosition": 91,
+          "bounds": {
+            "x1": 450,
+            "y1": 814,
+            "x2": 555,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrx0y1-91p8cl",
+          "name": "מאור אחד עשר לא",
+          "xmlPosition": 95,
+          "bounds": {
+            "x1": 335,
+            "y1": 814,
+            "x2": 440,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrufkc-apouh0",
+          "name": "עמית אחד עשר יח",
+          "xmlPosition": 99,
+          "bounds": {
+            "x1": 219,
+            "y1": 814,
+            "x2": 324,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrv8vy-bkeqrl",
+          "name": "אופק אחד עשר כב",
+          "xmlPosition": 103,
+          "bounds": {
+            "x1": 104,
+            "y1": 814,
+            "x2": 209,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrqq3y-aa1f5c",
+          "name": "איתי אחד עשר ב",
+          "xmlPosition": 108,
+          "bounds": {
+            "x1": 623,
+            "y1": 996,
+            "x2": 728,
+            "y2": 1168
+          }
+        },
+        {
+          "id": "guest:mvbru8hr-v8qtre",
+          "name": "לירן אחד עשר יז",
+          "xmlPosition": 112,
+          "bounds": {
+            "x1": 508,
+            "y1": 996,
+            "x2": 613,
+            "y2": 1168
+          }
+        },
+        {
+          "id": "guest:mvbrwfqk-rmhfw6",
+          "name": "חיים אחד עשר כח",
+          "xmlPosition": 116,
+          "bounds": {
+            "x1": 392,
+            "y1": 996,
+            "x2": 497,
+            "y2": 1168
+          }
+        },
+        {
+          "id": "guest:mvbrvne9-0pc4lu",
+          "name": "אייל אחד עשר כד",
+          "xmlPosition": 120,
+          "bounds": {
+            "x1": 277,
+            "y1": 996,
+            "x2": 382,
+            "y2": 1168
+          }
+        },
+        {
+          "id": "guest:mvbrr9y8-hdrkws",
+          "name": "אורי אחד עשר ד",
+          "xmlPosition": 124,
+          "bounds": {
+            "x1": 161,
+            "y1": 996,
+            "x2": 266,
+            "y2": 1168
+          }
+        }
+      ],
+      "physicalSourceOrder": [
+        {
+          "id": "guest:mvbrv8vy-bkeqrl",
+          "name": "אופק אחד עשר כב",
+          "xmlPosition": 103,
+          "bounds": {
+            "x1": 104,
+            "y1": 814,
+            "x2": 209,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrufkc-apouh0",
+          "name": "עמית אחד עשר יח",
+          "xmlPosition": 99,
+          "bounds": {
+            "x1": 219,
+            "y1": 814,
+            "x2": 324,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrx0y1-91p8cl",
+          "name": "מאור אחד עשר לא",
+          "xmlPosition": 95,
+          "bounds": {
+            "x1": 335,
+            "y1": 814,
+            "x2": 440,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrvuew-fwzknb",
+          "name": "ברק אחד עשר כה",
+          "xmlPosition": 91,
+          "bounds": {
+            "x1": 450,
+            "y1": 814,
+            "x2": 555,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrwmt7-ocott0",
+          "name": "טל אחד עשר כט",
+          "xmlPosition": 87,
+          "bounds": {
+            "x1": 566,
+            "y1": 814,
+            "x2": 671,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrr03x-76x6ci",
+          "name": "תומר אחד עשר ג",
+          "xmlPosition": 83,
+          "bounds": {
+            "x1": 681,
+            "y1": 814,
+            "x2": 786,
+            "y2": 986
+          }
+        },
+        {
+          "id": "guest:mvbrr9y8-hdrkws",
+          "name": "אורי אחד עשר ד",
+          "xmlPosition": 124,
+          "bounds": {
+            "x1": 161,
+            "y1": 996,
+            "x2": 266,
+            "y2": 1168
+          }
+        },
+        {
+          "id": "guest:mvbrvne9-0pc4lu",
+          "name": "אייל אחד עשר כד",
+          "xmlPosition": 120,
+          "bounds": {
+            "x1": 277,
+            "y1": 996,
+            "x2": 382,
+            "y2": 1168
+          }
+        },
+        {
+          "id": "guest:mvbrwfqk-rmhfw6",
+          "name": "חיים אחד עשר כח",
+          "xmlPosition": 116,
+          "bounds": {
+            "x1": 392,
+            "y1": 996,
+            "x2": 497,
+            "y2": 1168
+          }
+        },
+        {
+          "id": "guest:mvbru8hr-v8qtre",
+          "name": "לירן אחד עשר יז",
+          "xmlPosition": 112,
+          "bounds": {
+            "x1": 508,
+            "y1": 996,
+            "x2": 613,
+            "y2": 1168
+          }
+        },
+        {
+          "id": "guest:mvbrqq3y-aa1f5c",
+          "name": "איתי אחד עשר ב",
+          "xmlPosition": 108,
+          "bounds": {
+            "x1": 623,
+            "y1": 996,
+            "x2": 728,
+            "y2": 1168
+          }
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "label": "הירוקים",
+      "membershipMatches": true,
+      "physicalLeftToRightRowOrderMatches": true,
+      "sourceIds": [
+        "guest:mvbrs3c0-cpau3c",
+        "guest:mvbrlplt-nn6m4j",
+        "guest:mvbrv1ua-a8fw8t",
+        "guest:mvbrt19w-8moc7a",
+        "guest:mvbrttf7-8zcgh1",
+        "guest:mvbrun38-ihk3va",
+        "guest:mvbrw1ea-3kwy60",
+        "guest:mvbrwtux-c4hh1c",
+        "guest:mvbrsdd9-pnwz91",
+        "guest:mvbrvg8q-a3l7tc",
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      ],
+      "nativeXmlOrder": [
+        {
+          "id": "guest:mvbrun38-ihk3va",
+          "name": "עומר אחד עשר יט",
+          "xmlPosition": 131,
+          "bounds": {
+            "x1": 686,
+            "y1": 1251,
+            "x2": 791,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "guest:mvbrttf7-8zcgh1",
+          "name": "יוסי אחד עשר טו",
+          "xmlPosition": 135,
+          "bounds": {
+            "x1": 571,
+            "y1": 1251,
+            "x2": 676,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "guest:mvbrt19w-8moc7a",
+          "name": "רועי אחד עשר יא",
+          "xmlPosition": 139,
+          "bounds": {
+            "x1": 455,
+            "y1": 1251,
+            "x2": 560,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "guest:mvbrv1ua-a8fw8t",
+          "name": "אביב אחד עשר כא",
+          "xmlPosition": 143,
+          "bounds": {
+            "x1": 340,
+            "y1": 1251,
+            "x2": 445,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "guest:mvbrlplt-nn6m4j",
+          "name": "דניאל אחד עשר א",
+          "xmlPosition": 147,
+          "bounds": {
+            "x1": 224,
+            "y1": 1251,
+            "x2": 329,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "guest:mvbrs3c0-cpau3c",
+          "name": "רון אחד עשר ז",
+          "xmlPosition": 151,
+          "bounds": {
+            "x1": 109,
+            "y1": 1251,
+            "x2": 214,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "name": "בדיקות לייב",
+          "xmlPosition": 156,
+          "bounds": {
+            "x1": 628,
+            "y1": 1433,
+            "x2": 733,
+            "y2": 1605
+          }
+        },
+        {
+          "id": "guest:mvbrvg8q-a3l7tc",
+          "name": "אדם אחד עשר כג",
+          "xmlPosition": 160,
+          "bounds": {
+            "x1": 513,
+            "y1": 1433,
+            "x2": 618,
+            "y2": 1605
+          }
+        },
+        {
+          "id": "guest:mvbrsdd9-pnwz91",
+          "name": "ליאור אחד עשר ח",
+          "xmlPosition": 164,
+          "bounds": {
+            "x1": 397,
+            "y1": 1433,
+            "x2": 502,
+            "y2": 1605
+          }
+        },
+        {
+          "id": "guest:mvbrwtux-c4hh1c",
+          "name": "יובל אחד עשר ל",
+          "xmlPosition": 168,
+          "bounds": {
+            "x1": 282,
+            "y1": 1433,
+            "x2": 387,
+            "y2": 1605
+          }
+        },
+        {
+          "id": "guest:mvbrw1ea-3kwy60",
+          "name": "גיא אחד עשר כו",
+          "xmlPosition": 172,
+          "bounds": {
+            "x1": 166,
+            "y1": 1433,
+            "x2": 271,
+            "y2": 1605
+          }
+        }
+      ],
+      "physicalSourceOrder": [
+        {
+          "id": "guest:mvbrs3c0-cpau3c",
+          "name": "רון אחד עשר ז",
+          "xmlPosition": 151,
+          "bounds": {
+            "x1": 109,
+            "y1": 1251,
+            "x2": 214,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "guest:mvbrlplt-nn6m4j",
+          "name": "דניאל אחד עשר א",
+          "xmlPosition": 147,
+          "bounds": {
+            "x1": 224,
+            "y1": 1251,
+            "x2": 329,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "guest:mvbrv1ua-a8fw8t",
+          "name": "אביב אחד עשר כא",
+          "xmlPosition": 143,
+          "bounds": {
+            "x1": 340,
+            "y1": 1251,
+            "x2": 445,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "guest:mvbrt19w-8moc7a",
+          "name": "רועי אחד עשר יא",
+          "xmlPosition": 139,
+          "bounds": {
+            "x1": 455,
+            "y1": 1251,
+            "x2": 560,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "guest:mvbrttf7-8zcgh1",
+          "name": "יוסי אחד עשר טו",
+          "xmlPosition": 135,
+          "bounds": {
+            "x1": 571,
+            "y1": 1251,
+            "x2": 676,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "guest:mvbrun38-ihk3va",
+          "name": "עומר אחד עשר יט",
+          "xmlPosition": 131,
+          "bounds": {
+            "x1": 686,
+            "y1": 1251,
+            "x2": 791,
+            "y2": 1422
+          }
+        },
+        {
+          "id": "guest:mvbrw1ea-3kwy60",
+          "name": "גיא אחד עשר כו",
+          "xmlPosition": 172,
+          "bounds": {
+            "x1": 166,
+            "y1": 1433,
+            "x2": 271,
+            "y2": 1605
+          }
+        },
+        {
+          "id": "guest:mvbrwtux-c4hh1c",
+          "name": "יובל אחד עשר ל",
+          "xmlPosition": 168,
+          "bounds": {
+            "x1": 282,
+            "y1": 1433,
+            "x2": 387,
+            "y2": 1605
+          }
+        },
+        {
+          "id": "guest:mvbrsdd9-pnwz91",
+          "name": "ליאור אחד עשר ח",
+          "xmlPosition": 164,
+          "bounds": {
+            "x1": 397,
+            "y1": 1433,
+            "x2": 502,
+            "y2": 1605
+          }
+        },
+        {
+          "id": "guest:mvbrvg8q-a3l7tc",
+          "name": "אדם אחד עשר כג",
+          "xmlPosition": 160,
+          "bounds": {
+            "x1": 513,
+            "y1": 1433,
+            "x2": 618,
+            "y2": 1605
+          }
+        },
+        {
+          "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "name": "בדיקות לייב",
+          "xmlPosition": 156,
+          "bounds": {
+            "x1": 628,
+            "y1": 1433,
+            "x2": 733,
+            "y2": 1605
+          }
+        }
+      ]
+    }
+  ],
+  "namesToIdsFromData": true,
+  "nativeIdsExposed": false,
+  "pixelScreenshotInspectedByDataAgent": true,
+  "routeExpectedVersionCapturedHere": false,
+  "orderInterpretation": "Stored source order matches top-to-bottom rows sorted physically left-to-right. The inherited DraftTeamCard row-reverse places the captain at the left; XML and Hebrew right-to-left reading order reverse each row. This is not an RTL usability approval.",
+  "limits": [
+    "Full accessibility names identify players; the two Alexander visual labels are shortened and not distinguishable from first names alone.",
+    "Loading and absence of a retry were observed by the lead; this frozen XML is the ready state only.",
+    "The route version was reported by the lead, not captured independently in this XML.",
+    "No device actions, network, or writes were performed by this script."
+  ],
+  "sources": [
+    {
+      "file": "data-eleven-regenerated-stream.json",
+      "sha256": "d5adb8e4da5f87d8978657c79a21f46d0d856ea6310536676668918247a0097a"
+    },
+    {
+      "file": "eleven-regenerate-stream-ui-proof.xml",
+      "sha256": "e01de415fb6736bc4fb931f6e1e6075ab1c3aae105098301028020ef4b649337"
+    },
+    {
+      "file": "shots/eleven-regenerate-stream-ready.png",
+      "sha256": "7c4aadecdf216cb250b8babb3a49304183f57b2005e9cc9c244d664aa7d45085"
+    }
+  ]
+}

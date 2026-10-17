@@ -7,7 +7,7 @@ import * as admin from 'firebase-admin';
 export type NotifType =
   | 'newUser' | 'review' | 'error' | 'bug' | 'suggestion'
   | 'gameJoin' | 'gameCreate' | 'communityCreate' | 'communityJoin'
-  | 'availabilityUpdate';
+  | 'availabilityUpdate' | 'teamderReply';
 
 export async function pushToAdmins(
   type: NotifType,
@@ -37,7 +37,10 @@ export async function pushToAdmins(
   // is unaffected.
   const THROTTLE_MS = 20_000;
   try {
-    const latchRef = db.collection('adminPushLatches').doc(type);
+    // Support bursts are grouped per conversation, so one active player
+    // cannot silence a different player's reply through the global type latch.
+    const latchKey = type === 'teamderReply' && data.parentId ? `${type}__${data.parentId}` : type;
+    const latchRef = db.collection('adminPushLatches').doc(latchKey);
     const dropped = await db.runTransaction(async (tx) => {
       const snap = await tx.get(latchRef);
       const last = Number(snap.data()?.lastSentAt) || 0;

@@ -46,7 +46,7 @@ async function withPreviews(items: ReceivedInvitation[], uid: string): Promise<R
 }
 
 export const receivedInvitationsService = {
-  async list(uid:string) {
+  async listInbox(uid:string) {
     const current=()=>useUserStore.getState().currentUser;
     const assertOwner=()=>{
       const owner=current();
@@ -55,7 +55,7 @@ export const receivedInvitationsService = {
     };
     assertOwner();
     const finish = async (rows: {id:string;data:Record<string,any>}[]) => {
-      const items = await withPreviews(receivedInvitations(rows, uid), uid);
+      const items = receivedInvitations(rows, uid);
       assertOwner();
       return items;
     };
@@ -75,5 +75,13 @@ export const receivedInvitationsService = {
     const snap=await getDocs(query(collection(getFirebase().db,'notifications'),where('recipientId','==',uid)));
     assertOwner();
     return finish(snap.docs.map(d=>({id:d.id,data:d.data()})));
+  },
+  /** Decisions and badges do not wait for cover photos or inviter identities. */
+  async list(uid:string):Promise<ReceivedInvitation[]> {
+    const items=await this.listInbox(uid);
+    const result=await withPreviews(items,uid);
+    const owner=useUserStore.getState().currentUser;
+    if(owner?.id!==uid||owner.isGuest)throw new StaleSessionError(uid,owner?.id??'');
+    return result;
   },
 };

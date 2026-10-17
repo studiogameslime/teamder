@@ -23,6 +23,7 @@ import { resolveRoundCover } from '@/data/roundCover';
 import { getCoverSource } from '@/data/coverImages';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import { isOfficialSender } from '@/utils/officialAccount';
+import { useSupportChat, supportConversationId } from '@/services/supportChat';
 import { chatIsArchived, chatMessagePreview, chatSenderNeedsIdentity, roundChatState, type ChatPreferences } from '@/utils/chatInbox';
 import type { ChatScope, Game, User } from '@/types';
 import type { ChatStackParamList } from '@/navigation/ChatStack';
@@ -118,12 +119,14 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
   const archived=(row:InboxRow)=>chatIsArchived(row.at,preferences[key(row)],row.closed,row.messageId);
   const sorted=[...rows].sort((a,b)=>Number(!!preferences[key(b)]?.pinned)-Number(!!preferences[key(a)]?.pinned)||b.at-a.at||a.title.localeCompare(b.title,'he'));
   const matches=(r:InboxRow)=>`${r.title} ${r.preview}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())&&(filter==='all'||filter==='unread'&&r.unread>0||r.scope===filter);
-  const visible=sorted.filter(r=>archived(r)===(mode==='archive')&&matches(r));
+  const visible=sorted.filter(r=>!r.user || !isOfficialSender(r.user.id)).filter(r=>archived(r)===(mode==='archive')&&matches(r));
+  const supportEntry=me?entries[chatKeyFor('dm',supportConversationId(me.id))]:undefined;
   const active=visible.filter(r=>mode==='archive'||r.at>0||preferences[key(r)]?.pinned);
   const starters=visible.filter(r=>mode==='inbox'&&!r.at&&!preferences[key(r)]?.pinned);
   const archiveCount=rows.filter(archived).length;
   const open=(r:InboxRow)=>{
     if(preview){toast.info('תצוגת המחשה בלבד');return;}
+    if (r.user && isOfficialSender(r.user.id) && me) { useSupportChat.getState().open(me.id); return; }
     logEvent(AnalyticsEvent.ChatEntryPointTapped,{source:'chats_list',scope:r.scope,unread:r.unread});
     if(r.scope==='community')nav.navigate('CommunityChat',{groupId:r.id});
     else if(r.scope==='game')nav.navigate('GameChat',{gameId:r.id});
@@ -153,7 +156,7 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
     {mode!=='new'?<ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filters} contentContainerStyle={s.filterContent}>{FILTERS.map(([id,title])=><Pressable key={id} onPress={()=>setFilter(id)} accessibilityRole="tab" accessibilityState={{selected:filter===id}} style={[s.chip,filter===id&&s.chipSelected]}><Text style={[s.chipText,filter===id&&{color:'white'}]}>{title}</Text></Pressable>)}</ScrollView>:<Text style={s.hint}>אפשר להתחיל שיחה עם החברים שלכם בלבד</Text>}
     {mode==='new'?friendsLoading?<ActivityIndicator style={s.empty} color={blue}/>:friendsFailed?<View style={s.empty}><Text style={s.emptyBody}>לא הצלחנו לטעון את החברים</Text><SocialAction title="נסו שוב" icon="refresh-outline" onPress={()=>setRetry(n=>n+1)}/></View>:<FlatList data={friends.filter(u=>u.name.includes(search.trim())).sort((a,b)=>a.name.localeCompare(b.name,'he'))} keyExtractor={u=>u.id} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled" renderItem={({item:u})=><Pressable style={s.card} onPress={()=>open({scope:'dm',id:dmConvId(me!.id,u.id),title:u.name,subtitle:'שיחה אישית',preview:'',at:0,unread:0,user:u})}><UserAvatar user={u} size={50}/><View style={s.body}><Text style={s.name}>{u.name}</Text><Text style={s.preview}>{'חבר ב־Teamder'}</Text></View><Ionicons name="chatbubble-ellipses-outline" size={23} color={blue}/></Pressable>} ListEmptyComponent={empty(search?'לא נמצאו חברים':'עדיין אין כאן חברים',search?'נסו לחפש שם אחר':'מצאו שחקנים והוסיפו אותם לחברים כדי להתחיל לדבר')}/>
     :<FlatList data={active} keyExtractor={key} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled" renderItem={({item,index})=><>{index===0&&preferences[key(item)]?.pinned?<Text style={s.label}>שיחות נעוצות</Text>:index>0&&preferences[key(active[index-1])]?.pinned&&!preferences[key(item)]?.pinned?<Text style={s.label}>כל השיחות</Text>:null}{renderRow(item)}</>}
-      ListHeaderComponent={failed?<Pressable style={s.notice} onPress={()=>setRetry(n=>n+1)}><Text style={s.emptyBody}>חלק מהשיחות לא נטענו. לחצו לניסיון נוסף.</Text></Pressable>:mode==='archive'?<Text style={s.hint}>שיחות שהועברו לארכיון ומחזורים שנסגרו. ההודעות נשמרות.</Text>:null}
+      ListHeaderComponent={<>{mode==='inbox'&&me?<Pressable style={[s.card,{marginBottom:10,borderColor:'#BDD4FF'}]} accessibilityRole="button" accessibilityLabel="שיחה עם תמיכת Teamder" onPress={()=>preview?toast.info('תצוגת המחשה בלבד'):useSupportChat.getState().open(me.id)}><View style={[s.avatar,s.fallback]}><Ionicons name="headset-outline" size={25} color={blue}/></View><View style={s.body}><View style={s.line}><Text style={s.name}>⁦Teamder⁩</Text><OfficialBadge size={13}/></View><Text style={s.preview} numberOfLines={1}>{supportEntry?.lastText||'נתקעתם או משהו לא ברור? כתבו לנו'}</Text><Text style={s.kind}>תמיכה ועזרה · תמיד כאן בשבילכם</Text></View><View style={s.trailing}><Ionicons name="pin" size={15} color={blue}/>{(supportEntry?.count??0)>0?<View style={s.badge}><Text style={s.badgeText}>{supportEntry!.count>99?'⁦99+⁩':supportEntry!.count}</Text></View>:null}</View></Pressable>:null}{failed?<Pressable style={s.notice} onPress={()=>setRetry(n=>n+1)}><Text style={s.emptyBody}>חלק מהשיחות לא נטענו. לחצו לניסיון נוסף.</Text></Pressable>:mode==='archive'?<Text style={s.hint}>שיחות שהועברו לארכיון ומחזורים שנסגרו. ההודעות נשמרות.</Text>:null}</>}
       ListEmptyComponent={loading?<ActivityIndicator style={s.empty} color={blue}/>:starters.length?null:empty(mode==='archive'?'הארכיון שלכם ריק':search||filter!=='all'?'לא נמצאו שיחות':'הכדור אצלכם',mode==='archive'?'שיחות מחזורים שנסגרו יישמרו כאן':search||filter!=='all'?'נסו לשנות את החיפוש או את המסנן':'דברו עם החברים ועם השחקנים במועדון')}
       ListFooterComponent={mode==='inbox'?<><Pressable style={s.archiveLink} onPress={()=>changeMode('archive')}><Text style={s.archiveTitle}>ארכיון שיחות{archiveCount?` · ${archiveCount}`:''}</Text><Ionicons name="archive-outline" size={21} color="#667796"/></Pressable>{starters.length?<><Text style={s.label}>מתחילים שיחה</Text><Text style={s.hint}>המועדונים והמחזורים שלכם, גם לפני ההודעה הראשונה</Text>{starters.map(row=><View key={key(row)}>{renderRow(row)}</View>)}</>:null}</>:null}/>}
 

@@ -35,7 +35,7 @@ interface FetchOpts {
 // data — bail and let the caller hide the chip.
 const MAX_FORECAST_DAYS = 14;
 
-const memo = new Map<string, WeatherForecast | null>();
+const memo = new Map<string, { value: WeatherForecast; at: number }>();
 const geocodeMemo = new Map<string, { lat: number; lng: number } | null>();
 
 /**
@@ -100,6 +100,7 @@ export async function getForecastFor(
   opts: FetchOpts,
 ): Promise<WeatherForecast | null> {
   const { startsAt } = opts;
+  if (!Number.isFinite(startsAt)) return null;
 
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
@@ -111,7 +112,7 @@ export async function getForecastFor(
   let lat = opts.lat;
   let lng = opts.lng;
   if (
-    (typeof lat !== 'number' || typeof lng !== 'number') &&
+    (!Number.isFinite(lat) || !Number.isFinite(lng)) &&
     opts.city &&
     opts.city.trim().length > 0
   ) {
@@ -126,18 +127,20 @@ export async function getForecastFor(
       console.warn('[weather] geocode returned null for', opts.city);
     }
   }
-  if (typeof lat !== 'number' || typeof lng !== 'number') {
+  if (typeof lat !== 'number' || typeof lng !== 'number' ||
+      !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
     if (__DEV__) console.log('[weather] no coords, skipping fetch');
     return null;
   }
 
   const key = `${lat.toFixed(3)}:${lng.toFixed(3)}:${Math.floor(startsAt / (60 * 60 * 1000))}`;
-  if (memo.has(key)) return memo.get(key) ?? null;
+  const cached = memo.get(key);
+  if (cached && now - cached.at < 15 * 60_000) return cached.value;
 
   const d = new Date(startsAt);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
   const date = `${yyyy}-${mm}-${dd}`;
 
   const url =
@@ -145,45 +148,38 @@ export async function getForecastFor(
     `?latitude=${lat}` +
     `&longitude=${lng}` +
     `&hourly=temperature_2m,precipitation_probability,weather_code` +
-    `&timezone=auto` +
+    `&timezone=GMT&timeformat=unixtime` +
     `&start_date=${date}` +
     `&end_date=${date}`;
 
   try {
     const res = await fetch(url);
     if (!res.ok) {
-      memo.set(key, null);
       return null;
     }
     const data = await res.json();
-    const times: string[] = data?.hourly?.time ?? [];
+    const times: number[] = data?.hourly?.time ?? [];
     const temps: number[] = data?.hourly?.temperature_2m ?? [];
     const rains: number[] = data?.hourly?.precipitation_probability ?? [];
     const codes: number[] = data?.hourly?.weather_code ?? [];
 
-    const targetHour = d.getHours();
-    const idx = times.findIndex((t) => {
-      // Time format is `YYYY-MM-DDTHH:00`.
-      const hourPart = t.split('T')[1] ?? '';
-      const h = parseInt(hourPart.slice(0, 2), 10);
-      return h === targetHour;
-    });
-    if (idx < 0) {
-      memo.set(key, null);
+    const targetHour = Math.floor(startsAt / 3_600_000);
+    const idx = times.findIndex(t => typeof t === 'number' && Math.floor(t / 3600) === targetHour);
+    // Unknown weather must stay unknown, not become 0°C and a sunny icon.
+    if (idx < 0 || [temps[idx], rains[idx], codes[idx]].some(v => typeof v !== 'number' || !Number.isFinite(v))) {
       return null;
     }
 
     const out: WeatherForecast = {
-      tempC: Math.round(temps[idx] ?? 0),
-      rainProb: Math.round(rains[idx] ?? 0),
-      weatherCode: codes[idx] ?? 0,
+      tempC: Math.round(temps[idx]),
+      rainProb: Math.max(0, Math.min(100, Math.round(rains[idx]))),
+      weatherCode: codes[idx],
     };
-    memo.set(key, out);
+    memo.set(key, { value: out, at: Date.now() });
     return out;
   } catch (err) {
     logError('getForecastFor', err, { lat, lng, startsAt });
     if (__DEV__) console.warn('[weather] fetch failed', err);
-    memo.set(key, null);
     return null;
   }
 }

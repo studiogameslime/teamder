@@ -65,6 +65,7 @@ import { canEnterLive } from '@/services/gameLifecycle';
 import { SeasonsCard } from '@/components/community/SeasonsCard';
 import { UnverifiedEveningsCard } from '@/components/community/UnverifiedEveningsCard';
 import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
+import {resolveRoundCover} from '@/data/roundCover';
 import { NextGameCard } from '@/components/community/NextGameCard';
 import { UpcomingMoreRow } from '@/components/community/UpcomingMoreRow';
 import { CommunityShareInviteCta } from '@/components/community/CommunityShareInviteCta';
@@ -137,6 +138,7 @@ export function CommunityDetailsScreen() {
 
   // Which tab is on screen. Resets to מידע on every arrival — a club opens on
   // what it IS, not on wherever the last club was left.
+  const [failedRoundCover, setFailedRoundCover] = useState<string | null>(null);
   const [tab, setTab] = useState<ClubTabKey>('info');
   /**
    * Which tabs have ever been opened.
@@ -965,6 +967,7 @@ export function CommunityDetailsScreen() {
         <CommunityStadiumHero
           groupId={group.id}
           name={group.name}
+          city={group.city}
           memberCount={group.playerIds?.length ?? 0}
           coverUrl={group.coverPhotoUrl}
           coverImageId={group.coverImageId}
@@ -1194,6 +1197,8 @@ export function CommunityDetailsScreen() {
                edit screen via the overflow menu, but anyone (admins
                included) sees the same lock UI on the card. */}
           <NextGameCard
+            coverSource={nextGame ? resolveRoundCover(nextGame, group, false, failedRoundCover) : undefined}
+            onCoverError={() => setFailedRoundCover(group.coverPhotoUrl ?? null)}
             startsAt={nextGame?.startsAt}
             fieldName={nextGame?.fieldName ?? group.fieldName ?? ''}
             playersCount={nextGame?.players?.length}
@@ -1406,7 +1411,7 @@ export function CommunityDetailsScreen() {
       ) : null}
       {seen.has('stats') ? (
         <View style={tab === 'stats' ? styles.tabPane : styles.tabPaneHidden}>
-          <CommunityStatsScreen groupId={group.id} header={header} />
+          <CommunityStatsScreen groupId={group.id} header={header} active={tab === 'stats'} />
         </View>
       ) : null}
 

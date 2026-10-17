@@ -277,7 +277,18 @@ export const notificationsService = {
     }
 
     try {
-      const existing = await getDoc(ref);
+      let existing;
+      try {
+        existing = await getDoc(ref);
+      } catch (err) {
+        // Missing documents are readable; an existing recipient-owned marker
+        // is not. This is a duplicate, not a failed write. Keep actual create
+        // failures and errors on our own notifications in the outer catch.
+        const sender = getFirebase().auth.currentUser?.uid;
+        if ((err as { code?: string })?.code === 'permission-denied' &&
+            sender && sender !== input.recipientId) return;
+        throw err;
+      }
       if (existing.exists()) {
         const data = existing.data() as { read?: boolean } | undefined;
         if (!data?.read) {

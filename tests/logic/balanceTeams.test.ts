@@ -23,6 +23,7 @@ function run(
   ratings: (number | null)[],
   numTeams: number,
   format: '5v5' | '6v6' = '6v6',
+  rng?: () => number,
 ) {
   const r = roster(ratings);
   const out = balanceTeams({
@@ -30,6 +31,7 @@ function run(
     numTeams,
     format,
     createdBy: 'admin',
+    rng,
   });
   const averages = out.result.teams.map((t) => avg(t.playerIds, r.ratings));
   return { out, averages, ratings: r.ratings };
@@ -146,9 +148,17 @@ describe('balanceTeams — the 12.08 roster', () => {
   });
 
   it('almost every press gives a different split', () => {
+    // Same seeded sequence as balanceParity. Keep ONE advancing stream across
+    // presses: resetting it for each call would force the identical split.
+    // Inject through the existing test seam, leaving global Math.random alone.
+    let seed = 12345;
+    const rng = () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
     const seen = new Set<string>();
     for (let i = 0; i < 20; i++) {
-      const { out } = run(REAL_1208, 3, '5v5');
+      const { out } = run(REAL_1208, 3, '5v5', rng);
       seen.add(
         out.result.teams
           .map((t) => t.playerIds.slice().sort().join(','))
@@ -163,7 +173,9 @@ describe('balanceTeams — the 12.08 roster', () => {
     // The bar is 8 rather than 12 since variety became a between-WEEKS goal:
     // with no history to work from, this call now holds the balance tighter and
     // leaves the mixing to the pair-history model (see balanceVariety.test.ts).
-    // Non-determinism is the property under test here, not its magnitude.
+    // Diversity across an advancing random stream is the property under test.
+    // Fixed input makes a regression reproducible instead of occasionally
+    // failing because an uncontrolled sample happened to repeat seven splits.
     expect(seen.size).toBeGreaterThanOrEqual(8);
   });
 

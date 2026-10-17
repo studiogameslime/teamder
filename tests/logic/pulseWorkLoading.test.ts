@@ -1,0 +1,21 @@
+jest.mock('../../pulse/src/capabilities',()=>({has:{firebase:()=>true}}));
+jest.mock('../../pulse/src/config',()=>({MOCK_WORK:false}));
+jest.mock('../../pulse/src/services/cache',()=>({cached:(_key:string,fn:()=>unknown)=>fn(),invalidate:jest.fn()}));
+jest.mock('../../pulse/src/services/firestoreRest',()=>({listAll:jest.fn(),getDoc:jest.fn(),patchDoc:jest.fn()}));
+jest.mock('../../pulse/src/services/teamderChatService',()=>({listAwaitingReply:jest.fn()}));
+import {listAll} from '../../pulse/src/services/firestoreRest';
+import {listAwaitingReply} from '../../pulse/src/services/teamderChatService';
+import {listWork} from '../../pulse/src/services/workItems';
+test('ready tasks appear before slow chats and final results preserve both streams',async()=>{
+ let finishChats!:(rows:any[])=>void;
+ (listAwaitingReply as jest.Mock).mockReturnValue(new Promise(r=>{finishChats=r;}));
+ (listAll as jest.Mock).mockImplementation(async collection=>collection==='tasks'?[{id:'task',title:'בדיקה',createdAt:10,status:'new'}]:[]);
+ const progress=jest.fn(); const pending=listWork(true,progress);
+ await new Promise(r=>setTimeout(r,0));
+ expect(progress).toHaveBeenCalled();
+ expect(progress.mock.calls[0][0].some((row:any)=>row.key==='task:task')).toBe(true);
+ finishChats([{userId:'alice',userName:'אליס',lastText:'שלום',lastMessageAt:20,awaitingReply:true}]);
+ const final=await pending;
+ expect(final.map(row=>row.stream).sort()).toEqual(['chat','task']);
+ expect(progress.mock.calls[progress.mock.calls.length-1][0]).toEqual(final);
+});

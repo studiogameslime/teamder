@@ -25,10 +25,11 @@ jest.mock('firebase-functions/v2/https', () => ({
 }), { virtual: true });
 jest.mock('firebase-functions/v2/firestore', () => ({ onDocumentCreated: (_options: any, handler: any) => handler }), { virtual: true });
 import { recordOnboardingActivity, onOnboardingActivity } from '../../functions/src/onboardingActivity';
+import { onboardingGuestNumber } from '../../functions/src/onboardingGuest';
 const ingest = recordOnboardingActivity as unknown as (request: any) => Promise<any>;
 const deliver = onOnboardingActivity as unknown as (event: any) => Promise<any>;
 const event = { id: 'session-abcdef-1', sessionId: 'session-abcdef', sequence: 1, occurredAt: 100, action: 'entry_intent_selected', params: { intent: 'create_club', password: 'secret', is_guest: true } };
-const request = (events = [event]) => ({ auth: { uid: 'real-user', token: { firebase: { sign_in_provider: 'anonymous' } } }, data: { events } });
+const request = (events: Array<Omit<typeof event, 'params'> & { params: Record<string, unknown> }> = [event]) => ({ auth: { uid: 'real-user', token: { firebase: { sign_in_provider: 'anonymous' } } }, data: { events } });
 beforeEach(() => { mockDocs.clear(); mockSends.mockClear(); });
 
 test('catalog copies stay identical; arbitrary actions and private field values are not uploaded', () => {
@@ -44,6 +45,86 @@ test('replaying a timed-out batch acknowledges it without duplicating history or
   const row = [...mockDocs.entries()].find(([path]) => path.startsWith('onboardingActivity/'))![1];
   expect(row.uid).toBe('real-user'); expect(row.params).toEqual({ intent: 'create_club', is_guest: true });
   expect(mockDocs.get('onboardingActivityLimits/real-user').count).toBe(1);
+});
+
+test('guest numbers belong to authenticated UIDs, survive upgrades and visits, and cannot be supplied by clients', async () => {
+  await ingest(request());
+  expect(await onboardingGuestNumber('real-user')).toBe(1);
+  await ingest(request([{ ...event, id: 'session-second-1', sessionId: 'session-second', params: { is_guest: true, guestNumber: 999 } } as any]));
+  expect(await onboardingGuestNumber('real-user')).toBe(1);
+  expect(await onboardingGuestNumber('another-guest', true)).toBe(2);
+  await ingest({ ...request([{ ...event, id: 'session-abcdef-2', sequence: 2, action: 'auth_completed', params: { auth_method: 'google' } } as any]), auth: { uid: 'real-user', token: { firebase: { sign_in_provider: 'google.com' } } } });
+  const rows = [...mockDocs.entries()].filter(([path]) => path.startsWith('onboardingActivity/')).map(([, row]) => row);
+  expect(rows.every(row => row.guestNumber === 1)).toBe(true);
+  expect(await onboardingGuestNumber('unseen-member')).toBeUndefined();
+});
+
+test('ordered choices preserve previous selection, allow returning to the first choice and survive trigger reordering', async () => {
+  mockDocs.set('adminConfig/push', { tokens: ['device'] });
+  const intents = ['create_club', 'create_club', 'one_off_game', 'create_club'];
+  await ingest(request(intents.map((intent, i) => ({ ...event, id: `${event.sessionId}-${i + 1}`, sequence: i + 1, params: { intent, is_guest: true } }))));
+  const rows = [...mockDocs.entries()].filter(([path]) => path.startsWith('onboardingActivity/'));
+  for (const [path] of [...rows].reverse()) {
+    await deliver({ data: { ref: mockRef(path) }, params: { eventId: path.split('/')[1] } });
+  }
+  expect(mockSends).toHaveBeenCalledTimes(3);
+  expect(rows[2][1].previousIntent).toBe('create_club');
+  expect(rows[3][1].previousIntent).toBe('one_off_game');
+  expect(mockDocs.get(rows[1][0]).pushStatus).toBe('milestone_duplicate');
+  const bodies = mockSends.mock.calls.map(([message]) => message.notification.body);
+  expect(bodies.every(body => body.includes('אורח 1'))).toBe(true);
+  expect(bodies.filter(body => body.includes('שינה בחירה'))).toHaveLength(2);
+  await ingest(request(intents.map((intent, i) => ({ ...event, id: `${event.sessionId}-${i + 1}`, sequence: i + 1, params: { intent, is_guest: true } }))));
+  expect(mockDocs.get('onboardingActivityLimits/real-user').count).toBe(4);
+});
+
+test('launch context enriches older clients across batches without overwriting explicit current event context', async () => {
+  await ingest(request([{ ...event, action: 'entry_source_resolved', params: { entry_source: 'club_link', entry_channel: 'whatsapp', is_guest: true } } as any]));
+  await ingest(request([{ ...event, id: `${event.sessionId}-2`, sequence: 2 }]));
+  const rows = [...mockDocs.entries()].filter(([path]) => path.startsWith('onboardingActivity/')).map(([, row]) => row);
+  expect(rows[1].params).toMatchObject({ entry_source: 'club_link', entry_channel: 'whatsapp', intent: 'create_club' });
+});
+
+test('the inviter from this visit survives later batches and is resolved server-side for the first authentication push', async () => {
+  mockDocs.set('adminConfig/push', { tokens: ['device'] });
+  mockDocs.set('users/link-inviter', { name: 'רועי אורן' });
+  mockDocs.set('users/real-user', { invitedBy: 'old-inviter' });
+  mockDocs.set('users/old-inviter', { name: 'מזמין מהעבר' });
+  await ingest(request([{ ...event, action: 'entry_source_resolved', params: { entry_source: 'club_link', has_inviter: true, inviter_uid: 'link-inviter', inviter_name: 'מזויף' } } as any]));
+  await ingest({ ...request([{ ...event, id: `${event.sessionId}-2`, sequence: 2, action: 'auth_completed', params: { is_guest: false, auth_method: 'google' } } as any]), auth: { uid: 'real-user', token: { firebase: { sign_in_provider: 'google.com' } } } });
+  const path = [...mockDocs.keys()].filter(path => path.startsWith('onboardingActivity/'))[1];
+  expect(mockDocs.get(path).params.inviter_uid).toBe('link-inviter');
+  await deliver({ data: { ref: mockRef(path) }, params: { eventId: path.split('/')[1] } });
+  expect(mockSends.mock.calls[0][0].notification.body).toContain('דרך \u2068רועי אורן\u2069');
+  expect(mockSends.mock.calls[0][0].notification.body).not.toMatch(/מזמין מהעבר|מזויף/);
+});
+
+test('registration prompt and successful account upgrade retain the same guest number', async () => {
+  mockDocs.set('adminConfig/push', { tokens: ['device'] });
+  await ingest(request([{ ...event, action: 'auth_prompt_shown', params: { action_kind: 'create_club' } } as any]));
+  const first = [...mockDocs.keys()].find(path => path.startsWith('onboardingActivity/'))!;
+  await deliver({ data: { ref: mockRef(first) }, params: { eventId: first.split('/')[1] } });
+  expect(mockSends.mock.calls[0][0].notification.body).toContain('אורח 1');
+  expect(mockSends.mock.calls[0][0].notification.body).toContain('פתח את תהליך ההרשמה או ההתחברות');
+  mockDocs.set('users/real-user', { name: 'מתן' });
+  await ingest({ ...request([{ ...event, id: `${event.sessionId}-2`, sequence: 2, action: 'auth_completed', params: { auth_method: 'google' } } as any]), auth: { uid: 'real-user', token: { firebase: { sign_in_provider: 'google.com' } } } });
+  const last = [...mockDocs.keys()].filter(path => path.startsWith('onboardingActivity/'))[1];
+  await deliver({ data: { ref: mockRef(last) }, params: { eventId: last.split('/')[1] } });
+  expect(mockSends.mock.calls[1][0].notification.body).toContain('מתן');
+  expect(mockSends.mock.calls[1][0].notification.body).toContain('(אורח 1)');
+});
+
+test('corrupt numbering state fails rather than reusing a previously allocated guest number', async () => {
+  mockDocs.set('adminConfig/onboardingGuestCounter', { lastNumber: -1 });
+  await expect(onboardingGuestNumber('new-guest', true)).rejects.toThrow('Invalid onboarding guest counter');
+  expect(mockDocs.has('onboardingGuests/new-guest')).toBe(false);
+});
+
+test('guest history first uploaded after an in-place upgrade still receives its number', async () => {
+  await ingest({ ...request(), auth: { uid: 'real-user', token: { firebase: { sign_in_provider: 'google.com' } } } });
+  expect(await onboardingGuestNumber('real-user')).toBe(1);
+  const row = [...mockDocs.entries()].find(([path]) => path.startsWith('onboardingActivity/'))![1];
+  expect(row).toMatchObject({ anonymous: false, guestNumber: 1 });
 });
 test('rejects unauthenticated, unknown and duplicate events', async () => {
   await expect(ingest({ data: { events: [event] } })).rejects.toMatchObject({ code: 'unauthenticated' });
@@ -64,7 +145,7 @@ test('different milestone choices send pushes, but repeated taps and trigger rep
 
 test('all other onboarding actions remain history-only, including existing registration/creation alerts', async () => {
   mockDocs.set('adminConfig/push', { tokens: ['device'] });
-  for (const action of Object.keys(ONBOARDING_ACTIONS).filter(action => !['entry_source_resolved', 'entry_intent_selected','auth_completed','sign_in_success'].includes(action))) {
+  for (const action of Object.keys(ONBOARDING_ACTIONS).filter(action => !['entry_source_resolved', 'entry_intent_selected','auth_completed','sign_in_success','auth_prompt_shown'].includes(action))) {
     const ref = mockRef(`onboardingActivity/${action}`);
     mockDocs.set(ref.path, { ...event, action, uid: 'real-user' });
     await deliver({ data: { ref }, params: { eventId: action } });

@@ -1,0 +1,78 @@
+{
+  "readAt": "2026-10-16T23:29:18.662144+00:00",
+  "account": {
+    "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "stats": {
+      "cleanSheets": 1,
+      "wins": 1,
+      "goals": 1
+    },
+    "name": "בדיקות לייב"
+  },
+  "club": {
+    "id": "J060YQu6QTcgk3glUDj2",
+    "isOpen": false,
+    "adminIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "creatorId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "name": "בדיקות לייב אוקטובר",
+    "playerIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ]
+  },
+  "games": [
+    {
+      "game": {
+        "id": "YEdIR3MviDK82D581ELk",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "title": "בדיקות לייב אוקטובר",
+        "startsAt": 1792194600000,
+        "maxPlayers": 21,
+        "minPlayers": null,
+        "players": [],
+        "waitlist": [],
+        "pending": [],
+        "participantIds": [],
+        "teams": null,
+        "status": "open",
+        "currentMatchIndex": 0,
+        "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "visibility": "community",
+        "format": "7v7",
+        "numberOfTeams": 3,
+        "matchDurationMinutes": 8,
+        "hasPenalties": false,
+        "hasHalfTime": false,
+        "liveMatch": null,
+        "draftTeams": null,
+        "rotation": null,
+        "arrivals": null,
+        "autoTeamsAt": null,
+        "autoTeamsMethod": null,
+        "teamsNotifiedAt": null,
+        "autoTeamsGeneratedAt": null,
+        "autoTeamsGeneratedBy": null,
+        "teamsEditedManually": false,
+        "teamBalanceMeta": null,
+        "acceptsFillers": false,
+        "advancedMode": true,
+        "advancedFillMode": "temporary",
+        "advancedTieMode": null,
+        "guests": [],
+        "createdAt": 1792193353028,
+        "updatedAt": 1792193353028
+      },
+      "history": [],
+      "commits": [],
+      "playerStats": [],
+      "roundSummary": null
+    }
+  ],
+  "archive": {
+    "source": "tmp/live-action-production/data-round-seven-created.json",
+    "originalSha256": "81cdd1d6303141b97115bb604bbf7f610b279ab619a0a845d922a409f2da76ea",
+    "filtered": true,
+    "note": "רק מחזור שבעה מול שבעה; ללא דואר, קוד הזמנה, מיקום או העדפות חשבון."
+  }
+}

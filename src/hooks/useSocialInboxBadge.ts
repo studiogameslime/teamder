@@ -17,7 +17,7 @@ export function useSocialInboxBadge() {
       if(inFlight||AppState.currentState==='background')return;
       inFlight=true;
       try{
-        const [requests,invites]=await Promise.all([friendsService.queryRequests('toUserId',owner),receivedInvitationsService.list(owner)]);
+        const [requests,invites]=await Promise.all([friendsService.queryRequests('toUserId',owner),receivedInvitationsService.listInbox(owner)]);
         if(alive&&useUserStore.getState().currentUser?.id===owner)setResult({owner,count:requests.length+invites.filter(i=>!i.read&&!['joined','expired','unavailable'].includes(i.status??'available')).length});
       }catch{/* Retain the previous count on transport failure; do not invent zero. */}
       finally{inFlight=false;}

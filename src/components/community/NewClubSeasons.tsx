@@ -257,16 +257,15 @@ const styles = StyleSheet.create({
   toggleText: { flexShrink: 1, minWidth: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   label: {
-    ...typography.label,
+    ...typography.body,
     color: colors.text,
-    fontWeight: '800',
+    fontWeight: '600',
     textAlign: RTL_LABEL_ALIGN,
   },
   hint: {
     ...typography.caption,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
     lineHeight: 18,
   },
   // Label first, icon second — `row` lays out right-to-left, so a leading

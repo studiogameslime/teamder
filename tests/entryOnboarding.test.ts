@@ -12,6 +12,8 @@
 
 import fs from 'fs';
 import path from 'path';
+import ts from 'typescript';
+import vm from 'vm';
 
 import { decideEntry, inviteFromPending } from '@/navigation/entryGate';
 import type { PendingAction } from '@/services/pendingAction';
@@ -179,12 +181,23 @@ describe('the launch source is published, not guessed', () => {
   const home = read(path.join('src', 'screens', 'home', 'GuestHomeScreen.tsx'));
 
   it('App.tsx publishes what it resolved', () => {
-    expect(app).toContain('setEntrySource(source as EntrySource, details)');
-    // Published BEFORE the event, so a reader that runs on the same tick as
-    // the report cannot see the stale value.
-    expect(app.indexOf('setEntrySource(source as EntrySource, details)')).toBeLessThan(
-      app.indexOf('AnalyticsEvent.EntrySourceResolved'),
-    );
+    const source = ts.createSourceFile('App.tsx', app, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    let callback = '';
+    const visit = (node: ts.Node) => {
+      if (ts.isVariableDeclaration(node) && node.name.getText(source) === 'reportEntrySource') callback = node.initializer!.getText(source);
+      ts.forEachChild(node, visit);
+    }; visit(source);
+    const calls: Array<{ kind: string; details: any }> = [];
+    const context: any = { module: { exports: {} }, entryReportedRef: { current: false },
+      setEntrySource: (_source: string, details: any) => calls.push({ kind: 'context', details }),
+      setEntryEvent: (details: any) => calls.push({ kind: 'analytics', details }),
+    };
+    vm.runInNewContext(ts.transpileModule('module.exports='+callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
+    context.module.exports('deep_link', { type: 'team', id: 'club', invitedBy: 'inviter' });
+    expect(calls.map(call => call.kind)).toEqual(['context', 'analytics']);
+    expect(calls[0].details).toMatchObject({ entry_source: 'club_link', inviter_uid: 'inviter' });
+    expect(calls[1].details).toMatchObject({ entry_source: 'club_link', has_inviter: true });
+    expect(calls[1].details.inviter_uid).toBeUndefined();
   });
 
   it('the guest Home reads it instead of assuming', () => {

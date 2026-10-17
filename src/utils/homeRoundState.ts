@@ -240,7 +240,7 @@ export function completedMetrics(game: Game): CompletedMetric[] {
   const out: CompletedMetric[] = [];
   const rounds = game.committedRoundCount;
   if (typeof rounds === 'number' && rounds > 0) out.push({ key: 'rounds', value: rounds });
-  const players = (game.players ?? []).length;
+  const players = (game.players ?? []).length + activeGuestCount(game.guests);
   if (players > 0) out.push({ key: 'players', value: players });
   return out;
 }

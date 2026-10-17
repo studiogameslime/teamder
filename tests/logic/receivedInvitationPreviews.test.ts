@@ -22,8 +22,15 @@ function fixture(gameOverrides: Record<string, any> = {}) {
     '@/types':{activeGuestCount:(guests:any[]=[])=>guests.filter(g=>!g.waitlisted).length},
   };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/receivedInvitationsService.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:(n:string)=>modules[n]});
-  return {list:()=>exports.receivedInvitationsService.list('me'),rows,getPublic};
+  return {list:()=>exports.receivedInvitationsService.list('me'),listInbox:()=>exports.receivedInvitationsService.listInbox('me'),rows,getPublic};
 }
+
+test('the badge and club decision can resolve while cover hydration is stalled',async()=>{
+  const f=fixture();
+  f.getPublic.mockImplementation(()=>new Promise(()=>{}));
+  expect(await f.listInbox()).toMatchObject([{id:'round-invite',targetId:'round'}]);
+  expect(f.getPublic).not.toHaveBeenCalled();
+});
 test.each([
   [{},false], [{players:['a','b']},true], [{guests:[{waitlisted:false}]},true],
   [{guests:[{waitlisted:true}]},false], [{pendingPromotion:{uid:'offer'}},true],

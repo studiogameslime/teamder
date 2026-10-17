@@ -1,28 +1,3 @@
-// PersonalInviteScreen — somebody's friend sent them here, and the app says so.
-//
-// A personal link used to land on whatever the app happened to show: the games
-// feed, then the guest Home. Both are right for somebody who just opened
-// Teamder and wrong for somebody who was INVITED — the one thing they know is
-// that a specific person wanted them here, and the app was the only party in
-// the conversation that did not mention it.
-//
-// So: who invited you, then what that person actually plays, then a way on.
-// Nothing here asks for an account. Opening a club or a match is browsing;
-// joining one is a write, and the contextual sheet on those screens owns it.
-//
-// ─── What it is allowed to know ──────────────────────────────────────────
-//
-// Everything comes from `personalInvite.ts`, which is the file that argues the
-// privacy boundary: `/usersPublic` for the name and face, the public discovery
-// query for matches, `/groupsPublic` for the clubs behind them. No `/users`
-// read — a guest cannot make one, and attempting it is a permission error for
-// every invited person on earth.
-//
-// ─── What it must not do ─────────────────────────────────────────────────
-//
-// Consume the invite. The stash is what `applyInviteAttributionIfFresh` reads
-// at SIGNUP, which happens long after this screen — see `inviteLanding.ts`.
-
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,19 +6,24 @@ import { useNavigation, useRoute, type RouteProp } from '@react-navigation/nativ
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { MatchListCard } from '@/components/match/MatchListCard';
+import { UserAvatar } from '@/components/UserAvatar';
+import { FriendActionButton } from '@/components/profile/FriendActionButton';
+import { useAuthenticatedAction } from '@/hooks/useAuthenticatedAction';
+import { resolveInviteLandingActivity, type InviteLandingActivity } from '@/services/personalInviteLanding';
+import { resolveRoundCover } from '@/data/roundCover';
+import { getCoverSource } from '@/data/coverImages';
+import { formatDayDate, formatTime } from '@/utils/format';
 import { MatchCardSkeleton } from '@/components/anim/MatchCardSkeleton';
 import { AppearItem } from '@/components/anim/AppearItem';
 import {
   resolveInviter,
-  resolveInviteActivity,
   type InviteContext,
 } from '@/services/personalInvite';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { useUserStore } from '@/store/userStore';
-import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import type { Game, GroupPublic } from '@/types';
+import { activeGuestCount, type Game, type GroupPublic } from '@/types';
 import type { PublicUser } from '@/firebase/firestore';
 
 type Nav = { navigate: (s: string, p?: unknown) => void; goBack: () => void };
@@ -51,13 +31,14 @@ type Params = { PersonalInvite: { invitedBy?: string; source?: string } | undefi
 
 type ActivityState =
   | { status: 'loading' }
-  | { status: 'ready'; games: Game[]; clubs: GroupPublic[]; clubsUnavailable?: boolean }
+  | ({ status: 'ready'; owner: string } & InviteLandingActivity)
   | { status: 'error' };
 
 export function PersonalInviteScreen() {
   const nav = useNavigation<Nav>();
   const route = useRoute<RouteProp<Params, 'PersonalInvite'>>();
   const invitedBy = route.params?.invitedBy;
+  const authAction = useAuthenticatedAction();
   const me = useUserStore((s) => s.currentUser);
 
   // Two independent loads, deliberately. The hero is the reason the screen
@@ -73,6 +54,8 @@ export function PersonalInviteScreen() {
 
   useEffect(() => {
     let alive = true;
+    setInviter(null);
+    setInviterLoading(!!invitedBy);
     void (async () => {
       const { inviter: found, reason } = await resolveInviter(invitedBy);
       if (!alive) return;
@@ -91,8 +74,8 @@ export function PersonalInviteScreen() {
     if (!me) return;
     setActivity({ status: 'loading' });
     try {
-      const { games, clubs, clubsUnavailable } = await resolveInviteActivity(invitedBy, me.id);
-      if (request === activityRequest.current) setActivity({ status: 'ready', games, clubs, clubsUnavailable });
+      const result = await resolveInviteLandingActivity(invitedBy, me.id, me.isGuest === true);
+      if (request === activityRequest.current) setActivity({ status: 'ready', owner: `${me.id}:${me.isGuest === true}:${invitedBy}`, ...result });
     } catch {
       // Keep the inviter visible and make the failed query retryable.
       if (request === activityRequest.current) setActivity({ status: 'error' });
@@ -103,7 +86,7 @@ export function PersonalInviteScreen() {
     void loadActivity();
     return () => { activityRequest.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me?.id, invitedBy]);
+  }, [me?.id, me?.isGuest, invitedBy]);
 
   // Reported once, and only once BOTH loads have settled: the whole value of
   // `has_clubs` / `has_games` is telling "nobody tapped" apart from "there was
@@ -156,393 +139,147 @@ export function PersonalInviteScreen() {
     nav.navigate('GuestHome');
   };
 
-  const named = inviter?.name?.trim();
-  const ready = activity.status === 'ready' ? activity : null;
-  const nothingToShow =
-    !!ready && !ready.clubsUnavailable && ready.clubs.length === 0 && ready.games.length === 0;
+  const named = inviter && inviter.id === invitedBy ? inviter.name?.trim() : undefined;
+  const ready = activity.status === 'ready' && activity.owner === `${me?.id}:${me?.isGuest === true}:${invitedBy}` ? activity : null;
+  const nextGame = ready?.games[0];
+  const isGuest = !me || me.isGuest === true;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {ready?.clubsUnavailable ? <Card>
-          <Text style={{ color: colors.textMuted, textAlign: RTL_LABEL_ALIGN }}>חלק מפרטי המועדונים לא נטענו.</Text>
-          <Button title={he.retry} variant="outline" onPress={() => void loadActivity()} />
-        </Card> : null}
-        {/* ── The hero ──────────────────────────────────────────────────
-            Warmer than the organic Home — a tinted card and a face — but the
-            same palette, the same radii, the same type ramp. */}
         <View style={styles.topRow}>
           <Text style={styles.wordmark}>Teamder</Text>
-          <Pressable
-            onPress={explore}
-            hitSlop={10}
-            style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
-            accessibilityRole="button"
-            accessibilityLabel={he.personalInviteCloseA11y}
-          >
-            <Ionicons name="close" size={24} color={colors.textMuted} />
+          <Pressable onPress={explore} hitSlop={8} style={styles.closeBtn}
+            accessibilityRole="button" accessibilityLabel={he.personalInviteCloseA11y}>
+            <Ionicons name="close" size={25} color={colors.textMuted} />
           </Pressable>
         </View>
-
         <View style={styles.hero}>
-          {inviterLoading ? (
-            // A short, quiet placeholder. The shell is already on screen, so
-            // this is a line settling rather than a screen arriving.
-            <>
-              <View style={styles.avatarSkeleton} />
-              <View style={styles.lineSkeleton} />
-            </>
-          ) : named ? (
-            // ── Discovery, not a profile ────────────────────────────────
-            //
-            // The question is "where does this person play", and the answer is
-            // the clubs and matches below. Deliberately absent: stats, goals,
-            // assists, rating, achievements, a bio, a feed — anything that
-            // would turn this into a profile page for somebody the viewer has
-            // not met. The tag and the name carry the personal context; the
-            // rest of the screen is places to join.
-            <>
-              <View style={styles.tag}>
-                <Text style={styles.tagText}>{he.entryInviteTag(named)}</Text>
-                <Ionicons name="heart" size={12} color={colors.primary} />
+          {inviterLoading ? <View style={styles.avatarSkeleton} /> : inviter && named ? <>
+            <View style={styles.identity}>
+              <UserAvatar user={inviter} size={76} ring />
+              <View style={styles.identityCopy}>
+                <Text style={styles.name}>{named}</Text>
+                <Text style={styles.subtitle}>הזמין אותך לשחק יחד</Text>
               </View>
-              <Text style={styles.whereTitle}>{he.inviterWhereTitle(named)}</Text>
-              <Text style={styles.whereBody}>{he.inviterWhereSubtitle(named)}</Text>
-            </>
-          ) : (
-            // No inviter, no mirror, a deleted account, a read that failed —
-            // all one state for the person looking at it. The invitation is
-            // still true; we just cannot name who sent it.
-            <>
-              <View style={styles.genericBadge}>
-                <Ionicons name="mail-open-outline" size={30} color={colors.primary} />
-              </View>
-              <Text style={styles.heroTitle}>{he.personalInviteGenericTitle}</Text>
-              <Text style={styles.heroBody}>{he.personalInviteGenericBody}</Text>
-            </>
-          )}
+            </View>
+            {inviter.id !== me?.id ? <View style={styles.friendArea}>
+              {isGuest ? <>
+                <Button title="התחבר להוספה לחברים" variant="outline" fullWidth iconRight="person-add-outline"
+                  onPress={authAction.requestAuth} />
+                <Text style={styles.friendHint}>לאחר ההתחברות אפשר לשלוח בקשת חברות</Text>
+              </> : <FriendActionButton key={`${me.id}:${inviter.id}`} meId={me.id} otherUserId={inviter.id} />}
+            </View> : null}
+          </> : <>
+            <Ionicons name="mail-open-outline" size={36} color={colors.primary} />
+            <Text style={styles.name}>{he.personalInviteGenericTitle}</Text>
+            <Text style={styles.subtitle}>{he.personalInviteGenericBody}</Text>
+          </>}
         </View>
 
-        {/* ── Clubs ─────────────────────────────────────────────────────── */}
-        {activity.status === 'loading' ? (
-          <View style={styles.list}>
-            <MatchCardSkeleton count={2} />
-          </View>
-        ) : activity.status === 'error' ? (
-          <Card style={styles.notice}>
-            <Text style={styles.noticeText}>{he.personalInviteGamesError}</Text>
-            <Pressable
-              onPress={() => void loadActivity()}
-              style={({ pressed }) => [styles.noticeCta, pressed && { opacity: 0.7 }]}
-              accessibilityRole="button"
-              accessibilityLabel={he.personalInviteRetry}
-            >
-              <Text style={styles.noticeCtaText}>{he.personalInviteRetry}</Text>
-            </Pressable>
-          </Card>
-        ) : nothingToShow && named ? (
-          // Only when there IS a name. Without one the hero has already said
-          // the generic line, and repeating it in a card underneath is the
-          // same paragraph twice — which is exactly how it rendered before
-          // visual QA caught it.
-          <Card style={styles.notice}>
-            <Text style={styles.emptyTitle}>{he.personalInviteEmptyTitle(named)}</Text>
-            <Text style={styles.noticeText}>{he.personalInviteEmptyBody}</Text>
-          </Card>
-        ) : nothingToShow ? null : (
-          <>
-            {ready!.clubs.length > 0 ? (
-              <>
-                <SectionHead title={he.inviterClubsTitle(named ?? '')} />
-                <View style={styles.list}>
-                  {ready!.clubs.map((c, i) => (
-                    <AppearItem key={c.id} index={i}>
-                      <ClubRow
-                        club={c}
-                        inviterName={named}
-                        onPress={() => openClub(c)}
-                      />
-                    </AppearItem>
-                  ))}
-                </View>
-              </>
-            ) : null}
-
-            {ready!.games.length > 0 ? (
-              <>
-                <SectionHead title={he.inviterGamesTitle(named ?? '')} />
-                <View style={styles.list}>
-                  {ready!.games.map((g, i) => (
-                    <AppearItem key={g.id} index={i}>
-                      <MatchListCard
-                        game={g}
-                        userId={me?.id ?? ''}
-                        // Tap and CTA both open the match. Joining lives there,
-                        // with the roster, the membership check and the
-                        // contextual sheet — a second join path on a landing
-                        // screen is how the two would drift.
-                        onPrimary={() => openGame(g)}
-                      />
-                    </AppearItem>
-                  ))}
-                </View>
-              </>
-            ) : null}
-          </>
-        )}
-
-        {/* ── The way on ────────────────────────────────────────────────
-            Always present, whatever resolved. Somebody who came from a
-            friend and found nothing to join still came to play. */}
-        <Pressable
-          onPress={explore}
-          style={({ pressed }) => [styles.explore, pressed && { opacity: 0.92 }]}
-          accessibilityRole="button"
-          accessibilityLabel={he.personalInviteExploreCta}
-        >
-          <Text style={styles.exploreText}>{he.personalInviteExploreCta}</Text>
-          <Ionicons name="chevron-back" size={18} color={colors.textOnPrimary} />
+        {activity.status === 'loading' || (activity.status === 'ready' && !ready) ? <MatchCardSkeleton count={1} /> : activity.status === 'error' ?
+          <Notice title="הפעילות לא נטענה" body="אפשר לנסות שוב. פרטי ההזמנה נשמרו." retry={loadActivity} /> : ready ? <>
+            <Text style={styles.sectionTitle}>המחזור הקרוב</Text>
+            {ready.gamesUnavailable ? <Notice title="פרטי המחזור לא נטענו" retry={loadActivity} /> : nextGame ?
+              <UpcomingRound game={nextGame} club={ready.clubs.find(c => c.id === nextGame.groupId)} onPress={() => openGame(nextGame)} /> :
+              <Notice title="אין כרגע מחזור קרוב שמוצג לך" body="כשיהיה מחזור זמין להצטרפות, אפשר יהיה למצוא אותו כאן." />}
+            <Text style={styles.sectionTitle}>המועדונים שבהם משחק</Text>
+            {ready.clubs.map((club, index) => <AppearItem key={club.id} index={index}>
+              <ClubRow club={club} onPress={() => openClub(club)} />
+            </AppearItem>)}
+            {ready.clubsUnavailable ? <Notice title="חלק מפרטי המועדונים לא נטענו" retry={loadActivity} /> :
+              ready.clubs.length === 0 ? <Notice title={isGuest ? 'מועדונים נוספים אחרי התחברות' : 'אין כרגע מועדונים שמוצגים לך'}
+                body={isGuest ? 'אפשר להתחבר כדי לראות את המועדונים הזמינים בפרופיל.' : undefined} /> : null}
+          </> : null}
+        <Pressable onPress={explore} style={styles.explore} accessibilityRole="button">
+          <Text style={styles.exploreText}>גלה עוד מועדונים ומחזורים</Text>
+          <Ionicons name="chevron-back" size={18} color={colors.primary} />
         </Pressable>
       </ScrollView>
+      {authAction.sheet}
     </SafeAreaView>
   );
 }
 
-function SectionHead({ title }: { title: string }) {
-  return (
-    <View style={styles.sectionHead}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionRule} />
-    </View>
-  );
+function Notice({title, body, retry}: {title: string; body?: string; retry?: () => Promise<void>}) {
+  return <View style={styles.notice}>
+    <Text style={styles.noticeTitle}>{title}</Text>
+    {body ? <Text style={styles.meta}>{body}</Text> : null}
+    {retry ? <Button title={he.retry} variant="outline" onPress={() => void retry()} /> : null}
+  </View>;
 }
 
-/** A club, from its public mirror. `memberCount` and `isOpen` are the only two
- *  facts shown, and both are already on the public card in the clubs feed. */
-function ClubRow({
-  club,
-  inviterName,
-  onPress,
-}: {
-  club: GroupPublic;
-  inviterName?: string;
-  onPress: () => void;
-}) {
-  return (
-    <Card style={styles.clubCard} onPress={onPress}>
-      <View style={styles.clubRow}>
-        {/* The club's own cover when it has published one, the shield
-            otherwise. Nothing is invented: `coverPhotoUrl` is mirrored onto
-            `/groupsPublic` exactly so a public surface can show it. */}
-        {club.coverPhotoUrl ? (
-          <Image source={{ uri: club.coverPhotoUrl }} style={styles.clubCover} />
-        ) : (
-          <View style={styles.clubIcon}>
-            <Ionicons name="shield-outline" size={22} color={colors.primary} />
-          </View>
-        )}
-        <View style={styles.clubText}>
-          <Text style={styles.clubName} numberOfLines={1}>
-            {club.name}
-          </Text>
-          <Text style={styles.clubMeta} numberOfLines={1}>
-            {[club.city, he.personalInviteClubMembers(club.memberCount)]
-              .filter(Boolean)
-              .join(' · ')}
-          </Text>
-          {inviterName ? (
-            <Text style={styles.clubInviter} numberOfLines={1}>
-              {he.personalInviteInThis(inviterName)}
-            </Text>
-          ) : null}
-        </View>
-        {/* A named action, not a bare chevron. The row opens the public club
-            screen, which is where joining actually happens — including the
-            request flow for a club that is not open — so the label states the
-            intent without this screen owning the write. */}
-        <View style={styles.clubCta}>
-          <Text style={styles.clubCtaText}>{he.inviterJoinClub}</Text>
-          <Ionicons name="chevron-back" size={15} color={colors.primary} />
-        </View>
+function UpcomingRound({game, club, onPress}: {game: Game; club?: GroupPublic; onPress: () => void}) {
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  const spots = Math.max(0, game.maxPlayers - game.players.length - activeGuestCount(game.guests) - (game.pendingPromotion?.uid ? 1 : 0));
+  return <View style={styles.roundCard}>
+    <View style={styles.coverArea}>
+      <Image source={resolveRoundCover(game, club ?? null, false, failedPhoto)} style={styles.roundCover}
+        onError={() => { if (club?.coverPhotoUrl) setFailedPhoto(club.coverPhotoUrl); }} />
+      <View style={styles.roundBadge}><Text style={styles.roundBadgeText}>{spots > 0 ? 'ההרשמה פתוחה' : 'ההרשמה לרשימת המתנה'}</Text></View>
+    </View>
+    <View style={styles.roundBody}>
+      <Text style={styles.roundTitle}>{game.title || 'מחזור קרוב'}</Text>
+      <View style={styles.detailRow}><Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
+        <Text style={styles.detailText}>{`${formatDayDate(game.startsAt)} · ⁦${formatTime(game.startsAt)}⁩`}</Text></View>
+      <View style={styles.detailRow}><Ionicons name="location-outline" size={18} color={colors.textMuted} />
+        <Text style={styles.detailText}>{game.fieldName || 'פרטי המגרש במחזור'}</Text></View>
+      <Text style={styles.spots}>{spots > 0 ? spots === 1 ? 'נותר מקום אחד' : `נותרו ${spots} מקומות` : 'המחזור מלא · אפשר לצפות בפרטים'}{game.requiresApproval ? ' · ההצטרפות באישור' : ''}</Text>
+      <Button title="לפרטי המחזור" fullWidth iconLeft="chevron-back" onPress={onPress} />
+    </View>
+  </View>;
+}
+
+function ClubRow({club, onPress}: {club: GroupPublic; onPress: () => void}) {
+  const [failedPhoto, setFailedPhoto] = useState(false);
+  const source = club.coverPhotoUrl && !failedPhoto ? {uri: club.coverPhotoUrl} : getCoverSource(club.coverImageId);
+  return <Card style={styles.clubCard} onPress={onPress}>
+    <View style={styles.clubRow}>
+      {source ? <Image source={source} style={styles.clubCover} onError={() => setFailedPhoto(true)} /> :
+        <View style={styles.clubIcon}><Ionicons name="shield-outline" size={24} color={colors.primary} /></View>}
+      <View style={styles.clubText}>
+        <Text style={styles.clubName} numberOfLines={2}>{club.name}</Text>
+        <Text style={styles.meta}>{[club.city, he.personalInviteClubMembers(club.memberCount)].filter(Boolean).join(' · ')}</Text>
       </View>
-    </Card>
-  );
+      <Ionicons name="chevron-back" size={19} color={colors.textMuted} />
+    </View>
+  </Card>;
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  scroll: { padding: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md },
-
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  wordmark: {
-    ...typography.h3,
-    fontWeight: '900',
-    color: colors.primary,
-    letterSpacing: 0.2,
-  },
-  closeBtn: { padding: spacing.xs },
-
-  hero: {
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.xl,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.xs,
-  },
-  heroTitle: {
-    ...typography.h2,
-    fontWeight: '900',
-    color: colors.text,
-    textAlign: 'center',
-  },
-  heroBody: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  genericBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-  },
-  avatarSkeleton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.surface,
-    opacity: 0.7,
-  },
-  lineSkeleton: {
-    width: '70%',
-    height: 22,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surface,
-    opacity: 0.7,
-  },
-
-  sectionHead: { marginTop: spacing.md, gap: spacing.xs },
-  sectionTitle: {
-    ...typography.h3,
-    fontWeight: '800',
-    color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  sectionRule: {
-    width: 56,
-    height: 3,
-    borderRadius: radius.pill,
-    backgroundColor: colors.info,
-    alignSelf: 'flex-start',
-  },
-
-  list: { gap: spacing.md },
-
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.pill,
-    paddingVertical: 4,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
-  },
-  tagText: {
-    ...typography.caption,
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  whereTitle: {
-    ...typography.h1,
-    fontSize: 27,
-    fontWeight: '800',
-    color: colors.primaryDark,
-    textAlign: 'center',
-  },
-  whereBody: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-  },
-  clubCover: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceMuted,
-  },
-  clubCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.pill,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-  },
-  clubCtaText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  clubCard: { paddingVertical: spacing.md },
-  clubRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  clubIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primaryLight,
-  },
-  clubText: { flex: 1, gap: 2 },
-  clubName: {
-    ...typography.body,
-    fontWeight: '800',
-    color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  clubMeta: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
-  clubInviter: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.primary,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-
-  notice: { gap: spacing.sm, paddingVertical: spacing.lg },
-  emptyTitle: {
-    ...typography.body,
-    fontWeight: '800',
-    color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  noticeText: { ...typography.body, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
-  noticeCta: { alignSelf: 'flex-start' },
-  noticeCtaText: { ...typography.label, fontWeight: '800', color: colors.primary },
-
-  explore: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    paddingVertical: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-    ...shadows.card,
-  },
-  exploreText: {
-    ...typography.body,
-    fontWeight: '800',
-    color: colors.textOnPrimary,
-    textAlign: 'center',
-  },
+  root: {flex: 1, backgroundColor: colors.bg},
+  scroll: {padding: 16, paddingBottom: 28, gap: 12},
+  topRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4},
+  wordmark: {fontSize: 27, fontWeight: '900', color: colors.primary},
+  closeBtn: {minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center'},
+  hero: {backgroundColor: '#EDF4FF', borderRadius: 22, padding: 16, gap: 16},
+  identity: {flexDirection: 'row', gap: 14, alignItems: 'center'},
+  identityCopy: {flex: 1, minWidth: 0, gap: 5},
+  name: {fontSize: 25, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN},
+  subtitle: {fontSize: 15, lineHeight: 22, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN},
+  friendArea: {gap: 7, minHeight: 46, justifyContent: 'center'},
+  friendHint: {fontSize: 12, lineHeight: 18, textAlign: 'center', color: colors.textMuted},
+  avatarSkeleton: {width: 76, height: 76, borderRadius: 38, backgroundColor: '#DBE7FC'},
+  sectionTitle: {fontSize: 20, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN, marginTop: 6},
+  roundCard: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 20, overflow: 'hidden'},
+  coverArea: {margin: 8, height: 98, borderRadius: 14, overflow: 'hidden', backgroundColor: '#E8EEF5'},
+  roundCover: {width: '100%', height: '100%', resizeMode: 'cover'},
+  roundBadge: {position: 'absolute', top: 9, start: 9, paddingVertical: 5, paddingHorizontal: 10, borderRadius: 20, backgroundColor: '#DCFCE7'},
+  roundBadgeText: {fontSize: 12, fontWeight: '700', color: '#166534'},
+  roundBody: {padding: 12, paddingTop: 3, gap: 8},
+  roundTitle: {fontSize: 21, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN},
+  detailRow: {flexDirection: 'row', alignItems: 'center', gap: 7},
+  detailText: {flex: 1, minWidth: 0, fontSize: 14, lineHeight: 20, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN},
+  spots: {fontSize: 13, lineHeight: 19, color: colors.primary, textAlign: RTL_LABEL_ALIGN},
+  clubCard: {padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 18},
+  clubRow: {flexDirection: 'row', alignItems: 'center', gap: 11},
+  clubCover: {width: 46, height: 46, borderRadius: 23, backgroundColor: colors.surfaceMuted},
+  clubIcon: {width: 46, height: 46, borderRadius: 23, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center'},
+  clubText: {flex: 1, minWidth: 0, gap: 4},
+  clubName: {fontSize: 16, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN},
+  meta: {fontSize: 13, lineHeight: 20, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN},
+  notice: {padding: 16, gap: 7, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border},
+  noticeTitle: {fontSize: 15, lineHeight: 22, fontWeight: '700', color: colors.text, textAlign: RTL_LABEL_ALIGN},
+  explore: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 48, paddingVertical: 10},
+  exploreText: {fontSize: 15, fontWeight: '700', color: colors.primary, flexShrink: 1, textAlign: 'center'},
 });

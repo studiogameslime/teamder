@@ -16,6 +16,17 @@ import { readLiveMatch, readStats } from '@/firebase/firestore';
 const base = { phase: 'roundRunning', assignments: {}, benchOrder: [], scoreA: 0, scoreB: 0 };
 
 describe('readLiveMatch — shootout survives deserialization', () => {
+  it('retains save versus off-target miss and goal assist knowledge through the real reader', () => {
+    const lm = readLiveMatch({ ...base,
+      goals: [{ id: 'goal', team: 'A', scorerId: 'a', assistStatus: 'unknown', minute: 2, at: 1 }],
+      shootout: { firstTeam: 'A', kicks: [
+        { id: 'saved', kickerId: 'a', keeperId: 'g', team: 'A', scored: false, outcome: 'save', at: 1 },
+        { id: 'wide', kickerId: 'b', keeperId: 'h', team: 'B', scored: false, outcome: 'miss', at: 2 },
+      ] },
+    });
+    expect(lm!.goals![0].assistStatus).toBe('unknown');
+    expect(lm!.shootout!.kicks.map(k => k.outcome)).toEqual(['save', 'miss']);
+  });
   it('keeps firstTeam, both keepers, and every kick with all fields', () => {
     const lm = readLiveMatch({
       ...base,

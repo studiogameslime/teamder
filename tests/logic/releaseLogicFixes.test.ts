@@ -112,14 +112,14 @@ test('closed shootout writes reject instead of reporting success',async()=>{
   expect(x.update).not.toHaveBeenCalled();
 });
 function initializer(name:string,context:any){
-  const text=fs.readFileSync('src/components/match/Shootout.tsx','utf8'),file=ts.createSourceFile('Shootout.tsx',text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  const text=fs.readFileSync('src/components/match/ShootoutWizard.tsx','utf8'),file=ts.createSourceFile('Shootout.tsx',text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   let expression:string|undefined;
   const visit=(n:ts.Node)=>{if(ts.isVariableDeclaration(n)&&n.name.getText(file)===name)expression=n.initializer?.getText(file);ts.forEachChild(n,visit);};visit(file);
   if(!expression)throw Error(name);
   return vm.runInNewContext(ts.transpileModule(`(${expression})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
 }
 test('setup failure retains retry and a double tap cannot issue another write',async()=>{
-  const ctx:any={writing:{current:false},setupAttempt:{current:null},uiEpoch:{current:1},visibleRef:{current:true},setBusy:jest.fn(),setSaveError:jest.fn()};
+  const ctx:any={writing:{current:false},setupAttempt:{current:null},uiEpoch:{current:1},visibleRef:{current:true},setBusy:jest.fn(),setSaveErrorMessage:jest.fn(),logError:jest.fn(),gameId:'g',roundId:'round-one',screen:'first',setSaveError:jest.fn()};
   const save=initializer('saveSetup',ctx);
   let reject!:(error:Error)=>void;const write=jest.fn(()=>new Promise<void>((_resolve,r)=>{reject=r}));
   const running=save(write);await save(write);expect(write).toHaveBeenCalledTimes(1);
@@ -127,10 +127,13 @@ test('setup failure retains retry and a double tap cannot issue another write',a
   expect(ctx.setupAttempt.current).toBe(write);expect(ctx.writing.current).toBe(false);expect(ctx.setBusy).toHaveBeenLastCalledWith(false);
   const successful=jest.fn(async()=>{});await save(successful);expect(ctx.setupAttempt.current).toBeNull();
 });
-test('keeper picker closes only after successful acknowledgement, including retry',async()=>{
-  const ctx:any={writing:{current:false},setupAttempt:{current:null},uiEpoch:{current:1},visibleRef:{current:true},setBusy:jest.fn(),setSaveError:jest.fn(),setKeeperPicking:jest.fn(),rotation:undefined,
-    gameId:'g',defendingTeam:'B',kicks:[],gameService:{setShootoutKeeper:jest.fn().mockRejectedValueOnce(Error('offline')).mockResolvedValue(undefined)},logEvent:jest.fn(),AnalyticsEvent:{}};
-  ctx.saveSetup=initializer('saveSetup',ctx);const pick=initializer('pickKeeper',ctx);
-  pick('keeper');await new Promise(resolve=>setTimeout(resolve,0));expect(ctx.setKeeperPicking).not.toHaveBeenCalled();
-  await ctx.saveSetup(ctx.setupAttempt.current);expect(ctx.setKeeperPicking).toHaveBeenCalledWith(false);
+test('keeper picker advances locally in one click and only accepts the defending roster',()=>{
+  const ctx:any={writing:{current:false},attempt:{current:null},saveError:false,kicker:{id:'kicker'},defendingRoster:[{id:'keeper'}],
+    setCompleted:jest.fn(),setSelectedKeeperId:jest.fn(),setScreen:jest.fn(),
+    gameId:'g',defendingTeam:'B',kicks:[],gameService:{setShootoutKeeper:jest.fn()},logEvent:jest.fn(),AnalyticsEvent:{}};
+  const pick=initializer('pickKeeper',ctx);
+  pick('wrong-side');expect(ctx.setScreen).not.toHaveBeenCalled();
+  pick('keeper');expect(ctx.setSelectedKeeperId).toHaveBeenCalledWith('keeper');expect(ctx.setScreen).toHaveBeenCalledWith('result');
+  expect(ctx.gameService.setShootoutKeeper).not.toHaveBeenCalled();
+  ctx.writing.current=true;pick('keeper');expect(ctx.setSelectedKeeperId).toHaveBeenCalledTimes(1);
 });

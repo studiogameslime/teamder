@@ -120,9 +120,21 @@ export function goToCommunityChat(groupId: string): void {
 }
 export function goToDirectChat(convId: string): void {
   if (!navigationRef.isReady()) return;
+  if (openOfficialSupport(convId)) return;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
   nav.navigate('ChatTab', { screen: 'DirectChat', initial: false, params: { convId } });
+}
+
+/** Lazy imports avoid the support store -> navigationRef dependency cycle. */
+function openOfficialSupport(convId: string): boolean {
+  if (!convId.split('__').includes('teamder')) return false;
+  const { useUserStore } = require('@/store/userStore') as typeof import('@/store/userStore');
+  const uid = useUserStore.getState().currentUser?.id;
+  if (!uid || convId !== [uid, 'teamder'].sort().join('__')) return false;
+  const { useSupportChat } = require('@/services/supportChat') as typeof import('@/services/supportChat');
+  useSupportChat.getState().open(uid);
+  return true;
 }
 
 /**
@@ -385,6 +397,7 @@ export function navigateForPush(
           params: { groupId: parentId },
         });
       } else if (scope === 'dm') {
+        if (openOfficialSupport(parentId)) return true;
         nav.navigate('ChatTab', {
           screen: 'DirectChat',
           initial: false,

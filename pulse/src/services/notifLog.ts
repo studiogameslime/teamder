@@ -23,6 +23,8 @@ export interface NotifLogEntry {
   kind?: string; // data.type / data.kind when present
   eventId?: string;
   sessionId?: string;
+  parentId?: string;
+  messageId?: string;
 }
 
 let pendingWrite: Promise<void> = Promise.resolve();
@@ -54,7 +56,9 @@ async function appendNotification(
         : typeof data?.kind === 'string'
           ? data.kind
           : undefined;
-    list.unshift({ id: `n_${now}_${Math.floor(Math.random() * 1000)}`, title, body, at: now, kind, eventId, sessionId });
+    const parentId = typeof data?.parentId === 'string' ? data.parentId : undefined;
+    const messageId = typeof data?.messageId === 'string' ? data.messageId : undefined;
+    list.unshift({ id: `n_${now}_${Math.floor(Math.random() * 1000)}`, title, body, at: now, kind, eventId, sessionId, parentId, messageId });
     await AsyncStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)));
   } catch {
     /* non-fatal */

@@ -651,9 +651,9 @@ function HeadToHeadTab({ model }: { model: PairCompareModel }) {
         ) : null}
 
         {/* Rank leads the section and carries NO bar.
-            Every other row's bar is a share of a total and the longer side is
-            the better one. A position is the opposite — #1 beats #5 — so a
-            proportional bar would draw the leader with the shorter stripe. */}
+            Bars show quantities; the service verdict determines the highlight,
+            including lower-is-better losses. Rank has no quantity bar because
+            its position is ordinal rather than a share of a total. */}
         {rankA != null && rankB != null ? (
           <View style={styles.rankRow}>
             <View style={styles.rankSide}>
@@ -864,8 +864,8 @@ function CompareBar({ row }: { row: CompareRow }) {
   // Both at zero → a neutral track, split down nobody's middle.
   const aShare = total > 0 ? av / total : 0;
   const known = row.a !== null && row.b !== null;
-  const aWins = known && av > bv && total > 0;
-  const bWins = known && bv > av && total > 0;
+  const aWins = known && !row.unscored && row.winner === 'a';
+  const bWins = known && !row.unscored && row.winner === 'b';
 
   return (
     <View style={styles.cmpRow}>
@@ -1340,3 +1340,4 @@ const styles = StyleSheet.create({
     marginTop: -spacing.xs,
   },
 });
+

@@ -63,9 +63,8 @@ export function ClubTabs<K extends string = ClubTabKey>({
   onLockedPress,
   flush = false,
 }: ClubTabsProps<K>) {
-  // Four tabs share less room. Keep their compact base size, but let labels
-  // wrap and the whole row grow when the user's font scale needs more room.
-  // A fixed height or shrink-to-fit would defeat that accessibility setting.
+  // Four tabs share less room. Preserve each complete word on one line;
+  // fitting is local to this short navigation label, not a global font cap.
   const dense = tabs.length > 3;
   return (
     <View style={[styles.bar, flush && styles.barFlush]}>
@@ -113,6 +112,9 @@ function ClubTabButton<K extends string>({ tab: t, isActive, dense, onChange, on
               />
             ) : null}
             <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={dense ? 0.65 : 0.8}
               style={[
                 styles.label,
                 dense && styles.labelDense,

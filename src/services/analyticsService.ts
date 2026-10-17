@@ -19,6 +19,12 @@ import { joryio } from '@/services/joryio';
 import { recordOnboardingActivity } from '@/services/onboardingActivity';
 
 export const AnalyticsEvent = {
+  UpdatePromptShown: 'update_prompt_shown',
+  UpdatePromptTapped: 'update_prompt_tapped',
+  UpdatePromptDismissed: 'update_prompt_dismissed',
+  UpdateStoreOpened: 'update_store_opened',
+  UpdateStoreOpenFailed: 'update_store_open_failed',
+  UpdatePromptCompleted: 'update_prompt_completed',
   EntryExistingAccountTapped: 'entry_existing_account_tapped',
   OnboardingInteraction: 'onboarding_interaction',
   // Navigation
@@ -71,6 +77,7 @@ export const AnalyticsEvent = {
   // Games
   GameCreated: 'game_created',
   GameJoined: 'game_joined',
+  GameJoinRequested: 'game_join_requested',
   GameCancelled: 'game_cancelled',
   WaitlistJoined: 'waitlist_joined',
   RegistrationConflictBlocked: 'registration_conflict_blocked',
@@ -540,7 +547,7 @@ export const AnalyticsEvent = {
   ShootoutKeeperPicked: 'shootout_keeper_picked',   // gameId, team, kickIndex
   ShootoutKickRecorded: 'shootout_kick_recorded',   // gameId, team, scored, kickIndex, scoredA, scoredB
   ShootoutFinished: 'shootout_finished',   // gameId, result ('decided'|'tie'), scoredA, scoredB, kicks
-  ShootoutAbandoned: 'shootout_abandoned',   // gameId, round
+  ShootoutClosed: 'shootout_closed',   // gameId, round
 
   // ─── Goals & assists ───
   GoalWizardOpened: 'goal_wizard_opened',   // gameId, team, minute

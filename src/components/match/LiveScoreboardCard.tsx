@@ -9,7 +9,7 @@ import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // listener.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import Animated, {
@@ -21,6 +21,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { UserAvatar } from '@/components/UserAvatar';
 import { toast } from '@/components/Toast';
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
@@ -34,12 +35,15 @@ import {
   makeResolver,
   teamName,
   teamColor,
+  teamTextColor,
   type PlayerLite,
   type RosterMember,
 } from '@/components/match/rotationView';
 import { gameService } from '@/services/gameService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { StepIndicator } from '@/components/StepIndicator';
+import { GoalEntryModal, type GoalEntry } from './GoalEntryModal';
+import { TeamShirtIllustration } from './TeamShirt';
+import { roundCommitKey } from '@/services/rotationEngine';
 import type { DraftTeamsResult, GameGuest, LiveMatchState, MatchRotation } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -64,15 +68,22 @@ interface Props {
   danger: boolean;
   overtimeText?: string | null;
   stoppagesText: string;
-  onStoppages: () => void;
+  onStoppages?: () => void;
   controllerName?: string | null;
   /** 1-based mini-game number within the evening. The scoreboard shows several
    *  mini-games in a row on the same card, and nothing on screen said WHICH one
    *  you were watching (Eliran's report) — this is that heading. */
   roundNumber?: number;
+  goalRequest?: { side: 'A' | 'B'; key: number };
+  hideGoalButtons?: boolean;
+  /** Opening selection can leave either side unnamed without implying a choice. */
+  sideLabels?: [string, string];
+  sideTints?: [string, string];
 }
 
 export function LiveScoreboardCard(props: Props) {
+  const { width, fontScale } = useWindowDimensions();
+  const compact = width < 360 || fontScale > 1.2;
   const { gameId, live, draftTeams, rotation, playersMap, guests, minute, canEdit } = props;
   // The "הוסף גול" wizard: which side's button was pressed (null = closed).
   const [goalSide, setGoalSide] = useState<'A' | 'B' | null>(null);
@@ -82,6 +93,8 @@ export function LiveScoreboardCard(props: Props) {
   // double-tap (row vs "none" button) could fire two writes before the state
   // flips. The ref blocks the second one in the same tick.
   const busyRef = useRef(false);
+  useEffect(() => { if (!canEdit) setGoalSide(null); }, [canEdit]);
+  useEffect(() => { if (props.goalRequest && canEdit) { setGoalSide(props.goalRequest.side); logEvent(AnalyticsEvent.GoalWizardOpened, { gameId, team: props.goalRequest.side, minute }); } }, [props.goalRequest?.key]);
 
   const resolve = useMemo(() => makeResolver(playersMap, guests), [playersMap, guests]);
   // Players who left during the evening are off their team — exclude them from
@@ -150,13 +163,13 @@ export function LiveScoreboardCard(props: Props) {
     scorerId: string | null,
     ownGoal?: boolean,
     assisterId?: string | null,
+    entry?: Pick<GoalEntry, 'id' | 'assistStatus'>,
   ) => {
-    setGoalSide(null);
-    if (busyRef.current) return;
+    if (!canEdit || busyRef.current) throw new Error('הזנת גול אינה זמינה כרגע');
     busyRef.current = true;
     setBusy(true);
     try {
-      await gameService.recordGoal(gameId, { team, scorerId, assisterId, ownGoal, minute });
+      await gameService.recordGoal(gameId, { team, scorerId, assisterId, ownGoal, minute, ...entry, expectedRoundId: roundCommitKey(rotation) });
       logEvent(AnalyticsEvent.TeamScoreChanged, {
         gameId,
         team,
@@ -167,6 +180,7 @@ export function LiveScoreboardCard(props: Props) {
       });
     } catch (err) {
       toast.error(he.goalSaveFailed);
+      throw err;
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -178,11 +192,11 @@ export function LiveScoreboardCard(props: Props) {
     logEvent(AnalyticsEvent.GoalDeletePrompted, { gameId });
     appAlert('מחיקת גול', 'למחוק את הגול מהיומן?', [
       { text: 'ביטול', style: 'cancel' },
-      { text: 'מחק', style: 'destructive', onPress: () => doUndo(goalId) },
-    ]);
+      { text: 'מחק גול', style: 'destructive', onPress: () => doUndo(goalId) },
+    ], {football:true});
   };
   const doUndo = async (goalId: string) => {
-    if (busyRef.current) return;
+    if (!canEdit || busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
     try {
@@ -214,70 +228,78 @@ export function LiveScoreboardCard(props: Props) {
 
   return (
     <View style={styles.card}>
+      <View style={[styles.pitchPanel, compact && styles.compactPitch]}>
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none" accessible={false}>
+        <Image source={require('@/assets/images/live-scoreboard-pitch.png')} style={[StyleSheet.absoluteFillObject,styles.pitchImage]} resizeMode="stretch" accessible={false}/>
+        <View style={styles.pitchShade}/>
+        <LinearGradient colors={['rgba(13,78,35,0)','rgba(13,78,35,0.55)','rgba(13,78,35,0.55)','rgba(13,78,35,0)']} locations={[0,0.25,0.75,1]} start={{x:0,y:0.5}} end={{x:1,y:0.5}} style={styles.timerReadingShade}/>
+      </View>
       {/* Goal flash — tinted wash pinned to the card, behind the content. */}
       <Animated.View
         pointerEvents="none"
         style={[styles.flashOverlay, { backgroundColor: flashTint }, flashStyle]}
       />
-      {/* Which mini-game of the evening this is — the card otherwise looks
-          identical from round to round. */}
-      {props.roundNumber ? (
-        <View style={styles.roundChip}>
-          <Text style={styles.roundChipText}>
-            {he.matchNumber(props.roundNumber)}
-          </Text>
-        </View>
-      ) : null}
-
       {/* Top row: team A (right) · timer (center) · team B (left). */}
       <View style={styles.row}>
         <ScoreSide
-          label={teamName(aIdx, draftTeams.teams)}
+          label={props.sideLabels?.[0] ?? teamName(aIdx, draftTeams.teams)}
           score={live.scoreA}
-          tint={teamColor(aIdx, draftTeams.teams)}
-          canEdit={canEdit}
+          tint={props.sideTints?.[0] ?? teamColor(aIdx, draftTeams.teams)}
+          canEdit={canEdit && !props.hideGoalButtons}
           busy={busy}
+          compact={compact}
           onAdd={() => {
             logEvent(AnalyticsEvent.GoalWizardOpened, { gameId, team: 'A', minute });
             setGoalSide('A');
           }}
         />
 
-        <View style={styles.timerCol}>
+        <View style={[styles.timerCol, compact && styles.compactTimerCol]}>
+          {props.roundNumber ? (
+            <View style={styles.roundChip}>
+              <Text style={styles.roundChipText} maxFontSizeMultiplier={1.15}>{he.matchNumber(props.roundNumber)}</Text>
+            </View>
+          ) : null}
           <Animated.Text
-            style={[styles.timer, props.danger && styles.timerDanger, pulseStyle]}
+            style={[styles.timer, compact && styles.compactTimer, props.danger && styles.timerDanger, pulseStyle]}
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.65}
+            maxFontSizeMultiplier={compact ? 1.15 : 1.3}
+            accessibilityLabel={props.timerText}
           >
             {props.timerText}
           </Animated.Text>
-          {props.totalMinutes ? (
-            <Text style={styles.ofTotal}>
+          {props.totalMinutes && (!compact || !props.statusLabel) ? (
+            <Text style={[styles.ofTotal, compact && styles.compactMetadata]} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1.15}>
               {he.liveTimerOfTotal(props.totalMinutes)}
             </Text>
           ) : null}
           {props.overtimeText ? (
-            <Text style={styles.overtime}>{ltr(`+${props.overtimeText}`)}</Text>
+            <Text style={styles.overtime} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1.15}>{ltr(`+${props.overtimeText}`)}</Text>
           ) : null}
-          <ChangeMotion triggerKey={props.running} pulse duration={190} style={styles.statusRow}>
+          {!!props.statusLabel && <ChangeMotion triggerKey={props.running} pulse duration={190} style={[styles.statusRow, compact && styles.compactStatusRow]}>
+            {compact && props.totalMinutes ? <Text style={[styles.ofTotal, styles.compactMetadata]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.15} accessibilityLabel={he.liveTimerOfTotal(props.totalMinutes)}>{he.liveTimerCompactTotal(props.totalMinutes)} ·</Text> : null}
             {props.running ? <View style={styles.redDot} /> : null}
-            <Text style={[styles.statusWord, props.running && styles.statusRunning]}>
+            <Text style={[styles.statusWord, compact && styles.compactMetadata, props.running && styles.statusRunning]} maxFontSizeMultiplier={1.15}>
               {props.statusLabel}
             </Text>
-          </ChangeMotion>
-          <Pressable onPress={props.onStoppages} hitSlop={6} style={styles.stoppages}>
-            <Ionicons name="stopwatch-outline" size={13} color={colors.textMuted} />
-            <Text style={styles.stoppagesText} numberOfLines={1}>
+          </ChangeMotion>}
+          <Pressable onPress={props.onStoppages} disabled={!props.onStoppages} hitSlop={6} style={styles.stoppages}>
+            <Ionicons name="stopwatch-outline" size={13} color="#E5FFEF" />
+            <Text style={[styles.stoppagesText, compact && styles.compactStoppages]} numberOfLines={compact ? 2 : 1} maxFontSizeMultiplier={1.15}>
               {props.stoppagesText}
             </Text>
           </Pressable>
         </View>
 
         <ScoreSide
-          label={teamName(bIdx, draftTeams.teams)}
+          label={props.sideLabels?.[1] ?? teamName(bIdx, draftTeams.teams)}
           score={live.scoreB}
-          tint={teamColor(bIdx, draftTeams.teams)}
-          canEdit={canEdit}
+          tint={props.sideTints?.[1] ?? teamColor(bIdx, draftTeams.teams)}
+          canEdit={canEdit && !props.hideGoalButtons}
           busy={busy}
+          compact={compact}
           onAdd={() => {
             logEvent(AnalyticsEvent.GoalWizardOpened, { gameId, team: 'B', minute });
             setGoalSide('B');
@@ -290,6 +312,7 @@ export function LiveScoreboardCard(props: Props) {
           מופעל ע״י {props.controllerName}
         </Text>
       ) : null}
+      </View>
 
       {/* Collapsible scorer log. */}
       {goals.length > 0 ? (
@@ -301,53 +324,51 @@ export function LiveScoreboardCard(props: Props) {
               setLogOpen((v) => !v);
             }}
           >
-            <Ionicons name={logOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.primary} />
+            <Ionicons name={logOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#D1FAE5" />
             <Text style={styles.logHeaderText}>{he.goalScorersLog(goals.length)}</Text>
           </Pressable>
           {logOpen ? (
-            <View style={styles.log}>
+            <ScrollView style={{maxHeight:160}} contentContainerStyle={styles.log} nestedScrollEnabled>
               {goals
                 .slice()
                 .reverse()
                 .map((g) => (
                   <View key={g.id} style={styles.logRow}>
-                    {canEdit ? (
-                      <Pressable onPress={() => undo(g.id)} hitSlop={8} style={styles.undoBtn}>
-                        <Ionicons name="close" size={14} color={colors.textMuted} />
-                      </Pressable>
-                    ) : null}
-                    <Text style={styles.logMin}>{ltr(`${g.minute}'`)}</Text>
-                    <View style={{ flex: 1 }} />
-                    <Text style={styles.logName} numberOfLines={1}>
-                      {goalLabel(g)}
-                    </Text>
                     <View
                       style={[styles.logDot, { backgroundColor: g.team === 'A' ? teamColor(aIdx, draftTeams.teams) : teamColor(bIdx, draftTeams.teams) }]}
                     />
+                    <Text style={styles.logName} numberOfLines={1}>
+                      {goalLabel(g)}
+                    </Text>
+                    <Text style={styles.logMin}>{ltr(`${g.minute}'`)}</Text>
+                    {canEdit ? (
+                      <Pressable onPress={() => undo(g.id)} disabled={busy}
+                        accessibilityRole="button" accessibilityLabel={`ביטול הגול של ${goalLabel(g)}`}
+                        accessibilityState={{ disabled: busy }} hitSlop={{ top: 1, bottom: 1 }} style={styles.undoBtn}>
+                        <View style={styles.undoCircle}><Ionicons name="close" size={14} color={colors.textMuted} /></View>
+                      </Pressable>
+                    ) : null}
                   </View>
                 ))}
-            </View>
+            </ScrollView>
           ) : null}
         </View>
       ) : null}
 
-      <GoalWizard
-        gameId={gameId}
-        side={goalSide}
-        teamLabel={
-          goalSide === 'A' ? teamName(aIdx, draftTeams.teams) : teamName(bIdx, draftTeams.teams)
-        }
+      <GoalEntryModal
+        gameId={gameId} side={goalSide}
+        teamLabel={goalSide === 'A' ? teamName(aIdx, draftTeams.teams) : teamName(bIdx, draftTeams.teams)}
+        teamColor={teamColor(goalSide === 'A' ? aIdx : bIdx, draftTeams.teams)}
+        teamInk={teamTextColor(goalSide === 'A' ? aIdx : bIdx, draftTeams.teams)}
+        otherTeamLabel={goalSide === 'A' ? teamName(bIdx, draftTeams.teams) : teamName(aIdx, draftTeams.teams)}
+        otherTeamColor={teamColor(goalSide === 'A' ? bIdx : aIdx, draftTeams.teams)}
+        otherTeamInk={teamTextColor(goalSide === 'A' ? bIdx : aIdx, draftTeams.teams)}
         roster={goalSide === 'A' ? rosterA : rosterB}
-        // Own-goal scorer picker uses the OTHER (conceding) side — the player
-        // who put it into their own net is on the team that didn't get the point.
         ownGoalRoster={goalSide === 'A' ? rosterB : rosterA}
-        onGoal={(scorerId, assisterId) =>
-          goalSide && addGoal(goalSide, scorerId, false, assisterId)
-        }
-        onUnknownGoal={() => goalSide && addGoal(goalSide, null)}
-        onOwnGoal={(scorerId) => goalSide && addGoal(goalSide, scorerId, true)}
-        onClose={() => {
-          if (goalSide) logEvent(AnalyticsEvent.GoalWizardCancelled, { gameId, team: goalSide });
+        minute={minute} roundNumber={props.roundNumber ?? 1}
+        onSave={async entry => { await addGoal(entry.team, entry.scorerId, entry.ownGoal, entry.assisterId, entry); }}
+        onClose={saved => {
+          if (!saved && goalSide) logEvent(AnalyticsEvent.GoalWizardCancelled, { gameId, team: goalSide });
           setGoalSide(null);
         }}
       />
@@ -362,6 +383,7 @@ function ScoreSide({
   canEdit,
   busy,
   onAdd,
+  compact,
 }: {
   label: string;
   score: number;
@@ -369,13 +391,15 @@ function ScoreSide({
   canEdit: boolean;
   busy: boolean;
   onAdd: () => void;
+  compact?: boolean;
 }) {
   return (
-    <View style={styles.side}>
-      <Text style={[styles.sideName, { color: tint }]} numberOfLines={1}>
+    <View style={[styles.side, compact && styles.compactSide]}>
+      <TeamShirtIllustration color={tint} width={compact ? 34 : 42}/>
+      <Text style={[styles.sideName, compact && styles.compactSideName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} maxFontSizeMultiplier={compact ? 1.15 : 1.3}>
         {label}
       </Text>
-      <AnimatedScore score={score} tint={tint} />
+      <AnimatedScore score={score} tint="#FFFFFF" compact={compact}/>
 
       {canEdit ? (
         <Pressable
@@ -395,161 +419,9 @@ function ScoreSide({
   );
 }
 
-/** One roster row (avatar + name) for the wizard steps. */
-function PickRow({ m, onPress }: { m: RosterMember; onPress: () => void }) {
-  return (
-    <Pressable style={styles.scorerRow} onPress={onPress}>
-      <UserAvatar user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }} size={34} />
-      <Text style={styles.scorerName} numberOfLines={1}>
-        {m.name}
-      </Text>
-    </Pressable>
-  );
-}
-
-/**
- * "הוסף גול" wizard — a 2-step flow with the rolling-ball StepIndicator header
- * (same component as the create-game wizard). Step 1 (⚽ כובש) picks the scorer;
- * step 2 (👟 מבשל) picks the assister. No penalties, no type step.
- */
-function GoalWizard({
-  gameId,
-  side,
-  teamLabel,
-  roster,
-  ownGoalRoster,
-  onGoal,
-  onUnknownGoal,
-  onOwnGoal,
-  onClose,
-}: {
-  gameId: string;
-  side: 'A' | 'B' | null;
-  teamLabel: string;
-  roster: RosterMember[];
-  /** The CONCEDING team's roster — for an own goal you pick the player who put
-   *  it into their own net, and they're on the OTHER side than the beneficiary. */
-  ownGoalRoster: RosterMember[];
-  onGoal: (scorerId: string, assisterId: string | null) => void;
-  onUnknownGoal: () => void;
-  onOwnGoal: (scorerId: string) => void;
-  onClose: () => void;
-}) {
-  const visible = side !== null;
-  // 'own' = the mandatory own-goal scorer picker (conceding team).
-  const [step, setStep] = useState<1 | 2 | 'own'>(1);
-  const [scorerId, setScorerId] = useState<string | null>(null);
-  useEffect(() => {
-    if (visible) {
-      setStep(1);
-      setScorerId(null);
-    }
-  }, [visible, side]);
-
-  const assisterRoster = roster.filter((m) => m.id !== scorerId);
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.wizSheet} onPress={(e) => e.stopPropagation()}>
-          {/* Rolling-ball step header (like the create-game wizard). The active
-             step is a clean BLUE ball; inactive steps are solid BLACK balls. */}
-          {step !== 'own' ? (
-            <StepIndicator
-              current={step}
-              labels={[he.goalStepScorer, he.goalStepAssist]}
-              inactiveColor="#0F172A"
-            />
-          ) : null}
-          <View style={styles.wizBody}>
-            {step === 'own' ? (
-              <>
-                <Text style={styles.sheetTitle}>{he.goalOwnScorerPickTitle}</Text>
-                <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-                  {ownGoalRoster.length === 0 ? (
-                    <Text style={styles.emptyRoster}>{he.goalPickerEmptyRoster}</Text>
-                  ) : null}
-                  {ownGoalRoster.map((m) => (
-                    <PickRow key={m.id} m={m} onPress={() => onOwnGoal(m.id)} />
-                  ))}
-                </ScrollView>
-              </>
-            ) : step === 1 ? (
-              <>
-                <Text style={styles.sheetTitle}>{he.goalScorerPickTitle(teamLabel)}</Text>
-                <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-                  {roster.length === 0 ? (
-                    <Text style={styles.emptyRoster}>{he.goalPickerEmptyRoster}</Text>
-                  ) : null}
-                  {roster.map((m) => (
-                    <PickRow
-                      key={m.id}
-                      m={m}
-                      onPress={() => {
-                        setScorerId(m.id);
-                        setStep(2);
-                      }}
-                    />
-                  ))}
-                </ScrollView>
-                <View style={styles.specialRow}>
-                  <Pressable style={styles.specialBtn} onPress={onUnknownGoal}>
-                    <Text style={styles.specialTxt}>{he.goalUnknownScorer}</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.specialBtn}
-                    onPress={() => {
-                      logEvent(AnalyticsEvent.OwnGoalPickerOpened, { gameId, team: side ?? '' });
-                      setStep('own');
-                    }}
-                  >
-                    <Text style={styles.specialTxt}>{he.goalOwnGoal}</Text>
-                  </Pressable>
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={styles.sheetTitle}>{he.goalAssistPickTitle(teamLabel)}</Text>
-                <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-                  {assisterRoster.length === 0 ? (
-                    <Text style={styles.emptyRoster}>{he.goalAssistEmptyRoster}</Text>
-                  ) : null}
-                  {assisterRoster.map((m) => (
-                    <PickRow key={m.id} m={m} onPress={() => scorerId && onGoal(scorerId, m.id)} />
-                  ))}
-                </ScrollView>
-                <View style={styles.specialRow}>
-                  <Pressable
-                    style={styles.specialBtn}
-                    onPress={() => scorerId && onGoal(scorerId, null)}
-                  >
-                    <Text style={styles.specialTxt}>{he.goalAssistNone}</Text>
-                  </Pressable>
-                </View>
-              </>
-            )}
-            <View style={styles.wizNav}>
-              {step === 2 || step === 'own' ? (
-                <Pressable style={styles.backBtn} onPress={() => { setScorerId(null); setStep(1); }}>
-                  <Text style={styles.backTxt}>{he.goalBack}</Text>
-                </Pressable>
-              ) : (
-                <View style={{ flex: 1 }} />
-              )}
-              <Pressable style={styles.cancelBtn} onPress={onClose}>
-                <Text style={styles.cancelTxt}>{he.cancel}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
-
 /** The big score number, with a quick scale-bounce whenever it changes so a
  *  goal reads as an event instead of a silent number swap. */
-function AnimatedScore({ score, tint }: { score: number; tint: string }) {
+function AnimatedScore({ score, tint, compact }: { score: number; tint: string; compact?: boolean }) {
   const scale = useSharedValue(1);
   const prev = useRef(score);
   useEffect(() => {
@@ -563,7 +435,7 @@ function AnimatedScore({ score, tint }: { score: number; tint: string }) {
   }, [score, scale]);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <Animated.Text style={[styles.sideScore, { color: tint }, animStyle]}>
+    <Animated.Text style={[styles.sideScore, compact && styles.compactScore, { color: tint }, animStyle]} maxFontSizeMultiplier={1.2}>
       {score}
     </Animated.Text>
   );
@@ -572,12 +444,10 @@ function AnimatedScore({ score, tint }: { score: number; tint: string }) {
 const styles = StyleSheet.create({
   card: {
     alignSelf: 'stretch',
-    backgroundColor: colors.surface,
+    backgroundColor: '#155E35',
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.sm,
+    borderColor: '#196B3B',
     // NOTE: no `overflow:'hidden'` here — it would clip the iOS shadow. The
     // goal-flash overlay clips its own corners via its matching borderRadius.
     shadowColor: '#0B1220',
@@ -586,14 +456,27 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
+  pitchPanel: { padding: spacing.md, gap: spacing.sm, borderRadius: radius.lg, overflow: 'hidden' },
+  compactPitch: { padding: 8, gap: 4 },
+  compactTimerCol: { flex: 1.25, minWidth: 102, paddingHorizontal: 0 },
+  compactTimer: { fontSize: 28, letterSpacing: 0 },
+  compactMetadata: { fontSize: 11, textAlign: 'center' },
+  compactStatusRow: { gap: 3 },
+  compactStoppages: { flexShrink: 1, fontSize: 10, textAlign: 'center' },
+  compactSide: { minWidth: 0, gap: 2 },
+  compactSideName: { fontSize: 16, width: '100%' },
+  compactScore: { fontSize: 34, lineHeight: 38 },
+  pitchImage: { width: '100%', height: '100%' },
+  pitchShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(6,61,31,0.12)' },
+  timerReadingShade: { position: 'absolute', top: 0, bottom: 0, left: '28%', right: '28%' },
   flashOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: radius.lg },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   // ── Team score side ──
-  side: { flex: 1, alignItems: 'center', gap: 4 },
-  sideName: { ...typography.bodyBold, fontWeight: '800', textAlign: 'center' },
+  side: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  sideName: { ...typography.bodyBold, color: '#FFFFFF', fontWeight: '800', textAlign: 'center', textShadowColor: 'rgba(3,30,15,0.3)', textShadowRadius: 2 },
   sideScore: { fontSize: 40, fontWeight: '900', lineHeight: 44, fontVariant: ['tabular-nums'] },
   addBtn: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
@@ -611,36 +494,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 3,
     borderRadius: radius.pill,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: 'rgba(220,252,231,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(220,252,231,0.28)',
   },
   roundChipText: {
     fontSize: 12,
     fontWeight: '800',
-    color: colors.primary,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   timerCol: { flex: 1.1, alignItems: 'center', gap: 2, paddingHorizontal: 2 },
-  timer: { fontSize: 38, fontWeight: '900', color: colors.text, fontVariant: ['tabular-nums'], letterSpacing: 1 },
-  timerDanger: { color: colors.danger },
-  overtime: { ...typography.caption, color: colors.danger, fontWeight: '800' },
-  ofTotal: { ...typography.caption, color: colors.textMuted, fontWeight: '600' },
-  statusRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
-  redDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.danger },
-  statusWord: { ...typography.caption, color: colors.textMuted, fontWeight: '700' },
-  statusRunning: { color: colors.danger },
-  stoppages: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, marginTop: 1 },
-  stoppagesText: { fontSize: 11, color: colors.textMuted, fontVariant: ['tabular-nums'] },
-  controller: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
+  timer: { fontSize: 38, fontWeight: '900', color: '#FFFFFF', fontVariant: ['tabular-nums'], letterSpacing: 1, textShadowColor: 'rgba(3,30,15,0.3)', textShadowRadius: 2 },
+  timerDanger: { color: '#FECACA' },
+  overtime: { ...typography.caption, color: '#FFF1F2', backgroundColor: 'rgba(153,27,27,0.85)', paddingHorizontal: 6, borderRadius: 6, fontWeight: '800' },
+  ofTotal: { ...typography.caption, color: '#E5FFEF', fontWeight: '600' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  redDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#FCA5A5' },
+  statusWord: { ...typography.caption, color: '#D1FAE5', fontWeight: '700' },
+  statusRunning: { color: '#FFFFFF' },
+  stoppages: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
+  stoppagesText: { fontSize: 11, color: '#E5FFEF', fontVariant: ['tabular-nums'] },
+  controller: { ...typography.caption, color: '#E5FFEF', textAlign: 'center' },
   // ── Scorer log ──
-  logWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: spacing.xs },
-  logHeader: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 4 },
-  logHeaderText: { ...typography.caption, color: colors.primary, fontWeight: '800' },
-  log: { gap: 8, marginTop: 4 },
-  logRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  undoBtn: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
-  logDot: { width: 9, height: 9, borderRadius: 5 },
-  logName: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, fontWeight: '600' },
-  logMin: { ...typography.caption, color: colors.textMuted, fontVariant: ['tabular-nums'], minWidth: 26 },
+  logWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(220,252,231,0.3)', padding: spacing.md, paddingTop: spacing.xs },
+  logHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 4 },
+  logHeaderText: { ...typography.caption, color: '#D1FAE5', fontWeight: '800' },
+  log: { gap: 2, marginTop: 4 },
+  logRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  undoBtn: { width: 44, height: 32, alignItems: 'center', justifyContent: 'center' },
+  undoCircle: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
+  logDot: { width: 9, height: 9, borderRadius: 5, borderWidth: 1, borderColor: '#D1FAE5' },
+  logName: { flex: 1, minWidth: 0, ...typography.body, color: '#E2E8F0', textAlign: RTL_LABEL_ALIGN, fontWeight: '600' },
+  logMin: { ...typography.caption, color: '#D1FAE5', fontVariant: ['tabular-nums'], minWidth: 26 },
   // ── Scorer picker modal ──
   backdrop: { backgroundColor: overlayTheme.backdrop,  flex: 1,  alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   sheet: { ...overlaySurfaces.dialog,  width: '100%', maxWidth: 380,   padding: spacing.lg, gap: spacing.sm },
@@ -649,7 +535,7 @@ const styles = StyleSheet.create({
   wizSheet: { ...overlaySurfaces.dialog,  width: '100%', maxWidth: 380,   overflow: 'hidden' },
   wizBody: { padding: spacing.lg, gap: spacing.sm },
   wizNav: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: spacing.xs,
@@ -668,7 +554,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   scorerName: { flex: 1, ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, fontWeight: '600' },
-  emptyRoster: { ...typography.body, color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.md },
+  emptyRoster: { ...typography.body, color: '#AFC2D8', textAlign: 'center', paddingVertical: spacing.md },
   specialRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
   specialBtn: {
     flex: 1,

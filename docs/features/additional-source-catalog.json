@@ -191,9 +191,9 @@
   {
     "path": "docs/RELEASING.md",
     "hashMode": "text-lf",
-    "sha256": "f7c77b3776004fa55000d9ee30f04961ba78830fbecff02c1b31761e17993a3e",
+    "sha256": "6938c9961b7a310fb22b236220f93a2c88d054bf8acd10a1b59ff19643e7db79",
     "review": "reviews/additional-rounds-sources.md",
-    "auditDate": "2026-10-13"
+    "auditDate": "2026-10-17"
   },
   {
     "path": "docs/seasons/אפיון-עונות-טכני.html",
@@ -418,5 +418,187 @@
     "sha256": "4e942b6ae9fbe6aff4dabb4ea473b527a0c824333143546865b9b4ae1950f0ab",
     "review": "reviews/additional-rounds-sources.md",
     "auditDate": "2026-10-08"
+  },
+  {
+    "path": "docs/changes/2026-10-16-live-game-redesign.md",
+    "hashMode": "text-lf",
+    "sha256": "b9eef34694b6838649c95fc01aab915ca7bfa7e971292789f3d38c38198fbee2",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-demo-round-persistence.md",
+    "hashMode": "text-lf",
+    "sha256": "5e3e8664ce23e9d8e6d7b80ec786dd2a0cf926ba85ac55ceb81e1f0d5abdf0c1",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-live-layout-polish.md",
+    "hashMode": "text-lf",
+    "sha256": "d5cd91dc9586927963aefb523541e883dcadf506c4629e1a6d657e473c1a8a67",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-live-goal-rtl-colors.md",
+    "hashMode": "text-lf",
+    "sha256": "53aed86c6808adc5cb37fbaab31ce1681e2b7a956d926038f0543a9e621e2317",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-end-match-popup.md",
+    "hashMode": "text-lf",
+    "sha256": "6e025b80e3c1abb9a8e958ff93ba71f3361d83c6142fbef00714a557a1f6a35e",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-tie-popup.md",
+    "hashMode": "text-lf",
+    "sha256": "416b7b7a2c37e6fa1ccd1322019f23c3af892fcb0bb4b2278d03c9b91dca630a",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-live-pitch-scoreboard.md",
+    "hashMode": "text-lf",
+    "sha256": "b3e4406172797ba40e30a1efa95064fd33b6fbaf1359398a06ffba16347a0b1d",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-live-shirt-centering.md",
+    "hashMode": "text-lf",
+    "sha256": "a4d7177f1daaf671bf1d0b435b5e6acb871792b6f5d4342f11ffee3d20d7c531",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-live-roster-goal-polish.md",
+    "hashMode": "text-lf",
+    "sha256": "d1d3761f889df76b5299f4cd41d56802637577ae6ee382bac0d4fbe3e985d696",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-waiting-shirt-preclock-goals.md",
+    "hashMode": "text-lf",
+    "sha256": "ee1db5111fb37424f5c066668435957a483b45253db5a4683ea649ee59fe4a3c",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-optional-match-clock.md",
+    "hashMode": "text-lf",
+    "sha256": "5386b3d6c05ae86336e7d42d8c53cbd9f7075d0073fffb4396d68161cbbd4993",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-result-pitch.md",
+    "hashMode": "text-lf",
+    "sha256": "be1048aed7c9525d92be08ddb2efd4ac61bfb6afae868d33df9ccd809ec055d9",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-live-shirt-swap-polish.md",
+    "hashMode": "text-lf",
+    "sha256": "5e6583dcfb8f471655eee20de4c8b2ee5bdbcbd603b0f252791d6f18759b1cd5",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-substitution-no-header.md",
+    "hashMode": "text-lf",
+    "sha256": "f1b38fbe9c4a970482686e6c78badf9d2167da7f698f50daa579ec7729570fdb",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-tie-selection-confirmation.md",
+    "hashMode": "text-lf",
+    "sha256": "3991f93e4e6f889885cbd90ac827652d651e6dc4632b74034658aa8cad9b0cef",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-goal-team-identity.md",
+    "hashMode": "text-lf",
+    "sha256": "8f26b446f4d511607a0781ce7b18a83afeb833fb4083c6a03fcfcfdc99fa9f9a",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-16-tie-stable-confirmation.md",
+    "hashMode": "text-lf",
+    "sha256": "6dc4d9bc03074fb85ba6c713b362f13b8854146a11ae3223b2d78ffbf04a8610",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-16"
+  },
+  {
+    "path": "docs/changes/2026-10-17-live-action-local-proof.md",
+    "hashMode": "text-lf",
+    "sha256": "61bc085a3cc65f26dfd1f7d70f45efc6613cda5cc1ffd7f6cfd21c27b28fc204",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-17"
+  },
+  {
+    "path": "docs/changes/2026-10-17-live-action-production-proof.md",
+    "hashMode": "text-lf",
+    "sha256": "a9788b463df0c9aedcf8e6fc3222bd2276aaf1d6d13db76026c77ac62b9b5fd4",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-17"
+  },
+  {
+    "path": "docs/changes/evidence/live-action-2026-10-17/audit-four-data.md",
+    "hashMode": "text-lf",
+    "sha256": "bf41811a7b6c058e22438be3480c47476aec49a6cbc9d21c028bfd0f69d56ace",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-17"
+  },
+  {
+    "path": "docs/changes/evidence/live-action-2026-10-17/audit-seven-partial-data.md",
+    "hashMode": "text-lf",
+    "sha256": "504afba9e6f5a3a78e0a3a1a16363634ad13874588e69ea3580cfa04d8ad9720",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-17"
+  },
+  {
+    "path": "docs/changes/evidence/live-action-2026-10-17/audit-seven-committed-partial-data.md",
+    "hashMode": "text-lf",
+    "sha256": "62eb70892c5d17f0dfc44b7c0b581b13c853d437e89e852e6de4d6eecacb0021",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-17"
+  },
+  {
+    "path": "docs/changes/evidence/live-action-2026-10-17/audit-seven-final-data.md",
+    "hashMode": "text-lf",
+    "sha256": "758efd575d0d1aab80fde1216c5cd440b8b7a78f332aa2679075b72049cf413b",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-17"
+  },
+  {
+    "path": "docs/changes/evidence/live-action-2026-10-17/audit-eleven-allocation-partial-data.md",
+    "hashMode": "text-lf",
+    "sha256": "39a88a857114ff4ea2f3ac60ffe7f940fa13956c30ff1c408ae41bfa67661cc9",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-17"
+  },
+  {
+    "path": "docs/changes/evidence/live-action-2026-10-17/eleven-native-draft-stream-proof.md",
+    "hashMode": "text-lf",
+    "sha256": "a8f6bbe74430d097cf7e2092885e14aa57e17d8a89c52da9c9df0f8c9e6407dd",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-17"
+  },
+  {
+    "path": "docs/changes/evidence/live-action-2026-10-17/audit-eleven-final-data.md",
+    "hashMode": "text-lf",
+    "sha256": "0cc398b05ae66f7797d5f88dcd7436b6fb94ca680f772998e9189f1a016413ea",
+    "review": "reviews/additional-rounds-sources.md",
+    "auditDate": "2026-10-17"
   }
 ]

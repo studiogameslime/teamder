@@ -38,6 +38,33 @@ function parsePoint(shape: unknown): { lat: number; lng: number } | null {
 // Most-recent results, keyed by label, so a string-based autocomplete can
 // recover the coordinates of the item the user tapped.
 const lastResults = new Map<string, GovmapPlace>();
+const searchCache = new Map<string, GovmapSearchResult>();
+let primaryUnavailableUntil = 0;
+
+/** Photon explicitly supports search-as-you-type; never use the public
+ * Nominatim search endpoint as an autocomplete fallback. Requests carry the
+ * typed place query only, not the viewer's coordinates. */
+async function searchBackup(q: string, maxResults: number): Promise<GovmapPlace[]> {
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),TIMEOUT_MS);
+  try {
+    const url='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+`&limit=${maxResults}&bbox=34.1,29.3,35.9,33.4`;
+    const res=await fetch(url,{signal:ctrl.signal});
+    if(!res.ok)throw new Error(`place backup ${res.status}`);
+    const json=await res.json() as {features?:{geometry?:{coordinates?:number[]};properties?:Record<string,unknown>}[]};
+    const out:GovmapPlace[]=[];
+    for(const feature of json.features??[]) {
+      const [lng,lat]=feature.geometry?.coordinates??[];
+      if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat<29.3||lat>33.4||lng<34.1||lng>35.9)continue;
+      const p=feature.properties??{};
+      const street=[p.street,p.housenumber].filter(x=>typeof x==='string'&&x).join(' ');
+      const label=[...new Set([p.name,street,p.city??p.town??p.village].filter((x):x is string=>typeof x==='string'&&x.length>0))].join(', ');
+      if(!label)continue;
+      const place={label,type:'address',lat,lng};out.push(place);lastResults.set(label,place);
+    }
+    return out;
+  } finally {clearTimeout(timer);}
+}
 
 /** Give up on a single attempt — govmap has no SLA and an unanswered request
  *  used to hang the autocomplete spinner indefinitely. */
@@ -123,9 +150,22 @@ export async function searchPlaces(
 ): Promise<GovmapSearchResult> {
   const q = query.trim();
   if (q.length < 2) return { places: [], unavailable: false };
+  const key=`${maxResults}:${q}`;
+  const cached=searchCache.get(key);
+  if(cached)return cached;
+  const remember=(places:GovmapPlace[])=>{
+    const value={places,unavailable:false};searchCache.set(key,value);
+    if(searchCache.size>40)searchCache.delete(searchCache.keys().next().value!);
+    return value;
+  };
+  if(Date.now()<primaryUnavailableUntil){
+    try{return remember(await searchBackup(q,maxResults));}catch{return {places:[],unavailable:true};}
+  }
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      return { places: toPlaces(await fetchOnce(q, maxResults)), unavailable: false };
+      const places=toPlaces(await fetchOnce(q,maxResults));
+      if(places.length)return remember(places);
+      try{return remember(await searchBackup(q,maxResults));}catch{return remember([]);}
     } catch (err) {
       if (isUpstreamDown(err)) {
         // One retry — a 504 from an overloaded public service is usually over
@@ -137,6 +177,10 @@ export async function searchPlaces(
       } else if (!isExpectedDenial(err)) {
         logError('govmapSearch', err, { query: q });
       }
+      // Respect upstream rejection: do not spoof browser headers or hammer it.
+      // A short circuit avoids repeating the same 403 on each keystroke.
+      primaryUnavailableUntil=Date.now()+60000;
+      try{return remember(await searchBackup(q,maxResults));}catch{/* both providers unavailable */}
       // Graceful either way: the field still works as free text.
       return { places: [], unavailable: true };
     }

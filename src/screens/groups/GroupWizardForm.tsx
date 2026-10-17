@@ -1,3 +1,4 @@
+import { useSupportStep } from '@/hooks/useSupportStep';
 // Two-step wizard shared by Create / Edit Community (rolling-ball
 // StepIndicator, mirroring the create-game flow):
 //   • Step 1 "פרטים"  — name, city, contact phone, description, rules.
@@ -168,6 +169,7 @@ export function GroupWizardForm({
   // Two-step wizard (rolling-ball indicator, like the create-game flow):
   // step 1 "פרטים" (identity/contact) + step 2 "מתקדם" (rating + cards).
   const [step, setStep] = useState<1 | 2>(1);
+  useSupportStep(step);
   const scrollRef = useRef<ScrollView>(null);
   useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: false }); }, [step]);
 

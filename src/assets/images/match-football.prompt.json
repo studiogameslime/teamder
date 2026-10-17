@@ -1,0 +1,14 @@
+{
+  "generatedWith": "כלי יצירת התמונות המובנה",
+  "date": "2026-10-17",
+  "asset": "src/assets/images/match-football.png",
+  "purpose": "תמונת כדור מציאותית ושקופה למגרש הגול והפנדל, במקום ציור הכדור",
+  "source": "C:/Users/elira/.codex/generated_images/01a14243-1f2c-7ae3-8a60-6464d1c7722e/exec-d034b997-b950-4144-a88a-2da1b016e19d.png",
+  "dimensions": [
+    192,
+    192
+  ],
+  "transparent": true,
+  "optimization": "הקטנה בלבד לצורך תצוגה של 24 נקודות; המקור נשמר בנפרד",
+  "prompt": "Create a single realistic classic association football as a production mobile game sprite. Isolated sphere, centered, transparent background with genuine alpha, no floor, no surrounding scenery, no lettering or logos. White leather hexagonal panels and black pentagonal panels with accurate classic football topology, subtle realistic stitched seams and gentle rounded volume, natural soft studio lighting upper left. Clean circular silhouette, excellent readability when reduced to 24 pixels, not a flat icon, not cartoon, no overly tiny surface noise, no exaggerated gloss. Ball should fill 94 percent of square canvas. One ball only."
+}

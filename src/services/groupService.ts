@@ -1932,7 +1932,8 @@ export const groupService = {
         return {
           id,
           name: p?.displayName ?? id,
-          photoUrl: p?.avatarUrl,
+          avatarId: p?.avatarId,
+          photoUrl: p?.photoUrl,
           createdAt: 0,
         };
       });
@@ -1964,7 +1965,7 @@ export const groupService = {
       return userIds
         .map((id) => mockPlayers.find((p) => p.id === id))
         .filter((p): p is (typeof mockPlayers)[number] => !!p)
-        .map((p) => ({ id: p.id, name: p.displayName, photoUrl: p.avatarUrl }));
+        .map((p) => ({ id: p.id, name: p.displayName, avatarId: p.avatarId, photoUrl: p.photoUrl }));
     }
     const ids = Array.from(new Set(userIds.filter(Boolean)));
     if (ids.length === 0) return [];

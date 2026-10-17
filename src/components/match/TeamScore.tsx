@@ -9,13 +9,14 @@
 import { ArrivalMotion } from '@/components/anim/ArrivalMotion';
 import { useArrivalTracker } from '@/hooks/animations/useArrivalTracker';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { teamName, teamColor, firstName, type RosterMember } from '@/components/match/rotationView';
+import { teamName, teamColor, teamTextColor, firstName, type RosterMember } from '@/components/match/rotationView';
 import { MeasurablePressable, type MenuAnchor } from '@/components/match/PlayerActionMenu';
+import { TeamShirtIllustration } from '@/components/match/TeamShirt';
 
 const GOLD = '#F4B73E';
 const TEAM_BLUE = '#2563EB';
@@ -87,6 +88,7 @@ interface Props {
    * "מה זה הדבר הזה?!". Column callers pass `block`.
    */
   block?: boolean;
+  compact?: boolean;
 }
 
 export function TeamScore({
@@ -100,11 +102,14 @@ export function TeamScore({
   teams,
   onPlayerPress,
   block,
+  compact,
   swapMode,
   swapSourceId,
   openSlots = 0,
   onOpenSlotPress,
 }: Props) {
+  const { width, fontScale } = useWindowDimensions();
+  const stackedPlayerDetails = width < 360 || fontScale > 1.2;
   const { arrivals, observe } = useArrivalTracker(`team:${teamIdx}`);
   const rosterKey = JSON.stringify(roster.map(m => m.id));
   useEffect(() => { observe(JSON.parse(rosterKey) as string[]); }, [observe, rosterKey]);
@@ -135,15 +140,19 @@ export function TeamScore({
   // leads on the right, the name follows, and the rank sits on the left.
   if (variant === 'list') {
     const size = avatarSize ?? 36;
+    const winsCaption = wins === 1 ? 'ניצחון אחד במחזור' : `${wins} ניצחונות במחזור`;
     return (
       <View style={block ? styles.listBlock : styles.listCol}>
-        <View style={styles.headerRow}>
-          <Text style={[styles.nameOnly, { color: teamColor(teamIdx, teams) }]}>{teamName(teamIdx, teams)}</Text>
+        {compact ? <View style={styles.compactHeader} accessible accessibilityLabel={`${teamName(teamIdx, teams)}, ${winsCaption}`}>
+          <TeamShirtIllustration color={teamColor(teamIdx, teams)} width={24}/>
+          <Text style={styles.compactWins}>{winsCaption}</Text>
+        </View> : <View style={styles.headerRow}>
+          <Text style={[styles.nameOnly, { color: teamTextColor(teamIdx, teams) }]}>{teamName(teamIdx, teams)}</Text>
           <View style={styles.winsBox}>
             <Text style={styles.winsNum}>{wins}</Text>
             <Text style={styles.winsLabel}>{he.rotationWinsLabel}</Text>
           </View>
-        </View>
+        </View>}
         <View style={styles.list}>
           {roster.map((m) => {
             const goals = goalsByPlayer?.[m.id] ?? 0;
@@ -164,17 +173,24 @@ export function TeamScore({
             // takes the avatar as its own prop so it can measure just the
             // face, and the static row puts the two back together itself.
             const rowRest = (
-              <>
-                <Text style={styles.playerName} numberOfLines={1}>
+              <View style={[styles.playerDetails, stackedPlayerDetails && styles.playerDetailsStacked]}>
+                <Text
+                  style={[styles.playerName, stackedPlayerDetails && styles.playerNameStacked]}
+                  numberOfLines={stackedPlayerDetails ? 2 : 1}
+                  adjustsFontSizeToFit={stackedPlayerDetails}
+                  minimumFontScale={0.85}
+                  maxFontSizeMultiplier={stackedPlayerDetails ? 1.2 : undefined}
+                  accessibilityLabel={m.name}
+                >
                   {labelOf(m)}
                 </Text>
                 {/* Goal count for this round (replaces the old rank number).
                     Uniform, flat stat chip — never a filled/tappable look. */}
-                <View style={styles.goalBadge}>
-                  <Ionicons name="football" size={11} color="#64748B" />
-                  <Text style={styles.goalNum}>{goals}</Text>
+                <View style={[styles.goalBadge, stackedPlayerDetails && styles.goalBadgeStacked]}>
+                  <Text style={[styles.goalNum, stackedPlayerDetails && styles.goalNumStacked]} maxFontSizeMultiplier={1.2}>{goals}</Text>
+                  <Ionicons name="football" size={stackedPlayerDetails ? 10 : 11} color="#64748B" />
                 </View>
-              </>
+              </View>
             );
             return onPlayerPress ? (
               <PlayerRowPressable
@@ -182,11 +198,12 @@ export function TeamScore({
                 onPick={(rect) => onPlayerPress(m, rect)}
                 label={m.name}
                 avatar={avatar}
+                stacked={stackedPlayerDetails}
               >
                 {rowRest}
               </PlayerRowPressable>
             ) : (
-              <View key={m.id} style={styles.playerRow}>
+              <View key={m.id} style={[styles.playerRow, stackedPlayerDetails && styles.playerRowStacked]}>
                 {avatar}
                 {rowRest}
               </View>
@@ -234,7 +251,7 @@ export function TeamScore({
       <View style={styles.gridHeader}>
         <View style={styles.gridHeadRow}>
           {trophyFirst ? trophies : null}
-          <Text style={[styles.name, { color: teamColor(teamIdx, teams) }]}>{teamName(teamIdx, teams)}</Text>
+          <Text style={[styles.name, { color: teamTextColor(teamIdx, teams) }]}>{teamName(teamIdx, teams)}</Text>
           {trophyFirst ? null : trophies}
         </View>
         {wins > 0 ? (
@@ -281,12 +298,14 @@ function PlayerRowPressable({
   onPick,
   label,
   avatar,
+  stacked,
   children,
 }: {
   onPick: (rect: MenuAnchor) => void;
   label: string;
   /** The avatar — taken SEPARATELY because it is what the menu anchors to. */
   avatar: React.ReactNode;
+  stacked: boolean;
   /** Everything after it: the name and the goal chip. */
   children: React.ReactNode;
 }) {
@@ -298,7 +317,7 @@ function PlayerRowPressable({
         if (!node) return;
         node.measureInWindow((x, y, w, h) => onPick({ x, y, width: w, height: h }));
       }}
-      style={({ pressed }) => [styles.playerRow, pressed && styles.playerRowPressed]}
+      style={({ pressed }) => [styles.playerRow, stacked && styles.playerRowStacked, pressed && styles.playerRowPressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
@@ -319,7 +338,7 @@ function PlayerRowPressable({
           nothing of its own out of the tree, and `measureInWindow` on a node
           that is no longer there returns zeros — the menu would open in the
           top-left corner. */}
-      <View ref={avatarRef} collapsable={false}>
+      <View ref={avatarRef} collapsable={false} style={styles.measuredAvatar}>
         {avatar}
       </View>
       {children}
@@ -349,6 +368,8 @@ const styles = StyleSheet.create({
   listCol: { flex: 1, minWidth: 0, gap: 8 },
   listBlock: { width: '100%', minWidth: 0, gap: 8 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  compactHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 32, marginBottom: 4 },
+  compactWins: { fontSize: 11, color: '#64748B', textAlign: 'center', flexShrink: 1 },
   winsBox: {
     minWidth: 52,
     paddingHorizontal: 8,
@@ -385,10 +406,14 @@ const styles = StyleSheet.create({
     borderColor: '#EEF1F6',
     backgroundColor: '#FFFFFF',
   },
+  playerRowStacked: { minHeight: 60, gap: 5, paddingHorizontal: 4, borderRadius: 16 },
+  measuredAvatar: { flexShrink: 0 },
+  playerDetails: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  playerDetailsStacked: { flexDirection: 'column', alignItems: 'stretch', gap: 2 },
   // Goal-count chip (replaces the rank). Uniform + flat for every player so it
   // reads as a stat, not a tappable button.
   goalBadge: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
     minWidth: 36,
@@ -396,7 +421,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     justifyContent: 'center',
   },
+  goalBadgeStacked: { alignSelf: 'flex-start', minWidth: 0, height: 18, paddingHorizontal: 0, gap: 3 },
   goalNum: { fontSize: 13, fontWeight: '800', color: '#334155', fontVariant: ['tabular-nums'] },
+  goalNumStacked: { fontSize: 11 },
   // `flex: 1` + `minWidth: 0` makes a long name ellipsize instead of pushing
   // the goal badge outside the card (the "Eliran Tzabari" overflow bug).
   playerName: {
@@ -407,6 +434,7 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     textAlign: RTL_LABEL_ALIGN,
   },
+  playerNameStacked: { flex: 0, flexShrink: 1, width: '100%' },
 
   // An empty slot mirrors playerRow exactly — same pill, same height, same
   // avatar-leads-on-the-right order — so it reads as "a row waiting for

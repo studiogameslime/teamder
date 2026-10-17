@@ -10,6 +10,7 @@
 // rows above it.
 
 import React from 'react';
+import { ClubStatsGrass } from '@/components/community/ClubStatsDashboard';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ClubRecord } from '@/utils/clubRecords';
@@ -19,6 +20,7 @@ import { RTL_LABEL_ALIGN, clubAccent, clubCardTint, clubShadow, colors, spacing 
 
 export interface ClubRecordsProps {
   records: ClubRecord[];
+  appearance?: 'club';
   /** Opens the holder's profile. Omitted → those cards are inert. */
   onHolderPress?: (uid: string) => void;
   /**
@@ -31,6 +33,7 @@ export interface ClubRecordsProps {
 
 export function ClubRecords({
   records,
+  appearance,
   onHolderPress,
   onEveningPress,
 }: ClubRecordsProps) {
@@ -58,7 +61,7 @@ export function ClubRecords({
         // ones looked like two more had failed to load. If the server ever
         // records the per-round maxima this becomes a wrapping grid and
         // nothing else here changes.
-        <View style={styles.shelf}>
+        <View style={[styles.shelf, appearance === 'club' && { gap: 0, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E0E8F0', borderRadius: 12, overflow: 'hidden' }]}>
           {records.map((r) => {
             const evening = r.gameId && onEveningPress;
             const person = !r.gameId && r.holderUid && onHolderPress;
@@ -69,6 +72,12 @@ export function ClubRecords({
               : person
                 ? () => onHolderPress!(r.holderUid!)
                 : undefined;
+            if (appearance === 'club') return <Pressable key={r.key} disabled={!tappable} onPress={onPress} accessibilityRole={tappable ? 'button' : undefined} accessibilityLabel={`${r.label}: ${r.value}`} style={{ width: '100%', flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 82, borderTopWidth: 1, borderTopColor: '#EAF0F5' }}>
+              <Ionicons name={r.icon as never} size={24} color="#13213F" />
+              <View style={{ flex: 1, gap: 4 }}><Text style={[styles.label, { color: '#13213F' }]}>{r.label}</Text><Text style={styles.unit}>{r.hint ?? ''}</Text><Text style={styles.footerText}>{evening && r.at ? formatDateShort(r.at) : r.holderName ?? ''}</Text></View>
+              <Text style={[styles.value, { color: '#13213F', fontSize: 25 }]}>{r.value}</Text>
+              {tappable ? <Ionicons name="chevron-back" size={17} color="#13213F" /> : null}
+            </Pressable>;
             return (
               <Pressable
                 key={r.key}
@@ -119,6 +128,7 @@ export function ClubRecords({
               </Pressable>
             );
           })}
+          {appearance === 'club' ? <ClubStatsGrass /> : null}
         </View>
       )}
     </View>

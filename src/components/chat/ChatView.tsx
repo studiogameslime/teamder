@@ -15,6 +15,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -701,6 +702,7 @@ function MessageRow({
   onOpenMenu: (e: GestureResponderEvent) => void;
   onOpenProfile: () => void;
 }) {
+  const [photoOpen, setPhotoOpen] = useState(false);
   // First name only — keeps the header above the bubble tidy.
   const firstName = (message.senderName || '').trim().split(/\s+/)[0] || message.senderName;
   // Verified from the SENDER ID, not from any field on the message — an
@@ -734,6 +736,7 @@ function MessageRow({
           {official ? <OfficialBadge size={12} /> : null}
         </View>
       ) : null}
+      {message.supportImage ? <Pressable accessibilityLabel="הגדלת צילום המסך" onPress={()=>setPhotoOpen(true)}><Image source={{uri:`data:image/jpeg;base64,${message.supportImage}`}} style={{width:180,height:230,borderRadius:12,marginBottom:8}} resizeMode="contain"/></Pressable> : null}
       <Text style={[styles.messageText, mine && styles.messageTextMine]}>
         {message.text}
       </Text>
@@ -751,11 +754,11 @@ function MessageRow({
     </Pressable>
   );
   return (
-    <View style={[styles.row, mine ? styles.rowMine : styles.rowOther]}>
+    <><View style={[styles.row, mine ? styles.rowMine : styles.rowOther]}>
       {mine ? null : meta}
       {bubble}
       {mine ? meta : avatar}
-    </View>
+    </View><Modal visible={photoOpen} transparent animationType="fade" onRequestClose={()=>setPhotoOpen(false)}><View style={{flex:1,backgroundColor:'#000',padding:16}}><Pressable accessibilityLabel="סגירת צילום" style={{padding:14,alignSelf:'flex-end'}} onPress={()=>setPhotoOpen(false)}><Ionicons name="close" size={26} color="white"/></Pressable>{message.supportImage?<Image source={{uri:`data:image/jpeg;base64,${message.supportImage}`}} style={{width:'100%',flex:1}} resizeMode="contain"/>:null}</View></Modal></>
   );
 }
 

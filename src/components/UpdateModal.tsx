@@ -1,20 +1,35 @@
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
-import { openStore } from '@/services/updateService';
+import { updateTargetKey, type StoreUpdate } from '@/services/updateService';
+import { openTrackedUpdate } from '@/services/updateAttributionService';
+import { useUserStore } from '@/store/userStore';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 interface Props {
+  update: StoreUpdate;
   type: 'force' | 'optional';
   onClose?: () => void;
 }
 
-export function UpdateModal({ type, onClose }: Props) {
+export function UpdateModal({ type, onClose, update }: Props) {
   const isForce = type === 'force';
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { logEvent(AnalyticsEvent.UpdatePromptShown, { source: 'force_modal', target: updateTargetKey(update) }); }, [update.targetBuild, update.targetVersion]);
+  const open = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true; setBusy(true); setFailed(false);
+    try { setFailed(!await openTrackedUpdate(update, useUserStore.getState().currentUser?.id ?? null, 'force_modal')); }
+    catch { setFailed(true); }
+    finally { busyRef.current = false; setBusy(false); }
+  };
   return (
     <Modal
       visible
@@ -61,11 +76,13 @@ export function UpdateModal({ type, onClose }: Props) {
                 variant="primary"
                 size="lg"
                 fullWidth
-                onPress={openStore}
+                onPress={open}
+                loading={busy}
                 style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6' }}
               />
             </View>
           </View>
+          {failed ? <Text accessibilityRole="alert" style={styles.body}>{he.updateStoreFailed}</Text> : null}
         </Pressable>
       </Pressable>
     </Modal>

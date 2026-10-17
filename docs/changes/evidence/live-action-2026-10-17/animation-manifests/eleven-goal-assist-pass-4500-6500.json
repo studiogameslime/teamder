@@ -1,0 +1,65 @@
+{
+  "source": "shots\\eleven-goal-assist-pass.mp4",
+  "sourceSha256": "fb7d104ee45f868b931f93141b6a7f4acc525047610297fbaf3c4195a6c872a5",
+  "output": "native-qa\\frames\\eleven-goal-assist-pass",
+  "timesMs": [
+    4500,
+    5000,
+    5500,
+    6000,
+    6500
+  ],
+  "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+  "frames": [
+    {
+      "requestedTimeUs": 4500000,
+      "durationMs": 6542,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1167891,
+      "file": "frame-000004500000us.png",
+      "sha256": "4bb420a9b7bfbdc5bf0c12ea218c4884f6be6fca0c1e8b1e178390094bc5f5a6"
+    },
+    {
+      "requestedTimeUs": 5000000,
+      "durationMs": 6542,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1178104,
+      "file": "frame-000005000000us.png",
+      "sha256": "e12b6d81083555577851b56c1a007b5215a1124380b965bf66147624928bed3f"
+    },
+    {
+      "requestedTimeUs": 5500000,
+      "durationMs": 6542,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1182079,
+      "file": "frame-000005500000us.png",
+      "sha256": "188d4e55ded6b44e756529afa24df4cdced2ef4cbcc616c9c5599284871fe6ea"
+    },
+    {
+      "requestedTimeUs": 6000000,
+      "durationMs": 6542,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1182555,
+      "file": "frame-000006000000us.png",
+      "sha256": "857c75de70951edb63329680e0d1b5f0872bb234ff1d535a131c928fae650296"
+    },
+    {
+      "requestedTimeUs": 6500000,
+      "durationMs": 6542,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1182555,
+      "file": "frame-000006500000us.png",
+      "sha256": "857c75de70951edb63329680e0d1b5f0872bb234ff1d535a131c928fae650296"
+    }
+  ]
+}

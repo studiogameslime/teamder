@@ -243,6 +243,21 @@ describe('which cards the area shows', () => {
 });
 
 describe('what the completed card may claim', () => {
+  it.each([
+    ['one user and thirty-two guests', ['qa'], Array.from({ length: 32 }, (_, index) => ({ id: `g${index}`, name: `אורח ${index}`, addedBy: 'qa', createdAt: 1 })), 33],
+    ['guests without a registered account', [], Array.from({ length: 4 }, (_, index) => ({ id: `g${index}`, name: `אורח ${index}`, addedBy: 'qa', createdAt: 1 })), 4],
+    ['active guests with one queued guest excluded', ['qa'], [{ id: 'active', name: 'אורח', addedBy: 'qa', createdAt: 1 }, { id: 'waiting', name: 'ממתין', addedBy: 'qa', createdAt: 1, waitlisted: true }], 2],
+    ['an older game without guests', ['qa', 'other'], undefined, 2],
+  ] as const)('includes the evening roster for %s without changing the saved match count', (_label, players, guests, expected) => {
+    const g = game({ status: 'finished', committedRoundCount: 2, players: [...players], guests: guests ? guests.map(guest => ({ ...guest })) : undefined });
+    const before = JSON.stringify(g);
+    expect(completedMetrics(g)).toEqual([{ key: 'rounds', value: 2 }, { key: 'players', value: expected }]);
+    expect(JSON.stringify(g)).toBe(before);
+    if (guests?.some(guest => 'waitlisted' in guest)) {
+      expect(completedMetrics(game({ status: 'finished', guests: [{ id: 'queued', name: 'ממתין', addedBy: 'qa', createdAt: 1, waitlisted: true }] }))).toEqual([]);
+    }
+  });
+
   it('prints the mini-games and the roster when the evening has them', () => {
     const g = game({ status: 'finished', committedRoundCount: 12, players: Array(28).fill('x') });
     expect(completedMetrics(g)).toEqual([

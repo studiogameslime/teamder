@@ -54,6 +54,7 @@ function firstName(name: string): string {
 
 export function CommunityStatsTable({
   players,
+  appearance,
   groupId,
   limit = 30,
   /** Drop the "הופעות" (evenings attended) column — the per-game table reuses
@@ -92,6 +93,7 @@ export function CommunityStatsTable({
   mode = 'cumulative',
 }: {
   players: ChampionshipRow[];
+  appearance?: 'club';
   groupId?: string;
   limit?: number;
   hideAppearances?: boolean;
@@ -357,12 +359,12 @@ export function CommunityStatsTable({
         );
 
   return (
-    <Card style={styles.table}>
+    <Card style={appearance === 'club' ? { ...styles.table, borderRadius: 16, elevation: 0, shadowOpacity: 0, borderColor: '#E0E8F0' } : styles.table}>
       <View style={styles.split}>
         {/* Fixed name column (lands on the RIGHT under forceRTL). */}
         <View style={styles.nameCol}>
-          <View style={styles.headerCell}>
-            <Text style={styles.headerRank}>#</Text>
+          <View style={[styles.headerCell, appearance === 'club' && { backgroundColor: '#FFFFFF', height: 52 }]}>
+            <Text style={styles.headerRank} numberOfLines={1}>#</Text>
             <Text style={styles.headerWho}>{he.champColPlayer}</Text>
           </View>
           {rows.map((r, i) => {
@@ -370,12 +372,12 @@ export function CommunityStatsTable({
             return (
               <ReorderMotion key={r.uid} index={i} rowHeight={ROW_H}>
               <Pressable
-                style={styles.nameCell}
+                style={[styles.nameCell, appearance === 'club' && { backgroundColor: i % 2 ? '#F8FAFC' : '#FFFFFF' }]}
                 onPress={() => openCard(r.uid)}
                 accessibilityRole="button"
                 accessibilityLabel={p?.name ?? ''}
               >
-                <Text style={styles.rank}>{i + 1}</Text>
+                <Text style={styles.rank} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{i + 1}</Text>
                 <View
                   style={[
                     styles.avatarWrap,
@@ -396,7 +398,7 @@ export function CommunityStatsTable({
         {/* Scrollable stat grid (header + rows scroll together). */}
         <ScrollView horizontal showsHorizontalScrollIndicator style={styles.scroll}>
           <View>
-            <View style={[styles.gridRow, styles.headerGridRow, { height: HEADER_H }]}>
+            <View style={[styles.gridRow, styles.headerGridRow, appearance === 'club' && { backgroundColor: '#FFFFFF', height: 52 }, { height: appearance === 'club' ? 52 : HEADER_H }]}>
               {cols.map((c) => {
                 const active = c.key === sortKey;
                 return (
@@ -414,6 +416,7 @@ export function CommunityStatsTable({
                         styles.statHeader,
                         { width: statW },
                         active && styles.primaryHeader,
+                        appearance === 'club' && { color: active ? '#2463F5' : '#536581' },
                       ]}
                     >
                       {active ? `${c.label} ▾` : c.label}
@@ -423,13 +426,13 @@ export function CommunityStatsTable({
               })}
             </View>
             {rows.map((r, i) => (
-              <ReorderMotion key={r.uid} index={i} rowHeight={ROW_H} style={[styles.gridRow, styles.dataRow]}>
+              <ReorderMotion key={r.uid} index={i} rowHeight={ROW_H} style={[styles.gridRow, styles.dataRow, appearance === 'club' && { backgroundColor: i % 2 ? '#F8FAFC' : '#FFFFFF' }]}>
                 {cols.map((c) => (
                   <Text
                     key={c.key}
                     style={[
                       styles.statCell,
-                      { width: statW, color: c.tint ?? clubAccent.blue },
+                      { width: statW, color: appearance === 'club' ? (c.key === sortKey ? '#2463F5' : c.tint === clubAccent.red ? c.tint : '#13213F') : c.tint ?? clubAccent.blue },
                       c.key === sortKey && styles.primaryCell,
                     ]}
                   >
@@ -481,14 +484,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8EEF8',
   },
   headerRank: {
-    width: 18,
+    width: 24,
+    flexShrink: 0,
     fontSize: 11,
     fontWeight: '800',
     color: '#4B5878',
     textAlign: 'center',
   },
   rank: {
-    width: 18,
+    width: 24,
+    flexShrink: 0,
     fontSize: 13,
     fontWeight: '700',
     color: colors.textMuted,
