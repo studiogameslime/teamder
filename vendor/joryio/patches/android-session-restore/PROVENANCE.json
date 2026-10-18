@@ -1,0 +1,57 @@
+{
+  "scope": "Local library compile/JVM only. No app, device, network, production write or delivery proof.",
+  "upstreamCoordinate": "io.joryio:joryio-android:1.3.0-beta.1",
+  "patchedCoordinate": "io.joryio:joryio-android:1.3.0-beta.1-teamder.1",
+  "upstreamAarSha256": "ada6e3b6b92c7cb8895a4b37ae386523434daadb3d2acd5e607ad00aa21b689f",
+  "patchedAarSha256": "7ed1e18e485c3134f8be6ece04a016ff8d33d1a0516d20beea7fbc2068a21459",
+  "patchSource": "vendor/joryio/patches/android-session-restore/SessionManager.kt",
+  "patchSourceSha256": "531a256007e682c771d1c50eb21c3ed0e60bdb747b64dbf4cb60c5f63999af9f",
+  "changedAarEntries": [
+    "classes.jar"
+  ],
+  "changedClassEntries": [
+    "io/joryio/sdk/core/SessionManager.class"
+  ],
+  "compilerVersion": "1.9.24",
+  "target": "JVM 1.8",
+  "compilerJars": [
+    {
+      "name": "kotlin-compiler-embeddable-1.9.24.jar",
+      "sha256": "e71ff19e6b141ab85a9328fd010941531a302543026bd4244c95adc208d501f6"
+    },
+    {
+      "name": "kotlin-stdlib-1.9.24.jar",
+      "sha256": "858b902696da9cf585ab9d98ffc1c2712269828354dfe9107e3711b084a36468"
+    },
+    {
+      "name": "kotlin-script-runtime-1.9.24.jar",
+      "sha256": "314c7d308fe750654365bac6144780613c9169cf3d9e1dafbab91cf80bdc357c"
+    },
+    {
+      "name": "kotlin-reflect-1.6.10.jar",
+      "sha256": "3277ac102ae17aad10a55abec75ff5696c8d109790396434b496e75087854203"
+    },
+    {
+      "name": "trove4j-1.0.20200330.jar",
+      "sha256": "c5fd725bffab51846bf3c77db1383c60aaaebfe1b7fe2f00d23fe1b7df0a439d"
+    },
+    {
+      "name": "annotations-13.0.jar",
+      "sha256": "ace2a10dc8e2d5fd34925ecac03e4988b2c0f851650c94b8cef49ba1bd111478"
+    }
+  ],
+  "gson": {
+    "version": "2.11.0",
+    "sha256": "57928d6e5a6edeb2abd3770a8f95ba44dce45f3b23b7a9dc2b309c581552a78b"
+  },
+  "before": {
+    "passed": 3,
+    "failed": 9
+  },
+  "after": {
+    "passed": 12,
+    "failed": 0
+  },
+  "boundary": "Real upstream SessionManager/SessionInfo/WireJson; synthetic StorageManager/Logger, no Android keystore.",
+  "patchSourceHashMode": "text-lf"
+}

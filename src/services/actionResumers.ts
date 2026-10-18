@@ -29,6 +29,7 @@ import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
 import { persistAvailability } from '@/services/availabilitySave';
 import { createGameFromValues } from '@/services/gameCreation';
+import { hasDraftCreationAttempt } from '@/services/creationAttempt';
 import { createClubFromValues } from '@/services/clubCreation';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -234,7 +235,7 @@ registerResumer('create_club', async (action: PendingAction): Promise<ActionResu
   }
 
   try {
-    const { groupId } = await createClubFromValues(values, me);
+    const { groupId } = await createClubFromValues(values, me, draft.id);
     // Land them on the club they just made, celebrating — the same arrival the
     // screen's own submit produces.
     navigateAfterCreate({ type: 'club', id: groupId });
@@ -289,11 +290,17 @@ registerResumer('create_game', async (action: PendingAction): Promise<ActionResu
   // NOT invent a replacement date — the person has to choose. `needsAttention`
   // makes this a NEEDS-CORRECTION outcome: non-terminal, so the draft and the
   // intent both survive and the form reopens filled in.
-  const restored = draftStore.restoreGameValues(
-    draft.values as Record<string, unknown>,
-    draft.values as Record<string, unknown>,
-    Date.now(),
-  );
+  let submitted: boolean;
+  try {
+    submitted = await hasDraftCreationAttempt('game', me.id, draft.id);
+  } catch (err) {
+    return { ...fromError(err, 'resumeCreationAttempt'), terminal: false };
+  }
+  if (!isCurrentUser(me.id)) return { outcome: 'created', terminal: false, reason: 'unknown' };
+  const originalValues = Object.fromEntries(Object.entries(draft.values).filter(([key]) => !key.startsWith('__creation')));
+  const restored = submitted
+    ? { values: originalValues, needsAttention: [] as string[] }
+    : draftStore.restoreGameValues(originalValues, originalValues, Date.now());
   if (restored.needsAttention.length > 0) {
     return { outcome: 'created', terminal: false, reason: 'draft_expired' };
   }
@@ -304,6 +311,7 @@ registerResumer('create_game', async (action: PendingAction): Promise<ActionResu
       uid: me.id,
       groupId,
       groupName,
+      draftId: draft.id,
     });
     navigateAfterCreate({ type: 'game', id: gameId });
     return { outcome: 'created', terminal: true };

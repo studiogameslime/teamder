@@ -1,4 +1,5 @@
 import { hydrateClubAdminRatings } from './clubAdminRatings';
+import { assertCreationOwner } from './creationOwner';
 import { readPlayerIdentities } from './publicPlayerService';
 // groupService — group CRUD + community-membership operations.
 //
@@ -17,6 +18,7 @@ import {
   doc,
   documentId,
   getDoc,
+  getDocFromServer,
   getDocs,
   limit,
   onSnapshot,
@@ -47,7 +49,7 @@ import { col, docs, GroupJoinRequestDoc, type PublicUser } from '@/firebase/fire
 import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
 import { logError, logUnexpected, isExpectedDenial } from '@/services/errorLog';
-import { StaleSessionError } from '@/services/staleSession';
+import { StaleSessionError, isStaleSession } from '@/services/staleSession';
 import { subscribeUserSession } from '@/services/userSessionListeners';
 
 export { StaleSessionError, isStaleSession } from '@/services/staleSession';
@@ -229,10 +231,10 @@ export const groupService = {
     return snap.docs.map((d) => d.data());
   },
 
-  async get(groupId: GroupId): Promise<Group | null> {
+  async get(groupId: GroupId, options?: { fromServer?: boolean }): Promise<Group | null> {
     if (USE_MOCK_DATA) return groupsById[groupId] ?? null;
     try {
-      const snap = await getDoc(docs.group(groupId));
+      const snap = await (options?.fromServer ? getDocFromServer(docs.group(groupId)) : getDoc(docs.group(groupId)));
       return snap.exists() ? await hydrateClubAdminRatings(snap.data()) : null;
     } catch (err) {
       // A DELETED club reads back as `permission-denied`, not "not found":
@@ -357,6 +359,8 @@ export const groupService = {
   },
 
   async createGroup(input: {
+    /** Durable wizard attempt; omitted by legacy callers. */
+    creationAttemptId?: string;
     // ── Identity (Step 1 of the wizard) ───────────────────────────
     name: string;
     description?: string;
@@ -391,7 +395,7 @@ export const groupService = {
     maxMembers?: number;
     /** Built-in gallery cover id (random default chosen at creation). */
     coverImageId?: string;
-    creator: User;
+    creator: Pick<User, 'id'>;
     // ── Removed (now per-Game) ────────────────────────────────────
     // fieldName / fieldAddress / street / addressNote / preferredDays /
     // preferredHour / recurringGameEnabled / defaultMaxPlayers /
@@ -456,7 +460,10 @@ export const groupService = {
     };
 
     if (USE_MOCK_DATA) {
-      const g: Group = { id: genId('g'), ...baseGroup };
+      const id = input.creationAttemptId ? `create-${input.creator.id}-${input.creationAttemptId}` : genId('g');
+      const existing = groupsById[id];
+      if (existing) return existing;
+      const g: Group = { id, ...baseGroup };
       groupsById[g.id] = g;
       // Mirror to mock public list so the Communities feed sees it.
       mockPublicGroups.push(toPublic(g));
@@ -484,7 +491,9 @@ export const groupService = {
     const fn = httpsCallable(functions, 'createGroupCallable');
     let groupId: string;
     try {
+      assertCreationOwner(input.creator.id);
       const res = (await fn({
+        ...(input.creationAttemptId ? { creationAttemptId: input.creationAttemptId } : {}),
         name: baseGroup.name,
         description: baseGroup.description,
         isOpen: baseGroup.isOpen,
@@ -503,6 +512,7 @@ export const groupService = {
         lng: baseGroup.lng,
         coverImageId: baseGroup.coverImageId,
       })) as { data?: { ok?: boolean; groupId?: string } };
+      assertCreationOwner(input.creator.id);
       groupId = res?.data?.groupId ?? '';
       if (!groupId) {
         throw new Error('createGroupCallable: no groupId returned');
@@ -511,6 +521,7 @@ export const groupService = {
       // Re-throw with the Firebase error code preserved so the UI can
       // distinguish rate-limit (`resource-exhausted`) from validation
       // (`invalid-argument`) from auth (`unauthenticated`).
+      if (isStaleSession(err)) throw err;
       const e = err as { code?: string; message?: string };
       const code = (e.code ?? 'unknown').replace(/^functions\//, '');
       if (
@@ -543,9 +554,11 @@ export const groupService = {
         throw new Error('createGroup: callable wrote no doc');
       }
       const g = fresh.data() as Group;
+      assertCreationOwner(input.creator.id);
       await storage.setCurrentGroupId(g.id);
       return g;
     } catch (e) {
+      if (isStaleSession(e)) throw e;
       logError('createGroup', e, { groupId, phase: 'postCreateRead' });
       throw e;
     }

@@ -1622,6 +1622,8 @@ export interface GameSeriesSettings {
 }
 
 export interface Game {
+  /** Content bound to a durable create attempt; never an edit revision. */
+  creationFingerprint?: string;
   id: string;
   groupId: GroupId;             // FK to /groups/{groupId}
   title: string;                // e.g. "חמישי כדורגל"

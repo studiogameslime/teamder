@@ -2,3 +2,8 @@
 docs/changes/evidence/2026-10-18-preproduction/** -text whitespace=trailing-space,space-before-tab,cr-at-eol
 # Raw tool logs retain their original whitespace as evidence.
 docs/changes/evidence/2026-10-18-preproduction/**/*.log -whitespace
+docs/changes/evidence/2026-10-18-production-blockers/** -text whitespace=trailing-space,space-before-tab,cr-at-eol
+docs/changes/evidence/2026-10-18-production-blockers/**/*.log -whitespace
+docs/changes/evidence/2026-10-18-production-blockers/**/*.txt -whitespace
+# Maven checksums describe exact artifact bytes, including the POM line endings.
+vendor/joryio/releases/android-1.3.0-beta.1-teamder.1/** -text whitespace=trailing-space,space-before-tab,cr-at-eol

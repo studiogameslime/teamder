@@ -26,9 +26,10 @@ function converter() {
   return exports.docs.game('g').converter;
 }
 
-// Real callbacks, transaction method, server reader and converter. Only the
-// transport and final callable are isolated. In particular clear's deleteField
-// is applied to the document and the following read is deserialized again.
+// Legacy two-step caller compatibility. The current screen has an atomic
+// contract covered by finalAtomicAlternativeAudit. Here the retained public
+// clear/prepare methods, real server reader and converter are exercised against
+// the OLD caller sequence, including both acknowledgement barriers.
 function world(mock: boolean, callback: 'onTieWinner' | 'resolveTie', mutateAfterClear?: (raw: any) => void,
   staleFirstRead = false, synchronousStream = false, staleReceiptRead = false) {
   const raw: any = {status: 'open', format: '4v4', players: ['manager'], guests: [{id: 'guest', name: 'אורח', addedBy: 'manager', createdAt: 1}],
@@ -89,8 +90,17 @@ function world(mock: boolean, callback: 'onTieWinner' | 'resolveTie', mutateAfte
     setWinnerOpen: jest.fn(), setDecisionOpen: jest.fn(), logEvent: jest.fn(), logError: jest.fn(), AnalyticsEvent: {},
     toast: {error: jest.fn()}, roundSaveError: (_: unknown, text: string) => text, he: {roundFinalizeFailed: 'השמירה נכשלה'}, __DEV__: false, timerMs: 0,
   };
-  const arrow = find(screenFile, node => ts.isVariableDeclaration(node) && node.name.getText(screenFile) === callback) as ts.VariableDeclaration;
-  vm.runInNewContext(compile(`module.exports=${arrow.initializer!.getText(screenFile)};`), scope);
+  vm.runInNewContext(compile(`module.exports=async () => {
+    if (finalizingRef.current) return;
+    finalizingRef.current=true;
+    try {
+      await gameService.clearShootout(gameId,shootoutDecision);
+      const expected=roundDecisionContext({...game,liveMatch:{...live,shootout:undefined}});
+      const res=await gameService.prepareRoundResult(gameId,me.id,${callback==='onTieWinner'?"'B',undefined":"undefined,'bothOut'"},false,shootoutDecision,expected);
+      if(res&&res.outcome!==null)beginFillFlow(res.skeleton,res.draft);
+    } catch(error) {toast.error(error.message);setDecisionOpen(true);}
+    finally {finalizingRef.current=false;}
+  };`), scope);
   return {invoke: () => scope.module.exports(callback === 'onTieWinner' ? 2 : 'bothOut'), state, commits, scope, service, update, getDocFromServer,
     emit, emitOld: () => emit(beforeClear), fail: (error: Error) => fail?.(error), onSnapshot, unsubscribe};
 }

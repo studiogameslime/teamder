@@ -19,6 +19,7 @@ const mockJoinGame = jest.fn();
 const mockJoinClub = jest.fn();
 const mockCreateClub = jest.fn();
 const mockCreateGame = jest.fn();
+jest.mock('@/services/creationAttempt', () => ({ hasDraftCreationAttempt: async () => false }));
 const mockSaveAvailability = jest.fn();
 const mockNavigate = jest.fn();
 jest.mock('@/store/userStore', () => ({ useUserStore: { getState: () => ({ currentUser: mockUser }) } }));

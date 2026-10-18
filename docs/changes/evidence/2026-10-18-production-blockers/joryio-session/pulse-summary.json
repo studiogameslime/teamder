@@ -1,0 +1,17 @@
+{
+  "capturedAtUtc": "2026-10-18T02:39:11.183505+00:00",
+  "source": "Pulse read-only pulse_get",
+  "id": "38f078c846cba1e91c7c5d6b959427b0",
+  "operation": "joryioRegisterPushToken",
+  "count": 68,
+  "status": "new",
+  "platform": "android",
+  "appVersion": "1.1.55",
+  "lastSeen": "2026-10-17T19:59:11.557Z",
+  "hasScreenshot": false,
+  "initializationCode": "INIT_ERROR",
+  "initializationMessage": "Attempt to invoke virtual method 'long java.util.Date.getTime()' on a null object reference",
+  "isUnauthorized": false,
+  "isRetryable": false,
+  "privacy": "נשמרו שדות אבחון בלבד; ללא מזהה משתמש, אסימון, פרטי חשבון או יומן פעולות."
+}

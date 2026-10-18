@@ -1,0 +1,725 @@
+{
+  "capturedAt": "2026-10-18T02:52:34.127709+00:00",
+  "functions": [
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/acceptFriendRequest",
+      "updatedAt": "2026-10-11T21:36:31.858790317Z",
+      "state": "ACTIVE",
+      "entryPoint": "acceptFriendRequest"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/addRetroGoal",
+      "updatedAt": "2026-10-17T05:13:09.816407304Z",
+      "state": "ACTIVE",
+      "entryPoint": "addRetroGoal"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/adminAddPlayers",
+      "updatedAt": "2026-10-03T20:07:56.819075233Z",
+      "state": "ACTIVE",
+      "entryPoint": "adminAddPlayers"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/adminReorderRoster",
+      "updatedAt": "2026-10-03T20:07:39.921794491Z",
+      "state": "ACTIVE",
+      "entryPoint": "adminReorderRoster"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/approveFiller",
+      "updatedAt": "2026-10-03T20:07:53.306692251Z",
+      "state": "ACTIVE",
+      "entryPoint": "approveFiller"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/availabilityCounts",
+      "updatedAt": "2026-10-03T20:07:47.951502942Z",
+      "state": "ACTIVE",
+      "entryPoint": "availabilityCounts"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/backfillGroupCreatorIdsOnce",
+      "updatedAt": "2026-10-03T20:08:15.940475536Z",
+      "state": "ACTIVE",
+      "entryPoint": "backfillGroupCreatorIdsOnce"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/checkSocialMessaging",
+      "updatedAt": "2026-10-11T21:36:33.171880235Z",
+      "state": "ACTIVE",
+      "entryPoint": "checkSocialMessaging"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/commitRoundStats",
+      "updatedAt": "2026-10-17T21:47:51.582589377Z",
+      "state": "ACTIVE",
+      "entryPoint": "commitRoundStats"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/createGroupCallable",
+      "updatedAt": "2026-10-03T20:08:24.156641380Z",
+      "state": "ACTIVE",
+      "entryPoint": "createGroupCallable"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/cronEvery15Min",
+      "updatedAt": "2026-10-03T20:08:21.139591370Z",
+      "state": "ACTIVE",
+      "entryPoint": "cronEvery15Min"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/cronEvery5Min",
+      "updatedAt": "2026-10-03T20:08:36.196591056Z",
+      "state": "ACTIVE",
+      "entryPoint": "cronEvery5Min"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/cronEvery60Min",
+      "updatedAt": "2026-10-13T11:17:10.517352251Z",
+      "state": "ACTIVE",
+      "entryPoint": "cronEvery60Min"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/cronSupportOutreach",
+      "updatedAt": "2026-10-13T18:28:24.188223777Z",
+      "state": "ACTIVE",
+      "entryPoint": "cronSupportOutreach"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/declineFiller",
+      "updatedAt": "2026-10-03T20:07:52.997770974Z",
+      "state": "ACTIVE",
+      "entryPoint": "declineFiller"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/deleteMyAccount",
+      "updatedAt": "2026-10-03T20:08:26.044053055Z",
+      "state": "ACTIVE",
+      "entryPoint": "deleteMyAccount"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/disableClubSeasons",
+      "updatedAt": "2026-10-13T11:17:15.312543637Z",
+      "state": "ACTIVE",
+      "entryPoint": "disableClubSeasons"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/enableClubSeasons",
+      "updatedAt": "2026-10-13T11:17:13.441193510Z",
+      "state": "ACTIVE",
+      "entryPoint": "enableClubSeasons"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/endSeasonNow",
+      "updatedAt": "2026-10-13T11:17:14.917050355Z",
+      "state": "ACTIVE",
+      "entryPoint": "endSeasonNow"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/ensurePersonalGroup",
+      "updatedAt": "2026-10-17T14:50:54.773124296Z",
+      "state": "ACTIVE",
+      "entryPoint": "ensurePersonalGroup"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/fillerPulseTask",
+      "updatedAt": "2026-10-03T20:08:21.201642468Z",
+      "state": "ACTIVE",
+      "entryPoint": "fillerPulseTask"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/findAvailableSocialPlayers",
+      "updatedAt": "2026-10-11T21:36:18.537956323Z",
+      "state": "ACTIVE",
+      "entryPoint": "findAvailableSocialPlayers"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/flushPendingJoinerNotifsTask",
+      "updatedAt": "2026-10-03T20:07:47.268729489Z",
+      "state": "ACTIVE",
+      "entryPoint": "flushPendingJoinerNotifsTask"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/getClubAdminRatings",
+      "updatedAt": "2026-10-11T21:36:34.419700789Z",
+      "state": "ACTIVE",
+      "entryPoint": "getClubAdminRatings"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/getFriendsInClubs",
+      "updatedAt": "2026-10-03T20:09:18.428719306Z",
+      "state": "ACTIVE",
+      "entryPoint": "getFriendsInClubs"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/getGameEveningScores",
+      "updatedAt": "2026-10-08T22:44:08.446692607Z",
+      "state": "ACTIVE",
+      "entryPoint": "getGameEveningScores"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/getInvitePreview",
+      "updatedAt": "2026-10-10T06:10:53.408855067Z",
+      "state": "ACTIVE",
+      "entryPoint": "getInvitePreview"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/getMyPlayerReferrals",
+      "updatedAt": "2026-10-11T21:36:17.736081009Z",
+      "state": "ACTIVE",
+      "entryPoint": "getMyPlayerReferrals"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/getPlayerIdentities",
+      "updatedAt": "2026-10-11T21:36:18.611071915Z",
+      "state": "ACTIVE",
+      "entryPoint": "getPlayerIdentities"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/getReceivedInvitations",
+      "updatedAt": "2026-10-11T21:36:17.344004265Z",
+      "state": "ACTIVE",
+      "entryPoint": "getReceivedInvitations"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/getServerTime",
+      "updatedAt": "2026-10-03T20:07:42.490753004Z",
+      "state": "ACTIVE",
+      "entryPoint": "getServerTime"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/getSocialPlayerProfile",
+      "updatedAt": "2026-10-11T21:36:35.793867433Z",
+      "state": "ACTIVE",
+      "entryPoint": "getSocialPlayerProfile"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/inviteFriendsToGroup",
+      "updatedAt": "2026-10-11T21:36:36.164503766Z",
+      "state": "ACTIVE",
+      "entryPoint": "inviteFriendsToGroup"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/inviteSocialPlayerToClub",
+      "updatedAt": "2026-10-11T21:36:35.847877341Z",
+      "state": "ACTIVE",
+      "entryPoint": "inviteSocialPlayerToClub"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/joinSocialClub",
+      "updatedAt": "2026-10-11T21:36:36.419560443Z",
+      "state": "ACTIVE",
+      "entryPoint": "joinSocialClub"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/notifyPlayerCancelled",
+      "updatedAt": "2026-10-03T20:08:03.021431281Z",
+      "state": "ACTIVE",
+      "entryPoint": "notifyPlayerCancelled"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/notifyTeamsReady",
+      "updatedAt": "2026-10-03T20:08:30.641991809Z",
+      "state": "ACTIVE",
+      "entryPoint": "notifyTeamsReady"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onAvailabilityUpdated",
+      "updatedAt": "2026-10-03T20:08:19.293358048Z",
+      "state": "ACTIVE",
+      "entryPoint": "onAvailabilityUpdated"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onCampaignCreated",
+      "updatedAt": "2026-10-03T20:08:15.253205123Z",
+      "state": "ACTIVE",
+      "entryPoint": "onCampaignCreated"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onCommunityChatMessage",
+      "updatedAt": "2026-10-17T20:34:25.890762501Z",
+      "state": "ACTIVE",
+      "entryPoint": "onCommunityChatMessage"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onCommunityCreatedAlert",
+      "updatedAt": "2026-10-03T20:08:11.165492116Z",
+      "state": "ACTIVE",
+      "entryPoint": "onCommunityCreatedAlert"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onCommunityJoinedAlert",
+      "updatedAt": "2026-10-03T20:08:19.498124749Z",
+      "state": "ACTIVE",
+      "entryPoint": "onCommunityJoinedAlert"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onDmChatMessage",
+      "updatedAt": "2026-10-17T20:34:26.250355386Z",
+      "state": "ACTIVE",
+      "entryPoint": "onDmChatMessage"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onErrorLogged",
+      "updatedAt": "2026-10-03T20:08:34.691233545Z",
+      "state": "ACTIVE",
+      "entryPoint": "onErrorLogged"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onFeedbackCreated",
+      "updatedAt": "2026-10-07T20:29:43.680560590Z",
+      "state": "ACTIVE",
+      "entryPoint": "onFeedbackCreated"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onFeedbackSubmitted",
+      "updatedAt": "2026-10-03T20:09:18.088524338Z",
+      "state": "ACTIVE",
+      "entryPoint": "onFeedbackSubmitted"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onFillerInterestCreated",
+      "updatedAt": "2026-10-03T20:08:02.810724283Z",
+      "state": "ACTIVE",
+      "entryPoint": "onFillerInterestCreated"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onFriendRequestCreated",
+      "updatedAt": "2026-10-03T20:08:16.445827002Z",
+      "state": "ACTIVE",
+      "entryPoint": "onFriendRequestCreated"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onGameChatMessage",
+      "updatedAt": "2026-10-17T20:34:21.195986062Z",
+      "state": "ACTIVE",
+      "entryPoint": "onGameChatMessage"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onGameCreatedAlert",
+      "updatedAt": "2026-10-03T20:08:11.466643948Z",
+      "state": "ACTIVE",
+      "entryPoint": "onGameCreatedAlert"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onGameJoinedAlert",
+      "updatedAt": "2026-10-03T20:08:11.235363430Z",
+      "state": "ACTIVE",
+      "entryPoint": "onGameJoinedAlert"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onGameRosterChanged",
+      "updatedAt": "2026-10-17T21:47:50.451129786Z",
+      "state": "ACTIVE",
+      "entryPoint": "onGameRosterChanged"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onGameRotationChanged",
+      "updatedAt": "2026-10-03T20:07:39.056788849Z",
+      "state": "ACTIVE",
+      "entryPoint": "onGameRotationChanged"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onGameTimerChanged",
+      "updatedAt": "2026-10-03T20:08:17.947970960Z",
+      "state": "ACTIVE",
+      "entryPoint": "onGameTimerChanged"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onGroupPendingChanged",
+      "updatedAt": "2026-10-03T20:08:18.619303663Z",
+      "state": "ACTIVE",
+      "entryPoint": "onGroupPendingChanged"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onJoinRequestCreated",
+      "updatedAt": "2026-10-17T05:13:10.439324711Z",
+      "state": "ACTIVE",
+      "entryPoint": "onJoinRequestCreated"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onNewUserJoined",
+      "updatedAt": "2026-10-14T15:30:41.478289083Z",
+      "state": "ACTIVE",
+      "entryPoint": "onNewUserJoined"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onNotificationCreated",
+      "updatedAt": "2026-10-15T07:29:42.942339202Z",
+      "state": "ACTIVE",
+      "entryPoint": "onNotificationCreated"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onSupportClubCreated",
+      "updatedAt": "2026-10-13T18:28:37.114919846Z",
+      "state": "ACTIVE",
+      "entryPoint": "onSupportClubCreated"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onSupportOutreachConfigChanged",
+      "updatedAt": "2026-10-13T18:28:45.150367496Z",
+      "state": "ACTIVE",
+      "entryPoint": "onSupportOutreachConfigChanged"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onVoteWritten",
+      "updatedAt": "2026-10-03T20:08:29.424231948Z",
+      "state": "ACTIVE",
+      "entryPoint": "onVoteWritten"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onVoteWrittenLegacy",
+      "updatedAt": "2026-10-03T20:08:12.863543912Z",
+      "state": "ACTIVE",
+      "entryPoint": "onVoteWrittenLegacy"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/promoteOrphanToGroup",
+      "updatedAt": "2026-10-11T21:36:36.009078014Z",
+      "state": "ACTIVE",
+      "entryPoint": "promoteOrphanToGroup"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/pulseAdminProxy",
+      "updatedAt": "2026-10-13T20:54:26.294955883Z",
+      "state": "ACTIVE",
+      "entryPoint": "pulseAdminProxy"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/reconcileJoinsTask",
+      "updatedAt": "2026-10-17T05:13:06.338247141Z",
+      "state": "ACTIVE",
+      "entryPoint": "reconcileJoinsTask"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/recordClientError",
+      "updatedAt": "2026-10-11T21:36:31.962306906Z",
+      "state": "ACTIVE",
+      "entryPoint": "recordClientError"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/recordOnboardingActivity",
+      "updatedAt": "2026-10-17T05:13:07.074877307Z",
+      "state": "ACTIVE",
+      "entryPoint": "recordOnboardingActivity"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/removeFriendship",
+      "updatedAt": "2026-10-03T20:08:08.522830993Z",
+      "state": "ACTIVE",
+      "entryPoint": "removeFriendship"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/removeRetroGoal",
+      "updatedAt": "2026-10-17T05:13:10.485088430Z",
+      "state": "ACTIVE",
+      "entryPoint": "removeRetroGoal"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/reopenLastSeason",
+      "updatedAt": "2026-10-03T20:08:30.477901961Z",
+      "state": "ACTIVE",
+      "entryPoint": "reopenLastSeason"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/reportChatMessage",
+      "updatedAt": "2026-10-03T20:08:14.385046241Z",
+      "state": "ACTIVE",
+      "entryPoint": "reportChatMessage"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/resolveSpotOffer",
+      "updatedAt": "2026-10-10T06:17:11.188158968Z",
+      "state": "ACTIVE",
+      "entryPoint": "resolveSpotOffer"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/saveGamePhysical",
+      "updatedAt": "2026-10-13T11:17:13.799536822Z",
+      "state": "ACTIVE",
+      "entryPoint": "saveGamePhysical"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/savePitchCalibration",
+      "updatedAt": "2026-10-03T20:09:18.523420629Z",
+      "state": "ACTIVE",
+      "entryPoint": "savePitchCalibration"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/scheduledGameMomentTask",
+      "updatedAt": "2026-10-03T20:07:54.406623162Z",
+      "state": "ACTIVE",
+      "entryPoint": "scheduledGameMomentTask"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/searchSocialPlayers",
+      "updatedAt": "2026-10-15T07:26:19.899337168Z",
+      "state": "ACTIVE",
+      "entryPoint": "searchSocialPlayers"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/sendGameInvite",
+      "updatedAt": "2026-10-11T21:36:36.000838276Z",
+      "state": "ACTIVE",
+      "entryPoint": "sendGameInvite"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/sendSocialFriendRequest",
+      "updatedAt": "2026-10-11T21:36:31.646181036Z",
+      "state": "ACTIVE",
+      "entryPoint": "sendSocialFriendRequest"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/sendSupportMessage",
+      "updatedAt": "2026-10-15T05:53:42.267800488Z",
+      "state": "ACTIVE",
+      "entryPoint": "sendSupportMessage"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/serveAdLink",
+      "updatedAt": "2026-10-10T06:54:52.458237542Z",
+      "state": "ACTIVE",
+      "entryPoint": "serveAdLink"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/serveCommunityPage",
+      "updatedAt": "2026-10-10T06:54:49.801942298Z",
+      "state": "ACTIVE",
+      "entryPoint": "serveCommunityPage"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/serveInviteCode",
+      "updatedAt": "2026-10-10T06:54:51.494332203Z",
+      "state": "ACTIVE",
+      "entryPoint": "serveInviteCode"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/setClubAdminRating",
+      "updatedAt": "2026-10-11T21:36:07.913170897Z",
+      "state": "ACTIVE",
+      "entryPoint": "setClubAdminRating"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/setEveningPlayed",
+      "updatedAt": "2026-10-03T20:08:28.105798365Z",
+      "state": "ACTIVE",
+      "entryPoint": "setEveningPlayed"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/setGuestRating",
+      "updatedAt": "2026-10-03T20:08:00.259214330Z",
+      "state": "ACTIVE",
+      "entryPoint": "setGuestRating"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/setSocialPrivacy",
+      "updatedAt": "2026-10-11T21:36:17.523183372Z",
+      "state": "ACTIVE",
+      "entryPoint": "setSocialPrivacy"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/stampMembershipDates",
+      "updatedAt": "2026-10-03T20:08:06.510071708Z",
+      "state": "ACTIVE",
+      "entryPoint": "stampMembershipDates"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/startGameFillerPulse",
+      "updatedAt": "2026-10-03T20:07:48.066303419Z",
+      "state": "ACTIVE",
+      "entryPoint": "startGameFillerPulse"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/submitFillerInterest",
+      "updatedAt": "2026-10-03T20:08:18.542544959Z",
+      "state": "ACTIVE",
+      "entryPoint": "submitFillerInterest"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/syncUserPublic",
+      "updatedAt": "2026-10-03T20:08:24.475536751Z",
+      "state": "ACTIVE",
+      "entryPoint": "syncUserPublic"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/trackCampaignEvent",
+      "updatedAt": "2026-10-03T20:08:32.562984889Z",
+      "state": "ACTIVE",
+      "entryPoint": "trackCampaignEvent"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/trackLinkClick",
+      "updatedAt": "2026-10-03T20:08:08.027217220Z",
+      "state": "ACTIVE",
+      "entryPoint": "trackLinkClick"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/updateAppConfig",
+      "updatedAt": "2026-10-03T20:07:43.925317027Z",
+      "state": "ACTIVE",
+      "entryPoint": "updateAppConfig"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/updateSeasonTarget",
+      "updatedAt": "2026-10-03T20:08:31.246797864Z",
+      "state": "ACTIVE",
+      "entryPoint": "updateSeasonTarget"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/updateShowcaseOnGameChange",
+      "updatedAt": "2026-10-03T20:08:03.787282212Z",
+      "state": "ACTIVE",
+      "entryPoint": "updateShowcaseOnGameChange"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/updateShowcaseOnGroupChange",
+      "updatedAt": "2026-10-03T20:07:40.258045522Z",
+      "state": "ACTIVE",
+      "entryPoint": "updateShowcaseOnGroupChange"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/uploadGroupCover",
+      "updatedAt": "2026-10-03T20:08:15.481949162Z",
+      "state": "ACTIVE",
+      "entryPoint": "uploadGroupCover"
+    }
+  ],
+  "localSource": {
+    "lib/adminPush.js": "39ad56666930d13a30b615055bc101a66ec417ee027750276774ca658f6e928e",
+    "lib/adminUserPush.js": "4b7007925172faf06bd00d51ef6b2cc8ddd6530457726376ff00aa7f69549e80",
+    "lib/appCheckPolicy.js": "a6dc5c441e8e3f7528db94abed8a22e7d97a980d0db525ee46b8d3aac92efeac",
+    "lib/chatPush.js": "4374fedaf107e17de6e9be40f673392b1c65ee7e9cbb4ab57e0ec1dac475186d",
+    "lib/clientDiagnostics.js": "66ef6489d9884f60ec19a4fcf3ad6f5b50215283d11b36c38b5a2d434f7623fa",
+    "lib/clubAdminRatings.js": "2a5ac7b6f27e4ade561635636a275dd7e837841f61b8dc4de06f177e560c0c47",
+    "lib/clubChemistry.js": "b4e249de5a1e56ba686844ecf0a59fa67ded0b9e2a49ea63753ac5bc02034abf",
+    "lib/clubDeletedNotice.js": "6aefaeecc377d07fa0a3fe7eb32f7b7300298fef68bd21ce6542608123360421",
+    "lib/clubRegistrationReminder.js": "657682ad10a2713ef40e6dc032a7d0279d84f1cc7baa8bd346531ca934a2e14f",
+    "lib/commitProtocol.js": "f3dff5dae3ac48321aabadc9edd88c7826e9a847a6df76eb944957fdeeb8b146",
+    "lib/creationReceipt.js": "aa6670961f2dcdd0ead965fa9974a7de059f492ca10018060cbf30896f01e3f0",
+    "lib/eveningMovement.js": "b3e9f8d977d2f473fea09d9e6b695137000c439b2efa2f1a339e4e89f0520bb0",
+    "lib/eveningPlayed.js": "b21335221a5538dd572e48248ac2f7c24374bef2e375c6bcea4b55b1a8c45412",
+    "lib/eveningScoreCore.js": "7a689dcd4b2b153e094f2386994148c0e10d6c819e7dd001947987844d5dcc0e",
+    "lib/fillerRules.js": "118c1b3c746a53793e063101d0be1c50c83e5561251accffefcaef74927024b5",
+    "lib/gameEveningScores.js": "33ba0e64ee5d5197dd8db0c089800b8565f350fdbde072a3bc757a528f63dd33",
+    "lib/guestJoinNotice.js": "64e1c2ed3f1718282af487eb252dc6b744bc09898ed109e4b71539ab4df1a65b",
+    "lib/guestPromotion.js": "a5cee5e06b8c112fcf0889f3da25aa5b9105f1f22f65fb68b0945f7380891b21",
+    "lib/holidays.js": "3ae8be8e52821ab2612488ffd0a5660792d9d26397709f555d85eca89f79e79b",
+    "lib/index.js": "fd62adf3028e11b158b129bbe1724ff0a0acd98d6bae668af353657d2e5460f9",
+    "lib/invitationPolicy.js": "8e1985020aee243fb77f9e16c4b8bee2a2984b56b21223ba3102eb0007afdf1a",
+    "lib/invitePreviewFields.js": "ebf8dd051ff6f26b4e8245b5fed45b751b6710e19f0c22ebdb32c1538f3b7f78",
+    "lib/linkClickInput.js": "5cd200d056b88102c3189f8c58c740a5b050cc2f1cbc3560ef21beff93589a1b",
+    "lib/liveRoundCommit.js": "4131c71bad51b7798668726023d77ab142deb9271b059e86b385bca8f4107cac",
+    "lib/liveSeasonStamp.js": "9800bdbce3c7442cf50c560d2759a93fa195700aaf38aaf4331016b0c3c9dd8e",
+    "lib/notificationDedup.js": "7dbf9dd4875b21ed2c5973c538d525fdfc90c5312af3236eeb6a5098675984d3",
+    "lib/onboardingActivity.js": "8e757658c9fdce7ee53c454d7d7a3a0d392157e156e4a65b6f6ab736f53e97ab",
+    "lib/onboardingActivityCatalog.js": "0cc18b4f98b20b55092ca5e11e1cce3d0911c3a21adc9ab2148d79b9951d63cb",
+    "lib/onboardingGuest.js": "393ed20d45b53d5cf8da2e4c1cfe8eecec1bf940409f587e869aab9efee784b1",
+    "lib/onboardingPushContent.js": "f15a81edd75fd8de466ebc8b97bc5f64ccf8c6feb40de555ccf89b264e98ae94",
+    "lib/onboardingPushPolicy.js": "1a820b7c3ada672c432eab65797a3a9298bc53c916945986e3f8fab7d66c3bc9",
+    "lib/pulseAdminProxy.js": "599f4cecd61e4be98500012a536073cd5d433a930ec75ac3880d071302f7579f",
+    "lib/pulseEntry.js": "43efc45f0c1f6e0c2a368b34aff603457be73a08ba3e8bd696eba501e93d1f9b",
+    "lib/pulseProxyPolicy.js": "4d41ee60e446e1432d8051883aa745d05bcf2781c31f82d9a8abdf2ac57756f3",
+    "lib/pulseRequestQueue.js": "a5ffb3bc7ff49628e912e80923321c772dfb257afae2b44c6aa686e2a6ae5d43",
+    "lib/pulseResponseEncoding.js": "75801ee45959e9b1bd0610f869038a272fdf2df6c9ba5ca8d3439989e1c00a4a",
+    "lib/recentAuth.js": "7761969604c76dc1407ecd2c756383f01ecd75e6e7565220c104a2313d38633b",
+    "lib/retroRoundSummary.js": "62be4d486d2d332da065b80777926c9d4023ba91d1ae454d3fe65d509f5947b6",
+    "lib/retroScorePlan.js": "e8b7654772453f717e891886dfbeba26ebf56525ffd9b3f293da99e5c3e51966",
+    "lib/retroScores.js": "b42f824832be5c2c2feeb689330a36415ae8c69c7b20315eba225fe1294c2dd7",
+    "lib/reviewAlerts.js": "52cae81815bddc6b8a3d495fc547ba0664083ca55dff1b0eeb758cd2bfba7ccf",
+    "lib/roundParticipants.js": "5b8acbf7d7520733573c6e8e118e8e44187d90bcc0cb0146cd2d7b3ba3627744",
+    "lib/roundSides.js": "426a01876309d83a05e05940360567b882c4438b09a28aa78a0cf5eee461945b",
+    "lib/roundSummary.js": "e41c2aa8aa8dd46e5051f71f0c797411af8c2662cb64ada4f3b70f9b2fba2e28",
+    "lib/seasonActivation.js": "943dece198a9c046edf5ae3a1c19e657cf074524cb45cf9dd00aa4bcdb0b3f0c",
+    "lib/seasonArchiveData.js": "6b7d76344b976912270c0187482edbc8ee5ba7084f20d26078f45580740d7687",
+    "lib/seasonAwards.js": "a8f531737c14741128033708fdef2b9b1310499aa48e024922df84027aefc61d",
+    "lib/seasonCounters.js": "73c740987929a8580387b8ed7a7eba29d1049fc3b9f6cfbc0ee15ffdf764e9b4",
+    "lib/seasonDates.js": "4c68fe7fea0f43cc807cac5faa87a394dcc6230e0e516248312a855b3335e820",
+    "lib/seasonLock.js": "818117d4d5d94323fd0fb019d047b334c47d294ae12d9b6b43de3b201b487f12",
+    "lib/seasonOperation.js": "f7bba161e8176081bed3bc78497b2264f14abebce1ddbdc1a3f992e813ead262",
+    "lib/seasonParticipants.js": "cedffd13480a63fe3c547179644058069745e646d5dbf815966f329135b7654a",
+    "lib/seasonRollover.js": "65fe782e236d07fec3cbf3cd57c630db878d7014570a8fbe7ea9e48bdcc89d31",
+    "lib/seasonSeed.js": "3d5189a1fd4019951b47e7fa046e30cd973d22a054b15ee4960a488bf2f49946",
+    "lib/serveAdLink.js": "8e63f76af9e30db3b3f67a57d3cd16d288e91811bc12dc4ece2b29f96230361f",
+    "lib/shortAdLinkPage.js": "ce16032cc585e3d1909691ad79860547ac70ec62b29335f7eeaee56373f05a7a",
+    "lib/socialPairSummary.js": "c805a70a9a8377001b91f2527987078868d5814af1c38ac94ed2402fd2a18a93",
+    "lib/socialPlayers.js": "8eeb8a38ccd710e63319a2410626ed50412d8f1d2575bdb17046ca7a5bf71d64",
+    "lib/spotOfferDecision.js": "b03f0d1c47ce44c577041dd9aaac2245db04a6b42c2c6e958ca87a81bc07589a",
+    "lib/statBatch.js": "32c0cee95587071a02229cac9392b92aec9f3ece8cf8905281eeb6b1a0cb7bf7",
+    "lib/supportMessage.js": "a9bcbfb7abaf88c4682ae8c3fa840c7487c0b3761850f25651ba82014e2b6569",
+    "lib/supportMessagePolicy.js": "3f3621eda50d1294eb328e6784bfd8239a93c5d2db58431a9714741f67b28819",
+    "lib/supportOutreach.js": "9c96ef3e402279e64d0969f87b5218e1c375c3562ed387248024557ff74a8934",
+    "lib/supportOutreachPolicy.js": "2ceb8d5bef14db63cffca84275e4fb9f047dae9b405c0288f02fd86ba53bec21",
+    "lib/supportReply.js": "284e2a3a090c8d938b57aecd58c918071fa3e0e66fe0700beae356e39e435fcb",
+    "lib/teamBalanceCore.js": "524e516d2dd4f0f2e6d2178ed3f2597dce6c19dcec6216dbbc899311c2ebbc4a",
+    "package-lock.json": "8204680c11f0bdd83a3bd86d45f47aadf0812a6fbfa060b0122f75f8035601c4",
+    "package.json": "e8e5c0f186a0f5ac5faf31612428702512f42034a5208ca24157b0609d8ab457",
+    "src/adminPush.ts": "92584d4197448b41cac680ff0e1d0cac7eaa55ead50efd8aeac56e220d2cada6",
+    "src/adminUserPush.ts": "0d0a9c1ed518cc1d3907d828570e79606ad8b82b0d24795ab53975b058e3c4eb",
+    "src/appCheckPolicy.ts": "3cb58b4a4481725e9d050a730e2fe7b7da3acc6ca8f4a526e4ad4c9b05a8fac6",
+    "src/chatPush.ts": "d7845e3422bc4dcc504c4f9eec9b906dafa020cbc5c3a442576a265594896ffc",
+    "src/clientDiagnostics.ts": "55cbe34510e12b523a027a429004c2379b15b551a8403485e18cf45f3768e333",
+    "src/clubAdminRatings.ts": "dab6bbeec9cd2cb2426c728fe2c16deb430480d8e8af0e70f8f57312b4b78871",
+    "src/clubChemistry.ts": "b7404198b90c3f0d651ba0debc27ea1696ae5e19a120def713b8bda0d851144a",
+    "src/clubDeletedNotice.ts": "ac46178b178b59d59d1ddffde36c32c10c4596ce8af074001dc20aec6b0f16fa",
+    "src/clubRegistrationReminder.ts": "e6e6788783a9a9361e90dbdca3ec3c876c54672f8811daeaf909ea1e9b283c18",
+    "src/commitProtocol.ts": "6af9dab54dd3d84fec8473d3fcf8f012be116dea447d0a332e12387e4a15f786",
+    "src/creationReceipt.ts": "93902e43f57354e982981f05597c1edbc71c091446fdc3f39ccb6a83cc17052a",
+    "src/eveningMovement.ts": "dd58e544ec50565ba704843ac4b31e92ef6b39310ffb5da0dfd302c438b5b82f",
+    "src/eveningPlayed.ts": "b13aef3431a02543f16fba03cc644fd65dadb1c5956919a5bc326791ecfab94a",
+    "src/eveningScoreCore.ts": "a1efc60f847e23f0835bee034b525bade44a43dc95516c0c0c1ecb1a80be35aa",
+    "src/fillerRules.ts": "e284146e1e964dc7bcc2a26c38be779985140e82a0884b7c0e94666e444a62d8",
+    "src/gameEveningScores.ts": "aba2f625e52001de394131702d4c02233fcba15858cde8a4bf986afde0f11fe8",
+    "src/guestJoinNotice.ts": "3faa1fff85260e36a1aa7e2fdb97836a8d29ac14e87124c6a8d474520383d4ff",
+    "src/guestPromotion.ts": "a0890d7290a256a911f2bd0319581b76eb3cd2ec4f5f9bbe2e110b8a4d6488a4",
+    "src/holidays.ts": "24c24b357646ed1a3968c55195939c2f3165839a8a0f799e602c77735658be5a",
+    "src/index.ts": "33cf60b71404a8b9bd392b21f4da73cd2ac00aa8f728b1de5d0bce252a7af4fb",
+    "src/invitationPolicy.ts": "24410d89d0971afff0dedba98c023fa84adbad03f1c1df88f7eb03c3e271658c",
+    "src/invitePreviewFields.ts": "e0c641be4988d8d940ba6fe049de456766f93888a06ac64b9b4ff51a1bf240e0",
+    "src/linkClickInput.ts": "cfb0e27957d999f4eddd60a866c34ea4faf2f260b66055795fb0518243cddb09",
+    "src/liveRoundCommit.ts": "9c2add07bdb4c06f7260a96b9ef680b88df796cd89d4a52c0074ef17fadc6fea",
+    "src/liveSeasonStamp.ts": "9fc6b32df26ea7e6003b3d1b4c21c30b723400cf196b5ec224117975ac2fa5f9",
+    "src/notificationDedup.ts": "ed1bae9981ea079433f81de8bc989e5eea36d5fe03c18fcf62afd1e635f2bc88",
+    "src/onboardingActivity.ts": "5c038322d99d3b56e483be79546695a9af4d0e5105127fe4fd89e8ceb571685f",
+    "src/onboardingActivityCatalog.ts": "ab14820d5d2cba780c401a08b57e513e505288d533b3a43f09fe49ad6e023617",
+    "src/onboardingGuest.ts": "194d80425051c683d1fe6444abde7f72f77496c96c56959111acff8b6fec46c5",
+    "src/onboardingPushContent.ts": "1235d3fa010a2ee9fad94d37759bed8fed007fab1401321e7328a29ea070eed1",
+    "src/onboardingPushPolicy.ts": "dd4987c75d4ec157ad3a741c3323fd28df4bfeffafd75f09935fdca04a2cdbad",
+    "src/pulseAdminProxy.ts": "8c9adc2925ed5e2a4d74b2eafe1da50396cba1f44b96144cd0f88a941977df06",
+    "src/pulseEntry.ts": "1d58ed3421a0ba68d8f2842a8291e22897a8061958aa04111fa328939939e137",
+    "src/pulseProxyPolicy.ts": "8312d9d408e68d0270a336c6c3ea0eac5a88cc203be9d33a6a32a5faf8a7ee4a",
+    "src/pulseRequestQueue.ts": "05a7407850b0fcfce15dffb6b18ed51271fd845597127cefb737d8f1bd9c2223",
+    "src/pulseResponseEncoding.ts": "03113d78c843f3b6f266615248ca1f0707f761181c8e99fa9688fd1d3a70ea5d",
+    "src/recentAuth.ts": "9cbbeed490c3dc0dfff391e93b9bce2285bc09feef918a4a63297b44dcb62804",
+    "src/retroRoundSummary.ts": "0d06e6d7465e86f754ec2f380d440e8ef6ab98119b9add44477bbd9b84aa34cc",
+    "src/retroScorePlan.ts": "2c2f486254e71e13b6eb1e86b2ac87a65b1da84fb57af110f0966021d018b1e1",
+    "src/retroScores.ts": "202b1bcc7c30cc45f162521f5c318aa008d78db6de01677224236cad3888bbc2",
+    "src/reviewAlerts.ts": "20c3947e23383fc10b7d35801d63451448f8dfd6f646a01c5354733f6b9f5564",
+    "src/roundParticipants.ts": "65764377d6dd0671dbb82620f4377dcd2328587274d9a214895b8a4197d34325",
+    "src/roundSides.ts": "16746599bbc36c61d8331dc5a28c701108ba932ea25d1fe3b00e85770759fa6e",
+    "src/roundSummary.ts": "db42b87dde25d0ae8daa56f70dcdd3f20f6fc6be8740602e48f56cbec5759a04",
+    "src/seasonActivation.ts": "881c9890d71c85510f7195abf3c4e8b6070c5a509f318ebfb1fa007d3669fd7a",
+    "src/seasonArchiveData.ts": "c094ec7d25ceb689ebe18a3c7246936fe7bfa7471472a601fc76fbd764ce08ad",
+    "src/seasonAwards.ts": "4b663631ec7457b36a97522a1c93545a5c9c46f55c4dccb9d3c340812a394230",
+    "src/seasonCounters.ts": "4273cc582650060ba44b9d4c265bdc74d3d46f6a6235ac49a8daa9167764cc57",
+    "src/seasonDates.ts": "7a40b2e9c017b33df7f5ea653e6dd83f90a00fb6eba15bedc8b71dbe5a7adab1",
+    "src/seasonLock.ts": "6bd2d8c708982458326f6259941d05bfb05260cde4e26114e18f1b4dbb753247",
+    "src/seasonOperation.ts": "473d783841e745a93c42de00208cc37adae09437a44001956e0c960d311d73f0",
+    "src/seasonParticipants.ts": "06c0a0382d9ced07675a8242adb0e1e7bbf29630912c4d5766692c1c33983d5b",
+    "src/seasonRollover.ts": "44b2d42fdf3473e85467da14e2635442405db285ac04dc30e3ae4f1674706472",
+    "src/seasonSeed.ts": "21efc018027ac28183f20b3bcf1174a951231efd991927081a16ec8de42087bf",
+    "src/serveAdLink.ts": "6e7058164ff0e74df5c9a0117ecaa6d39c2b131fc0f7189d2d772f241bdcec11",
+    "src/shortAdLinkPage.ts": "11431f01d98889df5bdbb704523f79ab987691f6afa21dd298b3aebbc8019eab",
+    "src/socialPairSummary.ts": "938e7474ca01798ae44e3bbfdee12cedaeb072197bcf35848fa6b73bdcce0437",
+    "src/socialPlayers.ts": "c50577fadea52d8b866f8b76bf507ec27d07dea242ac40f07a79124bf9625d6e",
+    "src/spotOfferDecision.ts": "1d061874ec08671854e30327773c2e3a43257ee1bb5ad5bee5c382064317f760",
+    "src/statBatch.ts": "cbc41d798d826992a2880210385998b8078f0cf6f2f1a7b06e4e44df31c6621c",
+    "src/supportMessage.ts": "e3e7f26886dfa965bc3bb66db1c754f6653decaed42aa82946ec6ad08ee78e64",
+    "src/supportMessagePolicy.ts": "d15ee113d39387c60d84e3b3b6e4f3b60a15238dc28ffdcae1d0eb18a5c546cf",
+    "src/supportOutreach.ts": "f0aff25b15acdd1ef461ed9adf976e33dbc1c1e40b78009c27b1a8b315b12022",
+    "src/supportOutreachPolicy.ts": "e671af99175bac2b0ea2dc46eff4f0f7210bc2bcada6c88d4233c02d65167586",
+    "src/supportReply.ts": "8c1fdb436674532efa1def096aeea3439b0852825298fab530b9c1251586b4d2",
+    "src/teamBalanceCore.ts": "c3b38bdeaa9027ea29b1fb0367318b483271309d37ba72c29c8ff9e3a077380f",
+    "templates/community.html": "85b133358580a35391bf5e3306b475234ae6320d2161eddf5193a53c105e82a2",
+    "templates/invite.html": "85b133358580a35391bf5e3306b475234ae6320d2161eddf5193a53c105e82a2"
+  }
+}

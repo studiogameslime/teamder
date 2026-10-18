@@ -1,8 +1,10 @@
 import { waitForJoinResult } from '@/utils/joinRequestResult';
+import { creationPayload } from '@/services/creationAttempt';
 import { validateDraftRoster } from '@/utils/draftIntegrity';
 import { shootoutFingerprint, type ShootoutDecisionContext } from '@/utils/shootoutDecision';
 import { matchesRoundDecision, roundDecisionContext, type RoundDecisionContext } from '@/utils/roundDecision';
 import { liveLineupFingerprint } from '@/utils/liveLineupFingerprint';
+import {alternativeRoundFingerprint} from '@/utils/alternativeRoundDecision';
 // gameService — read/write of the active game for a group, plus past
 // game-night history.
 //
@@ -3038,6 +3040,8 @@ export const gameService = {
    * hydrated `Game` (with `matches: []`).
    */
   async createGameV2(input: {
+    /** Stable, persisted wizard attempt. Legacy callers omit it. */
+    creationAttemptId?: string;
     groupId: GroupId;
     title: string;
     startsAt: number;
@@ -3127,7 +3131,6 @@ export const gameService = {
     // Spam guard: 10 games / hour / user. Tight enough to stop
     // automated abuse; loose enough that an admin running a busy
     // weekend can still create morning + evening games.
-    await enforceRateLimit(input.createdBy, 'createGame');
     // Pre-flight validation — surfaces a clear Hebrew error before
     // we hit Firestore (rules will block the same shapes anyway,
     // but a "permission denied" toast is useless to the user).
@@ -3162,6 +3165,50 @@ export const gameService = {
     input.notes = notes;
     input.maxPlayers = maxPlayers;
     const now = Date.now();
+    const attemptId = input.creationAttemptId;
+    if (attemptId && !/^[A-Za-z0-9_-]{16,128}$/.test(attemptId)) {
+      failValidation('creationAttemptId', 'ניסיון היצירה אינו תקין');
+    }
+    const targetId = attemptId ? `create_${encodeURIComponent(input.createdBy)}_${attemptId}` : undefined;
+    const creationFingerprint = attemptId ? await (async () => {
+      const crypto = require('expo-crypto') as typeof import('expo-crypto');
+      return crypto.digestStringAsync(crypto.CryptoDigestAlgorithm.SHA256,
+        creationPayload({ ...input, creationAttemptId: undefined }));
+    })() : undefined;
+    const assertSameAttempt = (existing: Game): Game => {
+      if (existing.createdBy !== input.createdBy || existing.groupId !== input.groupId ||
+          existing.creationFingerprint !== creationFingerprint) {
+        failValidation('creationAttemptId', 'פרטי ניסיון היצירה אינם תואמים למחזור שנשמר');
+      }
+      return existing;
+    };
+    const ensureCreationSeries = async (game: Game): Promise<Game> => {
+      if (input.recurring !== true || input.seriesId) return game;
+      try {
+        const seriesId = await seriesService.ensureForGame(game.id, {
+          groupId: input.groupId, createdBy: input.createdBy,
+          firstOccurrenceAt: input.startsAt,
+          settings: settingsFromGame({ ...input, startsAt: input.startsAt }),
+        });
+        return { ...game, seriesId };
+      } catch (err) {
+        logError('createGameSeries', err, { gameId: game.id, groupId: input.groupId });
+        return game; // best-effort; a subsequent same-attempt retry reconciles the link
+      }
+    };
+    // Reconcile an acknowledged OR ambiguous previous write before rate limits
+    // and overlap checks. Server reads must not mistake an offline cache miss
+    // for permission to create a replacement.
+    if (targetId) {
+      if (USE_MOCK_DATA) {
+        const existing = mockGamesV2.find((game) => game.id === targetId);
+        if (existing) return ensureCreationSeries(assertSameAttempt(existing));
+      } else {
+        const snapshot = await getDocFromServer(docs.game(targetId));
+        if (snapshot.exists()) return ensureCreationSeries(assertSameAttempt(snapshot.data() as Game));
+      }
+    }
+    await enforceRateLimit(input.createdBy, 'createGame');
 
     // Invariant: when both fields are set, registration must open
     // strictly BEFORE the kickoff time. Without this guard, a deferred
@@ -3246,6 +3293,7 @@ export const gameService = {
     const initialPlayers = autoSelfRegister ? [input.createdBy] : [];
     const initialParticipantIds = autoSelfRegister ? [input.createdBy] : [];
     const base: Omit<Game, 'id'> = {
+      ...(creationFingerprint ? { creationFingerprint } : {}),
       groupId: input.groupId,
       title: input.title,
       startsAt: input.startsAt,
@@ -3341,8 +3389,9 @@ export const gameService = {
       });
     }
     let createdId: string;
+    let ensuredSeriesId: string | undefined = input.seriesId;
     if (USE_MOCK_DATA) {
-      const game: Game = { id: `gv2-${now}`, ...base };
+      const game: Game = { id: targetId ?? `gv2-${now}`, ...base };
       mockGamesV2.unshift(game);
       createdId = game.id;
     } else {
@@ -3358,8 +3407,20 @@ export const gameService = {
         });
       }
       try {
-        const ref = await addDoc(col.games(), { id: '', ...base });
-        createdId = ref.id;
+        if (targetId) {
+          const ref = docs.game(targetId);
+          const existing = await runTransaction(getFirebase().db, async (tx) => {
+            const snapshot = await tx.get(ref);
+            if (snapshot.exists()) return assertSameAttempt(snapshot.data() as Game);
+            tx.set(ref, { id: targetId, ...base });
+            return null;
+          });
+          if (existing) return ensureCreationSeries(existing);
+          createdId = targetId;
+        } else {
+          const ref = await addDoc(col.games(), { id: '', ...base });
+          createdId = ref.id;
+        }
       } catch (e) {
         const code = (e as { code?: string })?.code;
         if (
@@ -3394,19 +3455,17 @@ export const gameService = {
     // from the series — never by copying the previous match — so deleting an
     // occurrence can't break the chain.
     //
-    // Best-effort: a failure here leaves a perfectly good one-off match rather
-    // than failing the create. The match simply isn't part of a series.
+    // The game survives a provider failure. The wizard reports the incomplete
+    // series as retryable and retains its attempt; the next call reconciles the
+    // same game/link rather than creating another game or another series.
     if (input.recurring === true && !input.seriesId) {
       try {
-        const series = await seriesService.create({
+        ensuredSeriesId = await seriesService.ensureForGame(createdId, {
           groupId: input.groupId,
           createdBy: input.createdBy,
           firstOccurrenceAt: input.startsAt,
           settings: settingsFromGame({ ...input, startsAt: input.startsAt }),
         });
-        await updateDoc(docs.game(createdId), {
-          seriesId: series.id,
-        } as Partial<GameDoc>);
       } catch (err) {
         logError('createGameSeries', err, {
           gameId: createdId,
@@ -3498,7 +3557,7 @@ export const gameService = {
       });
     }
 
-    return { ...base, id: createdId };
+    return { ...base, id: createdId, ...(ensuredSeriesId ? { seriesId: ensuredSeriesId } : {}) };
   },
 
   /**
@@ -4785,6 +4844,7 @@ export const gameService = {
     draft: DraftTeamsResult,
     winnerSide: 'A' | 'B' | null,
     tieResolution?: 'bothOut' | 'veteranOut',
+    alternativeDecision?: {fingerprint:string;emptySeries:boolean},
   ): Promise<{ winnerSide: 'A' | 'B' | null; tieResolution?: 'bothOut' | 'veteranOut' }> {
     const [idxA, idxB] = rot.playing;
     // On-field rosters — the EFFECTIVE lineup (loan-adjusted), guests INCLUDED.
@@ -4832,6 +4892,7 @@ export const gameService = {
           teamBIndex: idxB,
           winnerSide: winnerSide ?? 'tie',
           ...(tieResolution ? { tieResolution } : {}),
+          ...(alternativeDecision ? {alternativeDecision:{fingerprint:alternativeDecision.fingerprint}} : {}),
           goals: (lm.goals ?? []).map((gl) => ({
             scorerId: gl.scorerId ?? null,
             assisterId: gl.assisterId ?? null,
@@ -4846,14 +4907,23 @@ export const gameService = {
           })),
           // Penalty-shootout kicks (tiebreaker). Feed ONLY the penalty stat
           // fields — never goals/score. A round with no shootout sends [].
-          penalties: buildShootoutPenaltyPayload(lm.shootout),
+          penalties: alternativeDecision ? [] : buildShootoutPenaltyPayload(lm.shootout),
         });
         if ((response.data as { protocol?: number })?.protocol !== 2) {
           throw new Error('שמירת המשחק דורשת עדכון שרת. יש לנסות שוב לאחר העדכון.');
         }
-        const result = response.data as { winnerSide?: 'A' | 'B' | 'tie'; tieResolution?: 'bothOut' | 'veteranOut' | null };
+        const result = response.data as { winnerSide?: 'A' | 'B' | 'tie'; tieResolution?: 'bothOut' | 'veteranOut' | null; alternativeDecisionFingerprint?:string };
         if (result.winnerSide !== 'A' && result.winnerSide !== 'B' && result.winnerSide !== 'tie') {
           throw new Error('לא התקבלה תוצאה שמורה תקינה. יש לנסות שוב.');
+        }
+        if (alternativeDecision && result.alternativeDecisionFingerprint!==alternativeDecision.fingerprint) {
+          // Protocol 2 saves an EMPTY series atomically already. The following
+          // receipt/lineup read confirms that legacy success before proposing
+          // the next round; do not report a false failure after that write.
+          if (!alternativeDecision.emptySeries || result.winnerSide!==(winnerSide??'tie') ||
+            (result.tieResolution??null)!==(tieResolution??null)) {
+            throw new Error('לא התקבל אישור לשמירת ההכרעה החלופית. יש לבדוק את מצב המשחק ולנסות שוב.');
+          }
         }
         // Clearing is part of the SERVER'S atomic stats batch. Never clear
         // from a stale client snapshot after the network call: another admin
@@ -4870,6 +4940,20 @@ export const gameService = {
     } else {
       const m =
         mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      const prior = (mockRoundHistory[gameId]??[]).find(row=>row.roundId===roundCommitKey(rot)) as
+        ((typeof mockRoundHistory)[string][number] & {alternativeDecisionFingerprint?:string;alternativeTieResolution?:string})|undefined;
+      if (alternativeDecision) {
+        if (prior) {
+          if (prior.alternativeDecisionFingerprint!==alternativeDecision.fingerprint || prior.winnerSide!==(winnerSide??'tie') ||
+            (prior.alternativeTieResolution??null)!==(tieResolution??null)) {
+            throw new Error('המשחק כבר נשמר עם הכרעה אחרת. יש לפתוח את המצב המעודכן.');
+          }
+          return {winnerSide:prior.winnerSide==='tie'?null:prior.winnerSide,
+            tieResolution:prior.alternativeTieResolution as 'bothOut'|'veteranOut'|undefined};
+        } else if (!m || alternativeRoundFingerprint(m)!==alternativeDecision.fingerprint) {
+          throw new Error('המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.');
+        }
+      }
       const roster = m && Array.isArray(m.players) ? new Set([
         ...m.players, ...(m.waitlist ?? []), ...(m.guests ?? []).map((guest) => toGuestRosterId(guest.id)),
       ]) : null;
@@ -4895,7 +4979,7 @@ export const gameService = {
           team: goal.team,
           minute: Math.max(0, Math.floor(goal.minute ?? 0)),
         })),
-        penalties: buildShootoutPenaltyPayload(lm.shootout)
+        penalties: (alternativeDecision ? [] : buildShootoutPenaltyPayload(lm.shootout))
           .filter((kick) => !!kick.kickerId && [...sideA, ...sideB].includes(kick.kickerId))
           .map((kick) => ({
             kickerId: kick.kickerId!, keeperId: kick.keeperId ?? null,
@@ -4904,6 +4988,7 @@ export const gameService = {
           })),
         at: Date.now(),
       });
+      if (alternativeDecision) Object.assign(savedRound,{alternativeDecisionFingerprint:alternativeDecision.fingerprint,alternativeTieResolution:tieResolution});
       if (m) { m.lastCommittedRoundId = savedRound.roundId; m.updatedAt = Date.now(); }
       if (m?.liveMatch) {
         m.liveMatch.scoreA = 0;
@@ -4911,7 +4996,8 @@ export const gameService = {
         m.liveMatch.goals = [];
         m.liveMatch.shootout = undefined;
       }
-      return { winnerSide: savedRound.winnerSide === 'tie' ? null : savedRound.winnerSide, tieResolution };
+      return { winnerSide: savedRound.winnerSide === 'tie' ? null : savedRound.winnerSide,
+        tieResolution:(savedRound as typeof savedRound & {alternativeTieResolution?:'bothOut'|'veteranOut'}).alternativeTieResolution??tieResolution };
     }
   },
 
@@ -5031,18 +5117,32 @@ export const gameService = {
     | null
   > {
     if (!gameId) return null;
-    // A confirmed clearShootout must not be followed by an older cached
-    // shootout. Keep the decision guard, but check authoritative state.
+    // The alternative is confirmed against the ORIGINAL series. Its removal
+    // belongs to the same atomic result write, never a preceding client write.
+    expectedDecision = nonPenaltyDecision?.roundDecision ?? expectedDecision;
     let g = await this.getGameById(gameId, nonPenaltyDecision || expectedDecision ? { source: 'server' } : undefined);
-    if (nonPenaltyDecision && expectedDecision && !USE_MOCK_DATA) {
+    // Compatibility for callers which explicitly used clearShootout first.
+    // The current screen always supplies the original (non-null) series.
+    if (nonPenaltyDecision && expectedDecision && JSON.parse(expectedDecision.fingerprint)[4]==='null' && !USE_MOCK_DATA) {
       g = await waitForClearedShootout(gameId, nonPenaltyDecision, expectedDecision, g);
     }
-    if (expectedDecision && (!g || !matchesRoundDecision(g, expectedDecision))) {
+    const acknowledgedAlternative = !!nonPenaltyDecision && !!expectedDecision && !!g?.rotation &&
+      g.lastCommittedRoundId===nonPenaltyDecision.roundId && g.id===expectedDecision.gameId &&
+      roundCommitKey(g.rotation)===expectedDecision.roundId && g.rotation.playing.join(':')===expectedDecision.playing &&
+      !g.liveMatch?.shootout && !(g.liveMatch?.goals?.length) && !g.liveMatch?.scoreA && !g.liveMatch?.scoreB &&
+      JSON.parse(roundDecisionContext(g)!.fingerprint)[0]===JSON.parse(expectedDecision.fingerprint)[0];
+    if (expectedDecision && (!g || (!matchesRoundDecision(g, expectedDecision) && !acknowledgedAlternative))) {
       throw new Error('המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.');
     }
     if (nonPenaltyDecision && (nonPenaltyDecision.gameId !== gameId || !g?.rotation || roundCommitKey(g.rotation) !== nonPenaltyDecision.roundId ||
-      g.rotation.playing.join(':') !== nonPenaltyDecision.playing || g.liveMatch?.shootout)) {
+      g.rotation.playing.join(':') !== nonPenaltyDecision.playing ||
+      (g.liveMatch?.shootout && shootoutFingerprint(g.liveMatch.shootout)!==nonPenaltyDecision.fingerprint) ||
+      (!acknowledgedAlternative && g.liveMatch && g.liveMatch.scoreA!==g.liveMatch.scoreB))) {
       throw new Error('המשחק או הפנדלים השתנו. יש לחזור לבחירה ולבדוק את הנתונים המעודכנים.');
+    }
+    if (nonPenaltyDecision?.alternativeFingerprint && !acknowledgedAlternative &&
+      alternativeRoundFingerprint(g!)!==nonPenaltyDecision.alternativeFingerprint) {
+      throw new Error('המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.');
     }
     if (g?.rotation && g.draftTeams && !g.liveMatch && !committedOnly) {
       const expectedRoundId = roundCommitKey(g.rotation);
@@ -5072,7 +5172,11 @@ export const gameService = {
     if (isTie && !tieMode) return { outcome: null };
 
     const committedRoundId = roundCommitKey(rot);
-    const committed = await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide, tieMode);
+    const alternativeDecision = nonPenaltyDecision && (lm.shootout || nonPenaltyDecision.alternativeFingerprint) ? {
+      fingerprint:nonPenaltyDecision.alternativeFingerprint??alternativeRoundFingerprint(g),
+      emptySeries:JSON.parse(nonPenaltyDecision.fingerprint)?.[3]?.length===0,
+    } : undefined;
+    const committed = await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide, tieMode,alternativeDecision);
     // A competing admin may already have committed a different tie decision.
     // Rotate from the winner's stored result, never this request's losing pick.
     winnerSide = committed.winnerSide;

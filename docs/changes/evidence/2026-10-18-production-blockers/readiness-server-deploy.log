@@ -1,0 +1,77 @@
+
+=== Deploying to 'soccer-app-52b6b'...
+
+i  deploying functions
+Running command: npm --prefix "$RESOURCE_DIR" run build
+
+> footy-functions@1.0.0 build
+> node scripts/copy-template.js && tsc
+
+[copy-template] copied ..\public\c\index.html → templates\community.html
+[copy-template] copied ..\public\invite.html → templates\invite.html
++  functions: Finished running predeploy script.
+i  functions: preparing codebase default for deployment
+i  functions: ensuring required API cloudfunctions.googleapis.com is enabled...
+i  functions: ensuring required API cloudbuild.googleapis.com is enabled...
+i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled...
+!  functions: Runtime Node.js 20 was deprecated on 2026-04-30 and will be decommissioned on 2026-10-30, after which you will not be able to deploy without upgrading. Consider upgrading now to avoid disruption. See https://cloud.google.com/functions/docs/runtime-support for full details on the lifecycle policy
+!  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory.
+!  functions: Please note that there will be breaking changes when you upgrade.
+i  functions: Loaded environment variables from functions\.env.soccer-app-52b6b
+i  functions: Loading and analyzing source code for codebase default to determine what to deploy
+Serving at port 8609
+
+i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled...
+i  functions: Loaded environment variables from functions\.env.soccer-app-52b6b
+i  functions: preparing functions directory for uploading...
+i  functions: packaged C:\Users\elira\Teamder\functions (1.21 MB) for uploading
+!  functions: The following functions have triggers in different regions than they are located:
+- onGameChatMessage (us-central1, Trigger: eur3)
+- onCommunityChatMessage (us-central1, Trigger: eur3)
+- onDmChatMessage (us-central1, Trigger: eur3)
+- onNotificationCreated (us-central1, Trigger: eur3)
+- onJoinRequestCreated (us-central1, Trigger: eur3)
+- onGroupPendingChanged (us-central1, Trigger: eur3)
+- onGameTimerChanged (us-central1, Trigger: eur3)
+- onGameRotationChanged (us-central1, Trigger: eur3)
+- onGameRosterChanged (us-central1, Trigger: eur3)
+- onVoteWritten (us-central1, Trigger: eur3)
+- onVoteWrittenLegacy (us-central1, Trigger: eur3)
+- updateShowcaseOnGroupChange (us-central1, Trigger: eur3)
+- updateShowcaseOnGameChange (us-central1, Trigger: eur3)
+- onFillerInterestCreated (us-central1, Trigger: eur3)
+- onFriendRequestCreated (us-central1, Trigger: eur3)
+- onNewUserJoined (us-central1, Trigger: eur3)
+- onGameCreatedAlert (us-central1, Trigger: eur3)
+- onGameJoinedAlert (us-central1, Trigger: eur3)
+- onCommunityCreatedAlert (us-central1, Trigger: eur3)
+- onCommunityJoinedAlert (us-central1, Trigger: eur3)
+- stampMembershipDates (us-central1, Trigger: eur3)
+- onAvailabilityUpdated (us-central1, Trigger: eur3)
+- onErrorLogged (us-central1, Trigger: eur3)
+- onCampaignCreated (us-central1, Trigger: eur3)
+- onFeedbackSubmitted (us-central1, Trigger: eur3)
+- onFeedbackCreated (us-central1, Trigger: eur3)
+- syncUserPublic (us-central1, Trigger: eur3)
+- onClubDeletedNotice (us-central1, Trigger: eur3)
+- onSupportClubCreated (us-central1, Trigger: eur3)
+- onSupportOutreachConfigChanged (us-central1, Trigger: eur3)
+To avoid unnecessary cross-region network hops, consider assigning these functions to their trigger regions or collocating them. To suppress this warning, set FIREBASE_SUPPRESS_REGION_WARNING=true in your environment variables.
+i  functions: ensuring required API cloudtasks.googleapis.com is enabled...
+i  functions: ensuring required API cloudscheduler.googleapis.com is enabled...
+i  functions: ensuring required API run.googleapis.com is enabled...
+i  functions: ensuring required API eventarc.googleapis.com is enabled...
+i  functions: ensuring required API pubsub.googleapis.com is enabled...
+i  functions: ensuring required API storage.googleapis.com is enabled...
+i  functions: generating the service identity for pubsub.googleapis.com...
+i  functions: generating the service identity for eventarc.googleapis.com...
+i  functions: ensuring required API secretmanager.googleapis.com is enabled...
++  functions: functions source uploaded successfully
+i  functions: updating Node.js 20 (2nd Gen) function createGroupCallable(us-central1)...
+i  functions: updating Node.js 20 (2nd Gen) function commitRoundStats(us-central1)...
++  functions[createGroupCallable(us-central1)] Successful update operation.
++  functions[commitRoundStats(us-central1)] Successful update operation.
+
++  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/soccer-app-52b6b/overview

@@ -23,6 +23,8 @@ import { groupService } from '@/services/groupService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { teamSizeFromFormat } from '@/types';
 import type { GameFormValues } from '@/screens/games/GameWizardForm';
+import { runCreationAttempt } from '@/services/creationAttempt';
+import { assertCreationOwner } from '@/services/creationOwner';
 
 export interface CreateGameContext {
   values: GameFormValues;
@@ -33,6 +35,8 @@ export interface CreateGameContext {
   /** Name used for the title fallback. Ignored for a standalone game, whose
    *  synthesised group has no name worth showing. */
   groupName?: string;
+  /** Same persisted draft across retries and authentication remounts. */
+  draftId?: string;
 }
 
 export interface CreatedGame {
@@ -70,6 +74,11 @@ async function resolveGroupId(ctx: CreateGameContext): Promise<{ id: string; isO
  */
 export async function createGameFromValues(ctx: CreateGameContext): Promise<CreatedGame> {
   const v = ctx.values;
+  return runCreationAttempt({
+    kind: 'game', uid: ctx.uid, draftId: ctx.draftId,
+    assertOwner: () => assertCreationOwner(ctx.uid),
+    values: { values: v, groupId: ctx.groupId },
+  }, async () => {
   const { id: groupId, isOrphan } = await resolveGroupId(ctx);
 
   const parsedDuration = parseInt(v.matchDurationMinutes, 10);
@@ -81,7 +90,7 @@ export async function createGameFromValues(ctx: CreateGameContext): Promise<Crea
   const publicOpenAt = !isOrphan && v.publicOpenAt > 0 ? v.publicOpenAt : undefined;
   const guestsOpenAt = v.guestsOpenAt > 0 ? v.guestsOpenAt : undefined;
 
-  const created = await gameService.createGameV2({
+  return {
     groupId,
     // The synthesised group has no name, so don't fall back to it for a title.
     title: v.title.trim() || (isOrphan ? 'מחזור חד־פעמי' : (ctx.groupName ?? '')),
@@ -123,7 +132,17 @@ export async function createGameFromValues(ctx: CreateGameContext): Promise<Crea
     advancedTieMode: v.advancedTieMode,
     createdBy: ctx.uid,
     isOrphanContext: isOrphan,
-  });
+  };
+  }, async (input, creationAttemptId) => {
+  const isOrphan = input.isOrphanContext;
+  const created = await gameService.createGameV2({ ...input, creationAttemptId });
+  assertCreationOwner(ctx.uid);
+  if (input.recurring && !created.seriesId) {
+    throw Object.assign(new Error('המחזור נוצר, אך השלמת המחזור הקבוע נכשלה. נסו שוב כדי להשלים את אותה יצירה.'), {
+      code: 'unavailable',
+      creationSaved: true,
+    });
+  }
 
   // Friend invites picked in step 3. Best-effort — a failed invite never blocks
   // landing on the match.
@@ -156,4 +175,5 @@ export async function createGameFromValues(ctx: CreateGameContext): Promise<Crea
   }
 
   return { gameId: created.id, isOrphan };
+  });
 }

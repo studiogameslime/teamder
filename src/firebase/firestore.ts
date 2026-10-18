@@ -1370,6 +1370,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       currentMatchIndex: g.currentMatchIndex,
       weather: g.weather ?? null,
       createdBy: g.createdBy ?? null,
+      creationFingerprint: g.creationFingerprint ?? null,
       // `visibility` is now the only access-control flag. Default to
       // 'community' when missing — the conservative choice so a
       // half-built write never accidentally exposes a doc to the
@@ -1622,6 +1623,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       currentMatchIndex: d.currentMatchIndex ?? 0,
       weather: d.weather ?? undefined,
       createdBy: typeof d.createdBy === 'string' ? d.createdBy : undefined,
+      creationFingerprint: typeof d.creationFingerprint === 'string' ? d.creationFingerprint : undefined,
       // Default missing visibility to 'community' so legacy docs are
       // hidden from the public feed until an admin explicitly opens
       // them. Never project unknowns as 'public' — that would be a

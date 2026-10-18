@@ -1,0 +1,13 @@
+{
+  "adaptersRestored": true,
+  "calls": [
+    "draft.read",
+    "group.get.unavailable",
+    "draft.read",
+    "group.get.valid"
+  ],
+  "dev": true,
+  "mock": true,
+  "user": "p7",
+  "writeAttempts": 0
+}

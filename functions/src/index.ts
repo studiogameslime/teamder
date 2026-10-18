@@ -1,4 +1,5 @@
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
+import { creationReceiptId, fingerprintCreation } from './creationReceipt';
 import { guestJoinNotices, guestJoinMessage, joinNoticeRecipients } from './guestJoinNotice';
 import { clickDocumentId, clickSource } from './linkClickInput';
 import { readServerAdminRatings, prunePrivateClubRatings } from './clubAdminRatings';
@@ -9804,36 +9805,15 @@ export const createGroupCallable = onCall(
       .collection('serverRateLimits')
       .doc(`${uid}_createGroup`);
     const now = Date.now();
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(rateRef);
-      const cur = snap.exists
-        ? (snap.data() as {
-            windowStart?: number;
-            count?: number;
-          })
-        : {};
-      const windowStart = cur.windowStart ?? 0;
-      const inWindow = now - windowStart < CREATE_GROUP_RATE_WINDOW_MS;
-      const count = inWindow ? (cur.count ?? 0) : 0;
-      if (count >= CREATE_GROUP_RATE_CAP) {
-        throw new HttpsError(
-          'resource-exhausted',
-          'יצירת מועדונים מוגבלת ל-5 ביום. נסה שוב מאוחר יותר.',
-        );
-      }
-      tx.set(rateRef, {
-        uid,
-        op: 'createGroup',
-        windowStart: inWindow ? windowStart : now,
-        count: count + 1,
-        updatedAt: now,
-      });
-    });
 
     // 2) Input validation. Server is the source of truth — client-side
     //    checks are nice-to-have but rules can't enforce length on the
     //    callable path. Slim shape per the new responsibility split.
-    const input = (request.data ?? {}) as Partial<CreateGroupInput>;
+    const input = (request.data ?? {}) as Partial<CreateGroupInput> & { creationAttemptId?: unknown };
+    const attemptId = input.creationAttemptId;
+    if (attemptId !== undefined && (typeof attemptId !== 'string' || !/^[A-Za-z0-9_-]{16,128}$/.test(attemptId))) {
+      throw new HttpsError('invalid-argument', 'invalid creation attempt');
+    }
     const name = pickShortString(input.name, 80, 'name', true)!;
     const description = pickShortString(
       input.description,
@@ -9941,32 +9921,45 @@ export const createGroupCallable = onCall(
     }
     if (coverImageId !== undefined) publicDoc.coverImageId = coverImageId;
 
-    // 4) Atomic dual-write of canonical + public projection.
-    const batch = db.batch();
-    batch.set(groupRef, groupDoc);
-    batch.set(db.collection('groupsPublic').doc(groupId), publicDoc);
-    await batch.commit();
-
-    // 5) Bump teamsCreated achievement (server-only path; the
-    //    hardened /users rules block this from the client when it
-    //    would target someone other than self, so doing it here keeps
-    //    counters honest no matter how the user reached this code
-    //    path).
-    try {
-      await db.collection('users').doc(uid).set(
-        {
-          achievements: {
-            teamsCreated: admin.firestore.FieldValue.increment(1),
-          },
-          updatedAt: now,
-        },
-        { merge: true },
-      );
-    } catch (err) {
-      console.warn('[createGroupCallable] teamsCreated bump failed', err);
-    }
-
-    return { ok: true, groupId };
+    // Bind only validated creation content, excluding server-generated identity,
+    // clock and invite code. Old clients omit the token and still create normally.
+    const fingerprint = fingerprintCreation({
+      name, description, city, contactPhone, rulesText, maxMembers, isOpen,
+      internalRating, hideInternalRating, cardsEnabled, yellowCardValidityDays,
+      redCardValidityDays, lat: hasGeo ? lat : undefined,
+      lng: hasGeo ? lng : undefined, coverImageId,
+    });
+    const receiptRef = typeof attemptId === 'string'
+      ? db.collection('serverCreationAttempts').doc(creationReceiptId(uid, attemptId)) : null;
+    return db.runTransaction(async (tx) => {
+      if (receiptRef) {
+        const receipt = await tx.get(receiptRef);
+        if (receipt.exists) {
+          const saved = receipt.data()!;
+          if (saved.uid !== uid || saved.fingerprint !== fingerprint || typeof saved.groupId !== 'string') {
+            throw new HttpsError('failed-precondition', 'creation attempt content changed');
+          }
+          // Return before charging the rate counter or incrementing achievements.
+          return { ok: true, groupId: saved.groupId as string };
+        }
+      }
+      const rate = await tx.get(rateRef);
+      const cur = rate.exists ? rate.data()! : {};
+      const windowStart = typeof cur.windowStart === 'number' ? cur.windowStart : 0;
+      const inWindow = now - windowStart < CREATE_GROUP_RATE_WINDOW_MS;
+      const count = inWindow && typeof cur.count === 'number' ? cur.count : 0;
+      if (count >= CREATE_GROUP_RATE_CAP) {
+        throw new HttpsError('resource-exhausted', 'יצירת מועדונים מוגבלת ל-5 ביום. נסה שוב מאוחר יותר.');
+      }
+      tx.set(rateRef, { uid, op: 'createGroup', windowStart: inWindow ? windowStart : now, count: count + 1, updatedAt: now });
+      tx.create(groupRef, groupDoc);
+      tx.create(db.collection('groupsPublic').doc(groupId), publicDoc);
+      tx.set(db.collection('users').doc(uid), {
+        achievements: { teamsCreated: admin.firestore.FieldValue.increment(1) }, updatedAt: now,
+      }, { merge: true });
+      if (receiptRef) tx.create(receiptRef, { uid, fingerprint, groupId, createdAt: now });
+      return { ok: true, groupId };
+    });
   },
 );
 
@@ -14003,6 +13996,7 @@ export const commitRoundStats = onCall(
       liveGoalIds,
       rotationUpdatedAt,
       liveLineupFingerprint,
+      alternativeDecision,
       tieResolution,
     } = (request.data ?? {}) as {
       gameId?: string;
@@ -14010,6 +14004,7 @@ export const commitRoundStats = onCall(
       liveGoalIds?: string[];
       rotationUpdatedAt?: number | null;
       liveLineupFingerprint?: string;
+      alternativeDecision?: {fingerprint:string};
       tieResolution?: 'bothOut' | 'veteranOut';
       sideA?: string[];
       sideB?: string[];
@@ -14043,6 +14038,12 @@ export const commitRoundStats = onCall(
     if (!gameId || (winnerSide !== 'A' && winnerSide !== 'B' && winnerSide !== 'tie')) {
       throw new HttpsError('invalid-argument', 'gameId + winnerSide required');
     }
+    if (alternativeDecision!==undefined && (typeof alternativeDecision?.fingerprint!=='string' || !alternativeDecision.fingerprint ||
+      !Array.isArray(liveGoalIds) || typeof liveLineupFingerprint!=='string' || !Array.isArray(penalties) || penalties.length!==0 ||
+      roundId===undefined || roundId===null || (winnerSide==='tie' && tieResolution!=='bothOut' && tieResolution!=='veteranOut') ||
+      (winnerSide!=='tie' && tieResolution!==undefined))) {
+      throw new HttpsError('invalid-argument','invalid alternative decision');
+    }
     const snap = await db.collection('games').doc(gameId).get();
     if (!snap.exists) throw new HttpsError('not-found', 'game not found');
     const game = snap.data() as Record<string, unknown>;
@@ -14063,24 +14064,32 @@ export const commitRoundStats = onCall(
       ((grpData?.adminIds as string[] | undefined) ?? []).includes(uid);
     if (!isAdmin) throw new HttpsError('permission-denied', 'admin only');
 
+    const assertAlternativeReceipt = (receipt: {get:(field:string)=>unknown}) => {
+      if (alternativeDecision && (receipt.get('alternativeDecisionFingerprint')!==alternativeDecision.fingerprint ||
+        receipt.get('winnerSide')!==winnerSide || (receipt.get('tieResolution')??null)!==(tieResolution??null))) {
+        throw new HttpsError('failed-precondition','המשחק כבר נשמר עם הכרעה אחרת. יש לפתוח את המצב המעודכן.');
+      }
+    };
+
     // A lost response is success on retry, even if the season closed after
     // the original write. No new statistics are written on this path.
     if (roundId !== undefined && roundId !== null) {
       const committed = await snap.ref.collection('committedRounds').doc(String(roundId)).get();
       const history = committed.exists ? await snap.ref.collection('roundHistory').doc(String(roundId)).get() : null;
       if (committed.exists && history?.exists) {
+        assertAlternativeReceipt(committed);
         const currentRotation = game.rotation as Parameters<typeof liveRoundKey>[0] | undefined;
         const currentGoals = (game.liveMatch as { goals?: unknown[] } | undefined)?.goals ?? [];
         if (liveGoalIds !== undefined && currentRotation && liveRoundKey(currentRotation) === String(roundId) &&
             currentGoals.length > 0 && (game.lastCommittedRoundId === String(roundId) ||
-            !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint }))) {
+            !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint,alternativeDecision }))) {
           throw new HttpsError('failed-precondition', 'נוספו שערים אחרי שמירת המשחק. הם נשמרו בלוח ולא נמחקו.');
         }
         // A pre-protocol-2 client might have committed statistics but lost its
         // response before clearing. Repair ONLY an exactly matching old board;
         // an uncredited late goal must remain visible and raise a conflict.
         if (liveGoalIds !== undefined && game.lastCommittedRoundId !== String(roundId) &&
-            matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint })) {
+            matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint,alternativeDecision })) {
           const goalShape = (rows: Record<string, unknown>[]) => rows.map(row => ({
             scorerId: row.scorerId ?? null, assisterId: row.assisterId ?? null,
             ownGoal: !!row.ownGoal, minute: Math.max(0, Math.floor(Number(row.minute) || 0)), team: row.team,
@@ -14100,6 +14109,7 @@ export const commitRoundStats = onCall(
           }, { lastUpdateTime: snap.updateTime! });
         }
         return { ok: true, alreadyCommitted: true, protocol: 2,
+          ...(alternativeDecision ? {alternativeDecisionFingerprint:alternativeDecision.fingerprint} : {}),
           winnerSide: committed.get('winnerSide') ?? history.get('winnerSide'),
           tieResolution: committed.get('tieResolution') ?? null };
       }
@@ -14107,7 +14117,11 @@ export const commitRoundStats = onCall(
     if (game.status === 'finished' || game.status === 'cancelled') {
       throw new HttpsError('failed-precondition', 'המחזור כבר הסתיים או בוטל. לא ניתן לשמור משחק נוסף.');
     }
-    if (liveGoalIds !== undefined && !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint })) {
+    if (alternativeDecision && (game.liveMatch as {scoreA?:number;scoreB?:number}|undefined)?.scoreA !==
+      (game.liveMatch as {scoreA?:number;scoreB?:number}|undefined)?.scoreB) {
+      throw new HttpsError('failed-precondition','המשחק כבר אינו בתיקו. יש לבדוק את התוצאה המעודכנת.');
+    }
+    if (liveGoalIds !== undefined && !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint,alternativeDecision })) {
       throw new HttpsError('failed-precondition', 'המשחק השתנה. יש לנסות שוב עם התוצאה המעודכנת.');
     }
 
@@ -14246,6 +14260,7 @@ export const commitRoundStats = onCall(
       sb.create(
         db.collection('games').doc(gameId).collection('committedRounds').doc(String(roundId)),
         { committedAt: now, by: uid, winnerSide,
+          ...(alternativeDecision ? {alternativeDecisionFingerprint:alternativeDecision.fingerprint} : {}),
           ...(winnerSide === 'tie' && (tieResolution === 'bothOut' || tieResolution === 'veteranOut') ? { tieResolution } : {}) },
       );
     }
@@ -14925,7 +14940,9 @@ export const commitRoundStats = onCall(
     });
     if (outcome.alreadyCommitted) {
       const stored = latchRef ? await latchRef.get() : null;
+      if (stored?.exists) assertAlternativeReceipt(stored);
       return { ok: true, alreadyCommitted: true, protocol: 2,
+        ...(alternativeDecision ? {alternativeDecisionFingerprint:alternativeDecision.fingerprint} : {}),
         winnerSide: stored?.get('winnerSide') ?? winnerSide,
         tieResolution: stored?.get('tieResolution') ?? null };
     }
@@ -14987,6 +15004,7 @@ export const commitRoundStats = onCall(
     }
 
     return { ok: true, scorers: Object.keys(byScorer).length, protocol: 2, winnerSide,
+      ...(alternativeDecision ? {alternativeDecisionFingerprint:alternativeDecision.fingerprint} : {}),
       tieResolution: winnerSide === 'tie' && (tieResolution === 'bothOut' || tieResolution === 'veteranOut') ? tieResolution : null };
   },
 );

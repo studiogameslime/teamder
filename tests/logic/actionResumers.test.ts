@@ -63,6 +63,8 @@ jest.mock('@/store/groupStore', () => ({
 
 const createClubFromValues = jest.fn();
 const createGameFromValues = jest.fn();
+const hasDraftCreationAttempt = jest.fn(async (..._args: unknown[]) => false);
+jest.mock('@/services/creationAttempt', () => ({ hasDraftCreationAttempt: (...args: unknown[]) => hasDraftCreationAttempt(...args) }));
 const persistAvailability = jest.fn();
 const navigateAfterCreate = jest.fn();
 jest.mock('@/services/clubCreation', () => ({
@@ -112,6 +114,7 @@ function park(kind: string, targetId?: string, draftId?: string) {
 beforeEach(() => {
   mem.clear();
   jest.clearAllMocks();
+  hasDraftCreationAttempt.mockResolvedValue(false);
   __resetCoordinatorForTests();
   currentUser = { id: 'u1' };
   myGroups = [];
@@ -270,6 +273,7 @@ describe('resuming a club creation', () => {
     expect(createClubFromValues).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'שכונת שושי', city: 'חולון' }),
       expect.objectContaining({ id: 'u1' }),
+      'd1',
     );
     expect(out).toMatchObject({ result: { outcome: 'created', terminal: true } });
     expect(await readPendingAction()).toBeNull();
@@ -385,6 +389,39 @@ describe('resuming a game creation', () => {
     expect(out).toMatchObject({ result: { terminal: false } });
     expect(await readPendingAction()).not.toBeNull();
     expect(await draftStore.read('game')).not.toBeNull();
+  });
+
+  it('restart after kickoff keeps every original submitted field and reconciles the prior attempt', async () => {
+    const original = { startsAt: Date.now() - 60_000, registrationOpensAt: 111, publicOpenAt: 222,
+      guestsOpenAt: 333, autoTeamsAt: 444, matchDurationMinutes: '17', title: 'שם מקורי',
+      __creationOwnerId: 'u1', __creationGroupId: null };
+    await draftStore.write('game', 'original-draft', original);
+    park('create_game', undefined, 'original-draft');
+    hasDraftCreationAttempt.mockResolvedValue(true);
+    createGameFromValues.mockResolvedValue({ gameId: 'already-created', isOrphan: true });
+    const out = await resumePendingAction();
+    expect(createGameFromValues).toHaveBeenCalledWith(expect.objectContaining({
+      uid: 'u1', draftId: 'original-draft', values: {
+        startsAt: original.startsAt, registrationOpensAt: 111, publicOpenAt: 222,
+        guestsOpenAt: 333, autoTeamsAt: 444, matchDurationMinutes: '17', title: 'שם מקורי',
+      },
+    }));
+    expect(out).toMatchObject({ result: { terminal: true } });
+    expect(navigateAfterCreate).toHaveBeenCalledWith({ type: 'game', id: 'already-created' });
+  });
+
+  it('an incomplete recurring series keeps the submitted draft and intent retryable', async () => {
+    await draftStore.write('game', 'series-draft', { startsAt: Date.now() - 1000, recurringGameEnabled: true });
+    park('create_game', undefined, 'series-draft');
+    hasDraftCreationAttempt.mockResolvedValue(true);
+    createGameFromValues.mockRejectedValue(Object.assign(Error('המחזור נוצר, אך השלמת המחזור הקבוע נכשלה'), {
+      code: 'unavailable', creationSaved: true,
+    }));
+    const out = await resumePendingAction();
+    expect(out).toMatchObject({ result: { terminal: false, reason: 'network_unavailable' } });
+    expect(await readPendingAction()).not.toBeNull();
+    expect(await draftStore.read('game')).not.toBeNull();
+    expect(navigateAfterCreate).not.toHaveBeenCalled();
   });
 
   it('a network failure keeps both', async () => {

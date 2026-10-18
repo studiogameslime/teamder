@@ -1,0 +1,55 @@
+{
+  "kind": "actual current restore effect and actual fresh-group helper, delayed cache-independent reads and quick route before provisioning",
+  "sourceSha256": "60b89cd3197d327c8b0d2708d89406a4e23f06732ed956cd8a01b083cd47a05b",
+  "effectDependencies": "[draftRecoveryRevision, user?.id]",
+  "checks": 3,
+  "passed": true,
+  "cases": [
+    {
+      "quick": false,
+      "failRead": false,
+      "pending": {
+        "checked": false,
+        "draftId": "original-draft"
+      },
+      "checked": true,
+      "originalDraftPreserved": true,
+      "restoredUnchanged": true,
+      "target": "club",
+      "recoveryError": null,
+      "reads": 1,
+      "passed": true
+    },
+    {
+      "quick": true,
+      "failRead": false,
+      "pending": {
+        "checked": true,
+        "draftId": "original-draft"
+      },
+      "checked": true,
+      "originalDraftPreserved": true,
+      "restoredUnchanged": true,
+      "target": "",
+      "recoveryError": null,
+      "reads": 0,
+      "passed": true
+    },
+    {
+      "quick": false,
+      "failRead": true,
+      "pending": {
+        "checked": false,
+        "draftId": "original-draft"
+      },
+      "checked": true,
+      "originalDraftPreserved": true,
+      "restoredUnchanged": false,
+      "target": "",
+      "recoveryError": "לא ניתן לשחזר את הטיוטה. נסו שוב.",
+      "reads": 1,
+      "passed": true
+    }
+  ],
+  "productionWrites": false
+}

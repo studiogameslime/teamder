@@ -1,0 +1,13 @@
+PASS missing-activity
+PASS null-activity
+PASS missing-start
+PASS null-start
+PASS missing-id
+PASS null-id
+PASS blank-id
+PASS legacy-renamed-fields
+PASS unparseable-activity
+PASS valid-session-retained
+PASS expired-session-existing-behaviour
+PASS absent-session-existing-behaviour
+RESULT passed=12 failed=0

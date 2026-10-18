@@ -1,0 +1,248 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:checkKotlinGradlePluginConfigurationErrors
+> Task :gradle-plugin:settings-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:compileKotlin UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:compileJava NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:processResources NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:classes UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:jar UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:checkKotlinGradlePluginConfigurationErrors
+> Task :gradle-plugin:shared:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:shared:compileJava NO-SOURCE
+> Task :gradle-plugin:shared:processResources NO-SOURCE
+> Task :gradle-plugin:shared:classes UP-TO-DATE
+> Task :gradle-plugin:shared:jar UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:compileKotlin UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:compileJava NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:pluginDescriptors UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:processResources UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:classes UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:jar UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:settings-plugin:pluginDescriptors UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:processResources UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:classes UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:jar UP-TO-DATE
+> Task :expo-module-gradle-plugin:checkKotlinGradlePluginConfigurationErrors
+> Task :expo-module-gradle-plugin:pluginDescriptors UP-TO-DATE
+> Task :expo-module-gradle-plugin:processResources UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:react-native-gradle-plugin:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:react-native-gradle-plugin:pluginDescriptors UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:processResources UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:classes UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:jar UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:checkKotlinGradlePluginConfigurationErrors
+> Task :expo-gradle-plugin:expo-autolinking-plugin:compileKotlin UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:compileJava NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:pluginDescriptors UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:processResources UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:classes UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:jar UP-TO-DATE
+> Task :expo-module-gradle-plugin:compileKotlin UP-TO-DATE
+> Task :expo-module-gradle-plugin:compileJava NO-SOURCE
+> Task :expo-module-gradle-plugin:classes UP-TO-DATE
+> Task :expo-module-gradle-plugin:jar UP-TO-DATE
+
+> Configure project :
+[32m[ExpoRootProject][0m Using the following versions:
+  - buildTools:  [32m35.0.0[0m
+  - minSdk:      [32m26[0m
+  - compileSdk:  [32m36[0m
+  - targetSdk:   [32m36[0m
+  - ndk:         [32m27.1.12297006[0m
+  - kotlin:      [32m2.0.21[0m
+  - ksp:         [32m2.0.21-1.0.28[0m
+
+> Configure project :expo
+
+Using expo modules
+  - [32mexpo-constants[0m (17.1.8)
+  - [32mexpo-image-loader[0m (5.1.0)
+  - [32mexpo-image-manipulator[0m (13.1.7)
+  - [32mexpo-modules-core[0m (2.5.0)
+  - [33m[📦][0m [32mexpo-application[0m (6.1.5)
+  - [33m[📦][0m [32mexpo-asset[0m (11.1.7)
+  - [33m[📦][0m [32mexpo-clipboard[0m (7.1.5)
+  - [33m[📦][0m [32mexpo-crypto[0m (14.1.5)
+  - [33m[📦][0m [32mexpo-file-system[0m (18.1.11)
+  - [33m[📦][0m [32mexpo-font[0m (13.3.2)
+  - [33m[📦][0m [32mexpo-haptics[0m (14.1.4)
+  - [33m[📦][0m [32mexpo-image-picker[0m (16.1.4)
+  - [33m[📦][0m [32mexpo-keep-awake[0m (14.1.4)
+  - [33m[📦][0m [32mexpo-linear-gradient[0m (14.1.5)
+  - [33m[📦][0m [32mexpo-linking[0m (7.1.7)
+  - [33m[📦][0m [32mexpo-localization[0m (16.1.6)
+  - [33m[📦][0m [32mexpo-location[0m (18.1.6)
+  - [33m[📦][0m [32mexpo-notifications[0m (0.31.5)
+  - [33m[📦][0m [32mexpo-screen-capture[0m (7.2.0)
+  - [33m[📦][0m [32mexpo-secure-store[0m (14.2.4)
+  - [33m[📦][0m [32mexpo-sharing[0m (13.1.5)
+  - [33m[📦][0m [32mexpo-splash-screen[0m (0.30.10)
+  - [33m[📦][0m [32mexpo-store-review[0m (8.1.5)
+  - [33m[📦][0m [32mexpo-system-ui[0m (5.0.11)
+  - [33m[📦][0m [32mexpo-web-browser[0m (14.2.0)
+
+
+> Configure project :react-native-firebase_analytics
+:react-native-firebase_analytics package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\analytics\package.json
+:react-native-firebase_app package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\app\package.json
+:react-native-firebase_analytics:firebase.bom using default value: 34.10.0
+:react-native-firebase_analytics package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\analytics\package.json
+:react-native-firebase_analytics:version set from package.json: 24.0.0 (24,0,0 - 24000000)
+:react-native-firebase_analytics:android.compileSdk using custom value: 36
+:react-native-firebase_analytics:android.targetSdk using custom value: 36
+:react-native-firebase_analytics:android.minSdk using custom value: 26
+:react-native-firebase_analytics:reactNativeAndroidDir C:\Users\elira\Teamder\node_modules\react-native\android
+
+> Configure project :react-native-firebase_app
+:react-native-firebase_app package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\app\package.json
+:react-native-firebase_app:firebase.bom using default value: 34.10.0
+:react-native-firebase_app:play.play-services-auth using default value: 21.5.0
+:react-native-firebase_app package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\app\package.json
+:react-native-firebase_app:version set from package.json: 24.0.0 (24,0,0 - 24000000)
+:react-native-firebase_app:android.compileSdk using custom value: 36
+:react-native-firebase_app:android.targetSdk using custom value: 36
+:react-native-firebase_app:android.minSdk using custom value: 26
+:react-native-firebase_app:reactNativeAndroidDir C:\Users\elira\Teamder\node_modules\react-native\android
+
+> Configure project :react-native-firebase_app-check
+:react-native-firebase_app-check package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\app-check\package.json
+:react-native-firebase_app package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\app\package.json
+:react-native-firebase_app-check:firebase.bom using default value: 34.10.0
+:react-native-firebase_app-check package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\app-check\package.json
+:react-native-firebase_app-check:version set from package.json: 24.0.0 (24,0,0 - 24000000)
+:react-native-firebase_app-check:android.compileSdk using custom value: 36
+:react-native-firebase_app-check:android.targetSdk using custom value: 36
+:react-native-firebase_app-check:android.minSdk using custom value: 26
+:react-native-firebase_app-check:reactNativeAndroidDir C:\Users\elira\Teamder\node_modules\react-native\android
+
+> Configure project :react-native-firebase_auth
+:react-native-firebase_auth package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\auth\package.json
+:react-native-firebase_app package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\app\package.json
+:react-native-firebase_auth:firebase.bom using default value: 34.10.0
+:react-native-firebase_auth package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\auth\package.json
+:react-native-firebase_auth:version set from package.json: 24.0.0 (24,0,0 - 24000000)
+:react-native-firebase_auth:android.compileSdk using custom value: 36
+:react-native-firebase_auth:android.targetSdk using custom value: 36
+:react-native-firebase_auth:android.minSdk using custom value: 26
+:react-native-firebase_auth:reactNativeAndroidDir C:\Users\elira\Teamder\node_modules\react-native\android
+
+> Configure project :react-native-firebase_messaging
+:react-native-firebase_messaging package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\messaging\package.json
+:react-native-firebase_app package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\app\package.json
+:react-native-firebase_messaging:firebase.bom using default value: 34.10.0
+:react-native-firebase_messaging package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\messaging\package.json
+:react-native-firebase_messaging:version set from package.json: 24.0.0 (24,0,0 - 24000000)
+:react-native-firebase_messaging:android.compileSdk using custom value: 36
+:react-native-firebase_messaging:android.targetSdk using custom value: 36
+:react-native-firebase_messaging:android.minSdk using custom value: 26
+:react-native-firebase_messaging:reactNativeAndroidDir C:\Users\elira\Teamder\node_modules\react-native\android
+
+> Configure project :react-native-firebase_remote-config
+:react-native-firebase_remote-config package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\remote-config\package.json
+:react-native-firebase_app package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\app\package.json
+:react-native-firebase_remote-config:firebase.bom using default value: 34.10.0
+:react-native-firebase_remote-config package.json found at C:\Users\elira\Teamder\node_modules\@react-native-firebase\remote-config\package.json
+:react-native-firebase_remote-config:version set from package.json: 24.0.0 (24,0,0 - 24000000)
+:react-native-firebase_remote-config:android.compileSdk using custom value: 36
+:react-native-firebase_remote-config:android.targetSdk using custom value: 36
+:react-native-firebase_remote-config:android.minSdk using custom value: 26
+:react-native-firebase_remote-config:reactNativeAndroidDir C:\Users\elira\Teamder\node_modules\react-native\android
+
+> Configure project :react-native-google-mobile-ads
+:react-native-google-mobile-ads package.json found at C:\Users\elira\Teamder\node_modules\react-native-google-mobile-ads\package.json
+
+
+
+
+**************************************************************************************************************
+
+
+
+
+WARNING: react-native-google-mobile-ads requires an 'android_app_id' property inside a 'react-native-google-mobile-ads' key in your app.json.
+         No android_app_id property was found in this location. The native Google Mobile Ads SDK will crash on startup without it.
+         You can safely ignore this warning if you are using our Expo config plugin.
+
+
+
+
+**************************************************************************************************************
+
+
+
+
+:react-native-google-mobile-ads package.json found at C:\Users\elira\Teamder\node_modules\react-native-google-mobile-ads\package.json
+:react-native-google-mobile-ads:version set from package.json: 14.7.2 (14,7,2 - 14007002)
+:react-native-google-mobile-ads:android.compileSdk using custom value: 36
+:react-native-google-mobile-ads:android.targetSdk using custom value: 36
+:react-native-google-mobile-ads:android.minSdk using custom value: 26
+:react-native-google-mobile-ads:reactNativeAndroidDir C:\Users\elira\Teamder\node_modules\react-native\android
+
+> Configure project :react-native-reanimated
+Android gradle plugin: 8.8.2
+Gradle: 8.13
+
+> Task :app:dependencyInsight
+io.joryio:joryio-android:1.3.0-beta.1-teamder.1
+  Variant runtime:
+    | Attribute Name                                  | Provided     | Requested    |
+    |-------------------------------------------------|--------------|--------------|
+    | org.gradle.libraryelements                      | jar          |              |
+    | org.gradle.status                               | release      |              |
+    | org.gradle.category                             | library      | library      |
+    | org.gradle.usage                                | java-runtime | java-runtime |
+    | com.android.build.api.attributes.AgpVersionAttr |              | 8.8.2        |
+    | com.android.build.api.attributes.BuildTypeAttr  |              | debug        |
+    | org.gradle.jvm.environment                      |              | android      |
+    | org.jetbrains.kotlin.platform.type              |              | androidJvm   |
+   Selection reasons:
+      - Forced
+      - Selected by rule
+      - By constraint: joryio-android-ui reflects into joryio-android; the two ship in lockstep
+
+io.joryio:joryio-android:1.3.0-beta.1 -> 1.3.0-beta.1-teamder.1
+\--- io.joryio:joryio-android-ui:1.3.0-beta.1
+     \--- project :joryio_react-native-sdk
+          \--- debugRuntimeClasspath
+
+io.joryio:joryio-android:{strictly 1.3.0-beta.1} -> 1.3.0-beta.1-teamder.1
+\--- io.joryio:joryio-android-ui:1.3.0-beta.1
+     \--- project :joryio_react-native-sdk
+          \--- debugRuntimeClasspath
+
+io.joryio:joryio-android-ui:1.3.0-beta.1
+  Variant releaseVariantReleaseRuntimePublication:
+    | Attribute Name                                  | Provided     | Requested    |
+    |-------------------------------------------------|--------------|--------------|
+    | org.gradle.dependency.bundling                  | external     |              |
+    | org.gradle.libraryelements                      | aar          |              |
+    | org.gradle.status                               | release      |              |
+    | org.gradle.category                             | library      | library      |
+    | org.gradle.usage                                | java-runtime | java-runtime |
+    | com.android.build.api.attributes.AgpVersionAttr |              | 8.8.2        |
+    | com.android.build.api.attributes.BuildTypeAttr  |              | debug        |
+    | org.gradle.jvm.environment                      |              | android      |
+    | org.jetbrains.kotlin.platform.type              |              | androidJvm   |
+
+io.joryio:joryio-android-ui:1.3.0-beta.1
+\--- project :joryio_react-native-sdk
+     \--- debugRuntimeClasspath
+
+A web-based, searchable dependency report is available by adding the --scan option.
+
+[Incubating] Problems report is available at: file:///C:/Users/elira/Teamder/android/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 1m 24s
+29 actionable tasks: 5 executed, 24 up-to-date

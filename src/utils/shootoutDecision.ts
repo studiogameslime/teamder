@@ -1,4 +1,5 @@
 import type { LiveMatchState } from '@/types';
+import type {RoundDecisionContext} from '@/utils/roundDecision';
 
 /** Snapshot of the decision the manager actually saw, independent of field order. */
 export function shootoutFingerprint(shootout?: LiveMatchState['shootout']): string {
@@ -12,4 +13,7 @@ export interface ShootoutDecisionContext {
   roundId: string;
   playing: string;
   fingerprint: string;
+  /** Captured on returning to the tie chooser; retained across a lost ACK. */
+  roundDecision?: RoundDecisionContext;
+  alternativeFingerprint?: string;
 }

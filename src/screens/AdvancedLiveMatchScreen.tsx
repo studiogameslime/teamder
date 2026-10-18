@@ -45,6 +45,7 @@ import { lightHaptic, successHaptic, warningHaptic } from '@/utils/haptics';
 import { tallyCreditFor } from '@/utils/goalTally';
 import { savedRoundLive } from '@/utils/savedRoundView';
 import { shootoutFingerprint, type ShootoutDecisionContext } from '@/utils/shootoutDecision';
+import {alternativeRoundFingerprint} from '@/utils/alternativeRoundDecision';
 import { roundDecisionContext } from '@/utils/roundDecision';
 import { didEveningHappen } from '@/utils/eveningPlayed';
 import {
@@ -944,10 +945,9 @@ export function AdvancedLiveMatchScreen() {
     // screen the latch was written to prevent, and reported it.
     markBusy(1);
     try {
-      if (shootoutDecision) await gameService.clearShootout(gameId, shootoutDecision);
       captureRoundForResult(!!shootoutDecision);
       const res = await gameService.prepareRoundResult(gameId, me.id, side, undefined, false, shootoutDecision ?? undefined,
-        roundDecisionContext({...game!,id:gameId,rotation,draftTeams:draftTeams??undefined,liveMatch:live ? {...live,...(shootoutDecision?{shootout:undefined}:{})}:undefined}));
+        shootoutDecision?.roundDecision ?? roundDecisionContext({...game!,id:gameId,rotation,draftTeams:draftTeams??undefined,liveMatch:live??undefined}));
       if (res && res.outcome !== null) {
         logEvent(AnalyticsEvent.MatchRoundCompleted, {
           gameId,
@@ -1025,10 +1025,9 @@ export function AdvancedLiveMatchScreen() {
     // screen the latch was written to prevent, and reported it.
     markBusy(1);
     try {
-      if (shootoutDecision) await gameService.clearShootout(gameId, shootoutDecision);
       captureRoundForResult(!!shootoutDecision);
       const res = await gameService.prepareRoundResult(gameId, me.id, undefined, mode, false, shootoutDecision ?? undefined,
-        roundDecisionContext({...game!,id:gameId,rotation:rotation??undefined,draftTeams:draftTeams??undefined,liveMatch:live ? {...live,...(shootoutDecision?{shootout:undefined}:{})}:undefined}));
+        shootoutDecision?.roundDecision ?? roundDecisionContext({...game!,id:gameId,rotation:rotation??undefined,draftTeams:draftTeams??undefined,liveMatch:live??undefined}));
       if (!res || res.outcome === null) return;
       logEvent(AnalyticsEvent.MatchRoundCompleted, {
         gameId,
@@ -1109,7 +1108,9 @@ export function AdvancedLiveMatchScreen() {
 
   const onChangeShootoutDecision = () => {
     if (!gameId || !rotation || roundBusy || finalizingRef.current || committingRef.current || pendingSavedRound) return;
-    setShootoutDecision({ gameId, roundId: roundCommitKey(rotation), playing: rotation.playing.join(':'), fingerprint: shootoutFingerprint(live?.shootout) });
+    const board={...game!,id:gameId,rotation,draftTeams:draftTeams??undefined,liveMatch:live??undefined};
+    setShootoutDecision({ gameId, roundId: roundCommitKey(rotation), playing: rotation.playing.join(':'), fingerprint: shootoutFingerprint(live?.shootout),
+      roundDecision:roundDecisionContext(board),alternativeFingerprint:alternativeRoundFingerprint(board) });
     setShootoutOpen(false);
     setDecisionOpen(true);
   };
