@@ -15,7 +15,7 @@ import { recordDiagnostic } from '@/services/diagnosticJournal';
 // the ⋯ overflow opens the same menu (a single source of truth keeps
 // menu items consistent regardless of which icon the user tapped).
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
   Pressable,
@@ -118,6 +118,42 @@ type CommunityStatsData = Awaited<
   ReturnType<typeof gameService.getCommunityStats>
 >;
 
+/** Live and archived counters form one lifetime answer. A failed half must
+ * not publish a partial total, reset known counters or cross club/session. */
+export function useCommunityLifetimeTotals(input: {
+  groupId: string; viewerId?: string; enabled: boolean;
+  archivesNeeded: boolean; archiveVersion: number; reloadTick: number;
+}) {
+  const { groupId, viewerId, enabled, archivesNeeded, archiveVersion, reloadTick } = input;
+  const owner = JSON.stringify([groupId, viewerId ?? null, enabled]);
+  const request = JSON.stringify([owner, archivesNeeded, archiveVersion, reloadTick]);
+  const currentRequest = useRef(request);
+  currentRequest.current = request;
+  const [state, setState] = useState<{
+    owner: string; data: { goals: number; rounds: number } | null; failed: boolean;
+  }>({ owner, data: null, failed: false });
+  useEffect(() => {
+    if (!groupId || !viewerId || !enabled) return;
+    let alive = true;
+    setState(previous => ({ owner, data: previous.owner === owner ? previous.data : null, failed: false }));
+    Promise.all([
+      gameService.getCommunityTotals(groupId),
+      archivesNeeded ? seasonHistoryService.list(groupId, true).then(list => {
+        if (list === 'error') throw new Error('Club totals archive unavailable');
+        return list.reduce((total, season) => ({ goals: total.goals + season.totals.goals, rounds: total.rounds + season.totals.rounds }), { goals: 0, rounds: 0 });
+      }) : Promise.resolve({ goals: 0, rounds: 0 }),
+    ]).then(([live, archived]) => {
+      if (!alive || currentRequest.current !== request || useUserStore.getState().currentUser?.id !== viewerId) return;
+      setState({ owner, data: { goals: live.goals + archived.goals, rounds: live.rounds + archived.rounds }, failed: false });
+    }).catch(() => {
+      if (!alive || currentRequest.current !== request || useUserStore.getState().currentUser?.id !== viewerId) return;
+      setState(previous => ({ owner, data: previous.owner === owner ? previous.data : null, failed: true }));
+    });
+    return () => { alive = false; };
+  }, [groupId, viewerId, enabled, archivesNeeded, archiveVersion, reloadTick, owner, request]);
+  return { data: enabled && state.owner === owner ? state.data : null, failed: enabled && state.owner === owner && state.failed };
+}
+
 // Marketing/ad screenshot layout — driven by EXPO_PUBLIC_SCREENSHOT_MODE=1
 // (same flag the mock banner / ad suppression use). When on, the community
 // page shows ONLY the club's numbers + champions table (no level/titles, no
@@ -162,30 +198,9 @@ export function CommunityDetailsScreen() {
   const [communityStats, setCommunityStats] = useState<CommunityStatsData | null>(
     null,
   );
-  // Goals for the club badges ("הישגי המועדון"), which moved onto this screen.
-  //
-  // Five of the six club metrics are already on this screen for free —
-  // `communityStats.lifetime` carries three of them and the group doc the
-  // other two. Goals are the one thing nothing here holds, so they are
-  // fetched separately, and split in two because they come from two places:
-  //   • `liveGoals` — the club's running total (`communityStats.goals`),
-  //     which a season close ZEROES.
-  //   • `archivedGoals` — what the sealed season cards remember of the same
-  //     field, season by season.
-  // A badge is a permanent thing the club did; without the archived half, a
-  // club un-earned its gold "שערי המועדון" the morning after every close.
-  //
-  // Deliberately NOT part of `reload()`: that runs on every focus, and this
-  // pair only changes when an evening is played. Keyed on the club instead,
-  // so returning to the screen costs nothing.
-  const [liveGoals, setLiveGoals] = useState<number | null>(null);
-  const [archivedGoals, setArchivedGoals] = useState(0);
-  // Mini-games, the same two halves as the goals and from the same two reads:
-  // the live counter rides the `communityStats` doc the goal total already
-  // fetches, and the archived counter rides the season list already listed.
-  // The club's "נתוני מועדון" card needs both; neither costs a new read.
-  const [liveRounds, setLiveRounds] = useState(0);
-  const [archivedRounds, setArchivedRounds] = useState(0);
+  // Live + archived lifetime counters are refreshed on an explicit retry or
+  // pull-to-refresh. Returning to the same club does not add another scan.
+  const [totalsReloadTick, setTotalsReloadTick] = useState(0);
   const [loading, setLoading] = useState(true);
   // Pull-to-refresh has its own state so the native RefreshControl
   // spinner doesn't fire at the same time as our SoccerBallLoader.
@@ -221,6 +236,7 @@ export function CommunityDetailsScreen() {
     async (opts: { pullToRefresh?: boolean } = {}) => {
       if (opts.pullToRefresh) {
         setRefreshing(true);
+        setTotalsReloadTick(tick => tick + 1);
       } else {
         setLoading(true);
       }
@@ -362,77 +378,21 @@ export function CommunityDetailsScreen() {
     !!communityStats &&
     (communityStats.totalFinished > 0 || communityStats.totalCancelled > 0);
 
-  // The live half of the club's goal total (see the state above).
-  //
-  // ONE document — `communityStats/{groupId}`, via `getCommunityTotals`.
-  // This first read `getCommunityChampionship`, which answers the same
-  // question by fetching every `communityPlayerStats` row in the club and
-  // summing the goals column: one read per person who has ever played for it,
-  // on every arrival at the club page, for a single number. The club doc
-  // carries that number already — the same batch writes both — and it is the
-  // very field the sealed seasons archived, so the two halves of the sum below
-  // now come from one source instead of two.
-  //
-  // Members only — and not for politeness: `communityStats` is readable only
-  // by the club's own members, so for a stranger browsing a public club this
-  // read comes back denied and the total reads 0. A club's gold
-  // "שערי המועדון" would then show LOCKED to the one person who has never
-  // seen it — a wrong statement about the club, paid for with a round-trip
-  // that was always going to fail.
-  useEffect(() => {
-    if (!groupId || !belongs || !clubHasRecord) return;
-    let alive = true;
-    gameService
-      .getCommunityTotals(groupId)
-      .then((t) => {
-        if (!alive) return;
-        setLiveGoals(t.goals);
-        setLiveRounds(t.rounds);
-      })
-      // A failure must not hide the other five badges — treat it as "no goals
-      // known yet" rather than as "no achievements".
-      .catch(() => {
-        if (alive) setLiveGoals(0);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [groupId, belongs, clubHasRecord]);
-
-  // The archived half. Only a club that has actually CLOSED a season has one,
-  // and everyone else pays no read for it.
-  const closedSeasons = group?.seasons?.count ?? 0;
-  useEffect(() => {
-    if (!groupId || !belongs || !clubHasRecord || !hasArchivedStats(group?.seasons)) {
-      setArchivedGoals(0);
-      setArchivedRounds(0);
-      return;
-    }
-    let alive = true;
-    seasonHistoryService
-      .list(groupId, true)
-      .then((list) => {
-        // 'error' is NOT an empty list: a club with five sealed seasons told
-        // that on a dropped connection would read as having lost them.
-        if (!alive || list === 'error') return;
-        setArchivedGoals(list.reduce((a, x) => a + x.totals.goals, 0));
-        setArchivedRounds(list.reduce((a, x) => a + x.totals.rounds, 0));
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [groupId, belongs, clubHasRecord, closedSeasons, group?.seasons?.hasArchivedPeriods]);
+  const lifetimeTotals = useCommunityLifetimeTotals({
+    groupId, viewerId: me?.id, enabled: belongs && clubHasRecord,
+    archivesNeeded: hasArchivedStats(group?.seasons), archiveVersion: group?.seasons?.count ?? 0,
+    reloadTick: totalsReloadTick,
+  });
 
   // Everything the club badges are scored on — all of it LIFETIME. Season
   // scoping any of these made a club's badges collapse the morning after a
   // close, which is exactly what a badge must never do.
   const clubMetrics: ClubMetrics | null = useMemo(() => {
     if (!belongs || !group || !communityStats || !clubHasRecord) return null;
-    if (liveGoals === null) return null;
+    if (!lifetimeTotals.data) return null;
     return {
       gameNights: communityStats.lifetime?.totalFinished ?? 0,
-      clubGoals: liveGoals + archivedGoals,
+      clubGoals: lifetimeTotals.data.goals,
       members: group.playerIds?.length ?? 0,
       ageYears: group.createdAt
         ? Math.floor((Date.now() - group.createdAt) / (365.25 * 24 * 3600 * 1000))
@@ -442,7 +402,7 @@ export function CommunityDetailsScreen() {
         (communityStats.lifetime?.organizationRate ?? 0) * 100,
       ),
     };
-  }, [belongs, group, communityStats, clubHasRecord, liveGoals, archivedGoals]);
+  }, [belongs, group, communityStats, clubHasRecord, lifetimeTotals.data]);
 
   // Only the CREATOR may delete the whole community — promoted admins
   // can manage it but not destroy it. Falls back to the first admin for
@@ -1073,8 +1033,10 @@ export function CommunityDetailsScreen() {
               <CommunityStatsSection
                 stats={communityStats}
                 memberCount={group.playerIds?.length ?? 0}
-                goals={(liveGoals ?? 0) + archivedGoals}
-                miniGames={liveRounds + archivedRounds}
+                goals={lifetimeTotals.data?.goals ?? null}
+                miniGames={lifetimeTotals.data?.rounds ?? null}
+                readFailed={lifetimeTotals.failed}
+                onRetry={() => setTotalsReloadTick(tick => tick + 1)}
               />
               <CommunityChampionship
                 groupId={group.id}
@@ -1282,8 +1244,10 @@ export function CommunityDetailsScreen() {
           <CommunityStatsSection
             stats={communityStats}
             memberCount={group.playerIds?.length ?? 0}
-            goals={(liveGoals ?? 0) + archivedGoals}
-            miniGames={liveRounds + archivedRounds}
+            goals={lifetimeTotals.data?.goals ?? null}
+            miniGames={lifetimeTotals.data?.rounds ?? null}
+            readFailed={lifetimeTotals.failed}
+            onRetry={() => setTotalsReloadTick(tick => tick + 1)}
           />
 
           {/* The players preview used to sit here. It is gone: the roster is a
@@ -1533,13 +1497,17 @@ function CommunityStatsSection({
   memberCount,
   goals,
   miniGames,
+  readFailed,
+  onRetry,
 }: {
   stats: CommunityStatsData | null;
   memberCount: number;
   /** Lifetime goals — live counter + every sealed season. */
-  goals: number;
+  goals: number | null;
   /** Lifetime mini-games, the same two halves. */
-  miniGames: number;
+  miniGames: number | null;
+  readFailed?: boolean;
+  onRetry?: () => void;
 }) {
   if (!stats) return null;
   if (stats.totalFinished === 0 && stats.totalCancelled === 0) return null;
@@ -1561,7 +1529,7 @@ function CommunityStatsSection({
           icon="football"
           tint={clubAccent.blue}
           label={he.communityStatsGoals}
-          value={String(goals)}
+          value={goals === null ? '—' : String(goals)}
         />
         <StatCell
           icon="calendar"
@@ -1573,9 +1541,13 @@ function CommunityStatsSection({
           icon="grid"
           tint={clubAccent.green}
           label={he.communityStatsMiniGames}
-          value={String(miniGames)}
+          value={miniGames === null ? '—' : String(miniGames)}
         />
       </View>
+      {readFailed ? <View style={{ gap: spacing.sm }}>
+        <Text style={{ color: colors.textMuted, textAlign: RTL_LABEL_ALIGN }}>לא הצלחנו לעדכן את נתוני המועדון.</Text>
+        <Button title={he.retry} size="sm" variant="outline" onPress={onRetry} />
+      </View> : null}
     </View>
   );
 }
@@ -1596,15 +1568,15 @@ function StatCell({
     // lands on the RIGHT. The reference's info-tab cell puts the plate on the
     // LEFT and the number on the right, so the text block leads.
     <View style={statsSectionStyles.cell}>
-      <View style={statsSectionStyles.cellText}>
+      <View style={statsSectionStyles.cellTop}>
         <Text style={statsSectionStyles.value}>{value}</Text>
-        <Text style={statsSectionStyles.label} numberOfLines={1}>
-          {label}
-        </Text>
+        <View style={[statsSectionStyles.cellIcon, { backgroundColor: tint + '1A' }]}>
+          <Ionicons name={icon} size={20} color={tint} />
+        </View>
       </View>
-      <View style={[statsSectionStyles.cellIcon, { backgroundColor: tint + '1A' }]}>
-        <Ionicons name={icon} size={20} color={tint} />
-      </View>
+      <Text style={statsSectionStyles.label} numberOfLines={2}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -1632,16 +1604,19 @@ const statsSectionStyles = StyleSheet.create({
     flexBasis: '47%',
     flexGrow: 1,
     minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: 'stretch',
     gap: spacing.sm,
     backgroundColor: colors.surface,
     padding: spacing.md,
     borderRadius: 14,
     ...clubShadow,
   },
-  cellText: { flexShrink: 1, minWidth: 0 },
+  cellTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
   cellIcon: {
     width: 38,
     height: 38,
@@ -1659,6 +1634,7 @@ const statsSectionStyles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
+    lineHeight: 16,
     color: clubSurface.subtle,
     textAlign: RTL_LABEL_ALIGN,
     marginTop: 1,

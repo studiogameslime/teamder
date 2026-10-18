@@ -5,6 +5,8 @@ import ts from 'typescript';
 import { matchesLiveRound } from '../../functions/src/liveRoundCommit';
 import { decideSpotOffer } from '../../functions/src/spotOfferDecision';
 import { rotationWriteSource } from '../../src/services/rotationWriteSource';
+import {liveLineupFingerprint} from '../../src/utils/liveLineupFingerprint';
+import {matchesRoundDecision} from '../../src/utils/roundDecision';
 import { isGuestId, toGuestRosterId } from '../../src/types';
 
 // Execute the actual service methods; isolated I/O, no account or production writes.
@@ -59,6 +61,7 @@ function world(state = initial(), callable?: (payload: any, world: any) => Promi
     increment: (by: number) => ({ kind: 'inc', by }), serverNow: () => 10000,
     roundCommitKey: (rotation: any) => rotation.roundInstanceId,
     rotationWriteSource,
+    liveLineupFingerprint,matchesRoundDecision,
     resolveRoundInstance: (rotation: any) => ({ roundInstanceId: `r${rotation.round}_mint`, roundInstanceRound: rotation.round }),
     effectiveRosterOf: (index: number, teams: any[]) => teams.find(team => team.index === index)?.playerIds ?? [],
     isGuestId, toGuestRosterId,

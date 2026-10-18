@@ -158,16 +158,16 @@ async function main() {
   const missing=['MatchDetails','CommunityHistory','CommunityEdit','AdminApproval'].filter(r=>!routes.includes(r));
   assert.equal(missing.length,0);
   note('B12',{host:'ChatStack',missingRoutes:missing,communityDetailsRegistered:routes.includes('CommunityDetails')});
+  const {validateDraftRoster,activeDraftRosterIds}=load('src/utils/draftIntegrity.ts',{'@/types':{toGuestRosterId:id=>'guest:'+id}});
   const participantsNode=node('src/screens/games/DraftSetupScreen.tsx',n=>ts.isVariableDeclaration(n)&&n.name.getText()==='participants');
   const participantsMod=loadString('const '+participantsNode+';exports.participants=participants;',{
     useMemo:fn=>fn(),game:{players:['p'],guests:[{id:'w',name:'waitlisted',waitlisted:true}]},
-    playersMap:{p:{displayName:'p'}},toGuestRosterId:id=>'guest:'+id,
+    playersMap:{p:{displayName:'p'}},toGuestRosterId:id=>'guest:'+id,activeDraftRosterIds,
   });
   assert.equal(participantsMod.participants.some(p=>p.id==='guest:w'),false);
   note('B13',{waitingGuestSelectableAsCaptain:false,participants:participantsMod.participants.map(p=>p.id)});
   const saveDraft=node('src/services/gameService.ts',n=>ts.isMethodDeclaration(n)&&n.name.getText()==='saveDraftTeams');
   let roster={players:['p','q'],guests:[{id:'w',waitlisted:true}],status:'open',format:'5v5',numberOfTeams:2},draftWrites=0;
-  const {validateDraftRoster}=load('src/utils/draftIntegrity.ts',{'@/types':{toGuestRosterId:id=>'guest:'+id}});
   const draftService=loadString('exports.service={'+saveDraft+'};',{
     USE_MOCK_DATA:false,validateDraftRoster,toGuestRosterId:id=>'guest:'+id,docs:{game:()=>({})},getFirebase:()=>({db:{}}),stripUndefined:value=>value,
     runTransaction:async(_db,fn)=>fn({get:async()=>({exists:()=>true,data:()=>roster}),update:()=>{draftWrites++}}),
@@ -196,7 +196,7 @@ async function main() {
   const penaltyRosterOf=side=>side==='A'?[{id:'p',name:'בועט'}]:[{id:'k',name:'שוער'}];
   const save=deferred();
   const shot=loadString('const '+record+';exports.record=record;',{
-    writing:{current:false},attempt:{current:null},visibleRef:{current:true},uiEpoch:{current:0},setBusy:()=>{},setSaveError:()=>{},setSaveErrorMessage:()=>{},logError:()=>{},
+    writing:{current:false},attempt:{current:null},attemptPeople:{current:null},visibleRef:{current:true},uiEpoch:{current:0},setBusy:()=>{},setSaveError:()=>{},setReselectAllowed:()=>{},setSaveErrorMessage:()=>{},logError:()=>{},
     kicker:{id:'p'},keeper:{id:'k'},gameId:'g',roundId:'round-one',signature:'[]',kickingTeam:'A',kicks:[],setShadow:()=>{},Math,
     gameService:{recordShootoutKick:()=>save.promise},logEvent:()=>{},AnalyticsEvent:{},
     rosterOf:penaltyRosterOf,contentScroll:{current:null},setCompleted:value=>{completedKick=value},setSelectedKeeperId:()=>{},setKickerId:()=>{},setScreen:s=>{screen=s},
@@ -216,7 +216,7 @@ async function main() {
   const retryAttempt={current:null};
   let retryScreen='result',retryError=false;
   const retry=loadString('const '+record+';exports.record=record;',{
-    writing:{current:false},attempt:retryAttempt,visibleRef:{current:true},uiEpoch:{current:0},setBusy:()=>{},setSaveError:v=>{retryError=v},setSaveErrorMessage:()=>{},logError:()=>{},
+    writing:{current:false},attempt:retryAttempt,attemptPeople:{current:null},visibleRef:{current:true},uiEpoch:{current:0},setBusy:()=>{},setSaveError:v=>{retryError=v},setReselectAllowed:()=>{},setSaveErrorMessage:()=>{},logError:()=>{},
     kicker:{id:'p'},keeper:{id:'k'},gameId:'g',roundId:'round-one',signature:'[]',kickingTeam:'A',kicks:[],setShadow:()=>{},Math,
     gameService:{recordShootoutKick:async(_game,kick)=>{retryIds.push(kick.id);if(retryIds.length===1)throw new Error('offline')}},logEvent:()=>{},AnalyticsEvent:{},
     rosterOf:penaltyRosterOf,contentScroll:{current:null},setCompleted:()=>{},setSelectedKeeperId:()=>{},setKickerId:()=>{},setScreen:s=>{retryScreen=s},

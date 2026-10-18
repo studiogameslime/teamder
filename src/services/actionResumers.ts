@@ -42,7 +42,17 @@ import type { UserAvailability } from '@/types';
 /** The FULL account, or null. A guest can never resume anything. */
 function fullUser() {
   const u = useUserStore.getState().currentUser;
-  return u && u.isGuest !== true ? u : null;
+  return u && u.isGuest !== true && u.onboardingCompleted !== false ? u : null;
+}
+
+function isCurrentUser(uid: string): boolean {
+  return fullUser()?.id === uid;
+}
+
+/** An action points at one draft, not at whichever work now occupies its slot. */
+async function actionDraft(action: PendingAction, kind: 'club' | 'game' | 'availability') {
+  const draft = await draftStore.read(kind);
+  return draft && 'draftId' in action && draft.id === action.draftId ? draft : null;
 }
 
 /** Turn a thrown error into a decision. Only a transport hiccup or a rate limit
@@ -165,6 +175,7 @@ registerResumer('join_club', async (action: PendingAction): Promise<ActionResult
   if (!groupState.hydrated && typeof groupState.hydrate === 'function') {
     await groupState.hydrate(me.id).catch(() => {});
   }
+  if (!isCurrentUser(me.id)) return { outcome: 'joined', terminal: false, reason: 'unknown' };
   if (useGroupStore.getState().groups.some((g) => g.id === groupId)) {
     return { outcome: 'joined', terminal: true };
   }
@@ -185,11 +196,12 @@ registerResumer('join_club', async (action: PendingAction): Promise<ActionResult
 
 // ─── create_club ──────────────────────────────────────────────────────────
 
-registerResumer('create_club', async (): Promise<ActionResult> => {
+registerResumer('create_club', async (action: PendingAction): Promise<ActionResult> => {
   const me = fullUser();
   if (!me) return { outcome: 'created', terminal: false, reason: 'unknown' };
 
-  const draft = await draftStore.read('club');
+  const draft = await actionDraft(action, 'club');
+  if (!isCurrentUser(me.id)) return { outcome: 'created', terminal: false, reason: 'unknown' };
   if (!draft) {
     // Expired or discarded. Terminal — there is nothing left to create, and
     // holding would keep offering a club nobody typed.
@@ -217,7 +229,7 @@ registerResumer('create_club', async (): Promise<ActionResult> => {
   // and reports it as the expired draft it effectively is — nothing was typed
   // that can be built, and re-offering it is offering a club nobody named.
   if (!values.name || !values.name.trim()) {
-    await draftStore.discard('club');
+    await draftStore.consume('club', draft);
     return { outcome: 'created', terminal: true, reason: 'draft_expired' };
   }
 
@@ -238,7 +250,8 @@ registerResumer('create_game', async (action: PendingAction): Promise<ActionResu
   const me = fullUser();
   if (!me) return { outcome: 'created', terminal: false, reason: 'unknown' };
 
-  const draft = await draftStore.read('game');
+  const draft = await actionDraft(action, 'game');
+  if (!isCurrentUser(me.id)) return { outcome: 'created', terminal: false, reason: 'unknown' };
   if (!draft) return { outcome: 'created', terminal: true, reason: 'draft_expired' };
 
   // A club game carries its groupId on the action; a standalone one does not,
@@ -250,7 +263,17 @@ registerResumer('create_game', async (action: PendingAction): Promise<ActionResu
   // rather than discovered as a rules denial.
   let groupName: string | undefined;
   if (groupId) {
-    const club = useGroupStore.getState().groups.find((g) => g.id === groupId);
+    // The first post-auth resume races membership hydration. Its empty cache
+    // is not a deleted club; even `hydrated` can follow a failed query. Read
+    // the requested club and distinguish a successful absence from failure.
+    let club;
+    try {
+      club = await groupService.get(groupId);
+    } catch (err) {
+      const result = fromError(err, 'resumeCreateGameClubRead', 'created');
+      return { ...result, terminal: false, reason: result.reason ?? 'unknown' };
+    }
+    if (!isCurrentUser(me.id)) return { outcome: 'created', terminal: false, reason: 'unknown' };
     if (!club) {
       // Not a member of it (or it is gone). Nothing retryable about that — the
       // draft is kept so the values are not lost, but the intent cannot stand.
@@ -319,11 +342,12 @@ registerResumer('create_game', async (action: PendingAction): Promise<ActionResu
 // `hasCompletedOnboarding` in RootNavigator, so by the time this runs the
 // document exists.
 
-registerResumer('save_availability', async (): Promise<ActionResult> => {
+registerResumer('save_availability', async (action: PendingAction): Promise<ActionResult> => {
   const me = fullUser();
   if (!me) return { outcome: 'created', terminal: false, reason: 'unknown' };
 
-  const draft = await draftStore.read('availability');
+  const draft = await actionDraft(action, 'availability');
+  if (!isCurrentUser(me.id)) return { outcome: 'created', terminal: false, reason: 'unknown' };
   if (!draft) return { outcome: 'created', terminal: true, reason: 'draft_expired' };
 
   // `persistAvailability` is the screen's own write, extracted — same payload,

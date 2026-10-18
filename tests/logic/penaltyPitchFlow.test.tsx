@@ -190,8 +190,7 @@ test.each([
   const check=(tree:any)=>{
     const dialog=find(tree,'View').find(node=>node.props.testID==='penalty-dialog');
     const surface=Object.assign({},...dialog.props.style.filter(Boolean));
-    const undo=content(tree).includes('לבטל את הבעיטה של');
-    expect(surface.height).toBe(undo ? Math.min(expectedHeight,470+Math.max(0,dimensions.fontScale-1)*160) : expectedHeight);expect(surface.maxHeight).toBe(expectedHeight);
+    expect(surface.height).toBe(expectedHeight);expect(surface.maxHeight).toBe(expectedHeight);
     const scroll=find(tree,'ScrollView')[0];
     expect(Object.assign({},...scroll.props.style.filter(Boolean))).toMatchObject({flex:1,minHeight:0});
     return tree;

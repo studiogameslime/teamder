@@ -215,7 +215,7 @@ export async function resumePendingAction(): Promise<
   if (isOpenKind(action.kind)) return { status: 'held' };
 
   const user = useUserStore.getState().currentUser;
-  if (!user || user.isGuest === true) return { status: 'held' };
+  if (!user || user.isGuest === true || user.onboardingCompleted === false) return { status: 'held' };
 
   const key = lockKey(action.kind, targetOf(action));
   if (inFlight.has(key)) return { status: 'busy' };
@@ -239,7 +239,15 @@ export async function resumePendingAction(): Promise<
     const draftRef = draftRefOf(action);
     const storedDraft = draftRef ? await draftStore.read(draftRef.kind) : null;
     const draft = storedDraft && 'draftId' in action && storedDraft.id === action.draftId ? storedDraft : null;
+    // Storage is asynchronous too. Do not hand an old account's attempt to a
+    // resumer which reads the NEW current user after a sign-out/account swap.
+    const isCurrentUser = () => {
+      const current = useUserStore.getState().currentUser;
+      return current?.id === user.id && current.isGuest !== true && current.onboardingCompleted !== false;
+    };
+    if (!isCurrentUser()) return { status: 'held' };
     const result = await fn(action);
+    if (!isCurrentUser()) return { status: 'held' };
     if (result.terminal) {
       await clearAll({ kind: action.kind, draft: draftRef }, action, draft);
       // Same ordering as the direct path above: the resumed join has already

@@ -76,6 +76,26 @@ export function resolveSplitTeams(
   return (draftTeams?.teams ?? []).map(norm);
 }
 
+/** Current round-details allocation still shows the saved BASE grouping, not
+ * where a temporary/permanent filler happens to play. Removed registrations
+ * cannot be resolved from today's roster and must not become ghost avatars.
+ * Going home keeps registration, so those people retain their original place.
+ * Historical consumers continue to use resolveSplitTeams without this filter. */
+export function resolveCurrentSplitTeams(
+  draftTeams: DraftTeamsLike | null | undefined,
+  rotation: RotationLike | null | undefined,
+  roster: { players?: readonly string[]; guests?: readonly { id: string; waitlisted?: boolean }[] },
+): SplitTeam[] {
+  const registered = new Set([
+    ...(roster.players ?? []),
+    ...(roster.guests ?? []).filter(guest => !guest.waitlisted).map(guest => `guest:${guest.id}`),
+  ]);
+  return resolveSplitTeams(draftTeams, rotation).map(team => {
+    const playerIds = team.playerIds.filter(id => registered.has(id));
+    return { ...team, playerIds, captainId: playerIds.includes(team.captainId) ? team.captainId : playerIds[0] ?? '' };
+  });
+}
+
 /**
  * True when a registered player is missing from the split on screen — i.e.
  * somebody signed up after the teams were drawn and the admin should re-balance.

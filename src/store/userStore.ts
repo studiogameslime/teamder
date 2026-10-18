@@ -11,7 +11,9 @@ import { useGameStore } from '@/store/gameStore';
 import { useChatStore } from '@/store/chatStore';
 import { onSnapshot } from 'firebase/firestore';
 import { docs } from '@/firebase/firestore';
-import { USE_MOCK_DATA } from '@/firebase/config';
+import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { StaleSessionError } from '@/services/staleSession';
+import { subscribeUserSession, suspendUserSessionListeners } from '@/services/userSessionListeners';
 
 interface UserStore {
   // Bootstrap
@@ -357,29 +359,38 @@ export const useUserStore = create<UserStore>((set, get) => ({
     if (uid) {
       await removeDeviceTokenBeforeAuthTeardown(uid);
     }
-    await userService.signOut();
-    // Drop the old identity from the tree before anything else runs, so no
-    // screen can render the previous account against the next session.
-    set({ currentUser: null, guestInitFailed: false });
-    // Wipe per-user stores so the next account (incl. the common
-    // guest→register flow) never sees the previous user's communities/roster.
-    useGroupStore.getState().reset();
-    useGameStore.getState().reset();
-    // chatStore held the previous account's unread counts — without this the
-    // tab badge briefly leaked Account A's chat activity into Account B.
-    useChatStore.getState().clear();
-    // The diagnostic trail is a record of what THIS person did. It must not
-    // ride along into the next account's first report.
-    clearTrail();
-    // The pending action and its drafts are keyed to the DEVICE, not the uid.
-    // Left in place they would resume the signed-out person's half-finished
-    // club or availability under whoever signs in next.
-    await clearSignedOutUserState();
-    logEvent(AnalyticsEvent.SignOut);
-    // Signing out of Teamder means becoming a guest, not leaving. Without this
-    // the store sits at `currentUser: null, guestInitFailed: false` and the
-    // navigator has nothing to render but the splash — forever.
-    await startSilentGuest(set, get().onboardingDone, 'post_sign_out');
+    // React's effect cleanups happen after rendering the new identity. Stop
+    // these reads before Firebase revokes auth, while the old tree still exists.
+    const resumeListeners = uid ? suspendUserSessionListeners(uid) : () => {};
+    try {
+      await userService.signOut();
+      // Drop the old identity from the tree before anything else runs, so no
+      // screen can render the previous account against the next session.
+      set({ currentUser: null, guestInitFailed: false });
+      // Wipe per-user stores so the next account (incl. the common
+      // guest→register flow) never sees the previous user's communities/roster.
+      useGroupStore.getState().reset();
+      useGameStore.getState().reset();
+      // chatStore held the previous account's unread counts — without this the
+      // tab badge briefly leaked Account A's chat activity into Account B.
+      useChatStore.getState().clear();
+      // The diagnostic trail is a record of what THIS person did. It must not
+      // ride along into the next account's first report.
+      clearTrail();
+      // The pending action and its drafts are keyed to the DEVICE, not the uid.
+      // Left in place they would resume the signed-out person's half-finished
+      // club or availability under whoever signs in next.
+      await clearSignedOutUserState();
+      logEvent(AnalyticsEvent.SignOut);
+      // Signing out of Teamder means becoming a guest, not leaving. Without this
+      // the store sits at `currentUser: null, guestInitFailed: false` and the
+      // navigator has nothing to render but the splash — forever.
+      await startSilentGuest(set, get().onboardingDone, 'post_sign_out');
+    } finally {
+      // If sign-out failed while the same Firebase identity remains, restore
+      // its subscriptions. Successful teardown cannot reattach the old uid.
+      resumeListeners();
+    }
   },
 
   deleteOwnAccount: async (password) => {
@@ -408,21 +419,24 @@ export const useUserStore = create<UserStore>((set, get) => ({
 
   subscribeCurrentUser: (uid) => {
     if (USE_MOCK_DATA || !uid) return () => {};
-    return onSnapshot(
+    const reportError = (err: unknown) => {
+      logError('subscribeCurrentUser', err, { uid });
+      if (__DEV__) console.warn('[userStore] currentUser listener failed', err);
+    };
+    return subscribeUserSession(uid,
+      () => get().currentUser?.id === uid && getFirebase().auth.currentUser?.uid === uid,
+      isActive => onSnapshot(
       docs.user(uid),
       (snap) => {
-        if (!snap.exists()) return;
+        if (!isActive() || !snap.exists()) return;
         const fresh = snap.data();
         // Guard against a late snapshot arriving after sign-out / account
         // switch — only apply it while this is still the signed-in user.
         const cur = get().currentUser;
         if (cur && cur.id === uid) set({ currentUser: fresh });
       },
-      (err) => {
-        logError('subscribeCurrentUser', err, { uid });
-        if (__DEV__) console.warn('[userStore] currentUser listener failed', err);
-      },
-    );
+      err => { if (isActive()) reportError(err); },
+    ), reportError);
   },
 
   updateProfile: async (patch) => {
@@ -453,7 +467,12 @@ export const useUserStore = create<UserStore>((set, get) => ({
   },
 
   completePostSignInOnboarding: async (patch) => {
-    const next = await userService.completeOnboarding(patch);
+    const owner = get().currentUser;
+    if (!owner || owner.isGuest) throw new StaleSessionError(owner?.id ?? '', '');
+    const next = await userService.completeOnboarding(patch, owner.id);
+    if (get().currentUser?.id !== owner.id || next.id !== owner.id) {
+      throw new StaleSessionError(owner.id, get().currentUser?.id ?? '');
+    }
     set({ currentUser: next });
     logEvent(AnalyticsEvent.ProfileCreated);
     logEvent(AnalyticsEvent.OnboardingCompleted);

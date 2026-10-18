@@ -33,11 +33,13 @@ export function GoalEntryModal({ gameId, side, teamLabel, teamColor, teamInk, ot
   const [scorerId, setScorerId] = useState<string | null>(null);
   const [assisterId, setAssisterId] = useState<string | null>(null);
   const [status, setStatus] = useState<SaveStatus>('idle');
+  const [reselectAllowed, setReselectAllowed] = useState(false);
   const selection = useRef<{ step: GoalStep; scorerId: string | null }>({ step: 'scorer', scorerId: null });
   const writing = useRef(false);
   const closed = useRef(false);
   const saved = useRef(false);
   const attempt = useRef<GoalEntry | null>(null);
+  const attemptPeople = useRef<{ id: string; scorer?: RosterMember; assister?: RosterMember } | null>(null);
   const generation = useRef(0);
   const contextKey = JSON.stringify([gameId, side, roundNumber]);
   const currentContext = useRef(contextKey);
@@ -48,10 +50,20 @@ export function GoalEntryModal({ gameId, side, teamLabel, teamColor, teamInk, ot
     generation.current += 1;
     currentContext.current = contextKey;
     selection.current = { step: 'scorer', scorerId: null };
-    writing.current = false; closed.current = false; saved.current = false; attempt.current = null;
+    writing.current = false; closed.current = false; saved.current = false; attempt.current = null; attemptPeople.current = null;
+    setReselectAllowed(false);
     setStep('scorer'); setScorerId(null); setAssisterId(null); setStatus('idle');
     return () => { generation.current += 1; currentContext.current = ''; };
   }, [gameId, side, roundNumber]);
+
+  const rosterKey = JSON.stringify(roster.map(member => member.id));
+  useEffect(() => {
+    if (status !== 'idle' || writing.current || attempt.current || !scorerId || step === 'own' || roster.some(member => member.id === scorerId)) return;
+    // A live lineup change can remove the scorer while the assist picker is
+    // open. Do not let a seemingly valid next tap submit that departed player.
+    selection.current = { step: 'scorer', scorerId: null };
+    setScorerId(null); setAssisterId(null); setStep('scorer');
+  }, [rosterKey, scorerId, step, status]);
 
   const shownAttempt = attempt.current;
   const finishSaved = () => {
@@ -71,21 +83,37 @@ export function GoalEntryModal({ gameId, side, teamLabel, teamColor, teamInk, ot
     // Preserve the same event and selections when acknowledgement fails,
     // including when the server wrote it but the response was lost.
     attempt.current = entry;
+    if (attemptPeople.current?.id !== entry.id) attemptPeople.current = {
+      id: entry.id,
+      scorer: (entry.ownGoal ? ownGoalRoster : roster).find(member => member.id === entry.scorerId),
+      assister: roster.find(member => member.id === entry.assisterId),
+    };
     const epoch = generation.current;
-    writing.current = true; setStatus('saving');
+    writing.current = true; setReselectAllowed(false); setStatus('saving');
     try {
       await onSave(entry);
       if (epoch === generation.current) {
         saved.current = true;
         setStatus('saved');
       }
-    } catch {
-      if (epoch === generation.current) setStatus('error');
+    } catch (error) {
+      if (epoch === generation.current) {
+        setReselectAllowed((error as {code?:string})?.code === 'LIVE_ROSTER_CHANGED');
+        setStatus('error');
+      }
     } finally {
       if (epoch === generation.current) writing.current = false;
     }
   };
   const blocked = status !== 'idle';
+  const restartSelection = () => {
+    if (!reselectAllowed || writing.current || saved.current || closed.current || currentContext.current !== contextKey) return;
+    // This code is returned only by an authoritative validation rejection,
+    // after the service checked the same id for an already-written event.
+    attempt.current = null; attemptPeople.current = null;
+    selection.current = { step: 'scorer', scorerId: null };
+    setScorerId(null); setAssisterId(null); setStep('scorer'); setReselectAllowed(false); setStatus('idle');
+  };
   const canChoose = () => currentContext.current === contextKey && !writing.current && !saved.current && !closed.current && !attempt.current;
   const editScorer = () => {
     if (!canChoose()) return;
@@ -114,8 +142,8 @@ export function GoalEntryModal({ gameId, side, teamLabel, teamColor, teamInk, ot
     }
   };
   const ownGoal = step === 'own' || attempt.current?.ownGoal === true;
-  const selectedScorer = (ownGoal ? ownGoalRoster : roster).find(member => member.id === scorerId);
-  const selectedAssister = roster.find(member => member.id === assisterId);
+  const selectedScorer = attemptPeople.current?.scorer ?? (ownGoal ? ownGoalRoster : roster).find(member => member.id === scorerId);
+  const selectedAssister = attemptPeople.current?.assister ?? roster.find(member => member.id === assisterId);
   const players = step === 'own' ? ownGoalRoster : roster;
   const pickerColor = step === 'own' ? otherTeamColor : teamColor;
   const pickerInk = step === 'own' ? otherTeamInk : teamInk;
@@ -160,23 +188,23 @@ export function GoalEntryModal({ gameId, side, teamLabel, teamColor, teamInk, ot
           {pitchAndPicker}
         </ScrollView> : pitchAndPicker}
         <View testID="goal-entry-footer" style={[s.footer, compact && s.compactFooter]}>
-          {status === 'error' ? <View style={s.errorBox}>
-            <Text accessibilityRole="alert" style={s.error}>לא התקבל אישור לשמירת הגול. הבחירה נשמרה.</Text>
-            <Pressable onPress={() => void save()} style={[s.primary, { backgroundColor: teamInk }]} accessibilityRole="button" accessibilityLabel="ניסיון חוזר לשמירת הגול"><Text style={s.primaryText}>ניסיון חוזר</Text></Pressable>
+          {status === 'error' ? <View key="goal-error-actions" style={s.errorBox}>
+            <Text accessibilityRole="alert" style={s.error}>{reselectAllowed ? 'ההרכב השתנה והגול לא נשמר. בחרו שוב את השחקנים.' : 'לא התקבל אישור לשמירת הגול. הבחירה נשמרה.'}</Text>
+            <Pressable onPress={reselectAllowed ? restartSelection : () => void save()} style={[s.primary, { backgroundColor: teamInk }]} accessibilityRole="button" accessibilityLabel={reselectAllowed ? 'בחירת שחקנים מחדש' : 'ניסיון חוזר לשמירת הגול'}><Text style={s.primaryText}>{reselectAllowed ? 'בחירת שחקנים מחדש' : 'ניסיון חוזר'}</Text></Pressable>
           </View> : status === 'saving' ? <View style={[s.statusRow, compact && s.compactAction]} accessibilityLiveRegion="polite"><ActivityIndicator color={teamInk}/><Text style={s.statusText}>שומרים את הגול…</Text></View>
             : status === 'saved' ? <View style={[s.statusRow, compact && s.compactAction]} accessibilityLiveRegion="polite"><Ionicons name="checkmark-circle" size={23} color={teamInk}/><Text style={s.statusText}>הגול נשמר</Text></View>
-              : step === 'assist' ? <View style={[s.actions, compact && s.compactAction]}>
-                <Pressable style={[s.secondary, compact && s.compactSecondary]} accessibilityRole="button" onPress={() => { if (canChoose()) void save({ scorerId: selection.current.scorerId, assisterId: null, assistStatus: 'none' }); }}><Text style={[s.link, compact && s.compactLink]}>ללא בישול</Text></Pressable>
-              </View> : step === 'scorer' ? <View style={[s.actions, compact && s.compactAction]}>
-                <Pressable style={[s.secondary, compact && s.compactSecondary]} accessibilityRole="button" onPress={() => { if (canChoose()) { setScorerId(null); setAssisterId(null); void save({ scorerId: null }); } }}><Text style={[s.link, compact && s.compactLink]}>מבקיע לא ידוע</Text></Pressable>
-                <Pressable style={[s.secondary, compact && s.compactSecondary]} accessibilityRole="button" onPress={() => {
+              : step === 'assist' ? <View key="goal-assist-actions" style={[s.actions, compact && s.compactAction]}>
+                <Pressable style={[s.secondary, compact && s.compactSecondary]} accessibilityRole="button" accessibilityLabel="ללא בישול" onPress={() => { if (canChoose()) void save({ scorerId: selection.current.scorerId, assisterId: null, assistStatus: 'none' }); }}><Text style={[s.link, compact && s.compactLink]}>ללא בישול</Text></Pressable>
+              </View> : step === 'scorer' ? <View key="goal-scorer-actions" style={[s.actions, compact && s.compactAction]}>
+                <Pressable style={[s.secondary, compact && s.compactSecondary]} accessibilityRole="button" accessibilityLabel="מבקיע לא ידוע" onPress={() => { if (canChoose()) { setScorerId(null); setAssisterId(null); void save({ scorerId: null }); } }}><Text style={[s.link, compact && s.compactLink]}>מבקיע לא ידוע</Text></Pressable>
+                <Pressable style={[s.secondary, compact && s.compactSecondary]} accessibilityRole="button" accessibilityLabel="שער עצמי" onPress={() => {
                   if (!canChoose()) return;
                   logEvent(AnalyticsEvent.OwnGoalPickerOpened, { gameId, team: side ?? '' });
                   selection.current = { step: 'own', scorerId: null };
                   setScorerId(null); setAssisterId(null); setStep('own');
                 }}><Text style={[s.link, compact && s.compactLink]}>שער עצמי</Text></Pressable>
               </View> : <Text style={[s.ownHint, compact && s.compactAction]}>{`הגול יתווסף ל${teamLabel.slice(1)}`}</Text>}
-          {!compact && <View style={s.change}>{step !== 'scorer' && status === 'idle' && <Pressable style={s.change} onPress={editScorer} accessibilityRole="button"><Text style={s.link}>שינוי הכובש</Text></Pressable>}</View>}
+          {!compact && <View style={s.change}>{step !== 'scorer' && status === 'idle' && <Pressable style={s.change} onPress={editScorer} accessibilityRole="button" accessibilityLabel="שינוי הכובש"><Text style={s.link}>שינוי הכובש</Text></Pressable>}</View>}
         </View>
       </View>
     </View>

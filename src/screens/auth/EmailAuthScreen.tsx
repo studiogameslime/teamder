@@ -152,7 +152,7 @@ export function EmailAuthScreen() {
       // A fresh account is the exception and is left alone: its user document
       // carries `onboardingCompleted: false`, RootNavigator DOES swap to the
       // profile screen, and the coordinator's boot pass resumes after it saves.
-      if (mode === 'signIn') {
+      if (mode === 'signIn' && useUserStore.getState().hasCompletedOnboarding()) {
         await finishParkedAction();
       }
     } catch (err) {

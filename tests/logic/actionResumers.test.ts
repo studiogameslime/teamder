@@ -46,7 +46,10 @@ jest.mock('@/services/gameService', () => ({
   gameService: { requestJoinGame: (...a: unknown[]) => requestJoinGame(...a) },
 }));
 jest.mock('@/services/groupService', () => ({
-  groupService: { requestJoinById: (...a: unknown[]) => requestJoinById(...a) },
+  groupService: {
+    requestJoinById: (...a: unknown[]) => requestJoinById(...a),
+    get: async (id: string) => myGroups.find(group => group.id === id) ?? null,
+  },
 }));
 
 let currentUser: { id: string; isGuest?: boolean } | null = { id: 'u1' };

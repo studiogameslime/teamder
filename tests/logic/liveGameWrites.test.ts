@@ -10,6 +10,8 @@ import { saveMockRoundHistory } from '@/utils/mockRoundHistory';
 import { roundParticipantSides } from '@/utils/roundParticipants';
 import { buildShootoutPenaltyPayload } from '@/utils/penaltyStats';
 import { shootoutFingerprint } from '@/utils/shootoutDecision';
+import {liveLineupFingerprint} from '@/utils/liveLineupFingerprint';
+import {matchesRoundDecision} from '@/utils/roundDecision';
 
 function serviceFixture(mock = false) {
   const history:Record<string, any[]> = {};
@@ -38,6 +40,8 @@ function serviceFixture(mock = false) {
     '@/utils/mockRoundHistory':{saveMockRoundHistory}, '@/utils/penaltyStats':{buildShootoutPenaltyPayload},
     '@/utils/roundParticipants':{roundParticipantSides},
     '@/utils/shootoutDecision':{shootoutFingerprint},
+    '@/utils/liveLineupFingerprint':{liveLineupFingerprint},
+    '@/utils/roundDecision':{matchesRoundDecision},
     '@/utils/liveSubstitution': { exchangeLivePlayers, moveLivePlayer },
   };
   const exports: any = {};
@@ -260,7 +264,7 @@ function kickAction(context: Record<string, any>) {
 test('the wizard waits for acknowledgement and retries exactly the failed outcome', async () => {
   let reject!: (error: Error) => void;
   const write = jest.fn().mockImplementationOnce(() => new Promise((_resolve, r) => { reject = r; })).mockResolvedValue(undefined);
-  const ctx: any = { writing: { current: false }, attempt: { current: null }, uiEpoch: { current: 1 }, visibleRef: { current: true }, kicker: { id: 'a' }, keeper: { id: 'b' }, kickingTeam: 'A', roundId: 'round-one', kicks: [], signature: '[]', gameId: 'g', gameService: { recordShootoutKick: write }, setBusy: jest.fn(), setSaveErrorMessage: jest.fn(), logError: jest.fn(), setSaveError: jest.fn(), setShadow: jest.fn(), setKickerId: jest.fn(), setScreen: jest.fn(), setSelectedKeeperId: jest.fn(), setCompleted: jest.fn(), contentScroll: { current: null }, rosterOf: (side: string) => [{ id: side === 'A' ? 'a' : 'b' }], logEvent: jest.fn(), AnalyticsEvent: {} };
+  const ctx: any = { writing: { current: false }, attempt: { current: null }, attemptPeople: { current: null }, uiEpoch: { current: 1 }, visibleRef: { current: true }, kicker: { id: 'a' }, keeper: { id: 'b' }, kickingTeam: 'A', roundId: 'round-one', kicks: [], signature: '[]', gameId: 'g', gameService: { recordShootoutKick: write }, setBusy: jest.fn(), setReselectAllowed: jest.fn(), setSaveErrorMessage: jest.fn(), logError: jest.fn(), setSaveError: jest.fn(), setShadow: jest.fn(), setKickerId: jest.fn(), setScreen: jest.fn(), setSelectedKeeperId: jest.fn(), setCompleted: jest.fn(), contentScroll: { current: null }, rosterOf: (side: string) => [{ id: side === 'A' ? 'a' : 'b' }], logEvent: jest.fn(), AnalyticsEvent: {} };
   const record = kickAction(ctx);
   const first = record('save'); await record('goal');
   expect(write).toHaveBeenCalledTimes(1); expect(ctx.setScreen).not.toHaveBeenCalled();

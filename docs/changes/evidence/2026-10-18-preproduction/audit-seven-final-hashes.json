@@ -1,0 +1,11 @@
+{
+  "data-seven-manual-assigned.json": "e87646be678e62921204be8bb2c7e01c0f195ef6f6e4e203631c3c6ce9c3cfc3",
+  "data-seven-alternative-fixed.json": "a2a3648487dde50a5caed9b4d4aea784b35ba406adfe5297cbcbcb87f2550197",
+  "data-seven-finished.json": "358ae0339f9962ede5a73a6bf2f523a2309f944ce4888eaf448291a09f27d81c",
+  "seven-finished-derived.json": "2a7e6e9cee8a81b999de4a1f00b9a69e7b499bbb88b5eabb98e9dc3dd4f031f9",
+  "audit-seven-final-data.json": "81273f1fa02693ca6c357480a56d8996f20665fc7165dfc527ccdaf7e52b0411",
+  "audit-seven-final-data.md": "1a050203483441f7cf6f759246ac2379213bd16f72d0c6b3efe3494b56c2f081",
+  "assert-seven-data.py": "d426d647d74a0968004cab30373fa8c06144bdab4bc809f99fc2333cb6917469",
+  "verify-seven-finished.cjs": "1cb3f17dbbf08ffdbbbff71a06e29d308670696dbb88e66920bc67284c2b72a4",
+  "artifacts\\final-deep-audit-2026-10-17\\seven-alternative-fixed-trace.json": "867ea5861c07f3ae8f401b2c84912367f8ca776dc790fef7efe0b3eeb86f8246"
+}

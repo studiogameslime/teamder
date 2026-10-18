@@ -26,6 +26,7 @@ import { Button } from '@/components/Button';
 import { ManualAllocation } from '@/components/draft/ManualAllocation';
 import { DraftGenerationPreview } from '@/components/draft/DraftGenerationPreview';
 import { playersPerTeam } from '@/utils/draft';
+import { activeDraftRosterIds } from '@/utils/draftIntegrity';
 import { DraftOrderPath } from '@/components/draft/DraftOrderPath';
 import { useGameStore } from '@/store/gameStore';
 import { useUserStore } from '@/store/userStore';
@@ -183,7 +184,8 @@ export function DraftSetupScreen() {
       id: toGuestRosterId(g.id),
       name: g.name,
     }));
-    return [...players, ...guests];
+    const active = new Set(activeDraftRosterIds(game));
+    return [...players, ...guests].filter(player => active.has(player.id));
   }, [game, playersMap]);
 
   useEffect(() => {
@@ -275,10 +277,7 @@ export function DraftSetupScreen() {
     }
     const grp = myCommunities.find((c) => c.id === game.groupId);
     const activeGuests = (game.guests ?? []).filter((gu) => !gu.waitlisted);
-    const playerIds = [
-      ...(game.players ?? []),
-      ...activeGuests.map((gu) => toGuestRosterId(gu.id)),
-    ];
+    const playerIds = activeDraftRosterIds(game);
     // 'random' → no ratings (balanceTeams shuffles + splits evenly).
     const ratings: Record<string, number> = {};
     if (splitMode === 'auto') {

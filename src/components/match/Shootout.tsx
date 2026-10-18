@@ -62,7 +62,7 @@ export function TieDecisionModal({ visible, draftTeams, rotation, live, busy = f
             <Text style={s.round} maxFontSizeMultiplier={1.15}>{he.matchNumber(rotation.round ?? 1)}</Text>
             <MatchResultPanel draftTeams={draftTeams} rotation={rotation} live={live} compact={compact}/>
             <Text style={s.question} maxFontSizeMultiplier={compact ? 1.15 : undefined}>{he.shDecideQuestion}</Text>
-            {discardedPenaltyCount > 0 && <Text style={s.hint}>{`אישור הכרעה אחרת ימחק את ${discardedPenaltyCount} הבעיטות שנרשמו. חזרה לפנדלים תשמור אותן.`}</Text>}
+            {discardedPenaltyCount > 0 && <Text style={s.hint}>{discardedPenaltyCount === 1 ? 'אישור הכרעה אחרת ימחק את הבעיטה שנרשמה. חזרה לפנדלים תשמור אותה.' : `אישור הכרעה אחרת ימחק את ${discardedPenaltyCount} הבעיטות שנרשמו. חזרה לפנדלים תשמור אותן.`}</Text>}
 
             <Pressable style={[s.option,selected==='penalties' && s.selectedOption,busy && s.disabled]} onPress={()=>choose('penalties')} disabled={busy} accessibilityRole="button" accessibilityLabel={he.shDecidePenalties} accessibilityState={{disabled:busy,selected:selected==='penalties'}}>
               <View style={s.textBlock}>

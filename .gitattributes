@@ -1,0 +1,4 @@
+# Keep archived evidence hashes stable across checkout platforms.
+docs/changes/evidence/2026-10-18-preproduction/** -text whitespace=trailing-space,space-before-tab,cr-at-eol
+# Raw tool logs retain their original whitespace as evidence.
+docs/changes/evidence/2026-10-18-preproduction/**/*.log -whitespace

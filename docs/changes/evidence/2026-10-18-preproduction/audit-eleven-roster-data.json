@@ -1,0 +1,289 @@
+{
+  "phase": "סגל מלא של 33 זכאים; לפני שמירת חלוקה ומשחקים",
+  "gameId": "cF3CjQbLH8vzo7uaFqHx",
+  "source": "data-eleven-full-roster.json",
+  "sourceSha256": "5f9ee12cf32b6c7ab0d23bb1ca9b63575aa105cb9a49fed7db16786396222056",
+  "readCompletedAt": "2026-10-17T23:31:13.831892+00:00",
+  "roster": {
+    "registered": 1,
+    "guests": 32,
+    "eligible": 33,
+    "capacity": 33
+  },
+  "observedConfiguration": {
+    "format": "11v11",
+    "numberOfTeams": 3,
+    "advancedFillMode": "permanent",
+    "advancedMode": true,
+    "visibility": "community"
+  },
+  "historyCount": 0,
+  "statCount": 0,
+  "checks": [
+    {
+      "name": "החשבון והמועדון תואמים לקבלת המוצר ולא הוקלדו לתסריט",
+      "passed": true
+    },
+    {
+      "name": "מחזור הבדיקה השלישי מוגדר אחד־עשר מול אחד־עשר",
+      "passed": true
+    },
+    {
+      "name": "שלושת המחזורים הישנים לא השתנו",
+      "passed": true
+    },
+    {
+      "name": "החשבון הרשום הוא חשבון הבדיקה היחיד",
+      "passed": true
+    },
+    {
+      "name": "זהויות האורחים ייחודיות ושמותיהם אינם ריקים",
+      "passed": true
+    },
+    {
+      "name": "כל האורחים נוספו בידי חשבון הבדיקה",
+      "passed": true
+    },
+    {
+      "name": "אין ערבוב בין זהויות חשבון וזהויות אורח",
+      "passed": true
+    },
+    {
+      "name": "קיבולת המחזור תואמת לפורמט ולמספר הקבוצות",
+      "passed": true
+    },
+    {
+      "name": "כל זהויות שורות הסטטיסטיקה ייחודיות",
+      "passed": true
+    },
+    {
+      "name": "זהויות ההיסטוריה וחתימות המשחקים תואמות",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: 32 אורחים וחשבון אחד הם 33 זכאים ייחודיים",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: השמות כוללים 31 שמות סדרתיים ואת השם הארוך המלא",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: אין אורח בהמתנה או ממתין לאישור",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: ההגדרות הקבועות והפרטיות נשמרו",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: כל האורחים נוצרו לאחר יצירת המחזור",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: טרם נשמרו כוחות או לוח משחק במקור",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: אין היסטוריה, זקיפות, סיכום או נוכחות",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: אין דלתת זקיפה או איפוס במקור account",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: אין דלתת זקיפה או איפוס במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: אין דלתת זקיפה או איפוס במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: אין דלתת זקיפה או איפוס במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: אין דלתת זקיפה או איפוס במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "סגל מלא: שני המחזורים החדשים הקודמים לא השתנו",
+      "passed": true
+    }
+  ],
+  "passed": 23,
+  "failed": 0,
+  "canonicalRoster": [
+    {
+      "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "isGuest": false
+    },
+    {
+      "id": "guest:mvd0vjxq-0g1lq1",
+      "name": "אחדעשר־01",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0vuna-fnoeo2",
+      "name": "אחדעשר־02",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0w4ym-ingxdl",
+      "name": "אחדעשר־03",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0wfdk-466dv3",
+      "name": "אחדעשר־04",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0wrfs-kh2vtr",
+      "name": "אחדעשר־05",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0x1ps-7ixc9q",
+      "name": "אחדעשר־06",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0xc1z-73rbw4",
+      "name": "אחדעשר־07",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0xnrj-tjh9tt",
+      "name": "אחדעשר־08",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0xybi-m35dd0",
+      "name": "אחדעשר־09",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0ycc9-z0t5wz",
+      "name": "אחדעשר־10",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0yonx-b7ct3f",
+      "name": "אחדעשר־11",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0z0wa-y09vp7",
+      "name": "אחדעשר־12",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0zdfn-ar4g4f",
+      "name": "אחדעשר־13",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd0zp9o-rrny5s",
+      "name": "אחדעשר־14",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd100i6-z7ct6s",
+      "name": "אחדעשר־15",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd10bg7-d2c7o2",
+      "name": "אחדעשר־16",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd10m8o-l6gurd",
+      "name": "אחדעשר־17",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd10x7k-3wrf22",
+      "name": "אחדעשר־18",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd119aq-oyq8h0",
+      "name": "אחדעשר־19",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd11k50-tzwfs3",
+      "name": "אחדעשר־20",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd11v4d-44941z",
+      "name": "אחדעשר־21",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd125lr-ljh7d2",
+      "name": "אחדעשר־22",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd12fv8-i79hga",
+      "name": "אחדעשר־23",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd12q0h-3kdp0c",
+      "name": "אחדעשר־24",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd130io-5acdpt",
+      "name": "אחדעשר־25",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd13apd-adek4f",
+      "name": "אחדעשר־26",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd13kwx-5qos4h",
+      "name": "אחדעשר־27",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd13vi3-pq5bfp",
+      "name": "אחדעשר־28",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd147a2-7x9qv8",
+      "name": "אחדעשר־29",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd14ieu-7xm78a",
+      "name": "אחדעשר־30",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd14sr6-bf7sgb",
+      "name": "אחדעשר־31",
+      "isGuest": true
+    },
+    {
+      "id": "guest:mvd152yq-3ebjj2",
+      "name": "שחקן בדיקה שם ארוך",
+      "isGuest": true
+    }
+  ],
+  "limits": [
+    "האימות מוגבל לשלב המקור שנמסר; אין בו עדיין אישור נכונות של חילופים, זקיפות משחקים או סיכום מחזור.",
+    "הוספת ציפיות אירועים ודלתאות תתבצע רק אחרי שהמוביל מסר את פעולות הממשק והמקורות המתאימים.",
+    "המקור הקיים אינו מוכיח את חלוקת הקפטנים שעדיין התבצעה בממשק; אין לייחס את התכנון הזה לשמירה בשרת."
+  ]
+}

@@ -56,10 +56,28 @@ test('the first-team preview reuses the pitch without participant controls or a 
  expect(nodes(tree).find(n=>n.props?.testID==='match-action-ball')).toBeUndefined();
  expect(nodes(tree).filter(n=>typeof n.type==='function'&&n.type.name==='Participant')).toHaveLength(0);
 });
-test('an unstarted penalty still places the ball with the kicker', () => {
- const ball = nodes(render({ ...props(), mode: 'penalty' })).find(n => n.props?.testID === 'match-action-ball');
- expect(ball.props.style[1].current.transform[0].translateX).toBeCloseTo(-158);
- expect(ball.props.style[1].current.transform[1].translateY).toBeCloseTo(248 * 0.50 - 12);
+test.each([{height:140,width:250},{height:180,width:300},{height:248,width:340}])('the waiting penalty ball stays beside the kicker disc, away from keeper metadata at %j', ({height,width}) => {
+ const input = {...props(), mode:'penalty',height,primary:{...person,label:'בועט'},secondary:{...person,label:'שוער'}};
+ let tree=render(input);tree.props.onLayout({nativeEvent:{layout:{width}}});tree=render(input);
+ const ball=nodes(tree).find(n=>n.props?.testID==='match-action-ball');
+ const transform=ball.props.style[1].current.transform;
+ const centerX=width-12+transform[0].translateX,centerY=12+transform[1].translateY;
+ const slot=nodes(tree).find(n=>typeof n.type==='function' && n.type.name==='Participant' && n.props.person.label==='בועט');
+ // Read the real disc's size rather than copying the component's breakpoints.
+ runtime.reset();runtime.begin();const participant=slot.type(slot.props);runtime.finish();
+ const disc=nodes(participant).find(n=>n.type==='AnimatedView' && n.props.style?.[0]?.borderWidth===2);
+ const radius=disc.props.style.at(-1).width/2;
+ expect(Math.abs(centerX-width*slot.props.x)).toBeGreaterThanOrEqual(radius+12+6);
+ expect(centerY-12).toBeGreaterThanOrEqual(height*slot.props.y-radius);
+ expect(centerY+12).toBeLessThanOrEqual(height*slot.props.y+radius);
+});
+
+test.each([140,180,248])('a penalty starts its acknowledged movement at the waiting ball without jumping at height %s',height=>{
+ const input={...props(),mode:'penalty',height};
+ const before=nodes(render(input)).find(n=>n.props?.testID==='match-action-ball').props.style[1].current.transform;
+ mockHoldAnimation=true;
+ const after=nodes(render({...input,status:'saved'})).find(n=>n.props?.testID==='match-action-ball').props.style[1].current.transform;
+ expect(after).toEqual(before);
 });
 test('only an acknowledged event celebrates and finishes once', () => {
  const input = { ...props(), status: 'saved', animationKey: 'saved-id' };

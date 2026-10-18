@@ -29,6 +29,7 @@ import { docs, col } from '@/firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { waitForAuthRestore } from '@/firebase/auth';
 import { logError } from '@/services/errorLog';
+import { subscribeUserSession } from '@/services/userSessionListeners';
 import type { ChatPreferences } from '@/utils/chatInbox';
 import type { Game, ChatMessage, ChatScope, ChatUnreadEntry, User, UserId } from '@/types';
 
@@ -335,6 +336,7 @@ export const chatService = {
   subscribeUnread(
     uid: UserId,
     cb: (entries: ChatUnreadEntry[]) => void,
+    onError?: (error: unknown) => void,
   ): () => void {
     // Mock mode has no chat backend — emit an empty list once and no-op the
     // unsubscribe so the app-wide subscriber in MainTabs doesn't hit Firebase.
@@ -342,7 +344,12 @@ export const chatService = {
       cb([]);
       return () => {};
     }
-    return onSnapshot(col.userChatUnread(uid), (snap) => {
+    const reportError = (error: unknown) => {
+      logError('subscribeUnread', error, { uid });
+      onError?.(error);
+    };
+    return subscribeUserSession(uid, () => getFirebase().auth.currentUser?.uid === uid, isActive => onSnapshot(col.userChatUnread(uid), (snap) => {
+      if (!isActive()) return;
       cb(
         snap.docs.map((d) => {
           const x = d.data() as Partial<ChatUnreadEntry>;
@@ -362,7 +369,7 @@ export const chatService = {
           };
         }),
       );
-    });
+    }, error => { if (isActive()) reportError(error); }), reportError);
   },
 
   /** Mark a chat read — resets my unread counter for it to 0. */

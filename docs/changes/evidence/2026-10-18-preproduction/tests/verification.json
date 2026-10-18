@@ -1,0 +1,65 @@
+{
+  "recordedAtUtc": "2026-10-18T00:59:59.229993+00:00",
+  "jest": {
+    "command": "npx jest --runInBand",
+    "exitCode": 0,
+    "suitesPassed": 409,
+    "testsPassed": 4853
+  },
+  "types": {
+    "command": "npx tsc --noEmit",
+    "exitCode": 0
+  },
+  "rules": {
+    "command": "npm run test:rules",
+    "serial": true,
+    "exitCode": 0,
+    "passed": 350,
+    "failed": 0,
+    "reusedAfterClientOnlyChanges": true
+  },
+  "functions": {
+    "command": "npm --prefix functions run build",
+    "exitCode": 0,
+    "serverSourceMatchesDeployedArchive": true
+  },
+  "pulseTypes": {
+    "exitCode": 0
+  },
+  "historicalGuard": {
+    "passed": 15
+  },
+  "files": [
+    {
+      "file": "jest-final-auth-lifecycle.log",
+      "sha256": "da2fbfb787f48b4d5cada0ae651414218e4a8cf001b1da60ea2a85b4a2b1521a",
+      "bytes": 27413
+    },
+    {
+      "file": "types-final-auth-lifecycle.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "rules-last.log",
+      "sha256": "25862c79184f90e1037c438e79f2eea9188a300021139c580acfe4d371a13662",
+      "bytes": 81807
+    },
+    {
+      "file": "functions-last.log",
+      "sha256": "8638083c4b53485a885a909b138bb9121d578c24aa75b03360459dd43ebd25a9",
+      "bytes": 223
+    },
+    {
+      "file": "pulse-types-last.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "historical-guard-final.json",
+      "sha256": "3c17aeae1fb19147a5405a2aebf1c64fa195e4ecdc6bc2ec77304b3ea0365b49",
+      "bytes": 2113
+    }
+  ],
+  "limits": "Code and emulator-rule checks are distinct from native UI, actual production data and store-binary validation. Types and commands with empty logs are recorded with the tool exit code; no store build was run."
+}

@@ -30,11 +30,34 @@ test('the actual Firestore converter preserves noncompetitive history before sea
 
 test('actual round writer separates credited goals from exact scores for members and guests',()=>{
   const source=fs.readFileSync('functions/src/index.ts','utf8');
-  const scoring=source.slice(source.indexOf('    const creditedForSide ='),source.indexOf('    // Build the round-history doc',source.indexOf('    const creditedForSide =')));
-  const realWriteStart=source.indexOf('      const onA = A.includes(uid);',source.indexOf('// Per-GAME rounds +'));
-  const realWrite=source.slice(realWriteStart,source.indexOf('      // Lifetime tally',realWriteStart));
-  const guestStart=source.indexOf('    const guestsOnA = fullA.filter');
-  const guestWrite=source.slice(guestStart,source.indexOf('    // 1d) mini-games WON',guestStart));
+  const tree=ts.createSourceFile('index.ts',source,ts.ScriptTarget.Latest,true);
+  const exported=tree.statements.find((node):node is ts.VariableStatement=>ts.isVariableStatement(node)&&
+    node.declarationList.declarations.some(declaration=>declaration.name.getText(tree)==='commitRoundStats'))!;
+  const callable=exported.declarationList.declarations.find(declaration=>declaration.name.getText(tree)==='commitRoundStats')!.initializer as ts.CallExpression;
+  const callback=callable.arguments[1] as ts.ArrowFunction;
+  const body=callback.body as ts.Block;
+  const declares=(node:ts.Statement,name:string)=>ts.isVariableStatement(node)&&
+    node.declarationList.declarations.some(declaration=>declaration.name.getText(tree)===name);
+  // Stop at the actual declaration, not a comment that can be removed or
+  // reworded. A missing comment previously pulled the later awaited commit
+  // into this synchronous numeric-contract adapter.
+  const scoringStart=body.statements.findIndex(node=>declares(node,'creditedForSide'));
+  const scoringEnd=body.statements.findIndex(node=>declares(node,'roundHistoryDoc'));
+  expect(scoringStart).toBeGreaterThan(-1);expect(scoringEnd).toBeGreaterThan(scoringStart);
+  const scoring=body.statements.slice(scoringStart,scoringEnd).map(node=>node.getText(tree)).join('\n');
+  const realLoop=body.statements.find((node):node is ts.ForOfStatement=>ts.isForOfStatement(node)&&
+    ts.isVariableDeclarationList(node.initializer)&&node.initializer.declarations.some(declaration=>declaration.name.getText(tree)==='uid')&&
+    ts.isBlock(node.statement)&&node.statement.statements.some(statement=>declares(statement,'onA')))!;
+  const realBody=(realLoop.statement as ts.Block).statements;
+  const realStart=realBody.findIndex(node=>declares(node,'onA'));
+  const realNodes=realBody.slice(realStart,realStart+2);
+  expect(realNodes[1].getText(tree)).toContain('gpsRef(uid)');
+  const realWrite=realNodes.map(node=>node.getText(tree)).join('\n');
+  const guestStart=body.statements.findIndex(node=>declares(node,'guestsOnA'));
+  const guestNodes=body.statements.slice(guestStart,guestStart+3);
+  expect(declares(guestNodes[1],'guestsOnB')).toBe(true);expect(ts.isForOfStatement(guestNodes[2])).toBe(true);
+  expect(guestNodes[2].getText(tree)).toContain('gpsRef(gid)');
+  const guestWrite=guestNodes.map(node=>node.getText(tree)).join('\n');
   expect(scoring.length).toBeGreaterThan(300);expect(realWrite.length).toBeGreaterThan(100);expect(guestWrite.length).toBeGreaterThan(300);
   const records:any[]=[];
   const ctx:any={A:['a'],B:['b'],fullA:['a','guest:one'],fullB:['b'],uid:'a',clean:false,cleanA:false,cleanB:false,gameId:'g',now:1,winnerSide:'A',

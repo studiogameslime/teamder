@@ -63,7 +63,7 @@ export function WinnerPickerModal({
           <View style={styles.heading}>
             <Text style={styles.title} accessibilityRole="header">{he.winnerPickTitle}</Text>
             <Text style={styles.subtitle}>{he.winnerPickSubtitle}</Text>
-            {discardedPenaltyCount > 0 && <Text style={styles.subtitle}>{`אישור המנצחת ימחק את ${discardedPenaltyCount} הבעיטות שנרשמו בפנדלים.`}</Text>}
+            {discardedPenaltyCount > 0 && <Text style={styles.subtitle}>{discardedPenaltyCount === 1 ? 'אישור המנצחת ימחק את הבעיטה שנרשמה בפנדלים.' : `אישור המנצחת ימחק את ${discardedPenaltyCount} הבעיטות שנרשמו בפנדלים.`}</Text>}
           </View>
 
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} bounces={false}>

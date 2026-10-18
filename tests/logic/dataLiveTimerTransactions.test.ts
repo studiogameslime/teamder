@@ -2,6 +2,7 @@ import {roundSaveError} from '@/utils/roundSaveError';
 import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
+import {roundDecisionContext} from '@/utils/roundDecision';
 import { roundCommitKey } from '@/services/rotationEngine';
 import { tallyWithout } from '@/utils/goalTally';
 
@@ -179,7 +180,8 @@ function endRoundContext(pause:jest.Mock) {
   const context:any={module:{exports:{}},pendingSavedRound:false,fillFlowRef:{current:null},gameId:'evening',currentRoundKey:'round-one',me:{id:'manager',name:'מנהל'},
     finalizingRef:{current:false},committingRef:{current:false},winnerOpen:false,decisionOpen:false,shootoutOpen:false,
     markBusy:jest.fn(),gameService:{pauseTimer:pause,prepareRoundResult:jest.fn().mockResolvedValue({outcome:null}),startTimer:jest.fn()},
-    rotation:{playing:[0,1]},live:{scoreA:0,scoreB:0,goals:[]},draftTeams:{teams:[]},captureRoundForResult:jest.fn(),setDecisionOpen:jest.fn(),
+    game:{id:'evening',status:'open',players:[],guests:[]},roundDecisionContext,
+    rotation:{roundInstanceId:'round-one',playing:[0,1],waiting:[],loans:[]},live:{scoreA:0,scoreB:0,goals:[]},draftTeams:{teams:[]},captureRoundForResult:jest.fn(),setDecisionOpen:jest.fn(),
     roundSaveError,logError:jest.fn(),toast:{error:jest.fn()},he:{roundFinalizeFailed:'השמירה נכשלה'},__DEV__:false};
   vm.runInNewContext(ts.transpileModule('module.exports='+callback,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
   return{context,run:context.module.exports};
@@ -195,6 +197,7 @@ test('ending a stale round stops after the timer identity rejection instead of f
 
 test('ending a current untimed round still reaches tie selection without starting the clock',async()=>{
   const {context,run}=endRoundContext(jest.fn().mockResolvedValue(undefined));await run();
-  expect(context.gameService.prepareRoundResult).toHaveBeenCalledWith('evening','manager');expect(context.setDecisionOpen).toHaveBeenCalledWith(true);
+  expect(context.gameService.prepareRoundResult).toHaveBeenCalledWith('evening','manager',undefined,undefined,false,undefined,
+    expect.objectContaining({gameId:'evening',roundId:'round-one',playing:'0:1',fingerprint:expect.any(String)}));expect(context.setDecisionOpen).toHaveBeenCalledWith(true);
   expect(context.gameService.startTimer).not.toHaveBeenCalled();expect(context.finalizingRef.current).toBe(false);
 });

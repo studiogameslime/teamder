@@ -1,0 +1,115 @@
+{
+  "readAtUtc": "2026-10-17 23:26:16 UTC",
+  "items": [
+    {
+      "id": "cfd464d9c28a24deba0688c631ae1a71",
+      "operation": "liveFinalizeRoundTie",
+      "count": 2,
+      "lastSeen": "2026-10-17T23:03:40.084Z",
+      "firstSeen": "2026-10-17T22:53:31.218Z",
+      "message": "המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.",
+      "category": "action",
+      "status": "new",
+      "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "id": "b71c6ca0283e1a416df2b3b53b129028",
+      "operation": "govmapSearch",
+      "count": 23,
+      "lastSeen": "2026-10-17T22:57:36.189Z",
+      "firstSeen": "2026-10-16T07:03:33.484Z",
+      "message": "govmap autocomplete 403",
+      "category": "action",
+      "status": "new",
+      "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "id": "9e61d433fcd8c945f5b376220c9f5891",
+      "operation": "liveResolveTie",
+      "count": 1,
+      "lastSeen": "2026-10-17T22:31:05.030Z",
+      "firstSeen": "2026-10-17T22:31:05.030Z",
+      "message": "המשחק או ההרכב השתנו לאחר שמירת התוצאה. התוצאה נשמרה; יש לפתוח מחדש את בחירת ההרכבים.",
+      "category": "action",
+      "status": "new",
+      "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "id": "40e0ce8abee76cc992fd0f71ec9a3b55",
+      "operation": "liveFinalizeRound",
+      "count": 3,
+      "lastSeen": "2026-10-17T21:58:54.578Z",
+      "firstSeen": "2026-10-17T21:57:56.311Z",
+      "message": "המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.",
+      "category": "action",
+      "status": "new",
+      "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "id": "38f078c846cba1e91c7c5d6b959427b0",
+      "operation": "joryioRegisterPushToken",
+      "count": 68,
+      "lastSeen": "2026-10-17T19:59:11.557Z",
+      "firstSeen": "2026-10-12T04:10:17.473Z",
+      "message": "joryioRegisterPushToken",
+      "category": "silent",
+      "status": "new",
+      "userId": "YIZlKWBvvjae3oqgIoAMr9nzQEi1"
+    },
+    {
+      "id": "e33f74f42af2eede1e5cc0a66fc24583",
+      "operation": "liveFinalizeRoundTie",
+      "count": 1,
+      "lastSeen": "2026-10-17T17:52:58.397Z",
+      "firstSeen": "2026-10-17T17:52:58.397Z",
+      "message": "המשחק או הפנדלים השתנו. יש לחזור לבחירה ולבדוק את הנתונים המעודכנים.",
+      "category": "action",
+      "status": "new",
+      "userId": "YIZlKWBvvjae3oqgIoAMr9nzQEi1"
+    },
+    {
+      "id": "cebad9e75333c56e3ec40dbea9a3f8df",
+      "operation": "draftBoardLoad",
+      "count": 3,
+      "lastSeen": "2026-10-17T02:49:19.869Z",
+      "firstSeen": "2026-10-17T00:40:06.571Z",
+      "message": "SAVED_DRAFT_UNAVAILABLE",
+      "category": "action",
+      "status": "new",
+      "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "id": "50500b12eebcd88758e222e1d3367122",
+      "operation": "uncaught",
+      "count": 2,
+      "lastSeen": "2026-10-16T13:38:18.361Z",
+      "firstSeen": "2026-10-16T13:38:18.361Z",
+      "message": "Cannot find native module 'ExpoSecureStore'",
+      "category": "crash",
+      "status": "new",
+      "userId": "ERRkFYeqw1ReNZQB7ljnLRQUxSu2"
+    },
+    {
+      "id": "606e9df247a432b7c7c2f14a3d3f00ee",
+      "operation": "ensurePersonalGroupId",
+      "count": 1,
+      "lastSeen": "2026-10-16T07:03:16.989Z",
+      "firstSeen": "2026-10-16T07:03:16.989Z",
+      "message": "internal",
+      "category": "action",
+      "status": "new",
+      "userId": "YIZlKWBvvjae3oqgIoAMr9nzQEi1"
+    },
+    {
+      "id": "2ef60a1fdc17e25b4f6d09eb6b5d85f0",
+      "operation": "ensurePersonalGroup",
+      "count": 1,
+      "lastSeen": "2026-10-16T07:03:15.825Z",
+      "firstSeen": "2026-10-16T07:03:15.825Z",
+      "message": "internal",
+      "category": "action",
+      "status": "new",
+      "userId": "YIZlKWBvvjae3oqgIoAMr9nzQEi1"
+    }
+  ]
+}

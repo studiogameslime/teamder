@@ -48,6 +48,7 @@ import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
 import { logError, logUnexpected, isExpectedDenial } from '@/services/errorLog';
 import { StaleSessionError } from '@/services/staleSession';
+import { subscribeUserSession } from '@/services/userSessionListeners';
 
 export { StaleSessionError, isStaleSession } from '@/services/staleSession';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -186,14 +187,21 @@ export const groupService = {
       return () => {};
     }
     const q = query(col.groups(), where('playerIds', 'array-contains', userId));
-    let active = true, revision = 0;
-    const unsubscribe = onSnapshot(q, snap => {
-      const current = ++revision;
-      void Promise.all(snap.docs.map(d => d.data()).filter(g => g.isPersonal !== true).map(hydrateClubAdminRatings))
-        .then(groups => { if (active && current === revision && isCurrentSession(userId)) onChange(groups); })
-        .catch(error => { if (active && current === revision) onError?.(error); });
-    }, error => { if (active) onError?.(error); });
-    return () => { active = false; ++revision; unsubscribe(); };
+    const reportError = (error: unknown) => {
+      if (onError) onError(error);
+      else logError('subscribeForUser', error, { userId });
+    };
+    return subscribeUserSession(userId, () => isCurrentSession(userId), isActive => {
+      let active = true, revision = 0;
+      const unsubscribe = onSnapshot(q, snap => {
+        if (!active || !isActive()) return;
+        const current = ++revision;
+        void Promise.all(snap.docs.map(d => d.data()).filter(g => g.isPersonal !== true).map(hydrateClubAdminRatings))
+          .then(groups => { if (active && isActive() && current === revision) onChange(groups); })
+          .catch(error => { if (active && isActive() && current === revision) reportError(error); });
+      }, error => { if (active && isActive()) reportError(error); });
+      return () => { active = false; ++revision; unsubscribe(); };
+    }, reportError);
 
   },
 

@@ -41,13 +41,14 @@ const geometry = {
 };
 const rtl = I18nManager.isRTL;
 const logicalStart = (x: number, width: number, itemWidth: number) => rtl ? width - x - itemWidth / 2 : x - itemWidth / 2;
+const participantDiscSize = (height: number, concise: boolean) => concise ? (height < 145 ? 32 : 36) : height < 210 ? 42 : 52;
 
 function Participant({ person, x, y, width, height, active, visible, disabled, dive = 0, concise = false }: {
   person: PitchParticipant; x: number; y: number; width: number; height: number; active: boolean; visible: boolean; disabled?: boolean; dive?: number; concise?: boolean;
 }) {
   const reduced = useReducedMotion();
   const compact = height < 210;
-  const discSize = concise ? (height < 145 ? 32 : 36) : compact ? 42 : 52;
+  const discSize = participantDiscSize(height, concise);
   const slotWidth = compact ? 92 : 108;
   const halo = useSharedValue(0), entrance = useSharedValue(1), lunge = useSharedValue(0);
   useEffect(() => {
@@ -96,7 +97,10 @@ export function MatchActionPitch({ mode, primary, secondary, activeRole, status,
     ? {primary:{x:0.75,y:0.36},secondary:{x:0.25,y:0.52}}
     : {primary:{x:0.50,y:0.65},secondary:{x:0.50,y:0.13}}) : geometry[mode];
   const passStartY = positions.secondary.y - 0.11;
-  const shotStartY = positions.primary.y - (mode === 'goal' || height < 210 ? 0.10 : 0.13);
+  // Keep a penalty ball beside the kicker, clear of the keeper's labels above
+  // and the kicker disc itself. Use the same anchor before and after the ACK.
+  const shotStartX = mode === 'penalty' ? positions.primary.x + (participantDiscSize(height, height < 210) / 2 + 20) / width : positions.primary.x;
+  const shotStartY = mode === 'penalty' ? positions.primary.y : positions.primary.y - 0.10;
   useEffect(() => {
     const current = ++epoch.current;
     cancelAnimation(progress); cancelAnimation(net); cancelAnimation(celebration);
@@ -116,7 +120,7 @@ export function MatchActionPitch({ mode, primary, secondary, activeRole, status,
     return () => { epoch.current += 1; clearTimeout(timer); cancelAnimation(progress); cancelAnimation(net); cancelAnimation(celebration); };
   }, [visible, status, animationKey, mode, outcome, hasPass, reduced, progress, net, celebration]);
   const ballStyle = useAnimatedStyle(() => {
-    let x = mode === 'goal' ? (hasPass ? 0.25 : 0.75) : 0.5;
+    let x = hasPass ? 0.25 : shotStartX;
     let y = hasPass ? passStartY : shotStartY;
     const p = progress.value;
     if (mode === 'goal' && status !== 'saved') {
@@ -126,7 +130,7 @@ export function MatchActionPitch({ mode, primary, secondary, activeRole, status,
       const u = p / 0.44; x = 0.25 + 0.50 * u; y = passStartY + (shotStartY - passStartY) * u - Math.sin(Math.PI * u) * 0.035;
     } else {
       const u = mode === 'goal' && hasPass ? (p - 0.44) / 0.56 : p;
-      const startX = mode === 'goal' ? 0.75 : 0.50;
+      const startX = shotStartX;
       const startY = shotStartY;
       const endX = outcome === 'miss' ? 0.96 : outcome === 'save' ? 0.44 : 0.50;
       const endY = outcome === 'miss' ? 0.07 : outcome === 'save' ? 0.20 : 0.10;

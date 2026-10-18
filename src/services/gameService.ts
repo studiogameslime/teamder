@@ -1,6 +1,8 @@
 import { waitForJoinResult } from '@/utils/joinRequestResult';
 import { validateDraftRoster } from '@/utils/draftIntegrity';
 import { shootoutFingerprint, type ShootoutDecisionContext } from '@/utils/shootoutDecision';
+import { matchesRoundDecision, roundDecisionContext, type RoundDecisionContext } from '@/utils/roundDecision';
+import { liveLineupFingerprint } from '@/utils/liveLineupFingerprint';
 // gameService — read/write of the active game for a group, plus past
 // game-night history.
 //
@@ -69,6 +71,7 @@ import { saveMockRoundHistory } from '@/utils/mockRoundHistory';
 import { roundParticipantSides } from '@/utils/roundParticipants';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { waitForAuthRestore } from '@/firebase/auth';
+import { subscribeUserSession } from '@/services/userSessionListeners';
 import { withAuthRaceRetry } from '@/firebase/authRace';
 import { isStaleAfterStart, LATE_REG_GRACE_MS } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
@@ -156,7 +159,7 @@ function assertLiveRosterMember(
     ? (game.guests ?? []).some(guest => !guest.waitlisted && toGuestRosterId(guest.id) === playerId)
     : game.players.includes(playerId));
   if (!registered || game.arrivals?.[playerId] === 'no_show' || !roster.includes(playerId) || game.draftTeams.leftHome?.some(player => player.playerId === playerId)) {
-    throw new Error('השחקן אינו בהרכב הקבוצה. יש לבחור שוב.');
+    throw Object.assign(new Error('השחקן אינו בהרכב הקבוצה. יש לבחור שוב.'), {code:'LIVE_ROSTER_CHANGED'});
   }
 }
 
@@ -756,6 +759,121 @@ function waitForSavedDraft(gameId: string, expectedCreatedAt: number, signal?: A
       // initial event before returning the unsubscribe function.
       if (settled) cleanup();
     } catch (error) { finish(error); }
+  });
+}
+
+/** A server read immediately after an acknowledged clear can still contain
+ * the discarded series. Wait only for that exact board to become cleared;
+ * a different series, lineup, result or round must never pass this bridge. */
+function waitForClearedShootout(gameId: string, decision: ShootoutDecisionContext, expected: RoundDecisionContext, initial: Game | null): Promise<Game | null> {
+  const isDiscardedBoard = (game: Game | null) => !!game?.liveMatch?.shootout && game.id === decision.gameId &&
+    game.rotation && roundCommitKey(game.rotation) === decision.roundId && game.rotation.playing.join(':') === decision.playing &&
+    shootoutFingerprint(game.liveMatch.shootout) === decision.fingerprint &&
+    matchesRoundDecision({...game, liveMatch: {...game.liveMatch, shootout: undefined}}, expected);
+  if (!isDiscardedBoard(initial)) return Promise.resolve(initial);
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let unsubscribe: (() => void) | undefined;
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    const cleanup = () => {
+      if (deadline !== undefined) { clearTimeout(deadline); deadline = undefined; }
+      const stop = unsubscribe; unsubscribe = undefined; stop?.();
+    };
+    const finish = (error: unknown, game?: Game) => {
+      if (settled) return;
+      settled = true; cleanup();
+      if (error) reject(error); else resolve(game ?? null);
+    };
+    deadline = setTimeout(() => finish(Object.assign(new Error('לא התקבל אישור לעדכון הפנדלים. יש לנסות שוב.'), {code: 'CLEARED_SHOOTOUT_UNAVAILABLE'})), 8000);
+    try {
+      unsubscribe = onSnapshot(docs.game(gameId), {includeMetadataChanges: true}, snapshot => {
+        if (settled || snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) return;
+        try {
+          const game: Game | null = snapshot.exists() ? {...snapshot.data(), matches: []} : null;
+          if (game && !game.liveMatch?.shootout && matchesRoundDecision(game, expected)) { finish(undefined, game); return; }
+          if (isDiscardedBoard(game)) return;
+          finish(new Error('המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.'));
+        } catch (error) { finish(error); }
+      }, error => finish(error));
+      // A test adapter or cached subscriber can deliver before registration
+      // returns. Its unsubscribe must still run exactly once.
+      if (settled) cleanup();
+    } catch (error) { finish(error); }
+  });
+}
+
+/** The callable has acknowledged this round, but its first read can still
+ * expose the previous receipt. Only bridge the exact pre-commit board, and
+ * accept the acknowledged receipt with the existing lineup/clock guard. */
+function waitForCommittedRound(gameId: string, committedRoundId: string, source: Game, initial: Game,
+  sameBoard: (game: Game | null) => boolean): Promise<Game> {
+  const before = roundDecisionContext(source);
+  const isPrevious = (game: Game | null) => !!before && !!game && sameBoard(game) &&
+    game.lastCommittedRoundId === source.lastCommittedRoundId && matchesRoundDecision(game, before);
+  if (!isPrevious(initial)) return Promise.resolve(initial);
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let unsubscribe: (() => void) | undefined;
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    const cleanup = () => {
+      if (deadline !== undefined) { clearTimeout(deadline); deadline = undefined; }
+      const stop = unsubscribe; unsubscribe = undefined; stop?.();
+    };
+    const changed = () => new Error('המשחק או ההרכב השתנו לאחר שמירת התוצאה. התוצאה נשמרה; יש לפתוח מחדש את בחירת ההרכבים.');
+    const finish = (error: unknown, game?: Game) => {
+      if (settled) return;
+      settled = true; cleanup();
+      if (error) reject(error); else resolve(game!);
+    };
+    deadline = setTimeout(() => finish(Object.assign(changed(), {code: 'COMMITTED_ROUND_UNAVAILABLE'})), 8000);
+    try {
+      unsubscribe = onSnapshot(docs.game(gameId), {includeMetadataChanges: true}, snapshot => {
+        if (settled || snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) return;
+        try {
+          const game: Game | null = snapshot.exists() ? {...snapshot.data(), matches: []} : null;
+          if (game && game.lastCommittedRoundId === committedRoundId && sameBoard(game)) { finish(undefined, game); return; }
+          if (isPrevious(game)) return;
+          finish(changed());
+        } catch (error) { finish(error); }
+      }, error => finish(error));
+      if (settled) cleanup();
+    } catch (error) { finish(error); }
+  });
+}
+
+type LiveRosterMutationReceipt = {before: Game; after: Game};
+
+/** Bind a post-departure refill to the acknowledged transaction, rather than
+ * interpreting a cached full roster as evidence that nobody needs filling. */
+function waitForRosterMutation(gameId: string, receipt: LiveRosterMutationReceipt, initial: Game | null): Promise<Game | null> {
+  const before = roundDecisionContext(receipt.before), after = roundDecisionContext(receipt.after);
+  const eligible = (game: Game | null) => !!game?.rotation && !['finished', 'cancelled'].includes(game.status) &&
+    game.lastCommittedRoundId !== roundCommitKey(game.rotation);
+  const same = (game: Game | null, reference: Game, expected: RoundDecisionContext | undefined) => !!game && !!expected && eligible(game) &&
+    game.id === gameId && game.format === reference.format && game.advancedFillMode === reference.advancedFillMode && matchesRoundDecision(game, expected);
+  const changed = () => new Error('המשחק או ההרכב השתנו. יש לבדוק את המצב המעודכן לפני השלמת הקבוצות.');
+  if (same(initial, receipt.after, after)) return Promise.resolve(initial);
+  if (!same(initial, receipt.before, before)) return Promise.reject(changed());
+  return new Promise((resolve, reject) => {
+    let settled = false, unsubscribe: (() => void) | undefined;
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    const cleanup = () => {if (deadline !== undefined) {clearTimeout(deadline); deadline = undefined;} const stop = unsubscribe; unsubscribe = undefined; stop?.();};
+    const finish = (error: unknown, game?: Game) => {
+      if (settled) return; settled = true; cleanup();
+      if (error) reject(error); else resolve(game ?? null);
+    };
+    deadline = setTimeout(() => finish(Object.assign(new Error('לא התקבל אישור להרכב המעודכן. יש לפתוח שוב את השלמת הקבוצות.'), {code: 'ROSTER_READ_UNAVAILABLE'})), 8000);
+    try {
+      unsubscribe = onSnapshot(docs.game(gameId), {includeMetadataChanges: true}, snapshot => {
+        if (settled || snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) return;
+        try {
+          const game: Game | null = snapshot.exists() ? {...snapshot.data(), matches: []} : null;
+          if (same(game, receipt.after, after)) {finish(undefined, game!); return;}
+          if (!same(game, receipt.before, before)) finish(changed());
+        } catch (error) {finish(error);}
+      }, error => finish(error));
+      if (settled) cleanup();
+    } catch (error) {finish(error);}
   });
 }
 
@@ -1608,8 +1726,9 @@ export const gameService = {
     } catch (err) {
       logError('getCommunityChampionship', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityChampionship failed', err);
-      if (strict) throw err;
-      return empty;
+      // `strict` remains in the signature for existing callers. A failed
+      // authoritative read is never a successfully empty championship.
+      throw err;
     }
   },
 
@@ -1670,7 +1789,7 @@ export const gameService = {
     } catch (err) {
       logError('getCommunityTotals', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityTotals failed', err);
-      return { goals: 0, rounds: 0 };
+      throw err;
     }
   },
 
@@ -2514,38 +2633,50 @@ export const gameService = {
     // upcoming games, not the user's entire history (which would re-read every
     // historical game on attach and on any change). See MY_GAMES_WINDOW_MS.
     const floor = myGamesFloor();
-    const unsubA = onSnapshot(
-      query(
-        col.games(),
-        where('participantIds', 'array-contains', userId),
-        where('startsAt', '>=', floor),
-      ),
-      (snap) => {
-        participatingDocs = new Map(
-          snap.docs.map((d) => [d.id, { ...d.data(), matches: [] } as Game]),
+    return subscribeUserSession(userId, () => getFirebase().auth.currentUser?.uid === userId, isActive => {
+      participatingDocs = new Map();
+      createdDocs = new Map();
+      const fail = (error: unknown) => { if (isActive()) onErr(error); };
+      const unsubA = onSnapshot(
+        query(
+          col.games(),
+          where('participantIds', 'array-contains', userId),
+          where('startsAt', '>=', floor),
+        ),
+        (snap) => {
+          if (!isActive()) return;
+          participatingDocs = new Map(
+            snap.docs.map((d) => [d.id, { ...d.data(), matches: [] } as Game]),
+          );
+          emit();
+        },
+        fail,
+      );
+      try {
+        const unsubB = onSnapshot(
+          query(
+            col.games(),
+            where('createdBy', '==', userId),
+            where('startsAt', '>=', floor),
+          ),
+          (snap) => {
+            if (!isActive()) return;
+            createdDocs = new Map(
+              snap.docs.map((d) => [d.id, { ...d.data(), matches: [] } as Game]),
+            );
+            emit();
+          },
+          fail,
         );
-        emit();
-      },
-      onErr,
-    );
-    const unsubB = onSnapshot(
-      query(
-        col.games(),
-        where('createdBy', '==', userId),
-        where('startsAt', '>=', floor),
-      ),
-      (snap) => {
-        createdDocs = new Map(
-          snap.docs.map((d) => [d.id, { ...d.data(), matches: [] } as Game]),
-        );
-        emit();
-      },
-      onErr,
-    );
-    return () => {
-      unsubA();
-      unsubB();
-    };
+        return () => {
+          unsubA();
+          unsubB();
+        };
+      } catch (error) {
+        unsubA();
+        throw error;
+      }
+    }, onErr);
   },
 
   /**
@@ -3722,7 +3853,8 @@ export const gameService = {
     expectedSettings?: Pick<Game, 'numberOfTeams' | 'format'>,
   ): Promise<void> {
     if (!gameId) return;
-    const validateRoster = (game: Pick<Game, 'players' | 'guests' | 'status' | 'numberOfTeams' | 'format'>) => {
+    const validateRoster = (game: Pick<Game, 'players' | 'guests' | 'status' | 'numberOfTeams' | 'format' | 'draftTeams'>) => {
+      if(game.status==='finished'||game.status==='cancelled')throw new Error('ROUND_CLOSED');
       if (!validateActiveRoster || !draft) return;
       validateDraftRoster(draft, game, expectedSettings);
     };
@@ -3740,16 +3872,21 @@ export const gameService = {
     // An explicit save replaces the allocation, including during live play.
     // Completed mini-games have their own participant snapshots; they are not
     // this mutable allocation. Never accept an old originalTeams from a caller.
-    const withOriginal: DraftTeamsResult | null = draft
-      ? {
-          ...draft,
-          originalTeams: draft.teams.map((t) => ({ ...t, playerIds: [...(t.playerIds ?? [])] })),
-        }
-      : null;
+    const prepareDraft = (current: Pick<Game,'draftTeams'>): DraftTeamsResult | null => {
+      if(!draft)return null;
+      const leftHome=current.draftTeams?.leftHome??[];
+      const departed=new Set(leftHome.map(entry=>entry.playerId));
+      const teams=draft.teams.map(team=>{
+        const playerIds=team.playerIds.filter(id=>!departed.has(id));
+        return {...team,playerIds,captainId:playerIds.includes(team.captainId)?team.captainId:playerIds[0]??''};
+      });
+      return {...draft,teams,leftHome:leftHome.map(entry=>({...entry})),
+        originalTeams:teams.map(team=>({...team,playerIds:[...team.playerIds]}))};
+    };
     // Build against the transaction's current rotation, not a preflight read.
     // Otherwise reset/loan return can resurrect the previous allocation, or a
     // concurrent round transition can be overwritten by a stale rotation.
-    const replacementRotation = (current: Pick<Game, 'rotation'>): Game['rotation'] => {
+    const replacementRotation = (current: Pick<Game, 'rotation'>, withOriginal: DraftTeamsResult | null): Game['rotation'] => {
       if (!current.rotation || !withOriginal) return current.rotation;
       const indices = new Set(withOriginal.teams.map(t => t.index));
       if (current.rotation.playing.some(index => !indices.has(index))) {
@@ -3770,7 +3907,8 @@ export const gameService = {
       const m = mockGamesV2.find((x) => x.id === gameId);
       if (m) {
         validateRoster(m);
-        m.rotation = replacementRotation(m);
+        const withOriginal=prepareDraft(m);
+        m.rotation = replacementRotation(m,withOriginal);
         m.draftTeams = withOriginal ?? undefined;
         m.teamsEditedManually = !!draft;
         m.teamBalanceMeta = meta;
@@ -3779,7 +3917,6 @@ export const gameService = {
       return;
     }
     const patch = {
-      draftTeams: withOriginal ?? null,
       teamBalanceMeta: meta ?? null,
       // Any client-side save is a deliberate human split (manual draft or the
       // admin's auto-balance button) → mark it so the scheduled auto-generator
@@ -3794,9 +3931,11 @@ export const gameService = {
       if (!snap.exists()) throw new Error('GAME_NOT_FOUND');
       const current = snap.data();
       validateRoster(current);
+      const withOriginal=prepareDraft(current);
       tx.update(ref, stripUndefined({
         ...patch,
-        ...(withOriginal && current.rotation ? { rotation: replacementRotation(current) } : {}),
+        draftTeams:withOriginal,
+        ...(withOriginal && current.rotation ? { rotation: replacementRotation(current,withOriginal) } : {}),
       }));
     });
   },
@@ -4504,7 +4643,7 @@ export const gameService = {
       if (!so || g.status === 'finished' || g.status === 'cancelled') throw new Error('SHOOTOUT_CLOSED');
       if (opts.expectedRoundId && (!g.rotation || roundCommitKey(g.rotation) !== opts.expectedRoundId)) throw new Error('SHOOTOUT_CHANGED');
       if (opts.expectedKickCount !== undefined && ((so.kicks ?? []).length !== opts.expectedKickCount ||
-        opts.team !== ((so.kicks ?? []).length % 2 === 0 ? so.firstTeam : so.firstTeam === 'A' ? 'B' : 'A'))) throw new Error('SHOOTOUT_CHANGED');
+        opts.team !== ((so.kicks ?? []).length % 2 === 0 ? so.firstTeam : so.firstTeam === 'A' ? 'B' : 'A'))) throw Object.assign(new Error('SHOOTOUT_CHANGED'), {code:'LIVE_KICK_CHANGED'});
       assertLiveRosterMember(g, opts.team, opts.kickerId, !!opts.expectedRoundId);
       assertLiveRosterMember(g, opts.team === 'A' ? 'B' : 'A', opts.keeperId, !!opts.expectedRoundId);
     };
@@ -4584,7 +4723,9 @@ export const gameService = {
       const m =
         mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
       const so = m?.liveMatch?.shootout;
+      if (expectedId && !(so?.kicks ?? []).some(kick => kick.id === expectedId)) return;
       if (expectedId && so?.kicks?.at(-1)?.id !== expectedId) throw new Error('SHOOTOUT_CHANGED');
+      if (m?.status === 'finished' || m?.status === 'cancelled') throw new Error('SHOOTOUT_CLOSED');
       if (so?.kicks?.length) so.kicks = so.kicks.slice(0, -1);
       // The mock live subscription polls the game's `updatedAt`; without this
       // bump the undo never reaches the screen in demo mode.
@@ -4598,6 +4739,7 @@ export const gameService = {
       const cur = snap.data();
       const kicks = cur?.liveMatch?.shootout?.kicks;
       if (!cur || !kicks?.length) return;
+      if (expectedId && !kicks.some(kick => kick.id === expectedId)) return;
       if (expectedId && kicks[kicks.length - 1].id !== expectedId) throw new Error('SHOOTOUT_CHANGED');
       if (cur.status === 'finished' || cur.status === 'cancelled') throw new Error('SHOOTOUT_CLOSED');
       tx.update(ref, { 'liveMatch.shootout.kicks': kicks.slice(0, -1), updatedAt: Date.now() });
@@ -4680,6 +4822,7 @@ export const gameService = {
           // The server binds the payload to this exact live goal log and uses
           // the game's update time as an atomic precondition on the batch.
           liveGoalIds: (lm.goals ?? []).map((goal) => goal.id),
+          liveLineupFingerprint: liveLineupFingerprint({rotation:rot,draftTeams:draft}),
           rotationUpdatedAt: rot.updatedAt ?? null,
           sideA,
           sideB,
@@ -4829,12 +4972,14 @@ export const gameService = {
    *  over-full) — in which case no picker is needed. */
   async prepareRefillPlaying(
     gameId: string,
+    acknowledged?: LiveRosterMutationReceipt,
   ): Promise<{ skeleton: RotationFillState; draft: DraftTeamsResult } | null> {
     if (!gameId) return null;
-    const g = await this.getGameById(gameId);
+    let g = await this.getGameById(gameId, {source: 'server'});
+    if (acknowledged?.after.rotation) g = await waitForRosterMutation(gameId, acknowledged, g);
     const draft = g?.draftTeams;
     const rot = g?.rotation;
-    if (!g || !draft || !rot) return null;
+    if (!g || !draft || !rot || ['finished', 'cancelled'].includes(g.status) || g.lastCommittedRoundId === roundCommitKey(rot)) return null;
     const perTeam = playersPerTeamFor(g.format);
     const fillMode = effFillMode(g, draft);
     const teams: RotationTeam[] = draft.teams.map((t) => ({
@@ -4879,6 +5024,7 @@ export const gameService = {
     tieResolution?: 'bothOut' | 'veteranOut',
     committedOnly = false,
     nonPenaltyDecision?: ShootoutDecisionContext,
+    expectedDecision?: RoundDecisionContext,
   ): Promise<
     | { outcome: 'A' | 'B' | 'tie'; skeleton: RotationFillState; draft: DraftTeamsResult }
     | { outcome: null }
@@ -4887,7 +5033,13 @@ export const gameService = {
     if (!gameId) return null;
     // A confirmed clearShootout must not be followed by an older cached
     // shootout. Keep the decision guard, but check authoritative state.
-    let g = await this.getGameById(gameId, nonPenaltyDecision ? { source: 'server' } : undefined);
+    let g = await this.getGameById(gameId, nonPenaltyDecision || expectedDecision ? { source: 'server' } : undefined);
+    if (nonPenaltyDecision && expectedDecision && !USE_MOCK_DATA) {
+      g = await waitForClearedShootout(gameId, nonPenaltyDecision, expectedDecision, g);
+    }
+    if (expectedDecision && (!g || !matchesRoundDecision(g, expectedDecision))) {
+      throw new Error('המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.');
+    }
     if (nonPenaltyDecision && (nonPenaltyDecision.gameId !== gameId || !g?.rotation || roundCommitKey(g.rotation) !== nonPenaltyDecision.roundId ||
       g.rotation.playing.join(':') !== nonPenaltyDecision.playing || g.liveMatch?.shootout)) {
       throw new Error('המשחק או הפנדלים השתנו. יש לחזור לבחירה ולבדוק את הנתונים המעודכנים.');
@@ -4898,6 +5050,9 @@ export const gameService = {
       g = await this.getGameById(gameId);
       if (!g?.rotation || roundCommitKey(g.rotation) !== expectedRoundId) {
         throw new Error('המשחק התחלף. יש לפתוח מחדש את מסך המשחק.');
+      }
+      if (expectedDecision && !matchesRoundDecision(g, expectedDecision)) {
+        throw new Error('המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.');
       }
     }
     const lm = g?.liveMatch;
@@ -4928,15 +5083,20 @@ export const gameService = {
     // The callable acknowledgement is not a listener/cache acknowledgement.
     // Anchor the next proposal to the server's saved board, not the snapshot
     // from before the result write. A changed lineup still refuses the proposal.
-    const saved = await this.getGameById(gameId, { source: 'server' });
-    if (!saved?.rotation || saved.lastCommittedRoundId !== committedRoundId ||
-      roundCommitKey(saved.rotation) !== committedRoundId ||
-      ['finished', 'cancelled'].includes(saved.status) ||
-      rotationWriteSource({ ...saved, status: g.status, liveMatch: g.liveMatch }) !== rotationWriteSource(g) ||
-      (saved.liveMatch?.timerRunning && !lm.timerRunning)) {
+    const sourceGame = g;
+    const sameSavedBoard = (next: Game | null) => !!next?.rotation && roundCommitKey(next.rotation) === committedRoundId &&
+      !['finished', 'cancelled'].includes(next.status) &&
+      rotationWriteSource({ ...next, status: sourceGame.status, liveMatch: sourceGame.liveMatch }) === rotationWriteSource(sourceGame) &&
+      !(next.liveMatch?.timerRunning && !lm.timerRunning);
+    let saved = await this.getGameById(gameId, { source: 'server' });
+    if (saved && saved.lastCommittedRoundId !== committedRoundId && saved.lastCommittedRoundId === sourceGame.lastCommittedRoundId &&
+      sameSavedBoard(saved) && !USE_MOCK_DATA) {
+      saved = await waitForCommittedRound(gameId, committedRoundId, sourceGame, saved, sameSavedBoard);
+    }
+    if (!sameSavedBoard(saved) || saved?.lastCommittedRoundId !== committedRoundId) {
       throw new Error('המשחק או ההרכב השתנו לאחר שמירת התוצאה. התוצאה נשמרה; יש לפתוח מחדש את בחירת ההרכבים.');
     }
-    g = saved;
+    g = saved!;
 
     const perTeam = playersPerTeamFor(g.format);
     const fillMode = effFillMode(g, draft);
@@ -4947,14 +5107,16 @@ export const gameService = {
     if (isTie && tieMode) {
       const next = recordTieSkeleton(teams, rot, perTeam, fillMode, tieMode);
       const prepared = draft.completionMode === 'balanced' ? {...prepareBalancedNext(next, rot), teams:liveRosterTeams(g,draft)} : next;
-      return { outcome: 'tie', skeleton: { ...prepared, source: rotationWriteSource(g) }, draft };
+      const preserved = rot.baseTeams ? {...prepared, rotation: {...prepared.rotation, baseTeams: rot.baseTeams}} : prepared;
+      return { outcome: 'tie', skeleton: { ...preserved, source: rotationWriteSource(g) }, draft };
     }
     const winnerIdx = winnerSide === 'A' ? idxA : idxB;
     const next = recordWinnerSkeleton(winnerIdx, teams, rot, perTeam, fillMode);
     const prepared = draft.completionMode === 'balanced' ? {...prepareBalancedNext(next, rot), teams:liveRosterTeams(g,draft)} : next;
+    const preserved = rot.baseTeams ? {...prepared, rotation: {...prepared.rotation, baseTeams: rot.baseTeams}} : prepared;
     return {
       outcome: winnerSide as 'A' | 'B',
-      skeleton: { ...prepared, source: rotationWriteSource(g) },
+      skeleton: { ...preserved, source: rotationWriteSource(g) },
       draft,
     };
   },
@@ -5069,7 +5231,7 @@ export const gameService = {
         return {
           ...(orig ?? {}),
           index: rt.index,
-          captainId: orig?.captainId ?? rt.playerIds[0] ?? '',
+          captainId: orig?.captainId && rt.playerIds.includes(orig.captainId) ? orig.captainId : rt.playerIds[0] ?? '',
           playerIds: rt.playerIds,
         };
       }),
@@ -5253,39 +5415,43 @@ export const gameService = {
    */
   async retireEmptyTeam(gameId: string, teamIndex: number): Promise<boolean> {
     if (!gameId || typeof teamIndex !== 'number') return false;
-    const g = await this.getGameById(gameId);
-    const rot = g?.rotation;
-    if (!rot) return false;
-    // Must still be WAITING, and must still be empty.
-    if (!rot.waiting.includes(teamIndex)) return false;
-    const roster = g?.draftTeams?.teams.find((t) => t.index === teamIndex);
-    if (!roster || roster.playerIds.length > 0) return false;
-    const waiting = rot.waiting.filter((i) => i !== teamIndex);
+    const changed = (g: Game) => {
+      const rot = g.rotation;
+      if (!rot || g.status === 'finished' || g.status === 'cancelled') return null;
+      // Recheck inside the write, so a team that just entered or was refilled
+      // cannot disappear from the queue under another manager's stale prompt.
+      if (!rot.waiting.includes(teamIndex) || rot.playing.includes(teamIndex)) return null;
+      const roster = g.draftTeams?.teams.find(t => t.index === teamIndex);
+      if (!roster || roster.playerIds.length > 0) return null;
+      return {rotation:{...rot,waiting:rot.waiting.filter(i=>i!==teamIndex),updatedAt:Date.now()},updatedAt:Date.now()};
+    };
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
-      if (m && m.rotation) {
-        m.rotation = { ...m.rotation, waiting, updatedAt: Date.now() };
-        m.updatedAt = Date.now();
-      }
+      if (!m) return false;
+      const patch = changed(m);
+      if (!patch) return false;
+      Object.assign(m,patch);
       return true;
     }
-    // Field path, not the whole rotation — a concurrent fill or timer write
-    // must not be clobbered.
-    await updateGameDoc(gameId, {
-      'rotation.waiting': waiting,
-      'rotation.updatedAt': Date.now(),
-      updatedAt: Date.now(),
+    return runTransaction(getFirebase().db,async tx=>{
+      const ref=docs.game(gameId),snapshot=await tx.get(ref);
+      if(!snapshot.exists())return false;
+      const patch=changed(snapshot.data() as Game);
+      if(!patch)return false;
+      tx.update(ref,patch);
+      return true;
     });
-    return true;
   },
 
-  async markPlayerWentHome(gameId: string, playerId: string): Promise<void> {
+  async markPlayerWentHome(gameId: string, playerId: string): Promise<LiveRosterMutationReceipt | undefined> {
     if (!gameId || !playerId) return;
-    const g = await this.getGameById(gameId);
-    const draft = g?.draftTeams;
-    if (!draft) return;
+    const changed = (g: Game) => {
+    if (g.status === 'finished' || g.status === 'cancelled') throw new Error('לא ניתן לשנות הרכב במחזור שהסתיים או בוטל');
+    const draft = g.draftTeams;
+    if (!draft || draft.leftHome?.some(entry => entry.playerId === playerId)) return null;
     const team = draft.teams.find((t) => t.playerIds.includes(playerId));
-    const homeTeam = team?.index ?? draft.teams[0]?.index ?? 0;
+    if (!team) throw new Error('השחקן כבר אינו בהרכב. יש לרענן את המסך.');
+    const homeTeam = team.index;
     const teams = draft.teams.map((t) => ({
       ...t,
       playerIds: t.playerIds.filter((p) => p !== playerId),
@@ -5307,15 +5473,24 @@ export const gameService = {
         updatedAt: Date.now(),
       };
     }
+    return patch;
+    };
     if (USE_MOCK_DATA) {
-      const m = mockGamesV2.find((x) => x.id === gameId);
-      if (m) {
-        m.draftTeams = newDraft;
-        if (patch.rotation) m.rotation = patch.rotation as import('@/types').MatchRotation;
-      }
-      return;
+      const current = mockGamesV2.find(x => x.id === gameId);
+      if (!current) throw new Error('המחזור לא נמצא');
+      const patch = changed(current);
+      const before = {...current};
+      if (patch) Object.assign(current, patch);
+      return {before, after: {...current}};
     }
-    await updateGameDoc(gameId, patch);
+    return await runTransaction(getFirebase().db, async tx => {
+      const ref = docs.game(gameId), snapshot = await tx.get(ref);
+      if (!snapshot.exists()) throw new Error('המחזור לא נמצא');
+      const before = snapshot.data() as Game;
+      const patch = changed(before);
+      if (patch) tx.update(ref, patch as UpdateData<Game>);
+      return {before, after: {...before, ...patch} as Game};
+    });
   },
 
   /** Restore a player who had gone home: put them back on their original team
@@ -5333,13 +5508,14 @@ export const gameService = {
    */
   async restorePlayer(gameId: string, playerId: string): Promise<void> {
     if (!gameId || !playerId) return;
-    const g = await this.getGameById(gameId);
-    const draft = g?.draftTeams;
-    if (!draft) return;
+    const changed = (g: Game) => {
+    if (g.status === 'finished' || g.status === 'cancelled') throw new Error('לא ניתן לשנות הרכב במחזור שהסתיים או בוטל');
+    const draft = g.draftTeams;
+    if (!draft) return null;
     // Only restore someone who was actually marked "went home" — guards against
     // a stray/double call silently dropping the player onto team 0 (B32).
     const entry = (draft.leftHome ?? []).find((l) => l.playerId === playerId);
-    if (!entry) return;
+    if (!entry) return null;
     const homeTeam = entry.homeTeam ?? draft.teams[0]?.index ?? 0;
     // Which side he rejoins — see src/utils/restoreTarget.ts. Retiring an
     // emptied team leaves it in draftTeams while removing it from the
@@ -5386,7 +5562,6 @@ export const gameService = {
             (p) =>
               !baseHere.has(p) &&
               p !== playerId &&
-              !isGuestId(p) &&
               rot.baseTeams!.some((b) => b.playerIds.includes(p)),
           );
         const fillerHome =
@@ -5405,24 +5580,33 @@ export const gameService = {
       }
     }
 
+    if (!rot?.baseTeams?.length && effectiveRosterOf(targetIdx, teams, loans).length > perTeam && effFillMode(g, draft) === 'permanent') {
+      throw Object.assign(new Error('הקבוצה מלאה ולא ניתן לזהות בבטחה מי צריך לחזור לקבוצתו. פנו מקום במסך החילופים ואז נסו שוב.'), {code: 'RESTORE_REQUIRES_SPACE'});
+    }
     const leftHome = (draft.leftHome ?? []).filter((l) => l.playerId !== playerId);
     const newDraft = { ...draft, teams, leftHome };
     const newRotation =
       loansChanged && rot ? { ...rot, loans, updatedAt: Date.now() } : undefined;
-    if (USE_MOCK_DATA) {
-      const m = mockGamesV2.find((x) => x.id === gameId);
-      if (m) {
-        m.draftTeams = newDraft;
-        if (newRotation) m.rotation = newRotation;
-      }
-      return;
-    }
     const patch: Record<string, unknown> = {
       draftTeams: newDraft,
       updatedAt: Date.now(),
     };
     if (newRotation) patch.rotation = newRotation;
-    await updateGameDoc(gameId, patch);
+    return patch;
+    };
+    if (USE_MOCK_DATA) {
+      const current = mockGamesV2.find(x => x.id === gameId);
+      if (!current) throw new Error('המחזור לא נמצא');
+      const patch = changed(current);
+      if (patch) Object.assign(current, patch);
+      return;
+    }
+    await runTransaction(getFirebase().db, async tx => {
+      const ref = docs.game(gameId), snapshot = await tx.get(ref);
+      if (!snapshot.exists()) throw new Error('המחזור לא נמצא');
+      const patch = changed(snapshot.data() as Game);
+      if (patch) tx.update(ref, patch as UpdateData<Game>);
+    });
   },
 
   /**
@@ -8258,6 +8442,7 @@ export const gameService = {
   subscribeLiveGame(
     gameId: string,
     cb: (data: {
+      game?: Game;
       liveMatch: LiveMatchState | null;
       rotation?: import('@/types').MatchRotation;
       draftTeams?: DraftTeamsResult;
@@ -8271,7 +8456,7 @@ export const gameService = {
       // start — the mutation landed but the one-shot callback never re-fired.
       const fire = () => {
         const g = mockGamesV2.find((x) => x.id === gameId);
-        cb({ liveMatch: g?.liveMatch ?? null, rotation: g?.rotation, draftTeams: g?.draftTeams, lastCommittedRoundId:g?.lastCommittedRoundId });
+        cb({ game:g, liveMatch: g?.liveMatch ?? null, rotation: g?.rotation, draftTeams: g?.draftTeams, lastCommittedRoundId:g?.lastCommittedRoundId });
       };
       fire();
       let lastStamp = mockGamesV2.find((x) => x.id === gameId)?.updatedAt ?? 0;
@@ -8290,7 +8475,7 @@ export const gameService = {
       (snap) => {
         if (!snap.exists()) return cb({ liveMatch: null });
         const g = snap.data();
-        cb({ liveMatch: g.liveMatch ?? null, rotation: g.rotation, draftTeams: g.draftTeams, lastCommittedRoundId:g.lastCommittedRoundId });
+        cb({ game:{...g,matches:[]}, liveMatch: g.liveMatch ?? null, rotation: g.rotation, draftTeams: g.draftTeams, lastCommittedRoundId:g.lastCommittedRoundId });
       },
       (err) => {
         logError('subscribeLiveGame', err, { gameId });
@@ -8608,6 +8793,7 @@ export const gameService = {
       await assertGuestPermission(g.createdBy, g.groupId, callerId);
       g.guests = (g.guests ?? []).filter((x) => x.id !== guestId);
       g.liveMatch = stripFromLive(g.liveMatch);
+      Object.assign(g, pruneMemberFromTeams({ ...g }, rosterId));
       g.updatedAt = Date.now();
       mockLiveSubscribers.get(gameId)?.forEach((cb) => cb(g.liveMatch ?? null));
       logEvent(AnalyticsEvent.GuestRemoved, { gameId });
@@ -8634,6 +8820,7 @@ export const gameService = {
         const nextLive = stripFromLive(data.liveMatch);
         tx.update(ref, {
           guests: nextGuests,
+          ...pruneMemberFromTeams({ ...data }, rosterId),
           ...(nextLive ? { liveMatch: nextLive } : {}),
           updatedAt: Date.now(),
         });

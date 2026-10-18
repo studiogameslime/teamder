@@ -1,0 +1,478 @@
+{
+  "scope": "Existing QA account/club and exactly three newly receipted test evenings; old three only compared for integrity.",
+  "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+  "clubId": "J060YQu6QTcgk3glUDj2",
+  "roundIds": [
+    "Ra5ZBzOUjR5zQlMojHke",
+    "FQ4T7izEbuYfprKFS75n",
+    "cF3CjQbLH8vzo7uaFqHx"
+  ],
+  "finalAudit": {
+    "passed": 442,
+    "openFailures": 0,
+    "historicalResolvedFailures": 3
+  },
+  "capturedElevenSources": 28,
+  "files": [
+    {
+      "file": "data-eleven-alternative-before-confirm.json",
+      "kind": "captured-source",
+      "sha256": "37ac62a2bdaf4760464e3b59bbf1cb8111fba98ecaeea002fd671b212a7011a4",
+      "bytes": 111252,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-alternative-before-confirm.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-auto-refill-fixed.json",
+      "kind": "captured-source",
+      "sha256": "27f582f886252c1d726c3e3f1710864394c4f86b9bdd0d089c52561af9db4cf3",
+      "bytes": 110814,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-auto-refill-fixed.json",
+      "usedInFinalAudit": false,
+      "note": "קודם לבחירת המשלים: מצב אחרי יציאה ותיקון מסלול קבלת ההצעה. אין לראות בו אישור מילוי."
+    },
+    {
+      "file": "data-eleven-auto-refill-restored.json",
+      "kind": "captured-source",
+      "sha256": "2e9d30f128ff6f8598f80cdfe85656a75470051601a4700b8b9797e4857aae2e",
+      "bytes": 110690,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-auto-refill-restored.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-auto-refill-saved.json",
+      "kind": "captured-source",
+      "sha256": "b6ea1c0126d58dab6f08faa979c0c622096603bc445ce3ce5b5c605a23031b8f",
+      "bytes": 110814,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-auto-refill-saved.json",
+      "usedInFinalAudit": true,
+      "note": "לפני תיקון: קפטן05 נשאר רשום בירוקים לאחר שעבר לאדומים. נשמר כראיית הכשל."
+    },
+    {
+      "file": "data-eleven-captain-fixed-restored.json",
+      "kind": "captured-source",
+      "sha256": "d307853df2ad781d5ef217f8cc2efffea7ba6e360a4ca8ec9ab984af11c38a0b",
+      "bytes": 123960,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-captain-fixed-restored.json",
+      "usedInFinalAudit": true,
+      "note": "לפני תיקון ההחזרה: אדומים12/כחולים10/ירוקים11. נתון פגום מתועד, ולא מקור הרכבים תקין."
+    },
+    {
+      "file": "data-eleven-captain-fixed-saved.json",
+      "kind": "captured-source",
+      "sha256": "78be37d3b7a152557ac7838e98ece9a3ed2c751fb981d17a4bc530ae12a8920a",
+      "bytes": 124084,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-captain-fixed-saved.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-captains-saved.json",
+      "kind": "captured-source",
+      "sha256": "03b5cb94bd737baacf8bf9bb09a12685cca4d7e57eb1e99fd26ec5fe737fe784",
+      "bytes": 108038,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-captains-saved.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-clock-paused.json",
+      "kind": "captured-source",
+      "sha256": "c8fdd2f2393cfe353ff710f964e6e70407367b250796b9257b84b01989efc9bc",
+      "bytes": 123921,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-clock-paused.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-created.json",
+      "kind": "captured-source",
+      "sha256": "97fbcbb5bcda227d54c3de4874429e4df29dfc2ce494b6ac82be2e1266cec626",
+      "bytes": 96894,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-created.json",
+      "usedInFinalAudit": false
+    },
+    {
+      "file": "data-eleven-finished.json",
+      "kind": "captured-source",
+      "sha256": "a65ad35de8e55cb98c3683b8447ceb29ddab383a153784f11b6f22916a88b8d1",
+      "bytes": 152767,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-finished.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-full-roster.json",
+      "kind": "captured-source",
+      "sha256": "5f9ee12cf32b6c7ab0d23bb1ca9b63575aa105cb9a49fed7db16786396222056",
+      "bytes": 103774,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-full-roster.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-goals-two.json",
+      "kind": "captured-source",
+      "sha256": "01e3fd52347ac87c93398410869f629264821bf21173912a6604c82ae6efb63b",
+      "bytes": 131805,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-goals-two.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-legacy-before-restore.json",
+      "kind": "captured-source",
+      "sha256": "9309cd41f58b5c6f0eb82788f10b39fb79660ad738dcba03ce2012bb1d4bf440",
+      "bytes": 131931,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-legacy-before-restore.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-legacy-denied-confirmed.json",
+      "kind": "captured-source",
+      "sha256": "276982d3e3b87af46a9b5a488fda2f1f28d527dbedd44cf6ac64cfde71076a63",
+      "bytes": 131933,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-legacy-denied-confirmed.json",
+      "usedInFinalAudit": true,
+      "note": "אחרי אישור בפועל: המקור שווה למקור שלפני הבקשה בכל השדות שהוחזרו כולל updatedAt. updateTime לא נשמר."
+    },
+    {
+      "file": "data-eleven-legacy-restore-blocked.json",
+      "kind": "captured-source",
+      "sha256": "49b61671adfe263c17648125b7ee12def4804e9368be4eea8d0a8d3b985eaaf5",
+      "bytes": 131932,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-legacy-restore-blocked.json",
+      "usedInFinalAudit": false,
+      "note": "מקור מוקדם לפני אישור בפועל; אינו מוכיח בקשת החזרה שנדחתה."
+    },
+    {
+      "file": "data-eleven-legacy-restored-after-space.json",
+      "kind": "captured-source",
+      "sha256": "af5e7057e1c3022bbd2ce8c12ee40d8982295b5ce50d29983e9d36af8f39f83e",
+      "bytes": 131810,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-legacy-restored-after-space.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-legacy-space-freed.json",
+      "kind": "captured-source",
+      "sha256": "b0a66388106b13131a7480213ef5498a4d3381e3015834b4dfc070bd79399432",
+      "bytes": 131970,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-legacy-space-freed.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-network-offline.json",
+      "kind": "captured-source",
+      "sha256": "226a78ac601359c51164afed7540daf222a1d279bc17106a1d42c87fc49f3862",
+      "bytes": 131042,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-network-offline.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-network-reconnected.json",
+      "kind": "captured-source",
+      "sha256": "4ee111be4bfd37b265fb9ab20a329779336e32a6dce300fd3d068f46928f704a",
+      "bytes": 131426,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-network-reconnected.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-penalty-miss.json",
+      "kind": "captured-source",
+      "sha256": "96ad9d659ff0dadd52455820e8e455f70b9d4241d3309fe2cfd527b0c0af3e59",
+      "bytes": 111238,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-penalty-miss.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-permanent-move.json",
+      "kind": "captured-source",
+      "sha256": "35586a99de25272833ad21f353f7af93c143807249483d5c2058a0d321c64a87",
+      "bytes": 110853,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-permanent-move.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-permanent-restored.json",
+      "kind": "captured-source",
+      "sha256": "fef6e313460edd09c77dde8e39926538f148bc77e3c5d6b629373ec0eb2a98ba",
+      "bytes": 110688,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-permanent-restored.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-player-left.json",
+      "kind": "captured-source",
+      "sha256": "bb4b1d1098d3135ff1026ec4d9de8e23aaac6a0ca0fd562a39a6f59bf28ac5f5",
+      "bytes": 110808,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-player-left.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-repair-01-green.json",
+      "kind": "captured-source",
+      "sha256": "e8d6926b684697c3f522395c54b6356310034d8942104050b43007412309ea46",
+      "bytes": 131042,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-repair-01-green.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-repair-original-rosters.json",
+      "kind": "captured-source",
+      "sha256": "6e51230c82c14bfc4dbc17b968df59d8cc926a040ff2b743db1a82a94d92b767",
+      "bytes": 131050,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-repair-original-rosters.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-round-one-committed.json",
+      "kind": "captured-source",
+      "sha256": "d1880632bfc0971239355178cc6e9dbb59e21334f413419197c41268772e8374",
+      "bytes": 122973,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-round-one-committed.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-round-three-committed.json",
+      "kind": "captured-source",
+      "sha256": "ff43e724bde22acf5e989f7732bebe33ab724b714a4923267b4d0a1cfa3b250a",
+      "bytes": 134028,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-round-three-committed.json",
+      "usedInFinalAudit": true
+    },
+    {
+      "file": "data-eleven-round-two-committed.json",
+      "kind": "captured-source",
+      "sha256": "f79bf2a5d2ab3bb9fb7720b52b7a5c7e37acccfa70716bfd70c5e174dc7b71ca",
+      "bytes": 131004,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\data-eleven-round-two-committed.json",
+      "usedInFinalAudit": true,
+      "note": "המשחק השני נשמר עם12 מול11 ו23 הופעות. ההיסטוריה לא שוכתבה."
+    },
+    {
+      "file": "audit-eleven-data.json",
+      "kind": "audit",
+      "sha256": "907e07126a6e8302215c2d7d8d2006ee4f68ba257a1580c3a25a9326679691a5",
+      "bytes": 82917,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-data.json"
+    },
+    {
+      "file": "audit-eleven-data.md",
+      "kind": "audit",
+      "sha256": "a9537137da41fca485e06712c87ce395924015b3ac64a31a334b753145307a5e",
+      "bytes": 66357,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-data.md"
+    },
+    {
+      "file": "audit-eleven-final-data.json",
+      "kind": "audit",
+      "sha256": "907e07126a6e8302215c2d7d8d2006ee4f68ba257a1580c3a25a9326679691a5",
+      "bytes": 82917,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-final-data.json"
+    },
+    {
+      "file": "audit-eleven-final-data.md",
+      "kind": "audit",
+      "sha256": "a9537137da41fca485e06712c87ce395924015b3ac64a31a334b753145307a5e",
+      "bytes": 66357,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-final-data.md"
+    },
+    {
+      "file": "audit-eleven-final-hashes.json",
+      "kind": "audit",
+      "sha256": "64b828e829edae2b03df1c9c52a8da0aff058dc29673930241ccc6e472cf9926",
+      "bytes": 1013,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-final-hashes.json"
+    },
+    {
+      "file": "audit-eleven-first-commit-interim-hashes.json",
+      "kind": "audit",
+      "sha256": "e63629b9b5ca7ed9d671896d323b82624f26b0254c223e4839470b68d087856f",
+      "bytes": 666,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-first-commit-interim-hashes.json"
+    },
+    {
+      "file": "audit-eleven-first-commit-interim.json",
+      "kind": "audit",
+      "sha256": "bb519c05e982235342d1e46f38e635449c40d4bc2d62e9448fc51ef2cd4fe46e",
+      "bytes": 31070,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-first-commit-interim.json"
+    },
+    {
+      "file": "audit-eleven-first-commit-interim.md",
+      "kind": "audit",
+      "sha256": "46ef2fb5fe01612512e51da7ca41806936e7f1cf0acb1ef7d43dc1060e707228",
+      "bytes": 23494,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-first-commit-interim.md"
+    },
+    {
+      "file": "audit-eleven-legacy-guard-interim-hashes.json",
+      "kind": "audit",
+      "sha256": "be8db720e81d51303c325baf5692bacc3b714ae1cc9f31917179efc06bee53e0",
+      "bytes": 686,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-legacy-guard-interim-hashes.json"
+    },
+    {
+      "file": "audit-eleven-legacy-guard-interim.json",
+      "kind": "audit",
+      "sha256": "965413d2a6dba88b923509bca9919598bd399c64704711f7e148eecbe8d10df0",
+      "bytes": 69228,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-legacy-guard-interim.json"
+    },
+    {
+      "file": "audit-eleven-legacy-guard-interim.md",
+      "kind": "audit",
+      "sha256": "2f49177b38e34b35de29004961b0fd7560867f896665327345a7b951930b7519",
+      "bytes": 55321,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-legacy-guard-interim.md"
+    },
+    {
+      "file": "audit-eleven-permanent-interim-hashes.json",
+      "kind": "audit",
+      "sha256": "809bbd86b53372841550091e61ca19059c68be354658192ba74aa90683d17341",
+      "bytes": 648,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-permanent-interim-hashes.json"
+    },
+    {
+      "file": "audit-eleven-permanent-interim.json",
+      "kind": "audit",
+      "sha256": "bd7d05b7b76b2e22a0f37f7be64d6caefb1de1e2c2fe3ad1a54f530e77d839fc",
+      "bytes": 15414,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-permanent-interim.json"
+    },
+    {
+      "file": "audit-eleven-permanent-interim.md",
+      "kind": "audit",
+      "sha256": "0fa7f2f82980bf4bc157a3c998ec577aa15b7daf82469e1bf16b5beecfe0fd5b",
+      "bytes": 10948,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-permanent-interim.md"
+    },
+    {
+      "file": "audit-eleven-restore-before-fix.json",
+      "kind": "audit",
+      "sha256": "96ffb7ea167f3c9c6b58998dd9cb2128878f38ae695114026ef446853374d618",
+      "bytes": 36933,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-restore-before-fix.json"
+    },
+    {
+      "file": "audit-eleven-restore-before-fix.md",
+      "kind": "audit",
+      "sha256": "82cafae46377f10c69180eeb3e629399b4b35075cc57dadb2de8819d135ca06d",
+      "bytes": 29140,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-restore-before-fix.md"
+    },
+    {
+      "file": "audit-eleven-roster-data.json",
+      "kind": "audit",
+      "sha256": "3c4245d0044ad1f138bb2c1fea7117327c2bd1aa0ad4827764861a3f8fa1bf44",
+      "bytes": 8016,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-roster-data.json"
+    },
+    {
+      "file": "audit-eleven-roster-data.md",
+      "kind": "audit",
+      "sha256": "96751ef39d96077e3fdc463aab5a059198749e2f9b767321c557f5eed1065b3c",
+      "bytes": 3889,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\audit-eleven-roster-data.md"
+    },
+    {
+      "file": "eleven-refill-trace-audit.json",
+      "kind": "derived-proof",
+      "sha256": "af0642765062a6a2845cf0f2c7c20488d8ecf87a561e9bfc04e17783c6f95c9b",
+      "bytes": 2863,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\eleven-refill-trace-audit.json"
+    },
+    {
+      "file": "eleven-refill-trace-audit.md",
+      "kind": "derived-proof",
+      "sha256": "7084629ca40a3e0437f9cf6eef5860e575f8e05e1bdd2d29c6e77a86480c11ef",
+      "bytes": 1765,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\eleven-refill-trace-audit.md"
+    },
+    {
+      "file": "baseline-eleven.json",
+      "kind": "baseline",
+      "sha256": "f85027afc74f1ecc71ad1faca1d2b9522ead583cbb0811be3bb310abd8e14069",
+      "bytes": 3807,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\baseline-eleven.json"
+    },
+    {
+      "file": "eleven-finished-derived.json",
+      "kind": "derived-proof",
+      "sha256": "8377ce96213e1d82ae71463c64448400ffa8161984b6c9b5dc25f16a3197973b",
+      "bytes": 1380,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\eleven-finished-derived.json"
+    },
+    {
+      "file": "test-data-inventory.json",
+      "kind": "inventory",
+      "sha256": "287c0e2b4a61afaa134a811ce5548eb28db6eabe91dc00215d92a2860dbaaf1a",
+      "bytes": 25301,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\test-data-inventory.json"
+    },
+    {
+      "file": "test-data-inventory.md",
+      "kind": "inventory",
+      "sha256": "8a82e142e51a41621191e69fd88f00c806d648a41f8a8a8cc462027748b0cea0",
+      "bytes": 1549,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\test-data-inventory.md"
+    },
+    {
+      "file": "assert-eleven-flow.py",
+      "kind": "local-replay",
+      "sha256": "17b2d886a9e5cf1893511620d292a4be82bcc60e808a9e17f9ebbe5419d3b3ea",
+      "bytes": 76885,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\assert-eleven-flow.py"
+    },
+    {
+      "file": "verify-eleven-finished.cjs",
+      "kind": "local-replay",
+      "sha256": "5d55d65713eb47a773eaf2d514470621b4cd20f882d4c88211f4c3c74c671808",
+      "bytes": 3446,
+      "source": "tmp\\final-production-2026-10-18\\data-audit\\verify-eleven-finished.cjs"
+    },
+    {
+      "file": "identities.json",
+      "kind": "product-receipt",
+      "sha256": "faa6bdc4d8cf6b73d58eec9a718c094dfb0427cb124d201c5ad7ae9056035017",
+      "bytes": 363,
+      "source": "tmp\\final-production-2026-10-18\\identities.json"
+    },
+    {
+      "file": "guests-four-receipt.json",
+      "kind": "product-receipt",
+      "sha256": "e855c60a9669e4189415db3469f15362a3aaa1c5cce611615069f1803888e840",
+      "bytes": 1601,
+      "source": "tmp\\final-production-2026-10-18\\guests-four-receipt.json"
+    },
+    {
+      "file": "guests-seven-receipt.json",
+      "kind": "product-receipt",
+      "sha256": "9df075aaf837333ab5f4157881ac5732b99b48c41cec5bf94426161467bd4f8c",
+      "bytes": 3706,
+      "source": "tmp\\final-production-2026-10-18\\guests-seven-receipt.json"
+    },
+    {
+      "file": "guests-eleven-receipt.json",
+      "kind": "product-receipt",
+      "sha256": "b7f51a42a60579f63d9daa795e74d3985236e809d7154e43efeacde763317b3f",
+      "bytes": 4590,
+      "source": "tmp\\final-production-2026-10-18\\guests-eleven-receipt.json"
+    },
+    {
+      "file": "eleven-alternative-fixed-trace.json",
+      "kind": "captured-trace",
+      "sha256": "1da6c5dd53cc8e7cb2ed5d33c462d4ab35bfefa5280e4b48612624b43f3d4aeb",
+      "bytes": 27292,
+      "source": "artifacts\\final-deep-audit-2026-10-17\\eleven-alternative-fixed-trace.json"
+    },
+    {
+      "file": "eleven-refill-fixed-trace.json",
+      "kind": "captured-trace",
+      "sha256": "de35934beebf30c35b5f1c1a823e883e67c32baca4045b3d5487fb0af3ac6e64",
+      "bytes": 7333,
+      "source": "artifacts\\final-deep-audit-2026-10-17\\eleven-refill-fixed-trace.json"
+    }
+  ],
+  "limits": [
+    "כל קובץ הועתק ללא שינוי עם טביעת תוכן. לא נקראו נתוני ייצור חדשים בפעולת הארכיון.",
+    "אין בארכיון כרטיס חשבון מלא, תוכן צ׳אט, סיסמה או אסימון חיבור; המקורות נבדקו מול רשימת שדות המשחק ומפת החשבון המצומצמת.",
+    "כל המקורות נשמרו, לרבות מצבי כשל ומקורות שנקראו לפני אישור. רק25 המקורות ברשימת האודיט הסופי משמשים את442 האימותים; אין להציג כל קובץ כהוכחת הצלחה.",
+    "צילומי הממשק ובדיקות הקוד המלאות נשמרים בראיות הנפרדות של המוביל; ארכיון זה אחראי לנתונים ולחישובים בלבד."
+  ]
+}

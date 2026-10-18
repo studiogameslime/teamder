@@ -2,6 +2,7 @@ import React from 'react';
 import fs from 'fs';
 import ts from 'typescript';
 import vm from 'vm';
+import { activeDraftRosterIds } from '@/utils/draftIntegrity';
 
 let mockRoute:any, mockFocused=true;
 const mockNavigation={navigate:jest.fn(),canGoBack:()=>true,goBack:jest.fn()};
@@ -279,7 +280,7 @@ test('generation forwards the saved result revision only after saving is acknowl
     balanceTeams:()=>({result,unratedCount:0,gap:0,band:'A',repeat:0,fallback:false,teamAverages:[3,3,3]}),
     gameService:{getRecentSplits:jest.fn().mockResolvedValue([]),saveDraftTeams:jest.fn().mockReturnValue(ack.promise)},
     setGenerating:jest.fn(),setGame:jest.fn(),logEvent:jest.fn(),logError:jest.fn(),AnalyticsEvent:{},toast:{info:jest.fn(),error:jest.fn()},he:{},nav:{navigate},
-    toGuestRosterId:(id:string)=>`guest:${id}`,balanceTiming:()=>({minComputeMs:0}),__DEV__:false,Date};
+    activeDraftRosterIds,toGuestRosterId:(id:string)=>`guest:${id}`,balanceTiming:()=>({minComputeMs:0}),__DEV__:false,Date};
   vm.runInNewContext(ts.transpileModule('module.exports='+callback,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
   const pending=context.module.exports();await flush();expect(navigate).not.toHaveBeenCalled();
   ack.resolve(undefined);await pending;

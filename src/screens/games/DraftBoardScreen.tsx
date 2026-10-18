@@ -41,6 +41,7 @@ import { he } from '@/i18n/he';
 import type { DraftTeamsResult, Game } from '@/types';
 import { toGuestRosterId, isGuestId } from '@/types';
 import { buildPickOrder, reconstructPicks, playersPerTeam } from '@/utils/draft';
+import { activeDraftRosterIds } from '@/utils/draftIntegrity';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
 type Nav = NativeStackNavigationProp<GameStackParamList>;
@@ -116,10 +117,7 @@ export function DraftBoardScreen() {
           }
         }
         if (g && !readOnly && !resume) {
-          const active = new Set([
-            ...(g.players ?? []),
-            ...(g.guests ?? []).filter((guest) => !guest.waitlisted).map((guest) => toGuestRosterId(guest.id)),
-          ]);
+          const active = new Set(activeDraftRosterIds(g));
           if (new Set(captainIds).size !== captainIds.length || captainIds.some((id) => !active.has(id))) {
             appAlert(he.error, 'הסגל השתנה. יש לחזור לבחירת הקפטנים ולחלק מחדש.');
             if (nav.canGoBack()) nav.goBack();
@@ -144,10 +142,7 @@ export function DraftBoardScreen() {
           // resume as a ghost member (or push a real player out of alignment).
           // Newly-joined players simply stay in the draftable pool to assign
           // (B19).
-          const live = new Set<string>([
-            ...(g.players ?? []),
-            ...(g.guests ?? []).filter((gu) => !gu.waitlisted).map((gu) => toGuestRosterId(gu.id)),
-          ]);
+          const live = new Set(activeDraftRosterIds(g));
           setPicks(reconstructPicks(g.draftTeams).filter((id) => live.has(id)));
           // Restore any colours chosen on the saved draft.
           const restored: Record<number, string> = {};
@@ -213,8 +208,11 @@ export function DraftBoardScreen() {
   // screenshot of exactly that). The draft SETUP screen already filtered them
   // out, so the same roster had two different definitions.
   const participants = useMemo(
-    () => roster.filter((p) => !p.waitlisted),
-    [roster],
+    () => {
+      const active = new Set(game ? activeDraftRosterIds(game) : []);
+      return roster.filter(p => !p.waitlisted && active.has(p.id));
+    },
+    [roster, game],
   );
   const byId = useMemo(
     () => new Map(roster.map((p) => [p.id, p])),
@@ -332,7 +330,7 @@ export function DraftBoardScreen() {
     setSaving(true);
     try {
       const fresh = await gameService.getGameById(gameId);
-      const activeIds = new Set([...(fresh?.players ?? []), ...(fresh?.guests ?? []).filter((g) => !g.waitlisted).map((g) => toGuestRosterId(g.id))]);
+      const activeIds = new Set(fresh ? activeDraftRosterIds(fresh) : []);
       if (new Set(captainIds).size !== captainIds.length || captainIds.some((id) => !activeIds.has(id)) || picks.some((id) => !activeIds.has(id))) {
         appAlert(he.draftTitle, 'הסגל השתנה. יש לחזור לבחירת הקפטנים ולחלק מחדש.');
         return;

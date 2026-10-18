@@ -1,0 +1,28 @@
+{
+  "currentGroupId": "J060YQu6QTcgk3glUDj2",
+  "groups": [
+    {
+      "id": "J060YQu6QTcgk3glUDj2",
+      "isOpen": false,
+      "name": "בדיקות לייב אוקטובר"
+    }
+  ],
+  "mock": false,
+  "reducedMotionAtLaunch": false,
+  "route": {
+    "key": "Profile-d5OvU3QZdMM0g9pYrq8LI",
+    "name": "Profile"
+  },
+  "secureStoreAvailable": true,
+  "user": {
+    "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "name": "בדיקות לייב",
+    "onboardingCompleted": true
+  },
+  "window": {
+    "fontScale": 1,
+    "height": 914.2857142857143,
+    "scale": 2.625,
+    "width": 411.42857142857144
+  }
+}

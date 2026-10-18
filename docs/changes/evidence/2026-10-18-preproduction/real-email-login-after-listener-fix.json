@@ -1,0 +1,24 @@
+{
+  "checkedAtUtc": "2026-10-18T00:56:04.221605+00:00",
+  "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+  "clubId": "J060YQu6QTcgk3glUDj2",
+  "sameIdentityAndClub": true,
+  "homeRestored": true,
+  "mock": false,
+  "window": {
+    "fontScale": 1,
+    "height": 914.2857142857143,
+    "scale": 2.625,
+    "width": 411.42857142857144
+  },
+  "nativeProcess": "10244",
+  "processLogLinesRead": 2573,
+  "matchingAuthListenerErrors": 0,
+  "patterns": [
+    "Uncaught Error in snapshot listener",
+    "permission-denied",
+    "subscribeMyLiveOrUpcomingGames error",
+    "subscribeUnread"
+  ],
+  "scope": "Current cold-start native process, including real QA sign-out, guest entry and existing email sign-in. Logcat retention is bounded by device buffers; no claim about every possible listener/provider. No credentials are recorded."
+}

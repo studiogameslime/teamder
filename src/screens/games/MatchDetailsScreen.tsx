@@ -69,7 +69,7 @@ import {
 import { WaitlistPromotionAnimation } from '@/components/anim/game/WaitlistPromotionAnimation';
 import { isWaitlistPromotion } from '@/components/anim/game/triggerLogic';
 import { usePreviousValue } from '@/hooks/animations';
-import { resolveSplitTeams, isSplitStale } from '@/utils/draftTeamsView';
+import { resolveSplitTeams, resolveCurrentSplitTeams, isSplitStale } from '@/utils/draftTeamsView';
 import { successHaptic } from '@/utils/haptics';
 import { toast } from '@/components/Toast';
 import * as Clipboard from 'expo-clipboard';
@@ -2732,7 +2732,9 @@ export function MatchDetailsScreen() {
   // Latest deliberately saved split. saveDraftTeams replaces its snapshot
   // together with the rotation baseline whenever any allocation method saves.
   // Working-roster departures/fills do not independently replace that split.
-  const splitTeams = resolveSplitTeams(draftTeams, game.rotation);
+  const splitTeams = isTerminalGame(game)
+    ? resolveSplitTeams(draftTeams, game.rotation)
+    : resolveCurrentSplitTeams(draftTeams, game.rotation, game);
 
   // Teams go "stale" when someone registered AFTER the split was saved — i.e. a
   // registered player isn't assigned to any team. We surface a "!" on the

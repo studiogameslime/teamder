@@ -1,0 +1,49 @@
+{
+  "platform": "all",
+  "buildProfile": "production",
+  "submitProfile": "internal",
+  "ok": false,
+  "findings": [
+    {
+      "name": "submit profile",
+      "ok": true,
+      "detail": "internal"
+    },
+    {
+      "name": "iOS Firebase configuration",
+      "ok": true,
+      "detail": "GoogleService-Info.plist"
+    },
+    {
+      "name": "iOS local signing configuration",
+      "ok": false,
+      "detail": "credentials.json"
+    },
+    {
+      "name": "iOS submission profile",
+      "ok": true,
+      "detail": "internal"
+    },
+    {
+      "name": "iOS submission key file",
+      "ok": false,
+      "detail": "/Users/matan/.teamder-update-watch/AuthKey_SQBY46Q3DC.p8"
+    },
+    {
+      "name": "Android Firebase configuration",
+      "ok": true,
+      "detail": "google-services.json"
+    },
+    {
+      "name": "Android submission profile",
+      "ok": true,
+      "detail": "internal"
+    },
+    {
+      "name": "Android submission account file",
+      "ok": true,
+      "detail": "./credentials/gplay-service-account.json"
+    }
+  ],
+  "limitation": "Local file checks only. No build, network, signing validity, store entitlement or credential contents are verified."
+}

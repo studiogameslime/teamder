@@ -508,7 +508,7 @@ export const userService = {
      *  them; a missing pair simply means the city is a label for now. */
     homeCityLat?: number;
     homeCityLng?: number;
-  }): Promise<User> {
+  }, expectedUid?: string): Promise<User> {
     // Sanitize here too — this is the PRIMARY path where every new user sets
     // their name. updateProfile sanitizes on later edits, but onboarding used
     // to only trim(), letting bidi/zero-width/impersonation chars persist.
@@ -530,11 +530,12 @@ export const userService = {
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();
       if (!cur) throw new Error('completeOnboarding: no current user');
+      if (expectedUid && cur.id !== expectedUid) throw new StaleSessionError(expectedUid, cur.id);
       const next: User = {
         ...cur,
         name: trimmedName,
         ...(patch.avatarId ? { avatarId: patch.avatarId } : {}),
-        ...(patch.photoUrl ? { photoUrl: patch.photoUrl } : {}),
+        ...('photoUrl' in patch ? { photoUrl: patch.photoUrl || undefined } : {}),
         ...(city ? { availability: mergeHomeCity(cur.availability, city, patch) } : {}),
         onboardingCompleted: true,
         updatedAt: Date.now(),
@@ -542,17 +543,26 @@ export const userService = {
       await storage.setAuthUserJson(JSON.stringify(next));
       return next;
     }
+    const ownerUid = expectedUid ?? getFirebase().auth.currentUser?.uid ?? '';
+    const assertCurrent = () => {
+      const session = getFirebase().auth.currentUser;
+      if (!ownerUid || session?.uid !== ownerUid || session.isAnonymous) {
+        throw new StaleSessionError(ownerUid, session?.uid ?? '');
+      }
+    };
+    assertCurrent();
     const cur = await this.getCurrentUser();
-    if (!cur) throw new Error('completeOnboarding: no current user');
+    assertCurrent();
+    if (!cur || cur.id !== ownerUid) throw new StaleSessionError(ownerUid, cur?.id ?? '');
     const ref = docs.user(cur.id);
     const updatedAt = Date.now();
-    const updates: Partial<User> = {
+    const updates: Record<string, unknown> = {
       name: trimmedName,
       onboardingCompleted: true,
       updatedAt,
     };
     if (patch.avatarId) updates.avatarId = patch.avatarId;
-    if (patch.photoUrl) updates.photoUrl = patch.photoUrl;
+    if ('photoUrl' in patch) updates.photoUrl = patch.photoUrl || deleteField();
     // DOT PATHS, not a nested object. A brand-new account has no
     // `availability` map at all, and writing one wholesale here would stamp a
     // partial UserAvailability over whatever the availability editor writes
@@ -573,7 +583,8 @@ export const userService = {
         }
       : {};
     try {
-      await updateDoc(ref, { ...updates, ...cityUpdates });
+      // The explicit photo clear carries Firestore's deleteField sentinel.
+      await updateDoc(ref, { ...updates, ...cityUpdates } as never);
     } catch (e) {
       logError('completeOnboarding', e, {
         uid: cur.id,
@@ -582,16 +593,18 @@ export const userService = {
       });
       throw e;
     }
+    assertCurrent();
     const next: User = {
       ...cur,
       name: trimmedName,
       ...(patch.avatarId ? { avatarId: patch.avatarId } : {}),
-      ...(patch.photoUrl ? { photoUrl: patch.photoUrl } : {}),
+      ...('photoUrl' in patch ? { photoUrl: patch.photoUrl || undefined } : {}),
       ...(city ? { availability: mergeHomeCity(cur.availability, city, patch) } : {}),
       onboardingCompleted: true,
       updatedAt,
     };
     await cacheAuthUser(next);
+    assertCurrent();
     return next;
   },
 

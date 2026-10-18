@@ -473,6 +473,16 @@ function pruneUidsFromTeamsSrv(
   d: Record<string, unknown>,
   gone: Set<string>,
 ): Record<string, unknown> {
+  // A delayed removal event can run after the person has already rejoined.
+  // This helper receives the transaction's current document, never event data.
+  const currentRoster = new Set([
+    ...(Array.isArray(d.players) ? d.players as string[] : []),
+    ...(Array.isArray(d.waitlist) ? d.waitlist as string[] : []),
+    ...(Array.isArray(d.pending) ? d.pending as string[] : []),
+    ...(Array.isArray(d.guests) ? d.guests as { id?: string }[] : [])
+      .filter(guest => typeof guest?.id === 'string').map(guest => `guest:${guest.id}`),
+  ]);
+  gone = new Set([...gone].filter(id => !currentRoster.has(id)));
   if (gone.size === 0) return {};
   const out: Record<string, unknown> = {};
   const draft = d.draftTeams as
@@ -5749,6 +5759,10 @@ export const onGameRosterChanged = onDocumentWritten(
       (g) => !g?.waitlisted,
     ).length;
     const guestSeatFreed = afterActiveGuests < beforeActiveGuests;
+    const afterGuestIds = new Set(((after.guests ?? []) as { id?: string }[]).map(guest => guest?.id));
+    const removedGuestRosterIds = new Set(((before?.guests ?? []) as { id?: string }[])
+      .filter(guest => typeof guest?.id === 'string' && !afterGuestIds.has(guest.id))
+      .map(guest => `guest:${guest.id}`));
     const previousOfferUid = before?.pendingPromotion?.uid;
     const guestOfferSeatFreed = typeof previousOfferUid === 'string' && previousOfferUid.length > 0 &&
       !after.pendingPromotion?.uid && !afterPlayers.includes(previousOfferUid);
@@ -5757,7 +5771,7 @@ export const onGameRosterChanged = onDocumentWritten(
       JSON.stringify(before?.waitlist ?? []) !==
         JSON.stringify(after.waitlist ?? []) ||
       JSON.stringify(before?.pending ?? []) !== JSON.stringify(after.pending ?? []) ||
-      guestSeatFreed || guestOfferSeatFreed;
+      guestSeatFreed || guestOfferSeatFreed || removedGuestRosterIds.size > 0;
     // GameStatus is 'scheduled'|'open'|'locked'|'active'|'finished'|'cancelled'.
     // PRUNE a departed ghost from drawn teams / live rotation for any game still
     // in play (incl. 'locked' near kickoff AND 'active' live play) — a player
@@ -5787,7 +5801,7 @@ export const onGameRosterChanged = onDocumentWritten(
         ...(after.pending ?? []),
       ]);
       const departed = new Set<string>(
-        beforePlayers.filter((p) => !stillHere.has(p)),
+        [...beforePlayers.filter((p) => !stillHere.has(p)), ...removedGuestRosterIds],
       );
       let promotedUid: string | null = null;
       let promotedTitle = '';
@@ -13988,12 +14002,14 @@ export const commitRoundStats = onCall(
       penalties,
       liveGoalIds,
       rotationUpdatedAt,
+      liveLineupFingerprint,
       tieResolution,
     } = (request.data ?? {}) as {
       gameId?: string;
       roundId?: number | string | null;
       liveGoalIds?: string[];
       rotationUpdatedAt?: number | null;
+      liveLineupFingerprint?: string;
       tieResolution?: 'bothOut' | 'veteranOut';
       sideA?: string[];
       sideB?: string[];
@@ -14057,14 +14073,14 @@ export const commitRoundStats = onCall(
         const currentGoals = (game.liveMatch as { goals?: unknown[] } | undefined)?.goals ?? [];
         if (liveGoalIds !== undefined && currentRotation && liveRoundKey(currentRotation) === String(roundId) &&
             currentGoals.length > 0 && (game.lastCommittedRoundId === String(roundId) ||
-            !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties }))) {
+            !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint }))) {
           throw new HttpsError('failed-precondition', 'נוספו שערים אחרי שמירת המשחק. הם נשמרו בלוח ולא נמחקו.');
         }
         // A pre-protocol-2 client might have committed statistics but lost its
         // response before clearing. Repair ONLY an exactly matching old board;
         // an uncredited late goal must remain visible and raise a conflict.
         if (liveGoalIds !== undefined && game.lastCommittedRoundId !== String(roundId) &&
-            matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties })) {
+            matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint })) {
           const goalShape = (rows: Record<string, unknown>[]) => rows.map(row => ({
             scorerId: row.scorerId ?? null, assisterId: row.assisterId ?? null,
             ownGoal: !!row.ownGoal, minute: Math.max(0, Math.floor(Number(row.minute) || 0)), team: row.team,
@@ -14088,7 +14104,10 @@ export const commitRoundStats = onCall(
           tieResolution: committed.get('tieResolution') ?? null };
       }
     }
-    if (liveGoalIds !== undefined && !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties })) {
+    if (game.status === 'finished' || game.status === 'cancelled') {
+      throw new HttpsError('failed-precondition', 'המחזור כבר הסתיים או בוטל. לא ניתן לשמור משחק נוסף.');
+    }
+    if (liveGoalIds !== undefined && !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint })) {
       throw new HttpsError('failed-precondition', 'המשחק השתנה. יש לנסות שוב עם התוצאה המעודכנת.');
     }
 
@@ -14126,14 +14145,13 @@ export const commitRoundStats = onCall(
     // — so crediting them rounds/wins/goals here (while games:0 elsewhere) left a
     // self-contradictory table (rounds=3, games=0). Skip them on both sides; since
     // onField = A∪B gates goals/assists too, their stats drop out consistently.
-    // Cap the goal log, the way `penalties` is already capped. It was
-    // unbounded: every distinct ASSISTED pair adds a communityPairStats
-    // document to the round batch, so a long (or forged) goals[] grew the
-    // batch without limit — straight into the 500-op wall that cannot be
-    // retried past. 60 is far beyond any real mini-game (the stored copy was
-    // already sliced at 100; the busiest round in production is single digits).
+    // Legacy unverified input retains its historical bound. A verified live
+    // board must commit EVERY event before clearing it: truncating the first
+    // sixty silently lost later goals despite matching all liveGoalIds. The
+    // exact StatBatch operation guard below rejects an oversized atomic write
+    // before it changes history, counters, the latch or the live board.
     const MAX_GOALS_PER_ROUND = 60;
-    const cappedGoals = (goals ?? []).slice(0, MAX_GOALS_PER_ROUND);
+    const cappedGoals = (goals ?? []).slice(0, liveGoalIds === undefined ? MAX_GOALS_PER_ROUND : undefined);
     const arrivals = (game.arrivals as Record<string, string> | undefined) ?? {};
     // Sides + the scorer-restoration rule, in ./roundSides so they can be
     // tested rather than trusted — see that file for why a substituted scorer
@@ -14185,11 +14203,11 @@ export const commitRoundStats = onCall(
       isReal(id)
         ? roster.has(id) && arrivals[id] !== 'no_show'
         : guestRoster.has(id);
-    // Same ceiling the stored roster was already sliced to. Enforced during
-    // the BUILD now, not only on the stored copy, because every guest on a side
-    // also costs one gamePlayerStats operation in the round batch — an
-    // unbounded guest list was an unbounded batch.
-    const MAX_DISPLAY_SIDE = 25;
+    // Retain the old bound for unverified callers. Verified history must keep
+    // every registered contributor, even after many substitutions: otherwise
+    // the 26th guest could earn a goal but no appearance/result. Eligibility
+    // still comes from THIS game's roster; the exact batch guard bounds cost.
+    const MAX_DISPLAY_SIDE = liveGoalIds === undefined ? 25 : Infinity;
     // A goal/assist also proves that a registered GUEST played before leaving
     // the current lineup. Recover them for history and per-game tallies only;
     // real-only A/B still bound global statistics and quadratic pair writes.
@@ -14294,20 +14312,18 @@ export const commitRoundStats = onCall(
       if (forA) scoreA++;
       else scoreB++;
     }
-    // Build the round-history doc (written AFTER the stats batch commits — see
-    // below). It is deliberately kept OUT of the atomic batch: (a) it would add
     // History shares the same atomic batch as statistics and its create-only
-    // latch. The bounded goal log and operation-count guard below protect the
+    // latch. The legacy input bound and operation-count guard below protect the
     // Firestore limits without allowing statistics/history to diverge.
     const roundHistoryDoc =
       roundId !== undefined && roundId !== null
         ? {
             roundId: String(roundId),
             // FULL rosters (guests included) so "מי שיחק" shows everyone who
-            // played. Sliced for doc-size safety. (A/B — real only — remain the
+            // played. Legacy callers retain their historical bound. (A/B — real only — remain the
             // basis for stat crediting above, not for this display roster.)
-            teamA: fullA.slice(0, 25),
-            teamB: fullB.slice(0, 25),
+            teamA: fullA,
+            teamB: fullB,
             // Bib-colour indices (0=red,1=blue,2=green,…) so the recap shows the
             // real colours. Default −1 → the client falls back to א׳/ב׳.
             teamAIndex: typeof teamAIndex === 'number' ? teamAIndex : -1,
@@ -14326,7 +14342,7 @@ export const commitRoundStats = onCall(
                   g.team === 'B' ||
                   (g.scorerId && isReal(g.scorerId) && onField.has(g.scorerId)),
               )
-              .slice(0, 100)
+              .slice(0, liveGoalIds === undefined ? 100 : undefined)
               .map((g) => ({
                 // null for own goals; the guest/real id otherwise.
                 scorerId: g.scorerId ?? null,

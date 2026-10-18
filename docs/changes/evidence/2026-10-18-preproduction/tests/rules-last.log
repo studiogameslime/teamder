@@ -1,0 +1,849 @@
+
+> footy@0.1.0 test:rules
+> firebase emulators:exec --only firestore --project demo-soccer "cd tests/rules && node --test --test-concurrency=1 *.test.mjs"
+
+i  emulators: Starting emulators: firestore
+i  emulators: Detected demo project ID "demo-soccer", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  firestore: Firestore Emulator logging to firestore-debug.log
++  firestore: Firestore Emulator was started in standard edition.
++  firestore: Firestore Emulator UI websocket is running on 9150.
+i  Running script: cd tests/rules && node --test --test-concurrency=1 *.test.mjs
+✔ provider claim: every real provider reads as a full account (5145.8284ms)
+✔ signed out: only the two deliberately-public collections (290.89ms)
+✔ guest CAN browse public clubs (283.1171ms)
+✔ guest CAN browse public games (232.1708ms)
+✔ guest CAN read app config and marketing campaigns (172.8582ms)
+✔ guest CANNOT read another person’s private user document (125.2168ms)
+✔ guest CANNOT enumerate the user base (143.3119ms)
+✔ guest CANNOT read cross-club stat rollups (187.5009ms)
+✔ guest CANNOT read community-only games (187.8628ms)
+✔ guest CANNOT read private per-user collections (142.9692ms)
+[2026-10-17T21:46:23.387Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x68168803 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+[2026-10-17T21:46:23.463Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x68168804 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1025:24 for 'create' @ L1025, Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+[2026-10-17T21:46:23.476Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x68168805 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L837, false for 'update' @ L837
+✔ guest CANNOT write anything (237.0036ms)
+[2026-10-17T21:46:23.806Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6816880c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L837, false for 'update' @ L837
+✔ usersPublic is world-readable and client-unwritable (329.8886ms)
+✔ the public roster renders for both kinds of viewer (170.0006ms)
+✔ the guest player card reads the mirror and nothing else (206.1649ms)
+✔ full accounts use scoped projections for private player data (203.7662ms)
+✔ full account retains club content but cannot read another private profile (237.3367ms)
+✔ full account keeps the real list queries (157.6192ms)
+✔ a member still reads their own club’s community game (126.1752ms)
+✔ owner still reads and writes their own user document (146.1913ms)
+✔ #1 LEGIT: a member can remove ONLY themselves from playerIds (648.7846ms)
+[2026-10-17T21:46:26.199Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x54afdda9 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+✔ #1 HIJACK denied: remove self + evict victim + inject stranger (net −1) (66.081ms)
+[2026-10-17T21:46:26.264Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x54afddab error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+✔ #1 DUPLICATE-PADDING denied: evict victim, pad with a duplicate survivor (63.3976ms)
+[2026-10-17T21:46:26.334Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x54afddad error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+✔ #1 denied: a member cannot evict another member (plain, no self-removal) (70.4228ms)
+✔ #6 LEGIT: a requester can withdraw ONLY their own pending request (71.713ms)
+[2026-10-17T21:46:26.482Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x54afddb1 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+✔ #6 HIJACK denied: wipe the queue + inject stranger requests (76.1537ms)
+[2026-10-17T21:46:26.591Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x54afddb3 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+✔ #6 DUPLICATE-PADDING denied: drop a rival request, pad a duplicate (108.0336ms)
+✔ #2 LEGIT: a player can cancel ONLY themselves from a game (111.1471ms)
+[2026-10-17T21:46:26.781Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x54afddb7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, Null value error. for 'update' @ L1055
+✔ #2 HIJACK denied: cancel self + evict victim + seat a stranger (78.714ms)
+[2026-10-17T21:46:26.863Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x54afddb9 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, Null value error. for 'update' @ L1055
+✔ #2 DUPLICATE-PADDING denied: cancel self + evict victim, pad a duplicate (81.711ms)
+▶ saving availability
+  ✔ an ordinary user clearing every day — the reported case (248.016ms)
+  ✔ with days and slots filled in (87.186ms)
+  ✔ with a home city and coordinates (71.4732ms)
+  ✔ a user whose attribution is already locked (78.3865ms)
+  ✔ a user with a null invitedBy placeholder (78.31ms)
+  ✔ a LEGACY user doc with no invitedBy key at all (68.0637ms)
+  ✔ a user whose display name is an email — one of the 92 robots (78.965ms)
+  ✔ a user with no name field at all (87.7526ms)
+✔ saving availability (2116.7777ms)
+[2026-10-17T21:46:29.653Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3888b313 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L471:24 for 'update' @ L471, Null value error. for 'update' @ L471
+▶ the account with NO user document — what actually failed
+  ✔ updateDoc against a document that does not exist is denied (56.4974ms)
+  ✔ and CREATING it first is allowed, which is the recovery (53.542ms)
+✔ the account with NO user document — what actually failed (110.6867ms)
+[2026-10-17T21:46:29.783Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3888b316 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'update' @ L471
+▶ and it is still somebody else who cannot
+  ✔ a different user may not write my availability (75.0963ms)
+✔ and it is still somebody else who cannot (75.3679ms)
+✔ communityPlayerStats: club MEMBER can get (797.8592ms)
+✔ communityPlayerStats: club ADMIN can get (137.605ms)
+✔ communityPlayerStats: signed-in NON-member is denied get (123.5239ms)
+✔ communityPlayerStats: UNAUTHENTICATED is denied get (124.616ms)
+[2026-10-17T21:46:31.657Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3bd4f644 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2361, false for 'update' @ L2361
+✔ communityPlayerStats: client write stays blocked even for the admin (125.892ms)
+✔ communityStats: club MEMBER can get (94.5968ms)
+✔ communityStats: club ADMIN can get (92.605ms)
+✔ communityStats: signed-in NON-member is denied get (123.7285ms)
+✔ communityStats: UNAUTHENTICATED is denied get (92.7848ms)
+[2026-10-17T21:46:32.153Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3bd4f64e error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2384, false for 'update' @ L2384
+✔ communityStats: client write stays blocked even for the admin (91.2903ms)
+✔ communityPairStats: club MEMBER can get (95.5922ms)
+✔ communityPairStats: club ADMIN can get (92.4029ms)
+✔ communityPairStats: signed-in NON-member is denied get (93.5284ms)
+✔ communityPairStats: UNAUTHENTICATED is denied get (91.9014ms)
+[2026-10-17T21:46:32.615Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3bd4f658 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2059, false for 'update' @ L2059
+✔ communityPairStats: client write stays blocked even for the admin (87.6746ms)
+✔ gamePlayerStats: club MEMBER can get (117.5864ms)
+✔ gamePlayerStats: club ADMIN can get (109.5705ms)
+✔ gamePlayerStats: signed-in NON-member is denied get (94.5844ms)
+✔ gamePlayerStats: UNAUTHENTICATED is denied get (78.916ms)
+[2026-10-17T21:46:33.110Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3bd4f662 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2464, false for 'update' @ L2464
+✔ gamePlayerStats: client write stays blocked even for the admin (93.2497ms)
+✔ list communityPlayerStats where groupId==club: member OK, outsider denied (204.2123ms)
+✔ list communityPairStats where groupId==club: member OK, outsider denied (155.7457ms)
+✔ exact pair query: existing pair, absent pair and outsiders (294.3055ms)
+✔ list communityStats where groupId==club: member OK, outsider denied (123.7394ms)
+✔ list gamePlayerStats where gameId==game: member OK, outsider denied (138.0689ms)
+✔ unfiltered collection sweeps are denied for member and outsider alike (340.6363ms)
+✔ gamePlayerStats: a PUBLIC game stays readable by any signed-in user (141.0206ms)
+✔ gamePlayerStats: a game PARTICIPANT who is not a club member can read (168.8428ms)
+✔ groups/{gid}/ratings is club-scoped, not world-readable (123.7097ms)
+✔ communityStats: a doc with NO groupId field is still readable by its member (227.1243ms)
+✔ communityStats: a doc whose group was deleted denies cleanly (102.8061ms)
+[2026-10-17T21:46:38.913Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd18770 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+▶ an email address is not a display name
+  ✔ the exact name the Play robot signs up with is refused (151.4734ms)
+[2026-10-17T21:46:38.972Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd18771 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+  ✔ refused at signup: "appstore.review@teamder.app" (55.2267ms)
+[2026-10-17T21:46:39.027Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd18772 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+  ✔ refused at signup: "hazelblake.54551@gmail.com" (54.4816ms)
+[2026-10-17T21:46:39.120Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd18773 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+  ✔ refused at signup: "RAMONACARPENTER.29111@GMAIL.COM" (93.6661ms)
+[2026-10-17T21:46:39.175Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd18774 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+  ✔ refused at signup: "eugene.burns+footy@googlemail.co.uk" (54.9744ms)
+[2026-10-17T21:46:39.217Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd18775 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+  ✔ refused at signup: "  elsiepeterson.90814@gmail.com  " (41.3184ms)
+[2026-10-17T21:46:39.273Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd18776 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+  ✔ refused at signup: "מתן someone@gmail.com" (55.7877ms)
+  ✔ still allowed at signup: "מתן לוי" (44.7616ms)
+  ✔ still allowed at signup: "Idan Almaliach" (45.3993ms)
+  ✔ still allowed at signup: "עידן @ נחלים" (38.9558ms)
+  ✔ still allowed at signup: "DJ @Khaled" (40.2747ms)
+  ✔ still allowed at signup: "user@localhost" (35.86ms)
+  ✔ still allowed at signup: "a@b.c" (56.4061ms)
+  ✔ a signup with no name at all is unaffected (40.6714ms)
+✔ an email address is not a display name (3032.0849ms)
+[2026-10-17T21:46:39.661Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd1877f error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L471:24 for 'update' @ L471, false for 'update' @ L471
+▶ renaming
+  ✔ a real player cannot rename themselves into an address (83.7754ms)
+  ✔ and can rename themselves to anything else (68.9164ms)
+  ✔ an existing robot account can still write unrelated fields (77.379ms)
+  ✔ an unrelated write that omits `name` entirely is unaffected (49.0512ms)
+[2026-10-17T21:46:39.918Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd18787 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L471:24 for 'update' @ L471, false for 'update' @ L471
+  ✔ but it cannot move to a DIFFERENT address (61.7695ms)
+  ✔ and it can clean itself up to a real name (62.8846ms)
+✔ renaming (404.7055ms)
+[2026-10-17T21:46:40.029Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd1878a error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+▶ the brand check no longer exempts email-shaped names
+  ✔ refused: "support@teamder.app" (47.5239ms)
+[2026-10-17T21:46:40.061Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd1878b error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+  ✔ refused: "Teamder Support" (31.4868ms)
+[2026-10-17T21:46:40.099Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7cd1878c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+  ✔ refused: "טימדר רשמי" (38.1836ms)
+✔ the brand check no longer exempts email-shaped names (117.6428ms)
+[2026-10-17T21:46:42.471Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3f9f error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'update' @ L471
+✔ users: cannot write achievements on someone else (closed loophole) (1201.6395ms)
+[2026-10-17T21:46:42.536Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fa1 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'update' @ L471
+✔ users: cannot write discipline on someone else (63.7892ms)
+✔ users: self can update own profile fields (62.1064ms)
+[2026-10-17T21:46:42.676Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fa5 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L471:24 for 'update' @ L471, false for 'update' @ L471
+✔ users: cannot write stats from client (server-derived) (77.203ms)
+[2026-10-17T21:46:42.740Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fa7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L471:24 for 'update' @ L471, false for 'update' @ L471
+✔ users: name longer than 60 chars is rejected (64.4316ms)
+[2026-10-17T21:46:42.818Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3faa error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ games: direct legacy self-join is denied; current per-user join request is allowed (115.8366ms)
+[2026-10-17T21:46:42.965Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fae error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ games: cannot register a different user (no proxy joins) (108.6832ms)
+[2026-10-17T21:46:43.052Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fb1 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ games: self-join cannot smuggle extra UIDs into waitlist (86.9105ms)
+[2026-10-17T21:46:43.135Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fb4 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ games: self cannot change status from the join branch (83.3133ms)
+[2026-10-17T21:46:43.218Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fb7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ games: cannot join a game whose start time has passed (82.2278ms)
+[2026-10-17T21:46:43.299Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fba error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ games: organizer cannot transfer ownership (createdBy is immutable) (80.6797ms)
+[2026-10-17T21:46:43.380Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fbd error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ games: organizer cannot move game to a different community (81.6534ms)
+✔ games: non-member cannot read a community-only game (89.8606ms)
+✔ games: any signed-in user can read a public game (93.7693ms)
+[2026-10-17T21:46:43.618Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fc5 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+✔ groups: non-creator admin cannot rotate adminIds (53.9727ms)
+[2026-10-17T21:46:43.680Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fc7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+✔ groups: creator cannot demote themselves out of adminIds (61.521ms)
+[2026-10-17T21:46:43.750Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fc9 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+✔ groups: anyone cannot promote themselves to admin (70.6901ms)
+[2026-10-17T21:46:43.817Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fcb error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+✔ groups: cannot mutate creatorId after create (66.5585ms)
+[2026-10-17T21:46:43.850Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fcc error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L842, evaluation error at L861:24 for 'update' @ L861, false for 'create' @ L842
+✔ groupsPublic: cannot create an oversized mirror without a canonical club (32.7955ms)
+[2026-10-17T21:46:43.930Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fce error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L842, evaluation error at L861:24 for 'update' @ L861, false for 'create' @ L842
+✔ groupsPublic: oversized initial mirror is denied; admin can create a valid one-member mirror (144.9144ms)
+[2026-10-17T21:46:44.034Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fd1 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, evaluation error at L1992:24 for 'update' @ L1992, false for 'create' @ L1882
+✔ notifications: cannot fake a server-only push (gameReminder) (39.3039ms)
+[2026-10-17T21:46:44.074Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fd2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1882:24 for 'create' @ L1882, evaluation error at L1992:24 for 'update' @ L1992, false for 'create' @ L1882
+[2026-10-17T21:46:44.100Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fd3 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, evaluation error at L1992:24 for 'update' @ L1992, false for 'create' @ L1882
+✔ notifications: cannot fake an "approved" push to inflate a join (65.0938ms)
+[2026-10-17T21:46:44.132Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fd4 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, evaluation error at L1992:24 for 'update' @ L1992, false for 'create' @ L1882
+✔ notifications: client cannot directly create inviteToGame (moved to CF) (31.9259ms)
+[2026-10-17T21:46:44.177Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fd5 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+✔ notifications: unauthenticated cannot create inviteToGame (45.207ms)
+[2026-10-17T21:46:44.226Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fd6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, evaluation error at L1992:24 for 'update' @ L1992, false for 'create' @ L1882
+✔ notifications: cannot fake inviterName by writing to inbox of another user (48.8921ms)
+✔ notifications: cannot read another user's notifications (64.8439ms)
+[2026-10-17T21:46:44.355Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fda error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1820, false for 'update' @ L1820
+✔ ratings: cannot self-rate (63.9528ms)
+[2026-10-17T21:46:44.409Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fdc error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1820, false for 'update' @ L1820
+✔ ratings: rating outside 1..5 is rejected (54.2385ms)
+[2026-10-17T21:46:44.479Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fde error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1820:34 for 'create' @ L1820, evaluation error at L1820:34 for 'update' @ L1820, false for 'create' @ L1820
+✔ ratings: non-member cannot rate inside the group (69.1226ms)
+✔ ratings: a member can rate another member (62.6565ms)
+✔ ratings: cannot read someone else's vote (voter privacy) (102.9181ms)
+[2026-10-17T21:46:44.678Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fe4 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1685, false for 'update' @ L1685
+✔ playerStats: clients cannot write (server-only) (33.5061ms)
+[2026-10-17T21:46:44.745Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fe6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2002, false for 'update' @ L2002
+✔ gameUpdateLatches: clients cannot read or write (66.7726ms)
+✔ unauth: cannot read /games (146.357ms)
+✔ unauth: cannot read /users (61.254ms)
+[2026-10-17T21:46:45.000Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fec error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L568, false for 'update' @ L570
+✔ unauth: cannot create /groups (47.6686ms)
+[2026-10-17T21:46:45.025Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7e1d3fed error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+✔ unauth: cannot create /notifications (24.6538ms)
+✔ unauth: /appConfig is the only readable surface (63.1912ms)
+✔ getMyLiveOrUpcomingGames across 1 different clubs (485.9442ms)
+✔ getMyLiveOrUpcomingGames across 5 different clubs (93.7028ms)
+✔ getMyLiveOrUpcomingGames across 9 different clubs (125.1142ms)
+✔ getMyLiveOrUpcomingGames across 10 different clubs (99.4137ms)
+✔ getMyLiveOrUpcomingGames across 11 different clubs (117.541ms)
+✔ getMyLiveOrUpcomingGames across 15 different clubs (82.3424ms)
+✔ DELETED game reads as not-found, not permission-denied (799.3452ms)
+✔ creator still reads their game after the club doc was deleted (98.8496ms)
+✔ a dead club does not hand the game to a stranger (101.0425ms)
+✔ an invitee reads a game whose participantIds field is absent (123.3613ms)
+✔ a stranger still cannot read that same field-less game (109.6594ms)
+✔ filler candidate reads a community game that opted into fillers (91.1451ms)
+✔ a PRIVATE game stays hidden even with acceptsFillers on (90.7203ms)
+✔ anonymous still cannot read anything, missing doc included (169.9235ms)
+✔ outsider still cannot read a community-only game (91.8893ms)
+✔ club member reads the community game (108.4682ms)
+✔ creator reads their own game (79.4468ms)
+✔ invitee reads the community game they were invited to (105.7868ms)
+✔ anyone signed in reads a public game (90.9648ms)
+[2026-10-17T21:46:51.738Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x2fabc078 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+▶ direct membership writes cannot bypass the join callable
+  ✔ the ordinary first request (183.5391ms)
+[2026-10-17T21:46:51.828Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x2fabc07a error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ joining a queue that already holds other people (87.755ms)
+[2026-10-17T21:46:51.929Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x2fabc07c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ a club that predates the pendingPlayerIds field — bug 1 (101.3229ms)
+[2026-10-17T21:46:52.005Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x2fabc07e error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ asking twice is idempotent, not an error — bug 2 (75.0282ms)
+[2026-10-17T21:46:52.080Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x2fabc080 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ asking twice when others are queued too (75.57ms)
+✔ direct membership writes cannot bypass the join callable (1859.3459ms)
+[2026-10-17T21:46:52.151Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x2fabc082 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+▶ but cannot touch anybody else on the way in
+  ✔ cannot evict a pending rival and take their place (70.2709ms)
+[2026-10-17T21:46:52.212Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x2fabc084 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ cannot smuggle a stranger in alongside themselves (60.5432ms)
+[2026-10-17T21:46:52.279Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x2fabc086 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ cannot pad a duplicate to hide an eviction (67.0334ms)
+[2026-10-17T21:46:52.350Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x2fabc088 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ cannot enqueue somebody who is not them (71.1081ms)
+[2026-10-17T21:46:52.429Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x2fabc08a error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ cannot empty the queue (79.1506ms)
+[2026-10-17T21:46:52.502Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x2fabc08c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ cannot slip in past a full club (71.8919ms)
+✔ but cannot touch anybody else on the way in (421.0776ms)
+✔ dispatch can read an absent marker but an existing recipient-private marker denies the sender (900.6122ms)
+▶ the legitimate senders still get through
+  ✔ a club admin approves a join (57.6962ms)
+  ✔ a club admin rejects one (54.9734ms)
+  ✔ a club admin announces a new game (53.9574ms)
+  ✔ the organiser cancels or changes a game (65.5779ms)
+  ✔ the organiser offers a freed spot (87.2898ms)
+  ✔ a player announces their own departure — the real payload (61.0636ms)
+[2026-10-17T21:46:54.298Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320ccf error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+  ✔ and may not announce somebody else's (43.9493ms)
+[2026-10-17T21:46:54.378Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320cd2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+  ✔ a club admin announces the deletion, after the club is gone (78.4272ms)
+✔ the legitimate senders still get through (504.276ms)
+[2026-10-17T21:46:54.437Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320cd4 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1882:24 for 'create' @ L1882, false for 'update' @ L1992, false for 'create' @ L1882
+▶ and the stranger does not
+  ✔ a stranger cannot forge approved (58.4193ms)
+[2026-10-17T21:46:54.499Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320cd6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1882:24 for 'create' @ L1882, false for 'update' @ L1992, false for 'create' @ L1882
+  ✔ a stranger cannot forge rejected (62.1606ms)
+[2026-10-17T21:46:54.563Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320cd8 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1882:24 for 'create' @ L1882, false for 'update' @ L1992, false for 'create' @ L1882
+  ✔ a stranger cannot forge newGameInCommunity (63.9939ms)
+[2026-10-17T21:46:54.618Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320cda error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1882:24 for 'create' @ L1882, false for 'update' @ L1992, false for 'create' @ L1882
+  ✔ a stranger cannot forge gameCanceledOrUpdated (54.746ms)
+[2026-10-17T21:46:54.670Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320cdc error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1882:24 for 'create' @ L1882, false for 'update' @ L1992, false for 'create' @ L1882
+  ✔ a stranger cannot forge spotOpened (51.6174ms)
+[2026-10-17T21:46:54.724Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320cde error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1882:24 for 'create' @ L1882, false for 'update' @ L1992, false for 'create' @ L1882
+  ✔ a stranger cannot forge spotOffered (54.3308ms)
+[2026-10-17T21:46:54.782Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320ce0 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+  ✔ a stranger cannot forge groupDeleted (57.8693ms)
+[2026-10-17T21:46:54.847Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320ce2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1882:24 for 'create' @ L1882, false for 'update' @ L1992, false for 'create' @ L1882
+[2026-10-17T21:46:54.868Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320ce3 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+  ✔ nor can a club MEMBER who is not an admin (85.4142ms)
+[2026-10-17T21:46:54.912Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320ce5 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+[2026-10-17T21:46:54.931Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320ce6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+  ✔ nor can anyone send playerCancelled without naming themselves (62.9625ms)
+[2026-10-17T21:46:54.986Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320ce8 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+[2026-10-17T21:46:55.014Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320ce9 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+[2026-10-17T21:46:55.036Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320cea error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1882:24 for 'create' @ L1882, false for 'update' @ L1992, false for 'create' @ L1882
+  ✔ and an empty or missing payload is not a way round it (105.558ms)
+✔ and the stranger does not (658.2337ms)
+▶ every payload the SHIPPED client actually sends
+  ✔ approved from its real sender — { groupId,groupName… } (75.5834ms)
+  ✔ rejected from its real sender — { groupId,groupName… } (70.2817ms)
+  ✔ approved from its real sender — { gameId,gameTitle,bucket… } (55.6223ms)
+  ✔ rejected from its real sender — { gameId,gameTitle… } (49.0398ms)
+  ✔ newGameInCommunity from its real sender — { groupId,gameId,title… } (66.5629ms)
+  ✔ gameCanceledOrUpdated from its real sender — { gameId,gameTitle… } (52.5094ms)
+  ✔ gameCanceledOrUpdated from its real sender — { gameId,groupId,action… } (62.5509ms)
+  ✔ spotOffered from its real sender — { gameId,gameTitle,startsAt… } (61.8826ms)
+  ✔ spotOpened from its real sender — { gameId,gameTitle,startsAt… } (56.7029ms)
+  ✔ playerCancelled from its real sender — { cancellingUserId,gameTitles,reason… } (45.2429ms)
+[2026-10-17T21:46:55.697Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320d01 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+  ✔ groupDeleted, dispatched after the club document is deleted (63.4339ms)
+[2026-10-17T21:46:55.773Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320d04 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1882:24 for 'create' @ L1882, false for 'update' @ L1992, false for 'create' @ L1882
+  ✔ gameCanceledOrUpdated after the GAME is gone is refused — by design (75.7283ms)
+✔ every payload the SHIPPED client actually sends (736.3494ms)
+[2026-10-17T21:46:55.817Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8b320d06 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, false for 'update' @ L1992
+▶ what this does NOT close
+  ✔ groupDeleted naming a club that does not exist is refused: deletion notices are server-only (44.2118ms)
+✔ what this does NOT close (44.4169ms)
+[2026-10-17T21:46:57.199Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x4cbc1e35 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, Null value error. for 'update' @ L1055
+✔ auto-shift cancel (net-0: remove self + inject waitlist head into players) is DENIED (615.8322ms)
+[2026-10-17T21:46:57.268Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x4cbc1e37 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, Null value error. for 'update' @ L1055
+✔ historical offer-writing cancel is denied; current self-only cancel with waitlist is allowed (96.4041ms)
+  >>> OLD simple cancel: ALLOWED
+✔ OLD-CLIENT simple cancel (no waitlist, no teams): B just removes self (54.5184ms)
+✔ an anonymous session cannot reach another person’s user document (624.9933ms)
+✔ an anonymous session cannot ENUMERATE the user base (133.302ms)
+✔ an anonymous session still owns its own document (108.3044ms)
+✔ discovery is untouched for an anonymous session (97.8962ms)
+✔ a full account cannot read private /users documents or enumerate them (109.4471ms)
+✔ usersPublic: get by id is open to everyone, list is not (327.8367ms)
+[2026-10-17T21:46:59.203Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x87b3076a error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L837, false for 'update' @ L837
+[2026-10-17T21:46:59.226Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x87b3076b error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L837, false for 'update' @ L837
+[2026-10-17T21:46:59.249Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x87b3076c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L837, false for 'update' @ L837
+✔ usersPublic is server-written only (109.6112ms)
+✔ OLD BINARY, anonymous session: the two canonical reads it loses (96.1776ms)
+✔ OLD BINARY, full account: canonical reads are blocked; coordinated client rollout required (92.6413ms)
+▶ finishing onboarding with a city
+  ✔ a fresh account with a null invitedBy placeholder (158.2095ms)
+  ✔ a fresh account with no invitedBy key at all (58.6966ms)
+  ✔ an invited account, attribution already locked (56.9054ms)
+  ✔ without a city — the field is optional and the write omits it (51.3922ms)
+✔ finishing onboarding with a city (972.8374ms)
+▶ the dot paths do what they claim
+  ✔ create the availability map when there was none (80.3433ms)
+  ✔ leave the REST of an existing availability map alone (91.2481ms)
+✔ the dot paths do what they claim (172.1283ms)
+[2026-10-17T21:47:01.015Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x16cac75f error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'update' @ L471
+▶ what it must still refuse
+  ✔ somebody else finishing MY onboarding (54.0385ms)
+[2026-10-17T21:47:01.062Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x16cac760 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'update' @ L471
+  ✔ an ANONYMOUS session writing a city onto a user doc (45.5761ms)
+✔ what it must still refuse (100.1337ms)
+[2026-10-17T21:47:02.081Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622b6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1626:26 for 'create' @ L1626, false for 'update' @ L1643, false for 'create' @ L1626
+[2026-10-17T21:47:02.106Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622b7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1626, false for 'update' @ L1643
+✔ round join requests require audience access and a full account (551.2232ms)
+✔ DM: existing canonical conversation reopens idempotently from both participants (201.2759ms)
+[2026-10-17T21:47:02.455Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622c2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1787, false for 'update' @ L1795
+✔ DM: mutual friends can open a new canonical conversation and send its first message (147.684ms)
+✔ DM: nonexistent canonical route returns no metadata and an empty messages query (115.0717ms)
+✔ DM: exact message/receipt/typing queries work; outsider and parent enumeration remain denied (278.825ms)
+✔ DM: the actual per-user conversation-list query remains readable only to its owner (76.7788ms)
+[2026-10-17T21:47:02.971Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622d2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1779:24 for 'update' @ L1779, false for 'update' @ L1779
+[2026-10-17T21:47:02.992Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622d3 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1779:24 for 'update' @ L1779, false for 'update' @ L1779
+✔ DM: a participant cannot replace or append participants or grant a third party history (122.2319ms)
+[2026-10-17T21:47:03.164Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622d9 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1787, false for 'update' @ L1795
+[2026-10-17T21:47:03.196Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622da error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1800, false for 'update' @ L1800
+[2026-10-17T21:47:03.214Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622db error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1804, false for 'update' @ L1804
+✔ DM: historical forged metadata cannot give a third party reads, typing, receipts or sends (164.6054ms)
+[2026-10-17T21:47:03.244Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622dc error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1771, false for 'update' @ L1779
+[2026-10-17T21:47:03.265Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622dd error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1771, evaluation error at L1779:24 for 'update' @ L1779, false for 'create' @ L1771
+[2026-10-17T21:47:03.285Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622de error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1771, false for 'update' @ L1779
+[2026-10-17T21:47:03.322Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622df error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1771, evaluation error at L1779:24 for 'update' @ L1779, false for 'create' @ L1771
+[2026-10-17T21:47:03.344Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622e0 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1771, evaluation error at L1779:24 for 'update' @ L1779, false for 'create' @ L1771
+✔ DM: forged id, reverse order, self-conversation and extra participant creations are denied (130.1635ms)
+[2026-10-17T21:47:03.401Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622e2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1771:24 for 'create' @ L1771, evaluation error at L1779:24 for 'update' @ L1779, false for 'create' @ L1771
+[2026-10-17T21:47:03.428Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622e3 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1787:26 for 'create' @ L1787, false for 'update' @ L1795, false for 'create' @ L1787
+✔ DM: friends-only privacy gates both opening and direct message bypass (179.9042ms)
+[2026-10-17T21:47:03.632Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622ea error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1787:26 for 'create' @ L1787, false for 'update' @ L1795, false for 'create' @ L1787
+✔ DM: existing history remains readable after friends-only restriction; new sends are denied (107.7296ms)
+[2026-10-17T21:47:03.712Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622ed error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1800, false for 'update' @ L1800
+[2026-10-17T21:47:03.755Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622ef error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1804, false for 'update' @ L1804
+[2026-10-17T21:47:03.792Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622f0 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1787:26 for 'create' @ L1787, false for 'update' @ L1795, false for 'create' @ L1787
+✔ DM: each participant can write their own receipt/typing, never the other participant or sender (159.8965ms)
+[2026-10-17T21:47:03.836Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622f1 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L842:24 for 'create' @ L842, evaluation error at L861:24 for 'update' @ L861, Null value error. for 'create' @ L842
+[2026-10-17T21:47:03.877Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622f3 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L842:24 for 'create' @ L842, evaluation error at L861:24 for 'update' @ L861, false for 'create' @ L842
+✔ groupsPublic: count-one orphan and non-admin mirror are denied; real admin succeeds (117.632ms)
+[2026-10-17T21:47:03.954Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622f5 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L568, evaluation error at L570:24 for 'update' @ L570, evaluation error at L842:24 for 'create' @ L842, evaluation error at L861:24 for 'update' @ L861, false for 'create' @ L842, false for 'create' @ L568
+✔ groupsPublic: direct canonical creation with mirror is denied in a batch (81.7903ms)
+✔ groupsPublic: direct canonical creation with mirror is denied in a transaction (76.2722ms)
+[2026-10-17T21:47:04.108Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622f9 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L568, evaluation error at L570:24 for 'update' @ L570, false for 'create' @ L568
+✔ groupsPublic: only a server-created canonical club authorises its mirror (77.6164ms)
+[2026-10-17T21:47:04.187Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622fc error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L568, evaluation error at L570:24 for 'update' @ L570, false for 'create' @ L842, evaluation error at L861:24 for 'update' @ L861, false for 'create' @ L842
+[2026-10-17T21:47:04.272Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b622fe error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L568, evaluation error at L570:24 for 'update' @ L570, evaluation error at L842:24 for 'create' @ L842, evaluation error at L861:24 for 'update' @ L861, Null value error. for 'create' @ L842
+✔ groupsPublic: oversized or mismatched mirror rejects the whole source-and-mirror batch (156.7202ms)
+[2026-10-17T21:47:04.359Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b62301 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L842:24 for 'create' @ L842, evaluation error at L861:24 for 'update' @ L861, false for 'create' @ L842
+[2026-10-17T21:47:04.389Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x85b62302 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, evaluation error at L842:24 for 'create' @ L842, evaluation error at L861:24 for 'update' @ L861, false for 'create' @ L842, false for 'update' @ L570
+✔ groupsPublic: fake mirror adminIds and escalation of somebody elses source cannot grant creation (86.0532ms)
+✔ groupsPublic: valid existing metadata batch and discovery query remain supported (114.398ms)
+✔ a club admin can publish a split on a FINISHED game (996.6163ms)
+✔ the game creator can too (82.5713ms)
+[2026-10-17T21:47:06.341Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x12f151c1 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ an ordinary participant cannot (69.6063ms)
+[2026-10-17T21:47:06.408Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x12f151c3 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ a stranger cannot (66.3733ms)
+[2026-10-17T21:47:06.488Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x12f151c5 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ it cannot be used to rewrite who played with whom (79.4794ms)
+[2026-10-17T21:47:06.579Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x12f151c8 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ it cannot UNpublish a split (91.3549ms)
+[2026-10-17T21:47:06.642Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x12f151ca error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ it cannot smuggle another field through alongside the flag (61.8607ms)
+[2026-10-17T21:47:07.586Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8ce1e0f7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1550:26 for 'create' @ L1550, false for 'update' @ L1554, false for 'create' @ L1550
+✔ registered players and admins write; waitlist alone cannot read or write (591.0517ms)
+[2026-10-17T21:47:07.795Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8ce1e0fd error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1550:26 for 'create' @ L1550, false for 'update' @ L1554, false for 'create' @ L1550
+[2026-10-17T21:47:07.819Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8ce1e0fe error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1550:26 for 'create' @ L1550, false for 'update' @ L1554, false for 'create' @ L1550
+[2026-10-17T21:47:07.895Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8ce1e101 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1573:25 for 'create' @ L1573, evaluation error at L1573:25 for 'update' @ L1573, false for 'create' @ L1573
+✔ finished round accepts messages until 24h from actual end, then keeps history and receipts only (288.0044ms)
+[2026-10-17T21:47:08.028Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8ce1e105 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1550:26 for 'create' @ L1550, false for 'update' @ L1554, false for 'create' @ L1550
+✔ cancelled rounds close immediately, regardless of a future end timestamp (134.4023ms)
+[2026-10-17T21:47:08.164Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8ce1e109 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1550:26 for 'create' @ L1550, false for 'update' @ L1554, false for 'create' @ L1550
+[2026-10-17T21:47:08.262Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8ce1e10c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1550:26 for 'create' @ L1550, false for 'update' @ L1554, false for 'create' @ L1550
+[2026-10-17T21:47:08.342Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8ce1e10f error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1550:26 for 'create' @ L1550, false for 'update' @ L1554, false for 'create' @ L1550
+✔ legacy finished rounds with missing or null end time stay readable but cannot reopen (334.2391ms)
+[2026-10-17T21:47:08.471Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x8ce1e113 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1550:26 for 'create' @ L1550, false for 'update' @ L1554, false for 'create' @ L1550
+✔ cancelling signup removes chat access; rejoining restores it without deleting history (188.0888ms)
+✔ personal pin/mute/archive settings are private, including message identity anchors (118.7513ms)
+✔ inbox parent queries include finished metadata without relying on message permissions (141.2771ms)
+✔ club-scoped summary query returns the sealed evening for a member (458.7632ms)
+✔ club-scoped query can prove a missing summary without a denied missing-document read (44.7433ms)
+✔ an outsider cannot use either an existing or missing summary query to bypass membership (46.0581ms)
+✔ a rostered player still reads roundHistory (32.6294ms)
+✔ a club member who did NOT play reads roundHistory — the fix (30.915ms)
+✔ a club member who did NOT play reads committedRounds (45.3569ms)
+✔ a non-member is still denied roundHistory (30.542ms)
+✔ a non-member is still denied committedRounds (30.7859ms)
+[2026-10-17T21:47:09.939Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x10c247c2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1597, false for 'update' @ L1597
+✔ nobody may write roundHistory (23.1087ms)
+✔ an unauthenticated reader is denied (38.6742ms)
+✔ scheduled: registered player withdraws without touching the queue or offer (553.5338ms)
+✔ scheduled: waiting offer owner withdraws and clears only their own offer (78.3591ms)
+✔ scheduled: pending player withdraws (74.0146ms)
+[2026-10-17T21:47:11.216Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x5fbcf37d error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+[2026-10-17T21:47:11.247Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x5fbcf37e error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ scheduled: new player cannot self-join or join the waitlist (97.9535ms)
+[2026-10-17T21:47:11.318Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x5fbcf380 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+[2026-10-17T21:47:11.344Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x5fbcf381 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+[2026-10-17T21:47:11.369Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x5fbcf382 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ scheduled: withdrawing cannot remove another player or forge a promotion (121.912ms)
+[2026-10-17T21:47:11.447Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x5fbcf384 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+[2026-10-17T21:47:11.475Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x5fbcf385 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+✔ scheduled: cannot reopen or alter timing while cancelling (105.7668ms)
+[2026-10-17T21:47:12.998Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x76900589 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+▶ with a correction window open
+  ✔ the admin cannot start an evening (176.4623ms)
+[2026-10-17T21:47:13.084Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7690058b error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+  ✔ nor can the game creator by another route (84.1752ms)
+  ✔ but the admin can still correct a score (102.6358ms)
+  ✔ and edit a future evening without starting it (74.6963ms)
+  ✔ and finish an evening that was already running (76.19ms)
+✔ with a correction window open (1475.1487ms)
+▶ with no window open
+  ✔ the admin starts the evening exactly as before (75.7718ms)
+  ✔ a club with no seasons block at all is untouched (80.0078ms)
+✔ with no window open (156.4869ms)
+▶ a game whose liveMatch is present and NULL
+  ✔ can still be edited by the admin, window or not (62.6269ms)
+  ✔ and with no window either (76.8574ms)
+[2026-10-17T21:47:13.708Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x7690059c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+  ✔ and starting it is still blocked inside a window (73.0382ms)
+  ✔ and still allowed outside one (80.2052ms)
+✔ a game whose liveMatch is present and NULL (293.4409ms)
+▶ after seasons are switched off mid-window
+  ✔ a club left with enabled:false and NO stamp can start (60.4984ms)
+[2026-10-17T21:47:13.918Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x769005a2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+  ✔ and one left with the stamp still on it cannot — the bug, pinned (68.8328ms)
+✔ after seasons are switched off mid-window (129.7719ms)
+[2026-10-17T21:47:13.979Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x769005a4 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+▶ the rule is the presence of the field, not its contents
+  ✔ a stamp naming an older season still blocks (60.5889ms)
+[2026-10-17T21:47:14.043Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x769005a6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+  ✔ a window whose deadline has passed still blocks in the rules (63.5366ms)
+✔ the rule is the presence of the field, not its contents (124.5388ms)
+[2026-10-17T21:47:14.111Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x769005a8 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+▶ the 82-field game, and the cap the admin branch already sits behind
+  ✔ ⚠️ pre-existing: an admin edit is denied by the expression cap (68.0469ms)
+[2026-10-17T21:47:14.210Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x769005aa error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+  ✔ ⚠️ pre-existing: and denied with no season window in play at all (99.0349ms)
+[2026-10-17T21:47:14.284Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x769005ac error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+  ✔ the start is refused inside the window (73.3229ms)
+[2026-10-17T21:47:14.367Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x769005ae error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1055, false for 'update' @ L1055
+  ✔ ⚠️ pre-existing: and refused outside it too, for the same reason (83.3774ms)
+✔ the 82-field game, and the cap the admin branch already sits behind (324.584ms)
+▶ a club member reads their own seasons
+  ✔ one season by id (59.4346ms)
+  ✔ and can list them — the wildcard trap (53.7242ms)
+✔ a club member reads their own seasons (964.0514ms)
+▶ and so does somebody who PLAYED it and has since left
+  ✔ by id (45.0666ms)
+  ✔ but a LIST is still members-only — the wildcard trap, again (31.2947ms)
+  ✔ and a member listing their club still gets every season (47.1568ms)
+  ✔ and not a later season their dead stat row still appears in (67.7663ms)
+  ✔ and a timer-only season, where nobody has a single משחקון (56.0719ms)
+  ✔ but still not one they only have a zeroed row in (65.1373ms)
+  ✔ but not a season they never played (61.869ms)
+✔ and so does somebody who PLAYED it and has since left (375.7264ms)
+▶ somebody else cannot
+  ✔ not by id (31.7562ms)
+  ✔ not by query (31.8274ms)
+✔ somebody else cannot (63.9768ms)
+[2026-10-17T21:47:16.488Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff49c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2453, false for 'update' @ L2453
+▶ nobody writes
+  ✔ not a member (42.5381ms)
+[2026-10-17T21:47:16.513Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff49d error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2453, false for 'update' @ L2453
+  ✔ not even to their own club season (23.9624ms)
+✔ nobody writes (66.8914ms)
+▶ personal season titles are owner-only, like personal totals
+  ✔ a club member reads it (23.1422ms)
+  ✔ an outsider cannot read personal title values (36.3469ms)
+  ✔ a player can list their own titles (32.4159ms)
+  ✔ an outsider cannot enumerate personal title values (31.3729ms)
+✔ personal season titles are owner-only, like personal totals (123.9462ms)
+[2026-10-17T21:47:16.661Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4a2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2303, false for 'update' @ L2303
+▶ but nobody awards themselves a title
+  ✔ not on their own profile (23.2686ms)
+[2026-10-17T21:47:16.681Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4a3 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2303, false for 'update' @ L2303
+  ✔ not on anybody else's (20.2433ms)
+[2026-10-17T21:47:16.703Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4a4 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2303, false for 'update' @ L2303
+  ✔ and not by overwriting one they really did win (21.7645ms)
+✔ but nobody awards themselves a title (65.7747ms)
+[2026-10-17T21:47:16.733Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4a5 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+▶ nobody edits groups.seasons from a client
+  ✔ not an admin adding it (29.8773ms)
+[2026-10-17T21:47:16.775Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4a7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ not an admin rewinding one that exists (42.2669ms)
+[2026-10-17T21:47:16.803Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4a8 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ and an ordinary member certainly does not (27.2786ms)
+  ✔ but an admin can still edit the rest of the club (26.8279ms)
+✔ nobody edits groups.seasons from a client (126.8327ms)
+▶ the season CARD is club-scoped
+  ✔ a member reads one by id (27.5602ms)
+  ✔ and lists them — the screen's real query, answered from the FIELD (30.6079ms)
+  ✔ an outsider gets nothing, by id or by query (62.513ms)
+  ✔ and neither does somebody who only PLAYED the season (31.7743ms)
+[2026-10-17T21:47:17.001Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4af error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2397, false for 'update' @ L2397
+  ✔ nobody writes a card, not even the club admin (17.6933ms)
+✔ the season CARD is club-scoped (170.7321ms)
+[2026-10-17T21:47:17.017Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4b0 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'delete' @ L2453
+▶ a sealed season cannot be deleted from a client
+  ✔ not the archive (16.2974ms)
+[2026-10-17T21:47:17.040Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4b1 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'delete' @ L2397
+  ✔ not the card (23.0782ms)
+[2026-10-17T21:47:17.057Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4b2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'delete' @ L2303
+  ✔ and a player cannot delete a title they lost interest in (16.262ms)
+✔ a sealed season cannot be deleted from a client (55.9902ms)
+▶ none of it is public to the internet
+  ✔ no archive (18.1146ms)
+  ✔ no card (31.6682ms)
+  ✔ no title — public means every signed-in USER, not everybody (46.9645ms)
+✔ none of it is public to the internet (97.2846ms)
+[2026-10-17T21:47:17.179Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4b6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, Property seasons is undefined on object. for 'update' @ L570
+▶ no side door into groups.seasons
+  ✔ not deleting the field (24.8499ms)
+[2026-10-17T21:47:17.206Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4b7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ not one nested number (26.4014ms)
+[2026-10-17T21:47:17.240Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4b8 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ not riding along on a self-leave (34.4941ms)
+[2026-10-17T21:47:17.263Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4b9 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+  ✔ not riding along on a join request (22.9641ms)
+✔ no side door into groups.seasons (109.2147ms)
+[2026-10-17T21:47:17.293Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x19cff4ba error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L568, evaluation error at L570:24 for 'update' @ L570, false for 'create' @ L568
+▶ and a club cannot be BORN with a seasons block
+  ✔ planting one at create is refused (29.2006ms)
+✔ and a club cannot be BORN with a seasons block (29.5635ms)
+▶ archive overflow pages use the same existing access policy
+  ✔ a club member can read a page (31.3935ms)
+  ✔ a former participant can still read the page (31.194ms)
+  ✔ an unrelated person cannot read the page (29.4858ms)
+✔ archive overflow pages use the same existing access policy (110.1139ms)
+[2026-10-17T21:47:18.536Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdb78 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2221, false for 'update' @ L2221
+[2026-10-17T21:47:18.547Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdb79 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'update' @ L2221
+✔ S02: unauthenticated error writer cannot forge identity, status and extra fields (654.8953ms)
+✔ S03: a participant reads another participant heart rate and heatmap (151.1293ms)
+[2026-10-17T21:47:18.784Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdb81 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L568, evaluation error at L570:24 for 'update' @ L570, false for 'create' @ L568
+✔ S04: anonymous account creates a club directly, bypassing callable daily quota (63.8331ms)
+[2026-10-17T21:47:18.843Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdb83 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+[2026-10-17T21:47:18.871Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdb84 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L471:24 for 'update' @ L471, Null value error. for 'update' @ L471
+✔ S05: initial user creation accepts forged server-derived statistics (86.3342ms)
+[2026-10-17T21:47:18.941Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdb87 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+✔ S06: rejected club applicant cannot bypass canonical server rejection by direct open-club update (70.6258ms)
+[2026-10-17T21:47:19.012Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdb89 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2325, false for 'update' @ L2324
+✔ S07: legacy report writer can fabricate text and author without reading the message (70.1976ms)
+[2026-10-17T21:47:19.067Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdb8b error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2233, false for 'update' @ L2232
+✔ S08: feedback creator controls moderation status and arbitrary extra fields (55.2677ms)
+[2026-10-17T21:47:19.262Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdb91 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+[2026-10-17T21:47:19.334Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdb94 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'update' @ L564
+✔ S09: private manager ratings respect visibility and retain legitimate admin/member access (267.3312ms)
+✔ S10: full-account directory query includes identity of opted-out player (76.1634ms)
+✔ S11: unrelated full account reads a private club round record (111.171ms)
+[2026-10-17T21:47:19.624Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdb9e error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L936, false for 'update' @ L938
+✔ S12: direct friendship request bypasses block, full-account check and callable rate limit (101.7155ms)
+[2026-10-17T21:47:19.675Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdba0 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1882, evaluation error at L1992:24 for 'update' @ L1992, false for 'create' @ L1882
+✔ S13: unrelated sender creates a club-deleted notification for any recipient (50.9026ms)
+[2026-10-17T21:47:19.734Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdba2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1701, false for 'update' @ L1705
+✔ S14: authenticated chat sender cannot forge displayed name, avatar and timestamp (58.5871ms)
+[2026-10-17T21:47:19.859Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdba6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L2128, false for 'update' @ L2128
+[2026-10-17T21:47:19.895Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdba7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L568, evaluation error at L570:24 for 'update' @ L570, false for 'update' @ L570
+✔ Controls: private identity, another club and server rate limits remain protected (160.6643ms)
+✔ legitimate feedback and first user creation remain supported (104.9746ms)
+✔ authoritative chat identity is server-only while valid member messages remain accepted (62.1871ms)
+[2026-10-17T21:47:20.169Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdbaf error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L946:24 for 'delete' @ L946, false for 'delete' @ L946
+[2026-10-17T21:47:20.190Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x6eebdbb0 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L946:24 for 'delete' @ L946, false for 'delete' @ L946
+✔ declined friendship history cannot be deleted to bypass rejection (128.1828ms)
+✔ private user records: owner only, even for a friend or club/system admin claim (1426.7175ms)
+[2026-10-17T21:47:22.089Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48bb error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'create' @ L452
+[2026-10-17T21:47:22.142Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48bd error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L471:24 for 'update' @ L471, false for 'update' @ L471
+[2026-10-17T21:47:22.148Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48be error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L471:24 for 'update' @ L471, false for 'update' @ L471
+[2026-10-17T21:47:22.172Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48bf error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L471:24 for 'update' @ L471, false for 'update' @ L471
+[2026-10-17T21:47:22.186Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48c0 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L471:24 for 'update' @ L471, false for 'update' @ L471
+[2026-10-17T21:47:22.203Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48c1 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L452, evaluation error at L471:24 for 'update' @ L471, false for 'update' @ L471
+✔ approved friendship cannot be fabricated on create or changed through any client write shape (170.9102ms)
+[2026-10-17T21:47:22.326Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48c6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1787:26 for 'create' @ L1787, false for 'update' @ L1795, false for 'update' @ L1795
+[2026-10-17T21:47:22.351Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48c7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1771:24 for 'create' @ L1771, evaluation error at L1779:24 for 'update' @ L1779, false for 'create' @ L1771
+[2026-10-17T21:47:22.375Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48c8 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1787:26 for 'create' @ L1787, false for 'update' @ L1795, false for 'create' @ L1787
+✔ old missing/false preference does not permit strangers or unilateral friendship (162.3822ms)
+[2026-10-17T21:47:22.446Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48cb error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1787:26 for 'create' @ L1787, false for 'update' @ L1795, false for 'create' @ L1787
+[2026-10-17T21:47:22.505Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48ce error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1787:26 for 'create' @ L1787, false for 'update' @ L1795, false for 'create' @ L1787
+✔ blocking in either direction prevents new messages even for mutual friends (156.5698ms)
+[2026-10-17T21:47:22.609Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48d2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1787, false for 'update' @ L1795
+✔ official service replies work, impersonating the official sender does not (77.5909ms)
+[2026-10-17T21:47:22.661Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48d4 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1787, false for 'update' @ L1795
+✔ anonymous sessions cannot send even if seeded with mutual friendship (51.2237ms)
+[2026-10-17T21:47:22.768Z]  @firebase/firestore: Firestore (12.13.0): GrpcConnection RPC 'Write' stream 0x3e9e48d8 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1787:26 for 'create' @ L1787, false for 'update' @ L1795, false for 'create' @ L1787
+✔ existing history survives friendship removal; new messages remain blocked (107.6091ms)
+✔ personal totals are owner-only, pair queries are limited to a participant (196.0175ms)
+ℹ tests 350
+ℹ suites 34
+ℹ pass 350
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68679.9848
++  Script exited successfully (code 0)
+i  emulators: Shutting down emulators.
+i  firestore: Stopping Firestore Emulator
+!  Firestore Emulator has exited upon receiving signal: SIGINT
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator

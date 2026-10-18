@@ -1,0 +1,266 @@
+[
+  {
+    "acknowledged": true,
+    "after": {
+      "accumulated": 0,
+      "id": "cF3CjQbLH8vzo7uaFqHx",
+      "leftHome": [
+        {
+          "at": 1792281357190,
+          "homeTeam": 0,
+          "playerId": "guest:mvd0w4ym-ingxdl"
+        }
+      ],
+      "playing": [
+        0,
+        1
+      ],
+      "roundId": "r_mvd1lc7d_cxuq50tk",
+      "running": false,
+      "scoreA": 0,
+      "scoreB": 0,
+      "status": "open",
+      "teams": [
+        {
+          "ids": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvd0xnrj-tjh9tt",
+            "guest:mvd0xybi-m35dd0",
+            "guest:mvd0zp9o-rrny5s",
+            "guest:mvd100i6-z7ct6s",
+            "guest:mvd11k50-tzwfs3",
+            "guest:mvd11v4d-44941z",
+            "guest:mvd13apd-adek4f",
+            "guest:mvd13kwx-5qos4h",
+            "guest:mvd152yq-3ebjj2"
+          ],
+          "index": 0
+        },
+        {
+          "ids": [
+            "guest:mvd0vjxq-0g1lq1",
+            "guest:mvd0wfdk-466dv3",
+            "guest:mvd0xc1z-73rbw4",
+            "guest:mvd0ycc9-z0t5wz",
+            "guest:mvd0zdfn-ar4g4f",
+            "guest:mvd10bg7-d2c7o2",
+            "guest:mvd119aq-oyq8h0",
+            "guest:mvd125lr-ljh7d2",
+            "guest:mvd130io-5acdpt",
+            "guest:mvd13vi3-pq5bfp",
+            "guest:mvd14sr6-bf7sgb"
+          ],
+          "index": 1
+        },
+        {
+          "ids": [
+            "guest:mvd0wrfs-kh2vtr",
+            "guest:mvd0x1ps-7ixc9q",
+            "guest:mvd0yonx-b7ct3f",
+            "guest:mvd0z0wa-y09vp7",
+            "guest:mvd10m8o-l6gurd",
+            "guest:mvd10x7k-3wrf22",
+            "guest:mvd12fv8-i79hga",
+            "guest:mvd12q0h-3kdp0c",
+            "guest:mvd147a2-7x9qv8",
+            "guest:mvd14ieu-7xm78a",
+            "guest:mvd0vuna-fnoeo2"
+          ],
+          "index": 2
+        }
+      ]
+    },
+    "at": 1792281357474,
+    "before": {
+      "accumulated": 0,
+      "id": "cF3CjQbLH8vzo7uaFqHx",
+      "playing": [
+        0,
+        1
+      ],
+      "roundId": "r_mvd1lc7d_cxuq50tk",
+      "running": false,
+      "scoreA": 0,
+      "scoreB": 0,
+      "status": "open",
+      "teams": [
+        {
+          "ids": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvd0xnrj-tjh9tt",
+            "guest:mvd0xybi-m35dd0",
+            "guest:mvd0zp9o-rrny5s",
+            "guest:mvd100i6-z7ct6s",
+            "guest:mvd11k50-tzwfs3",
+            "guest:mvd11v4d-44941z",
+            "guest:mvd13apd-adek4f",
+            "guest:mvd13kwx-5qos4h",
+            "guest:mvd152yq-3ebjj2",
+            "guest:mvd0w4ym-ingxdl"
+          ],
+          "index": 0
+        },
+        {
+          "ids": [
+            "guest:mvd0vjxq-0g1lq1",
+            "guest:mvd0wfdk-466dv3",
+            "guest:mvd0xc1z-73rbw4",
+            "guest:mvd0ycc9-z0t5wz",
+            "guest:mvd0zdfn-ar4g4f",
+            "guest:mvd10bg7-d2c7o2",
+            "guest:mvd119aq-oyq8h0",
+            "guest:mvd125lr-ljh7d2",
+            "guest:mvd130io-5acdpt",
+            "guest:mvd13vi3-pq5bfp",
+            "guest:mvd14sr6-bf7sgb"
+          ],
+          "index": 1
+        },
+        {
+          "ids": [
+            "guest:mvd0wrfs-kh2vtr",
+            "guest:mvd0x1ps-7ixc9q",
+            "guest:mvd0yonx-b7ct3f",
+            "guest:mvd0z0wa-y09vp7",
+            "guest:mvd10m8o-l6gurd",
+            "guest:mvd10x7k-3wrf22",
+            "guest:mvd12fv8-i79hga",
+            "guest:mvd12q0h-3kdp0c",
+            "guest:mvd147a2-7x9qv8",
+            "guest:mvd14ieu-7xm78a",
+            "guest:mvd0vuna-fnoeo2"
+          ],
+          "index": 2
+        }
+      ]
+    },
+    "gameId": "cF3CjQbLH8vzo7uaFqHx",
+    "reads": [
+      {
+        "at": 1792281357485,
+        "board": {
+          "accumulated": 0,
+          "id": "cF3CjQbLH8vzo7uaFqHx",
+          "playing": [
+            0,
+            1
+          ],
+          "roundId": "r_mvd1lc7d_cxuq50tk",
+          "running": false,
+          "scoreA": 0,
+          "scoreB": 0,
+          "status": "open",
+          "teams": [
+            {
+              "ids": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "guest:mvd0xnrj-tjh9tt",
+                "guest:mvd0xybi-m35dd0",
+                "guest:mvd0zp9o-rrny5s",
+                "guest:mvd100i6-z7ct6s",
+                "guest:mvd11k50-tzwfs3",
+                "guest:mvd11v4d-44941z",
+                "guest:mvd13apd-adek4f",
+                "guest:mvd13kwx-5qos4h",
+                "guest:mvd152yq-3ebjj2",
+                "guest:mvd0w4ym-ingxdl"
+              ],
+              "index": 0
+            },
+            {
+              "ids": [
+                "guest:mvd0vjxq-0g1lq1",
+                "guest:mvd0wfdk-466dv3",
+                "guest:mvd0xc1z-73rbw4",
+                "guest:mvd0ycc9-z0t5wz",
+                "guest:mvd0zdfn-ar4g4f",
+                "guest:mvd10bg7-d2c7o2",
+                "guest:mvd119aq-oyq8h0",
+                "guest:mvd125lr-ljh7d2",
+                "guest:mvd130io-5acdpt",
+                "guest:mvd13vi3-pq5bfp",
+                "guest:mvd14sr6-bf7sgb"
+              ],
+              "index": 1
+            },
+            {
+              "ids": [
+                "guest:mvd0wrfs-kh2vtr",
+                "guest:mvd0x1ps-7ixc9q",
+                "guest:mvd0yonx-b7ct3f",
+                "guest:mvd0z0wa-y09vp7",
+                "guest:mvd10m8o-l6gurd",
+                "guest:mvd10x7k-3wrf22",
+                "guest:mvd12fv8-i79hga",
+                "guest:mvd12q0h-3kdp0c",
+                "guest:mvd147a2-7x9qv8",
+                "guest:mvd14ieu-7xm78a",
+                "guest:mvd0vuna-fnoeo2"
+              ],
+              "index": 2
+            }
+          ]
+        },
+        "options": {
+          "source": "server"
+        }
+      }
+    ],
+    "result": {
+      "fillMode": "permanent",
+      "playing": [
+        0,
+        1
+      ],
+      "teams": [
+        {
+          "index": 0,
+          "playerIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvd0xnrj-tjh9tt",
+            "guest:mvd0xybi-m35dd0",
+            "guest:mvd0zp9o-rrny5s",
+            "guest:mvd100i6-z7ct6s",
+            "guest:mvd11k50-tzwfs3",
+            "guest:mvd11v4d-44941z",
+            "guest:mvd13apd-adek4f",
+            "guest:mvd13kwx-5qos4h",
+            "guest:mvd152yq-3ebjj2"
+          ]
+        },
+        {
+          "index": 1,
+          "playerIds": [
+            "guest:mvd0vjxq-0g1lq1",
+            "guest:mvd0wfdk-466dv3",
+            "guest:mvd0xc1z-73rbw4",
+            "guest:mvd0ycc9-z0t5wz",
+            "guest:mvd0zdfn-ar4g4f",
+            "guest:mvd10bg7-d2c7o2",
+            "guest:mvd119aq-oyq8h0",
+            "guest:mvd125lr-ljh7d2",
+            "guest:mvd130io-5acdpt",
+            "guest:mvd13vi3-pq5bfp",
+            "guest:mvd14sr6-bf7sgb"
+          ]
+        },
+        {
+          "index": 2,
+          "playerIds": [
+            "guest:mvd0wrfs-kh2vtr",
+            "guest:mvd0x1ps-7ixc9q",
+            "guest:mvd0yonx-b7ct3f",
+            "guest:mvd0z0wa-y09vp7",
+            "guest:mvd10m8o-l6gurd",
+            "guest:mvd10x7k-3wrf22",
+            "guest:mvd12fv8-i79hga",
+            "guest:mvd12q0h-3kdp0c",
+            "guest:mvd147a2-7x9qv8",
+            "guest:mvd14ieu-7xm78a",
+            "guest:mvd0vuna-fnoeo2"
+          ]
+        }
+      ]
+    }
+  }
+]

@@ -45,6 +45,7 @@ import { lightHaptic, successHaptic, warningHaptic } from '@/utils/haptics';
 import { tallyCreditFor } from '@/utils/goalTally';
 import { savedRoundLive } from '@/utils/savedRoundView';
 import { shootoutFingerprint, type ShootoutDecisionContext } from '@/utils/shootoutDecision';
+import { roundDecisionContext } from '@/utils/roundDecision';
 import { didEveningHappen } from '@/utils/eveningPlayed';
 import {
   emptyWaitingTeams,
@@ -481,7 +482,10 @@ export function AdvancedLiveMatchScreen() {
     if (!gameId) return;
     const unsub = gameService.subscribeLiveGame(
       gameId,
-      ({ liveMatch, rotation: r, draftTeams: d, lastCommittedRoundId: committedId }) => {
+      ({ game: snapshot, liveMatch, rotation: r, draftTeams: d, lastCommittedRoundId: committedId }) => {
+        // The result guard and guest identities must use the same document
+        // as the live board, including open -> active and roster changes.
+        if (snapshot) setGame(snapshot);
         setLive(liveMatch ?? null);
         setRotation(r ?? null);
         setDraftTeams(d ?? null);
@@ -890,7 +894,8 @@ export function AdvancedLiveMatchScreen() {
       };
       // A draw always opens the decision chooser, including an untimed 0:0.
       captureRoundForResult();
-      const res = await gameService.prepareRoundResult(gameId, me.id);
+      const res = await gameService.prepareRoundResult(gameId, me.id, undefined, undefined, false, undefined,
+        roundDecisionContext({...game!,id:gameId,rotation:rotation??undefined,draftTeams:draftTeams??undefined,liveMatch:live??undefined}));
       if (!res) throw new Error(he.roundFinalizeFailed);
       if (res.outcome === null) {
         setDecisionOpen(true);
@@ -930,6 +935,7 @@ export function AdvancedLiveMatchScreen() {
       fillFlowRef.current
     )
       return;
+    if (!rotation.playing.includes(teamIndex)) return;
     const side: 'A' | 'B' = teamIndex === rotation.playing[0] ? 'A' : 'B';
     finalizingRef.current = true;
     // Same busy latch as onEndRound. A round that ends level takes the SAME
@@ -940,7 +946,8 @@ export function AdvancedLiveMatchScreen() {
     try {
       if (shootoutDecision) await gameService.clearShootout(gameId, shootoutDecision);
       captureRoundForResult(!!shootoutDecision);
-      const res = await gameService.prepareRoundResult(gameId, me.id, side, undefined, false, shootoutDecision ?? undefined);
+      const res = await gameService.prepareRoundResult(gameId, me.id, side, undefined, false, shootoutDecision ?? undefined,
+        roundDecisionContext({...game!,id:gameId,rotation,draftTeams:draftTeams??undefined,liveMatch:live ? {...live,...(shootoutDecision?{shootout:undefined}:{})}:undefined}));
       if (res && res.outcome !== null) {
         logEvent(AnalyticsEvent.MatchRoundCompleted, {
           gameId,
@@ -1020,7 +1027,8 @@ export function AdvancedLiveMatchScreen() {
     try {
       if (shootoutDecision) await gameService.clearShootout(gameId, shootoutDecision);
       captureRoundForResult(!!shootoutDecision);
-      const res = await gameService.prepareRoundResult(gameId, me.id, undefined, mode, false, shootoutDecision ?? undefined);
+      const res = await gameService.prepareRoundResult(gameId, me.id, undefined, mode, false, shootoutDecision ?? undefined,
+        roundDecisionContext({...game!,id:gameId,rotation:rotation??undefined,draftTeams:draftTeams??undefined,liveMatch:live ? {...live,...(shootoutDecision?{shootout:undefined}:{})}:undefined}));
       if (!res || res.outcome === null) return;
       logEvent(AnalyticsEvent.MatchRoundCompleted, {
         gameId,
@@ -1062,7 +1070,8 @@ export function AdvancedLiveMatchScreen() {
     markBusy(1);
     try {
       captureRoundForResult();
-      const res = await gameService.prepareRoundResult(gameId, me.id, side);
+      const res = await gameService.prepareRoundResult(gameId, me.id, side, undefined, false, undefined,
+        roundDecisionContext({...game!,id:gameId,rotation,draftTeams:draftTeams??undefined,liveMatch:live??undefined}));
       if (res && res.outcome !== null) {
         logEvent(AnalyticsEvent.MatchRoundCompleted, {
           gameId,
@@ -1665,7 +1674,7 @@ export function AdvancedLiveMatchScreen() {
             if (homeActionRef.current) return; // double-tap guard (B25)
             homeActionRef.current = true;
             try {
-              await gameService.markPlayerWentHome(gameId, player.id);
+              const acknowledged = await gameService.markPlayerWentHome(gameId, player.id);
               logEvent(AnalyticsEvent.LiveRosterAction, {
                 gameId,
                 action: 'went_home',
@@ -1677,11 +1686,13 @@ export function AdvancedLiveMatchScreen() {
               // a replacement (same fill flow as a round transition). No-op when
               // no playing team is short or a transition is already in flight.
               if (!finalizingRef.current && !fillFlowRef.current && !winnerOpen) {
-                const refill = await gameService.prepareRefillPlaying(gameId);
+                const refill = await gameService.prepareRefillPlaying(gameId, acknowledged);
                 // keepClock: this is a mid-evening substitution, not a round
                 // transition — the current משחק's clock + score must keep
                 // running through the swap (don't zero them on commit).
-                if (refill) beginFillFlow(refill.skeleton, refill.draft, undefined, true);
+                if (refill && !finalizingRef.current && !committingRef.current && !fillFlowRef.current) {
+                  beginFillFlow(refill.skeleton, refill.draft, undefined, true);
+                }
               }
               // Re-read rather than trusting the screen's copy: the write above
               // and any refill have both landed by now, so this sees the roster
@@ -1727,6 +1738,7 @@ export function AdvancedLiveMatchScreen() {
               });
             } catch (err) {
               logError('restorePlayer', err, { gameId, playerId: player.id });
+              if ((err as {code?: string})?.code === 'RESTORE_REQUIRES_SPACE') toast.error((err as Error).message);
             } finally {
               homeActionRef.current = false;
             }

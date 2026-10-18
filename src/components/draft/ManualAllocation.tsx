@@ -12,7 +12,8 @@ import { toast } from '@/components/Toast';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import { gameService } from '@/services';
 import { logError } from '@/services/errorLog';
-import { toGuestRosterId, type Game } from '@/types';
+import type { Game } from '@/types';
+import { activeDraftRosterIds } from '@/utils/draftIntegrity';
 import { playersPerTeam, teamName } from '@/utils/draft';
 import { teamColor } from '@/components/match/rotationView';
 import { createManualDraft, moveManualPlayer, restoreManualTeams, hasManualDraft, manualDraftRevision, manualDragPosition } from '@/utils/manualAllocation';
@@ -117,7 +118,7 @@ export function ManualAllocation({game,userId,players,count,onBack,onSaved,previ
       }
       const fresh=await gameService.getGameById(game.id);
       if(!fresh)throw Error('GAME_NOT_FOUND');
-      const freshIds=[...(fresh.players??[]),...(fresh.guests??[]).filter(g=>!g.waitlisted).map(g=>toGuestRosterId(g.id))].sort();
+      const freshIds=activeDraftRosterIds(fresh).sort();
       if(freshIds.join('|')!==rosterKey || fresh.numberOfTeams!==game.numberOfTeams || fresh.format!==game.format)throw Error('DRAFT_ROSTER_CHANGED');
       if(fresh.status==='finished'||fresh.status==='cancelled')throw Error('ROUND_CLOSED');
       await gameService.saveDraftTeams(game.id,{...createManualDraft(teams,userId,Date.now(),fresh.draftTeams?.teams),...(fresh.draftTeams?.completionMode==='balanced'?{completionMode:'balanced' as const,fillMode:'temporary' as const}:{})},undefined,true,game);
@@ -167,7 +168,7 @@ export function ManualAllocation({game,userId,players,count,onBack,onSaved,previ
     </View>
     {!!drag&&<View pointerEvents="none" style={[s.ghost,manualDragPosition(drag,origin,I18nManager.isRTL)]}><UserAvatar user={identity(drag.id)} size={28}/><Text numberOfLines={1} style={s.name}>{identity(drag.id).name}</Text></View>}
     {!!drag&&<View pointerEvents="none" style={s.dragBanner}><Text style={s.link}>מעבירים את {identity(drag.id).name} — שחררו מעל קבוצה</Text></View>}
-    <View style={s.footer}><Text style={s.status}>{pool.length?`נותרו ${pool.length} שחקנים לשיבוץ`:'כל השחקנים שובצו'}</Text>
+    <View style={s.footer}><Text style={s.status}>{pool.length===1?'נותר שחקן אחד לשיבוץ':pool.length?`נותרו ${pool.length} שחקנים לשיבוץ`:'כל השחקנים שובצו'}</Text>
       <Button title="שמירת טיוטה" style={{borderRadius:18,backgroundColor:'#2D68FF',borderColor:'#2D68FF'}} fullWidth loading={saving} disabled={!ready||!players.length} onPress={save}/>
       <Text style={s.small}>{pool.length||teams.some(t=>!t.length)?'טיוטה חלקית נשמרת אך לא נחשבת כחלוקת כוחות':'אפשר להמשיך לערוך לפני הפרסום'}</Text></View>
     <SafeModal visible={picked!==null||batchTarget!==null} transparent animationType="slide" onRequestClose={close}>

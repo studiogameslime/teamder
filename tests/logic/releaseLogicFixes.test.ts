@@ -119,7 +119,7 @@ function initializer(name:string,context:any){
   return vm.runInNewContext(ts.transpileModule(`(${expression})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
 }
 test('setup failure retains retry and a double tap cannot issue another write',async()=>{
-  const ctx:any={writing:{current:false},setupAttempt:{current:null},uiEpoch:{current:1},visibleRef:{current:true},setBusy:jest.fn(),setSaveErrorMessage:jest.fn(),logError:jest.fn(),gameId:'g',roundId:'round-one',screen:'first',setSaveError:jest.fn()};
+  const ctx:any={writing:{current:false},setupAttempt:{current:null},uiEpoch:{current:1},visibleRef:{current:true},setBusy:jest.fn(),setReselectAllowed:jest.fn(),setSaveErrorMessage:jest.fn(),logError:jest.fn(),gameId:'g',roundId:'round-one',screen:'first',setSaveError:jest.fn()};
   const save=initializer('saveSetup',ctx);
   let reject!:(error:Error)=>void;const write=jest.fn(()=>new Promise<void>((_resolve,r)=>{reject=r}));
   const running=save(write);await save(write);expect(write).toHaveBeenCalledTimes(1);

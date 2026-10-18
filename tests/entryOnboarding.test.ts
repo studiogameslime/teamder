@@ -387,7 +387,7 @@ describe('resuming a club draft with no name', () => {
     expect(body).toContain('if (!values.name || !values.name.trim())');
     expect(body).toMatch(/terminal: true, reason: 'draft_expired'/);
     // and the unusable draft is thrown away rather than left on disk
-    expect(body).toContain("draftStore.discard('club')");
+    expect(body).toContain("draftStore.consume('club', draft)");
   });
 
   it('checks BEFORE calling create, not in the catch', () => {

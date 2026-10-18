@@ -1,0 +1,12 @@
+
+> 10-18 00:45:43.443  7258  7329 E ReactNativeJS: '[2026-10-18T00:45:43.442Z]  @firebase/firestore:', 'Firestore (12.13.0): Uncaught Error in snapshot listener:', 'FirebaseError: [code=permission-denied]: Missing or insufficient permissions.'
+> 10-18 00:45:43.517  7258  7329 W ReactNativeJS: '[gameService] subscribeMyLiveOrUpcomingGames error', { [FirebaseError: Missing or insufficient permissions.]
+> 10-18 00:45:43.517  7258  7329 W ReactNativeJS:   code: 'permission-denied',
+  10-18 00:45:43.517  7258  7329 W ReactNativeJS:   customData: undefined,
+  10-18 00:45:43.517  7258  7329 W ReactNativeJS:   name: 'FirebaseError',
+> 10-18 00:45:43.518  7258  7329 W ReactNativeJS: '[gameService] subscribeMyLiveOrUpcomingGames error', { [FirebaseError: Missing or insufficient permissions.]
+> 10-18 00:45:43.518  7258  7329 W ReactNativeJS:   code: 'permission-denied',
+  10-18 00:45:43.518  7258  7329 W ReactNativeJS:   customData: undefined,
+  10-18 00:45:43.518  7258  7329 W ReactNativeJS:   name: 'FirebaseError',
+
+

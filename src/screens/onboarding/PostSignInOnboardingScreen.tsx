@@ -38,6 +38,13 @@ const ACCENT = '#1E40AF';
 const ACCENT_SOFT = '#DBEAFE';
 
 export function PostSignInOnboardingScreen() {
+  const uid = useUserStore((s) => s.currentUser?.id);
+  // A different account must receive its own form state, not the preceding
+  // person's name/photo/city if both still owe profile confirmation.
+  return <PostSignInProfileForm key={uid ?? 'signed-out'} />;
+}
+
+function PostSignInProfileForm() {
   const user = useUserStore((s) => s.currentUser);
   const complete = useUserStore((s) => s.completePostSignInOnboarding);
 
@@ -73,6 +80,15 @@ export function PostSignInOnboardingScreen() {
   }, []);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const inFlight = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  const isCurrentOwner = () => mounted.current && !!user &&
+    useUserStore.getState().currentUser?.id === user.id &&
+    useUserStore.getState().currentUser?.isGuest !== true;
   /**
    * Home city. OPTIONAL, and the same field the availability editor and the
    * club wizard write — `availability.homeCity`, picked from the same
@@ -104,51 +120,56 @@ export function PostSignInOnboardingScreen() {
       }
     : null;
 
-  const canSave = name.trim().length > 0 && !busy && !uploading;
+  const canSave = !!user && user.isGuest !== true && name.trim().length > 0 && !busy && !uploading;
 
   const handlePickPhoto = async () => {
+    if (!user || !isCurrentOwner() || inFlight.current) return;
+    inFlight.current = true;
     logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'photo_picker_opened', step: 'profile' });
-    if (!user) return;
     setUploading(true);
-    const res = await pickAndUploadAvatar(user.id);
-    setUploading(false);
-    if (!res.ok) {
-      // Photo is optional — a built-in avatar grid sits right below. When
-      // the user denies gallery access we must NOT nag them to reconsider
-      // or point them to Settings (App Store guideline 5.1.1(iv)); just
-      // fall back silently and let them pick an avatar instead.
-      if (res.reason === 'cancelled' || res.reason === 'permission') {
-        logEvent(AnalyticsEvent.PhotoUploadAbandoned, {
-          source: 'onboarding',
-          reason: res.reason === 'permission' ? 'permission_denied' : 'cancelled',
-        });
-      } else {
-        logEvent(AnalyticsEvent.PhotoUploadFailed, {
-          source: 'onboarding',
-          reason: res.reason,
-        });
+    try {
+      const res = await pickAndUploadAvatar(user.id);
+      if (!isCurrentOwner()) return;
+      if (!res.ok) {
+        // Photo is optional — a built-in avatar grid sits right below. When
+        // the user denies gallery access we must NOT nag them to reconsider
+        // or point them to Settings (App Store guideline 5.1.1(iv)); just
+        // fall back silently and let them pick an avatar instead.
+        if (res.reason === 'cancelled' || res.reason === 'permission') {
+          logEvent(AnalyticsEvent.PhotoUploadAbandoned, {
+            source: 'onboarding',
+            reason: res.reason === 'permission' ? 'permission_denied' : 'cancelled',
+          });
+        } else {
+          logEvent(AnalyticsEvent.PhotoUploadFailed, {
+            source: 'onboarding',
+            reason: res.reason,
+          });
+        }
+        if (res.reason === 'unavailable') {
+          appAlert(he.error, he.profilePhotoUnavailable);
+        } else if (res.reason !== 'cancelled' && res.reason !== 'permission') {
+          appAlert(he.error, he.profilePhotoUploadFailed);
+        }
+        return;
       }
-      if (res.reason === 'network') {
-        appAlert(he.error, he.profilePhotoUploadFailed);
-      } else if (res.reason === 'unavailable') {
-        appAlert(he.error, he.profilePhotoUnavailable);
-      }
-      return;
+      setPhotoUrl(res.url);
+      // The user just picked a photo — drop the previously-picked
+      // avatar selection so the preview / save reflect the photo.
+      setAvatarId(undefined);
+      logEvent(AnalyticsEvent.PhotoUploaded, { source: 'onboarding' });
+    } catch {
+      if (isCurrentOwner()) appAlert(he.error, he.profilePhotoUploadFailed);
+    } finally {
+      inFlight.current = false;
+      if (mounted.current) setUploading(false);
     }
-    setPhotoUrl(res.url);
-    // The user just picked a photo — drop the previously-picked
-    // avatar selection so the preview / save reflect the photo.
-    setAvatarId(undefined);
-    logEvent(AnalyticsEvent.PhotoUploaded, { source: 'onboarding' });
   };
 
   const handlePickAvatar = (id: string) => {
-    // Picking a built-in avatar drops the photo. We also delete the
-    // uploaded file from Storage best-effort so we don't leave it
-    // orphaned (the user explicitly opted for an avatar instead).
-    if (photoUrl && user) {
-      deleteUserPhoto(user.id);
-    }
+    if (!isCurrentOwner() || inFlight.current) return;
+    // A selection is a local draft. The saved photo stays intact until the
+    // corresponding profile write has been acknowledged successfully.
     setPhotoUrl(undefined);
     setAvatarId(id);
     logEvent(AnalyticsEvent.AvatarChanged, {
@@ -158,7 +179,8 @@ export function PostSignInOnboardingScreen() {
   };
 
   const handleSave = async () => {
-    if (busy) return;
+    if (!canSave || !user || !isCurrentOwner() || inFlight.current) return;
+    inFlight.current = true;
     logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'profile_save_tapped', step: 'profile' });
     setBusy(true);
     try {
@@ -172,6 +194,7 @@ export function PostSignInOnboardingScreen() {
       if (trimmedCity) {
         coords = await geocodeCity(trimmedCity).catch(() => null);
       }
+      if (!isCurrentOwner()) return;
       await complete({
         name: name.trim(),
         avatarId: photoUrl ? undefined : avatarId,
@@ -179,6 +202,11 @@ export function PostSignInOnboardingScreen() {
         ...(trimmedCity ? { homeCity: trimmedCity } : {}),
         ...(coords ? { homeCityLat: coords.lat, homeCityLng: coords.lng } : {}),
       });
+      // The successful completion may already unmount this gate. Cleanup is
+      // tied to its account, while failures and a changed identity retain the
+      // file. It is never part of the profile transaction.
+      if (useUserStore.getState().currentUser?.id !== user.id) return;
+      if (!photoUrl && avatarId) void deleteUserPhoto(user.id);
       // Closes the funnel leg that starts at auth_prompt_shown. `complete`
       // flips `onboardingCompleted`, which is what lets RootNavigator's resume
       // effect run — so the action the person originally asked for finishes
@@ -193,14 +221,17 @@ export function PostSignInOnboardingScreen() {
         city_geocoded: !!coords,
       });
     } catch (err) {
+      if (!isCurrentOwner()) return;
       if (__DEV__) console.warn('[onboarding] complete failed', err);
       logEvent(AnalyticsEvent.ProfileSaveFailed, {
         source: 'post_signin_onboarding',
         code: (err as { code?: string } | null)?.code ?? 'unknown',
       });
-      appAlert(he.error, he.signInFailed);
+      appAlert(he.error, (err as Error)?.message === 'RESERVED_NAME' ? he.officialNameTaken
+        : (err as Error)?.message === 'EMAIL_NAME' ? he.emailNameNotAllowed : he.profileSaveError);
     } finally {
-      setBusy(false);
+      inFlight.current = false;
+      if (mounted.current) setBusy(false);
     }
   };
 
@@ -243,6 +274,7 @@ export function PostSignInOnboardingScreen() {
             onBlur={() => logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'field_edited', field: 'name', has_value: !!name.trim(), step: 'profile' })}
             placeholder={he.profileNamePlaceholder}
             maxLength={40}
+            editable={!busy && !uploading}
             icon="person-outline"
             required
           />
@@ -257,6 +289,7 @@ export function PostSignInOnboardingScreen() {
             onSelect={(value) => { setCity(value); logEvent(AnalyticsEvent.OnboardingInteraction, { action: 'city_selected', has_value: !!value, step: 'profile' }); }}
             placeholder={he.psoCityPlaceholder}
             fetchSuggestions={fetchCities}
+            disabled={busy || uploading}
           />
           <Text style={styles.cityHint}>{he.psoCityHint}</Text>
 
@@ -284,6 +317,7 @@ export function PostSignInOnboardingScreen() {
               <Pressable
                 key={a.id}
                 onPress={() => handlePickAvatar(a.id)}
+                disabled={busy || uploading}
                 style={[
                   styles.avatarCell,
                   getAvatarById(avatarId)?.id === a.id && !photoUrl && styles.avatarCellActive,
