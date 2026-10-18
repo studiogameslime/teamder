@@ -1,0 +1,5 @@
+{
+  "exitCode": 0,
+  "at": "2026-10-18T05:37:02.4959440Z",
+  "command": "npx tsc --noEmit"
+}

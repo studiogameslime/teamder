@@ -1,0 +1,22 @@
+{
+  "version": "1.1.55",
+  "code": "288",
+  "aabSha256": "2a73c2c67cf215dd9f9c6749bc9cb32bde09f3ce25d7e4e4d2cb5de264b8c8a1",
+  "sourceCommit": "4a3cb346b1792b7e84cd71a8b9723bf6af88e500",
+  "apkSha256": "05fefa3ac8f7bc49b91a6465e1c1e66765b1db61f5daf362e91c2530fc43110d",
+  "apksSha256": "6822ec2169f3f583afc18867bba56165c6e81bb2daf765c142790344627c6128",
+  "bundletoolSha256": "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29",
+  "certificateSha256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+  "reportedInstalledQaCertificateMatched": true,
+  "signingMode": "explicit existing android/app/debug.keystore via Java API in memory",
+  "keystoreSha256Before": "221e0a3106aa4c3ccc154e0a418b55020b3f9ea6e84f92e8749cd9e2f39f5e58",
+  "keystoreSha256After": "221e0a3106aa4c3ccc154e0a418b55020b3f9ea6e84f92e8749cd9e2f39f5e58",
+  "keystoreUnchanged": true,
+  "privateKeyCopied": false,
+  "hardlinkCreated": false,
+  "passwordRecorded": false,
+  "playSigning": false,
+  "deviceAccess": false,
+  "installPerformed": false,
+  "atUtc": "2026-10-18T04:34:13.890837+00:00"
+}

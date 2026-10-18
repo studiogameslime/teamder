@@ -1,0 +1,91 @@
+{
+  "at": "2026-10-18T05:14:34.999752+00:00",
+  "exitCode": 0,
+  "version": "1.1.55",
+  "code": "288",
+  "mode": "read",
+  "result": {
+    "schema": 1,
+    "mode": "read",
+    "nativeFirebaseAuthUsed": false,
+    "jsAuthQaUiConfirmedByOperator": true,
+    "pushNotificationSent": false,
+    "targetVersionName": "1.1.55",
+    "targetVersionCode": 288,
+    "targetCertificateMatched": true,
+    "targetDebuggable": false,
+    "reactInstanceActive": true,
+    "sdkInitialized": true,
+    "qaSdkIdentityMatched": true,
+    "qaUidSha256": "00083869a52da5a0ce17e4eecbb8da9ec056bf5f3a4e739153bd1d5ea9016aa3",
+    "expectedApiHostMatched": true,
+    "sdkDebugLoggingEnabled": false,
+    "lastTransportErrorPresent": false,
+    "currentSessionPresent": true,
+    "sessionResumedAtLaunch": true,
+    "sessionIdSha256": "eb030350673f9db44cada44a93f99761bffcde7dc6c11ea50d587e024a493862",
+    "sessionIdReadSkippedWithoutCurrent": false,
+    "publicDiagnosticsRead": true,
+    "predicateFixturesRequested": true,
+    "predicateCases": [
+      {
+        "case": "fresh",
+        "expectedValid": true,
+        "actualValid": true,
+        "passed": true
+      },
+      {
+        "case": "expired",
+        "expectedValid": false,
+        "actualValid": false,
+        "passed": true
+      },
+      {
+        "case": "allMissing",
+        "expectedValid": false,
+        "passed": false,
+        "exceptionClass": "java.lang.NullPointerException"
+      },
+      {
+        "case": "nullId",
+        "expectedValid": false,
+        "actualValid": true,
+        "passed": false
+      },
+      {
+        "case": "emptyId",
+        "expectedValid": false,
+        "actualValid": true,
+        "passed": false
+      },
+      {
+        "case": "blankId",
+        "expectedValid": false,
+        "actualValid": true,
+        "passed": false
+      },
+      {
+        "case": "nullStart",
+        "expectedValid": false,
+        "actualValid": true,
+        "passed": false
+      },
+      {
+        "case": "nullActivity",
+        "expectedValid": false,
+        "passed": false,
+        "exceptionClass": "java.lang.NullPointerException"
+      }
+    ],
+    "predicatePassCount": 2,
+    "predicateCaseCount": 8,
+    "predicateFixturesPassed": false,
+    "predicateUsedOnlyDetachedFixtures": true,
+    "sessionStateReferencesUnchangedDuringFixtures": true,
+    "registrationRequested": false,
+    "registrationRequestStarted": false,
+    "completed": true,
+    "status": "PROBE_COMPLETED",
+    "finishedAtEpochMs": 1792300474400
+  }
+}

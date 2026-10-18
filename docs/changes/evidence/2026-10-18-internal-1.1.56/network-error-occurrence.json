@@ -1,0 +1,13 @@
+{
+  "id": "573c279a6e9ba0747a07b70ae6719fc6",
+  "operation": "commitRoundStats",
+  "qaAccountMatched": true,
+  "qaRoundMatched": true,
+  "capturedAt": "2026-10-18T05:25:46.939Z",
+  "receivedAt": "2026-10-18T05:26:29.034Z",
+  "code": "functions/internal",
+  "source": "Pulse occurrence journal capture time; lastSeen is server receipt time",
+  "networkFailureBeforeWrite": true,
+  "serverErrorEntriesInBoundedWindow": 0,
+  "subsequentRetryCommittedOnce": true
+}

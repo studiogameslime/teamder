@@ -1,0 +1,35 @@
+{
+  "readAt": "2026-10-18T05:46:14.587Z",
+  "summary": {
+    "feedback": {
+      "total": 280,
+      "open": 9,
+      "parked": false
+    },
+    "tasks": {
+      "total": 249,
+      "open": 19,
+      "parked": false
+    },
+    "errors": {
+      "total": 84,
+      "open": 10,
+      "parked": false
+    },
+    "pulseFeatures": {
+      "total": 0,
+      "open": 0,
+      "parked": false
+    },
+    "pulseIdeas": {
+      "total": 18,
+      "open": 15,
+      "parked": true
+    },
+    "chatReports": {
+      "total": 0,
+      "open": 0,
+      "parked": false
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "readAt": "2026-10-18T05:31:42.616995+00:00",
+  "qaAccountMatched": true,
+  "privateDocumentUpdatedAt": 1792301500400,
+  "tokenCount": 1,
+  "devices": [
+    {
+      "tokenSha256": "e2044cff050755894e04bcacc02728eb8dd53723caff7a42c73e4c0905ae2ced",
+      "platform": "android",
+      "device": "sdk_gphone64_x86_64",
+      "osVersion": "35",
+      "appVersion": "1.1.56",
+      "registeredAt": 1792301500400
+    }
+  ],
+  "productWrites": false,
+  "sent": false
+}

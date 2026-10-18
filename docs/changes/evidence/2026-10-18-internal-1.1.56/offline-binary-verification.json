@@ -1,0 +1,47 @@
+{
+  "version": "1.1.56",
+  "code": "289",
+  "sourceCommit": "96e94cf3066c5bcafa80fc304f654f025ea90872",
+  "aabSha256": "df932a43bc327af32bcea29521a3bcf4f34ae32b957e3fcb9b4450973e0e1e16",
+  "bytes": 106927302,
+  "packagedSessionManager": {
+    "passed": true,
+    "cases": 12,
+    "smaliSha256": "25a2a81a185bcd513e29783568bd58f15f68227f36d0edee2e927443b26c54ac",
+    "dexFiles": 6,
+    "receipt": "session-manager-proof/new-1.1.56/verification.json"
+  },
+  "nativeAssets": {
+    "nativeStoreBridgeInDex": true,
+    "dexFiles": 6,
+    "supportImageAssets": [
+      {
+        "entry": "base/res/drawable-mdpi-v4/src_assets_images_supportfootballheadphonesoriginal.png",
+        "file": "C:\\Users\\elira\\Teamder\\artifacts\\internal-1.1.56-2026-10-18/packed-support-0.png",
+        "sha256": "20e3f2788269584e24bacd8aef6cba44543732855b0f06641ef25550fce22d19"
+      }
+    ],
+    "at": "2026-10-18T05:13:02.631Z"
+  },
+  "imagePixels": {
+    "verified": true,
+    "original": {
+      "size": [
+        1024,
+        1536
+      ],
+      "pixelSha256": "23fbdc7ce15825f92cf856e0fe7f517a96ae77561bef0ec673e51df26a701ae0"
+    },
+    "packed": [
+      {
+        "entry": "base/res/drawable-mdpi-v4/src_assets_images_supportfootballheadphonesoriginal.png",
+        "size": [
+          1024,
+          1536
+        ],
+        "pixelSha256": "23fbdc7ce15825f92cf856e0fe7f517a96ae77561bef0ec673e51df26a701ae0"
+      }
+    ]
+  },
+  "boundary": "Offline binary contents and restricted method control-flow checks only. No device, production or installation. System Python lacked PIL; bundled Codex Python ran image comparison successfully."
+}

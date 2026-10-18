@@ -1,0 +1,152 @@
+{
+  "binary": "C:\\Users\\elira\\Teamder\\artifacts\\internal-1.1.56-2026-10-18\\Teamder-1.1.56-289.aab",
+  "sha256": "df932a43bc327af32bcea29521a3bcf4f34ae32b957e3fcb9b4450973e0e1e16",
+  "bytes": 106927302,
+  "dex": [
+    {
+      "entry": "base/dex/classes.dex",
+      "sha256": "ec947f85b33b32443321ee10adc11704b2a83f058545a4af19115fcfb219ab2a",
+      "bytes": 7827768
+    },
+    {
+      "entry": "base/dex/classes2.dex",
+      "sha256": "f5ded3245b03ede5bf427754ed74bc60038c669e27bdf85e893d008440bb5edd",
+      "bytes": 8363472
+    },
+    {
+      "entry": "base/dex/classes3.dex",
+      "sha256": "25f681274fb446818ee66a09f0675893835052944faabbf552a21072f599a7d9",
+      "bytes": 8150976
+    },
+    {
+      "entry": "base/dex/classes4.dex",
+      "sha256": "3c833ff42f43a0993b5bc36a2eff55e7ef743827f36208a1d15069bc63e57e71",
+      "bytes": 6448144
+    },
+    {
+      "entry": "base/dex/classes5.dex",
+      "sha256": "a17189daa2f65bfea8ff97e15cbf35ed5c06d82e3c00dbc3a2e9722e2df9bf93",
+      "bytes": 8283108
+    },
+    {
+      "entry": "base/dex/classes6.dex",
+      "sha256": "c73470f12989758e1a7e57b4c8afd0a70d9da5c580cba22792ace2a95729f8ec",
+      "bytes": 4991320
+    }
+  ],
+  "tools": [
+    {
+      "file": "C:\\Users\\elira\\AppData\\Local\\Android\\Sdk\\cmdline-tools\\latest\\lib\\apkanalyzer-classpath.jar",
+      "sha256": "a41766a6bf679feae9d8c65cfead8ba7573bd7762feedd808715a72a808328b2"
+    },
+    {
+      "file": "C:\\Users\\elira\\AppData\\Local\\Android\\Sdk\\cmdline-tools\\latest\\lib\\external\\com\\android\\tools\\smali\\smali-dexlib2\\3.0.9\\smali-dexlib2-3.0.9.jar",
+      "sha256": "8b547506f62f91d74b70f4beb4989b99e1ff61fc50b2525e9796ca35f0a351dc"
+    }
+  ],
+  "method": "isSessionValid(Lio/joryio/sdk/models/SessionInfo;)Z",
+  "smaliSha256": "25a2a81a185bcd513e29783568bd58f15f68227f36d0edee2e927443b26c54ac",
+  "result": {
+    "passed": true,
+    "missingGetters": [],
+    "cases": [
+      {
+        "case": "null-mask-0",
+        "expected": true,
+        "actual": true,
+        "dateReads": 2,
+        "steps": 29,
+        "passed": true
+      },
+      {
+        "case": "null-mask-1",
+        "expected": false,
+        "actual": false,
+        "dateReads": 0,
+        "steps": 15,
+        "passed": true
+      },
+      {
+        "case": "null-mask-2",
+        "expected": false,
+        "actual": false,
+        "dateReads": 0,
+        "steps": 20,
+        "passed": true
+      },
+      {
+        "case": "null-mask-3",
+        "expected": false,
+        "actual": false,
+        "dateReads": 0,
+        "steps": 15,
+        "passed": true
+      },
+      {
+        "case": "null-mask-4",
+        "expected": false,
+        "actual": false,
+        "dateReads": 0,
+        "steps": 21,
+        "passed": true
+      },
+      {
+        "case": "null-mask-5",
+        "expected": false,
+        "actual": false,
+        "dateReads": 0,
+        "steps": 15,
+        "passed": true
+      },
+      {
+        "case": "null-mask-6",
+        "expected": false,
+        "actual": false,
+        "dateReads": 0,
+        "steps": 20,
+        "passed": true
+      },
+      {
+        "case": "null-mask-7",
+        "expected": false,
+        "actual": false,
+        "dateReads": 0,
+        "steps": 15,
+        "passed": true
+      },
+      {
+        "case": "empty-id",
+        "expected": false,
+        "actual": false,
+        "dateReads": 0,
+        "steps": 18,
+        "passed": true
+      },
+      {
+        "case": "blank-id",
+        "expected": false,
+        "actual": false,
+        "dateReads": 0,
+        "steps": 18,
+        "passed": true
+      },
+      {
+        "case": "whitespace-id",
+        "expected": false,
+        "actual": false,
+        "dateReads": 0,
+        "steps": 18,
+        "passed": true
+      },
+      {
+        "case": "expired",
+        "expected": false,
+        "actual": false,
+        "dateReads": 2,
+        "steps": 28,
+        "passed": true
+      }
+    ]
+  },
+  "boundary": "Actual packaged DEX disassembly with restricted control-flow simulation; not Android runtime, storage restore or device proof."
+}

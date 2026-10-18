@@ -1,0 +1,154 @@
+{
+  "readAt": "2026-10-18T05:41:17.495Z",
+  "total": 13,
+  "items": [
+    {
+      "id": "6eb63affb459774d3570a03b7d16663a",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "liveFinalizeRoundTie",
+      "count": 1,
+      "lastSeen": "2026-10-18T05:26:30.521Z",
+      "lastMessage": "internal",
+      "lastCode": "functions/internal",
+      "appVersion": "1.1.56",
+      "status": "new"
+    },
+    {
+      "id": "573c279a6e9ba0747a07b70ae6719fc6",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "commitRoundStats",
+      "count": 1,
+      "lastSeen": "2026-10-18T05:26:29.034Z",
+      "lastMessage": "internal",
+      "lastCode": "functions/internal",
+      "appVersion": "1.1.56",
+      "status": "new"
+    },
+    {
+      "id": "b71c6ca0283e1a416df2b3b53b129028",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "govmapSearch",
+      "count": 25,
+      "lastSeen": "2026-10-18T04:22:21.335Z",
+      "lastMessage": "govmap autocomplete 403",
+      "appVersion": "1.1.52",
+      "status": "new"
+    },
+    {
+      "id": "069eddbe61c7aeafbc2f7f3f686a7fe9",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "restorePlayer",
+      "count": 1,
+      "lastSeen": "2026-10-18T00:34:03.616Z",
+      "lastMessage": "הקבוצה מלאה ולא ניתן לזהות בבטחה מי צריך לחזור לקבוצתו. פנו מקום במסך החילופים ואז נסו שוב.",
+      "lastCode": "RESTORE_REQUIRES_SPACE",
+      "appVersion": "1.1.52",
+      "status": "new"
+    },
+    {
+      "id": "cfd464d9c28a24deba0688c631ae1a71",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "liveFinalizeRoundTie",
+      "count": 2,
+      "lastSeen": "2026-10-17T23:03:40.084Z",
+      "lastMessage": "המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.",
+      "appVersion": "1.1.52",
+      "status": "new"
+    },
+    {
+      "id": "9e61d433fcd8c945f5b376220c9f5891",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "liveResolveTie",
+      "count": 1,
+      "lastSeen": "2026-10-17T22:31:05.030Z",
+      "lastMessage": "המשחק או ההרכב השתנו לאחר שמירת התוצאה. התוצאה נשמרה; יש לפתוח מחדש את בחירת ההרכבים.",
+      "appVersion": "1.1.52",
+      "status": "new"
+    },
+    {
+      "id": "40e0ce8abee76cc992fd0f71ec9a3b55",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "liveFinalizeRound",
+      "count": 3,
+      "lastSeen": "2026-10-17T21:58:54.578Z",
+      "lastMessage": "המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.",
+      "appVersion": "1.1.52",
+      "status": "new"
+    },
+    {
+      "id": "38f078c846cba1e91c7c5d6b959427b0",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "joryioRegisterPushToken",
+      "count": 69,
+      "lastSeen": "2026-10-18T05:39:53.971Z",
+      "lastMessage": "joryioRegisterPushToken",
+      "appVersion": "1.1.55",
+      "status": "new"
+    },
+    {
+      "id": "e33f74f42af2eede1e5cc0a66fc24583",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "liveFinalizeRoundTie",
+      "count": 1,
+      "lastSeen": "2026-10-17T17:52:58.397Z",
+      "lastMessage": "המשחק או הפנדלים השתנו. יש לחזור לבחירה ולבדוק את הנתונים המעודכנים.",
+      "appVersion": "1.1.55",
+      "status": "new"
+    },
+    {
+      "id": "cebad9e75333c56e3ec40dbea9a3f8df",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "draftBoardLoad",
+      "count": 3,
+      "lastSeen": "2026-10-17T02:49:19.869Z",
+      "lastMessage": "SAVED_DRAFT_UNAVAILABLE",
+      "appVersion": "1.1.52",
+      "status": "new"
+    },
+    {
+      "id": "50500b12eebcd88758e222e1d3367122",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "uncaught",
+      "count": 2,
+      "lastSeen": "2026-10-16T13:38:18.361Z",
+      "lastMessage": "Cannot find native module 'ExpoSecureStore'",
+      "appVersion": "1.1.42",
+      "status": "new"
+    },
+    {
+      "id": "606e9df247a432b7c7c2f14a3d3f00ee",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "ensurePersonalGroupId",
+      "count": 1,
+      "lastSeen": "2026-10-16T07:03:16.989Z",
+      "lastMessage": "internal",
+      "lastCode": "functions/internal",
+      "appVersion": "1.1.52",
+      "status": "new"
+    },
+    {
+      "id": "2ef60a1fdc17e25b4f6d09eb6b5d85f0",
+      "stream": "errors",
+      "hasScreenshot": false,
+      "operation": "ensurePersonalGroup",
+      "count": 1,
+      "lastSeen": "2026-10-16T07:03:15.825Z",
+      "lastMessage": "internal",
+      "lastCode": "functions/internal",
+      "appVersion": "1.1.52",
+      "status": "new"
+    }
+  ]
+}
