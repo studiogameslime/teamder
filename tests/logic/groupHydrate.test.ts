@@ -22,6 +22,7 @@ const listPendingForUser = jest.fn();
 const getCurrentGroupId = jest.fn();
 const setCurrentGroupId = jest.fn();
 const requestJoinById = jest.fn();
+const getGroup = jest.fn();
 
 jest.mock('react-native', () => ({ Appearance: {} }), { virtual: true });
 jest.mock('@/services', () => ({
@@ -29,6 +30,7 @@ jest.mock('@/services', () => ({
     listForUser: (...a: unknown[]) => listForUser(...a),
     listPendingForUser: (...a: unknown[]) => listPendingForUser(...a),
     requestJoinById: (...a: unknown[]) => requestJoinById(...a),
+    get: (...a: unknown[]) => getGroup(...a),
   },
 }));
 jest.mock('@/services/storage', () => ({
@@ -69,6 +71,7 @@ const club = (id: string) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  getGroup.mockReset().mockResolvedValue(null);
   useGroupStore.getState().reset();
   getCurrentGroupId.mockResolvedValue(null);
   setCurrentGroupId.mockResolvedValue(undefined);
@@ -164,6 +167,24 @@ describe('a SUCCESSFUL refresh is still authoritative', () => {
 });
 
 describe('joining an open club retries the refresh before giving up', () => {
+  it.each(['joined','already_member'])('loads only the joined club for %s and preserves other clubs', async status => {
+    requestJoinById.mockResolvedValue({group:{id:'new'},status});
+    getGroup.mockResolvedValue(club('new'));
+    useGroupStore.setState({groups:[club('existing')],pendingGroups:[club('new'),club('pending')]});
+    expect(await useGroupStore.getState().requestJoinById('new','u1')).toBe(status);
+    expect(getGroup).toHaveBeenCalledWith('new');
+    expect(listForUser).not.toHaveBeenCalled();
+    expect(listPendingForUser).not.toHaveBeenCalled();
+    expect(useGroupStore.getState().groups.map(g=>g.id)).toEqual(['existing','new']);
+    expect(useGroupStore.getState().pendingGroups.map(g=>g.id)).toEqual(['pending']);
+  });
+  it('does not hydrate a different account from a late joined-club read', async () => {
+    requestJoinById.mockResolvedValue({group:{id:'new'},status:'joined'});
+    getGroup.mockImplementationOnce(async()=>{useGroupStore.getState().reset();return club('new');});
+    await expect(useGroupStore.getState().requestJoinById('new','u1')).rejects.toHaveProperty('name','StaleSessionError');
+    expect(useGroupStore.getState().groups).toEqual([]);
+    expect(listForUser).not.toHaveBeenCalled();
+  });
   it('a blip on the first refresh does not leave the club missing', async () => {
     requestJoinById.mockResolvedValue({ group: club('new'), status: 'joined' });
     listForUser

@@ -52,12 +52,24 @@ import {
 } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 
-import { mockGamesV2, mockRoundHistory } from '@/data/mockData';
+import { mockGame, mockGamesV2, mockRoundHistory } from '@/data/mockData';
+import { ProfileSetupScreen } from '@/screens/auth/ProfileSetupScreen';
 import { IntentScreen } from '@/screens/entry/IntentScreen';
 import { useEntryStore } from '@/store/entryStore';
+import { SeasonsSettings } from '@/components/community/SeasonsSettings';
+import { he } from '@/i18n/he';
+import { UpcomingRoundCard } from '@/components/home/HomeRoundCards';
+import { MatchListCard } from '@/components/match/MatchListCard';
+import { MatchStadiumHero } from '@/components/match/MatchStadiumHero';
+import { deriveRoundState } from '@/utils/homeRoundState';
+import { GuestModal } from '@/components/GuestModal';
+import { AdminRatingSheet } from '@/components/AdminRatingSheet';
 import { MotionPreview } from './MotionPreview';
+import { OverlayAuditPreview } from './OverlayAuditPreview';
 import { CommunityStatsWelcome } from '@/components/community/CommunityStatsWelcome';
 import { appAlert } from '@/components/AppDialog';
+import { toast } from '@/components/Toast';
+import { banner } from '@/components/Banner';
 import {
   ContextualAuthSheet,
   type AuthPromptReason,
@@ -93,8 +105,13 @@ const ROUTES: Array<
   ['— CREATION —', '', ''],
   ['CommunitiesCreate', 'CommunitiesCreate', 'ProfileTab'],
   ['GameCreate', 'GameCreate', 'ProfileTab'],
+  ['GameCreateQuick', 'GameCreate', 'ProfileTab', { quick: true }],
   ['DraftSetup', 'DraftSetup', 'ProfileTab', { gameId: 'gv2-live' }],
+  ['ManualAllocationThree', 'DraftSetup', 'ProfileTab', { gameId: 'gv2-live', manualPreview:3 }],
+  ['ManualAllocationFour', 'DraftSetup', 'ProfileTab', { gameId: 'gv2-live', manualPreview:4 }],
   ['DraftBoard', 'DraftBoard', 'ProfileTab', { gameId: 'gv2-live', captainIds: ['p1', 'p7'], method: 'snake', readOnly: false }],
+  ['SavedDraftBoard', 'DraftBoard', 'ProfileTab', { gameId: 'gv2-live', captainIds: ['p1', 'p6'], method: 'snake', resume: true }],
+  ['RoundAddMembers', 'AddMembers', 'ProfileTab', { gameId: 'gv2-live' }],
   ['— CLUB —', '', ''],
   ['CommunitiesFeed', 'CommunitiesFeed', 'CommunitiesTab'],
   ['CommunityDetails', 'CommunityDetails', 'ProfileTab', { groupId: 'g1' }],
@@ -112,8 +129,9 @@ const ROUTES: Array<
   ['CommunitiesMap', 'CommunitiesMap', 'CommunitiesTab'],
   ['AddMembers', 'AddMembers', 'ProfileTab', { groupId: 'g1' }],
   ['AdminApproval', 'AdminApproval', 'ProfileTab', { groupId: 'g1' }],
-  ['AvailablePlayers', 'AvailablePlayers', 'ProfileTab', { groupId: 'g1' }],
-  ['PromoteOrphan', 'PromoteOrphan', 'GameTab', { gameId: 'gv2-live' }],
+  ['AvailablePlayers', 'AvailablePlayers', 'ProfileTab', { gameId: 'gv2-live' }],
+  ['AvailablePlayersPreview', 'AvailablePlayers', 'ProfileTab', { gameId: 'gv2-live', previewCandidates: true }],
+  ['PromoteOrphan', 'PromoteOrphan', 'GameTab', { groupId: 'g1', gameId: 'gv2-live' }],
   ['— GAME —', '', ''],
   ['GamesList', 'GamesList', 'GameTab'],
   ['GamesMap', 'GamesMap', 'GameTab', { mode: 'games', items: mockGamesV2.filter(g => g.fieldLat && g.fieldLng).slice(0, 2).map((g, i) => ({ id: g.id, lat: g.fieldLat! + i * 0.025, lng: g.fieldLng! + i * 0.025, title: g.title, subtitle: g.fieldName, kind: 'game', dateBucket: 'today', timeLabel: 'היום · 20:00' })) }],
@@ -133,6 +151,8 @@ const ROUTES: Array<
   ['History', 'History', 'ProfileTab', { groupId: 'g1' }],
   ['— PROFILE / STATS —', '', ''],
   ['Profile', 'Profile', 'ProfileTab'],
+  ['ProfileStatisticsFull', 'Profile', 'ProfileTab', { qaHomeStats: 'full' }],
+  ['ProfileStatisticsEmpty', 'Profile', 'ProfileTab', { qaHomeStats: 'empty' }],
   ['ProfileEdit', 'ProfileEdit', 'ProfileTab'],
   ['Statistics', 'Statistics', 'ProfileTab'],
   ['StatisticsPopulated', 'Statistics', 'ProfileTab', { qaStatisticsPreview: 'full' }],
@@ -255,7 +275,7 @@ function navigateTo(route: string) {
  *  Anything else → null. */
 function routeFromUrl(url: string | null): string | null {
   if (!url) return null;
-  const m = /^[a-z.]+:\/\/qa\/([A-Za-z_]+)/i.exec(url.trim());
+  const m = /^[a-z.]+:\/\/qa\/([A-Za-z_0-9]+)/i.exec(url.trim());
   return m ? m[1] : null;
 }
 
@@ -306,6 +326,16 @@ export function QARouteLauncher(): React.ReactElement | null {
   const [open, setOpen] = useState(false);
   const [motionPreview, setMotionPreview] = useState(false);
   const [entryPreview, setEntryPreview] = useState(false);
+  const [profileSetupPreview, setProfileSetupPreview] = useState(false);
+  const [seasonsPreview, setSeasonsPreview] = useState(false);
+  const [scheduledPreview, setScheduledPreview] = useState(false);
+  const [registeredPreview, setRegisteredPreview] = useState(false);
+  const [roundCoverPreview, setRoundCoverPreview] = useState(false);
+  const [roundJoinCardPreview, setRoundJoinCardPreview] = useState(false);
+  const [roundCoverLibraryPreview, setRoundCoverLibraryPreview] = useState(false);
+  const [guestRatingPreview, setGuestRatingPreview] = useState(false);
+  const [adminRatingPreview, setAdminRatingPreview] = useState(false);
+  const [overlayAudit, setOverlayAudit] = useState<string | null>(null);
   const [statsWelcomePreview, setStatsWelcomePreview] = useState(false);
   const [authKind, setAuthKind] = useState<AuthPromptReason | null>(null);
   // Which route is actually on screen, printed so a `uiautomator dump` can
@@ -321,7 +351,246 @@ export function QARouteLauncher(): React.ReactElement | null {
       const target = routeFromUrl(url);
       if (!target) return;
       setOpen(false);
+      if (target === '_live_mode_no_teams' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {mockGamesV2}=require('@/data/mockData') as typeof import('@/data/mockData');
+        const source=mockGamesV2.find(g=>g.id==='gv2-live');
+        if(!source)return;
+        const id='qa-live-mode-no-teams';
+        const fixture={...source,id,title:'בדיקת לייב — ללא כוחות',status:'active' as const,startsAt:Date.now()-5*3600000,
+          advancedMode:true,draftTeams:undefined,rotation:undefined,updatedAt:Date.now()};
+        const index=mockGamesV2.findIndex(g=>g.id===id);
+        if(index<0)mockGamesV2.push(fixture);else mockGamesV2[index]=fixture;
+        (navigationRef as unknown as {navigate:(r:string,p:object)=>void}).navigate('ProfileTab',{screen:'MatchDetails',initial:false,params:{gameId:id}});
+        return;
+      }
+      if (target === '_live_mode_read_failure' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {gameService}=require('@/services/gameService') as typeof import('@/services/gameService');
+        const original=gameService.getGameById;
+        gameService.getGameById=async()=>{gameService.getGameById=original;throw new Error('QA_LIVE_MODE_LOAD_FAILURE');};
+        (navigationRef as unknown as {navigate:(r:string,p:object)=>void}).navigate('ProfileTab',{screen:'LiveMatch',initial:false,params:{gameId:'gv2-live'}});
+        return;
+      }
+      if (target === 'ProfileSetup' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setProfileSetupPreview(true); return; }
       if (target === '_entry_invite' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setEntryPreview(true); return; }
+      if (target === '_friends_load_failure' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const { friendsService } = require('@/services/friendsService') as typeof import('@/services/friendsService');
+        const original = friendsService.listFriends;
+        friendsService.listFriends = async () => {
+          friendsService.listFriends = original;
+          throw new Error('QA_FRIENDS_LOAD_FAILURE');
+        };
+        (navigationRef as unknown as {navigate:(r:string,p?:object)=>void}).navigate('ChatTab',{screen:'Friends',initial:false});
+        return;
+      }
+      if (['_invitation_cards', '_invitation_cards_full'].includes(target) && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {useUserStore}=require('@/store/userStore') as typeof import('@/store/userStore');
+        const {useGroupStore}=require('@/store/groupStore') as typeof import('@/store/groupStore');
+        const {groupService}=require('@/services/groupService') as typeof import('@/services/groupService');
+        const {notificationsService}=require('@/services/notificationsService') as typeof import('@/services/notificationsService');
+        const {mockGamesV2,mockPlayers}=require('@/data/mockData') as typeof import('@/data/mockData');
+        const {mockPublicGroups}=require('@/data/mockUsers') as typeof import('@/data/mockUsers');
+        const me=useUserStore.getState().currentUser;
+        if (!me || me.isGuest) return;
+        void (async()=>{
+          const club=await groupService.get('g2');
+          if (!club) return;
+          const inviter=mockPlayers[0];
+          Object.assign(club,{name:'חמישי כדורגל',isOpen:false,adminIds:[inviter.id],playerIds:club.playerIds.filter(id=>id!==me.id),coverImageId:'c12'});
+          const pub=mockPublicGroups.find(g=>g.id===club.id);
+          if(pub)Object.assign(pub,{name:club.name,isOpen:false,city:'תל אביב',coverImageId:'c12'});
+          useGroupStore.setState(s=>({groups:s.groups.filter(g=>g.id!==club.id)}));
+          const id='qa-invitation-round',startsAt=Date.now()+7*86400000;
+          const template=mockGamesV2.find(g=>g.id==='gv2-3')!;
+          const game={...template,id,title:'הכדורגל של יום רביעי',groupId:'g1',startsAt,city:'אור יהודה',format:'5v5' as const,fieldType:'synthetic' as const,maxPlayers:10,players:target.endsWith('_full')?mockPlayers.filter(p=>p.id!==me.id).slice(0,10).map(p=>p.id):[],waitlist:[],pending:[],participantIds:[],guests:[],pendingPromotion:undefined,approvedInvites:{[me.id]:{inviterId:template.createdBy ?? inviter.id,expiresAt:Date.now()+86400000}}};
+          const old=mockGamesV2.findIndex(g=>g.id===id);if(old>=0)mockGamesV2.splice(old,1);mockGamesV2.push(game);
+          await notificationsService.dispatch({type:'inviteToGame',recipientId:me.id,payload:{gameId:id,gameTitle:game.title,inviterId:inviter.id,inviterName:inviter.displayName,managerApproved:true,startsAt,expiresAt:Date.now()+86400000}});
+          await notificationsService.dispatch({type:'groupInvitation',recipientId:me.id,payload:{groupId:club.id,groupName:club.name,inviterId:inviter.id,inviterName:inviter.displayName,managerApproved:true,expiresAt:Date.now()+86400000}});
+          (navigationRef as unknown as {navigate:(r:string,p?:object)=>void}).navigate('ChatTab',{screen:'Friends',initial:false});
+        })();
+        return;
+      }
+      if (target === '_club_invitation' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {useUserStore}=require('@/store/userStore') as typeof import('@/store/userStore');
+        const {notificationsService}=require('@/services/notificationsService') as typeof import('@/services/notificationsService');
+        const me=useUserStore.getState().currentUser;
+        if (!me || me.isGuest) return;
+        void notificationsService.dispatch({type:'groupInvitation',recipientId:me.id,payload:{groupId:'g2',groupName:'מועדון לדוגמה',inviterName:'מנהל לדוגמה',managerApproved:true,expiresAt:Date.now()+86400000}}).then(()=>{
+          // Deliberately omit fromInvitation: equivalent to entering from the feed.
+          (navigationRef as unknown as {navigate:(r:string,p?:object)=>void}).navigate('CommunitiesTab',{screen:'CommunityDetailsPublic',initial:false,params:{groupId:'g2'}});
+        });
+        return;
+      }
+      if (target === '_round_join_loading' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {gameService}=require('@/services/gameService') as typeof import('@/services/gameService');
+        const originalGet=gameService.getGameById;
+        gameService.getGameById=async id=>{
+          if (id!=='qa-local-join-loading') return originalGet.call(gameService,id);
+          const demo=await originalGet.call(gameService,'gv2-3');
+          return demo ? {...demo,id,groupId:'g1',acceptsFillers:false,requiresApproval:false} : null;
+        };
+        const original=gameService.requestJoinGame;
+        gameService.requestJoinGame=async (...args:Parameters<typeof original>)=>{
+          gameService.requestJoinGame=original;
+          await new Promise(resolve=>setTimeout(resolve,7000));
+          if (args[0]==='qa-local-join-loading') return {bucket:'players'} as Awaited<ReturnType<typeof original>>;
+          return original.apply(gameService,args);
+        };
+        (navigationRef as unknown as {navigate:(r:string,p?:object)=>void}).navigate('GameTab',{screen:'MatchDetails',initial:false,params:{gameId:'qa-local-join-loading'}});
+        return;
+      }
+      if (target === '_round_join_card_loading' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        setRoundJoinCardPreview(true); return;
+      }
+      if (target === '_received_invites_filtered' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {useUserStore}=require('@/store/userStore') as typeof import('@/store/userStore');
+        const {receivedInvitationsService}=require('@/services/receivedInvitationsService') as typeof import('@/services/receivedInvitationsService');
+        const {receivedInvitations}=require('@/utils/receivedInvitations') as typeof import('@/utils/receivedInvitations');
+        const me=useUserStore.getState().currentUser;
+        if (!me || me.isGuest) return;
+        const original=receivedInvitationsService.list;
+        receivedInvitationsService.list=async uid=>{
+          receivedInvitationsService.list=original;
+          return receivedInvitations([
+            {id:'qa-open-club',data:{type:'groupInvitation',recipientId:uid,payload:{groupId:'g2',groupName:'מועדון לדוגמה',inviterName:'מנהל לדוגמה'},createdAt:Date.now()}},
+            {id:'qa-accepted-round',data:{type:'inviteToGame',recipientId:uid,payload:{gameId:'qa-accepted',gameTitle:'מחזור שכבר הצטרפתי אליו'},invitationStatus:'joined',createdAt:Date.now()}},
+          ],uid);
+        };
+        (navigationRef as unknown as {navigate:(r:string,p?:object)=>void}).navigate('ChatTab',{screen:'Friends',initial:false});
+        return;
+      }
+      if (target === '_received_invites' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {useUserStore}=require('@/store/userStore') as typeof import('@/store/userStore');
+        const {notificationsService}=require('@/services/notificationsService') as typeof import('@/services/notificationsService');
+        const me=useUserStore.getState().currentUser;
+        if(!me||me.isGuest)return;
+        void (async()=>{
+          await notificationsService.dispatch({type:'groupInvitation',recipientId:me.id,payload:{groupId:'g1',groupName:'כדורגל אנשים טובים',inviterName:'איתי לוי',invitationOnly:true}});
+          await notificationsService.dispatch({type:'inviteToGame',recipientId:me.id,payload:{gameId:'game-1',gameTitle:'חמישי כדורגל',inviterName:'דניאל כהן',startsAt:Date.now()+86400000}});
+          const demoInvites=notificationsService.__getMockDispatches().filter(n=>n.recipientId===me.id&&n.type==='inviteToGame');
+          demoInvites.forEach(n=>Object.assign(n,{invitationStatus:'scheduled'}));
+          (navigationRef as unknown as {navigate:(r:string,p?:object)=>void}).navigate('ChatTab',{screen:'Friends',initial:false});
+        })();
+        return;
+      }
+      if (target === '_pulse_discovery' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        (navigationRef as unknown as {navigate:(r:string,p?:object)=>void}).navigate('ChatTab',{screen:'ChatsList',initial:false,params:{qaSocialPreview:false,qaChatPreview:false}});return;
+      }
+      if (target === '_pulse_invite_loading' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {socialPlayersService}=require('@/services/socialPlayersService') as typeof import('@/services/socialPlayersService');
+        const original=socialPlayersService.inviteToClub;
+        const {notificationsService}=require('@/services/notificationsService') as typeof import('@/services/notificationsService');
+        const originalGameInvite=notificationsService.inviteToGame;
+        notificationsService.inviteToGame=async()=>{notificationsService.inviteToGame=originalGameInvite;await new Promise(r=>setTimeout(r,8000));return {invited:true};};
+        const originalProfile=socialPlayersService.profile;
+        socialPlayersService.profile=async id=>{socialPlayersService.profile=originalProfile;const p=await originalProfile(id);return {...p,clubs:p.clubs.filter(c=>c.id!=='g1')};};
+        socialPlayersService.inviteToClub=async()=>{socialPlayersService.inviteToClub=original;await new Promise(r=>setTimeout(r,8000));return {invited:true};};
+        (navigationRef as unknown as {navigate:(r:string,p?:object)=>void}).navigate('ChatTab',{screen:'PlayerCard',initial:false,params:{userId:'qa-noam'}});
+        return;
+      }
+      if (target === '_support_timeline' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {useUserStore}=require('@/store/userStore') as typeof import('@/store/userStore');
+        const {useSupportChat}=require('@/services/supportChat') as typeof import('@/services/supportChat');
+        const {chatService}=require('@/services/chatService') as typeof import('@/services/chatService');
+        const {captureFullScreenBase64}=require('@/native/screenCapture') as typeof import('@/native/screenCapture');
+        const uid=useUserStore.getState().currentUser?.id;
+        if(uid) void captureFullScreenBase64({quality:0.35,maxWidth:540}).then(image=>{
+          if(!image)return;
+          const original=chatService.subscribeMessages;
+          chatService.subscribeMessages=(scope,parentId,receive,onError)=>{
+            chatService.subscribeMessages=original;
+            const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);yesterday.setHours(20,27,0,0);
+            receive([{id:'qa-team',senderId:'teamder',senderName:'Teamder',text:'היי, הסתדרת עם המועדון?',createdAt:yesterday.getTime()},
+              {id:'qa-reply',senderId:uid,senderName:'בדיקה',text:'עובד!',createdAt:yesterday.getTime()+60000},
+              {id:'qa-photo',senderId:uid,senderName:'בדיקה',text:'דוגמה',supportImage:image,createdAt:Date.now()}]);
+            return ()=>{};
+          };
+          useSupportChat.getState().open(uid);
+        });
+        return;
+      }
+      if (target === '_support_open' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {useUserStore}=require('@/store/userStore') as typeof import('@/store/userStore');
+        const {useSupportChat}=require('@/services/supportChat') as typeof import('@/services/supportChat');
+        const uid=useUserStore.getState().currentUser?.id;
+        if(uid)useSupportChat.getState().open(uid);
+        return;
+      }
+      if (target === '_support_draft' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {useUserStore}=require('@/store/userStore') as typeof import('@/store/userStore');
+        const {useSupportChat}=require('@/services/supportChat') as typeof import('@/services/supportChat');
+        const uid=useUserStore.getState().currentUser?.id;
+        if(uid){const {captureSupportContext}=require('@/services/supportChat') as typeof import('@/services/supportChat');if(!useSupportChat.getState().drafts[uid])useSupportChat.getState().open(uid);useSupportChat.getState().patch(uid,{text:'היי, אני מנסה ליצור מועדון ולא בטוח איך ממשיכים.\nצירפתי צילום של המסך.',context:captureSupportContext(),attemptId:undefined});}
+        return;
+      }
+      if (target === '_chat_sender' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const {useChatStore}=require('@/store/chatStore') as typeof import('@/store/chatStore');
+        const {useGroupStore}=require('@/store/groupStore') as typeof import('@/store/groupStore');
+        const {mockPlayers}=require('@/data/mockData') as typeof import('@/data/mockData');
+        const group=useGroupStore.getState().groups.find(g=>!g.isPersonal&&!g.hidden);
+        if(!group)return;
+        const sender=mockPlayers[0];
+        useChatStore.getState().setEntries([{id:`community__${group.id}`,scope:'community',parentId:group.id,title:group.name,count:1,lastMessageAt:Date.now(),lastText:'להביא מצב רוח',lastSenderId:sender.id,lastSenderName:'שחקן'}]);
+        (navigationRef as unknown as {navigate:(r:string,p?:object)=>void}).navigate('ChatTab',{screen:'ChatsList',initial:false,params:{qaChatPreview:false}});
+        return;
+      }
+      if (target === '_chat_inbox' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const nav=navigationRef as unknown as {navigate:(r:string,p?:object)=>void};
+        nav.navigate('ChatTab',{screen:'ChatsList',initial:false,params:{qaChatPreview:true}});return;
+      }
+      if (['_chat_closing','_chat_closed'].includes(target) && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const nav=navigationRef as unknown as {navigate:(r:string,p?:object)=>void};
+        nav.navigate('ChatTab',{screen:'GameChat',initial:false,params:{gameId:'gv2-live',qaChatState:target}});return;
+      }
+      if (['_social_search','_social_friend','_social_stranger','_social_privacy'].includes(target) && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const nav=navigationRef as unknown as {navigate:(r:string,p?:object)=>void};
+        const screen=target==='_social_search'?'ChatsList':target==='_social_privacy'?'SocialPrivacy':'PlayerCard';
+        const params=screen==='ChatsList'?{qaSocialPreview:true}:screen==='PlayerCard'?{userId:'qa-itay',qaSocialPreview:target==='_social_friend'?'friend':'stranger'}:undefined;
+        if(focusedTab()==='ChatTab')nav.navigate(screen,params);else nav.navigate('ChatTab',{screen,initial:false,params});
+        return;
+      }
+      if (target.startsWith('_notice_')) {
+        const kind = target.slice(8);
+        if (kind === 'success') toast.success('נרשמת למחזור!\nנתראה על המגרש', 15000);
+        else if (kind === 'error') toast.error('השינויים לא נשמרו\nאפשר לנסות שוב בעוד רגע', 15000);
+        else if (kind === 'banner') banner.show('הכוחות מוכנים! אפשר לצאת למגרש.', { duration: 15000 });
+        else toast.info('ההרשמה עדיין לא נפתחה\nיום שלישי · 13.10 · 10:00', 15000);
+        return;
+      }
+      if (target === '_round_cover' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setRoundCoverPreview(true); return; }
+      if (target === '_round_cover_library' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setRoundCoverLibraryPreview(true); return; }
+      if (target === '_guest_rating_decimal' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setGuestRatingPreview(true); return; }
+      if (target === '_admin_rating_decimal' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setAdminRatingPreview(true); return; }
+      if (['_forces_audit_recovery','_forces_audit_recovery_legacy','_forces_audit_live'].includes(target) && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        // In-memory only: reproduce a banked result whose next lineup was interrupted.
+        const game=mockGamesV2.find(g=>g.id==='gv2-live3');
+        if(!game?.draftTeams || !game.rotation || !game.liveMatch)return;
+        const ids=mockGame.players.concat(mockGamesV2.find(g=>g.id==='gv2-live4')?.players??[]).filter((id,i,all)=>all.indexOf(id)===i).slice(0,13);
+        game.players=ids;game.numberOfTeams=3;game.format='5v5';
+        game.draftTeams={...game.draftTeams,completionMode:target==='_forces_audit_recovery_legacy'?undefined:'balanced',fillMode:'temporary',teams:[ids.slice(0,4),ids.slice(4,9),ids.slice(9,13)].map((playerIds,index)=>({index,captainId:playerIds[0],playerIds}))};
+        game.rotation={...game.rotation,playing:[0,1],waiting:[2],round:1,roundInstanceId:'qa-recovery-1',roundInstanceRound:1,loans:[{playerId:ids[9],homeTeam:2,filledTeam:0}]};
+        game.lastCommittedRoundId=target==='_forces_audit_live'?undefined:'qa-recovery-1';
+        const goals=[0,1].map(index=>({id:'qa-goal-'+index,scorerId:ids[0],assisterId:ids[1],ownGoal:false,minute:1,team:'A' as const,at:Date.now()+index}));
+        game.liveMatch={...game.liveMatch,scoreA:target==='_forces_audit_live'?2:0,scoreB:0,goals:target==='_forces_audit_live'?goals:[],timerRunning:false,timerAccumulatedMs:120000,timerLastStartedAt:null,goalTally:{[ids[0]]:2}};
+        game.updatedAt=Date.now();
+        mockRoundHistory[game.id]=[{roundId:'qa-recovery-1',teamA:[...ids.slice(0,4),ids[9]],teamB:ids.slice(4,9),teamAIndex:0,teamBIndex:1,scoreA:2,scoreB:1,winnerSide:'A',goals,at:Date.now()}];
+        if(target==='_forces_audit_live')mockRoundHistory[game.id]=[];
+        (navigationRef as unknown as {navigate:(route:string,params:object)=>void}).navigate('ProfileTab',{screen:'LiveMatch',initial:false,params:{gameId:game.id}});
+        return;
+      }
+      if (target.startsWith('_overlay_audit_') && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setOverlayAudit(target.slice('_overlay_audit_'.length)); return; }
+      if (target.startsWith('_live_design_') && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') {
+        const { useUserStore } = require('@/store/userStore') as typeof import('@/store/userStore');
+        const { liveGameFixture } = require('./liveGameFixture') as typeof import('./liveGameFixture');
+        const me = useUserStore.getState().currentUser;
+        if (!me) return;
+        const preview = liveGameFixture(target.slice('_live_design_'.length), me.id);
+        (navigationRef as unknown as {navigate:(route:string,params:object)=>void}).navigate('ProfileTab',{screen:'LiveMatch',initial:false,params:{gameId:preview.id}});
+        return;
+      }
+      if (target === '_home_registered' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setRegisteredPreview(true); return; }
+      if (target === '_home_scheduled' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setScheduledPreview(true); return; }
+      if (target === '_seasons_live' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setSeasonsPreview(true); return; }
+      if (target === '_seasons_short' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setSeasonsPreview(false); appAlert('כיבוי עונות', he.seasonsDisableBodyOf(2, 1), [{ text: 'הבנתי' }]); return; }
       if (target === '_motion') { setMotionPreview(true); return; }
       if (target === '_stats_welcome' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1') { setStatsWelcomePreview(true); return; }
       if (target.startsWith('_auth_')) {
@@ -362,21 +631,87 @@ export function QARouteLauncher(): React.ReactElement | null {
   };
 
   return (
-    <>
+      <>
+        {roundJoinCardPreview && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <Modal visible onRequestClose={()=>setRoundJoinCardPreview(false)}>
+          <View style={{flex:1,backgroundColor:'#F4F7FC',padding:16,paddingTop:60}}>
+            <MatchListCard game={{...mockGame,id:'qa-card-loading',players:[],waitlist:[],pending:[],startsAt:Date.now()+86400000}} userId="qa-viewer" cover={null} busy onPrimary={()=>{}} />
+          </View>
+        </Modal> : null}
+      {process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <>
+        {overlayAudit ? <OverlayAuditPreview key={overlayAudit} kind={overlayAudit} onClose={() => setOverlayAudit(null)} /> : null}
+        <GuestModal visible={guestRatingPreview} gameId="qa-local-guest-rating" callerId="qa-owner" isAdmin
+          existing={{ id: 'qa-guest', name: 'אורח לדוגמה', addedBy: 'qa-owner', createdAt: 1, estimatedRating: 4.5 }}
+          onClose={() => setGuestRatingPreview(false)} />
+        <AdminRatingSheet target={adminRatingPreview ? { id: 'qa-player', name: 'שחקן לדוגמה' } : null} current={4.5}
+          saving={false} onClose={() => setAdminRatingPreview(false)} onSave={() => setAdminRatingPreview(false)} />
+      </> : null}
+      {roundCoverLibraryPreview && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <Modal visible onRequestClose={() => setRoundCoverLibraryPreview(false)}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 32, backgroundColor: '#F4F7FC' }}>
+          <Text style={{ textAlign: 'right', color: '#334155', marginBottom: 16 }}>מאגר התמונות — דמו מנותק, פעולות מנוטרלות</Text>
+          {(['grass', 'synthetic', 'asphalt'] as const).flatMap(fieldType => (['day', 'night'] as const).map(period => {
+            const game = { ...mockGamesV2[0], id: 'qa-cover-comparison', groupId: 'g1', title: `${{ grass: 'דשא', synthetic: 'סינטטי', asphalt: 'אספלט' }[fieldType]} · ${period === 'day' ? 'יום' : 'לילה'}`, status: 'open' as const, players: [], waitlist: [], pending: [], liveMatch: undefined, fieldType, startsAt: Date.parse(period === 'day' ? '2026-07-15T12:00:00+03:00' : '2026-07-15T21:00:00+03:00') };
+            return <View key={`${fieldType}-${period}`} pointerEvents="none" style={{ marginBottom: 20 }}>
+              <MatchListCard game={game} userId="qa-viewer" cover={null} onPrimary={() => {}} />
+            </View>;
+          }))}
+        </ScrollView>
+      </Modal> : null}
+      {roundCoverPreview && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <Modal visible onRequestClose={() => setRoundCoverPreview(false)}>
+        <ScrollView contentContainerStyle={{ paddingTop: 24, backgroundColor: '#F4F7FC', flexGrow: 1 }}>
+          <Text style={{ textAlign: 'center', color: '#334155', marginBottom: 16 }}>אותו מחזור בבית, ברשימה ובפרטים — המחשה מנותקת</Text>
+          {(() => {
+            const game = { ...mockGamesV2[0], id: 'qa-cover-comparison', groupId: 'g1', title: 'רביעי כדורגל בנחלים', status: 'open' as const, players: [], waitlist: [], pending: [], liveMatch: undefined, fieldType: 'synthetic' as const, startsAt: new Date(2026, 9, 14, 20).getTime() };
+            return <View pointerEvents="none">
+              <Text style={{ textAlign: 'right', padding: 16, fontWeight: '700' }}>מסך הבית והמחזורים</Text>
+              <View style={{ paddingHorizontal: 16, marginBottom: 16 }}><UpcomingRoundCard game={game} cover={{ coverImageId: 'c12' }} clubName={game.title} state={deriveRoundState(game, 'qa-viewer', Date.now())} now={Date.now()} actions={{ onDetails: () => {}, onJoin: () => {}, onSummary: () => {}, onCreate: () => {}, onFind: () => {} }} /></View>
+              <View style={{ paddingHorizontal: 16 }}><MatchListCard game={game} userId="qa-viewer" cover={{ coverImageId: 'c12' }} onPrimary={() => {}} /></View>
+              <Text style={{ textAlign: 'right', padding: 16, fontWeight: '700', marginTop: 16 }}>פרטי המחזור</Text>
+              <MatchStadiumHero roundId={game.id} fieldType={game.fieldType} groupId={game.groupId} title={game.title} startsAt={game.startsAt} coverImageId="c12" onBackPress={() => {}} countdownHidden compact />
+            </View>;
+          })()}
+        </ScrollView>
+      </Modal> : null}
+      {scheduledPreview && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <Modal visible onRequestClose={() => setScheduledPreview(false)}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 48, backgroundColor: '#F4F7FC', flexGrow: 1 }}>
+          <Text style={{ textAlign: 'center', color: '#334155', marginBottom: 20 }}>תצוגת המחשה בלבד — הפעולות מנוטרלות</Text>
+          {(() => {
+            const now = Date.now();
+            const game = { ...mockGamesV2[0], id: 'qa-scheduled-colour', title: 'כדורגל אנשים טובים', status: 'scheduled' as const, players: [], waitlist: [], pending: [], liveMatch: undefined, startsAt: now + 3 * 86400000, registrationOpensAt: now + 46 * 3600000, fieldName: 'מגרש קהילתי', city: 'אור יהודה' };
+            return <View pointerEvents="none"><UpcomingRoundCard game={game} clubName={game.title} state={deriveRoundState(game, 'qa-viewer', now)} now={now} actions={{ onDetails: () => {}, onJoin: () => {}, onSummary: () => {}, onCreate: () => {}, onFind: () => {} }} /></View>;
+          })()}
+        </ScrollView>
+      </Modal> : null}
+      {registeredPreview && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <Modal visible onRequestClose={() => setRegisteredPreview(false)}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 48, backgroundColor: '#F4F7FC', flexGrow: 1 }}>
+          <Text style={{ textAlign: 'center', color: '#334155', marginBottom: 20 }}>תצוגת המחשה בלבד — הפעולות מנוטרלות</Text>
+          {(() => {
+            const now = Date.now();
+            const game = { ...mockGamesV2[0], id: 'qa-registered-colour', title: 'כדורגל אנשים טובים', status: 'open' as const, players: ['qa-viewer', ...Array.from({length:9},(_,i)=>`qa-player-${i}`)], waitlist: [], pending: [], liveMatch: undefined, startsAt: now + 15 * 60000, registrationOpensAt: undefined, maxPlayers: 10, fieldName: 'מגרש קהילתי', city: 'אור יהודה' };
+            return <View pointerEvents="none"><UpcomingRoundCard game={game} clubName={game.title} state={deriveRoundState(game, 'qa-viewer', now)} now={now} actions={{ onDetails: () => {}, onJoin: () => {}, onSummary: () => {}, onCreate: () => {}, onFind: () => {} }} /></View>;
+          })()}
+        </ScrollView>
+      </Modal> : null}
+      {seasonsPreview && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <Modal visible onRequestClose={() => setSeasonsPreview(false)}>
+        <ScrollView style={{ flex: 1, backgroundColor: '#f5f7fc' }} contentContainerStyle={{ padding: 20, paddingTop: 50 }}>
+          <Text style={{ textAlign: 'center', color: '#2645b5', marginBottom: 15 }}>תצוגת בדיקה מנותקת — נתוני המחשה בלבד</Text>
+          <View pointerEvents="none"><SeasonsSettings groupId="qa-preview-only" seasons={{ enabled: true, currentId: 's2', currentNo: 2, count: 1, startedAt: 1790000000000, playedRounds: 7, roundsAtStart: 20, cadence: { type: 'rounds', targetRounds: 24 } }} /></View>
+        </ScrollView>
+      </Modal> : null}
       {statsWelcomePreview ? <Modal visible onRequestClose={() => setStatsWelcomePreview(false)}>
         <ScrollView style={{ backgroundColor: '#F4F7FB' }} contentContainerStyle={{ padding: 16, paddingTop: 48 }}>
           <CommunityStatsWelcome onCreate={() => setStatsWelcomePreview(false)} />
         </ScrollView>
       </Modal> : null}
+      {profileSetupPreview && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1' ? <Modal visible onRequestClose={() => setProfileSetupPreview(false)}><ProfileSetupScreen onClose={() => setProfileSetupPreview(false)} /></Modal> : null}
       {entryPreview ? <Modal visible onRequestClose={() => setEntryPreview(false)}><EntryInvitePreview /></Modal> : null}
       {motionPreview ? <MotionPreview onClose={() => setMotionPreview(false)} /> : null}
       {/* Keep the statistics proof unobstructed; deep links remain available. */}
-      {here !== 'Statistics' ? <Pressable style={s.fab} onPress={() => setOpen(true)} testID="qa-fab">
+      {here !== 'Statistics' && here !== 'LiveMatch' && process.env.EXPO_PUBLIC_SCREENSHOT_MODE !== '1' ? <Pressable style={s.fab} onPress={() => setOpen(true)} testID="qa-fab">
         <Text style={s.fabTxt}>QA</Text>
       </Pressable> : null}
       {/* `pointerEvents: none` — a census must never have its own badge
           swallow a press meant for the screen underneath it. */}
-      {here !== 'Statistics' ? <View style={s.badge} pointerEvents="none">
+      {here !== 'Statistics' && process.env.EXPO_PUBLIC_SCREENSHOT_MODE !== '1' ? <View style={s.badge} pointerEvents="none">
         <Text style={s.badgeTxt} testID="qa-here">{`@${here}`}</Text>
       </View> : null}
       <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>

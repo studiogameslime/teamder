@@ -10,8 +10,8 @@ const R = (over: Partial<RoundHistoryDoc>): RoundHistoryDoc => ({
   roundId: '1',
   teamA: [],
   teamB: [],
-  scoreA: 0,
-  scoreB: 0,
+  scoreA: (over.goals??[]).filter(g=>g.team==='A').length,
+  scoreB: (over.goals??[]).filter(g=>g.team==='B').length,
   winnerSide: 'tie',
   goals: [],
   at: 0,
@@ -90,7 +90,7 @@ describe('reduceRounds', () => {
     expect(s3.playedRounds).toBe(2);
   });
 
-  it('own goals do not count toward team goals or contribution', () => {
+  it('own goals count for their beneficiary, without personal scoring credit', () => {
     const s2 = reduceRounds('me', [
       R({
         at: 1,
@@ -100,8 +100,8 @@ describe('reduceRounds', () => {
         goals: [{ scorerId: 'me', assisterId: null, ownGoal: true, team: 'A' }],
       }),
     ]);
-    expect(s2.teamGoalsFor).toBe(0);
-    expect(s2.contribution).toBeNull();
+    expect(s2.teamGoalsFor).toBe(1);
+    expect(s2.contribution).toEqual({pct:0,touched:0,teamGoals:1});
   });
 
   it('returns null contribution when the team never scored', () => {

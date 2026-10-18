@@ -1,8 +1,9 @@
+import { pulseFetch as fetch } from './adminTransport';
 // App Store Connect — customer reviews + a rating summary derived from
 // them. Falls back to mock data until credentials exist.
 
 import { config } from '../config';
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import type { RatingSummary, Review } from '../types';
 import { appStoreJwt } from './auth';
 

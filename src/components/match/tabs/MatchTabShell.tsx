@@ -7,9 +7,10 @@ import { ScrollSurface } from '@/components/ScrollSurface';
 // screen forever — a seven-row table had half a viewport to live in. The bar is
 // the part that has to stay reachable; the cover photo is not.
 //
-// `stickyHeaderIndices={[1]}` is what does it: child 0 is the hero, child 1 is
-// the bar, and the platform pins the bar once the hero has scrolled past. No
-// measurement, no animation, no native-driver caveat.
+// `stickyHeaderIndices={[1]}` makes child 1 (the bar) stick after child 0 (the
+// hero) scrolls away. RN implements that pinning with an animated transform
+// and measured layout; its native position and Fabric measurement must agree
+// for Pressability to retain a tap that includes a small finger movement.
 //
 // The cost is one hero per visited pane instead of one per screen. That is the
 // right trade: the panes are mounted lazily and kept, so each instance mounts
@@ -74,9 +75,8 @@ export function TabScroll({
           />
         ) : undefined
       }
-      // The same opt-out the club screen needed: arriving from a feed whose
-      // search box still holds focus, ScrollView's responder capture eats the
-      // first tap on every button underneath it.
+      // Preserve child presses if an upstream search field keeps focus. This
+      // handles keyboard dismissal, not every cause of cancelled presses.
       keyboardShouldPersistTaps="handled"
     >
       {/* An ARRAY, never a fragment. `stickyHeaderIndices` counts the

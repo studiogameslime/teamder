@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // Global popup-campaign host. Mounted once near the app root; when the
 // signed-in user matches an active popup campaign (authored in Pulse), it
 // renders a one-shot modal. The button routes via navigateCampaign; both
@@ -92,15 +93,12 @@ export function CampaignGate({ active }: Props) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+  card: { ...overlaySurfaces.dialog,
     padding: spacing.xl,
     gap: spacing.sm,
   },

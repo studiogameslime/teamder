@@ -12,7 +12,7 @@
 // PublicGroupsFeedScreen will navigate to the private CommunityDetails
 // instead, which has the full member roster.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Keyboard,
   ScrollView,
@@ -36,6 +36,7 @@ import { Card } from '@/components/Card';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { CommunityStadiumHero } from '@/components/community/CommunityStadiumHero';
 import { ClubTabs } from '@/components/club/ClubTabs';
+import { resolveRoundCover } from '@/data/roundCover';
 import { NextGameCard } from '@/components/community/NextGameCard';
 import { toast } from '@/components/Toast';
 import { successHaptic } from '@/utils/haptics';
@@ -52,11 +53,13 @@ import {
   isValidIsraeliPhone,
   openWhatsApp,
 } from '@/services/whatsappService';
-import { Game, GroupPublic, WeekdayIndex } from '@/types';
+import { Game, GroupPublic } from '@/types';
 import { RTL_LABEL_ALIGN, clubAccent, clubSurface, colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
+import { receivedInvitationsService } from '@/services/receivedInvitationsService';
+import { hasClubInvitation } from '@/utils/receivedInvitations';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
@@ -65,15 +68,6 @@ type Nav = NativeStackNavigationProp<
   'CommunityDetailsPublic'
 >;
 type Params = RouteProp<CommunitiesStackParamList, 'CommunityDetailsPublic'>;
-
-function formatDays(days: WeekdayIndex[] | undefined): string {
-  if (!days || days.length === 0) return '';
-  return days
-    .slice()
-    .sort()
-    .map((d) => he.availabilityDayShort[d])
-    .join(', ');
-}
 
 export function CommunityDetailsPublicScreen() {
   const nav = useNavigation<Nav>();
@@ -87,16 +81,42 @@ export function CommunityDetailsPublicScreen() {
   const cancelJoinById = useGroupStore((s) => s.cancelJoinById);
 
   const [group, setGroup] = useState<GroupPublic | null>(null);
-  // Upcoming public games drive the dynamic "ימי מחזור" / "שעת מחזור"
-  // derivation below — replacing the legacy `group.preferredDays` /
-  // `group.preferredHour` MetaRows that no longer exist on the
-  // create/edit form.
   const [upcomingGames, setUpcomingGames] = useState<Game[]>([]);
+  const [failedCover, setFailedCover] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [busyJoin, setBusyJoin] = useState(false);
+  const loadGeneration = useRef(0);
+  const joinInFlight = useRef(false);
+  const memberNavigation = useRef<string | null>(null);
+  const openMemberView = useCallback(() => {
+    const key = `${me?.id}:${groupId}`;
+    if (!nav.isFocused() || memberNavigation.current === key) return;
+    memberNavigation.current = key;
+    nav.replace('CommunityDetails', {groupId});
+  }, [nav, me?.id, groupId]);
+  const [invitation, setInvitation] = useState<{uid: string; groupId: string; available: boolean} | null>(null);
+  const fromInvitation = invitation?.uid === me?.id && invitation?.groupId === groupId && invitation.available;
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setInvitation(null);
+    if (!me || me.isGuest) return;
+    receivedInvitationsService.listInbox(me.id).then(items => {
+      if (active) setInvitation({uid: me.id, groupId, available: hasClubInvitation(items, groupId)});
+    }).catch(error => {
+      if (active) {
+        setInvitation({uid: me.id, groupId, available: false});
+        logError('communityInvitationLookup', error, {groupId});
+      }
+    });
+    return () => { active = false; };
+  }, [me?.id, me?.isGuest, groupId]));
 
   const reload = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     setLoading(true);
+    setLoadFailed(false);
     try {
       const [g, games] = await Promise.all([
         groupService.getPublic(groupId),
@@ -104,16 +124,19 @@ export function CommunityDetailsPublicScreen() {
           .getUpcomingPublicGamesForGroup(groupId)
           .catch(() => [] as Game[]),
       ]);
+      if (generation !== loadGeneration.current) return;
       setGroup(g);
       setUpcomingGames(games);
     } catch (err) {
+      if (generation !== loadGeneration.current) return;
+      setLoadFailed(true);
       logError('communityPublicReload', err, {
         screen: 'CommunityDetailsPublicScreen',
         groupId,
       });
       if (__DEV__) console.warn('[communityPublic] reload failed', err);
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
   }, [groupId]);
 
@@ -130,60 +153,30 @@ export function CommunityDetailsPublicScreen() {
     useCallback(() => {
       Keyboard.dismiss();
       reload();
+      return () => { loadGeneration.current += 1; };
     }, [reload])
   );
 
   // If the user is already a member, bounce to the private full screen.
   // (They might land here via a shared link or after backgrounding the
   // app at the moment they got approved.)
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (memberGroups.some((g) => g.id === groupId)) {
-      nav.replace('CommunityDetails', { groupId });
+      openMemberView();
     }
-  }, [memberGroups, groupId, nav]);
+  }, [memberGroups, groupId, openMemberView]));
 
-  // Derive the community's day/hour pattern from its actual upcoming
-  // games rather than the legacy `preferredDays` / `preferredHour`
-  // fields on /groupsPublic. New groups stop writing those, so the
-  // derivation here keeps the public preview honest as long as the
-  // admin schedules at least one upcoming public game.
-  // MUST sit above the loading/!group early returns — otherwise the
-  // hook order changes between the first (loading) render and the
-  // loaded render, crashing with "rendered more hooks".
-  const derivedDaysList = useMemo<WeekdayIndex[]>(() => {
-    if (upcomingGames.length === 0) return [];
-    const set = new Set<WeekdayIndex>();
-    upcomingGames.forEach((g) => {
-      const d = new Date(g.startsAt);
-      set.add(d.getDay() as WeekdayIndex);
-    });
-    return Array.from(set).sort();
-  }, [upcomingGames]);
-  const derivedDays = formatDays(derivedDaysList);
-  const derivedHour = useMemo<string>(() => {
-    if (upcomingGames.length === 0) return '';
-    // Most-common HH:MM among upcoming games. Ties resolved by
-    // earliest game's hour (which the sort by startsAt above gave us).
-    const counts = new Map<string, number>();
-    upcomingGames.forEach((g) => {
-      const d = new Date(g.startsAt);
-      const k = `${String(d.getHours()).padStart(2, '0')}:${String(
-        d.getMinutes(),
-      ).padStart(2, '0')}`;
-      counts.set(k, (counts.get(k) ?? 0) + 1);
-    });
-    let best = '';
-    let bestN = 0;
-    counts.forEach((n, k) => {
-      if (n > bestN) {
-        best = k;
-        bestN = n;
-      }
-    });
-    return best;
-  }, [upcomingGames]);
+  if (loadFailed && !loading) {
+    return <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ScreenHeader title="פרטי המועדון" />
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>לא הצלחנו לטעון את המועדון. אפשר לנסות שוב.</Text>
+        <Button title="נסה שוב" onPress={reload} />
+      </View>
+    </SafeAreaView>;
+  }
 
-  if (loading) {
+  if (loading || (group !== null && group.id !== groupId)) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.loading} />
@@ -208,6 +201,7 @@ export function CommunityDetailsPublicScreen() {
     !!group.contactPhone && isValidIsraeliPhone(group.contactPhone);
 
   const handleJoin = async () => {
+    if (joinInFlight.current) return;
     // Come back to THIS club after signing up — see the note in guestGate.
     if (isGuest) {
       // Same contract as joining a game: the intent is persisted and the
@@ -228,10 +222,12 @@ export function CommunityDetailsPublicScreen() {
       });
       return;
     }
-    if (!me || isPending) return;
+    if (!me || (isPending && !fromInvitation)) return;
+    joinInFlight.current = true;
     setBusyJoin(true);
     try {
       const status = await requestJoinById(group.id, me.id);
+      if (useUserStore.getState().currentUser?.id !== me.id) return;
       // Silent-failure guard: requestJoinById updates the group store in
       // place (pending → adds to pendingGroups; joined → re-hydrates
       // memberGroups). Read the FRESHLY-SET store snapshot via getState()
@@ -256,13 +252,14 @@ export function CommunityDetailsPublicScreen() {
         logEvent(AnalyticsEvent.GroupJoinRequested, { groupId: group.id });
         successHaptic();
         toast.success(he.toastJoinRequestSent);
-        nav.goBack();
+        if (nav.isFocused()) nav.goBack();
       } else if (status === 'joined') {
         successHaptic();
         toast.success(he.toastJoinedGroup);
-        nav.goBack();
+        openMemberView();
       } else if (status === 'already_member') {
         toast.info(he.groupAlreadyMember);
+        openMemberView();
       }
     } catch (err) {
       logEvent(AnalyticsEvent.GroupJoinFailed, {
@@ -301,18 +298,20 @@ export function CommunityDetailsPublicScreen() {
         toast.error(he.toastRequestFailed);
       }
     } finally {
+      joinInFlight.current = false;
       setBusyJoin(false);
     }
   };
 
   const handleCancelRequest = async () => {
-    if (!me || busyJoin) return;
+    if (!me || joinInFlight.current) return;
+    joinInFlight.current = true;
     setBusyJoin(true);
     try {
       await cancelJoinById(group.id, me.id);
       logEvent(AnalyticsEvent.GroupJoinRequestCancelled, { groupId: group.id });
       toast.success(he.toastJoinRequestCancelled);
-      nav.goBack();
+      if (nav.isFocused()) nav.goBack();
     } catch (err) {
       logError('cancelJoinGroup', err, {
         screen: 'CommunityDetailsPublicScreen',
@@ -322,6 +321,7 @@ export function CommunityDetailsPublicScreen() {
       if (__DEV__) console.warn('[communityPublic] cancel failed', err);
       toast.error(he.toastRequestFailed);
     } finally {
+      joinInFlight.current = false;
       setBusyJoin(false);
     }
   };
@@ -333,7 +333,8 @@ export function CommunityDetailsPublicScreen() {
     : null;
 
   const cta = group.isOpen ? he.communityJoinAuto : he.communityRequestToJoin;
-  const ctaDisabled = isPending || busyJoin;
+  const invitationLoading = !!me && !me.isGuest && (invitation?.uid !== me.id || invitation.groupId !== groupId);
+  const ctaDisabled = (isPending && !fromInvitation) || busyJoin || invitationLoading;
 
   return (
     // No 'top' any more: the hero claims the status-bar inset itself, exactly
@@ -368,6 +369,7 @@ export function CommunityDetailsPublicScreen() {
           <CommunityStadiumHero
             groupId={group.id}
             name={group.name}
+            city={group.city}
             memberCount={group.memberCount}
             coverUrl={group.coverPhotoUrl}
             coverImageId={group.coverImageId}
@@ -375,10 +377,9 @@ export function CommunityDetailsPublicScreen() {
             // No hamburger for a visitor — every item in it is an admin or
             // member action, so the button would open an empty sheet.
           />
-          {/* Hero and tabs are ONE block: the tab strip rides up over the
-              photo by its own corner radius, and the scroll's `gap` between
-              siblings would have prised them apart. */}
+          {/* Keep the shared hero and flush tabs adjacent. */}
           <ClubTabs
+            flush
             tabs={[
               { key: 'info', label: he.clubTabInfo },
               { key: 'players', label: he.clubTabPlayers, locked: true },
@@ -390,80 +391,43 @@ export function CommunityDetailsPublicScreen() {
           />
         </View>
 
-        {/* ── המחזור הקרוב ──
-            The visitor gets the member's Information tab, in the member's
-            order, as far as the permissions reach. This card costs NOTHING
-            new: `upcomingGames` was already being fetched for the "ימי מחזור"
-            and "שעת מחזור" lines below and simply went undrawn. It is not
-            tappable — opening the game itself is a members-only screen, and a
-            card that leads to a locked door is worse than a card that does
-            not lead anywhere. */}
+        {group.description ? <Card style={styles.section}>
+          <View style={styles.titleRow}><Ionicons name="document-text-outline" size={23} color="#0B1942"/><Text style={styles.sectionTitle}>על המועדון</Text></View>
+          <Text style={styles.bodyText}>{group.description}</Text>
+        </Card> : null}
+
         {nextPublicGame ? (
-          <View style={styles.section}>
-            {/* No heading of our own: the card carries "המחזור הקרוב" inside
-                it, exactly as it does on the member's tab, and a second one
-                above it said the same words twice. */}
-            <NextGameCard
-              startsAt={nextPublicGame.startsAt}
-              fieldName={nextPublicGame.fieldName ?? group.fieldName ?? ''}
-              playersCount={nextPublicGame.players?.length}
-              maxPlayers={nextPublicGame.maxPlayers}
-              format={nextPublicGame.format}
-              fieldType={nextPublicGame.fieldType}
-            />
-          </View>
+          <NextGameCard
+            publicPreview
+            coverSource={resolveRoundCover(nextPublicGame, group, false, failedCover)}
+            onCoverError={() => setFailedCover(group.coverPhotoUrl ?? null)}
+            startsAt={nextPublicGame.startsAt}
+            fieldName={nextPublicGame.fieldName ?? group.fieldName ?? ''}
+            playersCount={nextPublicGame.players?.length}
+            maxPlayers={nextPublicGame.maxPlayers}
+            format={nextPublicGame.format}
+            fieldType={nextPublicGame.fieldType}
+          />
         ) : null}
 
-        {/* ── תיאור המועדון ── same card as the member's, same heading. */}
-        <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>{he.communityDescriptionTitle}</Text>
-          <Text style={styles.clubName}>{group.name}</Text>
-          {group.description ? (
-            <Text style={styles.bodyText}>{group.description}</Text>
-          ) : null}
-        </Card>
+        {fromInvitation ? <View style={styles.invitation}>
+          <View style={styles.invitationIcon}><Ionicons name="mail-outline" size={30} color="#126649"/></View>
+          <View style={styles.invitationCopy}><Text style={styles.invitationTitle}>יש לך הזמנה אישית</Text><Text style={styles.bodyText}>מנהל המועדון הזמין אותך להצטרף.</Text></View>
+        </View> : null}
 
-        {/* ── נתוני מועדון ── the public facts, in the member's card. The
-            member's four numbers (גולים · מחזורים · משחקים) live in
-            `communityStats`, which the rules hand to members only, so this
-            card carries what the public projection actually holds. */}
-        <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>{he.communityStatsTitle}</Text>
-          <MetaRow
-            icon="location-outline"
-            label={he.communityDetailsCity}
-            value={Array.from(
-              new Set([group.city, group.fieldAddress].filter(Boolean)),
-            ).join(', ')}
-          />
-          {group.fieldName ? (
-            <MetaRow
-              icon="football-outline"
-              label={he.communityDetailsField}
-              value={group.fieldName}
-            />
-          ) : null}
-          {derivedDays ? (
-            <MetaRow
-              icon="calendar-outline"
-              label={he.communityDetailsPreferredDays}
-              value={derivedDays}
-            />
-          ) : null}
-          {derivedHour ? (
-            <MetaRow
-              icon="time-outline"
-              label={he.communityDetailsPreferredHour}
-              value={derivedHour}
-            />
-          ) : null}
-          <MetaRow
-            icon="people-outline"
-            label={he.communityDetailsMembers}
-            value={he.communityMembersCount(group.memberCount)}
-          />
-        </Card>
 
+
+        <Button
+          title={invitationLoading ? 'בודקים אם יש לך הזמנה…' : fromInvitation ? 'אישור הזמנה והצטרפות' : isPending ? he.groupsActionPending : cta}
+          variant="primary"
+          iconLeft={!invitationLoading && !fromInvitation && !isPending ? 'add' : undefined}
+          size="lg"
+          fullWidth
+          loading={busyJoin || invitationLoading}
+          disabled={ctaDisabled}
+          onPress={handleJoin}
+          style={styles.join}
+        />
         {phoneValid ? (
           <Button
             title={he.communityDetailsContactAdmin}
@@ -481,16 +445,6 @@ export function CommunityDetailsPublicScreen() {
             }}
           />
         ) : null}
-
-        <Button
-          title={isPending ? he.groupsActionPending : cta}
-          variant="primary"
-          size="lg"
-          fullWidth
-          loading={busyJoin}
-          disabled={ctaDisabled}
-          onPress={handleJoin}
-        />
         {isPending ? (
           <Button
             title={he.communityCancelJoinRequest}
@@ -503,27 +457,6 @@ export function CommunityDetailsPublicScreen() {
         ) : null}
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function MetaRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-}) {
-  if (!value) return null;
-  return (
-    <View style={styles.metaRow}>
-      <Ionicons name={icon} size={14} color={colors.textMuted} />
-      <Text style={styles.metaLabel}>{label}:</Text>
-      <Text style={styles.metaValue} numberOfLines={2}>
-        {value}
-      </Text>
-    </View>
   );
 }
 
@@ -542,7 +475,13 @@ const styles = StyleSheet.create({
     marginTop: -spacing.lg,
   },
 
-  section: { gap: spacing.sm },
+  section: { gap: 10, borderRadius: 24, borderWidth: 1, borderColor: '#E0ECFB', shadowOpacity: 0.04, elevation: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  invitation: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#BEECD8', backgroundColor: '#ECFAF4' },
+  invitationIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#D8F5E9', alignItems: 'center', justifyContent: 'center' },
+  invitationCopy: { flex: 1, gap: 5 },
+  invitationTitle: { fontSize: 19, fontWeight: '800', color: '#07533A', textAlign: RTL_LABEL_ALIGN },
+  join: { backgroundColor: '#2861F4', borderColor: '#2861F4', borderRadius: 18 },
   clubName: {
     fontSize: 18,
     fontWeight: '800',
@@ -558,23 +497,6 @@ const styles = StyleSheet.create({
   bodyText: {
     ...typography.body,
     color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  metaLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  metaValue: {
-    ...typography.caption,
-    color: colors.text,
-    flex: 1,
     textAlign: RTL_LABEL_ALIGN,
   },
   empty: {

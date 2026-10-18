@@ -95,3 +95,13 @@ docs/features/
 
 # Companion monitoring app — built separately.
 /pulse/
+
+# Function runtime settings stay on the deployment machine.
+/functions/.env*
+
+# Machine-local QA workspaces and generated media are never build inputs.
+/tmp/
+/out/
+/output/
+/service.conf.lock
+/system.conf.lock

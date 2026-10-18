@@ -1,0 +1,9 @@
+{
+  "readCompletedAt": "2026-10-18T02:53:34.226321+00:00",
+  "checks": {
+    "allThreeRoundRowsUnchanged": true,
+    "globalCountersUnchanged": true,
+    "oldRoundDigestsUnchanged": true
+  },
+  "readOnly": true
+}

@@ -5,6 +5,7 @@ jest.mock('react-native',()=>({Platform:{OS:'android',Version:35}}));
 jest.mock('expo-constants',()=>({__esModule:true,default:{expoConfig:{version:'1.1.test'}}}));
 jest.mock('@/firebase/config',()=>({USE_MOCK_DATA:false,getFirebase:()=>({db:{},auth:{get currentUser(){return {uid:mockUid,displayName:'demo'};}}})}));
 jest.mock('firebase/firestore',()=>({doc:(_db:unknown,_col:unknown,id:string)=>id,collection:()=>({}),serverTimestamp:()=>123,increment:(n:number)=>n,updateDoc:(...a:unknown[])=>mockUpdate(...a),setDoc:(...a:unknown[])=>mockSet(...a),addDoc:(...a:unknown[])=>mockAdd(...a)}));
+jest.mock('firebase/functions',()=>({httpsCallable:()=> (data:Record<string,unknown>)=>mockUpdate('recordClientError',data)}));
 jest.mock('@/store/userStore',()=>({useUserStore:{getState:()=>({currentUser:{name:'demo'}})}}));
 jest.mock('@/services/diagnosticStorage',()=>({readPendingDiagnosticErrors:()=>mockRead(),savePendingDiagnosticErrors:(r:unknown[])=>mockSaved(r),persistDiagnosticJournal:jest.fn(),readPreviousDiagnosticJournal:jest.fn(async()=>undefined)}));
 beforeEach(()=>{jest.resetModules();jest.useFakeTimers();mockUid='A';mockUpdate.mockReset().mockResolvedValue(undefined);mockSet.mockReset().mockResolvedValue(undefined);mockAdd.mockReset().mockResolvedValue({});mockRead.mockReset().mockResolvedValue([]);mockSaved.mockClear();});
@@ -28,6 +29,21 @@ it('restores an unsent previous-process crash only for the same account',async()
 it('does not send previous-account errors after switching accounts',async()=>{
  mockRead.mockResolvedValue([{fp:'abc',entry:{operation:'uncaught',message:'crash',pending:1,userId:'B',context:{},journal:'{}',trail:'private B',version:'old'}}]);
  const e=require('@/services/errorLog');await e.restorePendingErrors('A');expect(mockUpdate).not.toHaveBeenCalled();
+});
+it('redacts error details before writing the local outbox and the remote error',async()=>{
+ const e=require('@/services/errorLog');
+ e.logError('createUserDoc',new Error('failed for private@example.invalid Bearer private-token'),{email:'private@example.invalid',gameId:'round-123',nested:{refreshToken:'private-token'}});
+ await e.flush();
+ const payload=mockUpdate.mock.calls[0][1];
+ expect(JSON.stringify(payload)).not.toMatch(/private@example|private-token/);
+ expect(payload.lastContext.gameId).toBe('round-123');
+ expect(JSON.stringify(mockSaved.mock.calls)).not.toMatch(/private@example|private-token/);
+});
+it('sanitizes pending error context and messages saved by an older version before retry',async()=>{
+ mockRead.mockResolvedValue([{fp:'abc',entry:{operation:'uncaught',message:'private@example.invalid',pending:1,userId:'A',context:{token:'old-secret',gameId:'g'},journal:'{"schema":1}',trail:'old trail',version:'old'}}]);
+ const e=require('@/services/errorLog');await e.restorePendingErrors('A');
+ expect(JSON.stringify(mockUpdate.mock.calls)).not.toMatch(/private@example|old-secret/);
+ expect(mockUpdate.mock.calls[0][1].lastContext.gameId).toBe('g');
 });
 it('attaches the frozen screenshot-time journal to manual feedback',async()=>{
  const j=require('@/services/diagnosticJournal'),f=require('@/services/feedbackService');

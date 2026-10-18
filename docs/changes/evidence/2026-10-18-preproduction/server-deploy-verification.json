@@ -1,0 +1,39 @@
+{
+  "verified": true,
+  "functions": [
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/commitRoundStats",
+      "state": "ACTIVE",
+      "updated": "2026-10-17T21:47:51.582589377Z",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-559368532219-us-central1",
+          "object": "commitRoundStats/function-source.zip",
+          "generation": "1792273663901192"
+        }
+      },
+      "archiveSha256": "5a9828b6ad1f46e5a37db3a275db7ca07da03ff3652765488144595184fee988",
+      "comparedFiles": 134,
+      "mismatches": [],
+      "missingFiles": [],
+      "entryPoint": "commitRoundStats"
+    },
+    {
+      "name": "projects/soccer-app-52b6b/locations/us-central1/functions/onGameRosterChanged",
+      "state": "ACTIVE",
+      "updated": "2026-10-17T21:47:50.451129786Z",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-559368532219-us-central1",
+          "object": "onGameRosterChanged/function-source.zip",
+          "generation": "1792273628570102"
+        }
+      },
+      "archiveSha256": "5a9828b6ad1f46e5a37db3a275db7ca07da03ff3652765488144595184fee988",
+      "comparedFiles": 134,
+      "mismatches": [],
+      "missingFiles": [],
+      "entryPoint": "onGameRosterChanged"
+    }
+  ]
+}

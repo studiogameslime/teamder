@@ -28,7 +28,7 @@ import { initializeTestEnvironment, assertFails, assertSucceeds }
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 let env;
@@ -126,6 +126,40 @@ beforeEach(async () => {
 test('DELETED game reads as not-found, not permission-denied', async () => {
   const snap = await assertSucceeds(getDoc(doc(db(MEMBER), 'games', 'gDeletedYesterday')));
   if (snap.exists()) throw new Error('expected a missing document');
+});
+
+test('durable creation can read a missing target and create it transactionally under full rules', async () => {
+  const firestore = db(MEMBER);
+  const ref = doc(firestore, 'games', 'create-member-stable-attempt');
+  await assertSucceeds(runTransaction(firestore, async tx => {
+    const snapshot = await tx.get(ref);
+    if (snapshot.exists()) throw new Error('fixture must start absent');
+    tx.set(ref, {
+      id: ref.id, groupId: GID, createdBy: MEMBER, visibility: 'community',
+      players: [], waitlist: [], pending: [], participantIds: [], status: 'open',
+      title: 'ניסיון יצירה', fieldName: 'מגרש בדיקה', maxPlayers: 10, startsAt: 1,
+      creationFingerprint: 'same-content',
+    });
+  }));
+  const result = await assertSucceeds(getDoc(ref));
+  if (!result.exists() || result.data().creationFingerprint !== 'same-content') {
+    throw new Error('transactional creation did not preserve its fingerprint');
+  }
+});
+
+test('recurring series can be created and linked by reading only its existing first game', async () => {
+  const firestore = db(ADMIN);
+  const gameRef = doc(firestore, 'games', 'gCommunity');
+  const seriesRef = doc(firestore, 'gameSeries', 'new-unread-series');
+  await assertSucceeds(runTransaction(firestore, async tx => {
+    const game = await tx.get(gameRef);
+    if (!game.exists()) throw Error('missing first occurrence');
+    tx.set(seriesRef, { groupId: GID, createdBy: ADMIN, active: true, createdAt: 1, updatedAt: 1,
+      lastOccurrenceAt: 1, settings: { title: 'ערב', fieldName: 'מגרש', maxPlayers: 10, visibility: 'community' } });
+    tx.update(gameRef, { seriesId: seriesRef.id });
+  }));
+  const game = await assertSucceeds(getDoc(gameRef));
+  if (game.data().seriesId !== seriesRef.id) throw Error('series was not linked atomically');
 });
 
 test('creator still reads their game after the club doc was deleted', async () => {

@@ -170,7 +170,7 @@ describe('the archive is taken before the wipe', () => {
     assert.equal(s.completedRounds, 16);
   });
 
-  test('the season length comes from attendance, not from the late counter', async () => {
+  test('archive length follows the supplied complete history; award eligibility stays separate', async () => {
     // Same club, but the caller reports a much smaller number — which is what
     // production actually looks like, because clubRecords.eveningsSealed only
     // began in August while per-player `games` began in June. The gate must
@@ -179,16 +179,16 @@ describe('the archive is taken before the wipe', () => {
     await seed();
     await closeSeason(args({ completedRounds: 3 }));
     const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
-    assert.equal(s.completedRounds, 16, 'derived from the most-attended player');
+    assert.equal(s.completedRounds, 3, 'the caller supplies the season length');
     // Threshold is ceil(16/2) = 8. u3 attended 3 and must not be eligible for
     // anything; on the caller's number the threshold would have been 2.
-    assert.ok(!s.awards.topScorer.winners.includes('u3'));
+    assert.ok(!s.awards.mvp?.winners.includes('u3'), 'attendance eligibility applies to MVP');
     assert.deepEqual(s.awards.mostLoyal.winners, ['u1']);
     assert.equal(s.awards.mostLoyal.value, 16);
     // And the card quotes the same number, so the hall of fame cannot print
     // "3 מחזורים" over a title won on 16.
     const c = (await db.collection('seasonCards').doc(`${GID}__${SEASON}`).get()).data();
-    assert.equal(c.completedRounds, 16);
+    assert.equal(c.completedRounds, 3);
   });
 
   test('a coverage denominator that was never measured stays absent', async () => {
@@ -243,7 +243,7 @@ describe('the archive is taken before the wipe', () => {
     // And the live document is untouched — the archive filters, it does not
     // delete anybody's data.
     const live = await db.collection('communityPairStats').doc(`${GID}__guest:abc__u1`).get();
-    assert.equal(live.exists, true);
+    assert.equal(live.exists, false);
   });
 
   test('the titles are decided and sealed with the numbers', async () => {
@@ -381,12 +381,9 @@ describe('the wipe is exactly the competition', () => {
     assert.equal(p.b, 'u2');
   });
 
-  test('and a guest pair, which belongs to no season, is zeroed outright', async () => {
-    // It was never archived — nothing to subtract — and leaving it standing
-    // would carry a dead stranger's counters into the next season.
-    const g = (await db.collection('communityPairStats').doc(`${GID}__guest:abc__u1`).get()).data();
-    assert.equal(g.sameTeam, 0);
-    assert.equal(g.against, 0);
+  test('guest pair documents are removed at the boundary', async () => {
+    const g = await db.collection('communityPairStats').doc(`${GID}__guest:abc__u1`).get();
+    assert.equal(g.exists, false);
   });
 });
 
@@ -663,5 +660,61 @@ describe('a close resumed after an evening was played', () => {
     const p = (await db.collection('communityPairStats').doc(`${GID}__u1__u2`).get()).data();
     assert.equal(p.sameTeam, 3, 'three mini-games beside each other, not zero');
     assert.equal(p.winsTogether, 2);
+  });
+});
+
+describe('archive fidelity under interrupted and concurrent writes', () => {
+  test('a not-yet-wiped player, pair and club retain contributions made after the archive', async () => {
+    await wipe(); await seed();
+    const run = db.runTransaction.bind(db);
+    let calls = 0;
+    db.runTransaction = (...args) => {
+      if (++calls === 2) return Promise.reject(new Error('injected interruption'));
+      return run(...args);
+    };
+    try { await assert.rejects(() => closeSeason(args()), /injected interruption/); }
+    finally { db.runTransaction = run; }
+    await db.collection('communityPlayerStats').doc(`${GID}__u2`).update({ goals: admin.firestore.FieldValue.increment(2) });
+    await db.collection('communityPairStats').doc(`${GID}__u1__u2`).update({ sameTeam: admin.firestore.FieldValue.increment(3) });
+    await db.collection('communityStats').doc(GID).update({ goals: admin.firestore.FieldValue.increment(2) });
+    await closeSeason(args());
+    assert.equal((await db.collection('communityPlayerStats').doc(`${GID}__u2`).get()).get('goals'), 2);
+    assert.equal((await db.collection('communityPairStats').doc(`${GID}__u1__u2`).get()).get('sameTeam'), 3);
+    assert.equal((await db.collection('communityStats').doc(GID).get()).get('goals'), 2);
+  });
+
+  test('all 1770 pairs of a 60-player club survive archive paging and reopening', async () => {
+    await wipe(); await seed();
+    let batch = db.batch(), ops = 0;
+    for (let a = 0; a < 60; a++) for (let b = a + 1; b < 60; b++) {
+      const lo = `p${String(a).padStart(2, '0')}`, hi = `p${String(b).padStart(2, '0')}`;
+      batch.set(db.collection('communityPairStats').doc(`${GID}__${lo}__${hi}`), { groupId: GID, a: lo, b: hi, sameTeam: 1, winsTogether: 1 });
+      if (++ops === 400) { await batch.commit(); batch = db.batch(); ops = 0; }
+    }
+    if (ops) await batch.commit();
+    await closeSeason(args());
+    const { readArchiveData } = await import('./lib/seasonArchiveData.js');
+    const root = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
+    assert.ok(root.pairPages.length > 0);
+    const full = await readArchiveData(db, root);
+    assert.equal(Object.keys(full.pairs).length, 1771); // plus the original u1/u2 pair
+    assert.equal((await db.collection('communityPairStats').doc(`${GID}__p58__p59`).get()).get('sameTeam'), 0);
+    await reopenSeason({ db, groupId: GID, seasonId: SEASON });
+    assert.equal((await db.collection('communityPairStats').doc(`${GID}__p58__p59`).get()).get('sameTeam'), 1);
+    for (const id of root.pairPages) assert.equal((await db.collection('seasonSummary').doc(id).get()).exists, false);
+  });
+
+  test('a missing pair page refuses the read instead of silently understating lifetime', async () => {
+    const { readArchiveData } = await import('./lib/seasonArchiveData.js');
+    await assert.rejects(() => readArchiveData(db, { groupId: GID, seasonId: SEASON, pairPages: ['missing-page'] }), /Missing season pair page/);
+  });
+
+  test('two concurrent closes cannot double-subtract any row', async () => {
+    await wipe(); await seed();
+    await Promise.all([closeSeason(args()), closeSeason(args())]);
+    assert.equal((await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).get('totals.goals'), 40);
+    assert.equal((await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).get('goals'), 0);
+    assert.equal((await db.collection('communityPairStats').doc(`${GID}__u1__u2`).get()).get('sameTeam'), 0);
+    assert.equal((await db.collection('communityStats').doc(GID).get()).get('goals'), 0);
   });
 });

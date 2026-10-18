@@ -1,9 +1,10 @@
+import { pulseFetch as fetch } from './adminTransport';
 // Rich analytics for the Analytics screen — combines GA4 (users, time,
 // devices, channels, events) with Firestore (app-specific engagement
 // funnels: communities, game/community creation, registrations).
 
 import { config } from '../config';
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import type { NameCount } from '../types';
 import { googleOAuthToken } from './auth';
 import { listAll, queryByCreatedAt } from './firestoreRest';

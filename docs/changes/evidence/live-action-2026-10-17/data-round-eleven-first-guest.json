@@ -1,0 +1,93 @@
+{
+  "readAt": "2026-10-17T02:15:55.505635+00:00",
+  "account": {
+    "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "name": "בדיקות לייב",
+    "stats": {
+      "wins": 3,
+      "penSaved": 2,
+      "penFaced": 3,
+      "goals": 2,
+      "cleanSheets": 2,
+      "penConceded": 1
+    }
+  },
+  "club": {
+    "id": "J060YQu6QTcgk3glUDj2",
+    "creatorId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "isOpen": false,
+    "adminIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "playerIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "name": "בדיקות לייב אוקטובר"
+  },
+  "games": [
+    {
+      "game": {
+        "id": "mBO5HqJdnOPWjRE2zMh8",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "title": "בדיקות לייב אוקטובר",
+        "startsAt": 1792180800000,
+        "maxPlayers": 33,
+        "minPlayers": null,
+        "players": [],
+        "waitlist": [],
+        "pending": [],
+        "participantIds": [],
+        "teams": null,
+        "status": "open",
+        "currentMatchIndex": 0,
+        "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "visibility": "community",
+        "format": "11v11",
+        "numberOfTeams": 3,
+        "matchDurationMinutes": 8,
+        "hasPenalties": false,
+        "hasHalfTime": false,
+        "liveMatch": null,
+        "draftTeams": null,
+        "rotation": null,
+        "arrivals": null,
+        "autoTeamsAt": null,
+        "autoTeamsMethod": null,
+        "teamsNotifiedAt": null,
+        "autoTeamsGeneratedAt": null,
+        "autoTeamsGeneratedBy": null,
+        "teamsEditedManually": false,
+        "teamBalanceMeta": null,
+        "acceptsFillers": false,
+        "advancedMode": true,
+        "advancedFillMode": "permanent",
+        "advancedTieMode": null,
+        "createdAt": 1792203269877,
+        "guests": [
+          {
+            "id": "mvbrlplt-nn6m4j",
+            "name": "דניאל אחד עשר א",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203353057
+          }
+        ],
+        "updatedAt": 1792203353287
+      },
+      "history": [],
+      "commits": [],
+      "playerStats": [],
+      "roundSummary": null,
+      "finishProof": {
+        "attendanceCredit": null,
+        "stages": [],
+        "qaEveningStanding": null
+      }
+    }
+  ],
+  "archive": {
+    "source": "tmp/live-action-production/data-round-eleven-first-guest.json",
+    "originalSha256": "be154ccd6658505ce1d1ca2ec3d6240a315cd8d4fe5acbc933b349e90e5861aa",
+    "filtered": true,
+    "note": "רק מחזור אחד עשר ומועדון וחשבון הבדיקה; ללא מחזורי ארבעה ושבעה, דואר, קוד הזמנה ומיקום."
+  }
+}

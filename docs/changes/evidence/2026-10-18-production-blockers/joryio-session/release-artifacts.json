@@ -1,0 +1,16 @@
+{
+    "configuration": ":app:releaseRuntimeClasspath",
+    "artifacts": [
+        {
+            "coordinate": "io.joryio:joryio-android-ui:1.3.0-beta.1",
+            "file": "joryio-android-ui-1.3.0-beta.1.aar",
+            "sha256": "4b01a4ea3fd0ee4048ac2679e63dbfac946d7b0c798efdfbabebbf6cfb459a87"
+        },
+        {
+            "coordinate": "io.joryio:joryio-android:1.3.0-beta.1-teamder.1",
+            "file": "joryio-android-1.3.0-beta.1-teamder.1.aar",
+            "sha256": "7ed1e18e485c3134f8be6ece04a016ff8d33d1a0516d20beea7fbc2068a21459"
+        }
+    ],
+    "appBuild": false
+}

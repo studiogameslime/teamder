@@ -1,10 +1,30 @@
-import { Linking, Platform } from 'react-native';
+import { Linking, NativeModules, Platform } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import * as Application from 'expo-application';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
-import { logError, isExpectedDenial } from '@/services/errorLog';
+import { logError } from '@/services/errorLog';
+import { getLocales } from 'expo-localization';
 
 export type UpdateKind = 'none' | 'optional' | 'force';
+export interface StoreUpdate {
+  kind: 'optional' | 'force';
+  fromVersion: string;
+  fromBuild: string;
+  targetVersion?: string;
+  targetBuild?: number;
+  source: 'google_play' | 'app_store';
+}
+export const updateTargetKey = (update: StoreUpdate): string =>
+  `${update.source}:${update.targetBuild ?? update.targetVersion}`;
+export const isReleaseVersion = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d+(\.\d+){1,3}$/.test(value);
+
+function bounded<T>(promise: Promise<T>, timeoutMs = 8000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Store check timed out')), timeoutMs);
+    promise.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+  });
+}
 
 /**
  * Is a store-update gate on screen right now?
@@ -62,53 +82,67 @@ export function compareVersions(v1: string, v2: string): -1 | 0 | 1 {
   return 0;
 }
 
-export async function checkForUpdate(): Promise<UpdateKind> {
-  if (USE_MOCK_DATA) return 'none';
-  if (Platform.OS !== 'android' && Platform.OS !== 'ios') return 'none';
+let checking: Promise<StoreUpdate | null> | null = null;
+export function checkForUpdate(): Promise<StoreUpdate | null> {
+  if (!checking) checking = resolveStoreUpdate().finally(() => { checking = null; });
+  return checking;
+}
 
+async function resolveStoreUpdate(): Promise<StoreUpdate | null> {
+  if (USE_MOCK_DATA) return null;
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') return null;
   const current = getCurrentVersion();
-
+  if (!isReleaseVersion(current) || current === '0.0.0') return null;
   try {
-    const { db } = getFirebase();
-    const snap = await getDoc(doc(db, 'appConfig', Platform.OS));
-    if (!snap.exists()) {
-      if (__DEV__) console.log('[update] no appConfig doc → none');
-      return 'none';
+    const base = { fromVersion: current, fromBuild: Application.nativeBuildVersion ?? '' };
+    let available: StoreUpdate;
+    if (Platform.OS === 'android') {
+      // Missing in older binaries/dev clients. Never infer availability from a
+      // public listing or another release track's configured version.
+      const bridge = NativeModules.TeamderStoreUpdate;
+      if (typeof bridge?.check !== 'function') return null;
+      const result = await bounded<{ available: boolean; versionCode: number }>(bridge.check());
+      const installed = Number(base.fromBuild);
+      if (result.available !== true || !Number.isSafeInteger(result.versionCode) ||
+          !Number.isSafeInteger(installed) || installed <= 0 || result.versionCode <= installed) return null;
+      available = { ...base, kind: 'optional', targetBuild: result.versionCode, source: 'google_play' };
+    } else {
+      const region = getLocales()[0]?.regionCode;
+      const country = region && /^[A-Za-z]{2}$/.test(region) ? region.toLowerCase() : 'il';
+      const controller = new AbortController();
+      let json: { results?: Array<{ trackId?: number; bundleId?: string; version?: string }> };
+      try {
+        json = await bounded(fetch(`https://itunes.apple.com/lookup?id=${IOS_APP_STORE_ID}&country=${country}`, { signal: controller.signal })
+          .then(response => { if (!response.ok) throw new Error('Store lookup failed'); return response.json(); }));
+      } finally { controller.abort(); }
+      const app = json.results?.find(item => item.trackId === Number(IOS_APP_STORE_ID) && item.bundleId === ANDROID_PACKAGE);
+      if (!isReleaseVersion(app?.version) || compareVersions(current, app.version) >= 0) return null;
+      available = { ...base, kind: 'optional', targetVersion: app.version, source: 'app_store' };
     }
-    const data = snap.data() as Record<string, unknown>;
-    const latest = data.latestVersion;
-    const minimum = data.minimumSupportedVersion;
-    if (typeof latest !== 'string' || typeof minimum !== 'string') {
-      if (__DEV__) console.log('[update] malformed appConfig → none');
-      return 'none';
-    }
-
-    let result: UpdateKind = 'none';
-    if (compareVersions(current, minimum) < 0) result = 'force';
-    else if (compareVersions(current, latest) < 0) result = 'optional';
-
-    if (__DEV__) {
-      console.log(
-        `[update] current=${current} latest=${latest} min=${minimum} → ${result}`,
-      );
-    }
-    return result;
+    // Remote config only decides whether an AVAILABLE update is mandatory.
+    // A failed/missing config cannot suppress the store-backed optional banner.
+    try {
+      const { db } = getFirebase();
+      const snap = await bounded(getDoc(doc(db, 'appConfig', Platform.OS)), 3000);
+      const minimum = snap.exists() ? snap.data().minimumSupportedVersion : null;
+      if (isReleaseVersion(minimum) && compareVersions(current, minimum) < 0 &&
+          (!available.targetVersion || compareVersions(available.targetVersion, minimum) >= 0)) available.kind = 'force';
+    } catch { /* Available store update stays optional. */ }
+    return available;
   } catch (err) {
-    // Offline/transient errors are expected here (the check runs at launch
-    // before connectivity settles) — don't log them as failures.
-    if (!isExpectedDenial(err)) {
-      logError('checkForUpdate', err, { current, platform: Platform.OS });
-    }
+    // Offline, missing Play ownership/store and unavailable country listings
+    // are normal absence-of-evidence cases, not application crashes.
     if (__DEV__) console.warn('[update] check failed', err);
-    return 'none';
+    return null;
   }
 }
 
-export async function openStore(): Promise<void> {
+export async function openStore(): Promise<boolean> {
   try {
     if (Platform.OS === 'android') {
-      await Linking.openURL(PLAY_STORE_URL);
-      return;
+      try { await Linking.openURL(`market://details?id=${ANDROID_PACKAGE}`); }
+      catch { await Linking.openURL(PLAY_STORE_URL); }
+      return true;
     }
     if (Platform.OS === 'ios') {
       // itms-apps:// opens the App Store APP directly, but iOS only allows it if
@@ -122,18 +156,20 @@ export async function openStore(): Promise<void> {
       if (IOS_APP_STORE_URL) {
         try {
           await Linking.openURL(IOS_APP_STORE_URL);
-          return;
+          return true;
         } catch {
           /* scheme blocked / failed — fall through to the https link */
         }
       }
       if (IOS_APP_STORE_WEB_FALLBACK) {
         await Linking.openURL(IOS_APP_STORE_WEB_FALLBACK);
+        return true;
       }
-      return;
+      return false;
     }
   } catch (err) {
     logError('openStore', err, { platform: Platform.OS });
     if (__DEV__) console.warn('[update] openStore failed', err);
   }
+  return false;
 }

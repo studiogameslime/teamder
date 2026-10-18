@@ -78,8 +78,8 @@ function CompareBar({ row }: { row: CompareRow }) {
   const total = av + bv;
   const aShare = total > 0 ? av / total : 0;
   const known = row.a !== null && row.b !== null;
-  const aWins = known && av > bv && total > 0;
-  const bWins = known && bv > av && total > 0;
+  const aWins = known && !row.unscored && row.winner === 'a';
+  const bWins = known && !row.unscored && row.winner === 'b';
 
   return (
     <View style={s.cmpRow}>
@@ -392,3 +392,4 @@ const s = StyleSheet.create({
   cmpValueB: { color: RED, textAlign: 'left' },
   cmpWin: { fontWeight: '900' },
 });
+

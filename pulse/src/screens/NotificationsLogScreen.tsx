@@ -22,11 +22,13 @@ import { colors, radius } from '../theme';
 import { timeAgo } from '../format';
 import { getNotificationLog, clearNotificationLog, type NotifLogEntry } from '../services/notifLog';
 import { fetchServerNotifs, type ServerNotif } from '../services/serverNotifs';
+import { supportNotificationTarget } from '../services/supportInbox';
 
 type Seg = 'server' | 'local';
 
 function iconFor(kind?: string): { icon: keyof typeof Ionicons.glyphMap; color: string } {
   switch (kind) {
+    case 'teamderReply': return { icon: 'chatbubble-ellipses', color: colors.amber };
     case 'onboardingActivity': return { icon: 'footsteps', color: colors.primary };
     case 'gameCreate': return { icon: 'football', color: '#22C55E' };
     case 'gameJoin': return { icon: 'person-add', color: '#3B82F6' };
@@ -183,10 +185,11 @@ export function NotificationsLogScreen() {
           const showHeader = bucket !== lastBucket;
           lastBucket = bucket;
           const { icon, color } = iconFor(n.kind);
+          const support = supportNotificationTarget({ type: n.kind, parentId: n.parentId, messageId: n.messageId });
           return (
             <View key={n.id}>
               {showHeader ? <Text style={s.dayHeader}>{bucket}</Text> : null}
-              <Pressable disabled={!n.sessionId} onPress={() => (navRef as any).navigate('OnboardingActivity', { sessionId: n.sessionId })}><Card style={s.row}>
+              <Pressable disabled={!n.sessionId && !support} onPress={() => support ? (navRef as any).navigate('Messages', support) : (navRef as any).navigate('OnboardingActivity', { sessionId: n.sessionId })}><Card style={s.row}>
                 <View style={[s.iconWrap, { backgroundColor: color + '22' }]}>
                   <Ionicons name={icon} size={20} color={color} />
                 </View>

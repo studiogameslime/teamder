@@ -1,7 +1,6 @@
-// Firestore REST client (read-only). Uses the service-account OAuth token
-// (datastore scope) to read the app's database directly from the device —
-// bypasses security rules via IAM (roles/datastore.viewer). Bundled key, so
-// this is fine for a personal dashboard.
+import { pulseFetch as fetch } from './adminTransport';
+// Firestore REST shapes are preserved; all requests pass through the
+// authenticated, project-scoped administrative backend.
 
 import { config } from '../config';
 import { googleAccessToken } from './auth';
@@ -93,6 +92,27 @@ export async function listAll(
   } while (pageToken && out.length < maxDocs);
   recordRead(collection, Math.max(1, out.length));
   return out;
+}
+
+/** Latest window from a known subcollection; avoids stale LIST responses. */
+export async function queryCollectionRecent(collection: string, limit = 100): Promise<FsDoc[]> {
+  const segments = collection.split('/');
+  const collectionId = segments.pop();
+  const parent = segments.length ? `/${segments.join('/')}` : '';
+  const token = await googleAccessToken(SCOPE);
+  const response = await fetch(`${base()}${parent}:runQuery`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ structuredQuery: {
+      from: [{ collectionId }],
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+      limit,
+    } }),
+  });
+  if (!response.ok) throw new Error(`Firestore recent ${response.status}`);
+  const rows = (await response.json() as any[]).filter(row => row.document).map(row => parseDoc(row.document));
+  recordRead(collOf(collection), Math.max(1, rows.length));
+  return rows;
 }
 
 // Read a single document by path (e.g. "users/abc123").
@@ -229,12 +249,13 @@ function toValue(v: unknown): any {
 export async function patchDoc(
   path: string,
   fields: Record<string, unknown>,
+  options?: { mustExist?: boolean },
 ): Promise<boolean> {
   const token = await googleAccessToken(SCOPE);
   const keys = Object.keys(fields);
   const mask = keys.map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
   const body = { fields: Object.fromEntries(keys.map((k) => [k, toValue(fields[k])])) };
-  const res = await fetch(`${base()}/${path}?${mask}`, {
+  const res = await fetch(`${base()}/${path}?${mask}${options?.mustExist ? "&currentDocument.exists=true" : ""}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // FillerPickerModal — "who completes the team?" picker for the advanced
 // live match. When a playing team is short, the engine hands us the donor
 // pool (players free to come up from the team going off / the bench) plus the
@@ -34,6 +35,7 @@ export interface FillRequestView {
 }
 
 interface Props {
+  visible?: boolean;
   request: FillRequestView | null;
   onConfirm: (chosenIds: string[]) => void;
   /** Dismiss the picker without filling — aborts the round transition (the
@@ -42,7 +44,7 @@ interface Props {
   onCancel: () => void;
 }
 
-export function FillerPickerModal({ request, onConfirm, onCancel }: Props) {
+export function FillerPickerModal({ request, onConfirm, onCancel, visible = true }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
 
   // Reset to the recommendation each time a new request opens.
@@ -62,7 +64,7 @@ export function FillerPickerModal({ request, onConfirm, onCancel }: Props) {
 
   return (
     <Modal
-      visible={!!request}
+      visible={visible && !!request}
       transparent
       animationType="slide"
       onRequestClose={onCancel}
@@ -148,11 +150,8 @@ export function FillerPickerModal({ request, onConfirm, onCancel }: Props) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  backdrop: { backgroundColor: overlayTheme.backdrop,  flex: 1,  justifyContent: 'flex-end' },
+  sheet: { ...overlaySurfaces.sheet,
     padding: spacing.lg,
     gap: spacing.sm,
     maxHeight: '80%',

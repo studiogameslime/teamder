@@ -143,15 +143,11 @@ export async function runPoll(opts: { silent?: boolean } = {}): Promise<PollResu
           // indistinguishable from any other chat traffic — and there is no
           // separate messages screen to catch them, so an unanswered reply
           // would simply go unnoticed.
-          const isTeamderThread = m.parentId.includes(TEAMDER_UID);
+          const isTeamderThread = m.scope === 'dmConversations' && m.parentId.split('__').length === 2 && m.parentId.split('__').includes(TEAMDER_UID);
           if (isTeamderThread && m.senderId === TEAMDER_UID) continue; // our own
           if (isTeamderThread) {
-            await notify(
-              `↩️ ${m.senderName || 'משתמש'} השיב ל-Teamder`,
-              m.text || '(ללא טקסט)',
-              { type: 'teamderReply', parentId: m.parentId, messageId: m.id },
-            );
-            notified = true;
+            // Handled by the dedicated server push, including when Pulse is
+            // closed. Do not duplicate it through the global chat feed.
             continue;
           }
           const where =

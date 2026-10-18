@@ -1,3 +1,5 @@
+import { useSupportStep } from '@/hooks/useSupportStep';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 // 3-step wizard shared by Create / Edit Game.
 //
 // Responsibility split: a Game is the specific event. Everything
@@ -22,13 +24,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
 import { SafeKeyboardAvoidingView as KeyboardAvoidingView } from '@/components/SafeKeyboardAvoidingView';
 import { SafeModal as Modal } from '@/components/SafeModal';
-import { BallSwitch } from '@/components/anim/BallSwitch';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,9 +40,10 @@ import { InputField } from '@/components/InputField';
 import { FormSectionHeader } from '@/components/FormSectionHeader';
 import { RuleTagsInput } from '@/components/RuleTagsInput';
 import { AppDateTimeField } from '@/components/DateTimeFields';
-import { StepIndicator } from '@/components/StepIndicator';
+import { FormDesignContext, FormIntro, FormProgress, FormSections, FORM_BG, FORM_BLUE } from '@/components/forms/FormDesign';
 import { InfoTip } from '@/components/InfoTip';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { RoundReviewSheet } from '@/components/games/RoundReviewSheet';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { LocationSearchSheet } from '@/components/games/LocationSearchSheet';
 import { reverseGeocodeCity } from '@/services/geocodeService';
@@ -59,13 +60,7 @@ import {
 } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import {
-  formatDayDate,
-  HEBREW_DAYS_LONG,
-  formatTime,
-  formatDateShort,
-  gameFormatLabel,
-} from '@/utils/format';
+
 import { FormatStepper } from '@/components/games/FormatStepper';
 import { lightHaptic } from '@/utils/haptics';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
@@ -275,6 +270,7 @@ export function GameWizardForm({
   registeredCount,
 }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  useSupportStep(step);
   // One scroll view carries all three steps, so moving between them kept the
   // previous step's offset: stepping onto the settings step landed the person
   // at its BOTTOM, mid-form, with the heading off screen (owner report).
@@ -331,15 +327,11 @@ export function GameWizardForm({
 
   const maxPlayers = teamSizeFromFormat(values.format) * values.numberOfTeams;
 
-  // Subtle fade-in when transitioning between steps. We animate a fresh
-  // Animated.Value PER STEP (keyed below) rather than resetting one shared
-  // value to 0 — on a heavy step (step 3), swapping the body content could
-  // interrupt the native-driver animation and leave it stuck at opacity 0,
-  // rendering the whole step invisible. A per-step value can't get wedged
-  // by a previous step's cancelled animation.
+  // Keep step content readable even if the transition is interrupted by a
+  // picker, refresh or backgrounding. Never hide the form while swapping it.
   const fade = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    fade.setValue(0);
+    fade.setValue(0.96);
     const anim = Animated.timing(fade, {
       toValue: 1,
       duration: 220,
@@ -496,7 +488,7 @@ export function GameWizardForm({
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+    <FormDesignContext.Provider value={true}><SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={headerTitle} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -509,7 +501,7 @@ export function GameWizardForm({
             reason. The optional caller extras (community picker on
             create) and the actual step body still scroll normally. */}
         <View style={styles.stickyHeader}>
-          <StepIndicator
+          <FormProgress
             current={step}
             labels={[he.wizardStep1, he.wizardStep2, he.wizardStep3]}
           />
@@ -528,6 +520,7 @@ export function GameWizardForm({
           {extraTopSlot && step === 1 ? (
             <View style={styles.extraSlot}>{extraTopSlot}</View>
           ) : null}
+          <FormIntro>{["כל הפרטים לקראת הכדורגל הבא", "קובעים איך משחקים הערב", "הרשמה מסודרת, בלי כאב ראש"][step - 1]}</FormIntro>
           <Animated.View style={[styles.body, { opacity: fade }]}>
             {step === 1 ? (
               <Step1
@@ -571,16 +564,19 @@ export function GameWizardForm({
             <Button
               title={he.wizardStepBack}
               variant="outline"
+              style={{ borderRadius: 12, borderColor: "transparent", alignSelf: "center", paddingVertical: 4, minHeight: 36 }}
               size="lg"
               onPress={goBack}
               disabled={busy}
             />
           ) : null}
-          <View style={{ flex: 1 }}>
+          <View style={{ alignSelf: "stretch" }}>
             {step < 3 ? (
               <Button
                 title={he.wizardStepNext}
                 variant="primary"
+                style={{ borderRadius: 12, backgroundColor: FORM_BLUE, borderColor: FORM_BLUE }}
+                iconLeft={step === 3 ? "checkmark" : "arrow-back"}
                 size="lg"
                 fullWidth
                 onPress={goNext}
@@ -590,6 +586,8 @@ export function GameWizardForm({
               <Button
                 title={submitLabel}
                 variant="primary"
+                style={{ borderRadius: 12, backgroundColor: FORM_BLUE, borderColor: FORM_BLUE }}
+                iconLeft={step === 3 ? "checkmark" : "arrow-back"}
                 size="lg"
                 fullWidth
                 onPress={() => setSummaryOpen(true)}
@@ -637,42 +635,26 @@ export function GameWizardForm({
         <SpringSheet
           visible={summaryOpen}
           onBackdropPress={() => setSummaryOpen(false)}
-          position="center"
-          fromOffsetY={60}
-          panelStyle={{ paddingHorizontal: spacing.md, alignSelf: 'stretch' }}
+          position="bottom"
+          fromOffsetY={80}
+          panelStyle={{ top: '14%', justifyContent: 'flex-end' }}
         >
-          <Pressable style={styles.summaryModalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.summaryModalTitle}>{he.wizardSummaryTitle}</Text>
-            <SummaryCard values={values} maxPlayers={maxPlayers} bare />
-            <View style={styles.summaryModalFooter}>
-              <View style={{ flex: 1 }}>
-                <Button
-                  title={he.wizardSummaryBackToEdit}
-                  variant="outline"
-                  size="sm"
-                  fullWidth
-                  onPress={() => setSummaryOpen(false)}
-                  disabled={busy}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button
-                  title={he.wizardSummaryConfirm}
-                  variant="primary"
-                  size="sm"
-                  fullWidth
-                  loading={busy}
-                  onPress={() => {
-                    setSummaryOpen(false);
-                    void submit();
-                  }}
-                />
-              </View>
-            </View>
-          </Pressable>
+          <RoundReviewSheet
+            values={values}
+            maxPlayers={maxPlayers}
+            communityName={communityName}
+            quick={quick}
+            isEdit={isEdit}
+            busy={busy}
+            onClose={() => setSummaryOpen(false)}
+            onConfirm={() => {
+              setSummaryOpen(false);
+              void submit();
+            }}
+          />
         </SpringSheet>
       </Modal>
-    </SafeAreaView>
+    </SafeAreaView></FormDesignContext.Provider>
   );
 }
 
@@ -699,7 +681,7 @@ function Step1({
   // חד־פעמי"); for a community game we show which community it opens for.
   const [locOpen, setLocOpen] = useState(false);
   return (
-    <View style={styles.stack}>
+    <FormSections>
       <FormSectionHeader title={he.wizardSectionDetails} first />
       {/* Quick game → name input. Community game → read-only target line. */}
       {quick ? (
@@ -713,10 +695,10 @@ function Step1({
         />
       ) : communityName ? (
         <View style={styles.targetRow}>
-          <Ionicons name="people-circle-outline" size={20} color={colors.primary} />
           <Text style={styles.targetText}>
             {he.createGameForCommunity(communityName)}
           </Text>
+          <Ionicons name="people-circle-outline" size={20} color={FORM_BLUE} />
         </View>
       ) : null}
 
@@ -765,8 +747,8 @@ function Step1({
 
       <View style={styles.section}>
         <View style={styles.labelRow}>
-          <Ionicons name="layers-outline" size={16} color={colors.textMuted} />
           <Text style={[styles.label, styles.labelFlex]}>{he.createGameFieldType}</Text>
+          <Ionicons name="layers-outline" size={16} color={FORM_BLUE} />
         </View>
         <View style={styles.pillRow}>
           {FIELD_TYPES.map((f) => (
@@ -804,7 +786,7 @@ function Step1({
           });
         }}
       />
-    </View>
+    </FormSections>
   );
 }
 
@@ -822,7 +804,7 @@ function Step2({
   // the live screen runs the rotation), משך וחוקים (length + free-text rules).
   // Bring-ball / bring-shirts live on step 3 — logistics, not match rules.
   return (
-    <View style={styles.stack}>
+    <FormSections>
       <FormSectionHeader title={he.wizardSectionFormat} first />
       {/* One card instead of two chip rows. The chips hard-coded 4v4–7v7 and
           2–5 teams, which read as "these are the supported shapes" when in fact
@@ -899,7 +881,7 @@ function Step2({
           onChange={(next) => set('ruleTags', next)}
         />
       </View>
-    </View>
+    </FormSections>
   );
 }
 
@@ -924,7 +906,7 @@ function Step3({
   // + guests-open, cancellation deadline, fillers, notes. (Visibility moved
   // to step 1.) Ends with the summary card.
   return (
-    <View style={styles.stack}>
+    <FormSections>
       <FormSectionHeader title={he.wizardSectionCharacteristics} first />
       <ToggleRow
         label={he.createGameRequiresApproval}
@@ -997,14 +979,16 @@ function Step3({
           />
         </ScheduleGroup>
       ) : null}
-      {!quick && internalRating ? (
+      {!quick ? (
         <ScheduleGroup
-          open={values.autoTeamsAt > 0}
+          open={internalRating && values.autoTeamsAt > 0}
           toggle={
             <ToggleRow
               label={he.wizardAutoTeamsToggle}
-              info={{ title: he.wizardAutoTeamsToggle, text: he.wizardAutoTeamsHint }}
-              value={values.autoTeamsAt > 0}
+              hint={!internalRating ? he.wizardAutoTeamsRequiresRating : undefined}
+              disabled={!internalRating}
+              info={{ title: he.wizardAutoTeamsToggle, text: internalRating ? he.wizardAutoTeamsHint : `${he.wizardAutoTeamsRequiresRating}\n\n${he.wizardAutoTeamsHint}` }}
+              value={internalRating && values.autoTeamsAt > 0}
               onChange={(v) => {
                 set('autoTeamsAt', v ? values.startsAt - 60 * 60 * 1000 : 0);
                 logEvent(AnalyticsEvent.AutoTeamsScheduleToggled, { enabled: v });
@@ -1189,170 +1173,8 @@ function Step3({
           onChange={(ids) => set('inviteFriendIds', ids)}
         />
       ) : null}
-    </View>
+    </FormSections>
   );
-}
-
-// ─── Summary preview (Step 3 footer) ─────────────────────────────────────
-
-type SchedItem = { icon: keyof typeof Ionicons.glyphMap; text: string };
-
-// Smart, human-readable breakdown of everything that's been SCHEDULED — the
-// recurring cadence + each timed moment (registration open, public flip,
-// guests open, auto-teams) — phrased on its own weekday/time and ordered by
-// when it happens within the cycle. For a recurring game we say "כל יום רביעי
-// בשעה 20:00"; for a one-off, "ביום רביעי, 02.07 בשעה 20:00". Shown in the
-// create-summary popup so the user can sanity-check "what happens when".
-function buildSchedule(v: GameFormValues): SchedItem[] {
-  const rec = v.recurringGameEnabled;
-  const day = (ms: number) => HEBREW_DAYS_LONG[new Date(ms).getDay()];
-  // `from` → "משעה" (an ongoing window that opens FROM that time, e.g. adding
-  // guests / public access); otherwise "בשעה" (happens AT that moment).
-  const when = (ms: number, from = false) => {
-    const at = from ? 'משעה' : 'בשעה';
-    return rec
-      ? `כל ${day(ms)} ${at} ${formatTime(ms)}`
-      : `ב${day(ms)}, ${formatDateShort(ms)} ${at} ${formatTime(ms)}`;
-  };
-  const timed: (SchedItem & { ms: number })[] = [];
-  if (v.scheduledRegEnabled && v.registrationOpensAt > 0)
-    timed.push({ icon: 'timer-outline', text: `ההרשמה תיפתח ${when(v.registrationOpensAt)}`, ms: v.registrationOpensAt });
-  if (v.publicOpenAt > 0)
-    timed.push({ icon: 'globe-outline', text: `המחזור ייפתח לכל האפליקציה ${when(v.publicOpenAt, true)}`, ms: v.publicOpenAt });
-  if (v.guestsOpenAt > 0)
-    timed.push({ icon: 'person-add-outline', text: `אפשר יהיה להוסיף אורחים ${when(v.guestsOpenAt, true)}`, ms: v.guestsOpenAt });
-  if (v.autoTeamsAt > 0) {
-    const m = v.autoTeamsMethod === 'random' ? ' (אקראי)' : ' (לפי דירוג)';
-    timed.push({ icon: 'shuffle-outline', text: `הכוחות ייווצרו אוטומטית${m} ${when(v.autoTeamsAt)}`, ms: v.autoTeamsAt });
-  }
-  // Nothing scheduled and not recurring → no timeline.
-  if (timed.length === 0 && !rec) return [];
-  timed.sort((a, b) => a.ms - b.ms);
-  // Lead with the game itself as the anchor of the cycle, then the prep events
-  // in the order they fire.
-  const anchor: SchedItem = {
-    icon: 'football',
-    text: rec
-      ? `המחזור יתקיים כל ${day(v.startsAt)} בשעה ${formatTime(v.startsAt)}`
-      : `המחזור יתקיים ב${day(v.startsAt)}, ${formatDateShort(v.startsAt)} בשעה ${formatTime(v.startsAt)}`,
-  };
-  return [anchor, ...timed.map(({ icon, text }) => ({ icon, text }))];
-}
-
-function ScheduleTimeline({ items }: { items: SchedItem[] }) {
-  return (
-    <View style={styles.schedTimeline}>
-      <View style={styles.schedTimelineHead}>
-        <Ionicons name="calendar-number-outline" size={16} color={colors.primary} />
-        <Text style={styles.schedTimelineTitle}>לוח זמנים</Text>
-      </View>
-      {items.map((it, i) => (
-        <View key={i} style={styles.schedTimelineRow}>
-          <Ionicons name={it.icon} size={16} color={colors.primary} style={styles.schedTimelineIcon} />
-          <Text style={styles.schedTimelineText}>{it.text}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function SummaryCard({
-  values,
-  maxPlayers,
-  bare,
-}: {
-  values: GameFormValues;
-  maxPlayers: number;
-  /** Rows only — no bordered container or header title. Used inside the
-   *  confirm popup, which already provides its own title. */
-  bare?: boolean;
-}) {
-  const dateLabel = formatDateLong(values.startsAt);
-  // fieldName is the picker's full label (already includes the city), so
-  // prefer it alone; fall back to city only when there's no field name.
-  const placeLabel =
-    values.fieldName.trim() || values.city.trim() || '—';
-  const formatStr = `${gameFormatLabel(values.format)} · ${values.numberOfTeams} קבוצות · ${maxPlayers} שחקנים`;
-  const visibilityStr =
-    values.visibility === 'public'
-      ? he.wizardVisibilityPublic
-      : he.wizardVisibilityCommunity;
-  // Extra rows worth confirming before creating.
-  const titleStr = values.title.trim();
-  const cancelStr =
-    values.cancelDeadlineHours !== undefined
-      ? formatDateLong(
-          values.startsAt - values.cancelDeadlineHours * 60 * 60 * 1000,
-        )
-      : null;
-  // Smart "what happens when" timeline for recurring / scheduled games.
-  // Replaces the old flat "מחזור שבועי: כן" + "פתיחת הרשמה: <date>" rows.
-  const schedule = buildSchedule(values);
-
-  const rows = (
-    <>
-      {titleStr ? (
-        <SummaryRow icon="football-outline" label={he.createGameNameLabel} value={titleStr} />
-      ) : null}
-      <SummaryRow icon="calendar-outline" label={he.wizardSummaryDate} value={dateLabel} />
-      <SummaryRow icon="location-outline" label={he.wizardSummaryWhere} value={placeLabel} />
-      <SummaryRow icon="people-outline" label={he.wizardSummaryFormat} value={formatStr} />
-      <SummaryRow icon="eye-outline" label={he.wizardSummaryVisibility} value={visibilityStr} />
-      {cancelStr ? (
-        <SummaryRow icon="time-outline" label={he.wizardCancelDeadlineLabel} value={cancelStr} />
-      ) : null}
-      {schedule.length > 0 ? <ScheduleTimeline items={schedule} /> : null}
-    </>
-  );
-
-  if (bare) return <View style={styles.summaryBare}>{rows}</View>;
-
-  return (
-    <View style={styles.summary}>
-      <View style={styles.summaryHeader}>
-        <Ionicons
-          name="document-text-outline"
-          size={16}
-          color={colors.primary}
-        />
-        <Text style={styles.summaryTitle}>{he.wizardSummaryTitle}</Text>
-      </View>
-      {rows}
-    </View>
-  );
-}
-
-function SummaryRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-}) {
-  return (
-    <View style={styles.summaryRow}>
-      <Ionicons name={icon} size={14} color={colors.textMuted} />
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue} numberOfLines={1}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-// Compact preview in the wizard — "יום א׳ DD/MM HH:MM". Slashes
-// + short day letters keep the line tight on small screens.
-function formatDateLong(ms: number): string {
-  return formatDayDate(ms, {
-    day: 'short',
-    dayPrefix: true,
-    separator: ' ',
-    dateSeparator: '/',
-    withTime: true,
-    timeSeparator: ' ',
-  });
 }
 
 // ─── Sub-controls ────────────────────────────────────────────────────────
@@ -1450,18 +1272,21 @@ function ToggleRow({
   value,
   onChange,
   info,
+  disabled = false,
 }: {
   label: string;
   hint?: string;
   value: boolean;
   onChange: (v: boolean) => void;
   info?: { title?: string; text: string };
+  disabled?: boolean;
 }) {
   // Wrap the whole row in a Pressable so tapping anywhere on the
   // label or hint also flips the Switch — the bare Switch was a tiny
   // target on the LEFT edge. A light haptic on flip makes the toggle
   // feel physical.
   const flip = (v: boolean) => {
+    if (disabled) return;
     lightHaptic();
     onChange(v);
   };
@@ -1472,25 +1297,26 @@ function ToggleRow({
   // so tapping it only opens the tooltip.
   return (
     <View style={styles.toggleRow}>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
         <View style={styles.toggleLabelRow}>
-          <Pressable accessible={false} onPress={() => flip(!value)} hitSlop={6}>
+          <Pressable accessible={false} disabled={disabled} onPress={() => flip(!value)} hitSlop={6} style={{ flexShrink: 1, opacity: disabled ? 0.5 : 1 }}>
             <Text style={styles.toggleLabel}>{label}</Text>
           </Pressable>
           {info ? <InfoTip title={info.title} text={info.text} /> : null}
         </View>
         {hint ? (
-          <Pressable accessible={false} onPress={() => flip(!value)} hitSlop={6}>
+          <Pressable accessible={false} disabled={disabled} onPress={() => flip(!value)} hitSlop={6}>
             <Text style={styles.hint}>{hint}</Text>
           </Pressable>
         ) : null}
       </View>
       <BallSwitch
+        disabled={disabled}
         accessibilityLabel={label}
         accessibilityHint={hint}
         value={value}
         onValueChange={flip}
-        trackColor={{ false: colors.border, true: colors.primary }}
+        trackColor={{ false: colors.border, true: FORM_BLUE }}
         thumbColor="#fff"
       />
     </View>
@@ -1500,12 +1326,14 @@ function ToggleRow({
 // ─── Styles ──────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+  root: { flex: 1, backgroundColor: FORM_BG },
   scroll: {
+    paddingTop: 8,
+    paddingHorizontal: 18,
     paddingBottom: spacing.xl,
   },
   stickyHeader: {
-    backgroundColor: colors.bg,
+    backgroundColor: FORM_BG,
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
   },
@@ -1514,7 +1342,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
   },
   body: {
-    padding: spacing.lg,
+    padding: 0,
     gap: spacing.md,
   },
   stack: { gap: spacing.md },
@@ -1524,14 +1352,14 @@ const styles = StyleSheet.create({
   // A scheduling toggle + the picker it reveals, bound into one tinted card so
   // the date reads as a CHILD of its toggle (see ScheduleGroup).
   schedGroup: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radius.lg,
+    backgroundColor: "#F5F8FF",
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.primaryLight,
     // Bleed the card outward by its own horizontal padding so the toggle row
     // INSIDE stays at the exact same x as the bare toggle rows above/below —
     // i.e. all switches line up vertically. The card just extends behind them.
-    marginHorizontal: -spacing.md,
+    marginHorizontal: 0,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
     paddingBottom: spacing.md,
@@ -1551,8 +1379,8 @@ const styles = StyleSheet.create({
   // "לוח זמנים" — the smart scheduled-events breakdown in the summary popup.
   schedTimeline: {
     marginTop: spacing.sm,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radius.lg,
+    backgroundColor: "#F5F8FF",
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.primaryLight,
     padding: spacing.md,
@@ -1613,26 +1441,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   labelFlex: { flexShrink: 1, width: undefined, alignSelf: 'auto' },
-  summaryBare: { gap: spacing.sm },
-  summaryModalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    gap: spacing.md,
-    // Fill the (now slimmer-padded) panel so the popup is wider.
-    alignSelf: 'stretch',
-  },
-  summaryModalTitle: {
-    ...typography.h3,
-    color: colors.text,
-    fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  summaryModalFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.sm,
-  },
   // Read-only "this game opens for <community>" row (details step).
   targetRow: {
     flexDirection: 'row',
@@ -1721,59 +1529,19 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 
-  // Summary card (Step 3)
-  summary: {
-    marginTop: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    gap: 6,
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  summaryTitle: {
-    ...typography.bodyBold,
-    color: colors.text,
-    fontWeight: '800',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 2,
-  },
-  summaryLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-    minWidth: 56,
-  },
-  summaryValue: {
-    ...typography.caption,
-    color: colors.text,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-
   // Footer carries the next/back buttons. Earlier the bottom ad
   // banner sat flush against the buttons (no margin), which created
   // a visual tug between the CTA and the ad. Extra bottom padding +
   // a subtle inner shadow lift the footer off the ad strip so the
   // CTA stays unambiguously the next action.
   footer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: spacing.sm,
-    padding: spacing.lg,
+    padding: 14,
     paddingBottom: spacing.lg + spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
-    backgroundColor: colors.bg,
+    backgroundColor: "#FFFFFF",
     alignItems: 'center',
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: -4 },

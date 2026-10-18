@@ -1,0 +1,265 @@
+{
+  "verified": true,
+  "fixCount": 38,
+  "proofCount": 13,
+  "releaseLogUpdateTime": "2026-10-18T03:16:04.267781Z",
+  "fixes": [
+    {
+      "title": "18.10.2026 — עזיבה, החזרה ופרישת קבוצה נשמרות אטומית מול ההרכב העדכני",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — אורח שמילא מקום חוזר לקבוצת המקור בהחזרה קבועה",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — חלוקה מחודשת שומרת עוזבים ואינה מחזירה אותם בלי החזרה מפורשת",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — הסרת אורח מנקה את הקבוצות וההשאלות באותה שמירה",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — שרת הסגל מנקה גם אורחים מלקוחות ישנים ואינו מנקה מי שכבר חזר",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — הכרעת משחק נקשרת להרכב ולאירועים ואינה נזקפת ללוח שהתעדכן",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — שמירת משחק מאומת שומרת את כל השערים והמשתתפים ללא חיתוך שקט",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — מגבלת כתיבות ומחזור סגור נדחים לפני זקיפה חלקית, עם ניסיון חוזר אידמפוטנטי",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — ביטול פנדל חוזר אחרי אובדן תשובה אינו מבטל בעיטה קודמת",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — מנוי הלייב מעדכן גם את מצב המחזור והאורחים ומאפשר הכרעה לאחר התחלת שעון",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — כשל קריאת סטטיסטיקה אינו מוחלף באפס או בטבלה ריקה",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — מוני המועדון משמרים תשובה בכשל רענון ומאפשרים ניסיון חוזר",
+      "shotId": "final-audit-20261018-community-6cd9a7e086",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — תוויות מוני המועדון נראות במלואן במסך צר ובגופן מוגדל",
+      "shotId": "final-audit-20261018-community-6cd9a7e086",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — פעולה שנשמרה לפני התחברות נקשרת לזהות, לטיוטה ולהרשאת המנהל העדכניות",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — פרופיל חסר מושלם לפני חידוש הפעולה מהכניסה בדואר",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — שמירת פרופיל מוגנת מהחלפת זהות ולחיצה כפולה ואינה מוחקת תמונה לפני הצלחה",
+      "shotId": "final-audit-20261018-onboarding-67e3e6bdee",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — מוצג משוב מדויק לשם שמור ולהעלאת תמונה שנכשלה בהשלמת פרופיל",
+      "shotId": "final-audit-20261018-onboarding-67e3e6bdee",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — חלונות גול ופנדל מסנכרנים תור וסגל ומציעים בחירה מחדש רק אחרי דחייה ודאית",
+      "shotId": "final-audit-20261018-goal-8417d6e4bf",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — אישור ביטול בעיטת פנדל שומר על אותו גודל חלון לאורך התהליך",
+      "shotId": "final-audit-20261018-undo-a8e83a854c",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — שרת הפיתוח מתעלם מתיקיות תוצרים מקומיים גדולות",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — כפתורי הגול שומרים תוויות נגישות נכונות לאחר שגיאה ובחירה מחדש",
+      "shotId": "final-audit-20261018-actions-ef7da46285",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — חלוקה פעילה אינה מציגה אורח שהוסר ונשאר רק בתמונת העבר",
+      "shotId": "final-audit-20261018-forces-d6dc5c77a5",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — הכרעה חלופית ממתינה לאישור מחיקת סדרת הפנדלים כשקריאה מיידית החזירה תמונה ישנה",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — מעבר להרכבים הבאים ממתין לקבלת התוצאה שאושרה כשקריאה מיידית עדיין מציגה לוח קודם",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — שיבוץ שחקן יחיד מציג נותר שחקן אחד במקום נוסח רבים",
+      "shotId": "final-audit-20261018-manual-count-027eeb8bb2",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — אזהרת הכרעה חלופית מתייחסת לבעיטה יחידה בלשון יחיד גם בבחירת מנצחת",
+      "shotId": "final-audit-20261018-penalty-count-745ac7b428",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — הצעת משלים אחרי יציאת שחקן ממתינה להרכב שאושר במקום לקריאה מיידית ישנה",
+      "shotId": "final-audit-20261018-refill-335b129acb",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — השלמה קבועה ממנה קפטן חלופי כשקפטן המקור עבר לקבוצה אחרת",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — כדור הפנדל ממתין לצד הבועט בלי להסתיר את תג קבוצת השוער",
+      "shotId": "final-audit-20261018-penalty-ball-d0157ee82d",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — מעבר למשחק הבא שומר את הרכב הבסיס לצורך החזרת משלימים קבועים",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — מחזור ישן ללא הרכב בסיס דוחה החזרה עודפת ומציג הנחיה לפנות מקום בחילופים",
+      "shotId": "final-audit-20261018-restore-guard-5fe04b7842",
+      "verified": true
+    },
+    {
+      "title": "18.10.2026 — יציאה מחשבון מנתקת את המנויים לפני ביטול ההתחברות ודוחה תשובות של הזהות הישנה",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "שמירת הכרעה חלופית ומחיקת פנדלים באותה עסקה",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "שחזור יצירת מחזור ללא כפילות לאחר תשובת שרת שאבדה",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "יצירת מועדון אחת לכל ניסיון עם קבלה ובידוד חשבונות",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "מניעת כשל אתחול ההתראות עקב סשן שמור חסר באנדרואיד",
+      "shotId": null,
+      "verified": true
+    },
+    {
+      "title": "קישור סדרה שבועית אטומי והשלמת יצירת מחזור לאחר כשל",
+      "shotId": "readiness-20261018-f70776c178af4562bbf6393c69b1229f",
+      "verified": true
+    },
+    {
+      "title": "שחזור טיוטת מחזור מול טעינה מאוחרת והודעות ניסיון חוזר בעברית",
+      "shotId": "readiness-20261018-f31716cbf680462ab338b196fb55aa68",
+      "verified": true
+    }
+  ],
+  "proofs": [
+    {
+      "id": "final-audit-20261018-community-6cd9a7e086",
+      "sourceFile": "final-audit-community-totals-first-error-normal-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "final-audit-20261018-onboarding-67e3e6bdee",
+      "sourceFile": "final-audit-onboarding-profile-name-error-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "final-audit-20261018-goal-8417d6e4bf",
+      "sourceFile": "final-audit-goal-penalty-goal-network-error-small-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "final-audit-20261018-undo-a8e83a854c",
+      "sourceFile": "final-audit-goal-penalty-undo-confirm-normal-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "final-audit-20261018-actions-ef7da46285",
+      "sourceFile": "final-audit-goal-penalty-goal-actions-fixed-small-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "final-audit-20261018-forces-d6dc5c77a5",
+      "sourceFile": "final-audit-forces-current-details-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "final-audit-20261018-manual-count-027eeb8bb2",
+      "sourceFile": "final-audit-count-copy-manual-one-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "final-audit-20261018-penalty-count-745ac7b428",
+      "sourceFile": "final-audit-count-copy-tie-one-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "final-audit-20261018-refill-335b129acb",
+      "sourceFile": "final-audit-production-eleven-small-refill-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "final-audit-20261018-penalty-ball-d0157ee82d",
+      "sourceFile": "final-audit-production-eleven-small-penalty-fixed-ball-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "final-audit-20261018-restore-guard-5fe04b7842",
+      "sourceFile": "final-audit-production-eleven-legacy-restore-denied-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "readiness-20261018-f70776c178af4562bbf6393c69b1229f",
+      "sourceFile": "final-audit-creation-series-error-small-2026-10-18.png",
+      "verified": true
+    },
+    {
+      "id": "readiness-20261018-f31716cbf680462ab338b196fb55aa68",
+      "sourceFile": "final-audit-creation-draft-recovery-error-2026-10-18.png",
+      "verified": true
+    }
+  ]
+}

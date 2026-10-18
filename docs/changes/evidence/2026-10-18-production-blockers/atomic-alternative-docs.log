@@ -1,0 +1,11 @@
+{
+  "documents": 212,
+  "featurePairs": 84,
+  "screenFiles": 61,
+  "screenshots": 1196,
+  "historicalSources": 137,
+  "additionalSources": 86,
+  "failures": [
+    "additional source missing or changed: docs/RELEASING.md"
+  ]
+}

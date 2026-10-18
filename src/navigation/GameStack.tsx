@@ -1,3 +1,5 @@
+import { FeedbackScreen } from '@/screens/FeedbackScreen';
+import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
 import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
 // Games tab navigation:
 //   GamesList → MatchDetails → LiveMatch
@@ -111,7 +113,7 @@ export type GameStackParamList = {
   MatchPlayers: { gameId: string };
   /** Admin-only "ניהול משחק" surface. */
   /** Draft Teams (חלוקת כוחות) — step 1: pick captains + draft order. */
-  DraftSetup: { gameId: string };
+  DraftSetup: { gameId: string; resumeManual?: boolean; editExisting?: boolean };
   /** Draft Teams — step 2: the live draft board + summary. */
   DraftBoard: {
     gameId: string;
@@ -120,9 +122,13 @@ export type GameStackParamList = {
     /** Reconstruct picks from the game's saved draftTeams → opens on the
      *  summary (editable). */
     resume?: boolean;
+    /** The acknowledged generated draft; older reads must not display it. */
+    expectedDraftCreatedAt?: number;
     /** View-only (non-managers): summary without edit/finish actions. */
     readOnly?: boolean;
   };
+  Statistics: { userId?: string } | undefined;
+  Feedback: { type?: 'bug' | 'suggestion'; playerId?: string; playerName?: string } | undefined;
   PlayerCard: { userId: string; groupId?: string };
   PlayerCompare: { groupId: string; otherUid: string; otherName?: string };
   /** Admin-only per-community player timeline — reachable from
@@ -139,7 +145,7 @@ export type GameStackParamList = {
    *  "מועדונים באזור שלך" section on the games list. Registered here (as well
    *  as in CommunitiesStack) so back returns to the matches tab; without the
    *  registration navigate() would silently no-op. */
-  CommunityDetailsPublic: { groupId: string };
+  CommunityDetailsPublic: { groupId: string; fromInvitation?: boolean };
   /** Reached from the "ביקוש באזור שלך" card ("גם אני פנוי" / "הגדר אזור"),
    *  so declaring availability doesn't bounce the user out to the profile tab. */
   AvailabilityEdit: undefined;
@@ -198,6 +204,8 @@ export function GameStack() {
       <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="Statistics" component={StatisticsScreen} />
+      <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
       <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />

@@ -1,0 +1,582 @@
+[copy-template] copied public\c\index.html → functions\templates\community.html
+[copy-template] copied public\invite.html → functions\templates\invite.html
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in C:/Users/elira/Teamder/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+PASS tests/logic/invitePreviewPrivacy.test.ts (67.347 s)
+PASS tests/logic/dataLiveAudit.test.ts (20.093 s)
+PASS tests/logic/liveGameWrites.test.ts (24.026 s)
+PASS tests/logic/balanceVariety.test.ts (13.362 s)
+PASS tests/logic/finalAtomicAlternativeAudit.test.ts (14.451 s)
+PASS tests/logic/authRaceRetry.test.ts
+PASS tests/logic/balanceTeams.test.ts
+PASS tests/logic/finalAlternateDecisionAudit.test.ts
+PASS tests/logic/releaseLogicFixes.test.ts
+PASS tests/logic/dataDraftSavedResume.test.tsx
+PASS tests/scrollStickyHeaderPress.test.ts
+PASS tests/logic/groupHydrate.test.ts
+PASS tests/logic/retroScoreCorrection.test.ts
+PASS tests/logic/finalRosterAudit.test.ts
+PASS tests/logic/finalLiveSnapshotAudit.test.ts
+PASS tests/logic/finalStatsAuditCommunityRead.test.ts
+PASS tests/logic/finalForcesGuestAudit.test.ts
+PASS tests/logic/savedAllocationReplacement.test.ts
+PASS tests/logic/preReleaseFinishRecovery.test.ts
+PASS tests/logic/eveningScoreParity.test.ts
+PASS tests/logic/auditRegressions.test.ts
+PASS tests/logic/finalAuthListenerAudit.test.ts
+PASS tests/logic/inviteNavigationExpanded.test.ts
+PASS tests/logic/savedRoundStoppages.test.ts
+PASS tests/logic/formatWideStructures.test.ts
+PASS tests/logic/balanceOptimizationParity.test.ts
+PASS tests/logic/inviteAttributionExpanded.test.ts
+PASS tests/logic/dataLiveAuditServerCommit.test.ts
+PASS tests/logic/finalForcesAudit.test.ts
+PASS tests/logic/liveModeRouting.test.ts
+PASS tests/logic/finalGoalAuditRefill.test.ts
+PASS tests/logic/clientAuditRecovery.test.ts
+PASS tests/logic/clubCreationReceipt.test.ts
+PASS tests/logic/supportHumanOnly.test.ts
+PASS tests/logic/finalStatsAuditContracts.test.ts
+PASS tests/logic/forcesAudit.test.ts
+PASS tests/logic/gameCreationReceipt.test.ts
+PASS tests/logic/preReleaseRoundIntegrity.test.ts
+PASS tests/logic/matchStatsReadState.test.tsx
+PASS tests/logic/roundJoinLoading.test.ts
+PASS tests/logic/analyticsWiring.test.ts
+PASS tests/logic/compareHighlight.test.ts
+PASS tests/logic/chatDemoIsolation.test.ts
+PASS tests/logic/approvedStatisticsPolicy.test.ts
+PASS tests/logic/finalGoalAuditLegacyRestore.test.ts
+PASS tests/logic/guestJoinNotice.test.ts
+PASS tests/logic/finalGoalAuditDecisionContext.test.ts
+PASS tests/logic/savedRoundTransition.test.ts
+PASS tests/logic/balancedFill.test.ts
+PASS tests/logic/finalOnboardingAuditProfile.test.ts
+PASS tests/notificationPermissionWiring.test.ts
+PASS tests/logic/dataLiveTimerTransactions.test.ts
+PASS tests/hooksAfterEarlyReturn.test.ts
+PASS tests/logic/mockUsesNoRealNames.test.ts
+PASS tests/logic/clientDiagnostics.test.ts
+PASS tests/logic/friendsOwnerIsolation.test.ts
+PASS tests/logic/joinConfirmationAnalytics.test.ts
+PASS tests/logic/finalGoalAuditBaseRestore.test.ts
+PASS tests/logic/finalForcesGuestServerAudit.test.ts
+PASS tests/logic/personalGroupAtomicity.test.ts
+PASS tests/logic/mockRoundHistory.test.ts
+PASS tests/logic/supportTimeline.test.ts
+PASS tests/logic/receivedInvitationPreviews.test.ts
+PASS tests/logic/socialSession.test.ts
+PASS tests/stateUpdaterSideEffect.test.ts
+PASS tests/logic/inAppActionVocabulary.test.ts
+PASS tests/logic/balanceParity.test.ts
+PASS tests/logic/invitationClubAcceptance.test.ts
+PASS tests/logic/finalForcesCurrentDisplay.test.ts
+PASS tests/logic/liveScoreboardResponsive.test.tsx
+PASS tests/logic/receivedInvitationsService.test.ts
+PASS tests/logic/dataLiveAuditGuestDemo.test.ts
+PASS tests/logic/chatPushPolicy.test.ts
+PASS tests/logic/profileSetupChoices.test.ts
+PASS tests/logic/gameChampionshipReadFailure.test.ts
+PASS tests/logic/inviteWebExpanded.test.ts
+PASS tests/logic/finalGoalAuditServiceRejections.test.ts
+PASS tests/logic/finalGoalAuditFillCaptains.test.ts
+PASS tests/advancedMatchStats.test.ts
+PASS tests/logic/personalStatisticsLoading.test.ts
+PASS tests/logic/chatTrustedSenderIdentity.test.ts
+PASS tests/logic/draftLoadingRace.test.ts
+PASS tests/logic/acceptReceivedInvitation.test.ts
+PASS tests/logic/sequentialFillDesign.test.ts
+PASS tests/logic/joryioNativeInitializationDiagnostics.test.ts
+PASS tests/logic/pulseNativePreviewInterop.test.ts
+PASS tests/logic/penaltyPitchFlow.test.tsx
+PASS tests/logic/achievementUnlockConcurrency.test.ts
+PASS tests/logic/pulseLiveStartRegression.test.ts
+PASS tests/guestAuthEntryPoints.test.ts
+PASS tests/logic/locationChoiceRace.test.ts
+PASS tests/logic/socialInviteSending.test.ts
+PASS tests/logic/onboardingSecondRegression.test.ts
+PASS tests/logic/summaryOwnership.test.ts
+PASS tests/logic/manualDragOrigin.test.ts
+PASS tests/logic/clubChemistryReal.test.ts
+PASS tests/logic/todayScreensAudit.test.ts
+PASS tests/logic/finalGoalAuditSelection.test.tsx
+PASS tests/logic/seasonCloseFloor.test.ts
+PASS tests/logic/publicPlayerRead.test.ts
+PASS tests/logic/safeContentMetrics.test.ts
+PASS tests/logic/draftBoardRefresh.test.ts
+PASS tests/logic/pulseWorkStatusSave.test.ts
+PASS tests/logic/mvpCoverageWinners.test.ts
+PASS tests/logic/matchInitialTab.test.ts
+PASS tests/logic/emailAuthProviders.test.ts
+PASS tests/logic/avatarCompatibility.test.ts
+PASS tests/logic/assistant.test.ts
+PASS tests/logic/joryioInitializationRetry.test.ts
+PASS tests/logic/creationFingerprintConverter.test.ts
+PASS tests/logic/seasonArchiveLoading.test.ts
+PASS tests/roundCoverRendering.test.ts
+PASS tests/logic/eveningPlayedMirror.test.ts
+PASS tests/logic/inviteServerExpanded.test.ts
+PASS tests/logic/draftSetupLoading.test.ts
+PASS tests/logic/friendsLoadOrder.test.ts
+PASS tests/logic/recentAuth.test.ts
+PASS tests/logic/physicalSaveConcurrency.test.ts
+PASS tests/logic/communityStatsRankResponsive.test.tsx
+PASS tests/logic/availablePlayersInvite.test.ts
+PASS tests/entryOnboarding.test.ts
+PASS tests/logic/clubStatusShare.test.ts
+PASS tests/logic/invitationCardAcceptance.test.ts
+PASS tests/logic/nativeStackSceneIntegrity.test.ts
+  ● Console
+
+    console.log
+      Verified native-stack 6.11.0: stable scene in C:\Users\elira\Teamder\node_modules\@react-navigation\native-stack\src\views\NativeStackView.native.tsx
+
+      at verifyInstalled (scripts/verify-native-stack-scene.cjs:36:11)
+
+PASS tests/logic/finalCountCopy.test.ts
+PASS tests/logic/seasonStampRead.test.ts
+PASS tests/logic/invitationReconciler.test.ts
+PASS tests/logic/accessibleControls.test.tsx
+PASS tests/rotationDeep.test.ts
+PASS tests/logic/roundCoverLibrary.test.ts
+PASS tests/logic/pairCompareRead.test.ts
+PASS tests/logic/seasonLock.test.ts
+PASS tests/logic/localDemoPersistence.test.ts
+PASS tests/logic/liveSeasonStamp.test.ts
+PASS tests/logic/pulseGuestSummary.test.ts
+PASS tests/diagnosticDelivery.test.ts
+PASS tests/logic/sealedCounterAtomicity.test.ts
+PASS tests/logic/liveSubstitution.test.ts
+PASS tests/logic/finalCommunityTotalsLabel.test.ts
+PASS tests/logic/creationSeriesAtomic.test.ts
+PASS tests/logic/inviteVisualRoutesExpanded.test.ts
+PASS tests/logic/onboardingActivity.test.ts
+PASS tests/logic/joryioPushRegistration.test.ts
+PASS tests/logic/personalScoreChartAccessibility.test.ts
+PASS tests/logic/balancedFillResponsive.test.tsx
+PASS tests/logic/actionResumers.test.ts
+PASS tests/logic/homeAvailabilityView.test.ts
+PASS tests/logic/seasonOpensWithOffset.test.ts
+PASS tests/logic/pulseSupportMessaging.test.ts
+PASS tests/logic/pendingActionMachine.test.ts
+PASS tests/logic/format.test.ts
+PASS tests/logic/onboardingActivityQueue.test.ts
+PASS tests/diagnosticStorage.test.ts
+PASS tests/roundIdempotency.test.ts
+PASS tests/logic/pulseResponseEncoding.test.ts
+PASS tests/logic/formatPicker.test.ts
+PASS tests/logic/groupSeasonsReader.test.ts
+PASS tests/logic/roundInfoRedesign.test.tsx
+PASS tests/logic/availabilityGrid.test.ts
+PASS tests/shootoutPersistence.test.ts
+PASS tests/logic/teamScoreResponsive.test.tsx
+PASS tests/logic/notificationPreferenceCoverage.test.ts
+PASS tests/cleanSheetsPersistence.test.ts
+PASS tests/balanceMetaPersistence.test.ts
+PASS tests/logic/invitationReader.test.ts
+PASS tests/logic/balancedFillPersistence.test.ts
+PASS tests/logic/seasonCloseNumbers.test.ts
+PASS tests/assistPersistence.test.ts
+PASS tests/logic/clubTabsTouchDiagnostics.test.tsx
+PASS tests/logic/clubCreationPrivacy.test.ts
+PASS tests/eveningRecords.test.ts
+PASS tests/logic/matchRoundsLoading.test.tsx
+PASS tests/logic/eveningHighlights.test.ts
+PASS tests/logic/draftTeamCardRtl.test.tsx
+PASS tests/ratingAndColors.test.ts
+PASS tests/logic/roundSummary.test.ts
+PASS tests/logic/diagnosticJournal.test.ts
+PASS tests/logic/actionPitchAnimation.test.tsx
+PASS tests/logic/penaltyPitchResultActions.test.tsx
+PASS tests/logic/eveningSummaryData.test.ts
+PASS tests/logic/seriesSchedule.test.ts
+PASS tests/logic/seasonLifecycle.test.ts
+PASS tests/logic/penaltyStats.test.ts
+PASS tests/logic/silentGuest.test.ts
+PASS tests/logic/registrationQa.test.ts
+PASS tests/rotationCounts.test.ts
+  ● Console
+
+    console.log
+      [10] start: t0=5 vs t1=5 | waiting=[] | loans=0
+
+      at Object.<anonymous> (tests/rotationCounts.test.ts:42:15)
+
+    console.log
+      [10] after win: t0=5 vs t1=5 | W=5 L=5
+
+      at Object.<anonymous> (tests/rotationCounts.test.ts:60:15)
+
+    console.log
+      [11] start: t0=5 vs t1=5 | waiting=[2] | loans=2
+
+      at Object.<anonymous> (tests/rotationCounts.test.ts:42:15)
+
+    console.log
+      [11] after win: t0=5 vs t2=5 | W=5 L=5
+
+      at Object.<anonymous> (tests/rotationCounts.test.ts:60:15)
+
+    console.log
+      [12] start: t0=5 vs t1=5 | waiting=[2] | loans=2
+
+      at Object.<anonymous> (tests/rotationCounts.test.ts:42:15)
+
+    console.log
+      [12] after win: t0=5 vs t2=5 | W=5 L=5
+
+      at Object.<anonymous> (tests/rotationCounts.test.ts:60:15)
+
+    console.log
+      [14] start: t0=5 vs t1=5 | waiting=[2] | loans=0
+
+      at Object.<anonymous> (tests/rotationCounts.test.ts:42:15)
+
+    console.log
+      [14] after win: t0=5 vs t2=5 | W=5 L=5
+
+      at Object.<anonymous> (tests/rotationCounts.test.ts:60:15)
+
+    console.log
+      [15] start: t0=5 vs t1=5 | waiting=[2] | loans=0
+
+      at Object.<anonymous> (tests/rotationCounts.test.ts:42:15)
+
+    console.log
+      [15] after win: t0=5 vs t2=5 | W=5 L=5
+
+      at Object.<anonymous> (tests/rotationCounts.test.ts:60:15)
+
+PASS tests/inviteLandingWiring.test.ts
+PASS tests/logic/goalPitchFlow.test.tsx
+PASS tests/authUpgradeUpdatesStore.test.ts
+PASS tests/logic/seasonMedalTier.test.ts
+PASS tests/logic/pulseUnresolvedWork.test.ts
+PASS tests/logic/managerDashboard.test.ts
+PASS tests/logic/chatInbox.test.ts
+PASS tests/scrollAnimationLifecycle.test.ts
+PASS tests/logic/pulseAdminProxy.test.ts
+PASS tests/signOutRestoresGuest.test.ts
+PASS tests/logic/seasonRolloverFields.test.ts
+PASS tests/logic/roundSummaryBackfill.test.ts
+  ● Console
+
+    console.log
+      
+      2026-05-27  0 mini-games · 0g · 0a · 0 shootouts  → 0 event(s): 
+      2026-06-24  0 mini-games · 17g · 0a · 0 shootouts  → 0 event(s): 
+      2026-07-01  0 mini-games · 17g · 9a · 0 shootouts  → 0 event(s): 
+      2026-07-08  0 mini-games · 17g · 12a · 0 shootouts  → 0 event(s): 
+      2026-07-15  8 mini-games · 7g · 6a · 0 shootouts  → 0 event(s): 
+      2026-07-21  8 mini-games · 13g · 8a · 2 shootouts  → 6 event(s): club_record, personal_record, personal_record, player_milestone, first_ever, rank_jump
+      2026-07-29  11 mini-games · 17g · 15a · 1 shootouts  → 6 event(s): club_record, club_record, club_milestone, player_milestone, first_ever, rank_jump
+      2026-08-05  10 mini-games · 12g · 9a · 1 shootouts  → 6 event(s): club_milestone, rank_first_place, personal_record, personal_record, player_milestone, player_milestone
+      2026-08-12  10 mini-games · 18g · 13a · 1 shootouts  → 6 event(s): club_record, rank_first_place, personal_record, personal_record, player_milestone, player_milestone
+      2026-08-19  10 mini-games · 20g · 17a · 3 shootouts  → 6 event(s): club_record, club_record, club_milestone, rank_first_place, personal_record, player_milestone
+
+      at Object.<anonymous> (tests/logic/roundSummaryBackfill.test.ts:169:11)
+
+PASS tests/logic/gameCreation.test.ts
+PASS tests/logic/personalInviteScreen.test.tsx
+PASS tests/logic/inviteLandingRecovery.test.ts
+PASS tests/profanity.test.ts
+PASS tests/fillerGuestWiring.test.ts
+PASS tests/logic/seasonSweep.test.ts
+PASS tests/logic/pendingAction.test.ts
+PASS tests/logic/onboardingRecovery.test.ts
+PASS tests/logic/commitProtocol.test.ts
+PASS tests/logic/availabilityPersistState.test.ts
+PASS tests/logic/creationDraftGroupRecovery.test.ts
+PASS tests/managerDashboardService.test.ts
+PASS tests/logic/roundReviewSheet.test.tsx
+PASS tests/logic/resumeFeedback.test.ts
+PASS tests/logic/creationAttemptRecovery.test.ts
+PASS tests/logic/clubOrder.test.ts
+PASS tests/logic/actionPitchReducedMotion.test.tsx
+PASS tests/logic/actionCoordinator.test.ts
+PASS tests/joinFlowWiring.test.ts
+PASS tests/clubRecords.test.ts
+PASS tests/logic/supportMessage.test.ts
+PASS tests/logic/shortAdLinks.test.ts
+PASS tests/logic/securityTransition.test.ts
+PASS tests/logic/seasonCounterReconciliation.test.ts
+PASS tests/logic/pulseWorkLoading.test.ts
+PASS tests/managerClubResultsService.test.ts
+PASS tests/logic/notificationDispatchDuplicate.test.ts
+PASS tests/logic/draftStore.test.ts
+PASS tests/logic/clubCard.test.ts
+PASS tests/rotationEngine.test.ts
+  ● Console
+
+    console.log
+      
+      [START] playing 0 vs 1 | team0=5, team1=5, team2=3 | waiting=[2] | loans=[{"playerId":"c1","homeTeam":2,"filledTeam":1}]
+
+      at Object.<anonymous> (tests/rotationEngine.test.ts:37:13)
+
+    console.log
+      [WIN 0] playing 0 vs 2 | team0=5, team1=3, team2=5 | waiting=[1] | loans=[{"playerId":"b1","homeTeam":1,"filledTeam":2}]
+
+      at Object.<anonymous> (tests/rotationEngine.test.ts:53:13)
+
+PASS tests/logic/seasonDates.test.ts
+PASS tests/logic/receivedInvitations.test.ts
+PASS tests/logic/joryioIdentity.test.ts
+PASS tests/logic/inviteRouting.test.ts
+PASS tests/logic/homeRoundState.test.ts
+PASS tests/logic/heroAtmosphere.test.ts
+PASS tests/logic/gameFilters.test.ts
+PASS tests/logic/cleanSheets.test.ts
+PASS tests/logic/campaignHosting.test.ts
+PASS tests/logic/tieDecisionConfirmation.test.tsx
+PASS tests/logic/tabTransition.test.ts
+PASS tests/logic/seasonCadenceClean.test.ts
+PASS tests/logic/seasonActivation.test.ts
+PASS tests/logic/gameEveningScores.test.ts
+PASS tests/logic/copyDirectionality.test.ts
+PASS tests/logic/chatSenderPreview.test.ts
+PASS tests/logic/authUpgrade.test.ts
+PASS tests/logic/socialPlayers.test.ts
+PASS tests/logic/seasonPersonal.test.ts
+PASS tests/logic/seasonAwards.test.ts
+PASS tests/logic/pulseSupportTransport.test.ts
+PASS tests/logic/pulseSupportResolution.test.ts
+PASS tests/logic/personalInvite.test.ts
+PASS tests/logic/entrySourceHydration.test.ts
+PASS tests/logic/allTimeTable.test.ts
+PASS tests/logic/adLinkStats.test.ts
+PASS tests/logic/pulseProxyPolicy.test.ts
+PASS tests/logic/openingTeams.test.ts
+PASS tests/logic/eveningScoreSentinel.test.ts
+PASS tests/logic/eveningRecordService.test.ts
+PASS tests/logic/eveningProgress.test.ts
+PASS tests/logic/deepLinkBypassesHome.test.ts
+PASS tests/logic/dataLiveAuditSummary.test.ts
+PASS tests/logic/availabilityCalendarStates.test.tsx
+PASS tests/entryExistingAccount.test.ts
+PASS tests/logic/supportOutreachPolicy.test.ts
+PASS tests/logic/statBatch.test.ts
+PASS tests/logic/registrationScheduleOff.test.ts
+PASS tests/logic/nativeCampaignView.test.tsx
+PASS tests/logic/clubChemistry.test.ts
+PASS tests/logic/assistCredit.test.ts
+PASS tests/logic/actionPitchPicker.test.tsx
+PASS tests/clubRouteByMembership.test.ts
+PASS tests/logic/whatsNewDelivery.test.ts
+PASS tests/logic/joinRequestResult.test.ts
+PASS tests/logic/finalOnboardingAuditRecovery.test.ts
+PASS tests/logic/eveningSummary.test.ts
+PASS tests/logic/eveningPlayed.test.ts
+PASS tests/logic/efficiencyStats.test.ts
+PASS tests/logic/draft.test.ts
+PASS tests/logic/coverageBackCompat.test.ts
+PASS tests/seasonEndFloor.test.ts
+PASS tests/personalInviteWiring.test.ts
+PASS tests/animationTriggers.test.ts
+PASS tests/logic/storeUpdateAvailability.test.ts
+PASS tests/logic/shoshiChemistryScopes.test.ts
+PASS tests/logic/seasonCoverage.test.ts
+PASS tests/logic/editNoticeSlice.test.ts
+PASS tests/logic/clubNextGameCard.test.tsx
+PASS tests/logic/teamIdentity.test.ts
+PASS tests/logic/storeUpdateSnooze.test.ts
+PASS tests/logic/shoshiSeason1DryRun.test.ts
+  ● Console
+
+    console.log
+      
+      ══════════════════════════════════════════════════════════════════════════════
+        מועדון שכחת שושי · season 1 · 22 evenings · 7 players
+        attendance gate for שחקן העונה: 11 of 22
+      ══════════════════════════════════════════════════════════════════════════════
+      
+        TITLE              STORED IN THE ARCHIVE            →  UNDER THE NEW RULES
+        ──────────────────────────────────────────────────────────────────────────
+        topScorer        הלן צברי  (10)                     הלן צברי  (10)
+        topAssister      Nofar Tzabari  (5)                 Nofar Tzabari  (5)
+        mvp              מתן לוי + Lioz Madar + Linoy Lev ≠ הלן צברי  (7.655555555555556)
+        topWinner        Lioz Madar  (13)                   Lioz Madar  (13)
+        mostLoyal        מתן לוי  (19)                      מתן לוי  (19)
+        cleanSheetKing   הלן צברי  (13)                     הלן צברי  (13)
+        penaltyKing      הלן צברי  (1)                    ≠ Nofar Tzabari + הלן צברי  (2)
+        penaltyKeeper    הלן צברי  (1)                    ≠ הלן צברי  (3)
+        deadlyDuo        — not awarded                      — not awarded
+      
+        שחקן העונה — why it moves
+        ──────────────────────────────────────────────────────────────────────────
+        player            attended  gate?   stored avg   real avg   sentinel nights
+        Linoy Levi           18     yes       6.000      7.114        9   (7 rated of 3 counted)
+        איציק לוי            17     yes       6.000      6.870        5   (10 rated of 2 counted)
+        מתן לוי              19     yes       6.000      6.640        6   (10 rated of 3 counted)
+        Lioz Madar           18     yes       6.000      7.338        8   (8 rated of 3 counted)
+        Eliran Tzabari       18     yes       6.000      6.750        7   (8 rated of 2 counted)
+        Nofar Tzabari        18     yes       6.000      7.140        6   (10 rated of 3 counted)
+        הלן צברי             18     yes       6.000      7.656        7   (9 rated of 3 counted)
+      
+        Why "rated" exceeds "counted" — the accumulator shipped late
+        ──────────────────────────────────────────────────────────────────────────
+        The archive counted 2-3 evenings per player; the club has 16 with a
+        stored rating, and every one of them belongs to season 1 (13 carry no
+        seasonId at all, which means season 1, and 3 are stamped s1 — checked
+        game by game).
+      
+        `eveningScoreSum/Count` began writing on 16.09.2026, the last two days
+        of a season that started on 27.07. Everything before that has an
+        eveningStandings row — written by an older path — and never reached the
+        season accumulator at all. So the stored average is not a wrong average
+        of the season; it is an average of its final 48 hours.
+      
+        And those final 48 hours are exactly the evenings that ran with no
+        rotation: 16.09 and both of 17.09 recorded ZERO mini-games. Every score
+        in the counted window is therefore the 6.0 sentinel, which is why all
+        seven averages are exactly 6.000 and all seven share the title.
+      
+        The reconstruction uses the 16 stored ratings and keeps only those a
+        player actually earned — present in a roundHistory teamA/teamB for that
+        evening. It invents nothing: an evening with no stored rating stays
+        absent rather than becoming a zero.
+      
+        Documents this migration would touch, if approved:
+          seasonSummary/HhzIwmjMl1i5HSOGHt3p__s1   → awards (9 keys)
+          seasonCards/HhzIwmjMl1i5HSOGHt3p__s1     → winners
+          users/{uid}/seasonTitles/*               → add/remove per title moved
+          communityPlayerStats/{gid}__{uid}        → eveningScoreSum/Count (7 rows)
+        Nothing else. No game, no roster, no lifetime counter.
+      ══════════════════════════════════════════════════════════════════════════════
+
+      at Object.<anonymous> (tests/logic/shoshiSeason1DryRun.test.ts:156:13)
+
+PASS tests/logic/seasonAwardsMirror.test.ts
+PASS tests/logic/roundSides.test.ts
+PASS tests/logic/playedGames.test.ts
+PASS tests/logic/personalHistory.test.ts
+PASS tests/logic/organiserState.test.ts
+PASS tests/logic/onboardingPushContent.test.ts
+PASS tests/logic/mapWebSecurity.test.ts
+PASS tests/logic/eveningStats.test.ts
+PASS tests/logic/chemistrySectionLoading.test.tsx
+PASS tests/logic/availabilityDraftRestore.test.ts
+PASS tests/logic/arrivalMotion.test.ts
+PASS tests/scrollStaleMomentum.test.ts
+PASS tests/logic/weatherForecastIntegrity.test.ts
+PASS tests/logic/seasonCardVariant.test.ts
+PASS tests/logic/physical.test.ts
+PASS tests/logic/personalInviteLanding.test.ts
+PASS tests/logic/pairOrientation.test.ts
+PASS tests/logic/pairChemistryIconMotion.test.tsx
+PASS tests/logic/managerClubInsights.test.ts
+PASS tests/logic/joinFairness.test.ts
+PASS tests/logic/encryptedPersistence.test.ts
+PASS tests/logic/championshipPenalty.test.ts
+PASS tests/logic/whatsNewGateLifecycle.test.tsx
+PASS tests/logic/types.test.ts
+PASS tests/logic/tabTouchTrace.test.ts
+PASS tests/logic/storeUpdateAttribution.test.ts
+PASS tests/logic/socialPairSummary.test.ts
+PASS tests/logic/shootoutSummaryViews.test.tsx
+PASS tests/logic/seasonScope.test.ts
+PASS tests/logic/seasonFinalRound.test.ts
+PASS tests/logic/joryioOfficialWiring.test.ts
+PASS tests/logic/inviteStorageRefresh.test.ts
+PASS tests/logic/holidays.test.ts
+PASS tests/logic/discovery.test.ts
+PASS tests/rotationFill.test.ts
+PASS tests/pulseReports2609.test.ts
+PASS tests/cardState.test.ts
+PASS tests/logic/winnerRotationPreview.test.ts
+PASS tests/logic/supportDraft.test.ts
+PASS tests/logic/storeReviewRecovery.test.ts
+PASS tests/logic/shortInviteRecovery.test.ts
+PASS tests/logic/seasonArchiveTable.test.ts
+PASS tests/logic/roundSummaryRealEvening.test.ts
+PASS tests/logic/notificationOffer.test.ts
+PASS tests/logic/motionTokens.test.ts
+PASS tests/logic/gameEditNotice.test.ts
+PASS tests/logic/clubChemistryStrict.test.ts
+PASS tests/logic/emptyTeamRetire.test.ts
+PASS tests/logic/dataLiveAuditParticipants.test.ts
+PASS tests/guestHomeWiring.test.ts
+PASS tests/logic/teamSlots.test.ts
+PASS tests/logic/seasonSeedHistory.test.ts
+PASS tests/logic/roundSummaryReadContract.test.ts
+PASS tests/logic/roundHistoryOrder.test.ts
+PASS tests/logic/roundCoverPeriod.test.ts
+PASS tests/logic/registrationEdit.test.ts
+PASS tests/logic/pulseRequestQueue.test.ts
+PASS tests/logic/playerRecruitmentActions.test.tsx
+PASS tests/logic/officialAccount.test.ts
+PASS tests/logic/homeRouting.test.ts
+PASS tests/logic/homePersonalStats.test.ts
+PASS tests/logic/guestPromotion.test.ts
+PASS tests/logic/gameChampionshipRecovery.test.tsx
+PASS tests/logic/finalLineupAudit.test.ts
+PASS tests/logic/fillSelection.test.ts
+PASS tests/logic/externalFailures.test.ts
+PASS tests/logic/eveningAttendance.test.ts
+PASS tests/logic/draftTeamsView.test.ts
+PASS tests/logic/communityHistory.test.ts
+PASS tests/logic/actionOfferBridge.test.ts
+PASS tests/logic/storeUpdatePlugin.test.ts
+PASS tests/logic/seasonScopedStats.test.ts
+PASS tests/logic/seasonArchivePairs.test.ts
+PASS tests/logic/sealSeasonFloor.test.ts
+PASS tests/logic/savedGuest.test.ts
+PASS tests/logic/roundSummaryLines.test.ts
+PASS tests/logic/restoreTarget.test.ts
+PASS tests/logic/rejoinStamp.test.ts
+PASS tests/logic/pulseDiagnosticTimeline.test.ts
+PASS tests/logic/placeSearchFallback.test.ts
+PASS tests/logic/personalPartnerStats.test.ts
+PASS tests/logic/officialAccountName.test.ts
+PASS tests/logic/manualDraftReplacement.test.ts
+PASS tests/logic/linkClickInput.test.ts
+PASS tests/logic/invitationPolicy.test.ts
+PASS tests/logic/goalTallyConsistency.test.ts
+PASS tests/logic/entryBootstrap.test.ts
+PASS tests/overlayTouchRegion.test.ts
+PASS tests/logic/startEvening.test.ts
+PASS tests/logic/seasonTitlesCabinet.test.ts
+PASS tests/logic/seasonCloseDeadlock.test.ts
+PASS tests/logic/seasonChoices.test.ts
+PASS tests/logic/roundFeedCovers.test.ts
+PASS tests/logic/rotationWinnerSide.test.ts
+PASS tests/logic/quickGameGate.test.ts
+PASS tests/logic/personalStatistics.test.ts
+PASS tests/logic/onboardingActivityLoader.test.ts
+PASS tests/logic/manualAllocation.test.ts
+PASS tests/logic/homeHero.test.ts
+PASS tests/logic/eveningMovement.test.ts
+PASS tests/logic/breadcrumbs.test.ts
+PASS tests/logic/availabilityAccountIsolation.test.ts
+PASS tests/logic/appLinks.test.ts
+PASS tests/logic/seasonCardParticipants.test.ts
+PASS tests/logic/pulseFeedbackInbox.test.ts
+PASS tests/logic/newClubSeasons.test.ts
+PASS tests/logic/manualDraftResume.test.ts
+PASS tests/logic/inviteReferrer.test.ts
+PASS tests/logic/diagnosticRedaction.test.ts
+PASS tests/logic/completeSeasonHistory.test.ts
+PASS tests/logic/clubChemistryParity.test.ts
+PASS tests/logic/scoreBand.test.ts
+PASS tests/logic/roundSaveError.test.ts
+PASS tests/logic/liveAccess.test.ts
+PASS tests/logic/joryioPushClick.test.ts
+PASS tests/logic/geo.test.ts
+PASS tests/logic/assistantWinsPlace.test.ts
+PASS tests/logic/tieConfirmParity.test.ts
+PASS tests/logic/supportAdminPush.test.ts
+PASS tests/logic/roundSummaryParity.test.ts
+PASS tests/logic/rotationQueueReorder.test.ts
+PASS tests/logic/joryioConfig.test.ts
+PASS tests/logic/eveningScorePen.test.ts
+PASS tests/logic/apnsTokenShape.test.ts
+PASS tests/logic/joinCtaCapacity.test.ts
+PASS tests/logic/discoveryDefaultFriends.test.ts
+PASS tests/wentHomeRestore.test.ts
+
+Test Suites: 417 passed, 417 total
+Tests:       4961 passed, 4961 total
+Snapshots:   0 total
+Time:        225.35 s
+Ran all test suites.

@@ -1,3 +1,4 @@
+import { signOutPulse } from '../services/adminSession';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, font, radius } from '../theme';
 import { Card, Screen, SectionHeader } from '../components/ui';
 import { config } from '../config';
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import { useDashboard } from '../state/DashboardContext';
 import { ensureNotificationSetup, notify } from '../services/notify';
 import {
@@ -86,6 +87,7 @@ export function SettingsScreen() {
 
   return (
     <Screen title="הגדרות" subtitle={config.appName}>
+      <Text onPress={() => { void signOutPulse(); }} style={styles.help}>יציאה מהחשבון</Text>
       <SectionHeader>מקורות נתונים</SectionHeader>
       <Card style={{ gap: 4 }}>
         {sources.map((s) => (
@@ -93,8 +95,8 @@ export function SettingsScreen() {
         ))}
       </Card>
       <Text style={styles.help}>
-        מקור ב״דמו״ מציג נתוני דוגמה. ברגע שמזינים את המפתחות שלו בקובץ
-        secrets.ts הוא עובר אוטומטית לנתונים אמיתיים.
+        מקורות הנתונים מנוהלים בשרת וזמינים רק לחשבון מנהל מורשה.
+        מפתחות ניהול אינם נשמרים באפליקציה.
       </Text>
 
       <SectionHeader>התראות בזמן אמת</SectionHeader>

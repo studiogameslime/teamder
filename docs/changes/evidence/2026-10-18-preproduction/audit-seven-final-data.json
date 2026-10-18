@@ -1,0 +1,1706 @@
+{
+  "phase": "מחזור שבעה סגור וחתום לאחר שלושה משחקים וללא זקיפת הסדרה שננטשה",
+  "gameId": "FQ4T7izEbuYfprKFS75n",
+  "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+  "clubId": "J060YQu6QTcgk3glUDj2",
+  "sources": [
+    {
+      "file": "data-seven-full-with-waitlist.json",
+      "sha256": "6ad7835ff4ac61e1631b3362a1a4f5b13dbd3ab88a2544b1b77683fab59952dc",
+      "readCompletedAt": "2026-10-17T22:24:18.663969+00:00"
+    },
+    {
+      "file": "data-seven-guest-removed.json",
+      "sha256": "b83780ae541719fdcc0127ae281929c668ebf26cd18bcd38eb58ea66b8175fab",
+      "readCompletedAt": "2026-10-17T22:28:03.659894+00:00"
+    },
+    {
+      "file": "data-seven-temporary-fill.json",
+      "sha256": "0b846ac668d1d8dc855294a3e55fd0b950ce4e215fbd078c742a6230aa4eaf37",
+      "readCompletedAt": "2026-10-17T22:30:14.543524+00:00"
+    },
+    {
+      "file": "data-seven-both-out.json",
+      "sha256": "886cfd98c5bcd2d1dafd0f19d6d19b8488169239bc85f20faac1d87d711c0e32",
+      "readCompletedAt": "2026-10-17T22:31:07.978711+00:00"
+    },
+    {
+      "file": "data-seven-temporary-swap.json",
+      "sha256": "a1f7841a244d0fe7a0a8530274bd81a70782f69261fbf837a458758a4b13dc3e",
+      "readCompletedAt": "2026-10-17T22:33:08.995534+00:00"
+    },
+    {
+      "file": "data-seven-assister-left.json",
+      "sha256": "7d92b128a50f6ea015c856d0125129699cb5a7a5164cccb1f3e22fca18edbfe6",
+      "readCompletedAt": "2026-10-17T22:34:54.430365+00:00"
+    },
+    {
+      "file": "data-seven-mid-fill-complete.json",
+      "sha256": "0c22dd8cc16029a65ac08ea664b1a924eca41ea1983798148eefa604c811805a",
+      "readCompletedAt": "2026-10-17T22:36:09.465899+00:00"
+    },
+    {
+      "file": "data-seven-second-commit.json",
+      "sha256": "01e04cf1ced2703b8a38af8e3fd9adbb1c66d185ce1d3d23d97b1f05dbbc1e36",
+      "readCompletedAt": "2026-10-17T22:36:46.564213+00:00"
+    },
+    {
+      "file": "data-seven-third-ready.json",
+      "sha256": "dbcdb1885c2cb8c85132d888aedfd79fb0ec1af65b34fac5ec82b38ca6061484",
+      "readCompletedAt": "2026-10-17T22:37:27.478607+00:00"
+    },
+    {
+      "file": "data-seven-assister-restored.json",
+      "sha256": "8ae0d6119bf9e9382df57bf6759513035cb4f23121ad8c5518c6f8c95ee9e0b5",
+      "readCompletedAt": "2026-10-17T22:38:22.018940+00:00"
+    },
+    {
+      "file": "data-seven-restore-confirmed.json",
+      "sha256": "6e030c80c1806cf7d90fec917ad27757e23eda0303c51cb87b20544926d10bfc",
+      "readCompletedAt": "2026-10-17T22:41:02.716843+00:00"
+    },
+    {
+      "file": "data-seven-manual-assigned.json",
+      "sha256": "e87646be678e62921204be8bb2c7e01c0f195ef6f6e4e203631c3c6ce9c3cfc3",
+      "readCompletedAt": "2026-10-17T22:47:45.255432+00:00"
+    },
+    {
+      "file": "data-seven-alternative-fixed.json",
+      "sha256": "a2a3648487dde50a5caed9b4d4aea784b35ba406adfe5297cbcbcb87f2550197",
+      "readCompletedAt": "2026-10-17T23:12:03.970157+00:00"
+    },
+    {
+      "file": "data-seven-finished.json",
+      "sha256": "358ae0339f9962ede5a73a6bf2f523a2309f944ce4888eaf448291a09f27d81c",
+      "readCompletedAt": "2026-10-17T23:13:32.438429+00:00"
+    }
+  ],
+  "identities": {
+    "removed": {
+      "id": "guest:mvcyi974-ceoxzk",
+      "name": "שבע־01"
+    },
+    "promoted": {
+      "id": "guest:mvcyr422-23pos1",
+      "name": "בהמתנה שבע"
+    }
+  },
+  "roster": {
+    "eligible": 28,
+    "assigned": 28,
+    "teamSizes": [
+      7,
+      7,
+      7,
+      7
+    ],
+    "unassigned": []
+  },
+  "passed": 269,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "לפני: זהות החשבון והמועדון והמחזור לפי קבלת המוצר",
+      "passed": true
+    },
+    {
+      "name": "לפני: שבעה מול שבעה וארבע קבוצות בקיבולת 28",
+      "passed": true
+    },
+    {
+      "name": "לפני: חשבון רשום יחיד ללא ערבוב עם זהויות אורחים",
+      "passed": true
+    },
+    {
+      "name": "לפני: מזהי ושמות האורחים ייחודיים והיוצר הוא חשבון הבדיקה",
+      "passed": true
+    },
+    {
+      "name": "לפני: אין אירועים, זקיפות או סיכום לפני משחק",
+      "passed": true
+    },
+    {
+      "name": "לפני: שלושת המחזורים הישנים לא השתנו",
+      "passed": true
+    },
+    {
+      "name": "לפני: אין כרגע רוטציה או לוח משחק",
+      "passed": true
+    },
+    {
+      "name": "אחרי: זהות החשבון והמועדון והמחזור לפי קבלת המוצר",
+      "passed": true
+    },
+    {
+      "name": "אחרי: שבעה מול שבעה וארבע קבוצות בקיבולת 28",
+      "passed": true
+    },
+    {
+      "name": "אחרי: חשבון רשום יחיד ללא ערבוב עם זהויות אורחים",
+      "passed": true
+    },
+    {
+      "name": "אחרי: מזהי ושמות האורחים ייחודיים והיוצר הוא חשבון הבדיקה",
+      "passed": true
+    },
+    {
+      "name": "אחרי: אין אירועים, זקיפות או סיכום לפני משחק",
+      "passed": true
+    },
+    {
+      "name": "אחרי: שלושת המחזורים הישנים לא השתנו",
+      "passed": true
+    },
+    {
+      "name": "אחרי: אין כרגע רוטציה או לוח משחק",
+      "passed": true
+    },
+    {
+      "name": "לפני: 27 אורחים רשומים ואורח אחד בהמתנה לצד חשבון הבדיקה",
+      "passed": true
+    },
+    {
+      "name": "לפני: הכוחות עדיין אינם קיימים",
+      "passed": true
+    },
+    {
+      "name": "אחרי: האורח שהוסר חסר לחלוטין ברשימת האורחים",
+      "passed": true
+    },
+    {
+      "name": "אחרי: לא נוצר אורח חדש והאורח שהמתין שומר על זהותו",
+      "passed": true
+    },
+    {
+      "name": "אחרי: האורח היחיד שקודם מסומן כלא־ממתין",
+      "passed": true
+    },
+    {
+      "name": "אחרי: כל פרטי האורחים האחרים נשמרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "אחרי: האורח שקודם שומר שם, תאריך וזהות מוסיף",
+      "passed": true
+    },
+    {
+      "name": "אחרי: יש בדיוק 28 שחקנים זכאים, מהם 27 אורחים",
+      "passed": true
+    },
+    {
+      "name": "אחרי: ההרכבים הם שישה, שבעה, שבעה ושבעה",
+      "passed": true
+    },
+    {
+      "name": "אחרי: כל 27 המשובצים ייחודיים וזכאים",
+      "passed": true
+    },
+    {
+      "name": "אחרי: האורח שהוסר לא נשאר באף הרכב פעיל או בתפקיד קפטן",
+      "passed": true
+    },
+    {
+      "name": "אחרי: האורח שקודם הוא היחיד שעדיין לא שובץ",
+      "passed": true
+    },
+    {
+      "name": "אחרי: השינוי היחיד מצילום הכוחות המקורי הוא הסרת שחקן יחיד",
+      "passed": true
+    },
+    {
+      "name": "אחרי: כל הקפטנים עדיין זכאים ומשובצים בקבוצתם",
+      "passed": true
+    },
+    {
+      "name": "אחרי: צילום הכוחות המקורי עדיין שומר את השיבוץ ההיסטורי של האורח שהוסר",
+      "passed": true
+    },
+    {
+      "name": "בין המקורות: אף מונה אישי או מועדוני לא השתנה",
+      "passed": true
+    },
+    {
+      "name": "בין המקורות: מחזור ארבעה החדש נשאר זהה",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: היקף הקריאה והבעלות תואמים לחשבון ולמועדון",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: כל מחזורי העבר והמחזור החדש הקודם נותרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: אין זהות האורח שהוסר בהרכבים הפעילים, השאלות או סגלי בסיס",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: חישוב ההרכבים מגיע מקוד המוצר ומטביעת המקור המתאימה",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: כל שחקן מופיע בהרכב אפקטיבי יחיד ואינו בחוץ",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: כל שחקן מושאל מזוהה ושייך לשני צדדים שונים וקיימים",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: אין שערי פנדל או זמן משחק שנוספו לתרחיש ללא שעון",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: זהות משחק ומספר זקיפות תואמים להיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: נוכחות וסיכום אינם נזקפים לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: דלתאות המונים המדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: דלתאות המונים המדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: דלתאות המונים המדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: דלתאות המונים המדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "temporary-fill: דלתאות המונים המדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "both-out: היקף הקריאה והבעלות תואמים לחשבון ולמועדון",
+      "passed": true
+    },
+    {
+      "name": "both-out: כל מחזורי העבר והמחזור החדש הקודם נותרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "both-out: אין זהות האורח שהוסר בהרכבים הפעילים, השאלות או סגלי בסיס",
+      "passed": true
+    },
+    {
+      "name": "both-out: חישוב ההרכבים מגיע מקוד המוצר ומטביעת המקור המתאימה",
+      "passed": true
+    },
+    {
+      "name": "both-out: כל שחקן מופיע בהרכב אפקטיבי יחיד ואינו בחוץ",
+      "passed": true
+    },
+    {
+      "name": "both-out: כל שחקן מושאל מזוהה ושייך לשני צדדים שונים וקיימים",
+      "passed": true
+    },
+    {
+      "name": "both-out: אין שערי פנדל או זמן משחק שנוספו לתרחיש ללא שעון",
+      "passed": true
+    },
+    {
+      "name": "both-out: זהות משחק ומספר זקיפות תואמים להיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "both-out: נוכחות וסיכום אינם נזקפים לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "both-out: דלתאות המונים המדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "both-out: דלתאות המונים המדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "both-out: דלתאות המונים המדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "both-out: דלתאות המונים המדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "both-out: דלתאות המונים המדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: היקף הקריאה והבעלות תואמים לחשבון ולמועדון",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: כל מחזורי העבר והמחזור החדש הקודם נותרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: אין זהות האורח שהוסר בהרכבים הפעילים, השאלות או סגלי בסיס",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: חישוב ההרכבים מגיע מקוד המוצר ומטביעת המקור המתאימה",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: כל שחקן מופיע בהרכב אפקטיבי יחיד ואינו בחוץ",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: כל שחקן מושאל מזוהה ושייך לשני צדדים שונים וקיימים",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: אין שערי פנדל או זמן משחק שנוספו לתרחיש ללא שעון",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: זהות משחק ומספר זקיפות תואמים להיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: נוכחות וסיכום אינם נזקפים לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: דלתאות המונים המדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: דלתאות המונים המדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: דלתאות המונים המדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: דלתאות המונים המדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "temporary-swap: דלתאות המונים המדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "assister-left: היקף הקריאה והבעלות תואמים לחשבון ולמועדון",
+      "passed": true
+    },
+    {
+      "name": "assister-left: כל מחזורי העבר והמחזור החדש הקודם נותרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "assister-left: אין זהות האורח שהוסר בהרכבים הפעילים, השאלות או סגלי בסיס",
+      "passed": true
+    },
+    {
+      "name": "assister-left: חישוב ההרכבים מגיע מקוד המוצר ומטביעת המקור המתאימה",
+      "passed": true
+    },
+    {
+      "name": "assister-left: כל שחקן מופיע בהרכב אפקטיבי יחיד ואינו בחוץ",
+      "passed": true
+    },
+    {
+      "name": "assister-left: כל שחקן מושאל מזוהה ושייך לשני צדדים שונים וקיימים",
+      "passed": true
+    },
+    {
+      "name": "assister-left: אין שערי פנדל או זמן משחק שנוספו לתרחיש ללא שעון",
+      "passed": true
+    },
+    {
+      "name": "assister-left: זהות משחק ומספר זקיפות תואמים להיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "assister-left: נוכחות וסיכום אינם נזקפים לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "assister-left: דלתאות המונים המדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "assister-left: דלתאות המונים המדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "assister-left: דלתאות המונים המדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "assister-left: דלתאות המונים המדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "assister-left: דלתאות המונים המדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: היקף הקריאה והבעלות תואמים לחשבון ולמועדון",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: כל מחזורי העבר והמחזור החדש הקודם נותרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: אין זהות האורח שהוסר בהרכבים הפעילים, השאלות או סגלי בסיס",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: חישוב ההרכבים מגיע מקוד המוצר ומטביעת המקור המתאימה",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: כל שחקן מופיע בהרכב אפקטיבי יחיד ואינו בחוץ",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: כל שחקן מושאל מזוהה ושייך לשני צדדים שונים וקיימים",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: אין שערי פנדל או זמן משחק שנוספו לתרחיש ללא שעון",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: זהות משחק ומספר זקיפות תואמים להיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: נוכחות וסיכום אינם נזקפים לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: דלתאות המונים המדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: דלתאות המונים המדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: דלתאות המונים המדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: דלתאות המונים המדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "mid-fill-complete: דלתאות המונים המדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "second-commit: היקף הקריאה והבעלות תואמים לחשבון ולמועדון",
+      "passed": true
+    },
+    {
+      "name": "second-commit: כל מחזורי העבר והמחזור החדש הקודם נותרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "second-commit: אין זהות האורח שהוסר בהרכבים הפעילים, השאלות או סגלי בסיס",
+      "passed": true
+    },
+    {
+      "name": "second-commit: חישוב ההרכבים מגיע מקוד המוצר ומטביעת המקור המתאימה",
+      "passed": true
+    },
+    {
+      "name": "second-commit: כל שחקן מופיע בהרכב אפקטיבי יחיד ואינו בחוץ",
+      "passed": true
+    },
+    {
+      "name": "second-commit: כל שחקן מושאל מזוהה ושייך לשני צדדים שונים וקיימים",
+      "passed": true
+    },
+    {
+      "name": "second-commit: אין שערי פנדל או זמן משחק שנוספו לתרחיש ללא שעון",
+      "passed": true
+    },
+    {
+      "name": "second-commit: זהות משחק ומספר זקיפות תואמים להיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "second-commit: נוכחות וסיכום אינם נזקפים לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "second-commit: דלתאות המונים המדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "second-commit: דלתאות המונים המדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "second-commit: דלתאות המונים המדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "second-commit: דלתאות המונים המדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "second-commit: דלתאות המונים המדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "third-ready: היקף הקריאה והבעלות תואמים לחשבון ולמועדון",
+      "passed": true
+    },
+    {
+      "name": "third-ready: כל מחזורי העבר והמחזור החדש הקודם נותרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "third-ready: אין זהות האורח שהוסר בהרכבים הפעילים, השאלות או סגלי בסיס",
+      "passed": true
+    },
+    {
+      "name": "third-ready: חישוב ההרכבים מגיע מקוד המוצר ומטביעת המקור המתאימה",
+      "passed": true
+    },
+    {
+      "name": "third-ready: כל שחקן מופיע בהרכב אפקטיבי יחיד ואינו בחוץ",
+      "passed": true
+    },
+    {
+      "name": "third-ready: כל שחקן מושאל מזוהה ושייך לשני צדדים שונים וקיימים",
+      "passed": true
+    },
+    {
+      "name": "third-ready: אין שערי פנדל או זמן משחק שנוספו לתרחיש ללא שעון",
+      "passed": true
+    },
+    {
+      "name": "third-ready: זהות משחק ומספר זקיפות תואמים להיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "third-ready: נוכחות וסיכום אינם נזקפים לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "third-ready: דלתאות המונים המדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "third-ready: דלתאות המונים המדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "third-ready: דלתאות המונים המדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "third-ready: דלתאות המונים המדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "third-ready: דלתאות המונים המדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: היקף הקריאה והבעלות תואמים לחשבון ולמועדון",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: כל מחזורי העבר והמחזור החדש הקודם נותרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: אין זהות האורח שהוסר בהרכבים הפעילים, השאלות או סגלי בסיס",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: חישוב ההרכבים מגיע מקוד המוצר ומטביעת המקור המתאימה",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: כל שחקן מופיע בהרכב אפקטיבי יחיד ואינו בחוץ",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: כל שחקן מושאל מזוהה ושייך לשני צדדים שונים וקיימים",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: אין שערי פנדל או זמן משחק שנוספו לתרחיש ללא שעון",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: זהות משחק ומספר זקיפות תואמים להיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: נוכחות וסיכום אינם נזקפים לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: דלתאות המונים המדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: דלתאות המונים המדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: דלתאות המונים המדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: דלתאות המונים המדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "assister-restored: דלתאות המונים המדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: היקף הקריאה והבעלות תואמים לחשבון ולמועדון",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: כל מחזורי העבר והמחזור החדש הקודם נותרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: אין זהות האורח שהוסר בהרכבים הפעילים, השאלות או סגלי בסיס",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: חישוב ההרכבים מגיע מקוד המוצר ומטביעת המקור המתאימה",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: כל שחקן מופיע בהרכב אפקטיבי יחיד ואינו בחוץ",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: כל שחקן מושאל מזוהה ושייך לשני צדדים שונים וקיימים",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: אין שערי פנדל או זמן משחק שנוספו לתרחיש ללא שעון",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: זהות משחק ומספר זקיפות תואמים להיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: נוכחות וסיכום אינם נזקפים לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: דלתאות המונים המדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: דלתאות המונים המדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: דלתאות המונים המדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: דלתאות המונים המדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "restore-confirmed: דלתאות המונים המדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: היקף הקריאה והבעלות תואמים לחשבון ולמועדון",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: כל מחזורי העבר והמחזור החדש הקודם נותרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: אין זהות האורח שהוסר בהרכבים הפעילים, השאלות או סגלי בסיס",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: חישוב ההרכבים מגיע מקוד המוצר ומטביעת המקור המתאימה",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: כל שחקן מופיע בהרכב אפקטיבי יחיד ואינו בחוץ",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: כל שחקן מושאל מזוהה ושייך לשני צדדים שונים וקיימים",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: אין שערי פנדל או זמן משחק שנוספו לתרחיש ללא שעון",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: זהות משחק ומספר זקיפות תואמים להיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: נוכחות וסיכום אינם נזקפים לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: דלתאות המונים המדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: דלתאות המונים המדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: דלתאות המונים המדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: דלתאות המונים המדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "manual-assigned: דלתאות המונים המדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "השלמה ראשונה: שבע־17 הושאל מהירוקים לאדומים בלבד",
+      "passed": true
+    },
+    {
+      "name": "השלמה ראשונה: האדומים והכחולים משחקים בשבעה לכל צד",
+      "passed": true
+    },
+    {
+      "name": "השלמה ראשונה: סגלי הבית נשמרו כמו לאחר ההסרה",
+      "passed": true
+    },
+    {
+      "name": "תיקו ראשון: זהות המשחק ותוצאה אפס־אפס ללא הכרעה",
+      "passed": true
+    },
+    {
+      "name": "תיקו ראשון: ההיסטוריה שומרת את שבע־17 באדומים ולא את ממתיני הבית",
+      "passed": true
+    },
+    {
+      "name": "תיקו ראשון: 14 שורות, הופעות, תיקו ושער נקי ללא כיבושים",
+      "passed": true
+    },
+    {
+      "name": "תיקו ראשון: המשתמש הממתין לא קיבל הופעה",
+      "passed": true
+    },
+    {
+      "name": "חילוף זמני: הירוקים והצהובים החליפו את שני הצדדים שיצאו",
+      "passed": true
+    },
+    {
+      "name": "חילוף זמני: ההשאלה הקודמת הוחלפה בזוג החלפות הפוך בעל מזהה משותף",
+      "passed": true
+    },
+    {
+      "name": "חילוף זמני: שבע־17 בכחולים ושבע־27 בירוקים, בלי שינוי קבוצות הבית",
+      "passed": true
+    },
+    {
+      "name": "מבשל יצא: בישול שבע־11 לשער שבע־27 נשמר עם אותו משחק",
+      "passed": true
+    },
+    {
+      "name": "מבשל יצא: שבע־11 מסומן בחוץ עם קבוצת בית ירוקה ותאריך לאחר הגול",
+      "passed": true
+    },
+    {
+      "name": "השלמה באמצע: שבע־26 מושאל מכחולים לירוקים ללא מזהה חילוף",
+      "passed": true
+    },
+    {
+      "name": "השלמה באמצע: שבעה נוכחיים בכל צד, המבשל נשאר בחוץ והגול נשמר",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: ההיסטוריה הראשונה לא השתנתה",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: שער יחיד של הירוקים מול הצהובים נשמר כניצחון",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: 27 זהויות, ללא הממתין שלא שובץ או האורח שהוסר",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: המבשל היוצא נוסף להיסטוריה בלבד, לא להרכב החי",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: המבשל היוצא קיבל הופעה, ניצחון, בישול ושער נקי",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: לכובש המושאל שתי הופעות, תיקו, ניצחון וגול יחיד",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: סכומי ההופעות והתוצאות כוללים את המבשל פעם אחת",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: המשתמש קיבל הפסד יחיד ללא תרומה או פנדלים",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: קוד שחזור המשתתפים תואם להיסטוריית השרת",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: סיכומי הקוד הזמניים תואמים לשני משחקים ושער ובישול יחידים",
+      "passed": true
+    },
+    {
+      "name": "משחק שלישי: זהות חדשה, הירוקים נשארים והכחולים נכנסים",
+      "passed": true
+    },
+    {
+      "name": "משחק שלישי: כל ההשאלות הישנות הוחזרו ורק שבע־09 משלים מצהובים",
+      "passed": true
+    },
+    {
+      "name": "משחק שלישי: השחקן שבחוץ לא הוחזר אגב שחזור התורם",
+      "passed": true
+    },
+    {
+      "name": "משחק שלישי: אין כפילות בחתימות או סטטיסטיקה בזמן הכנה",
+      "passed": true
+    },
+    {
+      "name": "אישור החזרה: המבשל הוחזר לירוקים ואינו מסומן בחוץ",
+      "passed": true
+    },
+    {
+      "name": "אישור החזרה: שחקן ההשלמה חזר לצהובים וכל ההשאלות נוקו",
+      "passed": true
+    },
+    {
+      "name": "אישור החזרה: אותו משחק שלישי ואותם צדדים ללא זקיפה חוזרת",
+      "passed": true
+    },
+    {
+      "name": "אישור החזרה: הסגל שוב כולל את כל 27 המשובצים ורק המקודם לא משובץ",
+      "passed": true
+    },
+    {
+      "name": "שיבוץ ידני: ארבע קבוצות מלאות ושבעה בכל קבוצה",
+      "passed": true
+    },
+    {
+      "name": "שיבוץ ידני: המקודם נוסף רק לאדומים",
+      "passed": true
+    },
+    {
+      "name": "שיבוץ ידני: הכוחות המקוריים עודכנו להרכבים החדשים במדויק",
+      "passed": true
+    },
+    {
+      "name": "שיבוץ ידני: סגלי הבסיס תואמים להרכבים החדשים ללא השאלות או יוצאים",
+      "passed": true
+    },
+    {
+      "name": "שיבוץ ידני: נשמרו זהות המשחק השלישי, הצדדים, תור ההמתנה והניצחונות",
+      "passed": true
+    },
+    {
+      "name": "שיבוץ ידני: כל הלוח, האירועים והשעון נשמרו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "שיבוץ ידני: ההיסטוריה, החתימות והסטטיסטיקות הקודמות זהות",
+      "passed": true
+    },
+    {
+      "name": "שיבוץ ידני: נשמרה טיוטה לא מפורסמת ללא שינוי בהרשמה",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: שלוש היסטוריות וחתימות שונות ללא כפל",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: שתי ההיסטוריות הראשונות נשארו זהות",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: זהות המשחק הקודם נשמרה בניצחון ידני של הכחולים",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: הסדרה שננטשה אינה מופיעה בהיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: הירוקים והכחולים כוללים את שבעת השחקנים הנכונים",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: המשחק הרביעי הוכן באדומים וכחולים ללא אירועים",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: 27 שחקני היסטוריה בלבד, המקודם ללא הופעה והאורח שהוסר חסר",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyjsg7-3n61s4",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcykk0e-uw4e4q",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyim0f-81tp8d",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyji3o-nsqrwc",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyiwsz-tlan92",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcymg0y-6tw9f2",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcynetv-npalqu",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyqdz7-zn2xty",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyq35x-sa74ys",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyomjc-izziaf",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcymsc6-ska8pb",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyoayx-vb0yhd",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyk48b-bc6tfc",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcypsl7-kp8wd4",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcym43v-7h7apx",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyj6sp-bzxjdr",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcylshl-orw4aq",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcynpww-27doyu",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyn3ov-zusrqh",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcylhjs-hmr1pa",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcykw5f-slqqso",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של 8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyo0ty-n1am4b",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyp7up-ek4f2v",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyl6v5-ivx66m",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcypi4h-hlmbmt",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: כל מוני ההופעות והתוצאות והתרומות של guest:mvcyoxd8-vavlmk",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: אין אף מונה פנדל לאף שחקן",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: 43 הופעות, 15 ניצחונות, 14 הפסדים ו־14 תיקו",
+      "passed": true
+    },
+    {
+      "name": "חתימה שלישית: המבשל שהוחזר קיבל משחק שני והבישול נשאר יחיד",
+      "passed": true
+    },
+    {
+      "name": "סיום: אותו מחזור של חשבון ומועדון הבדיקה הסתיים",
+      "passed": true
+    },
+    {
+      "name": "סיום: אין משחק רביעי ריק או שינוי בזקיפות הקודמות",
+      "passed": true
+    },
+    {
+      "name": "סיום: נוכחות יחידה ושלבי דירוג והשלמה חתומים",
+      "passed": true
+    },
+    {
+      "name": "סיום: תאריכי סיום, נוכחות, דירוג, סיכום והשלמה מסודרים",
+      "passed": true
+    },
+    {
+      "name": "סיום: הסיכום שייך למחזור ולמועדון הנכונים",
+      "passed": true
+    },
+    {
+      "name": "סיום: שלושה משחקים, שער ובישול יחידים, תיקו וללא הכרעות פנדלים",
+      "passed": true
+    },
+    {
+      "name": "סיום: בסיס התיקון שומר 27 משתתפים ובהם המבשל היוצא",
+      "passed": true
+    },
+    {
+      "name": "סיום: הדירוג האישי הוא למשתמש עם משחק יחיד והפסד",
+      "passed": true
+    },
+    {
+      "name": "סיום: הציון והדרוג והבסיס נקשרים למחזור הקודם החדש",
+      "passed": true
+    },
+    {
+      "name": "סיום: הדלתא העצמאית של מחזור שבע מדויקת במקור account",
+      "passed": true
+    },
+    {
+      "name": "סיום: הדלתא העצמאית של מחזור שבע מדויקת במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "סיום: הדלתא העצמאית של מחזור שבע מדויקת במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "סיום: הדלתא העצמאית של מחזור שבע מדויקת במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "סיום: הדלתא העצמאית של מחזור שבע מדויקת במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "סיום: המונים האישיים ובכללם הפנדלים לא השתנו בחתימת המחזור",
+      "passed": true
+    },
+    {
+      "name": "סיום: מחזור ארבע ושלושת מחזורי העבר נשארו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "סיום: חישובי הקוד קשורים לטביעת המקור הסופי",
+      "passed": true
+    },
+    {
+      "name": "סיום: מסמך הסיכום כולו תואם לקוד הלקוח והשרת",
+      "passed": true
+    },
+    {
+      "name": "סיום: שני מחשבוני הציון בפועל תואמים לציון 6.7 שנשמר",
+      "passed": true
+    },
+    {
+      "name": "עקבת הכרעה: קריאה ראשונה של אותה זהות משחק החזירה סדרת פנדלים ישנה",
+      "passed": true
+    },
+    {
+      "name": "עקבת הכרעה: הקריאה שאחרי החתימה כבר ללא סדרה ועם חתימת המשחק",
+      "passed": true
+    }
+  ],
+  "limits": [
+    "המקור הראשון לפני החלוקה והשני לאחריה; השוואת ההרכבים נשענת על originalTeams שנשמר במקור השני, ולא על צילום שרת עצמאי לפני ההסרה.",
+    "originalTeams שומר את ההרכב המקורי כולל האורח שהוסר; הניקוי הוכח בהרכבים הפעילים בלבד.",
+    "rotation ו־liveMatch חסרים בשני המקורות. לכן אין baseTeams או loans שאפשר לבדוק בהם פעולת ניקוי מעשית; לא נטען שהתרחיש כיסה השאלה פעילה.",
+    "לאחר ההסרה המקודם היה זכאי ולא משובץ; בשלב manual-assigned הוא נוסף לאדומים ונשמרו ארבעה הרכבים מלאים. אין לבלבל בין שני שלבי הנתונים.",
+    "ההיסטוריה מוסיפה משתתף שתרם ויצא מעבר למספר הנוכחיים על המגרש. שמונה שמות בירוקים במשחק השני הם שבעה נוכחיים ומבשל שיצא, ולא שמונה שחקנים ששיחקו יחד.",
+    "המקור בשם assister-restored מכיל את המבשל ב־leftHome ואת השאלת שבע־09 לירוקים. הוא אינו מוכיח החזרה שהושלמה; המקור המאוחר restore-confirmed נבדק בנפרד לאחר אישור מפורש בממשק.",
+    "העקבה תופסת קריאות getGameById רגילות, ולא את אישור ההמתנה במאזין עצמו. אין לייחס לה הוכחה ישירה לאירוע המאזין; ההצלחה נתמכת בזרימת הקוד ובתוצאת השרת שנחתמה.",
+    "האורח שקודם שובץ באדומים רק לאחר שהאדומים סיימו לשחק. אין לו שורת הופעה במחזור; אין להסיק מרשימת זכאים או שיבוץ מאוחר כי שיחק.",
+    "מקור ההשוואה לדלתאות מחזור שבע הוא השלב שלאחר מחזור ארבע ולפני משחקי שבע, ולכן דלתאות ארבע אינן נספרות כאן שוב."
+  ],
+  "timeline": {
+    "temporary-fill": {
+      "source": "data-seven-temporary-fill.json",
+      "sha256": "0b846ac668d1d8dc855294a3e55fd0b950ce4e215fbd078c742a6230aa4eaf37",
+      "readCompletedAt": "2026-10-17T22:30:14.543524+00:00",
+      "effective": {
+        "0": [
+          "guest:mvcyjsg7-3n61s4",
+          "guest:mvcykk0e-uw4e4q",
+          "guest:mvcyim0f-81tp8d",
+          "guest:mvcyji3o-nsqrwc",
+          "guest:mvcyiwsz-tlan92",
+          "guest:mvcymg0y-6tw9f2",
+          "guest:mvcynetv-npalqu"
+        ],
+        "1": [
+          "guest:mvcyqdz7-zn2xty",
+          "guest:mvcyq35x-sa74ys",
+          "guest:mvcyomjc-izziaf",
+          "guest:mvcymsc6-ska8pb",
+          "guest:mvcyoayx-vb0yhd",
+          "guest:mvcyk48b-bc6tfc",
+          "guest:mvcypsl7-kp8wd4"
+        ],
+        "2": [
+          "guest:mvcylhjs-hmr1pa",
+          "guest:mvcym43v-7h7apx",
+          "guest:mvcyj6sp-bzxjdr",
+          "guest:mvcylshl-orw4aq",
+          "guest:mvcynpww-27doyu",
+          "guest:mvcyn3ov-zusrqh"
+        ],
+        "3": [
+          "guest:mvcykw5f-slqqso",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvcyo0ty-n1am4b",
+          "guest:mvcyp7up-ek4f2v",
+          "guest:mvcyl6v5-ivx66m",
+          "guest:mvcypi4h-hlmbmt",
+          "guest:mvcyoxd8-vavlmk"
+        ]
+      },
+      "leftHome": [],
+      "historyCount": 0,
+      "statCount": 0
+    },
+    "both-out": {
+      "source": "data-seven-both-out.json",
+      "sha256": "886cfd98c5bcd2d1dafd0f19d6d19b8488169239bc85f20faac1d87d711c0e32",
+      "readCompletedAt": "2026-10-17T22:31:07.978711+00:00",
+      "effective": {
+        "0": [
+          "guest:mvcyjsg7-3n61s4",
+          "guest:mvcykk0e-uw4e4q",
+          "guest:mvcyim0f-81tp8d",
+          "guest:mvcyji3o-nsqrwc",
+          "guest:mvcyiwsz-tlan92",
+          "guest:mvcymg0y-6tw9f2",
+          "guest:mvcynetv-npalqu"
+        ],
+        "1": [
+          "guest:mvcyqdz7-zn2xty",
+          "guest:mvcyq35x-sa74ys",
+          "guest:mvcyomjc-izziaf",
+          "guest:mvcymsc6-ska8pb",
+          "guest:mvcyoayx-vb0yhd",
+          "guest:mvcyk48b-bc6tfc",
+          "guest:mvcypsl7-kp8wd4"
+        ],
+        "2": [
+          "guest:mvcylhjs-hmr1pa",
+          "guest:mvcym43v-7h7apx",
+          "guest:mvcyj6sp-bzxjdr",
+          "guest:mvcylshl-orw4aq",
+          "guest:mvcynpww-27doyu",
+          "guest:mvcyn3ov-zusrqh"
+        ],
+        "3": [
+          "guest:mvcykw5f-slqqso",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvcyo0ty-n1am4b",
+          "guest:mvcyp7up-ek4f2v",
+          "guest:mvcyl6v5-ivx66m",
+          "guest:mvcypi4h-hlmbmt",
+          "guest:mvcyoxd8-vavlmk"
+        ]
+      },
+      "leftHome": [],
+      "historyCount": 1,
+      "statCount": 14
+    },
+    "temporary-swap": {
+      "source": "data-seven-temporary-swap.json",
+      "sha256": "a1f7841a244d0fe7a0a8530274bd81a70782f69261fbf837a458758a4b13dc3e",
+      "readCompletedAt": "2026-10-17T22:33:08.995534+00:00",
+      "effective": {
+        "0": [
+          "guest:mvcyjsg7-3n61s4",
+          "guest:mvcykk0e-uw4e4q",
+          "guest:mvcyim0f-81tp8d",
+          "guest:mvcyji3o-nsqrwc",
+          "guest:mvcyiwsz-tlan92",
+          "guest:mvcymg0y-6tw9f2"
+        ],
+        "1": [
+          "guest:mvcyq35x-sa74ys",
+          "guest:mvcyomjc-izziaf",
+          "guest:mvcymsc6-ska8pb",
+          "guest:mvcyoayx-vb0yhd",
+          "guest:mvcyk48b-bc6tfc",
+          "guest:mvcypsl7-kp8wd4",
+          "guest:mvcynetv-npalqu"
+        ],
+        "2": [
+          "guest:mvcylhjs-hmr1pa",
+          "guest:mvcym43v-7h7apx",
+          "guest:mvcyj6sp-bzxjdr",
+          "guest:mvcylshl-orw4aq",
+          "guest:mvcynpww-27doyu",
+          "guest:mvcyn3ov-zusrqh",
+          "guest:mvcyqdz7-zn2xty"
+        ],
+        "3": [
+          "guest:mvcykw5f-slqqso",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvcyo0ty-n1am4b",
+          "guest:mvcyp7up-ek4f2v",
+          "guest:mvcyl6v5-ivx66m",
+          "guest:mvcypi4h-hlmbmt",
+          "guest:mvcyoxd8-vavlmk"
+        ]
+      },
+      "leftHome": [],
+      "historyCount": 1,
+      "statCount": 14
+    },
+    "assister-left": {
+      "source": "data-seven-assister-left.json",
+      "sha256": "7d92b128a50f6ea015c856d0125129699cb5a7a5164cccb1f3e22fca18edbfe6",
+      "readCompletedAt": "2026-10-17T22:34:54.430365+00:00",
+      "effective": {
+        "0": [
+          "guest:mvcyjsg7-3n61s4",
+          "guest:mvcykk0e-uw4e4q",
+          "guest:mvcyim0f-81tp8d",
+          "guest:mvcyji3o-nsqrwc",
+          "guest:mvcyiwsz-tlan92",
+          "guest:mvcymg0y-6tw9f2"
+        ],
+        "1": [
+          "guest:mvcyq35x-sa74ys",
+          "guest:mvcyomjc-izziaf",
+          "guest:mvcymsc6-ska8pb",
+          "guest:mvcyoayx-vb0yhd",
+          "guest:mvcyk48b-bc6tfc",
+          "guest:mvcypsl7-kp8wd4",
+          "guest:mvcynetv-npalqu"
+        ],
+        "2": [
+          "guest:mvcym43v-7h7apx",
+          "guest:mvcyj6sp-bzxjdr",
+          "guest:mvcylshl-orw4aq",
+          "guest:mvcynpww-27doyu",
+          "guest:mvcyn3ov-zusrqh",
+          "guest:mvcyqdz7-zn2xty"
+        ],
+        "3": [
+          "guest:mvcykw5f-slqqso",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvcyo0ty-n1am4b",
+          "guest:mvcyp7up-ek4f2v",
+          "guest:mvcyl6v5-ivx66m",
+          "guest:mvcypi4h-hlmbmt",
+          "guest:mvcyoxd8-vavlmk"
+        ]
+      },
+      "leftHome": [
+        "guest:mvcylhjs-hmr1pa"
+      ],
+      "historyCount": 1,
+      "statCount": 14
+    },
+    "mid-fill-complete": {
+      "source": "data-seven-mid-fill-complete.json",
+      "sha256": "0c22dd8cc16029a65ac08ea664b1a924eca41ea1983798148eefa604c811805a",
+      "readCompletedAt": "2026-10-17T22:36:09.465899+00:00",
+      "effective": {
+        "0": [
+          "guest:mvcyjsg7-3n61s4",
+          "guest:mvcykk0e-uw4e4q",
+          "guest:mvcyim0f-81tp8d",
+          "guest:mvcyji3o-nsqrwc",
+          "guest:mvcyiwsz-tlan92",
+          "guest:mvcymg0y-6tw9f2"
+        ],
+        "1": [
+          "guest:mvcyomjc-izziaf",
+          "guest:mvcymsc6-ska8pb",
+          "guest:mvcyoayx-vb0yhd",
+          "guest:mvcyk48b-bc6tfc",
+          "guest:mvcypsl7-kp8wd4",
+          "guest:mvcynetv-npalqu"
+        ],
+        "2": [
+          "guest:mvcym43v-7h7apx",
+          "guest:mvcyj6sp-bzxjdr",
+          "guest:mvcylshl-orw4aq",
+          "guest:mvcynpww-27doyu",
+          "guest:mvcyn3ov-zusrqh",
+          "guest:mvcyqdz7-zn2xty",
+          "guest:mvcyq35x-sa74ys"
+        ],
+        "3": [
+          "guest:mvcykw5f-slqqso",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvcyo0ty-n1am4b",
+          "guest:mvcyp7up-ek4f2v",
+          "guest:mvcyl6v5-ivx66m",
+          "guest:mvcypi4h-hlmbmt",
+          "guest:mvcyoxd8-vavlmk"
+        ]
+      },
+      "leftHome": [
+        "guest:mvcylhjs-hmr1pa"
+      ],
+      "historyCount": 1,
+      "statCount": 14
+    },
+    "second-commit": {
+      "source": "data-seven-second-commit.json",
+      "sha256": "01e04cf1ced2703b8a38af8e3fd9adbb1c66d185ce1d3d23d97b1f05dbbc1e36",
+      "readCompletedAt": "2026-10-17T22:36:46.564213+00:00",
+      "effective": {
+        "0": [
+          "guest:mvcyjsg7-3n61s4",
+          "guest:mvcykk0e-uw4e4q",
+          "guest:mvcyim0f-81tp8d",
+          "guest:mvcyji3o-nsqrwc",
+          "guest:mvcyiwsz-tlan92",
+          "guest:mvcymg0y-6tw9f2"
+        ],
+        "1": [
+          "guest:mvcyomjc-izziaf",
+          "guest:mvcymsc6-ska8pb",
+          "guest:mvcyoayx-vb0yhd",
+          "guest:mvcyk48b-bc6tfc",
+          "guest:mvcypsl7-kp8wd4",
+          "guest:mvcynetv-npalqu"
+        ],
+        "2": [
+          "guest:mvcym43v-7h7apx",
+          "guest:mvcyj6sp-bzxjdr",
+          "guest:mvcylshl-orw4aq",
+          "guest:mvcynpww-27doyu",
+          "guest:mvcyn3ov-zusrqh",
+          "guest:mvcyqdz7-zn2xty",
+          "guest:mvcyq35x-sa74ys"
+        ],
+        "3": [
+          "guest:mvcykw5f-slqqso",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvcyo0ty-n1am4b",
+          "guest:mvcyp7up-ek4f2v",
+          "guest:mvcyl6v5-ivx66m",
+          "guest:mvcypi4h-hlmbmt",
+          "guest:mvcyoxd8-vavlmk"
+        ]
+      },
+      "leftHome": [
+        "guest:mvcylhjs-hmr1pa"
+      ],
+      "historyCount": 2,
+      "statCount": 27
+    },
+    "third-ready": {
+      "source": "data-seven-third-ready.json",
+      "sha256": "dbcdb1885c2cb8c85132d888aedfd79fb0ec1af65b34fac5ec82b38ca6061484",
+      "readCompletedAt": "2026-10-17T22:37:27.478607+00:00",
+      "effective": {
+        "0": [
+          "guest:mvcyjsg7-3n61s4",
+          "guest:mvcykk0e-uw4e4q",
+          "guest:mvcyim0f-81tp8d",
+          "guest:mvcyji3o-nsqrwc",
+          "guest:mvcyiwsz-tlan92",
+          "guest:mvcymg0y-6tw9f2"
+        ],
+        "1": [
+          "guest:mvcyqdz7-zn2xty",
+          "guest:mvcyq35x-sa74ys",
+          "guest:mvcyomjc-izziaf",
+          "guest:mvcymsc6-ska8pb",
+          "guest:mvcyoayx-vb0yhd",
+          "guest:mvcyk48b-bc6tfc",
+          "guest:mvcypsl7-kp8wd4"
+        ],
+        "2": [
+          "guest:mvcynetv-npalqu",
+          "guest:mvcym43v-7h7apx",
+          "guest:mvcyj6sp-bzxjdr",
+          "guest:mvcylshl-orw4aq",
+          "guest:mvcynpww-27doyu",
+          "guest:mvcyn3ov-zusrqh",
+          "guest:mvcykw5f-slqqso"
+        ],
+        "3": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvcyo0ty-n1am4b",
+          "guest:mvcyp7up-ek4f2v",
+          "guest:mvcyl6v5-ivx66m",
+          "guest:mvcypi4h-hlmbmt",
+          "guest:mvcyoxd8-vavlmk"
+        ]
+      },
+      "leftHome": [
+        "guest:mvcylhjs-hmr1pa"
+      ],
+      "historyCount": 2,
+      "statCount": 27
+    },
+    "assister-restored": {
+      "source": "data-seven-assister-restored.json",
+      "sha256": "8ae0d6119bf9e9382df57bf6759513035cb4f23121ad8c5518c6f8c95ee9e0b5",
+      "readCompletedAt": "2026-10-17T22:38:22.018940+00:00",
+      "effective": {
+        "0": [
+          "guest:mvcyjsg7-3n61s4",
+          "guest:mvcykk0e-uw4e4q",
+          "guest:mvcyim0f-81tp8d",
+          "guest:mvcyji3o-nsqrwc",
+          "guest:mvcyiwsz-tlan92",
+          "guest:mvcymg0y-6tw9f2"
+        ],
+        "1": [
+          "guest:mvcyqdz7-zn2xty",
+          "guest:mvcyq35x-sa74ys",
+          "guest:mvcyomjc-izziaf",
+          "guest:mvcymsc6-ska8pb",
+          "guest:mvcyoayx-vb0yhd",
+          "guest:mvcyk48b-bc6tfc",
+          "guest:mvcypsl7-kp8wd4"
+        ],
+        "2": [
+          "guest:mvcynetv-npalqu",
+          "guest:mvcym43v-7h7apx",
+          "guest:mvcyj6sp-bzxjdr",
+          "guest:mvcylshl-orw4aq",
+          "guest:mvcynpww-27doyu",
+          "guest:mvcyn3ov-zusrqh",
+          "guest:mvcykw5f-slqqso"
+        ],
+        "3": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvcyo0ty-n1am4b",
+          "guest:mvcyp7up-ek4f2v",
+          "guest:mvcyl6v5-ivx66m",
+          "guest:mvcypi4h-hlmbmt",
+          "guest:mvcyoxd8-vavlmk"
+        ]
+      },
+      "leftHome": [
+        "guest:mvcylhjs-hmr1pa"
+      ],
+      "historyCount": 2,
+      "statCount": 27
+    },
+    "restore-confirmed": {
+      "source": "data-seven-restore-confirmed.json",
+      "sha256": "6e030c80c1806cf7d90fec917ad27757e23eda0303c51cb87b20544926d10bfc",
+      "readCompletedAt": "2026-10-17T22:41:02.716843+00:00",
+      "effective": {
+        "0": [
+          "guest:mvcyjsg7-3n61s4",
+          "guest:mvcykk0e-uw4e4q",
+          "guest:mvcyim0f-81tp8d",
+          "guest:mvcyji3o-nsqrwc",
+          "guest:mvcyiwsz-tlan92",
+          "guest:mvcymg0y-6tw9f2"
+        ],
+        "1": [
+          "guest:mvcyqdz7-zn2xty",
+          "guest:mvcyq35x-sa74ys",
+          "guest:mvcyomjc-izziaf",
+          "guest:mvcymsc6-ska8pb",
+          "guest:mvcyoayx-vb0yhd",
+          "guest:mvcyk48b-bc6tfc",
+          "guest:mvcypsl7-kp8wd4"
+        ],
+        "2": [
+          "guest:mvcynetv-npalqu",
+          "guest:mvcym43v-7h7apx",
+          "guest:mvcyj6sp-bzxjdr",
+          "guest:mvcylshl-orw4aq",
+          "guest:mvcynpww-27doyu",
+          "guest:mvcyn3ov-zusrqh",
+          "guest:mvcylhjs-hmr1pa"
+        ],
+        "3": [
+          "guest:mvcykw5f-slqqso",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvcyo0ty-n1am4b",
+          "guest:mvcyp7up-ek4f2v",
+          "guest:mvcyl6v5-ivx66m",
+          "guest:mvcypi4h-hlmbmt",
+          "guest:mvcyoxd8-vavlmk"
+        ]
+      },
+      "leftHome": [],
+      "historyCount": 2,
+      "statCount": 27
+    },
+    "manual-assigned": {
+      "source": "data-seven-manual-assigned.json",
+      "sha256": "e87646be678e62921204be8bb2c7e01c0f195ef6f6e4e203631c3c6ce9c3cfc3",
+      "readCompletedAt": "2026-10-17T22:47:45.255432+00:00",
+      "effective": {
+        "0": [
+          "guest:mvcyjsg7-3n61s4",
+          "guest:mvcykk0e-uw4e4q",
+          "guest:mvcyim0f-81tp8d",
+          "guest:mvcyji3o-nsqrwc",
+          "guest:mvcyiwsz-tlan92",
+          "guest:mvcymg0y-6tw9f2",
+          "guest:mvcyr422-23pos1"
+        ],
+        "1": [
+          "guest:mvcyqdz7-zn2xty",
+          "guest:mvcyq35x-sa74ys",
+          "guest:mvcyomjc-izziaf",
+          "guest:mvcymsc6-ska8pb",
+          "guest:mvcyoayx-vb0yhd",
+          "guest:mvcyk48b-bc6tfc",
+          "guest:mvcypsl7-kp8wd4"
+        ],
+        "2": [
+          "guest:mvcynetv-npalqu",
+          "guest:mvcym43v-7h7apx",
+          "guest:mvcyj6sp-bzxjdr",
+          "guest:mvcylshl-orw4aq",
+          "guest:mvcynpww-27doyu",
+          "guest:mvcyn3ov-zusrqh",
+          "guest:mvcylhjs-hmr1pa"
+        ],
+        "3": [
+          "guest:mvcykw5f-slqqso",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvcyo0ty-n1am4b",
+          "guest:mvcyp7up-ek4f2v",
+          "guest:mvcyl6v5-ivx66m",
+          "guest:mvcypi4h-hlmbmt",
+          "guest:mvcyoxd8-vavlmk"
+        ]
+      },
+      "leftHome": [],
+      "historyCount": 2,
+      "statCount": 27
+    }
+  },
+  "restorationObservedComplete": true,
+  "initialRoster": {
+    "eligible": 28,
+    "assigned": 27,
+    "teamSizes": [
+      6,
+      7,
+      7,
+      7
+    ],
+    "unassigned": [
+      "guest:mvcyr422-23pos1"
+    ]
+  },
+  "finishedDerived": {
+    "source": "data-seven-finished.json",
+    "sourceSha256": "358ae0339f9962ede5a73a6bf2f523a2309f944ce4888eaf448291a09f27d81c",
+    "moduleHashes": {
+      "src/utils/roundSummary.ts": "b80e5ce43ef332827245931e631f07cf0c3ab16ec8ba109668b13b32334985c4",
+      "functions/src/roundSummary.ts": "db42b87dde25d0ae8daa56f70dcdd3f20f6fc6be8740602e48f56cbec5759a04",
+      "src/utils/eveningScore.ts": "b6712c64070e721041e0dd949748e60634cb5c381580aeb3a69af9fc587a2edd",
+      "functions/src/eveningScoreCore.ts": "a1efc60f847e23f0835bee034b525bade44a43dc95516c0c0c1ecb1a80be35aa"
+    },
+    "fullSealedClientSummaryMatches": true,
+    "fullSealedServerSummaryMatches": true,
+    "sealedStats": {
+      "goals": 1,
+      "assists": 1,
+      "ties": 1,
+      "rounds": 3,
+      "shootouts": 0
+    },
+    "scoreInput": {
+      "goals": 0,
+      "assists": 0,
+      "wins": 0,
+      "gamesPlayed": 1,
+      "goalsFor10": 1,
+      "assistsFor10": 1,
+      "pen": {
+        "scored": 0,
+        "saved": 0,
+        "missed": 0,
+        "conceded": 0
+      }
+    },
+    "clientScore": 6.7,
+    "serverScore": 6.7,
+    "storedScore": 6.7,
+    "storedScoreDelta": -2,
+    "proof": "Current pure implementations over saved server inputs; the UI trace is separate."
+  },
+  "alternativeTrace": {
+    "file": "C:\\Users\\elira\\Teamder\\artifacts\\final-deep-audit-2026-10-17\\seven-alternative-fixed-trace.json",
+    "sha256": "867ea5861c07f3ae8f401b2c84912367f8ca776dc790fef7efe0b3eeb86f8246",
+    "directListenerTrace": false,
+    "limit": "The wrapper captures getGameById calls only; it does not directly capture the version-wait listener acknowledgement. Successful waiting is supported by code flow plus the committed server result."
+  }
+}

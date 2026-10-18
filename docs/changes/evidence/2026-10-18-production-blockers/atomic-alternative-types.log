@@ -1,0 +1,1 @@
+tests/logic/clubCreationPrivacy.test.ts(25,40): error TS2741: Property 'isAvailableForInvites' is missing in type '{ preferredDays: 4[]; timeFrom: string; }' but required in type 'UserAvailability'.

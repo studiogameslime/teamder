@@ -36,6 +36,8 @@ export function FeedbackScreen() {
   const presetType = (route.params as { type?: FeedbackType } | undefined)?.type;
   const dedicated = !!presetType;
   const [type, setType] = useState<FeedbackType>(presetType ?? 'bug');
+  const playerContext = route.params as {playerId?:string;playerName?:string}|undefined;
+  const context = playerContext?.playerId ? `דיווח על השחקן ${playerContext.playerName ?? ''} (${playerContext.playerId})\n` : '';
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -46,7 +48,7 @@ export function FeedbackScreen() {
     if (!canSubmit) return;
     setSending(true);
     try {
-      await submitFeedback(type, trimmed, diagnostics.screen??route.name,undefined,type==='bug'?'bug':'feature',diagnostics);
+      await submitFeedback(type, context + trimmed, diagnostics.screen??route.name,undefined,type==='bug'?'bug':'feature',diagnostics);
       logEvent(AnalyticsEvent.FeedbackSubmitted, {
         type,
         length: trimmed.length,
@@ -98,7 +100,7 @@ export function FeedbackScreen() {
             placeholder={he.feedbackPlaceholder}
             placeholderTextColor="#9CA3AF"
             multiline
-            maxLength={MAX_LEN}
+            maxLength={MAX_LEN-context.length}
             textAlignVertical="top"
             style={styles.input}
           />

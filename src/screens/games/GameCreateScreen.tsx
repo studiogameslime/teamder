@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // Create-game screen — thin shell over GameWizardForm. Handles
 // community selection (when the user belongs to more than one) and
 // translates the wizard's GameFormValues into a `createGameV2` call.
@@ -23,6 +24,8 @@ import {
 } from '@/hooks/useAuthenticatedAction';
 import { draftStore } from '@/services/draftStore';
 import { createGameFromValues } from '@/services/gameCreation';
+import { hasDraftCreationAttempt } from '@/services/creationAttempt';
+import { readCreationDraftGroup, creationDraftRecoveryMessage } from '@/services/creationDraftGroup';
 import { toast } from '@/components/Toast';
 import { DEFAULT_FORMAT, DEFAULT_TEAM_COUNT, Group } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -174,6 +177,9 @@ export function GameCreateScreen() {
     needsAttention: string[];
   } | null>(null);
   const [checkedDraft, setCheckedDraft] = useState(false);
+  const [draftRecoveryError, setDraftRecoveryError] = useState<string | null>(null);
+  const [draftRecoveryRevision, setDraftRecoveryRevision] = useState(0);
+  const [recoveredGroup, setRecoveredGroup] = useState<Group | undefined>();
   const [orphanLoading, setOrphanLoading] = useState(false);
   // Provisioning threw. Without this the quick-entry spinner below would hold
   // forever on `!orphanGroup` — the user dismisses the error alert and is left
@@ -317,8 +323,9 @@ export function GameCreateScreen() {
   const [groupId, setGroupId] = useState<string>(initialGroupId);
   const selectedGroup = useMemo<Group | undefined>(
     () =>
-      orphanGroup ?? myCommunities.find((g) => g.id === groupId),
-    [orphanGroup, myCommunities, groupId],
+      orphanGroup ?? myCommunities.find((g) => g.id === groupId) ??
+        (recoveredGroup?.id === groupId ? recoveredGroup : undefined),
+    [orphanGroup, myCommunities, groupId, recoveredGroup],
   );
 
   // Reset the form whenever the user picks a different community so the
@@ -346,19 +353,44 @@ export function GameCreateScreen() {
   // scheduling a game for a day nobody chose is worse than asking again.
   useEffect(() => {
     let alive = true;
+    setCheckedDraft(false);
+    setDraftRecoveryError(null);
+    setRestored(null);
+    setRecoveredGroup(undefined);
+    setGroupId(initialGroupId);
     void (async () => {
       try {
         const d = await draftStore.read('game');
         if (!alive || !d) return;
+        if (d.values.__creationOwnerId && d.values.__creationOwnerId !== user?.id) return;
         draftIdRef.current = d.id;
-        const base = buildInitial(selectedGroup ?? myCommunities[0], {
+        const savedGroup = await readCreationDraftGroup(
+          d.values, user?.id ?? '', params.quick === true || isOrphan, id => groupService.get(id, { fromServer: true }),
+        );
+        if (!alive) return;
+        if (savedGroup) {
+          setRecoveredGroup(savedGroup);
+          setGroupId(savedGroup.id);
+        }
+        const base = buildInitial(savedGroup ?? selectedGroup ?? myCommunities[0], {
           recurring: isRecurring,
         });
-        const r = draftStore.restoreGameValues(
-          base as unknown as Record<string, unknown>,
-          d.values,
-          Date.now(),
-        );
+        let submitted = true; // an unreadable journal must not silently change a sent request
+        try {
+          submitted = !!user?.id && await hasDraftCreationAttempt('game', user.id, d.id);
+        } catch (error) {
+          logError('restoreCreationAttempt', error, { draftId: d.id });
+        }
+        if (!alive) return;
+        // Keep ALL original form fields after a request may have reached the
+        // server. Restoring new defaults or replacing a passed kickoff changes
+        // the content key and can otherwise create a second evening.
+        const originalValues = Object.fromEntries(Object.entries(d.values).filter(([key]) => !key.startsWith('__creation')));
+        const r = submitted
+          ? { values: originalValues, needsAttention: [] as string[] }
+          : draftStore.restoreGameValues(
+            base as unknown as Record<string, unknown>, d.values, Date.now(),
+          );
         setRestored({
           values: r.values as unknown as GameFormValues,
           needsAttention: r.needsAttention,
@@ -371,6 +403,8 @@ export function GameCreateScreen() {
         if (r.needsAttention.includes('startsAt')) {
           toast.info(he.createGameDraftPickNewTime);
         }
+      } catch (error) {
+        if (alive) setDraftRecoveryError(creationDraftRecoveryMessage(error));
       } finally {
         if (alive) setCheckedDraft(true);
       }
@@ -379,7 +413,13 @@ export function GameCreateScreen() {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [draftRecoveryRevision, user?.id]);
+
+  // Membership may arrive after a failed initial hydrate. Select a first club
+  // only when no saved target has already claimed the form.
+  useEffect(() => {
+    if (checkedDraft && !draftRecoveryError && !groupId && initialGroupId) setGroupId(initialGroupId);
+  }, [checkedDraft, draftRecoveryError, groupId, initialGroupId]);
 
   const initial = useMemo(
     () =>
@@ -442,6 +482,21 @@ export function GameCreateScreen() {
   // Both are the same mistake: waiting for a group that is not coming. The
   // predicate lives in `quickGameGate` so it can be asserted without a
   // renderer — see the tests there for the full truth table.
+  if (!checkedDraft || draftRecoveryError) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title={he.createGameTitle} />
+        <View style={styles.emptyAll}>
+          {!draftRecoveryError && <SoccerBallLoader size={48} />}
+          <Text style={styles.emptyText}>{draftRecoveryError ?? 'משחזרים את טיוטת המחזור…'}</Text>
+          {!!draftRecoveryError && <Pressable accessibilityRole="button" style={styles.orphanCta}
+            onPress={() => setDraftRecoveryRevision(value => value + 1)}>
+            <Text style={styles.orphanCtaTitle}>ניסיון חוזר</Text>
+          </Pressable>}
+        </View>
+      </SafeAreaView>
+    );
+  }
   if (
     shouldWaitForPersonalGroup({
       isGuest,
@@ -460,7 +515,7 @@ export function GameCreateScreen() {
       </SafeAreaView>
     );
   }
-  if (!isGuest && !orphanGroup && allMyCommunities.length === 0) {
+  if (!isGuest && !orphanGroup && !recoveredGroup && allMyCommunities.length === 0) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.createGameTitle} />
@@ -472,7 +527,7 @@ export function GameCreateScreen() {
       </SafeAreaView>
     );
   }
-  if (!isGuest && !orphanGroup && myCommunities.length === 0) {
+  if (!isGuest && !orphanGroup && !recoveredGroup && myCommunities.length === 0) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.createGameTitle} />
@@ -562,8 +617,14 @@ export function GameCreateScreen() {
       });
       return;
     }
-    if (!selectedGroup) return;
+    if (!selectedGroup) {
+      setNotice({ title: 'בחירת מועדון', body: 'המועדון עדיין לא זמין. המתינו לטעינה ובחרו מועדון כדי להמשיך.' });
+      return;
+    }
     try {
+      const draft = await draftStore.write('game', draftIdRef.current, {
+        ...v, __creationOwnerId: user.id, __creationGroupId: isOrphan ? null : selectedGroup.id,
+      });
       // The creation itself lives in `gameCreation.ts` so the resumer can run it
       // when this screen is gone — both resume paths unmount it. What stays here
       // is what needs a UI: the two confirmations above, the error dialogs
@@ -573,7 +634,9 @@ export function GameCreateScreen() {
         uid: user.id,
         groupId: isOrphan ? null : selectedGroup.id,
         groupName: selectedGroup.name,
+        draftId: draft.id,
       });
+      await draftStore.consume('game', draft);
       (nav as { replace: (s: string, p: unknown) => void }).replace(
         'MatchDetails',
         { gameId, celebrate: true },
@@ -584,8 +647,13 @@ export function GameCreateScreen() {
       // errors fall through to the wizard's generic error alert.
       const e = err as Error & {
         code?: string;
+        creationSaved?: boolean;
         conflict?: { title: string; startsAt: number };
       };
+      if (e.creationSaved) {
+        setNotice({ title: 'המחזור נשמר', body: e.message });
+        return;
+      }
       logEvent(AnalyticsEvent.GameSaveBlocked, {
         mode: 'create',
         reason: e.code ?? 'unknown',
@@ -856,9 +924,11 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
   },
   orphanBannerText: {
+    flex: 1,
     color: '#1D4ED8',
     fontSize: 13,
-    fontWeight: '700',
+    lineHeight: 20,
+    fontWeight: '600',
     textAlign: RTL_LABEL_ALIGN,
   },
   communityPickerWrap: {
@@ -892,18 +962,15 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     fontWeight: '600',
   },
-  dropdownBackdrop: {
+  dropdownBackdrop: { backgroundColor: overlayTheme.popoverBackdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
   },
-  dropdownCard: {
+  dropdownCard: { ...overlaySurfaces.popover,
     width: '100%',
     maxWidth: 360,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
     padding: spacing.xs,
     gap: 2,
   },

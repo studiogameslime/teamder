@@ -86,3 +86,14 @@ backups/
 store-repair.ps1
 __pycache__/
 *.pyc
+
+# Function runtime configuration is provisioned at deployment time.
+/functions/.env*
+
+# Machine-local QA workspaces, generated output, and temporary process locks.
+/tmp/
+/out/
+/output/
+/service.conf.lock
+/system.conf.lock
+/.firebase-onboarding-guest.json

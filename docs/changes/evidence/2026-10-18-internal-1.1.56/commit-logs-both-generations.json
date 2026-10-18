@@ -1,0 +1,6 @@
+{
+  "readAt": "2026-10-18T05:36:27.001679+00:00",
+  "filter": "((resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"commitroundstats\") OR (resource.type=\"cloud_function\" AND resource.labels.function_name=\"commitRoundStats\")) AND timestamp>=\"2026-10-18T05:25:00Z\" AND timestamp<=\"2026-10-18T05:27:30Z\" AND severity>=ERROR",
+  "entries": [],
+  "more": false
+}

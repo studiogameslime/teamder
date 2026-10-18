@@ -69,6 +69,14 @@ const DEFAULT_TEAM_NAMES = TEAM_PALETTE.slice(0, 7).map((p) => p.plural);
 
 export type TeamLike = { index: number; colorKey?: string };
 
+/** Readable team identity on a card; the bib swatch keeps the original hex. */
+export function teamTextColor(i: number, teams?: readonly TeamLike[], dark = false): string {
+  const key = chosenFor(i, teams)?.key ?? TEAM_PALETTE[i]?.key ?? 'black';
+  const lightText: Record<string, string> = { red:'#DC2626',blue:'#1D4ED8',green:'#15803D',yellow:'#926500',orange:'#C2410C',purple:'#6D28D9',black:'#1F2937',white:'#334155' };
+  const darkText: Record<string, string> = { red:'#FB7185',blue:'#60A5FA',green:'#4ADE80',yellow:'#FACC15',orange:'#FDBA74',purple:'#C4B5FD',black:'#CBD5E1',white:'#F1F5F9' };
+  return (dark ? darkText : lightText)[key];
+}
+
 /** The palette entry chosen for team `i`, if the admin picked one. */
 export function chosenFor(
   i: number,

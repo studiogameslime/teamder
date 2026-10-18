@@ -35,6 +35,8 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { User } from '@/types';
+import { UpdateBanner } from '@/components/UpdateBanner';
+import { useUpdatePromptStore } from '@/store/updatePromptStore';
 
 const LOGO: ImageSourcePropType = require('../../assets/images/logo.png');
 
@@ -79,6 +81,7 @@ export function HomeHero({
   coachLine?: string | null;
 }) {
   const firstName = (user.name ?? '').trim().split(/\s+/)[0] || '';
+  const hasUpdate = useUpdatePromptStore(s => s.update?.kind === 'optional');
 
   return (
     <ImageBackground source={HERO_BG} style={styles.hero} resizeMode="cover">
@@ -95,7 +98,7 @@ export function HomeHero({
       />
 
       <SafeAreaView edges={['top']}>
-        <View style={styles.bar}>
+        {hasUpdate ? <UpdateBanner /> : <View style={styles.bar}>
           {/* First child → visual RIGHT under forceRTL. The avatar keeps the
               corner it has always had. */}
           <Pressable
@@ -141,7 +144,7 @@ export function HomeHero({
             <Image source={LOGO} style={styles.logoImg} resizeMode="contain" />
             <Text style={styles.logoText}>{he.homeBrandName}</Text>
           </View>
-        </View>
+        </View>}
 
         <View style={styles.greetWrap}>
           <Text

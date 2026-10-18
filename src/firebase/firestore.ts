@@ -312,7 +312,7 @@ const userConverter: FirestoreDataConverter<User> = {
       position: (d.position as User['position']) ?? undefined,
       // photoUrl kept readable for legacy docs; never written by new code.
       photoUrl: d.photoUrl ?? undefined,
-      createdAt: typeof d.createdAt === 'number' ? d.createdAt : Date.now(),
+      createdAt: typeof d.createdAt === 'number' ? d.createdAt : typeof d.createdAt?.toMillis === 'function' ? d.createdAt.toMillis() : Date.now(),
       updatedAt: d.updatedAt ?? undefined,
       onboardingCompleted: d.onboardingCompleted === true,
       // QA tester flag — set from Pulse. Gates tester-only surfaces
@@ -339,6 +339,7 @@ const userConverter: FirestoreDataConverter<User> = {
         ? d.friends.filter((s: unknown): s is string => typeof s === 'string')
         : undefined,
       dmFriendsOnly: d.dmFriendsOnly === true,
+      socialPrivacy: { discoverable: d.socialPrivacy?.discoverable !== false, statistics: ['everyone', 'onlyMe'].includes(d.socialPrivacy?.statistics) ? d.socialPrivacy.statistics : 'friends' },
       personalGroupId:
         typeof d.personalGroupId === 'string' && d.personalGroupId.length > 0
           ? d.personalGroupId
@@ -535,7 +536,6 @@ const groupConverter: FirestoreDataConverter<Group> = {
       yellowCardValidityDays: g.yellowCardValidityDays ?? null,
       redCardValidityDays: g.redCardValidityDays ?? null,
       cardsEnabled: g.cardsEnabled ?? null,
-      adminRatings: g.adminRatings ?? null,
       ballHolderIds: Array.isArray(g.ballHolderIds) ? g.ballHolderIds : null,
       jerseysHolderIds: Array.isArray(g.jerseysHolderIds) ? g.jerseysHolderIds : null,
       maxMembers: g.maxMembers ?? null,
@@ -618,14 +618,7 @@ const groupConverter: FirestoreDataConverter<Group> = {
       // it simply does not exist on the client no matter what the document
       // holds. That is what made the whole feature invisible in 1.1.6.
       seasons: readGroupSeasons(d.seasons),
-      adminRatings:
-        d.adminRatings && typeof d.adminRatings === 'object'
-          ? (Object.fromEntries(
-              Object.entries(d.adminRatings as Record<string, unknown>).filter(
-                ([, v]) => typeof v === 'number',
-              ),
-            ) as Record<string, number>)
-          : undefined,
+      // Hydrated separately from the access-controlled private document.
       ballHolderIds: Array.isArray(d.ballHolderIds)
         ? (d.ballHolderIds as unknown[]).filter((u): u is string => typeof u === 'string')
         : undefined,
@@ -713,6 +706,13 @@ export function readGroupSeasons(v: unknown): GroupSeasons | undefined {
     : {}) as Record<string, unknown>;
   return {
     enabled: d.enabled === true,
+    ...(typeof d.disabledAt === 'number' ? { disabledAt: d.disabledAt } : {}),
+    ...(d.hasArchivedPeriods === true ? { hasArchivedPeriods: true } : {}),
+    ...(d.operation && typeof d.operation === 'object' ? { operation: {
+      kind: String((d.operation as Record<string, unknown>).kind ?? ''),
+      until: Number((d.operation as Record<string, unknown>).until) || 0,
+      failed: (d.operation as Record<string, unknown>).failed === true,
+    } } : {}),
     currentNo: typeof d.currentNo === 'number' ? d.currentNo : 1,
     currentId,
     startedAt: typeof d.startedAt === 'number' ? d.startedAt : 0,
@@ -891,6 +891,7 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
             // assist is stripped on every read, so the round-end stats commit
             // never sees it and per-player assist tallies stay 0 forever.
             assisterId: typeof x.assisterId === 'string' ? x.assisterId : undefined,
+            ...(x.assistStatus === 'player' || x.assistStatus === 'none' || x.assistStatus === 'unknown' ? { assistStatus: x.assistStatus } : {}),
             ownGoal: x.ownGoal === true ? true : undefined,
             minute: typeof x.minute === 'number' ? x.minute : 0,
             at: typeof x.at === 'number' ? x.at : 0,
@@ -928,6 +929,7 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
                 keeperId: typeof k.keeperId === 'string' ? (k.keeperId as string) : '',
                 team: k.team as 'A' | 'B',
                 scored: (k as { scored?: unknown }).scored === true,
+                ...(k.outcome === 'goal' || k.outcome === 'save' || k.outcome === 'miss' ? { outcome: k.outcome } : {}),
                 at: typeof k.at === 'number' ? (k.at as number) : 0,
               }))
           : [],
@@ -1217,6 +1219,7 @@ export function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
 
   return {
     method: o.method === 'regular' ? 'regular' : 'snake',
+    ...(o.completionMode === 'balanced' ? { completionMode: 'balanced' as const } : {}),
     numTeams: typeof o.numTeams === 'number' ? o.numTeams : teams.length,
     createdAt: typeof o.createdAt === 'number' ? o.createdAt : 0,
     createdBy: typeof o.createdBy === 'string' ? o.createdBy : '',
@@ -1249,6 +1252,7 @@ export function readRotation(v: unknown): import('@/types').MatchRotation | unde
           playerId: typeof l.playerId === 'string' ? l.playerId : '',
           homeTeam: typeof l.homeTeam === 'number' ? l.homeTeam : 0,
           filledTeam: typeof l.filledTeam === 'number' ? l.filledTeam : 0,
+          ...(typeof l.swapId === 'string' && l.swapId.length > 0 ? { swapId: l.swapId } : {}),
         }))
         .filter((l) => l.playerId)
     : [];
@@ -1262,6 +1266,14 @@ export function readRotation(v: unknown): import('@/types').MatchRotation | unde
       : undefined;
   return {
     playing: [playing[0], playing[1]],
+    ...(o.fillUsage && typeof o.fillUsage === 'object' ? { fillUsage: Object.fromEntries(
+      Object.entries(o.fillUsage as Record<string, unknown>).flatMap(([id, value]) => {
+        if (!value || typeof value !== 'object') return [];
+        const u = value as Record<string, unknown>;
+        if (![u.games, u.fills, u.lastRound].every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0)) return [];
+        return [[id, {games: u.games as number, fills: u.fills as number, lastRound: u.lastRound as number}]];
+      }),
+    ) } : {}),
     waiting,
     loans,
     wins,
@@ -1301,6 +1313,15 @@ export function readRotation(v: unknown): import('@/types').MatchRotation | unde
 // We exclude the matches[] array because rounds live in /rounds collection
 // (one doc per round). gameService re-merges them into Game on read.
 type GameDoc = Omit<Game, 'matches'>;
+
+export function readApprovedInvites(value: unknown): Game['approvedInvites'] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string,{inviterId:string;expiresAt:number}] => {
+    const grant=entry[1];
+    return !!grant && typeof grant==='object' && typeof grant.inviterId==='string' &&
+      !!grant.inviterId && !grant.inviterId.includes('/') && typeof grant.expiresAt==='number' && Number.isFinite(grant.expiresAt);
+  }));
+}
 
 const gameDocConverter: FirestoreDataConverter<GameDoc> = {
   toFirestore(g) {
@@ -1349,6 +1370,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       currentMatchIndex: g.currentMatchIndex,
       weather: g.weather ?? null,
       createdBy: g.createdBy ?? null,
+      creationFingerprint: g.creationFingerprint ?? null,
       // `visibility` is now the only access-control flag. Default to
       // 'community' when missing — the conservative choice so a
       // half-built write never accidentally exposes a doc to the
@@ -1555,13 +1577,13 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
             (u): u is string => typeof u === 'string',
           )
         : undefined,
-      // Users explicitly invited to this game — they bypass approval, so the
-      // join CTA reads "join" not "request to join" for them.
+      // Read access is distinct from manager-approved admission.
       invitedUserIds: Array.isArray(d.invitedUserIds)
         ? (d.invitedUserIds as unknown[]).filter(
             (u): u is string => typeof u === 'string',
           )
         : undefined,
+      approvedInvites: readApprovedInvites(d.approvedInvites),
       ballHolderUserId: d.ballHolderUserId ?? undefined,
       jerseysHolderUserId: d.jerseysHolderUserId ?? undefined,
       ballBringerIds: Array.isArray(d.ballBringerIds)
@@ -1601,6 +1623,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       currentMatchIndex: d.currentMatchIndex ?? 0,
       weather: d.weather ?? undefined,
       createdBy: typeof d.createdBy === 'string' ? d.createdBy : undefined,
+      creationFingerprint: typeof d.creationFingerprint === 'string' ? d.creationFingerprint : undefined,
       // Default missing visibility to 'community' so legacy docs are
       // hidden from the public feed until an admin explicitly opens
       // them. Never project unknowns as 'public' — that would be a
@@ -1659,6 +1682,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       draftTeams: readDraftTeams(d.draftTeams),
       draftTeamFeedback: readDraftTeamFeedback(d.draftTeamFeedback),
       rotation: readRotation(d.rotation),
+      lastCommittedRoundId: typeof d.lastCommittedRoundId === 'string' ? d.lastCommittedRoundId : undefined,
       reminderSent: d.reminderSent === true,
       rateReminderSent: d.rateReminderSent === true,
       capacityNoticeSent: d.capacityNoticeSent === true,
@@ -1789,7 +1813,7 @@ export function readTeamBalanceMeta(
   // Both algorithm tags must be accepted: games balanced before the v2 switch
   // still carry 'rating_greedy_v1', and an unknown tag here would silently drop
   // the whole meta object on read.
-  if (o.algorithm !== 'rating_greedy_v1' && o.algorithm !== 'rating_balanced_v2')
+  if (o.algorithm !== 'rating_greedy_v1' && o.algorithm !== 'rating_balanced_v2' && o.algorithm !== 'random_even_v1')
     return undefined;
   return {
     generatedAt: o.generatedAt,
@@ -1938,12 +1962,8 @@ const chatMessageConverter: FirestoreDataConverter<ChatMessage> = {
     return {
       text: m.text,
       senderId: m.senderId,
-      senderName: m.senderName,
-      // Only write optional avatar fields when present — Firestore rejects
-      // `undefined`, and a sender may have neither an avatarId nor a photoUrl.
-      ...(m.senderAvatarId ? { senderAvatarId: m.senderAvatarId } : {}),
-      ...(m.senderPhotoUrl ? { senderPhotoUrl: m.senderPhotoUrl } : {}),
-      createdAt: m.createdAt,
+      // Sender identity and time are established by the server, not the UI.
+      createdAt: serverTimestamp(),
     };
   },
   fromFirestore(snap: QueryDocumentSnapshot<DocumentData>): ChatMessage {
@@ -1955,7 +1975,9 @@ const chatMessageConverter: FirestoreDataConverter<ChatMessage> = {
       senderName: typeof d.senderName === 'string' ? d.senderName : '',
       senderAvatarId: typeof d.senderAvatarId === 'string' ? d.senderAvatarId : undefined,
       senderPhotoUrl: typeof d.senderPhotoUrl === 'string' ? d.senderPhotoUrl : undefined,
-      createdAt: typeof d.createdAt === 'number' ? d.createdAt : Date.now(),
+      supportImage: typeof d.supportImage === 'string' ? d.supportImage : undefined,
+      supportContext: d.supportContext && typeof d.supportContext.screen === 'string' ? d.supportContext : undefined,
+      createdAt: typeof d.createdAt === 'number' ? d.createdAt : typeof d.createdAt?.toMillis === 'function' ? d.createdAt.toMillis() : Date.now(),
     };
   },
 };
@@ -1977,7 +1999,7 @@ const friendRequestConverter: FirestoreDataConverter<FriendRequestDoc> = {
       fromUserId: typeof d.fromUserId === 'string' ? d.fromUserId : '',
       toUserId: typeof d.toUserId === 'string' ? d.toUserId : '',
       status: (d.status as FriendRequestStatus) ?? 'pending',
-      createdAt: typeof d.createdAt === 'number' ? d.createdAt : Date.now(),
+      createdAt: typeof d.createdAt === 'number' ? d.createdAt : typeof d.createdAt?.toMillis === 'function' ? d.createdAt.toMillis() : Date.now(),
       updatedAt: typeof d.updatedAt === 'number' ? d.updatedAt : undefined,
     };
   },

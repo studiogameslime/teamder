@@ -202,6 +202,7 @@ try {
   // expo-notifications native module not available — no-op.
 }
 import { NavigationContainer } from '@react-navigation/native';
+import { SupportChatHost } from '@/components/support/SupportChatHost';
 import { crumbNav, crumbTap, crumbGestureEnd } from '@/services/breadcrumbs';
 import { bindDiagnosticOwner, recordDiagnostic } from '@/services/diagnosticJournal';
 import { startDiagnosticStorage, persistDiagnosticJournal, clearDiagnosticStorage } from '@/services/diagnosticStorage';
@@ -254,13 +255,13 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   checkForUpdate,
   setUpdateGateOpen,
-  type UpdateKind,
 } from '@/services/updateService';
+import { applyStoreUpdate, useUpdatePromptStore } from '@/store/updatePromptStore';
+import { reconcileStoreUpdate } from '@/services/updateAttributionService';
 import { useWatchSync } from '@/services/watchSyncService';
 import { UpdateModal } from '@/components/UpdateModal';
 import { WhatsNewGate } from '@/components/WhatsNewGate';
 import { NotificationOfferHost } from '@/components/notifications/NotificationOfferHost';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
 import { joryio } from '@/services/joryio';
@@ -313,12 +314,6 @@ if (!I18nManager.isRTL) {
   };
 }
 
-// Optional ("later"-dismissable) update prompts snooze for 24h after a
-// dismissal so they don't reappear on every cold start. Force updates
-// ignore this entirely.
-const OPTIONAL_UPDATE_SNOOZE_KEY = 'optionalUpdateSnoozeUntil';
-const OPTIONAL_UPDATE_SNOOZE_MS = 24 * 60 * 60 * 1000;
-
 // Install global crash + unhandled-rejection catch-alls as early as
 // possible (module load), so failures before/around mount are captured.
 installGlobalErrorHandlers();
@@ -359,26 +354,23 @@ export default function App() {
 
   // App-update prompt. Single source of truth: a plain enum kept
   // here at the App root.
-  const [updateKind, setUpdateKind] = useState<UpdateKind>('none');
+  const availableUpdate = useUpdatePromptStore(s => s.update);
+  const updateKind = availableUpdate?.kind ?? 'none';
   // Publish the gate's visibility so a screen does not stack its own modal on
   // top of it. See the note on `setUpdateGateOpen`.
   useEffect(() => {
-    setUpdateGateOpen(updateKind !== 'none');
+    setUpdateGateOpen(updateKind === 'force');
     return () => setUpdateGateOpen(false);
   }, [updateKind]);
   // Guard so the post-splash check fires exactly once even if the
   // splash effect re-runs.
   const updateCheckedRef = useRef(false);
-  // Once the user taps "later" on an optional prompt we suppress
-  // re-showing it for the rest of the session — even if the
-  // AppState listener re-runs the check after returning from the
-  // store. Force-update results still win unconditionally.
-  const optionalUpdateDismissedRef = useRef(false);
 
   // Live "navigator is mounted and ready to navigate" flag. Flipped
   // by NavigationContainer's `onReady`. Campaign destinations wait here;
   // invitation targets are persisted and consumed by RootNavigator alone.
   const [navReady, setNavReady] = useState(false);
+  const [activeRouteName, setActiveRouteName] = useState('');
 
   // Android hardware back. Without this every press fell through to the
   // platform default, which leaves the app the moment a tab's stack has
@@ -466,7 +458,7 @@ export default function App() {
   const [entryEvent, setEntryEvent] = useState<Record<string, string | boolean | undefined> | null>(null);
   const reportEntrySource = (
     how: 'deep_link' | 'stash' | 'deferred' | 'organic',
-    pending: { type: 'session' | 'team' | 'app'; id?: string; invitedBy?: string } | null,
+    pending: { type: 'session' | 'team' | 'app'; id?: string; invitedBy?: string; source?: string; campaign?: string } | null,
   ) => {
     if (entryReportedRef.current) return;
     entryReportedRef.current = true;
@@ -483,8 +475,7 @@ export default function App() {
     // Publish before reporting, so any screen that renders after this can
     // say where the launch came from instead of assuming. See
     // `src/services/entrySource.ts` — GuestHome used to hardcode `organic`.
-    setEntrySource(source as EntrySource);
-    setEntryEvent({
+    const details = {
       entry_source: source,
       resolved_by: how,
       target_type: pending?.type ?? 'none',
@@ -493,7 +484,13 @@ export default function App() {
       // uid, which would be somebody's identity.
       target_id: pending?.id,
       has_inviter: !!pending?.invitedBy,
-    });
+      entry_channel: pending?.source,
+      entry_campaign: pending?.campaign,
+    };
+    // Pulse resolves the inviter's display name server-side. Keep this
+    // identifier out of the generic analytics event below.
+    setEntrySource(source as EntrySource, { ...details, inviter_uid: pending?.invitedBy });
+    setEntryEvent(details);
   };
 
   useEffect(() => {
@@ -681,43 +678,21 @@ export default function App() {
     });
   }, [currentUserId, onboardingComplete]);
 
-  // Resolve the freshly-fetched UpdateKind into a UI verdict. Force
-  // wins always; optional is suppressed when already dismissed this
-  // session.
-  const applyUpdateResult = useCallback((kind: UpdateKind) => {
-    if (kind === 'force') {
-      setUpdateKind('force');
-      return;
-    }
-    if (kind === 'optional' && optionalUpdateDismissedRef.current) {
-      setUpdateKind('none');
-      return;
-    }
-    setUpdateKind(kind);
-  }, []);
+  const applyUpdateResult = applyStoreUpdate;
+
+  // Wait for account hydration so a different signed-in account cannot claim
+  // another account's update. A new native binary is observed after restart.
+  useEffect(() => {
+    if (splashDone && userHydrated) void reconcileStoreUpdate(currentUserId ?? null);
+  }, [splashDone, userHydrated, currentUserId]);
 
   // Run the version check only after the splash animation has
   // finished. Guarded by `updateCheckedRef` so we never fire twice.
-  // Before checking, restore any recent "later" dismissal so an
-  // OPTIONAL prompt doesn't nag on every cold start — it stays hidden
-  // for OPTIONAL_UPDATE_SNOOZE_MS after the user taps "אולי אחר כך".
-  // (Force updates ignore this and always show.)
+  // Target-specific optional snooze is restored by applyStoreUpdate.
   useEffect(() => {
     if (!splashDone || updateCheckedRef.current) return;
     updateCheckedRef.current = true;
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(OPTIONAL_UPDATE_SNOOZE_KEY);
-        const until = raw ? Number(raw) : 0;
-        if (until && Date.now() < until) {
-          optionalUpdateDismissedRef.current = true;
-        }
-      } catch {
-        // ignore — worst case the prompt shows once
-      }
-      const kind = await checkForUpdate();
-      applyUpdateResult(kind);
-    })();
+    void checkForUpdate().then(applyUpdateResult);
   }, [splashDone, applyUpdateResult]);
 
   // Re-check when the app returns from background → active. Catches
@@ -997,6 +972,7 @@ export default function App() {
             ? navigationRef.getCurrentRoute()
             : null;
           if (r) {
+            setActiveRouteName(r.name);
             currentScreenRef.current = r.name;
             crumbNav(r.name,r.params);
             logEvent(AnalyticsEvent.ScreenView, { screen: r.name });
@@ -1006,6 +982,7 @@ export default function App() {
           if (!navigationRef.isReady()) return;
           const route = navigationRef.getCurrentRoute();
           const next = route?.name;
+          if (next) setActiveRouteName(next);
           if(route)crumbNav(route.name,route.params);
           if (next && next !== currentScreenRef.current) {
             currentScreenRef.current = next;
@@ -1051,6 +1028,7 @@ export default function App() {
         <BannerHost />
         {/* Global: a device screenshot slides up a pre-filled bug report. */}
         <ScreenshotReportSheet />
+        <SupportChatHost active={splashDone && updateKind !== 'force' && !whatsNewOpen} hideBubble={activeRouteName === 'LiveMatch'} />
         {/* Joryio in-app campaigns. INSIDE the navigator so a message's
             deep-link button resolves against the same routing as any other
             link; above it there is no navigation to hand the URL to. */}
@@ -1092,23 +1070,8 @@ export default function App() {
 
       <AdDebugOverlay />
 
-      {splashDone && updateKind === 'force' ? (
-        <UpdateModal type="force" />
-      ) : null}
-      {splashDone && updateKind === 'optional' ? (
-        <UpdateModal
-          type="optional"
-          onClose={() => {
-            optionalUpdateDismissedRef.current = true;
-            // Persist the snooze so the optional prompt doesn't reappear
-            // on the next cold start (it used to show every launch).
-            void AsyncStorage.setItem(
-              OPTIONAL_UPDATE_SNOOZE_KEY,
-              String(Date.now() + OPTIONAL_UPDATE_SNOOZE_MS),
-            );
-            setUpdateKind('none');
-          }}
-        />
+      {splashDone && availableUpdate?.kind === 'force' ? (
+        <UpdateModal type="force" update={availableUpdate} />
       ) : null}
 
       {/* Remote-Config blocking overlay — covers everything when
@@ -1117,7 +1080,7 @@ export default function App() {
 
       {/* In-app popup campaigns (authored in Pulse). Only after splash +
           when signed in and no blocking update modal is up. */}
-      <CampaignGate active={splashDone && updateKind === 'none' && !!currentUserId} />
+      <CampaignGate active={splashDone && updateKind !== 'force' && !!currentUserId} />
 
       {/* One-time "מה חדש" highlights after a version update. Only once splash
           is done, signed in + onboarded, and no update modal is competing. */}
@@ -1128,7 +1091,7 @@ export default function App() {
       <NotificationOfferHost
         active={
           splashDone &&
-          updateKind === 'none' &&
+          updateKind !== 'force' &&
           !!currentUserId &&
           !viewerIsGuest &&
           !whatsNewOpen
@@ -1138,7 +1101,7 @@ export default function App() {
         onVisibilityChange={setWhatsNewOpen}
         active={
           splashDone &&
-          updateKind === 'none' &&
+          updateKind !== 'force' &&
           !!currentUserId &&
           onboardingComplete &&
           !viewerIsGuest

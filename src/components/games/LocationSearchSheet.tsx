@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Keyboard,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -21,6 +22,7 @@ import {
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 
 import { LocationPickerMap } from '@/components/games/LocationPickerMap';
 import { searchPlaces, type GovmapPlace } from '@/services/govmapService';
@@ -71,10 +73,16 @@ export function LocationSearchSheet({
     null,
   );
   const inputRef = useRef<TextInput>(null);
+  const choiceRevision = useRef(0);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   // Reset to a clean search each time the sheet opens. If we're editing a
   // game that already has coords, seed the pin + center on it.
   useEffect(() => {
+    choiceRevision.current += 1;
+    setLocating(false);
+    setLocationError('');
     if (visible) {
       setQuery(initialQuery ?? '');
       setResults([]);
@@ -92,6 +100,7 @@ export function LocationSearchSheet({
         setFly(null);
       }
     }
+    return () => { choiceRevision.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
@@ -124,7 +133,7 @@ export function LocationSearchSheet({
       } finally {
         if (alive) setLoading(false);
       }
-    }, 300);
+    }, 600);
     return () => {
       alive = false;
       clearTimeout(t);
@@ -132,6 +141,10 @@ export function LocationSearchSheet({
   }, [query, visible, searchOpen]);
 
   const pickResult = (p: GovmapPlace) => {
+    choiceRevision.current += 1;
+    setLocating(false);
+    setResolving(false);
+    setLocationError('');
     Keyboard.dismiss();
     setSearchOpen(false);
     setResults([]);
@@ -140,6 +153,9 @@ export function LocationSearchSheet({
   };
 
   const pickFromMap = (lat: number, lng: number) => {
+    const revision = ++choiceRevision.current;
+    setLocating(false);
+    setLocationError('');
     Keyboard.dismiss();
     setSearchOpen(false);
     setResults([]);
@@ -147,14 +163,58 @@ export function LocationSearchSheet({
     // once reverse geocoding returns. Coords are final from this moment.
     setPicked({ label: '', lat, lng });
     setResolving(true);
-    reverseGeocode(lat, lng)
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    Promise.race([
+      reverseGeocode(lat, lng),
+      new Promise<null>((resolve) => { timeout = setTimeout(() => resolve(null), 8000); }),
+    ])
       .then((r) => {
+        if (revision !== choiceRevision.current) return;
         setPicked({ label: r?.label || he.locationOnMap, lat, lng });
       })
       .catch(() => {
+        if (revision !== choiceRevision.current) return;
         setPicked({ label: he.locationOnMap, lat, lng });
       })
-      .finally(() => setResolving(false));
+      .finally(() => {
+        if (timeout) clearTimeout(timeout);
+        if (revision === choiceRevision.current) setResolving(false);
+      });
+  };
+
+  const useCurrentLocation = async () => {
+    const revision = ++choiceRevision.current;
+    setLocating(true);
+    setResolving(false);
+    setLocationError('');
+    Keyboard.dismiss();
+    setSearchOpen(false);
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (revision !== choiceRevision.current) return;
+      if (permission.status !== 'granted') {
+        setLocationError('כדי לבחור את המיקום הנוכחי, צריך לאפשר גישה למיקום. אפשר גם לבחור נקודה במפה.');
+        return;
+      }
+      const position = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error('LOCATION_TIMEOUT')), 15000); }),
+      ]);
+      if (revision !== choiceRevision.current) return;
+      const { latitude: lat, longitude: lng } = position.coords;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 29.3 || lat > 33.4 || lng < 34.1 || lng > 35.9) {
+        setLocationError('המיקום נמצא מחוץ לאזור המפה. אפשר לחפש מגרש או לבחור נקודה במפה.');
+        return;
+      }
+      setFly({ lat, lng, zoom: 16 });
+      pickFromMap(lat, lng);
+    } catch {
+      if (revision === choiceRevision.current) setLocationError('לא הצלחנו לאתר את המיקום כרגע. נסו שוב או בחרו נקודה במפה.');
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      if (revision === choiceRevision.current) setLocating(false);
+    }
   };
 
   const confirm = () => {
@@ -162,7 +222,7 @@ export function LocationSearchSheet({
     // otherwise the user locks in a generic "מיקום על המפה" label before the
     // real street/city settles (user report: "עד שהכפתור לא מתייצב על העיר
     // שלא יהיה לחיץ").
-    if (!picked || resolving) return;
+    if (!picked || resolving || locating) return;
     onSelect({
       label: picked.label || he.locationOnMap,
       lat: picked.lat,
@@ -194,6 +254,7 @@ export function LocationSearchSheet({
             ref={inputRef}
             value={query}
             onChangeText={(t) => {
+              setLocationError('');
               setQuery(t);
               setSearchOpen(true);
             }}
@@ -218,6 +279,12 @@ export function LocationSearchSheet({
           ) : null}
         </View>
 
+        <Pressable onPress={useCurrentLocation} disabled={locating} accessibilityRole="button" style={styles.currentLocation}>
+          {locating ? <ActivityIndicator color={colors.primary} size="small" /> : <Ionicons name="locate-outline" size={20} color={colors.primary} />}
+          <Text style={styles.currentLocationText}>{locating ? 'מאתרים את המיקום שלך…' : 'המיקום הנוכחי שלי'}</Text>
+        </Pressable>
+        {locationError ? <Text accessibilityRole="alert" style={styles.locationError}>{locationError}</Text> : null}
+
         {/* Map (always visible) + results overlay */}
         <View style={styles.mapWrap}>
           <LocationPickerMap
@@ -230,6 +297,7 @@ export function LocationSearchSheet({
 
           {showResults ? (
             <View style={styles.resultsOverlay}>
+              <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{flexShrink:1}}>
               {loading ? (
                 <View style={styles.center}>
                   <ActivityIndicator color={colors.primary} />
@@ -252,6 +320,8 @@ export function LocationSearchSheet({
                   {searchDown ? he.locationSearchUnavailable : he.locationNoResults}
                 </Text>
               )}
+              <Text style={styles.attribution}>נתוני כתובות: Govmap · OpenStreetMap / Photon</Text>
+              </ScrollView>
             </View>
           ) : null}
         </View>
@@ -273,9 +343,9 @@ export function LocationSearchSheet({
                 )}
               </View>
               <Pressable
-                style={[styles.primaryBtn, resolving && styles.primaryBtnDisabled]}
+                style={[styles.primaryBtn, (resolving || locating) && styles.primaryBtnDisabled]}
                 onPress={confirm}
-                disabled={resolving}
+                disabled={resolving || locating}
               >
                 <Text style={styles.primaryBtnText}>{he.locationConfirm}</Text>
               </Pressable>
@@ -293,6 +363,10 @@ export function LocationSearchSheet({
 }
 
 const styles = StyleSheet.create({
+  currentLocation: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, marginHorizontal: 16, marginBottom: 10, borderRadius: 14, backgroundColor: '#EAF2FF' },
+  currentLocationText: { color: colors.primary, fontWeight: '700', fontSize: 14 },
+  locationError: { color: '#B42318', textAlign: RTL_LABEL_ALIGN, paddingHorizontal: 20, paddingBottom: 10, fontSize: 13 },
+  attribution: { color: colors.textMuted, textAlign: 'center', fontSize: 10, padding: 6 },
   root: { flex: 1, backgroundColor: colors.bg },
   header: {
     flexDirection: 'row',
@@ -325,6 +399,7 @@ const styles = StyleSheet.create({
   },
   mapWrap: { flex: 1, marginHorizontal: spacing.lg, borderRadius: radius.lg, overflow: 'hidden' },
   resultsOverlay: {
+    maxHeight: '100%',
     position: 'absolute',
     top: 0,
     left: 0,

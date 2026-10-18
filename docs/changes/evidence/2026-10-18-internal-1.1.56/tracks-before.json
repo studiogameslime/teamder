@@ -1,0 +1,77 @@
+{
+  "kind": "androidpublisher#tracksListResponse",
+  "tracks": [
+    {
+      "track": "production",
+      "releases": [
+        {
+          "name": "1.1.46",
+          "versionCodes": [
+            "279"
+          ],
+          "releaseNotes": [
+            {
+              "language": "iw-IL",
+              "text": "עיצוב מעודכן למסכי המועדונים והמחזורים ולניווט. שיפורים בסיכום האישי, בתמונות המועדונים ובהרשמה. תיקונים בתהליך ההצטרפות ובהזמנות, ושיפורי יציבות."
+            }
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "beta"
+    },
+    {
+      "track": "alpha",
+      "releases": [
+        {
+          "name": "27 (0.2.10)",
+          "versionCodes": [
+            "27"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "internal",
+      "releases": [
+        {
+          "name": "1.1.55",
+          "versionCodes": [
+            "288"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "wear:beta"
+    },
+    {
+      "track": "wear:internal",
+      "releases": [
+        {
+          "name": "1005 (0.2.21)",
+          "versionCodes": [
+            "1005"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "wear:production",
+      "releases": [
+        {
+          "name": "1.0.30",
+          "versionCodes": [
+            "1027"
+          ],
+          "status": "completed"
+        }
+      ]
+    }
+  ]
+}

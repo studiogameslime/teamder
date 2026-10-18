@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hierarchy package="com.studiogameslime.soccerapp" captured-at-ms="1792210003107" duration-ms="221" nodes="170" missing-children="0" foreign-subtrees-skipped="0">
+<node index="0" text="" content-desc="" class="android.widget.FrameLayout" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,0][576,1024]">
+<node index="0" text="" content-desc="" class="android.widget.LinearLayout" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,0][576,1024]">
+<node index="0" text="" content-desc="" class="android.widget.FrameLayout" package="com.studiogameslime.soccerapp" resource-id="android:id/content" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,0][576,1024]">
+<node index="0" text="" content-desc="" class="android.widget.FrameLayout" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,0][576,1024]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,0][576,1024]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,0][576,1024]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,0][576,1024]">
+<node index="0" text="" content-desc="" class="android.view.View" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,0][576,1024]">
+</node>
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,0][576,1024]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,0][576,1024]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,43][576,981]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,43][576,981]">
+</node>
+<node index="1" text="" content-desc="סגירת חלון הגול" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[0,43][576,981]">
+</node>
+<node index="2" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,65][555,960]">
+<node index="0" text="" content-desc="" class="com.horcrux.svg.SvgView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[458,92][533,173]">
+<node index="0" text="" content-desc="" class="com.horcrux.svg.GroupView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[460,98][531,171]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[534,92][458,92]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[534,92][458,92]">
+</node>
+</node>
+<node index="1" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[460,98][531,166]">
+</node>
+<node index="2" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[460,98][531,166]">
+</node>
+<node index="3" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[462,98][529,128]">
+</node>
+<node index="4" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[477,120][514,164]">
+</node>
+<node index="5" text="" content-desc="" class="com.horcrux.svg.EllipseView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[474,166][517,171]">
+</node>
+</node>
+</node>
+<node index="1" text="גול לכחולים" content-desc="" class="android.view.View" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[137,79][443,141]">
+</node>
+<node index="2" text="משחק 3 · דקה 1" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[137,141][443,186]">
+</node>
+<node index="3" text="" content-desc="סגירה" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[44,93][123,173]">
+<node index="0" text="" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[62,110][104,154]">
+</node>
+</node>
+<node index="4" text="" content-desc="" class="android.widget.ScrollView" package="com.studiogameslime.soccerapp" resource-id="goal-error-body" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="true" visible-to-user="true" password="false" bounds="[22,201][555,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,201][555,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="match-action-pitch" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,201][555,471]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,201][555,471]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,201][555,471]">
+</node>
+<node index="2" text="" content-desc="" class="com.horcrux.svg.SvgView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,201][555,471]">
+<node index="0" text="" content-desc="" class="com.horcrux.svg.GroupView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,201][555,471]">
+<node index="0" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,249][555,471]">
+</node>
+<node index="1" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[341,201][437,471]">
+</node>
+<node index="2" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[155,228][422,312]">
+</node>
+<node index="3" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[288,201][363,471]">
+</node>
+<node index="4" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[213,201][299,471]">
+</node>
+<node index="5" text="" content-desc="" class="com.horcrux.svg.CircleView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[285,304][292,308]">
+</node>
+<node index="6" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[139,201][257,471]">
+</node>
+<node index="7" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[64,201][214,471]">
+</node>
+<node index="8" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,201][172,471]">
+</node>
+<node index="9" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,201][129,471]">
+</node>
+</node>
+</node>
+<node index="3" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[400,250][443,293]">
+<node index="0" text="" content-desc="" class="com.horcrux.svg.SvgView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[400,250][443,293]">
+<node index="0" text="" content-desc="" class="com.horcrux.svg.GroupView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[402,252][440,290]">
+<node index="0" text="" content-desc="" class="com.horcrux.svg.CircleView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[402,252][440,290]">
+</node>
+<node index="1" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[405,254][438,288]">
+</node>
+</node>
+</node>
+</node>
+<node index="4" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[203,210][374,251]">
+<node index="0" text="" content-desc="" class="com.horcrux.svg.SvgView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[203,210][374,251]">
+<node index="0" text="" content-desc="" class="com.horcrux.svg.GroupView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[205,211][372,250]">
+<node index="0" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[205,211][372,250]">
+</node>
+<node index="1" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[205,212][372,249]">
+</node>
+<node index="2" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[361,212][372,249]">
+</node>
+<node index="3" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[353,212][363,249]">
+</node>
+<node index="4" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[215,212][361,212]">
+</node>
+<node index="5" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[214,216][362,216]">
+</node>
+<node index="6" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[213,220][363,220]">
+</node>
+<node index="7" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[212,223][364,223]">
+</node>
+<node index="8" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[211,227][365,227]">
+</node>
+<node index="9" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[210,231][367,231]">
+</node>
+<node index="10" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[209,234][368,234]">
+</node>
+<node index="11" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[208,238][369,238]">
+</node>
+<node index="12" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[207,242][370,242]">
+</node>
+<node index="13" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[206,245][371,245]">
+</node>
+<node index="14" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[346,212][355,249]">
+</node>
+<node index="15" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[339,212][347,249]">
+</node>
+<node index="16" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[332,212][339,249]">
+</node>
+<node index="17" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[324,212][330,249]">
+</node>
+<node index="18" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[317,212][322,249]">
+</node>
+<node index="19" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[310,212][314,249]">
+</node>
+<node index="20" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[303,212][306,249]">
+</node>
+<node index="21" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[295,212][297,249]">
+</node>
+<node index="22" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[288,212][288,249]">
+</node>
+<node index="23" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[280,212][282,249]">
+</node>
+<node index="24" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[271,212][274,249]">
+</node>
+<node index="25" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[263,212][267,249]">
+</node>
+<node index="26" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[255,212][260,249]">
+</node>
+<node index="27" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[246,212][252,249]">
+</node>
+<node index="28" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[238,212][245,249]">
+</node>
+<node index="29" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[230,212][238,249]">
+</node>
+<node index="30" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[221,212][230,249]">
+</node>
+<node index="31" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[213,212][223,249]">
+</node>
+<node index="32" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[205,212][216,249]">
+</node>
+</node>
+</node>
+</node>
+<node index="5" text="" content-desc="כובש, בדיקות לייב, הכחולים" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[339,260][504,450]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[384,260][459,336]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[389,265][454,329]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[389,265][454,329]">
+</node>
+</node>
+</node>
+<node index="1" text="כובש" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[394,337][448,374]">
+</node>
+<node index="2" text="בדיקות לייב" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[360,376][482,413]">
+</node>
+<node index="3" text="הכחולים" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[372,415][473,450]">
+</node>
+</node>
+<node index="6" text="" content-desc="מבשל, ללא בישול" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[72,304][238,458]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[117,304][193,380]">
+<node index="0" text="⚽" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[121,310][188,372]">
+</node>
+</node>
+<node index="1" text="מבשל" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[122,381][186,418]">
+</node>
+<node index="2" text="ללא בישול" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[100,420][209,457]">
+</node>
+</node>
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,471][555,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[44,485][533,556]">
+</node>
+<node index="1" text="מי בישל?" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[116,494][520,547]">
+</node>
+<node index="2" text="" content-desc="" class="com.horcrux.svg.SvgView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[58,497][103,544]">
+<node index="0" text="" content-desc="" class="com.horcrux.svg.GroupView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[59,500][101,542]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[103,497][58,497]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[103,497][58,497]">
+</node>
+</node>
+<node index="1" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[59,500][101,540]">
+</node>
+<node index="2" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[59,500][101,540]">
+</node>
+<node index="3" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[61,500][100,518]">
+</node>
+<node index="4" text="" content-desc="" class="com.horcrux.svg.PathView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[69,513][91,539]">
+</node>
+<node index="5" text="" content-desc="" class="com.horcrux.svg.EllipseView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[68,540][93,543]">
+</node>
+</node>
+</node>
+<node index="3" text="" content-desc="" class="android.widget.ScrollView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="true" visible-to-user="true" password="false" bounds="[44,565][533,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[44,565][533,735]">
+<node index="0" text="" content-desc="מאור אחד עשר לא" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="false" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[372,570][533,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[405,579][500,674]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[411,585][494,668]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[411,585][494,668]">
+</node>
+</node>
+<node index="2" text="מאור אחד עשר לא" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[377,679][529,735]">
+</node>
+</node>
+<node index="1" text="" content-desc="ברק אחד עשר כה" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="false" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[210,570][372,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[243,579][338,674]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[249,585][332,668]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[249,585][332,668]">
+</node>
+</node>
+<node index="2" text="ברק אחד עשר כה" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[215,679][367,735]">
+</node>
+</node>
+<node index="2" text="" content-desc="טל אחד עשר כט" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="false" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[48,570][210,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[81,579][176,674]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[87,585][170,668]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[87,585][170,668]">
+</node>
+</node>
+<node index="2" text="טל אחד עשר כט" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[53,679][205,735]">
+</node>
+</node>
+<node index="3" text="" content-desc="תומר אחד עשר ג" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="false" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[372,774][533,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[405,783][500,735]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[411,789][494,735]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[411,789][494,735]">
+</node>
+</node>
+<node index="2" text="תומר אחד עשר ג" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[377,883][529,735]">
+</node>
+</node>
+<node index="4" text="" content-desc="אורי אחד עשר ד" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="false" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[210,774][372,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[243,783][338,735]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[249,789][332,735]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[249,789][332,735]">
+</node>
+</node>
+<node index="2" text="אורי אחד עשר ד" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[215,883][367,735]">
+</node>
+</node>
+<node index="5" text="" content-desc="אייל אחד עשר כד" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="false" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[48,774][210,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[81,783][176,735]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[87,789][170,735]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[87,789][170,735]">
+</node>
+</node>
+<node index="2" text="אייל אחד עשר כד" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[53,883][205,735]">
+</node>
+</node>
+<node index="6" text="" content-desc="חיים אחד עשר כח" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="false" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[372,978][533,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[405,987][500,735]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[411,993][494,735]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[411,993][494,735]">
+</node>
+</node>
+<node index="2" text="חיים אחד עשר כח" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[377,1087][529,735]">
+</node>
+</node>
+<node index="7" text="" content-desc="לירן אחד עשר יז" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="false" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[210,978][372,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[243,987][338,735]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[249,993][332,735]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[249,993][332,735]">
+</node>
+</node>
+<node index="2" text="לירן אחד עשר יז" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[215,1087][367,735]">
+</node>
+</node>
+<node index="8" text="" content-desc="איתי אחד עשר ב" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="false" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[48,978][210,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[81,987][176,735]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[87,993][170,735]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[87,993][170,735]">
+</node>
+</node>
+<node index="2" text="איתי אחד עשר ב" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[53,1087][205,735]">
+</node>
+</node>
+<node index="9" text="" content-desc="בדיקות לייב" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="false" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="true" scrollable="false" visible-to-user="false" password="false" bounds="[372,1182][533,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[405,1191][500,735]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[411,1197][494,735]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[411,1197][494,735]">
+</node>
+</node>
+<node index="2" text="בדיקות לייב" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[377,1291][529,735]">
+</node>
+</node>
+<node index="10" text="" content-desc="אופק אחד עשר כב" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="false" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[210,1182][372,735]">
+<node index="0" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[243,1191][338,735]">
+</node>
+<node index="1" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[249,1197][332,735]">
+<node index="0" text="" content-desc="" class="android.widget.ImageView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[249,1197][332,735]">
+</node>
+</node>
+<node index="2" text="אופק אחד עשר כב" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="false" password="false" bounds="[215,1291][367,735]">
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+<node index="5" text="" content-desc="" class="android.view.ViewGroup" package="com.studiogameslime.soccerapp" resource-id="goal-entry-footer" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[22,735][555,960]">
+</node>
+<node index="6" text="לא התקבל אישור לשמירת הגול. הבחירה נשמרה." content-desc="" class="android.view.View" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[47,751][530,841]">
+</node>
+<node index="7" text="" content-desc="ניסיון חוזר לשמירת הגול" class="android.widget.Button" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="true" long-clickable="false" checkable="false" checked="false" focusable="true" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[47,856][530,943]">
+<node index="0" text="ניסיון חוזר" content-desc="" class="android.widget.TextView" package="com.studiogameslime.soccerapp" resource-id="" enabled="true" clickable="false" long-clickable="false" checkable="false" checked="false" focusable="false" focused="false" selected="false" scrollable="false" visible-to-user="true" password="false" bounds="[199,872][376,925]">
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</hierarchy>

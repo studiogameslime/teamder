@@ -90,7 +90,7 @@ export function SeasonsCard({
   // ran" — and without this the only way back to a club's own history was to
   // switch seasons on again.
   if (seasons?.enabled !== true) {
-    if (closedSeasons === 0) return null;
+    if (closedSeasons === 0 && !seasons?.hasArchivedPeriods) return null;
     return (
       <View style={styles.card}>
         <Text style={styles.title}>{he.seasonsCardTitle}</Text>

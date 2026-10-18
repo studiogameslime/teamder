@@ -1,0 +1,14 @@
+{
+  "gameId": "lmUUmQru2HtKvQkRDVeD",
+  "file": "animation-sources/four-goal-pass.mp4",
+  "sha256": "edf90b203e36bd2c26b21527465988aee45883fd4dfb4f424d4835d7824c88bc",
+  "source": "tmp/live-action-production/shots/four-goal-pass.mp4",
+  "durationMs": 1183,
+  "extractionManifest": "animation-manifests/four-goal-pass.json",
+  "extractionManifestSha256": "cc6990f4e96245db8c4d5608b1a05b05e84972114f042fde4e79f3287a113947",
+  "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+  "timestampExact": false,
+  "observed": "הדגימות המבוקשות 100 ו-1100 אלפיות שנייה נפתחו ונבחנו: בחירת מבשל בלבד, ללא בחירה סופית, מסירה או חגיגה.",
+  "proofOfPass": false,
+  "separateStill": "docs/features/screenshots/action-pitch-production-four-goal-net-frame-2026-10-17.png"
+}

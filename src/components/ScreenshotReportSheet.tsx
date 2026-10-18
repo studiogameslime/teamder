@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // ScreenshotReportSheet — a global host that watches for the user taking a
 // device screenshot and, the moment they do, slides a "report a bug" sheet up
 // from the bottom with a CLEAN capture of the current screen already attached
@@ -262,10 +263,7 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
   },
   catTextOn: { color: colors.textOnPrimary },
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  sheet: { ...overlaySurfaces.sheet,
     paddingHorizontal: spacing.lg,
     paddingTop: 8,
     paddingBottom: spacing.xl,

@@ -1,0 +1,998 @@
+{
+  "phase": "מחזור סגור וחתום לאחר שני משחקים",
+  "source": "C:\\Users\\elira\\Teamder\\tmp\\final-production-2026-10-18\\data-audit\\data-four-four-goals.json",
+  "sourceSha256": "4628268719d6599805efec02aba2069faeb0c5de069dc7b1f763d6919b7a101d",
+  "readStartedAt": "2026-10-17T21:55:18.575713+00:00",
+  "readCompletedAt": "2026-10-17T21:55:24.759265+00:00",
+  "gameId": "Ra5ZBzOUjR5zQlMojHke",
+  "roundId": "r_mvcxnhim_ifyhwmaj",
+  "sideColors": {
+    "A": "red",
+    "B": "green"
+  },
+  "events": [
+    {
+      "id": "g_1792274057083_mhqa9a91yr",
+      "side": "B",
+      "teamIndex": 2,
+      "teamColor": "green",
+      "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "assisterId": "guest:mvcxg66v-bqnjce",
+      "ownGoal": false,
+      "assistStatus": "player",
+      "minute": 1
+    },
+    {
+      "id": "g_1792274083804_0946ommb23st",
+      "side": "A",
+      "teamIndex": 0,
+      "teamColor": "red",
+      "scorerId": "guest:mvcxh346-qdwb3o",
+      "assisterId": null,
+      "ownGoal": false,
+      "assistStatus": "none",
+      "minute": 1
+    },
+    {
+      "id": "g_1792274091128_wesmzkza6wh",
+      "side": "B",
+      "teamIndex": 2,
+      "teamColor": "green",
+      "scorerId": null,
+      "assisterId": null,
+      "ownGoal": false,
+      "assistStatus": null,
+      "minute": 1
+    },
+    {
+      "id": "g_1792274113436_l7qwmqddb9",
+      "side": "B",
+      "teamIndex": 2,
+      "teamColor": "green",
+      "scorerId": "guest:mvcxfud1-jvzn1w",
+      "assisterId": null,
+      "ownGoal": true,
+      "assistStatus": null,
+      "minute": 1
+    }
+  ],
+  "passed": 201,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "זהות המקור נלקחה מקבלת המוצר המאושרת",
+      "passed": true
+    },
+    {
+      "name": "המחזור שייך לחשבון ולמועדון הבדיקה",
+      "passed": true
+    },
+    {
+      "name": "תמונת הבסיס היא אותה תמונה קפואה",
+      "passed": true
+    },
+    {
+      "name": "שלושת מחזורי העבר נשארו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "נבדקו שמונה מקורות לכל אחד משלושת הישנים",
+      "passed": true
+    },
+    {
+      "name": "הסגל כולל את חשבון הבדיקה ו־11 אורחים",
+      "passed": true
+    },
+    {
+      "name": "כל מזהי ושמות האורחים ייחודיים",
+      "passed": true
+    },
+    {
+      "name": "כל האורחים נוצרו על ידי חשבון הבדיקה",
+      "passed": true
+    },
+    {
+      "name": "הגודל והכמות הם ארבעה מול ארבעה ושלוש קבוצות",
+      "passed": true
+    },
+    {
+      "name": "שלושה הרכבים מלאים של ארבעה",
+      "passed": true
+    },
+    {
+      "name": "כל 12 הרשומים מופיעים פעם אחת בכוחות",
+      "passed": true
+    },
+    {
+      "name": "האדומים והירוקים משחקים והכחולים ממתינים",
+      "passed": true
+    },
+    {
+      "name": "המשחק הוא הראשון ובעל זהות יציבה",
+      "passed": true
+    },
+    {
+      "name": "אין השאלות בקלט של ארבעת השערים",
+      "passed": true
+    },
+    {
+      "name": "בצד הירוק נמצאים הכובש והמבשלים המתוכננים",
+      "passed": true
+    },
+    {
+      "name": "בצד האדום נמצאים כובש השער ושחקן השער העצמי",
+      "passed": true
+    },
+    {
+      "name": "נשמרו בדיוק ארבעה אירועים בעלי מזהים ייחודיים",
+      "passed": true
+    },
+    {
+      "name": "אירוע 1: team תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": "B"
+    },
+    {
+      "name": "אירוע 1: scorerId תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "name": "אירוע 1: assisterId תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": "guest:mvcxg66v-bqnjce"
+    },
+    {
+      "name": "אירוע 1: ownGoal תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": false
+    },
+    {
+      "name": "אירוע 1: assistStatus תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": "player"
+    },
+    {
+      "name": "אירוע 2: team תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": "A"
+    },
+    {
+      "name": "אירוע 2: scorerId תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": "guest:mvcxh346-qdwb3o"
+    },
+    {
+      "name": "אירוע 2: assisterId תואם לתרחיש המנהל",
+      "passed": true
+    },
+    {
+      "name": "אירוע 2: ownGoal תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": false
+    },
+    {
+      "name": "אירוע 2: assistStatus תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": "none"
+    },
+    {
+      "name": "אירוע 3: team תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": "B"
+    },
+    {
+      "name": "אירוע 3: scorerId תואם לתרחיש המנהל",
+      "passed": true
+    },
+    {
+      "name": "אירוע 3: assisterId תואם לתרחיש המנהל",
+      "passed": true
+    },
+    {
+      "name": "אירוע 3: ownGoal תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": false
+    },
+    {
+      "name": "אירוע 4: team תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": "B"
+    },
+    {
+      "name": "אירוע 4: scorerId תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": "guest:mvcxfud1-jvzn1w"
+    },
+    {
+      "name": "אירוע 4: assisterId תואם לתרחיש המנהל",
+      "passed": true
+    },
+    {
+      "name": "אירוע 4: ownGoal תואם לתרחיש המנהל",
+      "passed": true,
+      "actual": true
+    },
+    {
+      "name": "כל השערים מיוחסים לאחד הצדדים שמשחקים",
+      "passed": true
+    },
+    {
+      "name": "כובש רגיל נמצא בצד המוטב ושער עצמי בצד שספג",
+      "passed": true
+    },
+    {
+      "name": "בישול משויך לשחקן אחר בצד הכובש",
+      "passed": true
+    },
+    {
+      "name": "תוצאת הלוח נגזרת מארבעת האירועים",
+      "passed": true
+    },
+    {
+      "name": "לירוקים שלושה ולאדומים שער אחד",
+      "passed": true
+    },
+    {
+      "name": "תגי הכובשים כוללים רק את שני שערי הכיבוש המזוהים",
+      "passed": true
+    },
+    {
+      "name": "השעון אינו רץ ואין חותמת התחלה נוכחית",
+      "passed": true
+    },
+    {
+      "name": "זמן המשחק המצטבר הוא אפס",
+      "passed": true
+    },
+    {
+      "name": "אין אירועי שעון או מקטעי משחק במקור",
+      "passed": true
+    },
+    {
+      "name": "טרם החלו פנדלים",
+      "passed": true
+    },
+    {
+      "name": "טרם נוצרה היסטוריה או חתימת משחק",
+      "passed": true
+    },
+    {
+      "name": "טרם נוצרו שורות סטטיסטיקה או סיכום מחזור",
+      "passed": true
+    },
+    {
+      "name": "המונים העסקיים של המשתמש לא השתנו לפני חתימה",
+      "passed": true
+    },
+    {
+      "name": "אין דלתת זקיפה מוקדמת במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "אין דלתת זקיפה מוקדמת במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "אין דלתת זקיפה מוקדמת במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "אין דלתת זקיפה מוקדמת במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: כל מקורות שלושת הישנים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: היסטוריה אחת וסימון חתימה אחד",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: מזהה ההיסטוריה והסימון הוא מזהה המשחק המקורי",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: תוצאה 1:3 ומנצחים בצד הירוק",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אינדקסי הקבוצות תואמים לסגל ששיחק",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: ההיסטוריה מכילה את שמונת המשתתפים ללא ממתינים",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: כל ארבעת סוגי השער נשמרו בלי השמטה או כפל",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: בישול האורח וסוג הבישול נשמרו בהיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שער עצמי של האורח נשמר בצד המוטב",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אין בעיטות הכרעה בהיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: בדיוק שמונה שורות ושמונה זהויות ייחודיות",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שבע שורות אורח ושורת משתמש אחת",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: הופעה ותוצאה יחידה ל־guest:mvcxfud1-jvzn1w",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: תוצאת קבוצה מדויקת וכיסוי מלא ל־guest:mvcxfud1-jvzn1w",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שערים ובישולים אישיים ללא שער עצמי או לא־ידוע ל־guest:mvcxfud1-jvzn1w",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אין שער נקי או מוני פנדל ל־guest:mvcxfud1-jvzn1w",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: הופעה ותוצאה יחידה ל־guest:mvcxh346-qdwb3o",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: תוצאת קבוצה מדויקת וכיסוי מלא ל־guest:mvcxh346-qdwb3o",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שערים ובישולים אישיים ללא שער עצמי או לא־ידוע ל־guest:mvcxh346-qdwb3o",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אין שער נקי או מוני פנדל ל־guest:mvcxh346-qdwb3o",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: הופעה ותוצאה יחידה ל־guest:mvcxhomb-b2hn9j",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: תוצאת קבוצה מדויקת וכיסוי מלא ל־guest:mvcxhomb-b2hn9j",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שערים ובישולים אישיים ללא שער עצמי או לא־ידוע ל־guest:mvcxhomb-b2hn9j",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אין שער נקי או מוני פנדל ל־guest:mvcxhomb-b2hn9j",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: הופעה ותוצאה יחידה ל־guest:mvcxhzbu-003h7x",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: תוצאת קבוצה מדויקת וכיסוי מלא ל־guest:mvcxhzbu-003h7x",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שערים ובישולים אישיים ללא שער עצמי או לא־ידוע ל־guest:mvcxhzbu-003h7x",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אין שער נקי או מוני פנדל ל־guest:mvcxhzbu-003h7x",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: הופעה ותוצאה יחידה ל־8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: תוצאת קבוצה מדויקת וכיסוי מלא ל־8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שערים ובישולים אישיים ללא שער עצמי או לא־ידוע ל־8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אין שער נקי או מוני פנדל ל־8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: הופעה ותוצאה יחידה ל־guest:mvcxf3b2-spv47b",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: תוצאת קבוצה מדויקת וכיסוי מלא ל־guest:mvcxf3b2-spv47b",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שערים ובישולים אישיים ללא שער עצמי או לא־ידוע ל־guest:mvcxf3b2-spv47b",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אין שער נקי או מוני פנדל ל־guest:mvcxf3b2-spv47b",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: הופעה ותוצאה יחידה ל־guest:mvcxg66v-bqnjce",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: תוצאת קבוצה מדויקת וכיסוי מלא ל־guest:mvcxg66v-bqnjce",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שערים ובישולים אישיים ללא שער עצמי או לא־ידוע ל־guest:mvcxg66v-bqnjce",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אין שער נקי או מוני פנדל ל־guest:mvcxg66v-bqnjce",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: הופעה ותוצאה יחידה ל־guest:mvcxgsau-dtji6o",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: תוצאת קבוצה מדויקת וכיסוי מלא ל־guest:mvcxgsau-dtji6o",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שערים ובישולים אישיים ללא שער עצמי או לא־ידוע ל־guest:mvcxgsau-dtji6o",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אין שער נקי או מוני פנדל ל־guest:mvcxgsau-dtji6o",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שמונה הופעות, ארבעה ניצחונות וארבעה הפסדים",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שני שערי כיבוש אישיים ובישול אחד",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: סכום שערי הזכות והחובה המדויקים הוא 16 לכל צד חשבוני",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: מונה המשחקים וסימון החתימה נכתבו פעם אחת",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: הלוח נוקה לאחר שמירה ותורי המנצחים התקדמו למשחק שני",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: שעון המשחק החדש אופס ללא יצירת פנדלים",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: סיכום ונוכחות אינם נזקפים לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: דלתת המשתמש היא גול וניצחון בלבד",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: כל דלתאות המונים תואמות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: כל דלתאות המונים תואמות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: נתוני הכרטיס והשיאים טרם השתנו",
+      "passed": true
+    },
+    {
+      "name": "שלוש בעיטות: הסדרה עדיין בשמירה חיה ללא חתימה שנייה",
+      "passed": true
+    },
+    {
+      "name": "שלוש בעיטות: מזהים ייחודיים וסוגי גול, עצירה והחטאה",
+      "passed": true
+    },
+    {
+      "name": "שלוש בעיטות: השעון מתעד התחלה, השהיה, המשך והשהיה",
+      "passed": true
+    },
+    {
+      "name": "שלוש בעיטות: שני מקטעי שעון חיוביים ללא חפיפה",
+      "passed": true
+    },
+    {
+      "name": "שלוש בעיטות: הזמן המצטבר שווה במדויק לסכום המקטעים",
+      "passed": true
+    },
+    {
+      "name": "שלוש בעיטות: אין שערי שדה במשחק ההכרעה",
+      "passed": true
+    },
+    {
+      "name": "שלוש בעיטות: כל מחזורי העבר ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: בדיוק שתי היסטוריות ושתי חתימות שונות",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: ההיסטוריה הראשונה נשארה זהה",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: מזהה המשחק ששיחק הוא זה שהוכן אחרי המשחק הראשון",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: כחולים בצד א וירוקים בצד ב",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: אפס־אפס רגיל נשמר לצד ניצחון ירוק",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: שש בעיטות לסירוגין בלבד",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: סוגי שש התוצאות נשמרו במדויק",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: בועט ושוער יריב נכונים בבעיטה 1",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: סוג התוצאה ודגל הכיבוש תואמים בבעיטה 1",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: בועט ושוער יריב נכונים בבעיטה 2",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: סוג התוצאה ודגל הכיבוש תואמים בבעיטה 2",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: בועט ושוער יריב נכונים בבעיטה 3",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: סוג התוצאה ודגל הכיבוש תואמים בבעיטה 3",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: בועט ושוער יריב נכונים בבעיטה 4",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: סוג התוצאה ודגל הכיבוש תואמים בבעיטה 4",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: בועט ושוער יריב נכונים בבעיטה 5",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: סוג התוצאה ודגל הכיבוש תואמים בבעיטה 5",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: בועט ושוער יריב נכונים בבעיטה 6",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: סוג התוצאה ודגל הכיבוש תואמים בבעיטה 6",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: תוצאת ההכרעה היא שתיים לאחת לירוקים",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: כל 12 השחקנים מופיעים פעם אחת",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־guest:mvcxepvd-4wgeo9",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־guest:mvcxf3b2-spv47b",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־guest:mvcxfhvn-amejwi",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־guest:mvcxfud1-jvzn1w",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־guest:mvcxg66v-bqnjce",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־guest:mvcxghj9-off0hi",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־guest:mvcxgsau-dtji6o",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־guest:mvcxh346-qdwb3o",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־guest:mvcxhdu6-z6f2ak",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־guest:mvcxhomb-b2hn9j",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הופעות, תוצאות, שערים, בישולים וכיסוי נכונים ל־guest:mvcxhzbu-003h7x",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: מוני הפנדלים של המשתמש הם 3/2/1 ובשוער 3/1/1",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: מוני הפנדלים של אורחים נשארו מוחרגים לפי המדיניות הקיימת",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: שש בעיטות לא הגדילו שערי שדה או בישולים",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: 16 הופעות, שמונה ניצחונות, שמונה הפסדים ושמונה שערים נקיים",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: תוצאות הזכות והחובה המדויקות נותרו 16",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הסדרה נוקתה והוכן משחק שלישי אפסי ללא חתימה שלישית",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: תגי הכיבוש המקוריים לא כוללים פנדלים",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: המחזור טרם הסתיים ואין סיכום או נוכחות סופית",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: הישנים נשארו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: כל דלתאות המונים האישיים תואמות, בלי כפל עצירה",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: כל הדלתאות תואמות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: כל הדלתאות תואמות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: עדיין אין זקיפת כרטיס או שיא מחזור",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: שלוש הבעיטות הראשונות נשארו זהות אחרי יתר הסדרה",
+      "passed": true
+    },
+    {
+      "name": "חתימה שנייה: שני מקטעי הזמן נשארו פעם אחת בנתוני המחזור",
+      "passed": true
+    },
+    {
+      "name": "חישובים: תוצאת הפונקציות נקשרת לטביעת מקור השמירה השנייה",
+      "passed": true
+    },
+    {
+      "name": "חישובים: אחוז הבועט הוא 67 ואחוז השוער 33",
+      "passed": true
+    },
+    {
+      "name": "חישובים: מצטבר השוער הוא 50 בגלל הבסיס הישן ועוד הדלתא החדשה",
+      "passed": true
+    },
+    {
+      "name": "חישובים: נתוני המחזור האישיים תואמים לסכמת ההיסטוריה",
+      "passed": true
+    },
+    {
+      "name": "חישובים: סיכום זמני של הלקוח והשרת הוא 2 משחקים, 4 שערים, בישול והכרעה אחת",
+      "passed": true
+    },
+    {
+      "name": "סיום: החשבון והמועדון תואמים לקבלה, וכל שלושת מחזורי העבר ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "סיום: הבסיס הקפוא נותר זהה",
+      "passed": true
+    },
+    {
+      "name": "סיום: הסטטוס והשלב סופיים והשעון כבוי",
+      "passed": true
+    },
+    {
+      "name": "סיום: שתי היסטוריות ושתי חתימות בלבד",
+      "passed": true
+    },
+    {
+      "name": "סיום: ההיסטוריה לא השתנתה ולא נוסף משחק ריק",
+      "passed": true
+    },
+    {
+      "name": "סיום: סמני החתימה לא השתנו",
+      "passed": true
+    },
+    {
+      "name": "סיום: כל שורות השחקנים נשמרו ללא תוספת או שינוי",
+      "passed": true
+    },
+    {
+      "name": "סיום: אין שער או בעיטת פנדל תלויים בלוח",
+      "passed": true
+    },
+    {
+      "name": "סיום: שני מקטעי הזמן נשמרו פעם אחת",
+      "passed": true
+    },
+    {
+      "name": "סיום: כל מוני החשבון האישיים זהים לאלו שלאחר שני המשחקים",
+      "passed": true
+    },
+    {
+      "name": "סיום: מסמך נוכחות יחיד וסמני דירוג והשלמה קיימים",
+      "passed": true
+    },
+    {
+      "name": "סיום: סדר החתימה, הנוכחות, הדירוג, הסיכום וההשלמה תקין",
+      "passed": true
+    },
+    {
+      "name": "סיום: שדות הסיכום נקשרים למחזור ולמועדון הנכונים",
+      "passed": true
+    },
+    {
+      "name": "סיום: הסיכום כולל שני משחקים, ארבעה שערים, בישול והכרעה אחת",
+      "passed": true
+    },
+    {
+      "name": "סיום: כיסוי הבישולים וההיסטוריה מלא",
+      "passed": true
+    },
+    {
+      "name": "סיום: בסיס התיקון שומר את כל 12 הזהויות ו־11 האורחים",
+      "passed": true
+    },
+    {
+      "name": "סיום: בסיס התיקון כולל את בישול האורח ואת שני המשחקים",
+      "passed": true
+    },
+    {
+      "name": "סיום: שער עצמי ולא־ידוע נספרים פעם אחת בסיכום",
+      "passed": true
+    },
+    {
+      "name": "סיום: המנצחים הירוקים מובילים בשני משחקים",
+      "passed": true
+    },
+    {
+      "name": "סיום: אין זקיפת אורח בדירוג המועדון לפי החוזה הקיים",
+      "passed": true
+    },
+    {
+      "name": "סיום: הדירוג האישי נקשר לחשבון, למועדון ולמחזור הנכונים",
+      "passed": true
+    },
+    {
+      "name": "סיום: ציון 8.7 ושינוי של מינוס 0.3 עם בסיס תשע",
+      "passed": true
+    },
+    {
+      "name": "סיום: דירוג יחיד ללא תזוזה ובסיס מכויל שנשמר",
+      "passed": true
+    },
+    {
+      "name": "סיום: מדדי הדירוג שווים למונים המצטברים של המשתמש",
+      "passed": true
+    },
+    {
+      "name": "סיום: דלתת החתימה הסופית מדויקת במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "סיום: דלתת החתימה הסופית מדויקת במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "סיום: דלתת החתימה הסופית מדויקת במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "סיום: דלתת החתימה הסופית מדויקת במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "סיום: אורחים אינם מגדילים ממוצע נוכחות של חברי מועדון",
+      "passed": true
+    },
+    {
+      "name": "סיום: הדלתא מהבסיס היא מחזור אחד ושני משחקים למשתמש",
+      "passed": true
+    },
+    {
+      "name": "סיום: דלתת המועדון היא שני משחקים ושני כובשים מזוהים בלבד",
+      "passed": true
+    },
+    {
+      "name": "סיום: ראיית החישוב שייכת לטביעת מקור הסיום",
+      "passed": true
+    },
+    {
+      "name": "סיום: כל מסמך הסיכום תואם לחישוב בפועל בלקוח ובשרת",
+      "passed": true
+    },
+    {
+      "name": "סיום: שני מחשבוני הציון בפועל תואמים לציון השמור",
+      "passed": true
+    }
+  ],
+  "limits": [
+    "המקור מוכיח מצב שעון נוכחי אפסי וללא אירועי שעון; דיווח המנהל שהוא לא הופעל קודם הוא תצפית ממשק, לא מסקנה מלאה מצילום יחיד.",
+    "דקת אירוע 1 אינה ראיה לכך שהשעון פעל; זהו שדה הדקה שמסלול הזנת הגול שומר גם לפני תחילת זמן.",
+    "אומתה בפועל זקיפה בייצור: היסטוריה אחת, שמונה שורות, בישול אורח וסוגי השערים; התאמת גרסת הפונקציה לפריסה נמסרת בראיית הפריסה של המוביל.",
+    "המנהל מסר שהפריסה בעיצומה או הושלמה; צילום זה לבדו אינו מוכיח איזו גרסת פונקציה טיפלה באירוע.",
+    "אין מקור נפרד לביטול השער הלא־ידוע והחזרתו; ההיסטוריה מוכיחה רק תוצאה סופית של ארבעה אירועים, ואינה שומרת את מזהי אירועי הגול המקוריים.",
+    "תיקון וביטול הבעיטה השישית נצפו בידי המוביל; צילום שלוש הבעיטות וההיסטוריה הסופית מאמתים את הסדרה הסופית אך אינם מוכיחים את שני מזהי הבעיטה השישית, שאינם נשמרים בהיסטוריה.",
+    "מוני פנדלים של אורחים אינם נשמרים לפי החרגה מפורשת קיימת. ההיסטוריה כן מכילה את כל הבעיטות והשוער, וחישוב ממנה מסוגל להציגם; אין לטעון שהמונים החסרים הם אפס בעיטות בפועל.",
+    "אומתו נתוני הייצור והחישובים הטהורים; תצפיות הממשק וצילומיו הם ראיות נפרדות שבאחריות המוביל. אין כאן טענה שבדיקה זו הריצה את הממשק."
+  ],
+  "firstCommitSource": {
+    "file": "C:\\Users\\elira\\Teamder\\tmp\\final-production-2026-10-18\\data-audit\\data-four-first-commit.json",
+    "sha256": "abea79f2f45515995074a0092b38f00e695a96bb658a178400124a9c073ed054",
+    "readCompletedAt": "2026-10-17T21:57:02.349121+00:00"
+  },
+  "secondCommitSource": {
+    "file": "C:\\Users\\elira\\Teamder\\tmp\\final-production-2026-10-18\\data-audit\\data-four-second-commit.json",
+    "sha256": "4632d1b04ab9b06bd9bf8b858a7db8183eae217b6c34b8f6bd7d6cc73080373c",
+    "readCompletedAt": "2026-10-17T22:09:56.210282+00:00"
+  },
+  "derived": {
+    "source": "data-four-second-commit.json",
+    "sourceSha256": "4632d1b04ab9b06bd9bf8b858a7db8183eae217b6c34b8f6bd7d6cc73080373c",
+    "qa": {
+      "contribution": {
+        "pct": 33,
+        "touched": 1,
+        "teamGoals": 3
+      },
+      "heldPitch": 2,
+      "scoringStreak": 1,
+      "teamGoalsFor": 3,
+      "teamGoalsAgainst": 1,
+      "bestMiniGame": {
+        "round": 1,
+        "goals": 1,
+        "assists": 0
+      },
+      "playedRounds": 2,
+      "pen": {
+        "scored": 2,
+        "saved": 1,
+        "missed": 1,
+        "conceded": 1
+      }
+    },
+    "guestKeeperDerivedFromHistory": {
+      "scored": 0,
+      "saved": 1,
+      "missed": 0,
+      "conceded": 2
+    },
+    "gameKickerPct": 67,
+    "gameKeeperPct": 33,
+    "cumulativeKeeperPct": 50,
+    "provisionalClientSummaryStats": {
+      "rounds": 2,
+      "goals": 4,
+      "assists": 1,
+      "shootouts": 1,
+      "ties": 0
+    },
+    "provisionalServerSummaryStats": {
+      "rounds": 2,
+      "goals": 4,
+      "assists": 1,
+      "shootouts": 1,
+      "ties": 0
+    },
+    "limits": [
+      "These are pure current-code calculations from real captured data, not a sealed server summary or a rendered screen.",
+      "Guest penalty counters are excluded from gamePlayerStats by existing explicit policy; history can still derive them."
+    ]
+  },
+  "finishedSource": {
+    "file": "C:\\Users\\elira\\Teamder\\tmp\\final-production-2026-10-18\\data-audit\\data-four-finished.json",
+    "sha256": "3b598558e607bf1f39a9d30d00446805f324a9f53f25943c5445f31dc56f7419",
+    "readCompletedAt": "2026-10-17T22:11:15.012630+00:00"
+  },
+  "finishedDerived": {
+    "source": "data-four-finished.json",
+    "sourceSha256": "3b598558e607bf1f39a9d30d00446805f324a9f53f25943c5445f31dc56f7419",
+    "moduleHashes": {
+      "src/utils/roundSummary.ts": "b80e5ce43ef332827245931e631f07cf0c3ab16ec8ba109668b13b32334985c4",
+      "functions/src/roundSummary.ts": "db42b87dde25d0ae8daa56f70dcdd3f20f6fc6be8740602e48f56cbec5759a04",
+      "src/utils/eveningScore.ts": "b6712c64070e721041e0dd949748e60634cb5c381580aeb3a69af9fc587a2edd",
+      "functions/src/eveningScoreCore.ts": "a1efc60f847e23f0835bee034b525bade44a43dc95516c0c0c1ecb1a80be35aa"
+    },
+    "fullSealedClientSummaryMatches": true,
+    "fullSealedServerSummaryMatches": true,
+    "sealedStats": {
+      "shootouts": 1,
+      "assists": 1,
+      "ties": 0,
+      "rounds": 2,
+      "goals": 4
+    },
+    "scoreInput": {
+      "goals": 1,
+      "assists": 0,
+      "wins": 2,
+      "gamesPlayed": 2,
+      "goalsFor10": 1,
+      "assistsFor10": 1,
+      "pen": {
+        "scored": 2,
+        "saved": 1,
+        "missed": 1,
+        "conceded": 1
+      }
+    },
+    "clientScore": 8.7,
+    "serverScore": 8.7,
+    "storedScore": 8.7,
+    "storedScoreDelta": -0.3,
+    "proof": "Pure calculations over the persisted correctionBasis and gamePlayerStats; no UI, SDK or production write."
+  }
+}

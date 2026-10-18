@@ -8,7 +8,7 @@ import {
   assertSucceeds,
   assertFails,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 let env;
 
@@ -38,6 +38,7 @@ before(async () => {
     });
     await setDoc(doc(db, 'games', GAME, 'roundHistory', 'r1'), { scoreA: 2, scoreB: 1 });
     await setDoc(doc(db, 'games', GAME, 'committedRounds', 'r1'), { at: 1 });
+    await setDoc(doc(db, 'roundSummaries', GAME), {gameId:GAME,groupId:GROUP,stats:{rounds:1}});
   });
 });
 
@@ -45,6 +46,17 @@ after(async () => { await env?.cleanup(); });
 
 const read = (uid, sub) =>
   getDoc(doc(env.authenticatedContext(uid).firestore(), 'games', GAME, sub, 'r1'));
+
+const summary = (uid, gameId) => getDocs(query(collection(env.authenticatedContext(uid).firestore(),'roundSummaries'),where('groupId','==',GROUP),where('gameId','==',gameId)));
+test('club-scoped summary query returns the sealed evening for a member',async()=>{
+ const result=await assertSucceeds(summary(MEMBER,GAME));assert.equal(result.docs.length,1);
+});
+test('club-scoped query can prove a missing summary without a denied missing-document read',async()=>{
+ const result=await assertSucceeds(summary(MEMBER,'not-sealed'));assert.equal(result.empty,true);
+});
+test('an outsider cannot use either an existing or missing summary query to bypass membership',async()=>{
+ await assertFails(summary(OUTSIDER,GAME));await assertFails(summary(OUTSIDER,'not-sealed'));
+});
 
 test('a rostered player still reads roundHistory', async () => {
   await assertSucceeds(read(PLAYER, 'roundHistory'));

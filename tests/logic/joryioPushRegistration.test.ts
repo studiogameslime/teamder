@@ -6,6 +6,7 @@ jest.mock('@/services/errorLog', () => ({ logUnexpected: (...a: unknown[]) => lo
 (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 const sdk = {
   initialize: jest.fn().mockResolvedValue(undefined),
+  getDiagnostics: jest.fn().mockResolvedValue({apiEndpoint: 'test-host'}),
   registerPushToken: jest.fn(),
   getPushPermissionStatus: jest.fn().mockResolvedValue('granted'),
   setAttribute: jest.fn(),

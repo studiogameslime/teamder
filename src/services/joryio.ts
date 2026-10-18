@@ -75,6 +75,9 @@ const APP_VERSION =
   (Constants.expoConfig?.version as string | undefined) ?? 'dev';
 
 let started = false;
+let lastInitializationError: { code: string; message: string } | null = null;
+let initialization: Promise<void> | null = null;
+let retriedInitializationForPush = false;
 
 /**
  * snake_case → the Title Case names the workspace already holds, so events
@@ -118,9 +121,9 @@ export function toJoryioName(raw: string): string {
 /** Start the SDK once, as early as possible so the anonymous id exists before
  *  the first event. Safe to call repeatedly. */
 export async function initJoryio(): Promise<void> {
-  if (started || USE_MOCK_DATA || !KEY) return;
-  started = true;
-  await Joryio.initialize(KEY, API_HOST, {
+  if (started || lastInitializationError || USE_MOCK_DATA || !KEY) return;
+  if(initialization)return initialization;
+  initialization=Joryio.initialize(KEY, API_HOST, {
     // React Native's fetch sends `User-Agent: okhttp/...`, which the backend's
     // bot detector classifies as a bot; every analytics query then filters the
     // event out with `$is_bot != 'true'`. An app-shaped UA is not flagged.
@@ -131,7 +134,12 @@ export async function initJoryio(): Promise<void> {
     // was never sent. That cost a full diagnostic build to discover.
     enableDebug: __DEV__,
     logLevel: 'debug',
-  } as Record<string, unknown>);
+  } as Record<string, unknown>).then(async () => {
+    const diagnostics = await Joryio.getDiagnostics();
+    lastInitializationError = diagnostics.initializationError ?? null;
+    started = lastInitializationError === null;
+  });
+  try{await initialization;}finally{initialization=null;}
 }
 
 export async function track(
@@ -294,12 +302,30 @@ export async function registerPushToken(token: string): Promise<boolean> {
     if (!token || !/^[0-9a-f]{64}$/i.test(token)) return false;
   }
   if (!started) await initJoryio();
-  const result = await Joryio.registerPushToken(token);
+  let result = await Joryio.registerPushToken(token);
+  // The SDK deliberately swallows native initialization failures. Its explicit
+  // failure response is the supported signal to retry; do not inspect internals.
+  if(!result.success && result.message==='SDK initialization failed' && !retriedInitializationForPush){
+    retriedInitializationForPush=true;
+    started=false;
+    lastInitializationError=null;
+    await initJoryio();
+    result=await Joryio.registerPushToken(token);
+  }
   if (!result.success) {
+    const initFailure = lastInitializationError as { code: string; message: string } | null;
     logUnexpected('joryioRegisterPushToken', {
       message: result.message ?? 'Push registration failed',
       isUnauthorized: result.isUnauthorized === true,
       isRetryable: result.isRetryable === true,
+      ...(initFailure ? {
+        initializationCode: /^[A-Z0-9_]{1,64}$/.test(initFailure.code) ? initFailure.code : 'NATIVE_INIT_ERROR',
+        // Native exception text can include configuration; never send keys,
+        // URLs or long opaque tokens to Pulse.
+        initializationMessage: initFailure.message
+          .replace(/jry_[a-z0-9_]+|https?:\/\/\S+|[a-z0-9_+\/-]{24,}={0,2}/gi, '[redacted]')
+          .slice(0, 300),
+      } : {}),
     });
     return false;
   }

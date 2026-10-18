@@ -21,6 +21,7 @@ import type { UserId } from '@/types';
 import { loadPersonalHighlights } from './personalHighlightsService';
 import type { PersonalHighlights, PersonalRound } from '@/utils/personalStatistics';
 import { didEveningHappen } from '@/utils/eveningPlayed';
+import { personalPartnerResults, type PersonalPartnerResults } from '@/utils/personalPartnerStats';
 
 export interface NamedStat {
   uid: UserId;
@@ -41,6 +42,7 @@ export interface PlayerStatsSummary {
   /** distinct teammates ever shared a finished game with. */
   distinctPlayers: number;
   mostPlayedWith: NamedStat | null;
+  regularPartnerResults?: PersonalPartnerResults | null;
   mostWinsWith: NamedStat | null;
   /** opponent you beat the most (head-to-head). */
   biggestVictim: NamedStat | null;
@@ -81,7 +83,7 @@ function topEntry(map: Record<string, number>): NamedStat | null {
 export const playerStatsService = {
   async compute(
     userId: UserId,
-    ctx: { goals?: number; assists?: number; onBase?: (summary: PlayerStatsSummary) => void; onHighlights?: (highlights: PersonalHighlights) => void; isCurrent?: () => boolean } = {},
+    ctx: { goals?: number; assists?: number; onBase?: (summary: PlayerStatsSummary) => void; onHighlights?: (highlights: PersonalHighlights) => void; isCurrent?: () => boolean; recentHighlightsOnly?: boolean } = {},
   ): Promise<PlayerStatsSummary> {
     const goals = Math.max(0, ctx.goals ?? 0);
     const assists = Math.max(0, ctx.assists ?? 0);
@@ -154,6 +156,7 @@ export const playerStatsService = {
     let nemesis: NamedStat | null = null;
     let mostAssistedTo: NamedStat | null = null;
     let mostAssistedBy: NamedStat | null = null;
+    let regularPartnerResults: PersonalPartnerResults | null = null;
     try {
       const [asA, asB] = await Promise.all([
         getDocs(query(col.pairStats(), where('a', '==', userId))),
@@ -201,11 +204,14 @@ export const playerStatsService = {
         const x = d.data() as {
           b?: string;
           winsTogether?: number;
+          sameTeam?: number;
+          lossesTogether?: number;
           winsA?: number;
           winsB?: number;
           assistsAToB?: number;
           assistsBToA?: number;
         };
+        if (x.b === mostPlayedWith?.uid) regularPartnerResults = personalPartnerResults(x);
         if (x.b)
           consider(
             x.b,
@@ -220,11 +226,14 @@ export const playerStatsService = {
         const x = d.data() as {
           a?: string;
           winsTogether?: number;
+          sameTeam?: number;
+          lossesTogether?: number;
           winsA?: number;
           winsB?: number;
           assistsAToB?: number;
           assistsBToA?: number;
         };
+        if (x.a === mostPlayedWith?.uid) regularPartnerResults = personalPartnerResults(x);
         if (x.a)
           consider(
             x.a,
@@ -249,6 +258,7 @@ export const playerStatsService = {
       goalsPerEvening,
       distinctPlayers,
       mostPlayedWith,
+      regularPartnerResults,
       mostWinsWith,
       biggestVictim,
       nemesis,
@@ -256,7 +266,10 @@ export const playerStatsService = {
       mostAssistedBy,
     };
     ctx.onBase?.(base);
-    const highlights = await loadPersonalHighlights(userId, attendedRounds, {
+    const highlightRounds = ctx.recentHighlightsOnly
+      ? [...attendedRounds].sort((a, b) => b.at - a.at || b.gameId.localeCompare(a.gameId)).slice(0, 5)
+      : attendedRounds;
+    const highlights = await loadPersonalHighlights(userId, highlightRounds, {
       isCurrent: ctx.isCurrent,
       onProgress: ctx.onHighlights,
     });

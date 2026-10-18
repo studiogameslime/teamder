@@ -188,10 +188,11 @@ const styles = StyleSheet.create({
   },
 
   // ── action tiles ──
-  tilesRow: { flexDirection: 'row', gap: spacing.sm },
+  tilesRow: { flexDirection: 'row', alignItems:'stretch', gap: spacing.sm },
   tile: {
     flex: 1,
     minWidth: 0,
+    minHeight: 150,
     borderRadius: R,
     overflow: 'hidden',
     paddingVertical: spacing.md,
@@ -215,11 +216,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tileSub: {
+    minHeight: 28,
     fontSize: 10.5,
     lineHeight: 14,
     fontWeight: '600',
     color: colors.textMuted,
     textAlign: 'center',
   },
-  tileChev: { marginTop: spacing.xs, opacity: 0.8 },
+  tileChev: { marginTop: 'auto', paddingTop:spacing.xs, opacity: 0.8 },
 });

@@ -55,14 +55,10 @@ function rate(numerator: number, denominator: number): number | null {
 /**
  * Which denominator a metric may honestly use.
  *
- * Falls back to `rounds` only when the coverage counter is absent entirely —
- * a row written before the counters existed and not yet backfilled. That is
- * the pre-existing behaviour, no worse than before, and the backfill removes
- * it. A counter of 0 with rounds > 0 is NOT missing: it means the metric was
- * never measured for this player, and the rate is genuinely unknowable.
+ * Missing or invalid coverage is unknown, never an assumption of full history.
  */
 function coverage(counter: number | undefined, rounds: number): number {
-  return typeof counter === 'number' ? counter : rounds;
+  return typeof counter === 'number' && Number.isFinite(counter) && counter >= 0 && counter <= rounds ? counter : 0;
 }
 
 /**
@@ -111,17 +107,15 @@ export function toEfficiencyRow(
   const csRounds = coverage(row.csRounds, rounds);
   const asRounds = coverage(row.asRounds, rounds);
 
-  // Goals have been recorded since the first evening, so they divide by the
-  // full sample. Assists have not, which also makes `asRounds` the honest
-  // denominator for goals+assists: it is the window in which BOTH were being
-  // recorded, and inflating it with goal-only rounds would overstate the
-  // combined rate for exactly the longest-standing players.
+  // Goals cover the whole sample. The combined numerator may use that sample
+  // only when assists cover it too; lifetime goals cannot be divided by a
+  // shorter assist window.
   return {
     uid: row.uid,
     winPct: rate(row.wins ?? 0, rounds) === null ? null : (row.wins / rounds) * 100,
     goalsPerGame: rate(row.goals ?? 0, rounds),
     assistsPerGame: rate(row.assists ?? 0, asRounds),
-    gaPerGame: rate((row.goals ?? 0) + (row.assists ?? 0), asRounds),
+    gaPerGame: asRounds === rounds ? rate((row.goals ?? 0) + (row.assists ?? 0), rounds) : null,
     cleanSheetPct:
       rate(row.cleanSheets ?? 0, csRounds) === null
         ? null

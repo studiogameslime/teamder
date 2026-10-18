@@ -30,7 +30,8 @@
 // their own caches; those screens are opened rarely, this one is the launch
 // screen.
 
-import { has } from '../secrets';
+import { readUnresolvedWork, type UnresolvedWork } from './unresolvedWork';
+import { has } from '../capabilities';
 import { MOCK_WORK } from '../config';
 import { mockWork } from './workItemsMock';
 import { listAll, getDoc, patchDoc, type FsDoc } from './firestoreRest';
@@ -40,7 +41,7 @@ import { type Task, type TaskPriority } from './tasksService';
 import { type FeatureItem } from './featuresService';
 import { type IdeaItem, type IdeaStatus } from './ideasService';
 import { screenHe } from './screenNames';
-import { listAwaitingReply, type ThreadSummary } from './teamderChatService';
+import { listAwaitingReply, resolveSupportThread, reopenSupportThread, type ThreadSummary } from './teamderChatService';
 
 export type WorkStream = 'task' | 'error' | 'report' | 'feature' | 'idea' | 'chat';
 
@@ -80,6 +81,7 @@ export interface WorkItem {
   reporterName: string;
   /** Occurrences, for errors. 1 everywhere else. */
   count: number;
+  chatMessageId?: string;
   /**
    * May Claude act on this item without asking first?
    *
@@ -92,6 +94,7 @@ export interface WorkItem {
   claudeMayAct: boolean;
   /** Why, when `claudeMayAct` is false — or what the item is waiting for. */
   hint: string;
+  unresolved?: UnresolvedWork;
 }
 
 // Plural, because every place these are shown carries a count beside them
@@ -200,17 +203,17 @@ export const DONE_LIMIT = 20;
 const LIST_FIELDS: Record<Exclude<WorkStream, 'chat'>, readonly string[]> = {
   task: ['title', 'notes', 'category', 'status', 'priority', 'source', 'screen',
     'reporterId', 'reporterName', 'createdAt', 'doneAt',
-    'claudeStatus', 'claudeNote', 'claudeAt'],
+    'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
   error: ['title', 'operation', 'status', 'count', 'firstSeen', 'lastSeen',
     'lastMessage', 'lastScreen', 'lastUserId',
-    'claudeStatus', 'claudeNote', 'claudeAt'],
+    'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
   report: ['type', 'message', 'userName', 'userId', 'screen', 'createdAt',
     'status', 'fixRequested', 'trail',
-    'claudeStatus', 'claudeNote', 'claudeAt'],
+    'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
   feature: ['kind', 'text', 'status', 'createdAt',
-    'claudeStatus', 'claudeNote', 'claudeAt'],
+    'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
   idea: ['text', 'status', 'spec', 'createdAt',
-    'claudeStatus', 'claudeNote', 'claudeAt'],
+    'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
 };
 
 const IDEA_HINT: Record<IdeaStatus, string> = {
@@ -428,13 +431,13 @@ function fromIdea(i: IdeaItem): WorkItem {
  * through, and invisible the moment you filtered. It belongs on the list, with
  * a tag, like everything else.
  *
- * It has no stored state: it is "open" while the last word is theirs, and it
- * leaves the list when you answer. There is nothing to close and nothing to
- * hand over, so `closeItem` refuses it.
+ * A reply or an explicit resolution removes it from waiting. Resolution is
+ * bound to the displayed last-message id; a later user message reopens it.
  */
 function fromThread(t: ThreadSummary): WorkItem {
   return {
     key: `chat:${t.userId}`,
+    chatMessageId: t.lastMessageId,
     stream: 'chat',
     kind: 'chat',
     id: t.userId,
@@ -475,26 +478,29 @@ const lean = (stream: WorkStream, force: boolean) =>
     force,
   }).catch(() => [] as FsDoc[]);
 
-export async function listWork(force = false): Promise<WorkItem[]> {
+export async function listWork(force = false, onProgress?: (items: WorkItem[]) => void): Promise<WorkItem[]> {
   // The fixture covers every state the screen can show, including the ones
   // production has not produced yet. See ./workItemsMock.
   if (MOCK_WORK || !has.firebase()) return sortWork(mockWork(Date.now()));
-  const [tasks, errs, reps, feats, ideas, threads] = await Promise.all([
-    lean('task', force),
-    lean('error', force),
-    lean('report', force),
-    lean('feature', force),
-    lean('idea', force),
-    listAwaitingReply(force).catch(() => [] as ThreadSummary[]),
+  const streams: WorkItem[][] = Array.from({ length: 6 }, () => []);
+  const collect = () => trimWork(streams.flat());
+  const receive = <T,>(index: number, pending: Promise<T[]>, map: (item: T) => WorkItem) => pending.then(rows => {
+    streams[index] = rows.map(map);
+    if (streams.some(items => items.length)) onProgress?.(collect());
+  });
+  await Promise.all([
+    receive(0, lean('task', force), d => ({ ...fromTask(taskFromDoc(d)), unresolved: readUnresolvedWork(d) })),
+    receive(1, lean('error', force), d => ({ ...fromError(d), unresolved: readUnresolvedWork(d) })),
+    receive(2, lean('report', force), d => ({ ...fromReport(d), unresolved: readUnresolvedWork(d) })),
+    receive(3, lean('feature', force), d => fromFeature(featureFromDoc(d))),
+    receive(4, lean('idea', force), d => fromIdea(ideaFromDoc(d))),
+    receive(5, listAwaitingReply(force).catch(() => [] as ThreadSummary[]), fromThread),
   ]);
-  const all = sortWork([
-    ...threads.map(fromThread),
-    ...tasks.map((d) => fromTask(taskFromDoc(d))),
-    ...errs.map(fromError),
-    ...reps.map(fromReport),
-    ...feats.map((d) => fromFeature(featureFromDoc(d))),
-    ...ideas.map((d) => fromIdea(ideaFromDoc(d))),
-  ]);
+  return collect();
+}
+
+function trimWork(items: WorkItem[]): WorkItem[] {
+  const all = sortWork(items);
   // Every open item, and only the most recent closed ones — see DONE_LIMIT.
   const done = all
     .filter((i) => i.state === 'done')
@@ -563,8 +569,7 @@ export function claudeQueue(items: WorkItem[]): WorkItem[] {
 
 /** Accept / close an item, in whatever word its own collection speaks. */
 export async function closeItem(item: WorkItem): Promise<boolean> {
-  // A conversation is closed by replying to it, not by ticking it.
-  if (item.stream === 'chat') return false;
+  if (item.stream === 'chat') return resolveSupportThread(item.id, item.chatMessageId ?? '', item.createdAt);
   invalidateStream(item.stream);
   const fields: Record<string, unknown> = { status: CLOSED_STATUS[item.stream] };
   // Tasks carry their own completion timestamp that the tasks list sorts by.
@@ -574,7 +579,7 @@ export async function closeItem(item: WorkItem): Promise<boolean> {
 
 /** Re-open an accepted item. */
 export async function reopenItem(item: WorkItem): Promise<boolean> {
-  if (item.stream === 'chat') return false;
+  if (item.stream === 'chat') return reopenSupportThread(item.id);
   invalidateStream(item.stream);
   const fields: Record<string, unknown> = { status: 'new' };
   if (item.stream === 'task') fields.doneAt = 0;

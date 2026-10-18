@@ -8,10 +8,10 @@
 // who skipped several sees ALL of them in one flat list (newest first), with no
 // per-version breakdown. Whether the modal appears at all for a given release
 // is decided by us: if we curate no highlight items for that version, nothing
-// shows (the baseline just advances silently).
+// shows; eligibility is preserved for later publication.
 //
 // One-time guarantee: the caller (WhatsNewGate) writes seenVersion = current
-// the moment it decides to show, so the modal never reappears for that version
+// after a visible render, so the modal does not reappear for that version
 // — across relaunches, foregrounding, or closing the app mid-modal.
 
 import { doc, getDoc } from 'firebase/firestore';
@@ -44,12 +44,10 @@ export interface WhatsNewPayload {
 
 /**
  * Resolve what (if anything) to show the current user. Returns null when the
- * modal should NOT be shown — and in the null cases that represent "seen it" or
- * "nothing to show", advances the local baseline so we don't re-check forever.
+ * modal should NOT be shown. Missing content preserves eligibility.
  *
  * IMPORTANT: this does NOT itself mark the payload version as seen — the caller
- * marks it right before rendering (write-through) so a crash between resolve and
- * render can't make the modal appear twice.
+ * marks it after a visible render, never merely after a successful fetch.
  */
 export async function resolveWhatsNew(): Promise<WhatsNewPayload | null> {
   const current = getCurrentVersion();
@@ -60,8 +58,8 @@ export async function resolveWhatsNew(): Promise<WhatsNewPayload | null> {
 
   const cfg = await fetchWhatsNewDoc();
   if (!cfg || cfg.enabled === false || !Array.isArray(cfg.items)) {
-    // No config / globally disabled → advance baseline silently.
-    await storage.setWhatsNewSeenVersion(current);
+    // Missing/disabled configuration is not evidence that content was seen.
+    // It may be published later for this same installed version.
     return null;
   }
 
@@ -89,13 +87,14 @@ export async function resolveWhatsNew(): Promise<WhatsNewPayload | null> {
         it &&
         typeof it.version === 'string' &&
         typeof it.title === 'string' &&
+        typeof it.body === 'string' &&
+        typeof it.emoji === 'string' &&
         inWindow(it.version),
     )
     .sort((a, b) => compareVersions(b.version, a.version));
 
   if (items.length === 0) {
-    // Nothing curated for this jump → advance baseline silently.
-    await storage.setWhatsNewSeenVersion(current);
+    // Preserve eligibility if highlights are published later.
     return null;
   }
   return { version: current, items };
@@ -120,6 +119,6 @@ async function fetchWhatsNewDoc(): Promise<WhatsNewDoc | null> {
   } catch (err) {
     // Launch-path read — offline is expected; don't log it as a failure.
     if (!isExpectedDenial(err)) logError('fetchWhatsNew', err, {});
-    return null;
+    throw err;
   }
 }

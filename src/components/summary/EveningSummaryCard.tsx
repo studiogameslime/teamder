@@ -60,7 +60,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(function EveningSummar
   const records = m.personalRecords ?? [];
   const progress = progressLines(m.metrics, m.score, `${m.gameId}:${m.uid}`);
   const outcomes = m.outcomes?.length === m.rounds ? m.outcomes : undefined;
-  const draws = outcomes?.filter((o) => o === 'draw').length ?? 0;
+  const draws = outcomes?.filter((o) => o === 'draw').length ?? Math.max(0, m.rounds - m.wins - m.losses);
   const pen = m.penalties;
   const hasPen = !!pen && pen.scored + pen.saved + pen.missed + pen.conceded > 0;
   const stats: Array<{ value: number; label: string; color: string; icon?: IconName }> = [
@@ -97,19 +97,20 @@ export const EveningSummaryCard = forwardRef<View, Props>(function EveningSummar
       <Text style={s.balance}><Text style={{ color: C.green }}>{eveningCount(m.wins, 'ניצחון', 'ניצחונות')}</Text>{' · '}
         <Text style={{ color: C.red }}>{eveningCount(m.losses, 'הפסד', 'הפסדים')}</Text>{draws > 0 ? ` · ${draws} תיקו` : ''}</Text>
       <View style={s.resultRow}><View style={s.rate}>
-        <Text style={s.rateNumber}>{m.wins + m.losses > 0 ? `${m.winRate}%` : '—'}</Text><Text style={s.rateLabel}>ניצחונות</Text>
+        <Text style={s.rateNumber}>{m.rounds > 0 ? `${m.winRate}%` : '—'}</Text><Text style={s.rateLabel}>ניצחונות</Text>
       </View><View style={s.flex}>
         {outcomes ? <View style={s.outcomes}>{outcomes.map((o, i) => <View key={i} accessible
           accessibilityLabel={`משחק ${i + 1}: ${o === 'win' ? 'ניצחון' : o === 'loss' ? 'הפסד' : 'תיקו'}`}
           style={[s.outcome, { backgroundColor: o === 'win' ? '#DEF6E8' : o === 'loss' ? '#FFE3E6' : '#EEF0F5' }]}>
           <Text style={[s.outcomeText, { color: o === 'win' ? C.green : o === 'loss' ? C.red : C.muted }]}>{o === 'win' ? 'נ' : o === 'loss' ? 'ה' : 'ת'}</Text>
-        </View>)}</View> : <View style={s.distribution} accessibilityLabel="חלוקת ניצחונות והפסדים, ללא סדר משחקים">
+        </View>)}</View> : <View style={s.distribution} accessibilityLabel="חלוקת ניצחונות, הפסדים ותיקו, ללא סדר משחקים">
           {m.wins > 0 ? <View style={{ flex: m.wins, backgroundColor: '#71CCA0' }} /> : null}
           {m.losses > 0 ? <View style={{ flex: m.losses, backgroundColor: '#F4A9B0' }} /> : null}
+          {draws > 0 ? <View style={{ flex: draws, backgroundColor: '#CBD1DD' }} /> : null}
         </View>}
-        <Text style={s.resultNote}>{outcomes ? 'סדר המשחקים ששיחקת, מימין לשמאל' : 'מאזן המשחקים שהוכרעו'}</Text>
+        <Text style={s.resultNote}>{outcomes ? 'סדר המשחקים ששיחקת, מימין לשמאל' : 'מאזן המשחקים, ללא סדר כרונולוגי'}</Text>
       </View></View>
-      {draws > 0 ? <Text style={s.note}>אחוז הניצחונות מחושב מהמשחקים שהוכרעו, ללא תיקו.</Text> : null}
+      {draws > 0 ? <Text style={s.note}>אחוז הניצחונות מחושב מכל המשחקים ששיחקת, כולל תיקו.</Text> : null}
     </View>
     {highlights.length > 0 || records.length > 0 || hasPen ? <View style={s.section}>
       <Text style={s.sectionTitle}>רגעי הערב</Text>

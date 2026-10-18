@@ -25,12 +25,12 @@ import {
 // package's `"react-native"` exports condition. TypeScript resolves the
 // default condition (which doesn't expose the symbol), so we require the
 // runtime module dynamically here — Metro picks the RN entry, types stay
-// clean. AsyncStorage-backed persistence restores cross-launch sign-in.
+// clean. Encrypted persistence restores cross-launch sign-in.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { getReactNativePersistence } = require('@firebase/auth') as {
   getReactNativePersistence: (storage: unknown) => Persistence;
 };
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureAuthStorage } from '../services/secureAuthStorage';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getFunctions, Functions } from 'firebase/functions';
 
@@ -131,13 +131,13 @@ export function getFirebase(): {
     // for any callable that lives elsewhere.
     _functions = getFunctions(_app, 'us-central1');
     try {
-      // AsyncStorage-backed persistence — the user stays signed in
+      // Device-bound encrypted persistence — the user stays signed in
       // across cold starts. `getReactNativePersistence` is sourced
       // from `@firebase/auth` directly (see import note above) because
       // the umbrella `firebase/auth` package stopped re-exporting it
       // in v12.
       _auth = initializeAuth(_app, {
-        persistence: getReactNativePersistence(AsyncStorage),
+        persistence: getReactNativePersistence(secureAuthStorage),
       });
     } catch {
       // initializeAuth throws if already called (HMR / fast refresh path)

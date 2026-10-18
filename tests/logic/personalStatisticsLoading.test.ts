@@ -11,15 +11,38 @@ function load(file:string,deps:Record<string,any>={}) {
 const evening=load('src/utils/eveningPlayed.ts');
 const played=load('src/utils/playedGames.ts',{'@/utils/eveningPlayed':evening});
 const personal=load('src/utils/personalStatistics.ts');
+const partnerResults=load('src/utils/personalPartnerStats.ts');
 function service(games:any[],highlight:any) {
  return load('src/services/playerStatsService.ts',{
   'firebase/firestore':{query:(collection:any)=>collection,where(){},getDocs:async (collection:string)=>({docs:collection==='games'?games.map((g,i)=>({id:String(i),data:()=>g})):[]})},
   '@/firebase/firestore':{col:{games:()=> 'games',pairStats:()=> 'pairs'}},
   '@/firebase/config':{USE_MOCK_DATA:false},'@/services/errorLog':{logError(){}},
-  '@/utils/playedGames':played,'@/utils/eveningPlayed':evening,'./personalHighlightsService':{loadPersonalHighlights:highlight},
+  '@/utils/playedGames':played,'@/utils/eveningPlayed':evening,'./personalHighlightsService':{loadPersonalHighlights:highlight},'@/utils/personalPartnerStats':partnerResults,
  }).playerStatsService;
 }
 const held={status:'finished',startsAt:1,players:['u'],endedBy:'admin'};
+
+test.each(['a','b'])('regular partner results use same-team record when viewer is %s',async(side)=>{
+ const row={a:side==='a'?'u':'p',b:side==='b'?'u':'p',sameTeam:8,winsTogether:4,lossesTogether:3,winsA:90,winsB:70};
+ const s=load('src/services/playerStatsService.ts',{
+  'firebase/firestore':{query:(collection:string,...filters:any[])=>({collection,filters}),where:(field:string,_op:string,value:string)=>({field,value}),getDocs:async(q:any)=>({docs:q.collection==='games'?[{id:'g',data:()=>({...held,players:['u','p']})}]:q.filters[0].field===side?[{data:()=>row}]:[]})},
+  '@/firebase/firestore':{col:{games:()=> 'games',pairStats:()=> 'pairs'}},'@/firebase/config':{USE_MOCK_DATA:false},'@/services/errorLog':{logError(){}},
+  '@/utils/playedGames':played,'@/utils/eveningPlayed':evening,'@/utils/personalPartnerStats':partnerResults,'./personalHighlightsService':{loadPersonalHighlights:async()=>personal.personalHighlights([],{},{} )},
+ }).playerStatsService;
+ const result=await s.compute('u');
+ expect(result.mostPlayedWith).toEqual({uid:'p',count:1});
+ expect(result.regularPartnerResults).toEqual({games:8,wins:4,losses:3,ties:1,winRate:50});
+});
+
+test('home limits detailed history to the latest five while preserving lifetime counters', async () => {
+ const highlight=jest.fn(async(_uid:string,_rounds:any[])=>personal.personalHighlights([],{},{}));
+ const s=service(Array.from({length:12},(_,i)=>({...held,startsAt:i+1})),highlight);
+ const home=await s.compute('u',{recentHighlightsOnly:true});
+ expect(home.attendedGames).toBe(12);
+ expect(highlight.mock.calls[0][1].map((r:any)=>r.gameId)).toEqual(['11','10','9','8','7']);
+ await s.compute('u');
+ expect(highlight.mock.calls[1][1]).toHaveLength(12);
+});
 test('unverified and explicitly unplayed evenings do not reduce attendance; no-show does',async()=>{
  const s=service([held,{...held,endedBy:'auto'},{...held,playVerified:false},{...held,arrivals:{u:'no_show'}}],async()=> personal.personalHighlights([],{},{}));
  const result=await s.compute('u');

@@ -1,0 +1,2378 @@
+{
+  "readStartedAt": "2026-10-18T05:16:58.659041+00:00",
+  "readCompletedAt": "2026-10-18T05:17:09.698769+00:00",
+  "readScope": {
+    "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "clubId": "J060YQu6QTcgk3glUDj2",
+    "protectedRoundIds": [
+      "lmUUmQru2HtKvQkRDVeD",
+      "YEdIR3MviDK82D581ELk",
+      "mBO5HqJdnOPWjRE2zMh8",
+      "Ra5ZBzOUjR5zQlMojHke",
+      "FQ4T7izEbuYfprKFS75n",
+      "cF3CjQbLH8vzo7uaFqHx"
+    ],
+    "newRoundIds": [
+      "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f"
+    ],
+    "access": "Masked GET and exact scoped documents:runQuery only; no writes"
+  },
+  "protectedRounds": [
+    {
+      "gameId": "lmUUmQru2HtKvQkRDVeD",
+      "digests": {
+        "game": "c71d2a5fc12829deb46b2753b2a390a5a3240db8a81524cc41d5dde68a48c72f",
+        "history": "f2da7055cbc11bb21bb3b5b55bd887de742e06fe4af6020e09909df687df22a8",
+        "commits": "983ba68d012f131b5d6a9052e064c959b8578070a439899aa421c9c4f1454bc0",
+        "playerStats": "495650f4ceb730d394204e7a2cdb93018aa80b5c9c36bdf2beacf1d82ddb63bd",
+        "roundSummary": "41defa674f776bd800b3551498a2049402d6cc308320dc97a82cd4779d2769a9",
+        "finishProof": "7f98ff3a6ec295b9651cd9ea800f44b368624029cc420ea7e537f4191cbae63b"
+      },
+      "counts": {
+        "history": 2,
+        "commits": 2,
+        "playerStats": 12
+      }
+    },
+    {
+      "gameId": "YEdIR3MviDK82D581ELk",
+      "digests": {
+        "game": "b8c78d41dade8ed55e308a0994ae61479fb7e7791a500778d588283b6afe2af0",
+        "history": "e8ca9f66ad99c55f53fc81b46e6de1801e4b6f7f843c6067456f619ebcef6633",
+        "commits": "8b75dee634d5dbe3d83b241d3acdbfe405d71e06bd8257464595a7edab3ff6e6",
+        "playerStats": "fb66dca5c2eb444c74f77fdfe23c9086d1ce57b1d1d4c16c875917949897356b",
+        "roundSummary": "75c6bdbfa832a0114d26692c70d645969fc330543e9c311f80ff208d3012f69b",
+        "finishProof": "c7932a9b8e5f40056bdeda670435a7af533287bb2dc66bc148af31364f580c75"
+      },
+      "counts": {
+        "history": 2,
+        "commits": 2,
+        "playerStats": 21
+      }
+    },
+    {
+      "gameId": "mBO5HqJdnOPWjRE2zMh8",
+      "digests": {
+        "game": "84d5c31b820281ebfe310d739918d359616d2a618da2af512482e7e5f32e70d7",
+        "history": "0cbef033b3fd5890db4a849a6e6807c0714fa80880b67529e6b8c763205f4527",
+        "commits": "44e1de3293f3e7716a890e8043c7a68a0422a71bbf9c3ea1979914b0e9c7e461",
+        "playerStats": "17b0c605ce27faf1a6b203ab040a40a09ce13c275593c25fb5b64d618fdf6858",
+        "roundSummary": "3ba0b55159c782c5e00d7f896b42a0139eb94a866f8ebd2d35eece56d3402fb3",
+        "finishProof": "1d509216a694221d485da035286d34aff8fb82f07c999ef1cd94c833e6d2fa66"
+      },
+      "counts": {
+        "history": 2,
+        "commits": 2,
+        "playerStats": 32
+      }
+    },
+    {
+      "gameId": "Ra5ZBzOUjR5zQlMojHke",
+      "digests": {
+        "game": "77b7fa7541c98902f448b1b2d8248db7d66800f33317c55b79daac1aae6aa739",
+        "history": "c84779177ce5e1f290ca6563ac977c747bc3038c777029d762b35552ecf2ed14",
+        "commits": "b6ea8020386168027f1912baa1e60926d381756a45fcc8c7726bf3e62428deb8",
+        "playerStats": "e11de8691011f6870fa8f97b176f949c65315c8db7f0101d84883d2a36824de6",
+        "roundSummary": "c7bfe9d98fb7111a65c37685c596cfa386b4969226805b075a40835d61d8424a",
+        "finishProof": "06059162316829aea0065dbecc2497069eab587e00df8383771114fa041ee997"
+      },
+      "counts": {
+        "history": 2,
+        "commits": 2,
+        "playerStats": 12
+      }
+    },
+    {
+      "gameId": "FQ4T7izEbuYfprKFS75n",
+      "digests": {
+        "game": "87dfd507db0667db1f1c31cf3ec28dce360129b09c0e98e58fc22462d64e9bb5",
+        "history": "50359191a70c63cd23899202c6e5864b2a07233fd258b253f3af4ed0782737b0",
+        "commits": "02e9756e84439cb86c928af697bac38ded19cce175286f295fadbac8f9de80cf",
+        "playerStats": "04732a761fb376610cd8f40e95345644189ec3e576e0abd94856af7ba677fc00",
+        "roundSummary": "c5f0604933368b748c94bcf6a016aae898fc88f4a6b4a2c0e0d3327415808246",
+        "finishProof": "fce621080ed9978ed48463e119331417bd13d2eb2f4e14987f15736dd99ebafa"
+      },
+      "counts": {
+        "history": 3,
+        "commits": 3,
+        "playerStats": 27
+      }
+    },
+    {
+      "gameId": "cF3CjQbLH8vzo7uaFqHx",
+      "digests": {
+        "game": "eaa0ed98d843d75ee602cb9dcc9e747892f0101cccc3205c5f70bb521f69049b",
+        "history": "dd26130e3f8ffde2675a6aae5c341c01d62774b84bb25ec2eaeca338d4051d01",
+        "commits": "e37db962e31f6ea1169ea6d1c5ebf95bbdaf3edd991369035134835102660ee7",
+        "playerStats": "9d242f5c85db566b75346872a53c6bf71d297f2b04873437ff64577de2015944",
+        "roundSummary": "bc3ad088acf6200b7d59075484fcd5f7886473f78f816a1a677a92da519e2e4b",
+        "finishProof": "9bb903384c65ba6e365b215edad82ee12fdc4e520d30cb6393d7c7b5f83f31a2"
+      },
+      "counts": {
+        "history": 3,
+        "commits": 3,
+        "playerStats": 33
+      }
+    }
+  ],
+  "games": [
+    {
+      "game": {
+        "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+        "fields": {
+          "arrivals": null,
+          "seriesId": null,
+          "advancedFillMode": "permanent",
+          "acceptsFillers": false,
+          "status": "open",
+          "pending": [],
+          "guests": [
+            {
+              "id": "mvdbuk1e-eyk9mn",
+              "name": "בדיקה נוספת 01",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792297824242
+            },
+            {
+              "id": "mvdbv4s2-eja4hb",
+              "name": "בדיקה נוספת 02",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792297851122
+            },
+            {
+              "id": "mvdbvph2-hlgwwx",
+              "name": "בדיקה נוספת 03",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792297877942
+            },
+            {
+              "id": "mvdbxdb9-wl5etd",
+              "name": "בדיקה נוספת 04",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792297955493
+            },
+            {
+              "id": "mvdbxxtp-gm4vzp",
+              "name": "בדיקה נוספת 05",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792297982077
+            },
+            {
+              "id": "mvdbym43-e75ard",
+              "name": "בדיקה נוספת 06",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298013555
+            },
+            {
+              "id": "mvdbz837-mbgccq",
+              "name": "בדיקה נוספת 07",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298042035
+            },
+            {
+              "id": "mvdc15iu-x4aejv",
+              "name": "בדיקה נוספת 08",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298132022
+            },
+            {
+              "id": "mvdc1n1e-qke51r",
+              "name": "בדיקה נוספת 09",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298154722
+            },
+            {
+              "id": "mvdc25ft-sbjlo4",
+              "name": "בדיקה נוספת 10",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298178574
+            },
+            {
+              "id": "mvdc2n3n-nbhieo",
+              "name": "בדיקה נוספת 11",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298201459
+            },
+            {
+              "id": "mvdc38qe-4s4u8v",
+              "name": "בדיקה נוספת 12",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298229494
+            },
+            {
+              "id": "mvdc3q4q-bmyr6e",
+              "name": "בדיקה נוספת 13",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298252042
+            },
+            {
+              "id": "mvdc4abl-y1oaru",
+              "name": "בדיקה נוספת 14",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298278209
+            },
+            {
+              "id": "mvdc4uv7-bph52s",
+              "name": "בדיקה נוספת 15",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298304835
+            },
+            {
+              "id": "mvdc5dz8-el1m0p",
+              "name": "בדיקה נוספת 16",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298329604
+            },
+            {
+              "id": "mvdc742d-w8d7g9",
+              "name": "בדיקה נוספת 17",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298410069
+            },
+            {
+              "id": "mvdc7mxt-wfsihl",
+              "name": "בדיקה נוספת 18",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298434529
+            },
+            {
+              "id": "mvdc87tb-6ew1u0",
+              "name": "בדיקה נוספת 19",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298461583
+            },
+            {
+              "id": "mvdc8p53-6l0zni",
+              "name": "בדיקה נוספת 20",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298484039
+            },
+            {
+              "id": "mvdc96qq-1i3wyl",
+              "name": "בדיקה נוספת 21",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298506850
+            },
+            {
+              "id": "mvdc9rms-ydrwgl",
+              "name": "בדיקה נוספת 22",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298533924
+            },
+            {
+              "id": "mvdcaasz-odluxi",
+              "name": "בדיקה נוספת 23",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298558773
+            },
+            {
+              "id": "mvdcavar-xntopv",
+              "name": "בדיקה נוספת 24",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298585331
+            },
+            {
+              "id": "mvdcbgxp-2kuzag",
+              "name": "בדיקה נוספת 25",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298613373
+            },
+            {
+              "id": "mvdcc16k-iio03d",
+              "name": "בדיקה נוספת 26",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298639612
+            },
+            {
+              "id": "mvdccpzw-axgtsp",
+              "name": "בדיקה נוספת 27",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298671772
+            },
+            {
+              "id": "mvdcdg8d-4w2ivd",
+              "name": "בדיקה נוספת 28",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298705773
+            },
+            {
+              "id": "mvdce7fl-slxkaa",
+              "name": "בדיקה נוספת 29",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298741025
+            },
+            {
+              "id": "mvdcf5mx-dh5lki",
+              "name": "בדיקה נוספת 30",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298785354
+            },
+            {
+              "id": "mvdcfpgy-qmw7b6",
+              "name": "בדיקה נוספת 31",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298811058
+            },
+            {
+              "id": "mvdcgb5k-b6wlwf",
+              "name": "בדיקה נוספת 32",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792298839160
+            }
+          ],
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "teamsEditedManually": true,
+          "format": "11v11",
+          "advancedTieMode": null,
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "creationFingerprint": "af5665670b07fe5f5ca01eee002c6c390feceda83e64e5156b1c4c11127e5212",
+          "visibility": "community",
+          "committedRoundCount": 1,
+          "extraTimeMinutes": null,
+          "numberOfTeams": 3,
+          "updatedAt": 1792300621858,
+          "lastCommittedRoundId": "r_mvdd9avm_jgc0tij8",
+          "players": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "adminRemovals": null,
+          "matchDurationMinutes": 8,
+          "rotation": {
+            "waiting": [
+              1
+            ],
+            "loans": [],
+            "lastRoundWinners": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "lastRoundAt": 1792300621855,
+            "wins": {
+              "0": 1
+            },
+            "updatedAt": 1792300621855,
+            "lastRoundLosers": [],
+            "roundInstanceRound": 2,
+            "round": 2,
+            "playing": [
+              0,
+              2
+            ],
+            "baseTeams": [
+              {
+                "index": 0,
+                "playerIds": [
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "guest:mvdbvph2-hlgwwx",
+                  "guest:mvdc15iu-x4aejv",
+                  "guest:mvdc1n1e-qke51r",
+                  "guest:mvdc4abl-y1oaru",
+                  "guest:mvdc4uv7-bph52s",
+                  "guest:mvdc8p53-6l0zni",
+                  "guest:mvdc96qq-1i3wyl",
+                  "guest:mvdcc16k-iio03d",
+                  "guest:mvdccpzw-axgtsp",
+                  "guest:mvdcgb5k-b6wlwf"
+                ]
+              },
+              {
+                "index": 1,
+                "playerIds": [
+                  "guest:mvdbuk1e-eyk9mn",
+                  "guest:mvdbxdb9-wl5etd",
+                  "guest:mvdbz837-mbgccq",
+                  "guest:mvdc25ft-sbjlo4",
+                  "guest:mvdc3q4q-bmyr6e",
+                  "guest:mvdc5dz8-el1m0p",
+                  "guest:mvdc87tb-6ew1u0",
+                  "guest:mvdc9rms-ydrwgl",
+                  "guest:mvdcbgxp-2kuzag",
+                  "guest:mvdcdg8d-4w2ivd",
+                  "guest:mvdcfpgy-qmw7b6"
+                ]
+              },
+              {
+                "index": 2,
+                "playerIds": [
+                  "guest:mvdbv4s2-eja4hb",
+                  "guest:mvdbxxtp-gm4vzp",
+                  "guest:mvdbym43-e75ard",
+                  "guest:mvdc2n3n-nbhieo",
+                  "guest:mvdc38qe-4s4u8v",
+                  "guest:mvdc742d-w8d7g9",
+                  "guest:mvdc7mxt-wfsihl",
+                  "guest:mvdcaasz-odluxi",
+                  "guest:mvdcavar-xntopv",
+                  "guest:mvdce7fl-slxkaa",
+                  "guest:mvdcf5mx-dh5lki"
+                ]
+              }
+            ],
+            "roundInstanceId": "r_mvddiioy_5zoi8s07"
+          },
+          "maxPlayers": 33,
+          "minPlayers": null,
+          "participantIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "createdAt": 1792297653007,
+          "autoTeamsGeneratedAt": null,
+          "waitlist": [],
+          "advancedMode": true,
+          "isOrphanContext": false,
+          "liveMatch": {
+            "timerAccumulatedMs": 0,
+            "timerControlledBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "startedAt": 1792296000000,
+            "timerLastStartedAt": null,
+            "goals": [],
+            "timerEvents": [],
+            "timerControlledByName": "בדיקות לייב",
+            "scoreB": 0,
+            "goalTally": {
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1
+            },
+            "timerRunning": false,
+            "scoreA": 0
+          },
+          "startsAt": 1792296000000,
+          "draftTeams": {
+            "numTeams": 3,
+            "originalTeams": [
+              {
+                "index": 0,
+                "captainId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "playerIds": [
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "guest:mvdbvph2-hlgwwx",
+                  "guest:mvdc15iu-x4aejv",
+                  "guest:mvdc1n1e-qke51r",
+                  "guest:mvdc4abl-y1oaru",
+                  "guest:mvdc4uv7-bph52s",
+                  "guest:mvdc8p53-6l0zni",
+                  "guest:mvdc96qq-1i3wyl",
+                  "guest:mvdcc16k-iio03d",
+                  "guest:mvdccpzw-axgtsp",
+                  "guest:mvdcgb5k-b6wlwf"
+                ]
+              },
+              {
+                "index": 1,
+                "captainId": "guest:mvdbuk1e-eyk9mn",
+                "playerIds": [
+                  "guest:mvdbuk1e-eyk9mn",
+                  "guest:mvdbxdb9-wl5etd",
+                  "guest:mvdbz837-mbgccq",
+                  "guest:mvdc25ft-sbjlo4",
+                  "guest:mvdc3q4q-bmyr6e",
+                  "guest:mvdc5dz8-el1m0p",
+                  "guest:mvdc87tb-6ew1u0",
+                  "guest:mvdc9rms-ydrwgl",
+                  "guest:mvdcbgxp-2kuzag",
+                  "guest:mvdcdg8d-4w2ivd",
+                  "guest:mvdcfpgy-qmw7b6"
+                ]
+              },
+              {
+                "index": 2,
+                "captainId": "guest:mvdbv4s2-eja4hb",
+                "playerIds": [
+                  "guest:mvdbv4s2-eja4hb",
+                  "guest:mvdbxxtp-gm4vzp",
+                  "guest:mvdbym43-e75ard",
+                  "guest:mvdc2n3n-nbhieo",
+                  "guest:mvdc38qe-4s4u8v",
+                  "guest:mvdc742d-w8d7g9",
+                  "guest:mvdc7mxt-wfsihl",
+                  "guest:mvdcaasz-odluxi",
+                  "guest:mvdcavar-xntopv",
+                  "guest:mvdce7fl-slxkaa",
+                  "guest:mvdcf5mx-dh5lki"
+                ]
+              }
+            ],
+            "published": true,
+            "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792299981563,
+            "teams": [
+              {
+                "index": 0,
+                "captainId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "playerIds": [
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "guest:mvdbvph2-hlgwwx",
+                  "guest:mvdc15iu-x4aejv",
+                  "guest:mvdc1n1e-qke51r",
+                  "guest:mvdc4abl-y1oaru",
+                  "guest:mvdc4uv7-bph52s",
+                  "guest:mvdc8p53-6l0zni",
+                  "guest:mvdc96qq-1i3wyl",
+                  "guest:mvdcc16k-iio03d",
+                  "guest:mvdccpzw-axgtsp",
+                  "guest:mvdcgb5k-b6wlwf"
+                ],
+                "colorKey": "red"
+              },
+              {
+                "index": 1,
+                "captainId": "guest:mvdbuk1e-eyk9mn",
+                "playerIds": [
+                  "guest:mvdbuk1e-eyk9mn",
+                  "guest:mvdbxdb9-wl5etd",
+                  "guest:mvdbz837-mbgccq",
+                  "guest:mvdc25ft-sbjlo4",
+                  "guest:mvdc3q4q-bmyr6e",
+                  "guest:mvdc5dz8-el1m0p",
+                  "guest:mvdc87tb-6ew1u0",
+                  "guest:mvdc9rms-ydrwgl",
+                  "guest:mvdcbgxp-2kuzag",
+                  "guest:mvdcdg8d-4w2ivd",
+                  "guest:mvdcfpgy-qmw7b6"
+                ],
+                "colorKey": "blue"
+              },
+              {
+                "index": 2,
+                "captainId": "guest:mvdbv4s2-eja4hb",
+                "playerIds": [
+                  "guest:mvdbv4s2-eja4hb",
+                  "guest:mvdbxxtp-gm4vzp",
+                  "guest:mvdbym43-e75ard",
+                  "guest:mvdc2n3n-nbhieo",
+                  "guest:mvdc38qe-4s4u8v",
+                  "guest:mvdc742d-w8d7g9",
+                  "guest:mvdc7mxt-wfsihl",
+                  "guest:mvdcaasz-odluxi",
+                  "guest:mvdcavar-xntopv",
+                  "guest:mvdce7fl-slxkaa",
+                  "guest:mvdcf5mx-dh5lki"
+                ],
+                "colorKey": "green"
+              }
+            ],
+            "method": "snake"
+          },
+          "autoTeamsMethod": null
+        }
+      },
+      "history": [
+        {
+          "id": "r_mvdd9avm_jgc0tij8",
+          "fields": {
+            "at": 1792300621364,
+            "penalties": [],
+            "scoreB": 0,
+            "teamBIndex": 1,
+            "teamA": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "guest:mvdbvph2-hlgwwx",
+              "guest:mvdc15iu-x4aejv",
+              "guest:mvdc1n1e-qke51r",
+              "guest:mvdc4abl-y1oaru",
+              "guest:mvdc4uv7-bph52s",
+              "guest:mvdc8p53-6l0zni",
+              "guest:mvdc96qq-1i3wyl",
+              "guest:mvdcc16k-iio03d",
+              "guest:mvdccpzw-axgtsp",
+              "guest:mvdcgb5k-b6wlwf"
+            ],
+            "teamB": [
+              "guest:mvdbuk1e-eyk9mn",
+              "guest:mvdbxdb9-wl5etd",
+              "guest:mvdbz837-mbgccq",
+              "guest:mvdc25ft-sbjlo4",
+              "guest:mvdc3q4q-bmyr6e",
+              "guest:mvdc5dz8-el1m0p",
+              "guest:mvdc87tb-6ew1u0",
+              "guest:mvdc9rms-ydrwgl",
+              "guest:mvdcbgxp-2kuzag",
+              "guest:mvdcdg8d-4w2ivd",
+              "guest:mvdcfpgy-qmw7b6"
+            ],
+            "scoreA": 1,
+            "roundId": "r_mvdd9avm_jgc0tij8",
+            "teamAIndex": 0,
+            "winnerSide": "A",
+            "goals": [
+              {
+                "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "assistStatus": "player",
+                "assisterId": "guest:mvdc15iu-x4aejv",
+                "ownGoal": false,
+                "minute": 1,
+                "team": "A"
+              }
+            ]
+          }
+        }
+      ],
+      "commits": [
+        {
+          "id": "r_mvdd9avm_jgc0tij8",
+          "fields": {
+            "committedAt": 1792300621364,
+            "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "winnerSide": "A"
+          }
+        }
+      ],
+      "playerStats": [
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "cleanSheets": 1,
+            "actualTeamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "rounds": 1,
+            "goals": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdbuk1e-eyk9mn",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "actualTeamGoalsAgainst": 1,
+            "actualTeamGoalsFor": 0,
+            "losses": 1,
+            "userId": "guest:mvdbuk1e-eyk9mn",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdbvph2-hlgwwx",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "actualTeamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "userId": "guest:mvdbvph2-hlgwwx",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdbxdb9-wl5etd",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "actualTeamGoalsAgainst": 1,
+            "actualTeamGoalsFor": 0,
+            "losses": 1,
+            "userId": "guest:mvdbxdb9-wl5etd",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdbz837-mbgccq",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "actualTeamGoalsAgainst": 1,
+            "actualTeamGoalsFor": 0,
+            "losses": 1,
+            "userId": "guest:mvdbz837-mbgccq",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdc15iu-x4aejv",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "assists": 1,
+            "cleanSheets": 1,
+            "actualTeamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "userId": "guest:mvdc15iu-x4aejv",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdc1n1e-qke51r",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "actualTeamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "userId": "guest:mvdc1n1e-qke51r",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdc25ft-sbjlo4",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "actualTeamGoalsAgainst": 1,
+            "actualTeamGoalsFor": 0,
+            "losses": 1,
+            "userId": "guest:mvdc25ft-sbjlo4",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdc3q4q-bmyr6e",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "actualTeamGoalsAgainst": 1,
+            "actualTeamGoalsFor": 0,
+            "losses": 1,
+            "userId": "guest:mvdc3q4q-bmyr6e",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdc4abl-y1oaru",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "actualTeamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "userId": "guest:mvdc4abl-y1oaru",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdc4uv7-bph52s",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "actualTeamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "userId": "guest:mvdc4uv7-bph52s",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdc5dz8-el1m0p",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "actualTeamGoalsAgainst": 1,
+            "actualTeamGoalsFor": 0,
+            "losses": 1,
+            "userId": "guest:mvdc5dz8-el1m0p",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdc87tb-6ew1u0",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "actualTeamGoalsAgainst": 1,
+            "actualTeamGoalsFor": 0,
+            "losses": 1,
+            "userId": "guest:mvdc87tb-6ew1u0",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdc8p53-6l0zni",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "actualTeamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "userId": "guest:mvdc8p53-6l0zni",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdc96qq-1i3wyl",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "actualTeamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "userId": "guest:mvdc96qq-1i3wyl",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdc9rms-ydrwgl",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "actualTeamGoalsAgainst": 1,
+            "actualTeamGoalsFor": 0,
+            "losses": 1,
+            "userId": "guest:mvdc9rms-ydrwgl",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdcbgxp-2kuzag",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "actualTeamGoalsAgainst": 1,
+            "actualTeamGoalsFor": 0,
+            "losses": 1,
+            "userId": "guest:mvdcbgxp-2kuzag",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdcc16k-iio03d",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "actualTeamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "userId": "guest:mvdcc16k-iio03d",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdccpzw-axgtsp",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "actualTeamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "userId": "guest:mvdccpzw-axgtsp",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdcdg8d-4w2ivd",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "actualTeamGoalsAgainst": 1,
+            "actualTeamGoalsFor": 0,
+            "losses": 1,
+            "userId": "guest:mvdcdg8d-4w2ivd",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdcfpgy-qmw7b6",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "actualTeamGoalsAgainst": 1,
+            "actualTeamGoalsFor": 0,
+            "losses": 1,
+            "userId": "guest:mvdcfpgy-qmw7b6",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        },
+        {
+          "id": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__guest:mvdcgb5k-b6wlwf",
+          "fields": {
+            "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "actualTeamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "userId": "guest:mvdcgb5k-b6wlwf",
+            "rounds": 1,
+            "updatedAt": 1792300621364
+          }
+        }
+      ],
+      "roundSummary": null,
+      "finishProof": {
+        "attendanceCredit": null,
+        "stages": [],
+        "qaEveningStanding": null
+      }
+    }
+  ],
+  "globalCounters": {
+    "account": {
+      "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "fields": {
+        "stats": {
+          "cleanSheets": 6,
+          "penSaved": 3,
+          "wins": 9,
+          "assists": 2,
+          "penScored": 2,
+          "penTaken": 3,
+          "goals": 4,
+          "penConceded": 2,
+          "penFaced": 6,
+          "penMissed": 1
+        },
+        "updatedAt": 1792297724328
+      }
+    },
+    "qaClubStats": {
+      "id": "J060YQu6QTcgk3glUDj2__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "fields": {
+        "eveningScoreSum": 49.800000000000004,
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "goals": 4,
+        "penSaved": 3,
+        "losses": 3,
+        "penConceded": 2,
+        "csRounds": 12,
+        "penMissed": 1,
+        "penFaced": 6,
+        "games": 6,
+        "lastEveningAt": 1792278000000,
+        "cleanSheets": 6,
+        "asRounds": 12,
+        "updatedAt": 1792283853316,
+        "eveningScoreCount": 6,
+        "rounds": 12,
+        "penScored": 2,
+        "lastEveningScore": 8.4,
+        "bestEvening": {
+          "wins": 3,
+          "cleanSheets": 2,
+          "goals": 1,
+          "assists": 1
+        },
+        "assists": 2,
+        "wins": 9,
+        "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "penTaken": 3
+      }
+    },
+    "clubTotals": {
+      "id": "J060YQu6QTcgk3glUDj2",
+      "fields": {
+        "scorelessRounds": 6,
+        "kingAssistsSum": 2,
+        "rounds": 14,
+        "shootoutRounds": 2,
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "chemistrySince": 1792192500000,
+        "countedRounds": 14,
+        "updatedAt": 1792283854372,
+        "guestGoals": 10,
+        "kingAssistsCount": 2,
+        "kingGoalsCount": 4,
+        "kingGoalsSum": 4,
+        "tiedRounds": 1,
+        "goals": 4
+      }
+    },
+    "clubShowcase": {
+      "id": "J060YQu6QTcgk3glUDj2",
+      "fields": {
+        "updatedAt": 1792283854220
+      }
+    },
+    "clubRecords": {
+      "id": "J060YQu6QTcgk3glUDj2",
+      "fields": {
+        "updatedAt": 1792283858986,
+        "wins": {
+          "userIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "value": 3
+        },
+        "goals": {
+          "value": 1,
+          "userIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ]
+        },
+        "firstEverSeen": [],
+        "assists": {
+          "value": 1,
+          "userIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ]
+        },
+        "involvement": {
+          "value": 2,
+          "userIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ]
+        },
+        "cleanSheets": {
+          "value": 2,
+          "userIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ]
+        }
+      }
+    }
+  },
+  "membershipCounts": {
+    "playerIds": 1,
+    "adminIds": 1,
+    "pendingPlayerIds": 1
+  },
+  "reads": [
+    {
+      "document": "users/8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "mask": [
+        "stats",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "groups/J060YQu6QTcgk3glUDj2",
+      "mask": [
+        "adminIds",
+        "createdAt",
+        "pendingPlayerIds",
+        "playerIds",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "communityPlayerStats/J060YQu6QTcgk3glUDj2__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "mask": [
+        "actualTeamGoalsAgainst",
+        "actualTeamGoalsFor",
+        "asRounds",
+        "assists",
+        "attended",
+        "bestEvening",
+        "cancelled",
+        "chemistrySince",
+        "cleanSheets",
+        "countedRounds",
+        "csRounds",
+        "eveningScoreCount",
+        "eveningScoreSum",
+        "games",
+        "goals",
+        "groupId",
+        "guestGoals",
+        "kingAssistsCount",
+        "kingAssistsSum",
+        "kingGoalsCount",
+        "kingGoalsSum",
+        "lastEveningAt",
+        "lastEveningScore",
+        "losses",
+        "ownGoals",
+        "penConceded",
+        "penFaced",
+        "penMissed",
+        "penSaved",
+        "penScored",
+        "penTaken",
+        "rounds",
+        "scorelessRounds",
+        "shootoutRounds",
+        "teamScoreRounds",
+        "tiedRounds",
+        "ties",
+        "totalGames",
+        "updatedAt",
+        "userId",
+        "wins"
+      ]
+    },
+    {
+      "document": "communityStats/J060YQu6QTcgk3glUDj2",
+      "mask": [
+        "actualTeamGoalsAgainst",
+        "actualTeamGoalsFor",
+        "asRounds",
+        "assists",
+        "attended",
+        "bestEvening",
+        "cancelled",
+        "chemistrySince",
+        "cleanSheets",
+        "countedRounds",
+        "csRounds",
+        "eveningScoreCount",
+        "eveningScoreSum",
+        "games",
+        "goals",
+        "groupId",
+        "guestGoals",
+        "kingAssistsCount",
+        "kingAssistsSum",
+        "kingGoalsCount",
+        "kingGoalsSum",
+        "lastEveningAt",
+        "lastEveningScore",
+        "losses",
+        "ownGoals",
+        "penConceded",
+        "penFaced",
+        "penMissed",
+        "penSaved",
+        "penScored",
+        "penTaken",
+        "rounds",
+        "scorelessRounds",
+        "shootoutRounds",
+        "teamScoreRounds",
+        "tiedRounds",
+        "ties",
+        "totalGames",
+        "updatedAt",
+        "userId",
+        "wins"
+      ]
+    },
+    {
+      "document": "communityShowcase/J060YQu6QTcgk3glUDj2",
+      "mask": [
+        "generatedAt",
+        "totalAssists",
+        "totalFinishedGames",
+        "totalGames",
+        "totalGoals",
+        "totalPlayers",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "clubRecords/J060YQu6QTcgk3glUDj2",
+      "mask": [
+        "assists",
+        "cleanSheets",
+        "firstEverSeen",
+        "goals",
+        "involvement",
+        "updatedAt",
+        "wins"
+      ]
+    },
+    {
+      "document": "games/lmUUmQru2HtKvQkRDVeD",
+      "mask": [
+        "acceptsFillers",
+        "adminRemovals",
+        "advancedFillMode",
+        "advancedMode",
+        "advancedTieMode",
+        "arrivals",
+        "autoTeamsGeneratedAt",
+        "autoTeamsMethod",
+        "committedRoundCount",
+        "createdAt",
+        "createdBy",
+        "creationFingerprint",
+        "draftTeams",
+        "endedAt",
+        "endedBy",
+        "extraTimeMinutes",
+        "format",
+        "groupId",
+        "guests",
+        "isOrphanContext",
+        "lastCommittedRoundId",
+        "liveMatch",
+        "matchDurationMinutes",
+        "maxPlayers",
+        "minPlayers",
+        "numberOfTeams",
+        "participantIds",
+        "pending",
+        "players",
+        "rotation",
+        "seriesId",
+        "startsAt",
+        "status",
+        "teamsEditedManually",
+        "updatedAt",
+        "visibility",
+        "waitlist"
+      ]
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "lmUUmQru2HtKvQkRDVeD",
+      "mask": [
+        "at",
+        "goals",
+        "penalties",
+        "roundId",
+        "scoreA",
+        "scoreB",
+        "teamA",
+        "teamAIndex",
+        "teamB",
+        "teamBIndex",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "lmUUmQru2HtKvQkRDVeD",
+      "mask": [
+        "alternativeDecisionFingerprint",
+        "by",
+        "committedAt",
+        "tieResolution",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "lmUUmQru2HtKvQkRDVeD",
+      "mask": [
+        "actualTeamGoalsAgainst",
+        "actualTeamGoalsFor",
+        "asRounds",
+        "assists",
+        "attended",
+        "cancelled",
+        "cleanSheets",
+        "csRounds",
+        "gameId",
+        "games",
+        "goals",
+        "isGuest",
+        "losses",
+        "ownGoals",
+        "penConceded",
+        "penFaced",
+        "penMissed",
+        "penSaved",
+        "penScored",
+        "penTaken",
+        "rounds",
+        "teamScoreRounds",
+        "ties",
+        "totalGames",
+        "updatedAt",
+        "userId",
+        "wins"
+      ]
+    },
+    {
+      "document": "roundSummaries/lmUUmQru2HtKvQkRDVeD",
+      "mask": [
+        "at",
+        "backfilled",
+        "basis",
+        "correctionBasis",
+        "coverage",
+        "events",
+        "gameId",
+        "generatedAt",
+        "groupId",
+        "leaders",
+        "pairHighlight",
+        "stats",
+        "teamHighlights",
+        "version"
+      ]
+    },
+    {
+      "document": "games/lmUUmQru2HtKvQkRDVeD/finishCredited/once",
+      "mask": [
+        "at"
+      ]
+    },
+    {
+      "query": "finishStages",
+      "gameId": "lmUUmQru2HtKvQkRDVeD",
+      "mask": [
+        "at",
+        "completedAt",
+        "done",
+        "hadPointsTable",
+        "legacy",
+        "stage",
+        "status",
+        "summaryRefreshVersion",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "eveningStandings/lmUUmQru2HtKvQkRDVeD__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "mask": [
+        "at",
+        "gameId",
+        "groupId",
+        "metrics",
+        "rank",
+        "rankDelta",
+        "rankTotal",
+        "score",
+        "scoreBasis",
+        "scoreDelta",
+        "scoreRank",
+        "scoreTotal",
+        "userId"
+      ]
+    },
+    {
+      "document": "games/YEdIR3MviDK82D581ELk",
+      "mask": [
+        "acceptsFillers",
+        "adminRemovals",
+        "advancedFillMode",
+        "advancedMode",
+        "advancedTieMode",
+        "arrivals",
+        "autoTeamsGeneratedAt",
+        "autoTeamsMethod",
+        "committedRoundCount",
+        "createdAt",
+        "createdBy",
+        "creationFingerprint",
+        "draftTeams",
+        "endedAt",
+        "endedBy",
+        "extraTimeMinutes",
+        "format",
+        "groupId",
+        "guests",
+        "isOrphanContext",
+        "lastCommittedRoundId",
+        "liveMatch",
+        "matchDurationMinutes",
+        "maxPlayers",
+        "minPlayers",
+        "numberOfTeams",
+        "participantIds",
+        "pending",
+        "players",
+        "rotation",
+        "seriesId",
+        "startsAt",
+        "status",
+        "teamsEditedManually",
+        "updatedAt",
+        "visibility",
+        "waitlist"
+      ]
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "YEdIR3MviDK82D581ELk",
+      "mask": [
+        "at",
+        "goals",
+        "penalties",
+        "roundId",
+        "scoreA",
+        "scoreB",
+        "teamA",
+        "teamAIndex",
+        "teamB",
+        "teamBIndex",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "YEdIR3MviDK82D581ELk",
+      "mask": [
+        "alternativeDecisionFingerprint",
+        "by",
+        "committedAt",
+        "tieResolution",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "YEdIR3MviDK82D581ELk",
+      "mask": [
+        "actualTeamGoalsAgainst",
+        "actualTeamGoalsFor",
+        "asRounds",
+        "assists",
+        "attended",
+        "cancelled",
+        "cleanSheets",
+        "csRounds",
+        "gameId",
+        "games",
+        "goals",
+        "isGuest",
+        "losses",
+        "ownGoals",
+        "penConceded",
+        "penFaced",
+        "penMissed",
+        "penSaved",
+        "penScored",
+        "penTaken",
+        "rounds",
+        "teamScoreRounds",
+        "ties",
+        "totalGames",
+        "updatedAt",
+        "userId",
+        "wins"
+      ]
+    },
+    {
+      "document": "roundSummaries/YEdIR3MviDK82D581ELk",
+      "mask": [
+        "at",
+        "backfilled",
+        "basis",
+        "correctionBasis",
+        "coverage",
+        "events",
+        "gameId",
+        "generatedAt",
+        "groupId",
+        "leaders",
+        "pairHighlight",
+        "stats",
+        "teamHighlights",
+        "version"
+      ]
+    },
+    {
+      "document": "games/YEdIR3MviDK82D581ELk/finishCredited/once",
+      "mask": [
+        "at"
+      ]
+    },
+    {
+      "query": "finishStages",
+      "gameId": "YEdIR3MviDK82D581ELk",
+      "mask": [
+        "at",
+        "completedAt",
+        "done",
+        "hadPointsTable",
+        "legacy",
+        "stage",
+        "status",
+        "summaryRefreshVersion",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "eveningStandings/YEdIR3MviDK82D581ELk__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "mask": [
+        "at",
+        "gameId",
+        "groupId",
+        "metrics",
+        "rank",
+        "rankDelta",
+        "rankTotal",
+        "score",
+        "scoreBasis",
+        "scoreDelta",
+        "scoreRank",
+        "scoreTotal",
+        "userId"
+      ]
+    },
+    {
+      "document": "games/mBO5HqJdnOPWjRE2zMh8",
+      "mask": [
+        "acceptsFillers",
+        "adminRemovals",
+        "advancedFillMode",
+        "advancedMode",
+        "advancedTieMode",
+        "arrivals",
+        "autoTeamsGeneratedAt",
+        "autoTeamsMethod",
+        "committedRoundCount",
+        "createdAt",
+        "createdBy",
+        "creationFingerprint",
+        "draftTeams",
+        "endedAt",
+        "endedBy",
+        "extraTimeMinutes",
+        "format",
+        "groupId",
+        "guests",
+        "isOrphanContext",
+        "lastCommittedRoundId",
+        "liveMatch",
+        "matchDurationMinutes",
+        "maxPlayers",
+        "minPlayers",
+        "numberOfTeams",
+        "participantIds",
+        "pending",
+        "players",
+        "rotation",
+        "seriesId",
+        "startsAt",
+        "status",
+        "teamsEditedManually",
+        "updatedAt",
+        "visibility",
+        "waitlist"
+      ]
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8",
+      "mask": [
+        "at",
+        "goals",
+        "penalties",
+        "roundId",
+        "scoreA",
+        "scoreB",
+        "teamA",
+        "teamAIndex",
+        "teamB",
+        "teamBIndex",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8",
+      "mask": [
+        "alternativeDecisionFingerprint",
+        "by",
+        "committedAt",
+        "tieResolution",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8",
+      "mask": [
+        "actualTeamGoalsAgainst",
+        "actualTeamGoalsFor",
+        "asRounds",
+        "assists",
+        "attended",
+        "cancelled",
+        "cleanSheets",
+        "csRounds",
+        "gameId",
+        "games",
+        "goals",
+        "isGuest",
+        "losses",
+        "ownGoals",
+        "penConceded",
+        "penFaced",
+        "penMissed",
+        "penSaved",
+        "penScored",
+        "penTaken",
+        "rounds",
+        "teamScoreRounds",
+        "ties",
+        "totalGames",
+        "updatedAt",
+        "userId",
+        "wins"
+      ]
+    },
+    {
+      "document": "roundSummaries/mBO5HqJdnOPWjRE2zMh8",
+      "mask": [
+        "at",
+        "backfilled",
+        "basis",
+        "correctionBasis",
+        "coverage",
+        "events",
+        "gameId",
+        "generatedAt",
+        "groupId",
+        "leaders",
+        "pairHighlight",
+        "stats",
+        "teamHighlights",
+        "version"
+      ]
+    },
+    {
+      "document": "games/mBO5HqJdnOPWjRE2zMh8/finishCredited/once",
+      "mask": [
+        "at"
+      ]
+    },
+    {
+      "query": "finishStages",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8",
+      "mask": [
+        "at",
+        "completedAt",
+        "done",
+        "hadPointsTable",
+        "legacy",
+        "stage",
+        "status",
+        "summaryRefreshVersion",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "eveningStandings/mBO5HqJdnOPWjRE2zMh8__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "mask": [
+        "at",
+        "gameId",
+        "groupId",
+        "metrics",
+        "rank",
+        "rankDelta",
+        "rankTotal",
+        "score",
+        "scoreBasis",
+        "scoreDelta",
+        "scoreRank",
+        "scoreTotal",
+        "userId"
+      ]
+    },
+    {
+      "document": "games/Ra5ZBzOUjR5zQlMojHke",
+      "mask": [
+        "acceptsFillers",
+        "adminRemovals",
+        "advancedFillMode",
+        "advancedMode",
+        "advancedTieMode",
+        "arrivals",
+        "autoTeamsGeneratedAt",
+        "autoTeamsMethod",
+        "committedRoundCount",
+        "createdAt",
+        "createdBy",
+        "creationFingerprint",
+        "draftTeams",
+        "endedAt",
+        "endedBy",
+        "extraTimeMinutes",
+        "format",
+        "groupId",
+        "guests",
+        "isOrphanContext",
+        "lastCommittedRoundId",
+        "liveMatch",
+        "matchDurationMinutes",
+        "maxPlayers",
+        "minPlayers",
+        "numberOfTeams",
+        "participantIds",
+        "pending",
+        "players",
+        "rotation",
+        "seriesId",
+        "startsAt",
+        "status",
+        "teamsEditedManually",
+        "updatedAt",
+        "visibility",
+        "waitlist"
+      ]
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "Ra5ZBzOUjR5zQlMojHke",
+      "mask": [
+        "at",
+        "goals",
+        "penalties",
+        "roundId",
+        "scoreA",
+        "scoreB",
+        "teamA",
+        "teamAIndex",
+        "teamB",
+        "teamBIndex",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "Ra5ZBzOUjR5zQlMojHke",
+      "mask": [
+        "alternativeDecisionFingerprint",
+        "by",
+        "committedAt",
+        "tieResolution",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "Ra5ZBzOUjR5zQlMojHke",
+      "mask": [
+        "actualTeamGoalsAgainst",
+        "actualTeamGoalsFor",
+        "asRounds",
+        "assists",
+        "attended",
+        "cancelled",
+        "cleanSheets",
+        "csRounds",
+        "gameId",
+        "games",
+        "goals",
+        "isGuest",
+        "losses",
+        "ownGoals",
+        "penConceded",
+        "penFaced",
+        "penMissed",
+        "penSaved",
+        "penScored",
+        "penTaken",
+        "rounds",
+        "teamScoreRounds",
+        "ties",
+        "totalGames",
+        "updatedAt",
+        "userId",
+        "wins"
+      ]
+    },
+    {
+      "document": "roundSummaries/Ra5ZBzOUjR5zQlMojHke",
+      "mask": [
+        "at",
+        "backfilled",
+        "basis",
+        "correctionBasis",
+        "coverage",
+        "events",
+        "gameId",
+        "generatedAt",
+        "groupId",
+        "leaders",
+        "pairHighlight",
+        "stats",
+        "teamHighlights",
+        "version"
+      ]
+    },
+    {
+      "document": "games/Ra5ZBzOUjR5zQlMojHke/finishCredited/once",
+      "mask": [
+        "at"
+      ]
+    },
+    {
+      "query": "finishStages",
+      "gameId": "Ra5ZBzOUjR5zQlMojHke",
+      "mask": [
+        "at",
+        "completedAt",
+        "done",
+        "hadPointsTable",
+        "legacy",
+        "stage",
+        "status",
+        "summaryRefreshVersion",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "eveningStandings/Ra5ZBzOUjR5zQlMojHke__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "mask": [
+        "at",
+        "gameId",
+        "groupId",
+        "metrics",
+        "rank",
+        "rankDelta",
+        "rankTotal",
+        "score",
+        "scoreBasis",
+        "scoreDelta",
+        "scoreRank",
+        "scoreTotal",
+        "userId"
+      ]
+    },
+    {
+      "document": "games/FQ4T7izEbuYfprKFS75n",
+      "mask": [
+        "acceptsFillers",
+        "adminRemovals",
+        "advancedFillMode",
+        "advancedMode",
+        "advancedTieMode",
+        "arrivals",
+        "autoTeamsGeneratedAt",
+        "autoTeamsMethod",
+        "committedRoundCount",
+        "createdAt",
+        "createdBy",
+        "creationFingerprint",
+        "draftTeams",
+        "endedAt",
+        "endedBy",
+        "extraTimeMinutes",
+        "format",
+        "groupId",
+        "guests",
+        "isOrphanContext",
+        "lastCommittedRoundId",
+        "liveMatch",
+        "matchDurationMinutes",
+        "maxPlayers",
+        "minPlayers",
+        "numberOfTeams",
+        "participantIds",
+        "pending",
+        "players",
+        "rotation",
+        "seriesId",
+        "startsAt",
+        "status",
+        "teamsEditedManually",
+        "updatedAt",
+        "visibility",
+        "waitlist"
+      ]
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "FQ4T7izEbuYfprKFS75n",
+      "mask": [
+        "at",
+        "goals",
+        "penalties",
+        "roundId",
+        "scoreA",
+        "scoreB",
+        "teamA",
+        "teamAIndex",
+        "teamB",
+        "teamBIndex",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "FQ4T7izEbuYfprKFS75n",
+      "mask": [
+        "alternativeDecisionFingerprint",
+        "by",
+        "committedAt",
+        "tieResolution",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "FQ4T7izEbuYfprKFS75n",
+      "mask": [
+        "actualTeamGoalsAgainst",
+        "actualTeamGoalsFor",
+        "asRounds",
+        "assists",
+        "attended",
+        "cancelled",
+        "cleanSheets",
+        "csRounds",
+        "gameId",
+        "games",
+        "goals",
+        "isGuest",
+        "losses",
+        "ownGoals",
+        "penConceded",
+        "penFaced",
+        "penMissed",
+        "penSaved",
+        "penScored",
+        "penTaken",
+        "rounds",
+        "teamScoreRounds",
+        "ties",
+        "totalGames",
+        "updatedAt",
+        "userId",
+        "wins"
+      ]
+    },
+    {
+      "document": "roundSummaries/FQ4T7izEbuYfprKFS75n",
+      "mask": [
+        "at",
+        "backfilled",
+        "basis",
+        "correctionBasis",
+        "coverage",
+        "events",
+        "gameId",
+        "generatedAt",
+        "groupId",
+        "leaders",
+        "pairHighlight",
+        "stats",
+        "teamHighlights",
+        "version"
+      ]
+    },
+    {
+      "document": "games/FQ4T7izEbuYfprKFS75n/finishCredited/once",
+      "mask": [
+        "at"
+      ]
+    },
+    {
+      "query": "finishStages",
+      "gameId": "FQ4T7izEbuYfprKFS75n",
+      "mask": [
+        "at",
+        "completedAt",
+        "done",
+        "hadPointsTable",
+        "legacy",
+        "stage",
+        "status",
+        "summaryRefreshVersion",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "eveningStandings/FQ4T7izEbuYfprKFS75n__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "mask": [
+        "at",
+        "gameId",
+        "groupId",
+        "metrics",
+        "rank",
+        "rankDelta",
+        "rankTotal",
+        "score",
+        "scoreBasis",
+        "scoreDelta",
+        "scoreRank",
+        "scoreTotal",
+        "userId"
+      ]
+    },
+    {
+      "document": "games/cF3CjQbLH8vzo7uaFqHx",
+      "mask": [
+        "acceptsFillers",
+        "adminRemovals",
+        "advancedFillMode",
+        "advancedMode",
+        "advancedTieMode",
+        "arrivals",
+        "autoTeamsGeneratedAt",
+        "autoTeamsMethod",
+        "committedRoundCount",
+        "createdAt",
+        "createdBy",
+        "creationFingerprint",
+        "draftTeams",
+        "endedAt",
+        "endedBy",
+        "extraTimeMinutes",
+        "format",
+        "groupId",
+        "guests",
+        "isOrphanContext",
+        "lastCommittedRoundId",
+        "liveMatch",
+        "matchDurationMinutes",
+        "maxPlayers",
+        "minPlayers",
+        "numberOfTeams",
+        "participantIds",
+        "pending",
+        "players",
+        "rotation",
+        "seriesId",
+        "startsAt",
+        "status",
+        "teamsEditedManually",
+        "updatedAt",
+        "visibility",
+        "waitlist"
+      ]
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "cF3CjQbLH8vzo7uaFqHx",
+      "mask": [
+        "at",
+        "goals",
+        "penalties",
+        "roundId",
+        "scoreA",
+        "scoreB",
+        "teamA",
+        "teamAIndex",
+        "teamB",
+        "teamBIndex",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "cF3CjQbLH8vzo7uaFqHx",
+      "mask": [
+        "alternativeDecisionFingerprint",
+        "by",
+        "committedAt",
+        "tieResolution",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "cF3CjQbLH8vzo7uaFqHx",
+      "mask": [
+        "actualTeamGoalsAgainst",
+        "actualTeamGoalsFor",
+        "asRounds",
+        "assists",
+        "attended",
+        "cancelled",
+        "cleanSheets",
+        "csRounds",
+        "gameId",
+        "games",
+        "goals",
+        "isGuest",
+        "losses",
+        "ownGoals",
+        "penConceded",
+        "penFaced",
+        "penMissed",
+        "penSaved",
+        "penScored",
+        "penTaken",
+        "rounds",
+        "teamScoreRounds",
+        "ties",
+        "totalGames",
+        "updatedAt",
+        "userId",
+        "wins"
+      ]
+    },
+    {
+      "document": "roundSummaries/cF3CjQbLH8vzo7uaFqHx",
+      "mask": [
+        "at",
+        "backfilled",
+        "basis",
+        "correctionBasis",
+        "coverage",
+        "events",
+        "gameId",
+        "generatedAt",
+        "groupId",
+        "leaders",
+        "pairHighlight",
+        "stats",
+        "teamHighlights",
+        "version"
+      ]
+    },
+    {
+      "document": "games/cF3CjQbLH8vzo7uaFqHx/finishCredited/once",
+      "mask": [
+        "at"
+      ]
+    },
+    {
+      "query": "finishStages",
+      "gameId": "cF3CjQbLH8vzo7uaFqHx",
+      "mask": [
+        "at",
+        "completedAt",
+        "done",
+        "hadPointsTable",
+        "legacy",
+        "stage",
+        "status",
+        "summaryRefreshVersion",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "eveningStandings/cF3CjQbLH8vzo7uaFqHx__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "mask": [
+        "at",
+        "gameId",
+        "groupId",
+        "metrics",
+        "rank",
+        "rankDelta",
+        "rankTotal",
+        "score",
+        "scoreBasis",
+        "scoreDelta",
+        "scoreRank",
+        "scoreTotal",
+        "userId"
+      ]
+    },
+    {
+      "document": "games/create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+      "mask": [
+        "acceptsFillers",
+        "adminRemovals",
+        "advancedFillMode",
+        "advancedMode",
+        "advancedTieMode",
+        "arrivals",
+        "autoTeamsGeneratedAt",
+        "autoTeamsMethod",
+        "committedRoundCount",
+        "createdAt",
+        "createdBy",
+        "creationFingerprint",
+        "draftTeams",
+        "endedAt",
+        "endedBy",
+        "extraTimeMinutes",
+        "format",
+        "groupId",
+        "guests",
+        "isOrphanContext",
+        "lastCommittedRoundId",
+        "liveMatch",
+        "matchDurationMinutes",
+        "maxPlayers",
+        "minPlayers",
+        "numberOfTeams",
+        "participantIds",
+        "pending",
+        "players",
+        "rotation",
+        "seriesId",
+        "startsAt",
+        "status",
+        "teamsEditedManually",
+        "updatedAt",
+        "visibility",
+        "waitlist"
+      ]
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+      "mask": [
+        "at",
+        "goals",
+        "penalties",
+        "roundId",
+        "scoreA",
+        "scoreB",
+        "teamA",
+        "teamAIndex",
+        "teamB",
+        "teamBIndex",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+      "mask": [
+        "alternativeDecisionFingerprint",
+        "by",
+        "committedAt",
+        "tieResolution",
+        "winnerSide"
+      ]
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+      "mask": [
+        "actualTeamGoalsAgainst",
+        "actualTeamGoalsFor",
+        "asRounds",
+        "assists",
+        "attended",
+        "cancelled",
+        "cleanSheets",
+        "csRounds",
+        "gameId",
+        "games",
+        "goals",
+        "isGuest",
+        "losses",
+        "ownGoals",
+        "penConceded",
+        "penFaced",
+        "penMissed",
+        "penSaved",
+        "penScored",
+        "penTaken",
+        "rounds",
+        "teamScoreRounds",
+        "ties",
+        "totalGames",
+        "updatedAt",
+        "userId",
+        "wins"
+      ]
+    },
+    {
+      "document": "roundSummaries/create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+      "mask": [
+        "at",
+        "backfilled",
+        "basis",
+        "correctionBasis",
+        "coverage",
+        "events",
+        "gameId",
+        "generatedAt",
+        "groupId",
+        "leaders",
+        "pairHighlight",
+        "stats",
+        "teamHighlights",
+        "version"
+      ]
+    },
+    {
+      "document": "games/create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f/finishCredited/once",
+      "mask": [
+        "at"
+      ]
+    },
+    {
+      "query": "finishStages",
+      "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+      "mask": [
+        "at",
+        "completedAt",
+        "done",
+        "hadPointsTable",
+        "legacy",
+        "stage",
+        "status",
+        "summaryRefreshVersion",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "eveningStandings/create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "mask": [
+        "at",
+        "gameId",
+        "groupId",
+        "metrics",
+        "rank",
+        "rankDelta",
+        "rankTotal",
+        "score",
+        "scoreBasis",
+        "scoreDelta",
+        "scoreRank",
+        "scoreTotal",
+        "userId"
+      ]
+    }
+  ],
+  "label": "release-game2-rotation",
+  "readerSha256": "8065729186a80f0821e17d8bf4a4f8ed53b240653e23313903249cdc488232e6",
+  "oldRoundComparison": {
+    "allSixOldRoundsUnchanged": true,
+    "rounds": [
+      {
+        "gameId": "lmUUmQru2HtKvQkRDVeD",
+        "unchanged": true
+      },
+      {
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "unchanged": true
+      },
+      {
+        "gameId": "mBO5HqJdnOPWjRE2zMh8",
+        "unchanged": true
+      },
+      {
+        "gameId": "Ra5ZBzOUjR5zQlMojHke",
+        "unchanged": true
+      },
+      {
+        "gameId": "FQ4T7izEbuYfprKFS75n",
+        "unchanged": true
+      },
+      {
+        "gameId": "cF3CjQbLH8vzo7uaFqHx",
+        "unchanged": true
+      }
+    ]
+  },
+  "baselineDigest": "c1efd5736c6cc9b5b6bd1892cc4cf51288b9a7850a63c305c9a1bdf68e235cdb",
+  "numericDeltasFromBaseline": {
+    "account": [
+      {
+        "field": "updatedAt",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1792279355372,
+        "after": 1792297724328,
+        "delta": 18368956
+      }
+    ],
+    "qaClubStats": [],
+    "clubTotals": [],
+    "clubShowcase": [],
+    "clubRecords": []
+  }
+}

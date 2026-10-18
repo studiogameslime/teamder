@@ -15,14 +15,9 @@ import { crumbErr, formatTrail } from '@/services/breadcrumbs';
 import { diagnosticAttachment, diagnosticOwner } from './diagnosticJournal';
 import { readPendingDiagnosticErrors, savePendingDiagnosticErrors, persistDiagnosticJournal } from './diagnosticStorage';
 import Constants from 'expo-constants';
-import {
-  doc,
-  increment,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-} from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { getFirebase } from '../firebase/config';
+import { redactDiagnosticContext, redactDiagnosticText } from '../utils/diagnosticRedaction';
 
 export interface ErrorContext {
   /** What the user/app was doing — short stable label, e.g. 'createGame'. */
@@ -96,7 +91,17 @@ export async function restorePendingErrors(viewerId:string):Promise<void> {
     !entry.context||typeof entry.context!=='object'||Array.isArray(entry.context)||
     !Number.isInteger(entry.pending)||entry.pending<=0||entry.pending>1000000)continue;
   // Preserve newer in-process evidence for the same fingerprint.
-  if(!buffer.has(fp))buffer.set(fp,entry);else buffer.get(fp)!.pending+=entry.pending;
+  const clean = {
+    ...entry,
+    operation: redactDiagnosticText(entry.operation).slice(0,100),
+    message: redactDiagnosticText(entry.message).slice(0,2000),
+    stack: typeof entry.stack === 'string' ? redactDiagnosticText(entry.stack).slice(0,1500) : undefined,
+    code: typeof entry.code === 'string' ? redactDiagnosticText(entry.code).slice(0,100) : undefined,
+    screen: typeof entry.screen === 'string' ? redactDiagnosticText(entry.screen).slice(0,100) : undefined,
+    trail: redactDiagnosticText(entry.trail),
+    context: safeContext(entry.context),
+  };
+  if(!buffer.has(fp))buffer.set(fp,clean);else buffer.get(fp)!.pending+=entry.pending;
  }
  persistPending();await flush();
 }
@@ -198,17 +203,7 @@ function isTransientEnvError(code?: string, message?: string): boolean {
 }
 
 function safeContext(ctx?: ErrorContext): Record<string, unknown> {
-  if (!ctx) return {};
-  try {
-    // Drop non-serializable values + cap size.
-    const json = JSON.stringify(ctx, (_k, v) =>
-      typeof v === 'function' ? undefined : v,
-    );
-    const capped = json.length > 4000 ? json.slice(0, 4000) + '…' : json;
-    return JSON.parse(capped.length === json.length ? json : json.slice(0, 4000)) ?? {};
-  } catch {
-    return {};
-  }
+  return redactDiagnosticContext(ctx);
 }
 
 function currentUid(): string | undefined {
@@ -320,7 +315,10 @@ export function logError(
 ): void {
   try {
     const info = errInfo(error);
-    const message = info.message.slice(0,2000), code = info.code, stack = info.stack;
+    const message = redactDiagnosticText(info.message).slice(0,2000);
+    const code = typeof info.code === 'string' ? redactDiagnosticText(info.code).slice(0,100) : undefined;
+    const stack = info.stack ? redactDiagnosticText(info.stack).slice(0,1500) : undefined;
+    operation = redactDiagnosticText(operation).slice(0,100);
     // Drop transient network/offline/timeout blips — not actionable bugs,
     // just dead-zone noise in the dev inbox (see isTransientEnvError).
     if (isTransientEnvError(code, message)) return;
@@ -336,13 +334,13 @@ export function logError(
     // Runaway guard: once this signature has been written SESSION_WRITE_CAP
     // times this session, stop buffering it (protects a single hot doc).
     if ((flushedPerFp.get(fp) ?? 0) >= SESSION_WRITE_CAP) return;
-    const screen = context?.screen as string | undefined;
+    const screen = typeof context?.screen === 'string' ? redactDiagnosticText(context.screen).slice(0,100) : undefined;
     const existing = buffer.get(fp);
     // Auth may switch just before App's ownership effect runs. Never attach
     // the previous account's actions in that narrow transition window.
     const owner=diagnosticOwner();
     const sameOwner=owner===undefined||owner===uid;
-    const trail=sameOwner?formatTrail().slice(-6000):'';
+    const trail=sameOwner?redactDiagnosticText(formatTrail()).slice(-6000):'';
     const journal=sameOwner?diagnosticAttachment():'';
     if (existing) {
       existing.pending += 1;
@@ -489,9 +487,10 @@ export async function flush(): Promise<void> {
   if (inFlush || buffer.size === 0) return;
   inFlush = true;
   const generation = ownerGeneration;
-  let db;
+  let functions;
   try {
-    db = getFirebase().db; // throws in mock mode → skip silently
+    functions = getFirebase().functions; // throws in mock mode → skip silently
+    if (!currentUid()) { inFlush=false; scheduleFlush(); return; }
   } catch {
     inFlush = false;
     return;
@@ -501,13 +500,15 @@ export async function flush(): Promise<void> {
     if(generation!==ownerGeneration)break;
     // Freeze the occurrence before awaiting a write; later navigation/errors
     // cannot change the journal paired with this error.
+    // A pre-auth error can be sent once this process has its first session.
+    // Ownerless records from a previous process are never restored to a new user.
+    if (!live.userId) live.userId=currentUid();
     const e={...live};
     const delta = e.pending;
     live.pending = 0;
     if(e.userId!==currentUid())continue;
     delivering.set(fp,e);
     persistPending(true);
-    const ref = doc(db, 'errors', fp);
     const silent = e.context?.silent === true;
     const category = categoryFor(e.operation, silent);
     const common = {
@@ -526,31 +527,14 @@ export async function flush(): Promise<void> {
       platform: Platform.OS,
       osVersion: String(Platform.Version ?? ''),
       appVersion:e.version,
-      lastSeen: serverTimestamp(),
     };
     try {
-      // Increment an existing signature…
-      await updateDoc(ref, { ...common, count: increment(delta) });
+      await httpsCallable(functions,'recordClientError')({...common,count:delta});
       if(generation===ownerGeneration)flushedPerFp.set(fp, (flushedPerFp.get(fp) ?? 0) + 1);
     } catch {
       if(generation!==ownerGeneration||e.userId!==currentUid()){delivering.delete(fp);continue;}
-      // …or create it on first sighting (with create-only fields).
-      try {
-        await setDoc(
-          ref,
-          {
-            ...common,
-            fingerprint: fp,
-            count: delta,
-            status: 'new',
-            firstSeen: serverTimestamp(),
-          },
-          { merge: true },
-        );
-        if(generation===ownerGeneration)flushedPerFp.set(fp, (flushedPerFp.get(fp) ?? 0) + 1);
-      } catch {
-        if(generation===ownerGeneration)live.pending += delta; // retry only in the original account
-      }
+      // Never fall back to the insecure direct-write path.
+      if(generation===ownerGeneration)live.pending += delta;
     }
     delivering.delete(fp);
   }

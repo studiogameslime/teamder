@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // TeamsEditModal — tap-to-swap editor for an EXISTING team split (כוחות).
 //
 // The admin TAPS a player chip; that chip locks with a highlighted ring and
@@ -329,10 +330,7 @@ function Chip({
 
 const styles = StyleSheet.create({
   fill: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+  sheet: { ...overlaySurfaces.sheet,
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
     maxHeight: '92%',

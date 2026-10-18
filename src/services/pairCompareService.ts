@@ -18,7 +18,7 @@
 // fetches every pair because it has to pick six winners out of them; this
 // screen knows exactly which pair it wants, and the real club has 301 of them.
 
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
 
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { gameService } from '@/services/gameService';
@@ -149,10 +149,19 @@ async function readLivePair(
     typeof v === 'number' && Number.isFinite(v) ? v : 0;
   try {
     const { db } = getFirebase();
-    const snap = await getDoc(
-      doc(db, 'communityPairStats', `${groupId}__${pairKey(uidA, uidB)}`),
-    );
-    if (!snap.exists()) return null;
+    // Bind club + both sorted members, not documentId(): Firestore evaluates
+    // an exact-id query against the absent resource too, denying that query.
+    // Field filters preserve a legitimate empty result without weakening rules.
+    const [a, b] = [uidA, uidB].sort();
+    const result = await getDocs(query(
+      collection(db, 'communityPairStats'),
+      where('groupId', '==', groupId),
+      where('a', '==', a),
+      where('b', '==', b),
+      limit(1),
+    ));
+    const snap = result.docs[0];
+    if (!snap) return null;
     const x = snap.data() as Record<string, unknown>;
     // Field by field, like every other reader in this app: a field the
     // document gains and this function does not name simply would not exist.
@@ -238,6 +247,10 @@ export const pairCompareService = {
         // chemistry start date over it would be quoting the wrong window.
         since = null;
       } else if (scope.k === 'all') {
+        const history = await seasonHistoryService.list(groupId, true);
+        if (history === 'error' || history.filter((x) => !x.nonSeason).length < (seasons?.count ?? 0)) return null;
+        if (seasons?.hasArchivedPeriods && !history.some(x=>x.nonSeason)) return null;
+        const archiveIds = history.map((x) => x.seasonId);
         // Live + every archive. Nothing recomputes: the archives are the
         // sealed record of the seasons they closed, so this is addition over
         // numbers that were already agreed.
@@ -245,7 +258,7 @@ export const pairCompareService = {
           readLivePair(groupId, viewerId, otherId),
           gameService.getCommunityChampionship(groupId, undefined, true),
           Promise.all(
-            pastSeasonIds.map((id) => seasonHistoryService.table(groupId, id)),
+            archiveIds.map((id) => seasonHistoryService.table(groupId, id)),
           ),
           readChemistrySince(groupId),
         ]);
@@ -339,7 +352,7 @@ export const pairCompareService = {
       const gpg = (r: ChampionshipRow | null) =>
         r ? (r.games > 0 ? Math.round((r.goals / r.games) * 10) / 10 : 0) : null;
       const pct = (r: ChampionshipRow | null) =>
-        r ? winPct(r.wins, r.losses) : null;
+        r ? winPct(r.wins, r.losses, Math.max(0, r.rounds - r.wins - r.losses)) : null;
 
       const comparison: CompareRow[] = [
         row('goals', LBL.goals, v(rowA, (r) => r.goals), v(rowB, (r) => r.goals), 'int'),
@@ -396,7 +409,7 @@ export const pairCompareService = {
         pair,
         pairKnown,
         together: {
-          winPct: winPct(pair.winsTogether, pair.lossesTogether),
+          winPct: winPct(pair.winsTogether, pair.lossesTogether, pair.tiesTogether),
           cleanSheetPct:
             pair.roundsTogether > 0
               ? Math.round((pair.cleanSheetsTogether / pair.roundsTogether) * 100)
@@ -404,8 +417,8 @@ export const pairCompareService = {
           assistsTotal: pair.assistsViewerToOther + pair.assistsOtherToViewer,
         },
         h2h: {
-          winPctViewer: winPct(pair.winsViewer, pair.winsOther),
-          winPctOther: winPct(pair.winsOther, pair.winsViewer),
+          winPctViewer: winPct(pair.winsViewer, pair.winsOther, pair.tiesAgainst),
+          winPctOther: winPct(pair.winsOther, pair.winsViewer, pair.tiesAgainst),
           leader:
             pair.winsViewer > pair.winsOther
               ? 'a'

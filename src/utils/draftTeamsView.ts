@@ -34,12 +34,13 @@ interface RotationLike {
 }
 
 /**
- * The split AS DIVIDED — the record of how the evening started.
+ * The latest deliberately saved split. Every explicit save refreshes both
+ * originalTeams and rotation.baseTeams; working-roster fills do not.
  *
  * Precedence, and why:
  *  1. `originalTeams` — the frozen snapshot. `teams` is the live/working roster
  *     (go-home and permanent-fill mutate it), so it is the wrong thing to show
- *     as "how we split up".
+ *     as "how we split up". This snapshot is replaced on every explicit save.
  *  2. `rotation.baseTeams` — older games predate the snapshot but froze the
  *     starting rosters here. `playerIds[0]` is the captain by construction.
  *  3. `teams` — legacy games with neither.
@@ -73,6 +74,26 @@ export function resolveSplitTeams(
       }));
   }
   return (draftTeams?.teams ?? []).map(norm);
+}
+
+/** Current round-details allocation still shows the saved BASE grouping, not
+ * where a temporary/permanent filler happens to play. Removed registrations
+ * cannot be resolved from today's roster and must not become ghost avatars.
+ * Going home keeps registration, so those people retain their original place.
+ * Historical consumers continue to use resolveSplitTeams without this filter. */
+export function resolveCurrentSplitTeams(
+  draftTeams: DraftTeamsLike | null | undefined,
+  rotation: RotationLike | null | undefined,
+  roster: { players?: readonly string[]; guests?: readonly { id: string; waitlisted?: boolean }[] },
+): SplitTeam[] {
+  const registered = new Set([
+    ...(roster.players ?? []),
+    ...(roster.guests ?? []).filter(guest => !guest.waitlisted).map(guest => `guest:${guest.id}`),
+  ]);
+  return resolveSplitTeams(draftTeams, rotation).map(team => {
+    const playerIds = team.playerIds.filter(id => registered.has(id));
+    return { ...team, playerIds, captainId: playerIds.includes(team.captainId) ? team.captainId : playerIds[0] ?? '' };
+  });
 }
 
 /**

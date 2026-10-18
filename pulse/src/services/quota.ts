@@ -1,3 +1,4 @@
+import { pulseFetch as fetch } from './adminTransport';
 // Free-tier usage monitor. Pulls real usage from Google Cloud Monitoring
 // (Firestore reads/writes/deletes, Cloud Functions invocations) and Cloud
 // Scheduler (cron job count), then compares each against the Firebase /

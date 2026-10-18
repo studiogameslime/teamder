@@ -37,7 +37,7 @@ import { toast } from '@/components/Toast';
 import { he } from '@/i18n/he';
 import { colors, radius, spacing, typography } from '@/theme';
 
-type Btn = { id: string; text: string; action: 'dismiss' | 'url' | 'deep_link'; url?: string };
+import { NativeCampaignView, type NativeMsg, type Btn } from './NativeCampaignView';
 interface HtmlMsg {
   id: string;
   name: string;
@@ -47,37 +47,6 @@ interface HtmlMsg {
   html: string;
   css?: string;
 }
-interface NativeMsg {
-  id: string;
-  name: string;
-  type: 'modal' | 'banner' | 'slideup' | 'fullscreen' | 'custom';
-  priority: number;
-  kind: 'native';
-  title?: string;
-  body: string;
-  imageUrl?: string;
-  buttons: Btn[];
-  closeButton: boolean;
-  backdropDismissible: boolean;
-  style?: {
-    backgroundColor?: string;
-    textColor?: string;
-    primaryButtonColor?: string;
-    primaryButtonTextColor?: string;
-    cornerRadius?: number;
-    fontSize?: number;
-    titleWeight?: 'regular' | 'medium' | 'semibold' | 'bold';
-    textAlign?: 'auto' | 'start' | 'center' | 'end';
-    fontFamily?: string;
-  };
-}
-
-const WEIGHT = {
-  regular: '400',
-  medium: '500',
-  semibold: '600',
-  bold: '700',
-} as const;
 
 type Msg = NativeMsg | HtmlMsg;
 
@@ -264,109 +233,7 @@ export function InAppMessageHost(): React.ReactElement | null {
     );
   }
 
-  const s = msg.style ?? {};
-  // Absent override = inherit the app's own styling. Never substitute a
-  // default of our own for a field the campaign did not set.
-  const bg = s.backgroundColor ?? colors.surface;
-  const fg = s.textColor ?? colors.text;
-  const accent = s.primaryButtonColor ?? colors.primary;
-  const accentText = s.primaryButtonTextColor ?? '#fff';
-  // typography.body.fontSize is optional in the theme's type, so it cannot be
-  // multiplied for the headline without a concrete fallback.
-  const bodySize = s.fontSize ?? typography.body.fontSize ?? 15;
-  // `auto` aligns by the MESSAGE's language, not the device's — this workspace
-  // sends Hebrew and English to the same install, so I18nManager.isRTL is the
-  // wrong test. RN's writingDirection:'auto' does it per-string.
-  const align =
-    s.textAlign === 'center' ? 'center'
-      : s.textAlign === 'start' ? 'left'
-        : s.textAlign === 'end' ? 'right'
-          : 'auto';
-
-  const isBanner = msg.type === 'banner' || msg.type === 'slideup';
-
-  return (
-    <Modal transparent animationType="none" visible onRequestClose={() => close('dismissed')}>
-      <Animated.View style={[styles.backdrop, isBanner && styles.backdropBanner, { opacity: fade }]}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={() => (msg.backdropDismissible ? close('dismissed') : undefined)}
-        />
-        <View
-          style={[
-            styles.card,
-            isBanner && styles.cardBanner,
-            msg.type === 'fullscreen' && styles.cardFull,
-            { backgroundColor: bg, borderRadius: s.cornerRadius ?? radius.lg },
-          ]}
-        >
-          {msg.closeButton ? (
-            <Pressable onPress={() => close('dismissed')} hitSlop={12} style={styles.close}>
-              <Text style={[styles.closeText, { color: fg }]}>✕</Text>
-            </Pressable>
-          ) : null}
-
-          {msg.title ? (
-            <Text
-              style={[
-                styles.title,
-                {
-                  color: fg,
-                  fontSize: bodySize * 1.35,
-                  fontWeight: WEIGHT[s.titleWeight ?? 'bold'],
-                  textAlign: align,
-                  writingDirection: 'auto',
-                  ...(s.fontFamily ? { fontFamily: s.fontFamily } : {}),
-                },
-              ]}
-            >
-              {msg.title}
-            </Text>
-          ) : null}
-
-          <Text
-            style={[
-              styles.body,
-              {
-                color: fg,
-                fontSize: bodySize,
-                textAlign: align,
-                writingDirection: 'auto',
-                ...(s.fontFamily ? { fontFamily: s.fontFamily } : {}),
-              },
-            ]}
-          >
-            {msg.body}
-          </Text>
-
-          <View style={styles.buttons}>
-            {(msg.buttons ?? []).map((b, i) => (
-              <Pressable
-                key={b.id}
-                onPress={() => onButton(b)}
-                style={[
-                  styles.btn,
-                  i === 0
-                    ? { backgroundColor: accent }
-                    : { backgroundColor: 'transparent', borderColor: accent, borderWidth: 1 },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.btnText,
-                    { color: i === 0 ? accentText : accent, writingDirection: 'auto' },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {b.text}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      </Animated.View>
-    </Modal>
-  );
+  return <NativeCampaignView msg={msg} opacity={fade} onClose={() => close('dismissed')} onButton={onButton} />;
 }
 
 const styles = StyleSheet.create({

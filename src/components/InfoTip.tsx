@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // InfoTip — a small ⓘ icon that opens a brief explanation in a popover
 // ANCHORED to the icon (a speech-bubble with a caret pointing at it),
 // not a centred modal. Drop it next to any label that needs a "what is
@@ -128,12 +129,8 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
                   anchor.above ? styles.caretDown : styles.caretUp,
                 ]}
               />
-              {/* The card is laid out LTR so the caret's absolute `left` is
-                  physical. Hebrew inside it therefore needs its OWN direction
-                  rather than a textAlign override per <Text> — with only the
-                  override, a long line started outside the card's padding and
-                  the first character was clipped. One RTL block, and the text
-                  lays out in the frame it is actually written in. */}
+              {/* Keep the measured card and text block in one physical frame;
+                  each Text explicitly supplies RTL writing and right alignment. */}
               <View style={styles.textBlock}>
                 {title ? <Text style={styles.title}>{title}</Text> : null}
                 <Text style={styles.body}>{text}</Text>
@@ -150,10 +147,12 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
 }
 
 const styles = StyleSheet.create({
-  textBlock: { direction: 'rtl', alignSelf: 'stretch' },
-  backdrop: {
+  // Keep the physical frame LTR; Text explicitly sets Hebrew direction and
+  // physical right alignment. Mixing an RTL frame with swapped alignment
+  // makes Android forceRTL align tooltip paragraphs on the wrong side.
+  textBlock: { direction: 'ltr', alignSelf: 'stretch' },
+  backdrop: { backgroundColor: overlayTheme.popoverBackdrop,
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.25)',
     // The whole overlay is laid out LTR so every absolute `left` here —
     // the card's position, the caret, and the icon's measureInWindow x —
     // lives in ONE consistent physical coordinate frame. Under Android
@@ -162,23 +161,14 @@ const styles = StyleSheet.create({
     // textAlign:'right' + writingDirection:'rtl'.
     direction: 'ltr',
   },
-  card: {
+  card: { ...overlaySurfaces.popover,
     position: 'absolute',
     // LTR so the absolutely-positioned caret child uses physical `left`
     // (see render comment). Text inside stays Hebrew-right via explicit
     // textAlign:'right' + writingDirection:'rtl' on the title/body.
     direction: 'ltr',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
   },
   caret: {
     position: 'absolute',
@@ -227,5 +217,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.primary,
     fontWeight: '800',
+    writingDirection: 'rtl',
+    textAlign: 'right',
   },
 });

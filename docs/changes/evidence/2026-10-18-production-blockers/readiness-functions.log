@@ -1,0 +1,6 @@
+
+> footy-functions@1.0.0 build
+> node scripts/copy-template.js && tsc
+
+[copy-template] copied ..\public\c\index.html → templates\community.html
+[copy-template] copied ..\public\invite.html → templates\invite.html

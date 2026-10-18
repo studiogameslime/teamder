@@ -1,0 +1,3810 @@
+{
+  "readAt": "2026-10-17T04:28:39.206275+00:00",
+  "account": {
+    "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "name": "בדיקות לייב",
+    "stats": {
+      "assists": 1,
+      "cleanSheets": 3,
+      "penConceded": 1,
+      "wins": 4,
+      "penSaved": 2,
+      "penFaced": 3,
+      "goals": 3
+    }
+  },
+  "club": {
+    "id": "J060YQu6QTcgk3glUDj2",
+    "isOpen": false,
+    "name": "בדיקות לייב אוקטובר",
+    "playerIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "adminIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "creatorId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+  },
+  "games": [
+    {
+      "game": {
+        "id": "YEdIR3MviDK82D581ELk",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "title": "בדיקות לייב אוקטובר",
+        "startsAt": 1792194600000,
+        "maxPlayers": 21,
+        "minPlayers": null,
+        "waitlist": [],
+        "pending": [],
+        "teams": null,
+        "currentMatchIndex": 0,
+        "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "visibility": "community",
+        "format": "7v7",
+        "numberOfTeams": 3,
+        "matchDurationMinutes": 8,
+        "hasPenalties": false,
+        "hasHalfTime": false,
+        "arrivals": null,
+        "autoTeamsAt": null,
+        "autoTeamsMethod": null,
+        "acceptsFillers": false,
+        "advancedMode": true,
+        "advancedFillMode": "temporary",
+        "advancedTieMode": null,
+        "createdAt": 1792193353028,
+        "players": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "participantIds": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "autoTeamsGeneratedBy": "system",
+        "autoTeamsGeneratedAt": 1792193586480,
+        "guests": [
+          {
+            "id": "mvbls3w3-qut4pc",
+            "name": "דניאל שבע א",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193573811,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvblukkd-mqv80v",
+            "name": "איתי שבע ב",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193688733,
+            "estimatedRating": 3.1
+          },
+          {
+            "id": "mvblx3in-fi5e6t",
+            "name": "תומר שבע ג",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193806607,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvblxnik-8zuslm",
+            "name": "אורי שבע ד",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193832524,
+            "estimatedRating": 4.8
+          },
+          {
+            "id": "mvbly3u1-bpeqbv",
+            "name": "אלין שבע ה",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193853673,
+            "estimatedRating": 2.3
+          },
+          {
+            "id": "mvblylnr-huvc9y",
+            "name": "בן שבע ו",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193876775,
+            "estimatedRating": 3.1
+          },
+          {
+            "id": "mvblz1wa-09tytj",
+            "name": "רון שבע ז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193897818,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvblzjh8-sqyjaj",
+            "name": "ליאור שבע ח",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193920604,
+            "estimatedRating": 4.8
+          },
+          {
+            "id": "mvbm00m2-rk55cp",
+            "name": "נועם שבע ט",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193942810,
+            "estimatedRating": 2.3
+          },
+          {
+            "id": "mvbm0j6i-mkdjg5",
+            "name": "גל שבע י",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193966874,
+            "estimatedRating": 3.1
+          },
+          {
+            "id": "mvbm108b-57st7y",
+            "name": "רועי שבע יא",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792193988971,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvbm1i0e-fn72ab",
+            "name": "אסף שבע יב",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194012014,
+            "estimatedRating": 4.8
+          },
+          {
+            "id": "mvbm1z93-flw4fb",
+            "name": "עידן שבע יג",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194034359,
+            "estimatedRating": 2.3
+          },
+          {
+            "id": "mvbm2gjb-1c84fv",
+            "name": "נדב שבע יד",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194056759,
+            "estimatedRating": 3.1
+          },
+          {
+            "id": "mvbm2xhv-yzilc4",
+            "name": "יוסי שבע טו",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194078739,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvbm3ekm-bwv413",
+            "name": "משה שבע טז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194100870,
+            "estimatedRating": 4.8
+          },
+          {
+            "id": "mvbm3vl4-zsisrg",
+            "name": "לירן שבע יז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194122920,
+            "estimatedRating": 2.3
+          },
+          {
+            "id": "mvbm4gz2-r90mh5",
+            "name": "עמית שבע יח",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194150638
+          },
+          {
+            "id": "mvbm4zwg-e3ggog",
+            "name": "עומר שבע יט",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194175168,
+            "estimatedRating": 3.9
+          },
+          {
+            "id": "mvbm5h1y-qz8250",
+            "name": "אלכסנדר בדיקת שבע כ",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792194197398,
+            "estimatedRating": 4.8
+          }
+        ],
+        "teamsEditedManually": true,
+        "teamBalanceMeta": {
+          "generatedAt": 1792197590117,
+          "algorithm": "rating_balanced_v2",
+          "unratedCount": 2,
+          "teamRatings": [
+            3.6,
+            3.6,
+            3.6
+          ],
+          "gap": 0.029,
+          "band": "A",
+          "repeat": 0,
+          "fallback": false,
+          "historyGames": 1
+        },
+        "teamsNotifiedAt": 1792197738053,
+        "draftTeams": {
+          "method": "snake",
+          "numTeams": 3,
+          "createdAt": 1792197590117,
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "teams": [
+            {
+              "index": 0,
+              "captainId": "guest:mvbm5h1y-qz8250",
+              "playerIds": [
+                "guest:mvbm5h1y-qz8250",
+                "guest:mvblz1wa-09tytj",
+                "guest:mvblx3in-fi5e6t",
+                "guest:mvbls3w3-qut4pc",
+                "guest:mvblylnr-huvc9y",
+                "guest:mvbm4gz2-r90mh5",
+                "guest:mvbm00m2-rk55cp"
+              ],
+              "colorKey": "red"
+            },
+            {
+              "index": 1,
+              "captainId": "guest:mvbm3ekm-bwv413",
+              "playerIds": [
+                "guest:mvbm3ekm-bwv413",
+                "guest:mvblxnik-8zuslm",
+                "guest:mvbm4zwg-e3ggog",
+                "guest:mvbm2xhv-yzilc4",
+                "guest:mvbm2gjb-1c84fv",
+                "guest:mvbly3u1-bpeqbv",
+                "guest:mvbm1z93-flw4fb"
+              ],
+              "colorKey": "green"
+            },
+            {
+              "index": 2,
+              "captainId": "guest:mvbm1i0e-fn72ab",
+              "playerIds": [
+                "guest:mvbm1i0e-fn72ab",
+                "guest:mvblzjh8-sqyjaj",
+                "guest:mvbm108b-57st7y",
+                "guest:mvblukkd-mqv80v",
+                "guest:mvbm0j6i-mkdjg5",
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "guest:mvbm3vl4-zsisrg"
+              ],
+              "colorKey": "white"
+            }
+          ],
+          "originalTeams": [
+            {
+              "index": 0,
+              "captainId": "guest:mvbm5h1y-qz8250",
+              "playerIds": [
+                "guest:mvbm5h1y-qz8250",
+                "guest:mvblz1wa-09tytj",
+                "guest:mvblx3in-fi5e6t",
+                "guest:mvbls3w3-qut4pc",
+                "guest:mvblylnr-huvc9y",
+                "guest:mvbm4gz2-r90mh5",
+                "guest:mvbm00m2-rk55cp"
+              ]
+            },
+            {
+              "index": 1,
+              "captainId": "guest:mvbm3ekm-bwv413",
+              "playerIds": [
+                "guest:mvbm3ekm-bwv413",
+                "guest:mvblxnik-8zuslm",
+                "guest:mvbm4zwg-e3ggog",
+                "guest:mvbm2xhv-yzilc4",
+                "guest:mvbm2gjb-1c84fv",
+                "guest:mvbly3u1-bpeqbv",
+                "guest:mvbm1z93-flw4fb"
+              ]
+            },
+            {
+              "index": 2,
+              "captainId": "guest:mvbm1i0e-fn72ab",
+              "playerIds": [
+                "guest:mvbm1i0e-fn72ab",
+                "guest:mvblzjh8-sqyjaj",
+                "guest:mvbm108b-57st7y",
+                "guest:mvblukkd-mqv80v",
+                "guest:mvbm0j6i-mkdjg5",
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "guest:mvbm3vl4-zsisrg"
+              ]
+            }
+          ],
+          "published": true
+        },
+        "lastCommittedRoundId": "r_mvbpasvp_s94nyeui",
+        "committedRoundCount": 2,
+        "rotation": {
+          "playing": [
+            2,
+            1
+          ],
+          "waiting": [
+            0
+          ],
+          "loans": [],
+          "wins": {
+            "2": 2
+          },
+          "round": 3,
+          "lastRoundWinners": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "lastRoundLosers": [],
+          "lastRoundAt": 1792202212515,
+          "updatedAt": 1792202212515,
+          "roundInstanceId": "r_mvbqx9n2_mr9bu0ww",
+          "roundInstanceRound": 3
+        },
+        "liveMatch": {
+          "assignments": {
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": "teamA",
+            "guest:mvbls3w3-qut4pc": "teamB"
+          },
+          "benchOrder": [],
+          "updatedAt": 1792193586480,
+          "timerControlledBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "timerControlledByName": "בדיקות לייב",
+          "scoreB": 0,
+          "startedAt": 1792194600000,
+          "startedAtBy": "server",
+          "goalTally": {
+            "guest:mvbm3ekm-bwv413": 1,
+            "guest:mvbm1i0e-fn72ab": 1,
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1
+          },
+          "timerRunning": false,
+          "timerLastStartedAt": null,
+          "activeIntervals": [
+            {
+              "s": 1792199984931.5,
+              "e": 1792200445675
+            },
+            {
+              "s": 1792202126564.5,
+              "e": 1792202154555.5
+            }
+          ],
+          "scoreA": 0,
+          "goals": [],
+          "timerEvents": [],
+          "timerAccumulatedMs": 0,
+          "phase": "finished"
+        },
+        "endedAt": 1792202606578,
+        "endedBy": "admin",
+        "status": "finished",
+        "updatedAt": 1792202606578
+      },
+      "history": [
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/YEdIR3MviDK82D581ELk/roundHistory/r_mvboblq9_ynnomoks",
+          "id": "r_mvboblq9_ynnomoks",
+          "roundId": "r_mvboblq9_ynnomoks",
+          "teamA": [
+            "guest:mvbm3ekm-bwv413",
+            "guest:mvblxnik-8zuslm",
+            "guest:mvbm4zwg-e3ggog",
+            "guest:mvbm2xhv-yzilc4",
+            "guest:mvbm2gjb-1c84fv",
+            "guest:mvbly3u1-bpeqbv",
+            "guest:mvbm1z93-flw4fb"
+          ],
+          "teamB": [
+            "guest:mvbm1i0e-fn72ab",
+            "guest:mvblzjh8-sqyjaj",
+            "guest:mvbm108b-57st7y",
+            "guest:mvblukkd-mqv80v",
+            "guest:mvbm0j6i-mkdjg5",
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvbm3vl4-zsisrg"
+          ],
+          "teamAIndex": 1,
+          "teamBIndex": 2,
+          "scoreA": 1,
+          "scoreB": 1,
+          "winnerSide": "B",
+          "goals": [
+            {
+              "scorerId": "guest:mvbm3ekm-bwv413",
+              "assisterId": null,
+              "ownGoal": false,
+              "minute": 1,
+              "team": "A"
+            },
+            {
+              "scorerId": "guest:mvbm1i0e-fn72ab",
+              "assisterId": null,
+              "ownGoal": false,
+              "minute": 1,
+              "team": "B"
+            }
+          ],
+          "penalties": [
+            {
+              "kickerId": "guest:mvbm3ekm-bwv413",
+              "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "scored": true,
+              "team": "A"
+            },
+            {
+              "kickerId": "guest:mvbm1i0e-fn72ab",
+              "keeperId": "guest:mvbm3ekm-bwv413",
+              "scored": true,
+              "team": "B"
+            },
+            {
+              "kickerId": "guest:mvbm3ekm-bwv413",
+              "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "scored": false,
+              "team": "A"
+            },
+            {
+              "kickerId": "guest:mvbm1i0e-fn72ab",
+              "keeperId": "guest:mvbm3ekm-bwv413",
+              "scored": false,
+              "team": "B"
+            },
+            {
+              "kickerId": "guest:mvbm3ekm-bwv413",
+              "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "scored": false,
+              "team": "A"
+            }
+          ],
+          "at": 1792199483832
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/YEdIR3MviDK82D581ELk/roundHistory/r_mvbpasvp_s94nyeui",
+          "id": "r_mvbpasvp_s94nyeui",
+          "roundId": "r_mvbpasvp_s94nyeui",
+          "teamA": [
+            "guest:mvbm1i0e-fn72ab",
+            "guest:mvblzjh8-sqyjaj",
+            "guest:mvbm108b-57st7y",
+            "guest:mvblukkd-mqv80v",
+            "guest:mvbm0j6i-mkdjg5",
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvbm3vl4-zsisrg"
+          ],
+          "teamB": [
+            "guest:mvbm5h1y-qz8250",
+            "guest:mvblz1wa-09tytj",
+            "guest:mvblx3in-fi5e6t",
+            "guest:mvbls3w3-qut4pc",
+            "guest:mvblylnr-huvc9y",
+            "guest:mvbm4gz2-r90mh5",
+            "guest:mvbm00m2-rk55cp"
+          ],
+          "teamAIndex": 2,
+          "teamBIndex": 0,
+          "scoreA": 1,
+          "scoreB": 0,
+          "winnerSide": "A",
+          "goals": [
+            {
+              "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "assisterId": null,
+              "ownGoal": false,
+              "minute": 1,
+              "team": "A"
+            }
+          ],
+          "penalties": [],
+          "at": 1792202210858
+        }
+      ],
+      "commits": [
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/YEdIR3MviDK82D581ELk/committedRounds/r_mvboblq9_ynnomoks",
+          "id": "r_mvboblq9_ynnomoks",
+          "committedAt": 1792199483832,
+          "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "winnerSide": "B"
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/YEdIR3MviDK82D581ELk/committedRounds/r_mvbpasvp_s94nyeui",
+          "id": "r_mvbpasvp_s94nyeui",
+          "committedAt": 1792202210858,
+          "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "winnerSide": "A"
+        }
+      ],
+      "playerStats": [
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "id": "YEdIR3MviDK82D581ELk__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "penSaved": 2,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "penConceded": 1,
+          "penFaced": 3,
+          "teamGoalsAgainst": 0,
+          "teamScoreRounds": 2,
+          "wins": 2,
+          "teamGoalsFor": 1,
+          "cleanSheets": 1,
+          "actualTeamGoalsFor": 2,
+          "rounds": 2,
+          "updatedAt": 1792202210858,
+          "goals": 1
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbls3w3-qut4pc",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbls3w3-qut4pc",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbls3w3-qut4pc",
+          "rounds": 1,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblukkd-mqv80v",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvblukkd-mqv80v",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvblukkd-mqv80v",
+          "wins": 2,
+          "teamScoreRounds": 2,
+          "teamGoalsFor": 1,
+          "cleanSheets": 1,
+          "actualTeamGoalsFor": 2,
+          "rounds": 2,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblx3in-fi5e6t",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvblx3in-fi5e6t",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvblx3in-fi5e6t",
+          "rounds": 1,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblxnik-8zuslm",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvblxnik-8zuslm",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvblxnik-8zuslm",
+          "rounds": 1,
+          "updatedAt": 1792199483832
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbly3u1-bpeqbv",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbly3u1-bpeqbv",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbly3u1-bpeqbv",
+          "rounds": 1,
+          "updatedAt": 1792199483832
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblylnr-huvc9y",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvblylnr-huvc9y",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvblylnr-huvc9y",
+          "rounds": 1,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblz1wa-09tytj",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvblz1wa-09tytj",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvblz1wa-09tytj",
+          "rounds": 1,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblzjh8-sqyjaj",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvblzjh8-sqyjaj",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "isGuest": true,
+          "assists": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvblzjh8-sqyjaj",
+          "wins": 2,
+          "teamScoreRounds": 2,
+          "teamGoalsFor": 1,
+          "cleanSheets": 1,
+          "actualTeamGoalsFor": 2,
+          "rounds": 2,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm00m2-rk55cp",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm00m2-rk55cp",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm00m2-rk55cp",
+          "rounds": 1,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm0j6i-mkdjg5",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm0j6i-mkdjg5",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm0j6i-mkdjg5",
+          "wins": 2,
+          "teamScoreRounds": 2,
+          "teamGoalsFor": 1,
+          "cleanSheets": 1,
+          "actualTeamGoalsFor": 2,
+          "rounds": 2,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm108b-57st7y",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm108b-57st7y",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm108b-57st7y",
+          "wins": 2,
+          "teamScoreRounds": 2,
+          "teamGoalsFor": 1,
+          "cleanSheets": 1,
+          "actualTeamGoalsFor": 2,
+          "rounds": 2,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm1i0e-fn72ab",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm1i0e-fn72ab",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm1i0e-fn72ab",
+          "goals": 1,
+          "wins": 2,
+          "teamScoreRounds": 2,
+          "teamGoalsFor": 1,
+          "assists": 1,
+          "cleanSheets": 1,
+          "actualTeamGoalsFor": 2,
+          "rounds": 2,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm1z93-flw4fb",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm1z93-flw4fb",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm1z93-flw4fb",
+          "rounds": 1,
+          "updatedAt": 1792199483832
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm2gjb-1c84fv",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm2gjb-1c84fv",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm2gjb-1c84fv",
+          "rounds": 1,
+          "updatedAt": 1792199483832
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm2xhv-yzilc4",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm2xhv-yzilc4",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm2xhv-yzilc4",
+          "rounds": 1,
+          "updatedAt": 1792199483832
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm3ekm-bwv413",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm3ekm-bwv413",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm3ekm-bwv413",
+          "rounds": 1,
+          "updatedAt": 1792199483832,
+          "goals": 1
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm3vl4-zsisrg",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm3vl4-zsisrg",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm3vl4-zsisrg",
+          "wins": 2,
+          "teamScoreRounds": 2,
+          "teamGoalsFor": 1,
+          "cleanSheets": 1,
+          "actualTeamGoalsFor": 2,
+          "rounds": 2,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm4gz2-r90mh5",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm4gz2-r90mh5",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm4gz2-r90mh5",
+          "rounds": 1,
+          "updatedAt": 1792202210858
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm4zwg-e3ggog",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm4zwg-e3ggog",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm4zwg-e3ggog",
+          "rounds": 1,
+          "updatedAt": 1792199483832
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm5h1y-qz8250",
+          "id": "YEdIR3MviDK82D581ELk__guest:mvbm5h1y-qz8250",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 0,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbm5h1y-qz8250",
+          "rounds": 1,
+          "updatedAt": 1792202210858
+        }
+      ],
+      "roundSummary": {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/roundSummaries/YEdIR3MviDK82D581ELk",
+        "id": "YEdIR3MviDK82D581ELk",
+        "basis": {
+          "since": 1792192500000,
+          "eveningsCompared": 1
+        },
+        "at": 1792194600000,
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "pairHighlight": null,
+        "correctionBasis": {
+          "career": [
+            {
+              "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "goals": 2,
+              "assists": 0,
+              "rounds": 4,
+              "wins": 3,
+              "cleanSheets": 2,
+              "games": 2
+            }
+          ],
+          "personalBests": {
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": {
+              "cleanSheets": 1,
+              "wins": 1,
+              "assists": 0,
+              "involvement": 1,
+              "goals": 1
+            }
+          },
+          "records": {
+            "wins": {
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ],
+              "value": 1
+            },
+            "involvement": {
+              "value": 1,
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ]
+            },
+            "firstEverSeen": [],
+            "cleanSheets": {
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ],
+              "value": 1
+            },
+            "goals": {
+              "value": 1,
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ]
+            }
+          },
+          "players": [
+            {
+              "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "isGuest": false,
+              "goals": 1,
+              "assists": 0,
+              "wins": 2,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbls3w3-qut4pc",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvblukkd-mqv80v",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 2,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvblx3in-fi5e6t",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvblxnik-8zuslm",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbly3u1-bpeqbv",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvblylnr-huvc9y",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvblz1wa-09tytj",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvblzjh8-sqyjaj",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 1,
+              "wins": 2,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbm00m2-rk55cp",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbm0j6i-mkdjg5",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 2,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbm108b-57st7y",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 2,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbm1i0e-fn72ab",
+              "isGuest": true,
+              "goals": 1,
+              "assists": 1,
+              "wins": 2,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbm1z93-flw4fb",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbm2gjb-1c84fv",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbm2xhv-yzilc4",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbm3ekm-bwv413",
+              "isGuest": true,
+              "goals": 1,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbm3vl4-zsisrg",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 2,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbm4gz2-r90mh5",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbm4zwg-e3ggog",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbm5h1y-qz8250",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            }
+          ],
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "at": 1792194600000,
+          "standings": [
+            {
+              "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "score": 8.8,
+              "rank": 1,
+              "rankTotal": 1,
+              "rankDelta": 0
+            }
+          ],
+          "club": {
+            "goals": 2,
+            "assists": 0,
+            "evenings": 2,
+            "shootoutRounds": 1,
+            "rounds": 4,
+            "cleanSheets": 2
+          },
+          "now": 1792202615263,
+          "basis": {
+            "eveningsCompared": 1,
+            "since": 1792192500000
+          },
+          "rounds": [
+            {
+              "teamAIndex": 1,
+              "teamBIndex": 2,
+              "winnerSide": "B",
+              "goals": [
+                {
+                  "scorerId": "guest:mvbm3ekm-bwv413",
+                  "assisterId": null,
+                  "ownGoal": false,
+                  "team": "A"
+                },
+                {
+                  "scorerId": "guest:mvbm1i0e-fn72ab",
+                  "assisterId": null,
+                  "ownGoal": false,
+                  "team": "B"
+                }
+              ],
+              "shootout": true
+            },
+            {
+              "teamAIndex": 2,
+              "teamBIndex": 0,
+              "winnerSide": "A",
+              "goals": [
+                {
+                  "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "assisterId": null,
+                  "ownGoal": false,
+                  "team": "A"
+                }
+              ],
+              "shootout": false
+            }
+          ]
+        },
+        "coverage": {
+          "hasRoundHistory": true,
+          "hasAssists": true
+        },
+        "events": [],
+        "stats": {
+          "shootouts": 1,
+          "assists": 2,
+          "goals": 3,
+          "ties": 0,
+          "rounds": 2
+        },
+        "version": 1,
+        "leaders": {
+          "topWinners": {
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "value": 2
+          },
+          "topAssisters": null,
+          "topGoalInvolvement": {
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "value": 1
+          },
+          "topCleanSheets": {
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "value": 1
+          },
+          "topScorers": {
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "value": 1
+          }
+        },
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "generatedAt": 1792202615263,
+        "teamHighlights": {
+          "best": [
+            {
+              "colourIndex": 2,
+              "wins": 2,
+              "losses": 0,
+              "played": 2
+            }
+          ],
+          "worst": [
+            {
+              "colourIndex": 0,
+              "wins": 0,
+              "losses": 1,
+              "played": 1
+            },
+            {
+              "colourIndex": 1,
+              "wins": 0,
+              "losses": 1,
+              "played": 1
+            }
+          ]
+        }
+      },
+      "finishProof": {
+        "attendanceCredit": {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/YEdIR3MviDK82D581ELk/finishCredited/once",
+          "id": "once",
+          "at": 1792202609093
+        },
+        "stages": [
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/YEdIR3MviDK82D581ELk/finishStages/complete",
+            "id": "complete",
+            "at": 1792202615568
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/YEdIR3MviDK82D581ELk/finishStages/standings",
+            "id": "standings",
+            "at": 1792202611392,
+            "hadPointsTable": true,
+            "summaryRefreshVersion": 1,
+            "scoreCalibration": {
+              "goalsFor10": 1,
+              "assistsFor10": 2
+            }
+          }
+        ],
+        "qaEveningStanding": {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/eveningStandings/YEdIR3MviDK82D581ELk__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "id": "YEdIR3MviDK82D581ELk__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "scoreTotal": 1,
+          "scoreRank": 1,
+          "at": 1792194600000,
+          "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "scoreDelta": 0.6,
+          "rankTotal": 1,
+          "rank": 1,
+          "score": 8.8,
+          "rankDelta": 0,
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "gameId": "YEdIR3MviDK82D581ELk",
+          "scoreBasis": {
+            "assistsFor10": 2,
+            "previousAt": 1792192500000,
+            "counted": true,
+            "goalsFor10": 1,
+            "previousScore": 8.2
+          },
+          "metrics": {
+            "goals": {
+              "rank": 1,
+              "delta": 0,
+              "value": 2,
+              "passed": [],
+              "aheadGap": null,
+              "passedCount": 0,
+              "passedByCount": 0,
+              "passedBy": [],
+              "aheadName": null
+            },
+            "wins": {
+              "passedBy": [],
+              "value": 3,
+              "aheadGap": null,
+              "passed": [],
+              "aheadName": null,
+              "passedByCount": 0,
+              "passedCount": 0,
+              "rank": 1,
+              "delta": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "game": {
+        "id": "lmUUmQru2HtKvQkRDVeD",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "title": "בדיקות לייב אוקטובר",
+        "maxPlayers": 12,
+        "minPlayers": null,
+        "waitlist": [],
+        "pending": [],
+        "teams": null,
+        "currentMatchIndex": 0,
+        "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "visibility": "community",
+        "format": "4v4",
+        "numberOfTeams": 3,
+        "matchDurationMinutes": 8,
+        "hasPenalties": false,
+        "hasHalfTime": false,
+        "arrivals": null,
+        "autoTeamsAt": null,
+        "autoTeamsMethod": null,
+        "autoTeamsGeneratedAt": null,
+        "autoTeamsGeneratedBy": null,
+        "acceptsFillers": false,
+        "advancedMode": true,
+        "advancedFillMode": "temporary",
+        "createdAt": 1792189508073,
+        "players": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "participantIds": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "guests": [
+          {
+            "id": "mvbjgb67-u04vso",
+            "name": "דניאל בדיקה א",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189664144
+          },
+          {
+            "id": "mvbjilg2-21mb8n",
+            "name": "איתי בדיקה ב",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189770770
+          },
+          {
+            "id": "mvbjiyzz-8ugfdn",
+            "name": "תומר בדיקה ג",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189788335
+          },
+          {
+            "id": "mvbjjc1i-eftlp1",
+            "name": "אורי בדיקה ד",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189805238
+          },
+          {
+            "id": "mvbjjot4-5lpn25",
+            "name": "אלין בדיקה ה",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189821784
+          },
+          {
+            "id": "mvbjk1tn-9phn5y",
+            "name": "בן בדיקה ו",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189838651
+          },
+          {
+            "id": "mvbjkex3-i5vwra",
+            "name": "רון בדיקה ז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189855623
+          },
+          {
+            "id": "mvbjks6b-y7m9ey",
+            "name": "ליאור בדיקה ח",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189872803
+          },
+          {
+            "id": "mvbjl50h-jh9uot",
+            "name": "נועם בדיקה ט",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189889441
+          },
+          {
+            "id": "mvbjlic4-08kp80",
+            "name": "גל בדיקה י",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189906708
+          },
+          {
+            "id": "mvbjlvvj-qf4zqq",
+            "name": "רועי בדיקה יא",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792189924255
+          }
+        ],
+        "teamsEditedManually": true,
+        "teamBalanceMeta": null,
+        "teamsNotifiedAt": 1792191152413,
+        "advancedTieMode": "bothOut",
+        "startsAt": 1792192500000,
+        "draftTeams": {
+          "method": "snake",
+          "numTeams": 3,
+          "createdAt": 1792191091053,
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "teams": [
+            {
+              "index": 0,
+              "captainId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "playerIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "guest:mvbjiyzz-8ugfdn",
+                "guest:mvbjks6b-y7m9ey",
+                "guest:mvbjl50h-jh9uot"
+              ],
+              "colorKey": "yellow"
+            },
+            {
+              "index": 1,
+              "captainId": "guest:mvbjgb67-u04vso",
+              "playerIds": [
+                "guest:mvbjgb67-u04vso",
+                "guest:mvbjjc1i-eftlp1",
+                "guest:mvbjkex3-i5vwra",
+                "guest:mvbjlic4-08kp80"
+              ],
+              "colorKey": "blue"
+            },
+            {
+              "index": 2,
+              "captainId": "guest:mvbjilg2-21mb8n",
+              "playerIds": [
+                "guest:mvbjilg2-21mb8n",
+                "guest:mvbjjot4-5lpn25",
+                "guest:mvbjk1tn-9phn5y",
+                "guest:mvbjlvvj-qf4zqq"
+              ],
+              "colorKey": "green"
+            }
+          ],
+          "originalTeams": [
+            {
+              "index": 0,
+              "captainId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "playerIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "guest:mvbjiyzz-8ugfdn",
+                "guest:mvbjks6b-y7m9ey",
+                "guest:mvbjl50h-jh9uot"
+              ]
+            },
+            {
+              "index": 1,
+              "captainId": "guest:mvbjgb67-u04vso",
+              "playerIds": [
+                "guest:mvbjgb67-u04vso",
+                "guest:mvbjjc1i-eftlp1",
+                "guest:mvbjkex3-i5vwra",
+                "guest:mvbjlic4-08kp80"
+              ]
+            },
+            {
+              "index": 2,
+              "captainId": "guest:mvbjilg2-21mb8n",
+              "playerIds": [
+                "guest:mvbjilg2-21mb8n",
+                "guest:mvbjjot4-5lpn25",
+                "guest:mvbjk1tn-9phn5y",
+                "guest:mvbjlvvj-qf4zqq"
+              ]
+            }
+          ],
+          "published": true
+        },
+        "lastCommittedRoundId": "r_mvbl2aod_9j30k8mo",
+        "committedRoundCount": 2,
+        "rotation": {
+          "playing": [
+            2,
+            1
+          ],
+          "waiting": [
+            0
+          ],
+          "loans": [],
+          "wins": {
+            "0": 1,
+            "2": 1
+          },
+          "round": 3,
+          "lastRoundWinners": [],
+          "lastRoundLosers": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "lastRoundAt": 1792192747976,
+          "updatedAt": 1792192747976,
+          "roundInstanceId": "r_mvblaet6_r7z8myn3",
+          "roundInstanceRound": 3
+        },
+        "liveMatch": {
+          "timerControlledBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "timerControlledByName": "בדיקות לייב",
+          "goalTally": {
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1,
+            "guest:mvbjgb67-u04vso": 1,
+            "guest:mvbjiyzz-8ugfdn": 0
+          },
+          "scoreB": 0,
+          "scoreA": 0,
+          "goals": [],
+          "startedAt": 1792192500000,
+          "startedAtBy": "server",
+          "timerRunning": false,
+          "timerLastStartedAt": null,
+          "activeIntervals": [
+            {
+              "s": 1792192588910,
+              "e": 1792192612790
+            },
+            {
+              "s": 1792192680842,
+              "e": 1792192684112
+            }
+          ],
+          "timerEvents": [],
+          "timerAccumulatedMs": 0,
+          "phase": "finished"
+        },
+        "endedAt": 1792192813836,
+        "endedBy": "admin",
+        "status": "finished",
+        "updatedAt": 1792192813836
+      },
+      "history": [
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/lmUUmQru2HtKvQkRDVeD/roundHistory/r_mvbkmbvw_hoku9lb8",
+          "id": "r_mvbkmbvw_hoku9lb8",
+          "roundId": "r_mvbkmbvw_hoku9lb8",
+          "teamA": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvbjks6b-y7m9ey",
+            "guest:mvbjl50h-jh9uot",
+            "guest:mvbjilg2-21mb8n"
+          ],
+          "teamB": [
+            "guest:mvbjgb67-u04vso",
+            "guest:mvbjjc1i-eftlp1",
+            "guest:mvbjkex3-i5vwra",
+            "guest:mvbjlic4-08kp80"
+          ],
+          "teamAIndex": 0,
+          "teamBIndex": 1,
+          "scoreA": 3,
+          "scoreB": 1,
+          "winnerSide": "A",
+          "goals": [
+            {
+              "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "assisterId": null,
+              "ownGoal": false,
+              "minute": 1,
+              "team": "A"
+            },
+            {
+              "scorerId": "guest:mvbjgb67-u04vso",
+              "assisterId": null,
+              "ownGoal": false,
+              "minute": 1,
+              "team": "B"
+            },
+            {
+              "scorerId": null,
+              "assisterId": null,
+              "ownGoal": false,
+              "minute": 1,
+              "team": "A"
+            },
+            {
+              "scorerId": "guest:mvbjjc1i-eftlp1",
+              "assisterId": null,
+              "ownGoal": true,
+              "minute": 1,
+              "team": "A"
+            }
+          ],
+          "penalties": [],
+          "at": 1792192367965
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/lmUUmQru2HtKvQkRDVeD/roundHistory/r_mvbl2aod_9j30k8mo",
+          "id": "r_mvbl2aod_9j30k8mo",
+          "roundId": "r_mvbl2aod_9j30k8mo",
+          "teamA": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvbjiyzz-8ugfdn",
+            "guest:mvbjks6b-y7m9ey",
+            "guest:mvbjl50h-jh9uot"
+          ],
+          "teamB": [
+            "guest:mvbjilg2-21mb8n",
+            "guest:mvbjjot4-5lpn25",
+            "guest:mvbjk1tn-9phn5y",
+            "guest:mvbjlvvj-qf4zqq"
+          ],
+          "teamAIndex": 0,
+          "teamBIndex": 2,
+          "scoreA": 0,
+          "scoreB": 0,
+          "winnerSide": "B",
+          "goals": [],
+          "penalties": [],
+          "at": 1792192746667
+        }
+      ],
+      "commits": [
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/lmUUmQru2HtKvQkRDVeD/committedRounds/r_mvbkmbvw_hoku9lb8",
+          "id": "r_mvbkmbvw_hoku9lb8",
+          "committedAt": 1792192367965,
+          "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "winnerSide": "A"
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/lmUUmQru2HtKvQkRDVeD/committedRounds/r_mvbl2aod_9j30k8mo",
+          "id": "r_mvbl2aod_9j30k8mo",
+          "committedAt": 1792192746667,
+          "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "winnerSide": "B"
+        }
+      ],
+      "playerStats": [
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "id": "lmUUmQru2HtKvQkRDVeD__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "wins": 1,
+          "teamGoalsFor": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 3,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "goals": 1,
+          "teamScoreRounds": 2,
+          "cleanSheets": 1,
+          "losses": 1,
+          "rounds": 2,
+          "updatedAt": 1792192746667
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__guest:mvbjgb67-u04vso",
+          "id": "lmUUmQru2HtKvQkRDVeD__guest:mvbjgb67-u04vso",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 3,
+          "userId": "guest:mvbjgb67-u04vso",
+          "rounds": 1,
+          "updatedAt": 1792192367965,
+          "goals": 1
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__guest:mvbjilg2-21mb8n",
+          "id": "lmUUmQru2HtKvQkRDVeD__guest:mvbjilg2-21mb8n",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 3,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbjilg2-21mb8n",
+          "wins": 2,
+          "teamScoreRounds": 2,
+          "cleanSheets": 1,
+          "rounds": 2,
+          "updatedAt": 1792192746667
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__guest:mvbjiyzz-8ugfdn",
+          "id": "lmUUmQru2HtKvQkRDVeD__guest:mvbjiyzz-8ugfdn",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "isGuest": true,
+          "assists": 1,
+          "userId": "guest:mvbjiyzz-8ugfdn",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 0,
+          "actualTeamGoalsAgainst": 0,
+          "rounds": 1,
+          "updatedAt": 1792192746667
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__guest:mvbjjc1i-eftlp1",
+          "id": "lmUUmQru2HtKvQkRDVeD__guest:mvbjjc1i-eftlp1",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 3,
+          "userId": "guest:mvbjjc1i-eftlp1",
+          "rounds": 1,
+          "updatedAt": 1792192367965
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__guest:mvbjjot4-5lpn25",
+          "id": "lmUUmQru2HtKvQkRDVeD__guest:mvbjjot4-5lpn25",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 0,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbjjot4-5lpn25",
+          "rounds": 1,
+          "updatedAt": 1792192746667
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__guest:mvbjk1tn-9phn5y",
+          "id": "lmUUmQru2HtKvQkRDVeD__guest:mvbjk1tn-9phn5y",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 0,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbjk1tn-9phn5y",
+          "rounds": 1,
+          "updatedAt": 1792192746667
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__guest:mvbjkex3-i5vwra",
+          "id": "lmUUmQru2HtKvQkRDVeD__guest:mvbjkex3-i5vwra",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 3,
+          "userId": "guest:mvbjkex3-i5vwra",
+          "rounds": 1,
+          "updatedAt": 1792192367965
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__guest:mvbjks6b-y7m9ey",
+          "id": "lmUUmQru2HtKvQkRDVeD__guest:mvbjks6b-y7m9ey",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "wins": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 3,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbjks6b-y7m9ey",
+          "teamScoreRounds": 2,
+          "cleanSheets": 1,
+          "losses": 1,
+          "rounds": 2,
+          "updatedAt": 1792192746667
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__guest:mvbjl50h-jh9uot",
+          "id": "lmUUmQru2HtKvQkRDVeD__guest:mvbjl50h-jh9uot",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "wins": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 3,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbjl50h-jh9uot",
+          "teamScoreRounds": 2,
+          "cleanSheets": 1,
+          "losses": 1,
+          "rounds": 2,
+          "updatedAt": 1792192746667
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__guest:mvbjlic4-08kp80",
+          "id": "lmUUmQru2HtKvQkRDVeD__guest:mvbjlic4-08kp80",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 3,
+          "userId": "guest:mvbjlic4-08kp80",
+          "rounds": 1,
+          "updatedAt": 1792192367965
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/lmUUmQru2HtKvQkRDVeD__guest:mvbjlvvj-qf4zqq",
+          "id": "lmUUmQru2HtKvQkRDVeD__guest:mvbjlvvj-qf4zqq",
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 0,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbjlvvj-qf4zqq",
+          "rounds": 1,
+          "updatedAt": 1792192746667
+        }
+      ],
+      "roundSummary": {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/roundSummaries/lmUUmQru2HtKvQkRDVeD",
+        "id": "lmUUmQru2HtKvQkRDVeD",
+        "stats": {
+          "rounds": 2,
+          "assists": 1,
+          "shootouts": 0,
+          "goals": 3,
+          "ties": 0
+        },
+        "coverage": {
+          "hasAssists": true,
+          "hasRoundHistory": true
+        },
+        "teamHighlights": {
+          "best": [
+            {
+              "colourIndex": 0,
+              "wins": 1,
+              "losses": 1,
+              "played": 2
+            },
+            {
+              "colourIndex": 2,
+              "wins": 1,
+              "losses": 0,
+              "played": 1
+            }
+          ],
+          "worst": [
+            {
+              "colourIndex": 0,
+              "wins": 1,
+              "losses": 1,
+              "played": 2
+            },
+            {
+              "colourIndex": 1,
+              "wins": 0,
+              "losses": 1,
+              "played": 1
+            }
+          ]
+        },
+        "generatedAt": 1792192820588,
+        "version": 1,
+        "pairHighlight": null,
+        "basis": {
+          "eveningsCompared": 0,
+          "since": 1792192500000
+        },
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "gameId": "lmUUmQru2HtKvQkRDVeD",
+        "leaders": {
+          "topWinners": {
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "value": 1
+          },
+          "topAssisters": null,
+          "topCleanSheets": {
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "value": 1
+          },
+          "topGoalInvolvement": {
+            "value": 1,
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ]
+          },
+          "topScorers": {
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "value": 1
+          }
+        },
+        "events": [],
+        "correctionBasis": {
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "personalBests": {},
+          "club": {
+            "assists": 0,
+            "shootoutRounds": 0,
+            "evenings": 1,
+            "goals": 1,
+            "cleanSheets": 1,
+            "rounds": 2
+          },
+          "players": [
+            {
+              "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "isGuest": false,
+              "goals": 1,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbjgb67-u04vso",
+              "isGuest": true,
+              "goals": 1,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbjilg2-21mb8n",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 2,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbjiyzz-8ugfdn",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 1,
+              "wins": 0,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbjjc1i-eftlp1",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbjjot4-5lpn25",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbjk1tn-9phn5y",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbjkex3-i5vwra",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbjks6b-y7m9ey",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbjl50h-jh9uot",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbjlic4-08kp80",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbjlvvj-qf4zqq",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            }
+          ],
+          "basis": {
+            "since": 1792192500000,
+            "eveningsCompared": 0
+          },
+          "records": null,
+          "rounds": [
+            {
+              "teamAIndex": 0,
+              "teamBIndex": 1,
+              "winnerSide": "A",
+              "goals": [
+                {
+                  "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "assisterId": null,
+                  "ownGoal": false,
+                  "team": "A"
+                },
+                {
+                  "scorerId": "guest:mvbjgb67-u04vso",
+                  "assisterId": null,
+                  "ownGoal": false,
+                  "team": "B"
+                },
+                {
+                  "scorerId": null,
+                  "assisterId": null,
+                  "ownGoal": false,
+                  "team": "A"
+                },
+                {
+                  "scorerId": "guest:mvbjjc1i-eftlp1",
+                  "assisterId": null,
+                  "ownGoal": true,
+                  "team": "A"
+                }
+              ],
+              "shootout": false
+            },
+            {
+              "teamAIndex": 0,
+              "teamBIndex": 2,
+              "winnerSide": "B",
+              "goals": [],
+              "shootout": false
+            }
+          ],
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "standings": [],
+          "now": 1792192820588,
+          "career": [
+            {
+              "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "goals": 1,
+              "assists": 0,
+              "rounds": 2,
+              "wins": 1,
+              "cleanSheets": 1,
+              "games": 1
+            }
+          ],
+          "at": 1792192500000
+        },
+        "at": 1792192500000
+      },
+      "finishProof": {
+        "attendanceCredit": {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/lmUUmQru2HtKvQkRDVeD/finishCredited/once",
+          "id": "once",
+          "at": 1792192816304
+        },
+        "stages": [
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/lmUUmQru2HtKvQkRDVeD/finishStages/complete",
+            "id": "complete",
+            "at": 1792192821136
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/lmUUmQru2HtKvQkRDVeD/finishStages/standings",
+            "id": "standings",
+            "at": 1792192817464,
+            "hadPointsTable": false,
+            "summaryRefreshVersion": 1,
+            "scoreCalibration": {
+              "goalsFor10": 1,
+              "assistsFor10": 2
+            }
+          }
+        ],
+        "qaEveningStanding": {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/eveningStandings/lmUUmQru2HtKvQkRDVeD__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "id": "lmUUmQru2HtKvQkRDVeD__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "scoreDelta": null,
+          "metrics": {},
+          "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "scoreTotal": 1,
+          "rank": 1,
+          "gameId": "lmUUmQru2HtKvQkRDVeD",
+          "rankDelta": null,
+          "rankTotal": 1,
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "scoreRank": 1,
+          "at": 1792192500000,
+          "scoreBasis": {
+            "counted": true,
+            "assistsFor10": 2,
+            "previousAt": null,
+            "goalsFor10": 1,
+            "previousScore": null
+          },
+          "score": 8.2
+        }
+      }
+    },
+    {
+      "game": {
+        "id": "mBO5HqJdnOPWjRE2zMh8",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "title": "בדיקות לייב אוקטובר",
+        "maxPlayers": 33,
+        "minPlayers": null,
+        "waitlist": [],
+        "pending": [],
+        "teams": null,
+        "currentMatchIndex": 0,
+        "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "visibility": "community",
+        "format": "11v11",
+        "numberOfTeams": 3,
+        "matchDurationMinutes": 8,
+        "hasPenalties": false,
+        "hasHalfTime": false,
+        "arrivals": null,
+        "autoTeamsAt": null,
+        "autoTeamsMethod": null,
+        "autoTeamsGeneratedAt": null,
+        "autoTeamsGeneratedBy": null,
+        "acceptsFillers": false,
+        "advancedMode": true,
+        "advancedFillMode": "permanent",
+        "createdAt": 1792203269877,
+        "advancedTieMode": "bothOut",
+        "players": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "participantIds": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "guests": [
+          {
+            "id": "mvbrlplt-nn6m4j",
+            "name": "דניאל אחד עשר א",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203353057
+          },
+          {
+            "id": "mvbrqq3y-aa1f5c",
+            "name": "איתי אחד עשר ב",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203586990
+          },
+          {
+            "id": "mvbrr03x-76x6ci",
+            "name": "תומר אחד עשר ג",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203599949
+          },
+          {
+            "id": "mvbrr9y8-hdrkws",
+            "name": "אורי אחד עשר ד",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203612704
+          },
+          {
+            "id": "mvbrrjqx-3w9zua",
+            "name": "אלין אחד עשר ה",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203625402
+          },
+          {
+            "id": "mvbrrthu-bvepbd",
+            "name": "בן אחד עשר ו",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203638034
+          },
+          {
+            "id": "mvbrs3c0-cpau3c",
+            "name": "רון אחד עשר ז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203650784
+          },
+          {
+            "id": "mvbrsdd9-pnwz91",
+            "name": "ליאור אחד עשר ח",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203663789
+          },
+          {
+            "id": "mvbrsn40-1h3mgk",
+            "name": "נועם אחד עשר ט",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203676416
+          },
+          {
+            "id": "mvbrsu7l-3vqv6g",
+            "name": "גל אחד עשר י",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203685617
+          },
+          {
+            "id": "mvbrt19w-8moc7a",
+            "name": "רועי אחד עשר יא",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203694772
+          },
+          {
+            "id": "mvbrt87d-qicwa1",
+            "name": "אסף אחד עשר יב",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203703753
+          },
+          {
+            "id": "mvbrtfek-zy1qup",
+            "name": "עידן אחד עשר יג",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203713084
+          },
+          {
+            "id": "mvbrtmfs-egnzku",
+            "name": "נדב אחד עשר יד",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203722200
+          },
+          {
+            "id": "mvbrttf7-8zcgh1",
+            "name": "יוסי אחד עשר טו",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203731251
+          },
+          {
+            "id": "mvbru1fk-izwwd0",
+            "name": "משה אחד עשר טז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203741632
+          },
+          {
+            "id": "mvbru8hr-v8qtre",
+            "name": "לירן אחד עשר יז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203750783
+          },
+          {
+            "id": "mvbrufkc-apouh0",
+            "name": "עמית אחד עשר יח",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203759948
+          },
+          {
+            "id": "mvbrun38-ihk3va",
+            "name": "עומר אחד עשר יט",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203769700
+          },
+          {
+            "id": "mvbruugj-4rhbli",
+            "name": "אלכסנדר אחד עשר כ",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203779251
+          },
+          {
+            "id": "mvbrv1ua-a8fw8t",
+            "name": "אביב אחד עשר כא",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203788818
+          },
+          {
+            "id": "mvbrv8vy-bkeqrl",
+            "name": "אופק אחד עשר כב",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203797950
+          },
+          {
+            "id": "mvbrvg8q-a3l7tc",
+            "name": "אדם אחד עשר כג",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203807482
+          },
+          {
+            "id": "mvbrvne9-0pc4lu",
+            "name": "אייל אחד עשר כד",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203816753
+          },
+          {
+            "id": "mvbrvuew-fwzknb",
+            "name": "ברק אחד עשר כה",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203825848
+          },
+          {
+            "id": "mvbrw1ea-3kwy60",
+            "name": "גיא אחד עשר כו",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203834898
+          },
+          {
+            "id": "mvbrw8ps-a5aqlc",
+            "name": "דוד אחד עשר כז",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203844384
+          },
+          {
+            "id": "mvbrwfqk-rmhfw6",
+            "name": "חיים אחד עשר כח",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203853485
+          },
+          {
+            "id": "mvbrwmt7-ocott0",
+            "name": "טל אחד עשר כט",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203862651
+          },
+          {
+            "id": "mvbrwtux-c4hh1c",
+            "name": "יובל אחד עשר ל",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203871785
+          },
+          {
+            "id": "mvbrx0y1-91p8cl",
+            "name": "מאור אחד עשר לא",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203880969
+          },
+          {
+            "id": "mvbrx7w0-fqxe6b",
+            "name": "אלכסנדר הארוך עשר לב",
+            "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "createdAt": 1792203889968
+          }
+        ],
+        "teamsEditedManually": true,
+        "teamBalanceMeta": {
+          "generatedAt": 1792206143482,
+          "algorithm": "random_even_v1",
+          "unratedCount": 33,
+          "teamRatings": [
+            3,
+            3,
+            3
+          ],
+          "gap": 0,
+          "band": "A",
+          "repeat": 0,
+          "fallback": false,
+          "historyGames": 0
+        },
+        "teamsNotifiedAt": 1792206263946,
+        "startsAt": 1792216800000,
+        "lastCommittedRoundId": "r_mvbuu5ds_i2fcwkqp",
+        "committedRoundCount": 2,
+        "rotation": {
+          "playing": [
+            1,
+            2
+          ],
+          "waiting": [
+            0
+          ],
+          "loans": [],
+          "wins": {
+            "0": 1,
+            "1": 1
+          },
+          "round": 3,
+          "lastRoundWinners": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "lastRoundLosers": [],
+          "lastRoundAt": 1792208964815,
+          "updatedAt": 1792208964815,
+          "roundInstanceId": "r_mvbv0sdo_ymvv4nn9",
+          "roundInstanceRound": 3
+        },
+        "draftTeams": {
+          "method": "snake",
+          "numTeams": 3,
+          "createdAt": 1792206143482,
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "teams": [
+            {
+              "index": 0,
+              "captainId": "guest:mvbrtfek-zy1qup",
+              "playerIds": [
+                "guest:mvbrsn40-1h3mgk",
+                "guest:mvbrsu7l-3vqv6g",
+                "guest:mvbrt87d-qicwa1",
+                "guest:mvbrtmfs-egnzku",
+                "guest:mvbrrthu-bvepbd",
+                "guest:mvbru1fk-izwwd0",
+                "guest:mvbrx7w0-fqxe6b",
+                "guest:mvbrw8ps-a5aqlc",
+                "guest:mvbrrjqx-3w9zua",
+                "guest:mvbrufkc-apouh0"
+              ],
+              "colorKey": "red"
+            },
+            {
+              "index": 1,
+              "captainId": "guest:mvbrufkc-apouh0",
+              "playerIds": [
+                "guest:mvbrx0y1-91p8cl",
+                "guest:mvbrvuew-fwzknb",
+                "guest:mvbrwmt7-ocott0",
+                "guest:mvbrr03x-76x6ci",
+                "guest:mvbrr9y8-hdrkws",
+                "guest:mvbrvne9-0pc4lu",
+                "guest:mvbrwfqk-rmhfw6",
+                "guest:mvbru8hr-v8qtre",
+                "guest:mvbrqq3y-aa1f5c",
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "guest:mvbrv8vy-bkeqrl"
+              ],
+              "colorKey": "blue"
+            },
+            {
+              "index": 2,
+              "captainId": "guest:mvbrs3c0-cpau3c",
+              "playerIds": [
+                "guest:mvbrs3c0-cpau3c",
+                "guest:mvbrlplt-nn6m4j",
+                "guest:mvbrv1ua-a8fw8t",
+                "guest:mvbrt19w-8moc7a",
+                "guest:mvbrttf7-8zcgh1",
+                "guest:mvbrun38-ihk3va",
+                "guest:mvbrw1ea-3kwy60",
+                "guest:mvbrwtux-c4hh1c",
+                "guest:mvbrsdd9-pnwz91",
+                "guest:mvbrvg8q-a3l7tc",
+                "guest:mvbruugj-4rhbli"
+              ],
+              "colorKey": "green"
+            }
+          ],
+          "originalTeams": [
+            {
+              "index": 0,
+              "captainId": "guest:mvbrtfek-zy1qup",
+              "playerIds": [
+                "guest:mvbrtfek-zy1qup",
+                "guest:mvbruugj-4rhbli",
+                "guest:mvbrsn40-1h3mgk",
+                "guest:mvbrsu7l-3vqv6g",
+                "guest:mvbrt87d-qicwa1",
+                "guest:mvbrtmfs-egnzku",
+                "guest:mvbrrthu-bvepbd",
+                "guest:mvbru1fk-izwwd0",
+                "guest:mvbrx7w0-fqxe6b",
+                "guest:mvbrw8ps-a5aqlc",
+                "guest:mvbrrjqx-3w9zua"
+              ]
+            },
+            {
+              "index": 1,
+              "captainId": "guest:mvbrv8vy-bkeqrl",
+              "playerIds": [
+                "guest:mvbrv8vy-bkeqrl",
+                "guest:mvbrufkc-apouh0",
+                "guest:mvbrx0y1-91p8cl",
+                "guest:mvbrvuew-fwzknb",
+                "guest:mvbrwmt7-ocott0",
+                "guest:mvbrr03x-76x6ci",
+                "guest:mvbrr9y8-hdrkws",
+                "guest:mvbrvne9-0pc4lu",
+                "guest:mvbrwfqk-rmhfw6",
+                "guest:mvbru8hr-v8qtre",
+                "guest:mvbrqq3y-aa1f5c"
+              ]
+            },
+            {
+              "index": 2,
+              "captainId": "guest:mvbrs3c0-cpau3c",
+              "playerIds": [
+                "guest:mvbrs3c0-cpau3c",
+                "guest:mvbrlplt-nn6m4j",
+                "guest:mvbrv1ua-a8fw8t",
+                "guest:mvbrt19w-8moc7a",
+                "guest:mvbrttf7-8zcgh1",
+                "guest:mvbrun38-ihk3va",
+                "guest:mvbrw1ea-3kwy60",
+                "guest:mvbrwtux-c4hh1c",
+                "guest:mvbrsdd9-pnwz91",
+                "guest:mvbrvg8q-a3l7tc",
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ]
+            }
+          ],
+          "leftHome": [
+            {
+              "playerId": "guest:mvbrtfek-zy1qup",
+              "homeTeam": 0,
+              "at": 1792207093935
+            }
+          ],
+          "published": true
+        },
+        "liveMatch": {
+          "timerControlledBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "timerControlledByName": "בדיקות לייב",
+          "startedAt": 1792207345030,
+          "timerRunning": false,
+          "timerLastStartedAt": null,
+          "activeIntervals": [
+            {
+              "s": 1792207346626.5,
+              "e": 1792207393864
+            },
+            {
+              "s": 1792207401204,
+              "e": 1792207409140
+            }
+          ],
+          "timerEvents": [],
+          "timerAccumulatedMs": 0,
+          "scoreB": 0,
+          "goalTally": {
+            "guest:mvbrx7w0-fqxe6b": 1,
+            "guest:mvbrv8vy-bkeqrl": 1,
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1
+          },
+          "scoreA": 0,
+          "goals": [],
+          "phase": "finished"
+        },
+        "endedAt": 1792210107686,
+        "endedBy": "admin",
+        "status": "finished",
+        "updatedAt": 1792210107686
+      },
+      "history": [
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/mBO5HqJdnOPWjRE2zMh8/roundHistory/r_mvbtoxwh_f3ntv5pc",
+          "id": "r_mvbtoxwh_f3ntv5pc",
+          "roundId": "r_mvbtoxwh_f3ntv5pc",
+          "teamA": [
+            "guest:mvbruugj-4rhbli",
+            "guest:mvbrsn40-1h3mgk",
+            "guest:mvbrsu7l-3vqv6g",
+            "guest:mvbrt87d-qicwa1",
+            "guest:mvbrtmfs-egnzku",
+            "guest:mvbrrthu-bvepbd",
+            "guest:mvbru1fk-izwwd0",
+            "guest:mvbrx7w0-fqxe6b",
+            "guest:mvbrw8ps-a5aqlc",
+            "guest:mvbrrjqx-3w9zua",
+            "guest:mvbrufkc-apouh0"
+          ],
+          "teamB": [
+            "guest:mvbrs3c0-cpau3c",
+            "guest:mvbrlplt-nn6m4j",
+            "guest:mvbrv1ua-a8fw8t",
+            "guest:mvbrt19w-8moc7a",
+            "guest:mvbrttf7-8zcgh1",
+            "guest:mvbrun38-ihk3va",
+            "guest:mvbrw1ea-3kwy60",
+            "guest:mvbrwtux-c4hh1c",
+            "guest:mvbrsdd9-pnwz91",
+            "guest:mvbrvg8q-a3l7tc",
+            "guest:mvbrv8vy-bkeqrl"
+          ],
+          "teamAIndex": 0,
+          "teamBIndex": 2,
+          "scoreA": 1,
+          "scoreB": 1,
+          "winnerSide": "A",
+          "goals": [
+            {
+              "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "assisterId": null,
+              "ownGoal": false,
+              "minute": 1,
+              "team": "B"
+            },
+            {
+              "scorerId": "guest:mvbrx7w0-fqxe6b",
+              "assisterId": null,
+              "ownGoal": false,
+              "minute": 1,
+              "team": "A"
+            }
+          ],
+          "penalties": [],
+          "at": 1792207522201
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/mBO5HqJdnOPWjRE2zMh8/roundHistory/r_mvbuu5ds_i2fcwkqp",
+          "id": "r_mvbuu5ds_i2fcwkqp",
+          "roundId": "r_mvbuu5ds_i2fcwkqp",
+          "teamA": [
+            "guest:mvbruugj-4rhbli",
+            "guest:mvbrsn40-1h3mgk",
+            "guest:mvbrsu7l-3vqv6g",
+            "guest:mvbrt87d-qicwa1",
+            "guest:mvbrtmfs-egnzku",
+            "guest:mvbrrthu-bvepbd",
+            "guest:mvbru1fk-izwwd0",
+            "guest:mvbrx7w0-fqxe6b",
+            "guest:mvbrw8ps-a5aqlc",
+            "guest:mvbrrjqx-3w9zua",
+            "guest:mvbrufkc-apouh0"
+          ],
+          "teamB": [
+            "guest:mvbrx0y1-91p8cl",
+            "guest:mvbrvuew-fwzknb",
+            "guest:mvbrwmt7-ocott0",
+            "guest:mvbrr03x-76x6ci",
+            "guest:mvbrr9y8-hdrkws",
+            "guest:mvbrvne9-0pc4lu",
+            "guest:mvbrwfqk-rmhfw6",
+            "guest:mvbru8hr-v8qtre",
+            "guest:mvbrqq3y-aa1f5c",
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "guest:mvbrv8vy-bkeqrl"
+          ],
+          "teamAIndex": 0,
+          "teamBIndex": 1,
+          "scoreA": 0,
+          "scoreB": 1,
+          "winnerSide": "B",
+          "goals": [
+            {
+              "scorerId": "guest:mvbrv8vy-bkeqrl",
+              "assisterId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "ownGoal": false,
+              "minute": 1,
+              "team": "B"
+            }
+          ],
+          "penalties": [],
+          "at": 1792208964282
+        }
+      ],
+      "commits": [
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/mBO5HqJdnOPWjRE2zMh8/committedRounds/r_mvbtoxwh_f3ntv5pc",
+          "id": "r_mvbtoxwh_f3ntv5pc",
+          "committedAt": 1792207522201,
+          "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "winnerSide": "A"
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/mBO5HqJdnOPWjRE2zMh8/committedRounds/r_mvbuu5ds_i2fcwkqp",
+          "id": "r_mvbuu5ds_i2fcwkqp",
+          "committedAt": 1792208964282,
+          "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "winnerSide": "B"
+        }
+      ],
+      "playerStats": [
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "id": "mBO5HqJdnOPWjRE2zMh8__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamGoalsFor": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsAgainst": 1,
+          "losses": 1,
+          "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "goals": 1,
+          "teamScoreRounds": 2,
+          "wins": 1,
+          "assists": 1,
+          "cleanSheets": 1,
+          "actualTeamGoalsFor": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrlplt-nn6m4j",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrlplt-nn6m4j",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbrlplt-nn6m4j",
+          "rounds": 1,
+          "updatedAt": 1792207522201
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrqq3y-aa1f5c",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrqq3y-aa1f5c",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbrqq3y-aa1f5c",
+          "rounds": 1,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrr03x-76x6ci",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrr03x-76x6ci",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbrr03x-76x6ci",
+          "rounds": 1,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrr9y8-hdrkws",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrr9y8-hdrkws",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbrr9y8-hdrkws",
+          "rounds": 1,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrrjqx-3w9zua",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrrjqx-3w9zua",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "actualTeamGoalsFor": 1,
+          "userId": "guest:mvbrrjqx-3w9zua",
+          "teamScoreRounds": 2,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrrthu-bvepbd",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrrthu-bvepbd",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "actualTeamGoalsFor": 1,
+          "userId": "guest:mvbrrthu-bvepbd",
+          "teamScoreRounds": 2,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrs3c0-cpau3c",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrs3c0-cpau3c",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbrs3c0-cpau3c",
+          "rounds": 1,
+          "updatedAt": 1792207522201
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrsdd9-pnwz91",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrsdd9-pnwz91",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbrsdd9-pnwz91",
+          "rounds": 1,
+          "updatedAt": 1792207522201
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrsn40-1h3mgk",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrsn40-1h3mgk",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "actualTeamGoalsFor": 1,
+          "userId": "guest:mvbrsn40-1h3mgk",
+          "teamScoreRounds": 2,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrsu7l-3vqv6g",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrsu7l-3vqv6g",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "actualTeamGoalsFor": 1,
+          "userId": "guest:mvbrsu7l-3vqv6g",
+          "teamScoreRounds": 2,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrt19w-8moc7a",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrt19w-8moc7a",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbrt19w-8moc7a",
+          "rounds": 1,
+          "updatedAt": 1792207522201
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrt87d-qicwa1",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrt87d-qicwa1",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "actualTeamGoalsFor": 1,
+          "userId": "guest:mvbrt87d-qicwa1",
+          "teamScoreRounds": 2,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrtmfs-egnzku",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrtmfs-egnzku",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "assists": 1,
+          "teamGoalsAgainst": 1,
+          "actualTeamGoalsFor": 1,
+          "userId": "guest:mvbrtmfs-egnzku",
+          "teamScoreRounds": 2,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrttf7-8zcgh1",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrttf7-8zcgh1",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbrttf7-8zcgh1",
+          "rounds": 1,
+          "updatedAt": 1792207522201
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbru1fk-izwwd0",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbru1fk-izwwd0",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "actualTeamGoalsFor": 1,
+          "userId": "guest:mvbru1fk-izwwd0",
+          "teamScoreRounds": 2,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbru8hr-v8qtre",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbru8hr-v8qtre",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbru8hr-v8qtre",
+          "rounds": 1,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrufkc-apouh0",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrufkc-apouh0",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "actualTeamGoalsFor": 1,
+          "userId": "guest:mvbrufkc-apouh0",
+          "teamScoreRounds": 2,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrun38-ihk3va",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrun38-ihk3va",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbrun38-ihk3va",
+          "rounds": 1,
+          "updatedAt": 1792207522201
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbruugj-4rhbli",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbruugj-4rhbli",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "actualTeamGoalsFor": 1,
+          "userId": "guest:mvbruugj-4rhbli",
+          "teamScoreRounds": 2,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrv1ua-a8fw8t",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrv1ua-a8fw8t",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbrv1ua-a8fw8t",
+          "rounds": 1,
+          "updatedAt": 1792207522201
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrv8vy-bkeqrl",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrv8vy-bkeqrl",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbrv8vy-bkeqrl",
+          "wins": 1,
+          "teamScoreRounds": 2,
+          "cleanSheets": 1,
+          "actualTeamGoalsFor": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282,
+          "goals": 1
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrvg8q-a3l7tc",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrvg8q-a3l7tc",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "assists": 1,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbrvg8q-a3l7tc",
+          "rounds": 1,
+          "updatedAt": 1792207522201
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrvne9-0pc4lu",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrvne9-0pc4lu",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbrvne9-0pc4lu",
+          "rounds": 1,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrvuew-fwzknb",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrvuew-fwzknb",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbrvuew-fwzknb",
+          "rounds": 1,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrw1ea-3kwy60",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrw1ea-3kwy60",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbrw1ea-3kwy60",
+          "rounds": 1,
+          "updatedAt": 1792207522201
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrw8ps-a5aqlc",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrw8ps-a5aqlc",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "actualTeamGoalsFor": 1,
+          "userId": "guest:mvbrw8ps-a5aqlc",
+          "teamScoreRounds": 2,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrwfqk-rmhfw6",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrwfqk-rmhfw6",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbrwfqk-rmhfw6",
+          "rounds": 1,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrwmt7-ocott0",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrwmt7-ocott0",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbrwmt7-ocott0",
+          "rounds": 1,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrwtux-c4hh1c",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrwtux-c4hh1c",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 1,
+          "isGuest": true,
+          "teamGoalsAgainst": 0,
+          "losses": 1,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "userId": "guest:mvbrwtux-c4hh1c",
+          "rounds": 1,
+          "updatedAt": 1792207522201
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrx0y1-91p8cl",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrx0y1-91p8cl",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamScoreRounds": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "cleanSheets": 1,
+          "teamGoalsAgainst": 0,
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 0,
+          "userId": "guest:mvbrx0y1-91p8cl",
+          "rounds": 1,
+          "updatedAt": 1792208964282
+        },
+        {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/mBO5HqJdnOPWjRE2zMh8__guest:mvbrx7w0-fqxe6b",
+          "id": "mBO5HqJdnOPWjRE2zMh8__guest:mvbrx7w0-fqxe6b",
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "wins": 1,
+          "teamGoalsFor": 0,
+          "isGuest": true,
+          "teamGoalsAgainst": 1,
+          "actualTeamGoalsFor": 1,
+          "userId": "guest:mvbrx7w0-fqxe6b",
+          "goals": 1,
+          "teamScoreRounds": 2,
+          "losses": 1,
+          "actualTeamGoalsAgainst": 2,
+          "rounds": 2,
+          "updatedAt": 1792208964282
+        }
+      ],
+      "roundSummary": {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/roundSummaries/mBO5HqJdnOPWjRE2zMh8",
+        "id": "mBO5HqJdnOPWjRE2zMh8",
+        "events": [],
+        "pairHighlight": null,
+        "coverage": {
+          "hasAssists": true,
+          "hasRoundHistory": true
+        },
+        "stats": {
+          "goals": 3,
+          "rounds": 2,
+          "assists": 3,
+          "shootouts": 0,
+          "ties": 0
+        },
+        "correctionBasis": {
+          "basis": {
+            "since": 1792192500000,
+            "eveningsCompared": 2
+          },
+          "rounds": [
+            {
+              "teamAIndex": 0,
+              "teamBIndex": 2,
+              "winnerSide": "A",
+              "goals": [
+                {
+                  "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "assisterId": null,
+                  "ownGoal": false,
+                  "team": "B"
+                },
+                {
+                  "scorerId": "guest:mvbrx7w0-fqxe6b",
+                  "assisterId": null,
+                  "ownGoal": false,
+                  "team": "A"
+                }
+              ],
+              "shootout": false
+            },
+            {
+              "teamAIndex": 0,
+              "teamBIndex": 1,
+              "winnerSide": "B",
+              "goals": [
+                {
+                  "scorerId": "guest:mvbrv8vy-bkeqrl",
+                  "assisterId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "ownGoal": false,
+                  "team": "B"
+                }
+              ],
+              "shootout": false
+            }
+          ],
+          "now": 1792210116130,
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "players": [
+            {
+              "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "isGuest": false,
+              "goals": 1,
+              "assists": 1,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbrlplt-nn6m4j",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrqq3y-aa1f5c",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrr03x-76x6ci",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrr9y8-hdrkws",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrrjqx-3w9zua",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 0,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbrrthu-bvepbd",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 0,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbrs3c0-cpau3c",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrsdd9-pnwz91",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrsn40-1h3mgk",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 0,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbrsu7l-3vqv6g",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 0,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbrt19w-8moc7a",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrt87d-qicwa1",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 0,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbrtmfs-egnzku",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 1,
+              "wins": 1,
+              "cleanSheets": 0,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbrttf7-8zcgh1",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbru1fk-izwwd0",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 0,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbru8hr-v8qtre",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrufkc-apouh0",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 0,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbrun38-ihk3va",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbruugj-4rhbli",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 0,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbrv1ua-a8fw8t",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrv8vy-bkeqrl",
+              "isGuest": true,
+              "goals": 1,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbrvg8q-a3l7tc",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 1,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrvne9-0pc4lu",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrvuew-fwzknb",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrw1ea-3kwy60",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrw8ps-a5aqlc",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 0,
+              "rounds": 2
+            },
+            {
+              "userId": "guest:mvbrwfqk-rmhfw6",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrwmt7-ocott0",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrwtux-c4hh1c",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 0,
+              "cleanSheets": 0,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrx0y1-91p8cl",
+              "isGuest": true,
+              "goals": 0,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 1,
+              "rounds": 1
+            },
+            {
+              "userId": "guest:mvbrx7w0-fqxe6b",
+              "isGuest": true,
+              "goals": 1,
+              "assists": 0,
+              "wins": 1,
+              "cleanSheets": 0,
+              "rounds": 2
+            }
+          ],
+          "club": {
+            "evenings": 3,
+            "rounds": 6,
+            "cleanSheets": 3,
+            "shootoutRounds": 1,
+            "assists": 1,
+            "goals": 3
+          },
+          "records": {
+            "cleanSheets": {
+              "value": 1,
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ]
+            },
+            "wins": {
+              "value": 2,
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ]
+            },
+            "involvement": {
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ],
+              "value": 1
+            },
+            "goals": {
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ],
+              "value": 1
+            },
+            "firstEverSeen": []
+          },
+          "standings": [
+            {
+              "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "score": 9,
+              "rank": 1,
+              "rankTotal": 1,
+              "rankDelta": 0
+            }
+          ],
+          "at": 1792216800000,
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "career": [
+            {
+              "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "goals": 3,
+              "assists": 1,
+              "rounds": 6,
+              "wins": 4,
+              "cleanSheets": 3,
+              "games": 3
+            }
+          ],
+          "personalBests": {
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": {
+              "assists": 0,
+              "cleanSheets": 1,
+              "goals": 1,
+              "wins": 2,
+              "involvement": 1
+            }
+          }
+        },
+        "teamHighlights": {
+          "best": [
+            {
+              "colourIndex": 0,
+              "wins": 1,
+              "losses": 1,
+              "played": 2
+            },
+            {
+              "colourIndex": 1,
+              "wins": 1,
+              "losses": 0,
+              "played": 1
+            }
+          ],
+          "worst": [
+            {
+              "colourIndex": 0,
+              "wins": 1,
+              "losses": 1,
+              "played": 2
+            },
+            {
+              "colourIndex": 2,
+              "wins": 0,
+              "losses": 1,
+              "played": 1
+            }
+          ]
+        },
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "leaders": {
+          "topScorers": {
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "value": 1
+          },
+          "topGoalInvolvement": {
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "value": 2
+          },
+          "topAssisters": {
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "value": 1
+          },
+          "topCleanSheets": {
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "value": 1
+          },
+          "topWinners": {
+            "value": 1,
+            "userIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ]
+          }
+        },
+        "gameId": "mBO5HqJdnOPWjRE2zMh8",
+        "version": 1,
+        "at": 1792216800000,
+        "basis": {
+          "since": 1792192500000,
+          "eveningsCompared": 2
+        },
+        "generatedAt": 1792210116130
+      },
+      "finishProof": {
+        "attendanceCredit": {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/mBO5HqJdnOPWjRE2zMh8/finishCredited/once",
+          "id": "once",
+          "at": 1792210110093
+        },
+        "stages": [
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/mBO5HqJdnOPWjRE2zMh8/finishStages/complete",
+            "id": "complete",
+            "at": 1792210116490
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/mBO5HqJdnOPWjRE2zMh8/finishStages/standings",
+            "id": "standings",
+            "at": 1792210111369,
+            "hadPointsTable": true,
+            "summaryRefreshVersion": 1,
+            "scoreCalibration": {
+              "goalsFor10": 1,
+              "assistsFor10": 1
+            }
+          }
+        ],
+        "qaEveningStanding": {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/eveningStandings/mBO5HqJdnOPWjRE2zMh8__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "id": "mBO5HqJdnOPWjRE2zMh8__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "scoreRank": 1,
+          "scoreBasis": {
+            "goalsFor10": 1,
+            "previousAt": 1792194600000,
+            "previousScore": 8.8,
+            "counted": true,
+            "assistsFor10": 1
+          },
+          "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "scoreTotal": 1,
+          "rankTotal": 1,
+          "score": 9,
+          "scoreDelta": 0.2,
+          "at": 1792216800000,
+          "gameId": "mBO5HqJdnOPWjRE2zMh8",
+          "metrics": {
+            "wins": {
+              "passed": [],
+              "rank": 1,
+              "passedBy": [],
+              "passedByCount": 0,
+              "delta": 0,
+              "value": 4,
+              "aheadName": null,
+              "passedCount": 0,
+              "aheadGap": null
+            },
+            "goals": {
+              "aheadGap": null,
+              "passed": [],
+              "rank": 1,
+              "aheadName": null,
+              "passedCount": 0,
+              "passedBy": [],
+              "passedByCount": 0,
+              "value": 3,
+              "delta": 0
+            }
+          },
+          "rankDelta": 0,
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "rank": 1
+        }
+      }
+    }
+  ],
+  "qaClubStats": {
+    "path": "projects/soccer-app-52b6b/databases/(default)/documents/communityPlayerStats/J060YQu6QTcgk3glUDj2__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "id": "J060YQu6QTcgk3glUDj2__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "wins": 4,
+    "eveningScoreCount": 3,
+    "penSaved": 2,
+    "lastEveningScore": 9,
+    "updatedAt": 1792210110093,
+    "penConceded": 1,
+    "penFaced": 3,
+    "lastEveningAt": 1792216800000,
+    "goals": 3,
+    "cleanSheets": 3,
+    "csRounds": 6,
+    "groupId": "J060YQu6QTcgk3glUDj2",
+    "rounds": 6,
+    "asRounds": 6,
+    "assists": 1,
+    "bestEvening": {
+      "assists": 1,
+      "wins": 2,
+      "goals": 1,
+      "cleanSheets": 1,
+      "involvement": 2
+    },
+    "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "losses": 2,
+    "eveningScoreSum": 26.0,
+    "games": 3
+  },
+  "qaClubTotals": {
+    "path": "projects/soccer-app-52b6b/databases/(default)/documents/communityStats/J060YQu6QTcgk3glUDj2",
+    "id": "J060YQu6QTcgk3glUDj2",
+    "kingGoalsSum": 3,
+    "kingAssistsCount": 1,
+    "goals": 3,
+    "groupId": "J060YQu6QTcgk3glUDj2",
+    "kingGoalsCount": 3,
+    "tiedRounds": 0,
+    "rounds": 6,
+    "chemistrySince": 1792192500000,
+    "updatedAt": 1792210111370,
+    "scorelessRounds": 1,
+    "shootoutRounds": 1,
+    "countedRounds": 6,
+    "guestGoals": 5,
+    "kingAssistsSum": 1
+  },
+  "archive": {
+    "source": "tmp/live-action-production/data-final-verification.json",
+    "originalSha256": "5b1ab55ea8ca605fb67061ea6239cf30395ea8d95cd35c2618239420b82a3b21",
+    "filtered": true,
+    "note": "אימות קריאה מאוחר של שלושת מחזורי הבדיקה המאושרים בלבד; ללא מיקום, דואר, קוד הזמנה או חשבון אחר. אינו עדכון פלט הביקורת הקפואה."
+  }
+}

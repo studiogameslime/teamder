@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // AvailabilityNudgeModal — a friendly popup nudging the user to mark which
 // weekdays they're free to play, so the app can suggest matching games.
 // Shown on the Matches tab to users who haven't set `availability.preferredDays`.
@@ -79,12 +80,10 @@ export function AvailabilityNudgeModal({ visible, onClose, onConfirm }: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: {
+  card: { ...overlaySurfaces.dialog,
     width: '100%',
     maxWidth: 380,
     alignSelf: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
     overflow: 'hidden',
   },
   header: {

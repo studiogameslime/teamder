@@ -1,0 +1,36 @@
+{
+  "kind": "actual GameWizardForm function, state/effect hooks and original confirmation callbacks; native leaf controls not rendered",
+  "checks": 4,
+  "passed": true,
+  "productionWrites": false,
+  "cases": [
+    {
+      "mode": "plain",
+      "passed": true,
+      "submissions": 1,
+      "startsAtPreserved": true,
+      "scheduleTimesPreserved": true
+    },
+    {
+      "mode": "scheduled",
+      "passed": true,
+      "submissions": 1,
+      "startsAtPreserved": true,
+      "scheduleTimesPreserved": true
+    },
+    {
+      "mode": "auto",
+      "passed": true,
+      "submissions": 1,
+      "startsAtPreserved": true,
+      "scheduleTimesPreserved": true
+    },
+    {
+      "mode": "recurring",
+      "passed": true,
+      "submissions": 1,
+      "startsAtPreserved": true,
+      "scheduleTimesPreserved": true
+    }
+  ]
+}

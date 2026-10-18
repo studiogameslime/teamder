@@ -1,0 +1,2692 @@
+{
+  "readStartedAt": "2026-10-17T22:52:45.574606+00:00",
+  "readCompletedAt": "2026-10-17T22:52:54.931854+00:00",
+  "readScope": {
+    "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "clubId": "J060YQu6QTcgk3glUDj2",
+    "newRoundIds": [
+      "Ra5ZBzOUjR5zQlMojHke",
+      "FQ4T7izEbuYfprKFS75n"
+    ],
+    "oldRoundIds": [
+      "lmUUmQru2HtKvQkRDVeD",
+      "YEdIR3MviDK82D581ELk",
+      "mBO5HqJdnOPWjRE2zMh8"
+    ],
+    "access": "Document GET with account field mask and scoped documents:runQuery only; no product writes"
+  },
+  "baselineDigest": "b3e2182556b4c8dc6f625633938e4d0a78b89a7c5ff83d13a389ffeaa833cae0",
+  "oldRoundComparison": {
+    "allUnchanged": true,
+    "rounds": [
+      {
+        "gameId": "lmUUmQru2HtKvQkRDVeD",
+        "unchanged": true,
+        "checks": {
+          "game": true,
+          "history": true,
+          "commits": true,
+          "playerStats": true,
+          "summary": true,
+          "attendance": true,
+          "finishStages": true,
+          "qaStanding": true
+        }
+      },
+      {
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "unchanged": true,
+        "checks": {
+          "game": true,
+          "history": true,
+          "commits": true,
+          "playerStats": true,
+          "summary": true,
+          "attendance": true,
+          "finishStages": true,
+          "qaStanding": true
+        }
+      },
+      {
+        "gameId": "mBO5HqJdnOPWjRE2zMh8",
+        "unchanged": true,
+        "checks": {
+          "game": true,
+          "history": true,
+          "commits": true,
+          "playerStats": true,
+          "summary": true,
+          "attendance": true,
+          "finishStages": true,
+          "qaStanding": true
+        }
+      }
+    ]
+  },
+  "globalCounters": {
+    "account": {
+      "exists": true,
+      "numbers": {
+        "stats": {
+          "wins": 6,
+          "cleanSheets": 4,
+          "assists": 1,
+          "penMissed": 1,
+          "penTaken": 3,
+          "penFaced": 6,
+          "penConceded": 2,
+          "goals": 4,
+          "penScored": 2,
+          "penSaved": 3
+        },
+        "updatedAt": 1792275402076
+      },
+      "digest": "805e759cfd4d46793535ef7b45b0077e31ee3448936a5c7a26f38f1dd303d1da"
+    },
+    "qaClubStats": {
+      "exists": true,
+      "numbers": {
+        "penSaved": 3,
+        "eveningScoreCount": 4,
+        "rounds": 9,
+        "bestEvening": {
+          "goals": 1,
+          "cleanSheets": 1,
+          "assists": 1,
+          "involvement": 2,
+          "wins": 2
+        },
+        "penScored": 2,
+        "assists": 1,
+        "losses": 3,
+        "wins": 6,
+        "games": 4,
+        "goals": 4,
+        "csRounds": 9,
+        "penConceded": 2,
+        "asRounds": 9,
+        "penTaken": 3,
+        "penFaced": 6,
+        "lastEveningAt": 1792270800000,
+        "eveningScoreSum": 34.7,
+        "lastEveningScore": 8.7,
+        "updatedAt": 1792276596528,
+        "cleanSheets": 4,
+        "penMissed": 1
+      },
+      "digest": "b2eac5e0264c177fa538840ac8b7c80828b4f88947378b8cdc25d581ee0465ac"
+    },
+    "clubTotals": {
+      "exists": true,
+      "numbers": {
+        "shootoutRounds": 2,
+        "tiedRounds": 1,
+        "countedRounds": 10,
+        "guestGoals": 7,
+        "updatedAt": 1792276596528,
+        "chemistrySince": 1792192500000,
+        "scorelessRounds": 3,
+        "kingGoalsSum": 4,
+        "kingAssistsSum": 1,
+        "rounds": 10,
+        "kingAssistsCount": 1,
+        "goals": 4,
+        "kingGoalsCount": 4
+      },
+      "digest": "1c9c0134fd9ae0583ae7c3f1fcd6dcf87ac0ad33046ea45542fcfca2f3bd3517"
+    },
+    "clubShowcase": {
+      "exists": true,
+      "numbers": {
+        "updatedAt": 1792275046227,
+        "totalMembers": 1,
+        "activeMembersThisYear": 1,
+        "organizationRatePct": 100,
+        "avgAttendance": 1,
+        "totalGamesFinished": 4,
+        "totalGamesCancelled": 0,
+        "foundedAt": 1792188733060,
+        "thisMonthGames": 4,
+        "activeMembersThisMonth": 1
+      },
+      "digest": "3848ef0247da03a71672677fbcbcffad03f4acc16b8d3f7121504a06fc6ac89e"
+    },
+    "clubRecords": {
+      "exists": true,
+      "numbers": {
+        "involvement": {
+          "value": 2
+        },
+        "lastEveningAt": 1792270800000,
+        "updatedAt": 1792275049940,
+        "goals": {
+          "value": 1
+        },
+        "cleanSheets": {
+          "value": 1
+        },
+        "since": 1792192500000,
+        "assists": {
+          "value": 1
+        },
+        "wins": {
+          "value": 2
+        },
+        "eveningsSealed": 4
+      },
+      "digest": "13f01eb7dc2f4d3c0d0f72c2a304f70ddf14ef5ab4a0a5be503caf6b074a26dd"
+    }
+  },
+  "numericDeltasFromBaseline": {
+    "account": [
+      {
+        "field": "stats.cleanSheets",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "stats.goals",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "stats.penConceded",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1,
+        "after": 2,
+        "delta": 1
+      },
+      {
+        "field": "stats.penFaced",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 6,
+        "delta": 3
+      },
+      {
+        "field": "stats.penMissed",
+        "beforePresent": false,
+        "afterPresent": true,
+        "before": null,
+        "after": 1
+      },
+      {
+        "field": "stats.penSaved",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 2,
+        "after": 3,
+        "delta": 1
+      },
+      {
+        "field": "stats.penScored",
+        "beforePresent": false,
+        "afterPresent": true,
+        "before": null,
+        "after": 2
+      },
+      {
+        "field": "stats.penTaken",
+        "beforePresent": false,
+        "afterPresent": true,
+        "before": null,
+        "after": 3
+      },
+      {
+        "field": "stats.wins",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 4,
+        "after": 6,
+        "delta": 2
+      },
+      {
+        "field": "updatedAt",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1792203554079,
+        "after": 1792275402076,
+        "delta": 71847997
+      }
+    ],
+    "qaClubStats": [
+      {
+        "field": "asRounds",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 6,
+        "after": 9,
+        "delta": 3
+      },
+      {
+        "field": "cleanSheets",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "csRounds",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 6,
+        "after": 9,
+        "delta": 3
+      },
+      {
+        "field": "eveningScoreCount",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "eveningScoreSum",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 26.0,
+        "after": 34.7,
+        "delta": 8.700000000000003
+      },
+      {
+        "field": "games",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "goals",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "lastEveningAt",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1792216800000,
+        "after": 1792270800000,
+        "delta": 54000000
+      },
+      {
+        "field": "lastEveningScore",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 9,
+        "after": 8.7,
+        "delta": -0.3000000000000007
+      },
+      {
+        "field": "losses",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 2,
+        "after": 3,
+        "delta": 1
+      },
+      {
+        "field": "penConceded",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1,
+        "after": 2,
+        "delta": 1
+      },
+      {
+        "field": "penFaced",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 6,
+        "delta": 3
+      },
+      {
+        "field": "penMissed",
+        "beforePresent": false,
+        "afterPresent": true,
+        "before": null,
+        "after": 1
+      },
+      {
+        "field": "penSaved",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 2,
+        "after": 3,
+        "delta": 1
+      },
+      {
+        "field": "penScored",
+        "beforePresent": false,
+        "afterPresent": true,
+        "before": null,
+        "after": 2
+      },
+      {
+        "field": "penTaken",
+        "beforePresent": false,
+        "afterPresent": true,
+        "before": null,
+        "after": 3
+      },
+      {
+        "field": "rounds",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 6,
+        "after": 9,
+        "delta": 3
+      },
+      {
+        "field": "updatedAt",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1792210110093,
+        "after": 1792276596528,
+        "delta": 66486435
+      },
+      {
+        "field": "wins",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 4,
+        "after": 6,
+        "delta": 2
+      }
+    ],
+    "clubTotals": [
+      {
+        "field": "countedRounds",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 6,
+        "after": 10,
+        "delta": 4
+      },
+      {
+        "field": "goals",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "guestGoals",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 5,
+        "after": 7,
+        "delta": 2
+      },
+      {
+        "field": "kingGoalsCount",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "kingGoalsSum",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "rounds",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 6,
+        "after": 10,
+        "delta": 4
+      },
+      {
+        "field": "scorelessRounds",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1,
+        "after": 3,
+        "delta": 2
+      },
+      {
+        "field": "shootoutRounds",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1,
+        "after": 2,
+        "delta": 1
+      },
+      {
+        "field": "tiedRounds",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 0,
+        "after": 1,
+        "delta": 1
+      },
+      {
+        "field": "updatedAt",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1792210111370,
+        "after": 1792276596528,
+        "delta": 66485158
+      }
+    ],
+    "clubShowcase": [
+      {
+        "field": "thisMonthGames",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "totalGamesFinished",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "updatedAt",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1792210111625,
+        "after": 1792275046227,
+        "delta": 64934602
+      }
+    ],
+    "clubRecords": [
+      {
+        "field": "eveningsSealed",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 3,
+        "after": 4,
+        "delta": 1
+      },
+      {
+        "field": "lastEveningAt",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1792216800000,
+        "after": 1792270800000,
+        "delta": 54000000
+      },
+      {
+        "field": "updatedAt",
+        "beforePresent": true,
+        "afterPresent": true,
+        "before": 1792210116131,
+        "after": 1792275049940,
+        "delta": 64933809
+      }
+    ]
+  },
+  "membershipCounts": {
+    "members": 1,
+    "admins": 1,
+    "pending": 1
+  },
+  "clubSeasons": null,
+  "games": [
+    {
+      "game": {
+        "id": "Ra5ZBzOUjR5zQlMojHke",
+        "fields": {
+          "advancedMode": true,
+          "arrivals": null,
+          "maxPlayers": 12,
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "visibility": "community",
+          "players": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "endedBy": "admin",
+          "createdAt": 1792273413614,
+          "updatedAt": 1792275043580,
+          "startsAt": 1792270800000,
+          "pending": [],
+          "committedRoundCount": 2,
+          "rotation": {
+            "updatedAt": 1792274988714,
+            "lastRoundLosers": [],
+            "waiting": [
+              1
+            ],
+            "lastRoundAt": 1792274988714,
+            "roundInstanceId": "r_mvcy943s_ewnby8w9",
+            "round": 3,
+            "roundInstanceRound": 3,
+            "loans": [],
+            "wins": {
+              "2": 2
+            },
+            "playing": [
+              0,
+              2
+            ],
+            "lastRoundWinners": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ]
+          },
+          "participantIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "acceptsFillers": false,
+          "liveMatch": {
+            "scoreA": 0,
+            "startedAtBy": "server",
+            "timerEvents": [],
+            "timerAccumulatedMs": 0,
+            "startedAt": 1792270800000,
+            "timerControlledBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "timerLastStartedAt": null,
+            "goals": [],
+            "activeIntervals": [
+              {
+                "s": 1792274235192.5,
+                "e": 1792274251537.5
+              },
+              {
+                "s": 1792274257278.5,
+                "e": 1792274260805.5
+              }
+            ],
+            "scoreB": 0,
+            "timerRunning": false,
+            "phase": "finished",
+            "timerControlledByName": "בדיקות לייב",
+            "goalTally": {
+              "guest:mvcxh346-qdwb3o": 1,
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1
+            }
+          },
+          "advancedTieMode": null,
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "draftTeams": {
+            "createdAt": 1792273835053,
+            "numTeams": 3,
+            "teams": [
+              {
+                "index": 0,
+                "captainId": "guest:mvcxh346-qdwb3o",
+                "playerIds": [
+                  "guest:mvcxh346-qdwb3o",
+                  "guest:mvcxfud1-jvzn1w",
+                  "guest:mvcxhzbu-003h7x",
+                  "guest:mvcxhomb-b2hn9j"
+                ],
+                "colorKey": "red"
+              },
+              {
+                "index": 1,
+                "captainId": "guest:mvcxepvd-4wgeo9",
+                "playerIds": [
+                  "guest:mvcxepvd-4wgeo9",
+                  "guest:mvcxhdu6-z6f2ak",
+                  "guest:mvcxghj9-off0hi",
+                  "guest:mvcxfhvn-amejwi"
+                ],
+                "colorKey": "blue"
+              },
+              {
+                "index": 2,
+                "captainId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "playerIds": [
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "guest:mvcxg66v-bqnjce",
+                  "guest:mvcxgsau-dtji6o",
+                  "guest:mvcxf3b2-spv47b"
+                ],
+                "colorKey": "green"
+              }
+            ],
+            "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "published": false,
+            "method": "snake",
+            "originalTeams": [
+              {
+                "index": 0,
+                "captainId": "guest:mvcxh346-qdwb3o",
+                "playerIds": [
+                  "guest:mvcxh346-qdwb3o",
+                  "guest:mvcxfud1-jvzn1w",
+                  "guest:mvcxhzbu-003h7x",
+                  "guest:mvcxhomb-b2hn9j"
+                ]
+              },
+              {
+                "index": 1,
+                "captainId": "guest:mvcxepvd-4wgeo9",
+                "playerIds": [
+                  "guest:mvcxepvd-4wgeo9",
+                  "guest:mvcxhdu6-z6f2ak",
+                  "guest:mvcxghj9-off0hi",
+                  "guest:mvcxfhvn-amejwi"
+                ]
+              },
+              {
+                "index": 2,
+                "captainId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "playerIds": [
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "guest:mvcxg66v-bqnjce",
+                  "guest:mvcxgsau-dtji6o",
+                  "guest:mvcxf3b2-spv47b"
+                ]
+              }
+            ]
+          },
+          "lastCommittedRoundId": "r_mvcxs8k3_m21zadin",
+          "adminRemovals": null,
+          "waitlist": [],
+          "isOrphanContext": false,
+          "numberOfTeams": 3,
+          "guests": [
+            {
+              "id": "mvcxepvd-4wgeo9",
+              "name": "בדיקה4־01",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792273570682
+            },
+            {
+              "id": "mvcxf3b2-spv47b",
+              "name": "בדיקה4־02",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792273588094
+            },
+            {
+              "id": "mvcxfhvn-amejwi",
+              "name": "בדיקה4־03",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792273606979
+            },
+            {
+              "id": "mvcxfud1-jvzn1w",
+              "name": "בדיקה4־04",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792273623157
+            },
+            {
+              "id": "mvcxg66v-bqnjce",
+              "name": "בדיקה4־05",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792273638487
+            },
+            {
+              "id": "mvcxghj9-off0hi",
+              "name": "בדיקה4־06",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792273653189
+            },
+            {
+              "id": "mvcxgsau-dtji6o",
+              "name": "בדיקה4־07",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792273667142
+            },
+            {
+              "id": "mvcxh346-qdwb3o",
+              "name": "בדיקה4־08",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792273681158
+            },
+            {
+              "id": "mvcxhdu6-z6f2ak",
+              "name": "בדיקה4־09",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792273695054
+            },
+            {
+              "id": "mvcxhomb-b2hn9j",
+              "name": "בדיקה4־10",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792273709027
+            },
+            {
+              "id": "mvcxhzbu-003h7x",
+              "name": "בדיקה4־11",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792273722906
+            }
+          ],
+          "extraTimeMinutes": null,
+          "format": "4v4",
+          "autoTeamsMethod": null,
+          "status": "finished",
+          "endedAt": 1792275043580,
+          "teamsEditedManually": true,
+          "advancedFillMode": "temporary",
+          "minPlayers": null,
+          "autoTeamsGeneratedAt": null,
+          "matchDurationMinutes": 8
+        }
+      },
+      "history": [
+        {
+          "id": "r_mvcxnhim_ifyhwmaj",
+          "fields": {
+            "roundId": "r_mvcxnhim_ifyhwmaj",
+            "teamA": [
+              "guest:mvcxh346-qdwb3o",
+              "guest:mvcxfud1-jvzn1w",
+              "guest:mvcxhzbu-003h7x",
+              "guest:mvcxhomb-b2hn9j"
+            ],
+            "teamB": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "guest:mvcxg66v-bqnjce",
+              "guest:mvcxgsau-dtji6o",
+              "guest:mvcxf3b2-spv47b"
+            ],
+            "teamAIndex": 0,
+            "teamBIndex": 2,
+            "scoreA": 1,
+            "scoreB": 3,
+            "winnerSide": "B",
+            "goals": [
+              {
+                "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "assistStatus": "player",
+                "assisterId": "guest:mvcxg66v-bqnjce",
+                "ownGoal": false,
+                "minute": 1,
+                "team": "B"
+              },
+              {
+                "scorerId": "guest:mvcxh346-qdwb3o",
+                "assistStatus": "none",
+                "assisterId": null,
+                "ownGoal": false,
+                "minute": 1,
+                "team": "A"
+              },
+              {
+                "scorerId": "guest:mvcxfud1-jvzn1w",
+                "assisterId": null,
+                "ownGoal": true,
+                "minute": 1,
+                "team": "B"
+              },
+              {
+                "scorerId": null,
+                "assisterId": null,
+                "ownGoal": false,
+                "minute": 1,
+                "team": "B"
+              }
+            ],
+            "penalties": [],
+            "at": 1792274198319
+          }
+        },
+        {
+          "id": "r_mvcxs8k3_m21zadin",
+          "fields": {
+            "roundId": "r_mvcxs8k3_m21zadin",
+            "teamA": [
+              "guest:mvcxepvd-4wgeo9",
+              "guest:mvcxhdu6-z6f2ak",
+              "guest:mvcxghj9-off0hi",
+              "guest:mvcxfhvn-amejwi"
+            ],
+            "teamB": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "guest:mvcxg66v-bqnjce",
+              "guest:mvcxgsau-dtji6o",
+              "guest:mvcxf3b2-spv47b"
+            ],
+            "teamAIndex": 1,
+            "teamBIndex": 2,
+            "scoreA": 0,
+            "scoreB": 0,
+            "winnerSide": "B",
+            "goals": [],
+            "penalties": [
+              {
+                "kickerId": "guest:mvcxepvd-4wgeo9",
+                "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "scored": true,
+                "outcome": "goal",
+                "team": "A"
+              },
+              {
+                "kickerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "keeperId": "guest:mvcxhdu6-z6f2ak",
+                "scored": false,
+                "outcome": "save",
+                "team": "B"
+              },
+              {
+                "kickerId": "guest:mvcxepvd-4wgeo9",
+                "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "scored": false,
+                "outcome": "miss",
+                "team": "A"
+              },
+              {
+                "kickerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "keeperId": "guest:mvcxhdu6-z6f2ak",
+                "scored": true,
+                "outcome": "goal",
+                "team": "B"
+              },
+              {
+                "kickerId": "guest:mvcxepvd-4wgeo9",
+                "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "scored": false,
+                "outcome": "save",
+                "team": "A"
+              },
+              {
+                "kickerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "keeperId": "guest:mvcxhdu6-z6f2ak",
+                "scored": true,
+                "outcome": "goal",
+                "team": "B"
+              }
+            ],
+            "at": 1792274986877
+          }
+        }
+      ],
+      "commits": [
+        {
+          "id": "r_mvcxnhim_ifyhwmaj",
+          "fields": {
+            "committedAt": 1792274198319,
+            "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "winnerSide": "B"
+          }
+        },
+        {
+          "id": "r_mvcxs8k3_m21zadin",
+          "fields": {
+            "committedAt": 1792274986877,
+            "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "winnerSide": "B"
+          }
+        }
+      ],
+      "playerStats": [
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamGoalsFor": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 3,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "goals": 1,
+            "teamScoreRounds": 2,
+            "wins": 2,
+            "penConceded": 1,
+            "penMissed": 1,
+            "penSaved": 1,
+            "penTaken": 3,
+            "penScored": 2,
+            "penFaced": 3,
+            "cleanSheets": 1,
+            "rounds": 2,
+            "updatedAt": 1792274986877
+          }
+        },
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__guest:mvcxepvd-4wgeo9",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcxepvd-4wgeo9",
+            "rounds": 1,
+            "updatedAt": 1792274986877
+          }
+        },
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__guest:mvcxf3b2-spv47b",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamGoalsFor": 1,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 3,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvcxf3b2-spv47b",
+            "wins": 2,
+            "teamScoreRounds": 2,
+            "cleanSheets": 1,
+            "rounds": 2,
+            "updatedAt": 1792274986877
+          }
+        },
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__guest:mvcxfhvn-amejwi",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcxfhvn-amejwi",
+            "rounds": 1,
+            "updatedAt": 1792274986877
+          }
+        },
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__guest:mvcxfud1-jvzn1w",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 1,
+            "losses": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 3,
+            "userId": "guest:mvcxfud1-jvzn1w",
+            "rounds": 1,
+            "updatedAt": 1792274198319
+          }
+        },
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__guest:mvcxg66v-bqnjce",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamGoalsFor": 1,
+            "isGuest": true,
+            "assists": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 3,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvcxg66v-bqnjce",
+            "wins": 2,
+            "teamScoreRounds": 2,
+            "cleanSheets": 1,
+            "rounds": 2,
+            "updatedAt": 1792274986877
+          }
+        },
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__guest:mvcxghj9-off0hi",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcxghj9-off0hi",
+            "rounds": 1,
+            "updatedAt": 1792274986877
+          }
+        },
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__guest:mvcxgsau-dtji6o",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamGoalsFor": 1,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 3,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvcxgsau-dtji6o",
+            "wins": 2,
+            "teamScoreRounds": 2,
+            "cleanSheets": 1,
+            "rounds": 2,
+            "updatedAt": 1792274986877
+          }
+        },
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__guest:mvcxh346-qdwb3o",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 1,
+            "losses": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 3,
+            "userId": "guest:mvcxh346-qdwb3o",
+            "rounds": 1,
+            "updatedAt": 1792274198319,
+            "goals": 1
+          }
+        },
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__guest:mvcxhdu6-z6f2ak",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcxhdu6-z6f2ak",
+            "rounds": 1,
+            "updatedAt": 1792274986877
+          }
+        },
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__guest:mvcxhomb-b2hn9j",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 1,
+            "losses": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 3,
+            "userId": "guest:mvcxhomb-b2hn9j",
+            "rounds": 1,
+            "updatedAt": 1792274198319
+          }
+        },
+        {
+          "id": "Ra5ZBzOUjR5zQlMojHke__guest:mvcxhzbu-003h7x",
+          "fields": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 1,
+            "losses": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 3,
+            "userId": "guest:mvcxhzbu-003h7x",
+            "rounds": 1,
+            "updatedAt": 1792274198319
+          }
+        }
+      ],
+      "roundSummary": {
+        "id": "Ra5ZBzOUjR5zQlMojHke",
+        "fields": {
+          "pairHighlight": null,
+          "coverage": {
+            "hasAssists": true,
+            "hasRoundHistory": true
+          },
+          "stats": {
+            "assists": 1,
+            "ties": 0,
+            "shootouts": 1,
+            "rounds": 2,
+            "goals": 4
+          },
+          "generatedAt": 1792275049936,
+          "teamHighlights": {
+            "worst": [
+              {
+                "colourIndex": 0,
+                "wins": 0,
+                "losses": 1,
+                "played": 1
+              },
+              {
+                "colourIndex": 1,
+                "wins": 0,
+                "losses": 1,
+                "played": 1
+              }
+            ],
+            "best": [
+              {
+                "colourIndex": 2,
+                "wins": 2,
+                "losses": 0,
+                "played": 2
+              }
+            ]
+          },
+          "gameId": "Ra5ZBzOUjR5zQlMojHke",
+          "events": [],
+          "correctionBasis": {
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "basis": {
+              "since": 1792192500000,
+              "eveningsCompared": 3
+            },
+            "records": {
+              "assists": {
+                "userIds": [
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+                ],
+                "value": 1
+              },
+              "cleanSheets": {
+                "value": 1,
+                "userIds": [
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+                ]
+              },
+              "firstEverSeen": [],
+              "wins": {
+                "userIds": [
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+                ],
+                "value": 2
+              },
+              "goals": {
+                "userIds": [
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+                ],
+                "value": 1
+              },
+              "involvement": {
+                "userIds": [
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+                ],
+                "value": 2
+              }
+            },
+            "now": 1792275049936,
+            "groupId": "J060YQu6QTcgk3glUDj2",
+            "rounds": [
+              {
+                "teamAIndex": 0,
+                "teamBIndex": 2,
+                "winnerSide": "B",
+                "goals": [
+                  {
+                    "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                    "assisterId": "guest:mvcxg66v-bqnjce",
+                    "ownGoal": false,
+                    "team": "B"
+                  },
+                  {
+                    "scorerId": "guest:mvcxh346-qdwb3o",
+                    "assisterId": null,
+                    "ownGoal": false,
+                    "team": "A"
+                  },
+                  {
+                    "scorerId": "guest:mvcxfud1-jvzn1w",
+                    "assisterId": null,
+                    "ownGoal": true,
+                    "team": "B"
+                  },
+                  {
+                    "scorerId": null,
+                    "assisterId": null,
+                    "ownGoal": false,
+                    "team": "B"
+                  }
+                ],
+                "shootout": false
+              },
+              {
+                "teamAIndex": 1,
+                "teamBIndex": 2,
+                "winnerSide": "B",
+                "goals": [],
+                "shootout": true
+              }
+            ],
+            "personalBests": {
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": {
+                "goals": 1,
+                "involvement": 2,
+                "wins": 2,
+                "cleanSheets": 1,
+                "assists": 1
+              }
+            },
+            "career": [
+              {
+                "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "goals": 4,
+                "assists": 1,
+                "rounds": 8,
+                "wins": 6,
+                "cleanSheets": 4,
+                "games": 4
+              }
+            ],
+            "standings": [
+              {
+                "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "score": 8.7,
+                "rank": 1,
+                "rankTotal": 1,
+                "rankDelta": 0
+              }
+            ],
+            "club": {
+              "assists": 1,
+              "shootoutRounds": 2,
+              "goals": 4,
+              "cleanSheets": 4,
+              "rounds": 8,
+              "evenings": 4
+            },
+            "at": 1792270800000,
+            "players": [
+              {
+                "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                "isGuest": false,
+                "goals": 1,
+                "assists": 0,
+                "wins": 2,
+                "cleanSheets": 1,
+                "rounds": 2
+              },
+              {
+                "userId": "guest:mvcxepvd-4wgeo9",
+                "isGuest": true,
+                "goals": 0,
+                "assists": 0,
+                "wins": 0,
+                "cleanSheets": 1,
+                "rounds": 1
+              },
+              {
+                "userId": "guest:mvcxf3b2-spv47b",
+                "isGuest": true,
+                "goals": 0,
+                "assists": 0,
+                "wins": 2,
+                "cleanSheets": 1,
+                "rounds": 2
+              },
+              {
+                "userId": "guest:mvcxfhvn-amejwi",
+                "isGuest": true,
+                "goals": 0,
+                "assists": 0,
+                "wins": 0,
+                "cleanSheets": 1,
+                "rounds": 1
+              },
+              {
+                "userId": "guest:mvcxfud1-jvzn1w",
+                "isGuest": true,
+                "goals": 0,
+                "assists": 0,
+                "wins": 0,
+                "cleanSheets": 0,
+                "rounds": 1
+              },
+              {
+                "userId": "guest:mvcxg66v-bqnjce",
+                "isGuest": true,
+                "goals": 0,
+                "assists": 1,
+                "wins": 2,
+                "cleanSheets": 1,
+                "rounds": 2
+              },
+              {
+                "userId": "guest:mvcxghj9-off0hi",
+                "isGuest": true,
+                "goals": 0,
+                "assists": 0,
+                "wins": 0,
+                "cleanSheets": 1,
+                "rounds": 1
+              },
+              {
+                "userId": "guest:mvcxgsau-dtji6o",
+                "isGuest": true,
+                "goals": 0,
+                "assists": 0,
+                "wins": 2,
+                "cleanSheets": 1,
+                "rounds": 2
+              },
+              {
+                "userId": "guest:mvcxh346-qdwb3o",
+                "isGuest": true,
+                "goals": 1,
+                "assists": 0,
+                "wins": 0,
+                "cleanSheets": 0,
+                "rounds": 1
+              },
+              {
+                "userId": "guest:mvcxhdu6-z6f2ak",
+                "isGuest": true,
+                "goals": 0,
+                "assists": 0,
+                "wins": 0,
+                "cleanSheets": 1,
+                "rounds": 1
+              },
+              {
+                "userId": "guest:mvcxhomb-b2hn9j",
+                "isGuest": true,
+                "goals": 0,
+                "assists": 0,
+                "wins": 0,
+                "cleanSheets": 0,
+                "rounds": 1
+              },
+              {
+                "userId": "guest:mvcxhzbu-003h7x",
+                "isGuest": true,
+                "goals": 0,
+                "assists": 0,
+                "wins": 0,
+                "cleanSheets": 0,
+                "rounds": 1
+              }
+            ]
+          },
+          "leaders": {
+            "topWinners": {
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ],
+              "value": 2
+            },
+            "topCleanSheets": {
+              "value": 1,
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ]
+            },
+            "topAssisters": null,
+            "topScorers": {
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ],
+              "value": 1
+            },
+            "topGoalInvolvement": {
+              "userIds": [
+                "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+              ],
+              "value": 1
+            }
+          },
+          "basis": {
+            "since": 1792192500000,
+            "eveningsCompared": 3
+          },
+          "at": 1792270800000,
+          "version": 1,
+          "groupId": "J060YQu6QTcgk3glUDj2"
+        }
+      },
+      "finishProof": {
+        "attendanceCredit": {
+          "id": "once",
+          "fields": {
+            "at": 1792275045093
+          }
+        },
+        "stages": [
+          {
+            "id": "complete",
+            "fields": {
+              "at": 1792275050316
+            }
+          },
+          {
+            "id": "standings",
+            "fields": {
+              "at": 1792275046458,
+              "hadPointsTable": true,
+              "summaryRefreshVersion": 1,
+              "scoreCalibration": {
+                "goalsFor10": 1,
+                "assistsFor10": 1
+              }
+            }
+          }
+        ],
+        "qaEveningStanding": {
+          "id": "Ra5ZBzOUjR5zQlMojHke__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "fields": {
+            "rank": 1,
+            "gameId": "Ra5ZBzOUjR5zQlMojHke",
+            "rankDelta": 0,
+            "scoreRank": 1,
+            "scoreDelta": -0.3,
+            "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "scoreBasis": {
+              "assistsFor10": 1,
+              "previousAt": 1792216800000,
+              "previousScore": 9,
+              "goalsFor10": 1,
+              "counted": true
+            },
+            "rankTotal": 1,
+            "score": 8.7,
+            "at": 1792270800000,
+            "scoreTotal": 1,
+            "groupId": "J060YQu6QTcgk3glUDj2",
+            "metrics": {
+              "assists": {
+                "passedCount": 0,
+                "delta": 0,
+                "passedBy": [],
+                "rank": 1,
+                "aheadName": null,
+                "aheadGap": null,
+                "value": 1,
+                "passedByCount": 0,
+                "passed": []
+              },
+              "wins": {
+                "passed": [],
+                "value": 6,
+                "passedBy": [],
+                "rank": 1,
+                "aheadGap": null,
+                "delta": 0,
+                "passedByCount": 0,
+                "passedCount": 0,
+                "aheadName": null
+              },
+              "goals": {
+                "passedCount": 0,
+                "aheadGap": null,
+                "delta": 0,
+                "aheadName": null,
+                "rank": 1,
+                "passedByCount": 0,
+                "passedBy": [],
+                "value": 4,
+                "passed": []
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "game": {
+        "id": "FQ4T7izEbuYfprKFS75n",
+        "fields": {
+          "createdAt": 1792275374606,
+          "extraTimeMinutes": null,
+          "maxPlayers": 28,
+          "guests": [
+            {
+              "id": "mvcyim0f-81tp8d",
+              "name": "שבע־02",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275431919
+            },
+            {
+              "id": "mvcyiwsz-tlan92",
+              "name": "שבע־03",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275445907
+            },
+            {
+              "id": "mvcyj6sp-bzxjdr",
+              "name": "שבע־04",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275458857
+            },
+            {
+              "id": "mvcyji3o-nsqrwc",
+              "name": "שבע־05",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275473508
+            },
+            {
+              "id": "mvcyjsg7-3n61s4",
+              "name": "שבע־06",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275486919
+            },
+            {
+              "id": "mvcyk48b-bc6tfc",
+              "name": "שבע־07",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275502187
+            },
+            {
+              "id": "mvcykk0e-uw4e4q",
+              "name": "שבע־08",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275522638
+            },
+            {
+              "id": "mvcykw5f-slqqso",
+              "name": "שבע־09",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275538371
+            },
+            {
+              "id": "mvcyl6v5-ivx66m",
+              "name": "שבע־10",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275552257
+            },
+            {
+              "id": "mvcylhjs-hmr1pa",
+              "name": "שבע־11",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275566104
+            },
+            {
+              "id": "mvcylshl-orw4aq",
+              "name": "שבע־12",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275580281
+            },
+            {
+              "id": "mvcym43v-7h7apx",
+              "name": "שבע־13",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275595339
+            },
+            {
+              "id": "mvcymg0y-6tw9f2",
+              "name": "שבע־14",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275610786
+            },
+            {
+              "id": "mvcymsc6-ska8pb",
+              "name": "שבע־15",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275626742
+            },
+            {
+              "id": "mvcyn3ov-zusrqh",
+              "name": "שבע־16",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275641455
+            },
+            {
+              "id": "mvcynetv-npalqu",
+              "name": "שבע־17",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275655891
+            },
+            {
+              "id": "mvcynpww-27doyu",
+              "name": "שבע־18",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275670256
+            },
+            {
+              "id": "mvcyo0ty-n1am4b",
+              "name": "שבע־19",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275684406
+            },
+            {
+              "id": "mvcyoayx-vb0yhd",
+              "name": "שבע־20",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275697545
+            },
+            {
+              "id": "mvcyomjc-izziaf",
+              "name": "שבע־21",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275712536
+            },
+            {
+              "id": "mvcyoxd8-vavlmk",
+              "name": "שבע־22",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275726572
+            },
+            {
+              "id": "mvcyp7up-ek4f2v",
+              "name": "שבע־23",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275740161
+            },
+            {
+              "id": "mvcypi4h-hlmbmt",
+              "name": "שבע־24",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275753473
+            },
+            {
+              "id": "mvcypsl7-kp8wd4",
+              "name": "שבע־25",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275767035
+            },
+            {
+              "id": "mvcyq35x-sa74ys",
+              "name": "שבע־26",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275780741
+            },
+            {
+              "id": "mvcyqdz7-zn2xty",
+              "name": "שבע־27",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275794755
+            },
+            {
+              "id": "mvcyr422-23pos1",
+              "name": "בהמתנה שבע",
+              "addedBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "createdAt": 1792275828554,
+              "waitlisted": false
+            }
+          ],
+          "rotation": {
+            "loans": [],
+            "roundInstanceId": "r_mvcz8fms_pkqs6wti",
+            "lastRoundLosers": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+            ],
+            "roundInstanceRound": 3,
+            "waiting": [
+              0,
+              3
+            ],
+            "wins": {
+              "2": 1
+            },
+            "baseTeams": [
+              {
+                "index": 0,
+                "playerIds": [
+                  "guest:mvcyjsg7-3n61s4",
+                  "guest:mvcykk0e-uw4e4q",
+                  "guest:mvcyim0f-81tp8d",
+                  "guest:mvcyji3o-nsqrwc",
+                  "guest:mvcyiwsz-tlan92",
+                  "guest:mvcymg0y-6tw9f2",
+                  "guest:mvcyr422-23pos1"
+                ]
+              },
+              {
+                "index": 1,
+                "playerIds": [
+                  "guest:mvcyqdz7-zn2xty",
+                  "guest:mvcyq35x-sa74ys",
+                  "guest:mvcyomjc-izziaf",
+                  "guest:mvcymsc6-ska8pb",
+                  "guest:mvcyoayx-vb0yhd",
+                  "guest:mvcyk48b-bc6tfc",
+                  "guest:mvcypsl7-kp8wd4"
+                ]
+              },
+              {
+                "index": 2,
+                "playerIds": [
+                  "guest:mvcynetv-npalqu",
+                  "guest:mvcym43v-7h7apx",
+                  "guest:mvcyj6sp-bzxjdr",
+                  "guest:mvcylshl-orw4aq",
+                  "guest:mvcynpww-27doyu",
+                  "guest:mvcyn3ov-zusrqh",
+                  "guest:mvcylhjs-hmr1pa"
+                ]
+              },
+              {
+                "index": 3,
+                "playerIds": [
+                  "guest:mvcykw5f-slqqso",
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "guest:mvcyo0ty-n1am4b",
+                  "guest:mvcyp7up-ek4f2v",
+                  "guest:mvcyl6v5-ivx66m",
+                  "guest:mvcypi4h-hlmbmt",
+                  "guest:mvcyoxd8-vavlmk"
+                ]
+              }
+            ],
+            "lastRoundAt": 1792276599739,
+            "updatedAt": 1792276849867,
+            "lastRoundWinners": [],
+            "round": 3,
+            "playing": [
+              2,
+              1
+            ]
+          },
+          "draftTeams": {
+            "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "originalTeams": [
+              {
+                "index": 0,
+                "captainId": "guest:mvcyjsg7-3n61s4",
+                "playerIds": [
+                  "guest:mvcyjsg7-3n61s4",
+                  "guest:mvcykk0e-uw4e4q",
+                  "guest:mvcyim0f-81tp8d",
+                  "guest:mvcyji3o-nsqrwc",
+                  "guest:mvcyiwsz-tlan92",
+                  "guest:mvcymg0y-6tw9f2",
+                  "guest:mvcyr422-23pos1"
+                ],
+                "colorKey": "red"
+              },
+              {
+                "index": 1,
+                "captainId": "guest:mvcyqdz7-zn2xty",
+                "playerIds": [
+                  "guest:mvcyqdz7-zn2xty",
+                  "guest:mvcyq35x-sa74ys",
+                  "guest:mvcyomjc-izziaf",
+                  "guest:mvcymsc6-ska8pb",
+                  "guest:mvcyoayx-vb0yhd",
+                  "guest:mvcyk48b-bc6tfc",
+                  "guest:mvcypsl7-kp8wd4"
+                ],
+                "colorKey": "blue"
+              },
+              {
+                "index": 2,
+                "captainId": "guest:mvcynetv-npalqu",
+                "playerIds": [
+                  "guest:mvcynetv-npalqu",
+                  "guest:mvcym43v-7h7apx",
+                  "guest:mvcyj6sp-bzxjdr",
+                  "guest:mvcylshl-orw4aq",
+                  "guest:mvcynpww-27doyu",
+                  "guest:mvcyn3ov-zusrqh",
+                  "guest:mvcylhjs-hmr1pa"
+                ],
+                "colorKey": "green"
+              },
+              {
+                "index": 3,
+                "captainId": "guest:mvcykw5f-slqqso",
+                "playerIds": [
+                  "guest:mvcykw5f-slqqso",
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "guest:mvcyo0ty-n1am4b",
+                  "guest:mvcyp7up-ek4f2v",
+                  "guest:mvcyl6v5-ivx66m",
+                  "guest:mvcypi4h-hlmbmt",
+                  "guest:mvcyoxd8-vavlmk"
+                ],
+                "colorKey": "yellow"
+              }
+            ],
+            "createdAt": 1792277242906,
+            "published": false,
+            "method": "regular",
+            "numTeams": 4,
+            "leftHome": [],
+            "teams": [
+              {
+                "index": 0,
+                "captainId": "guest:mvcyjsg7-3n61s4",
+                "playerIds": [
+                  "guest:mvcyjsg7-3n61s4",
+                  "guest:mvcykk0e-uw4e4q",
+                  "guest:mvcyim0f-81tp8d",
+                  "guest:mvcyji3o-nsqrwc",
+                  "guest:mvcyiwsz-tlan92",
+                  "guest:mvcymg0y-6tw9f2",
+                  "guest:mvcyr422-23pos1"
+                ],
+                "colorKey": "red"
+              },
+              {
+                "index": 1,
+                "captainId": "guest:mvcyqdz7-zn2xty",
+                "playerIds": [
+                  "guest:mvcyqdz7-zn2xty",
+                  "guest:mvcyq35x-sa74ys",
+                  "guest:mvcyomjc-izziaf",
+                  "guest:mvcymsc6-ska8pb",
+                  "guest:mvcyoayx-vb0yhd",
+                  "guest:mvcyk48b-bc6tfc",
+                  "guest:mvcypsl7-kp8wd4"
+                ],
+                "colorKey": "blue"
+              },
+              {
+                "index": 2,
+                "captainId": "guest:mvcynetv-npalqu",
+                "playerIds": [
+                  "guest:mvcynetv-npalqu",
+                  "guest:mvcym43v-7h7apx",
+                  "guest:mvcyj6sp-bzxjdr",
+                  "guest:mvcylshl-orw4aq",
+                  "guest:mvcynpww-27doyu",
+                  "guest:mvcyn3ov-zusrqh",
+                  "guest:mvcylhjs-hmr1pa"
+                ],
+                "colorKey": "green"
+              },
+              {
+                "index": 3,
+                "captainId": "guest:mvcykw5f-slqqso",
+                "playerIds": [
+                  "guest:mvcykw5f-slqqso",
+                  "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+                  "guest:mvcyo0ty-n1am4b",
+                  "guest:mvcyp7up-ek4f2v",
+                  "guest:mvcyl6v5-ivx66m",
+                  "guest:mvcypi4h-hlmbmt",
+                  "guest:mvcyoxd8-vavlmk"
+                ],
+                "colorKey": "yellow"
+              }
+            ]
+          },
+          "waitlist": [],
+          "arrivals": null,
+          "participantIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "autoTeamsGeneratedAt": null,
+          "adminRemovals": null,
+          "autoTeamsMethod": null,
+          "advancedMode": true,
+          "startsAt": 1792274400000,
+          "pending": [],
+          "matchDurationMinutes": 8,
+          "teamsEditedManually": true,
+          "advancedFillMode": null,
+          "format": "7v7",
+          "isOrphanContext": false,
+          "visibility": "community",
+          "acceptsFillers": false,
+          "numberOfTeams": 4,
+          "groupId": "J060YQu6QTcgk3glUDj2",
+          "players": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "minPlayers": null,
+          "liveMatch": {
+            "goals": [],
+            "timerLastStartedAt": null,
+            "timerControlledByName": "בדיקות לייב",
+            "goalTally": {
+              "guest:mvcyqdz7-zn2xty": 1
+            },
+            "timerAccumulatedMs": 0,
+            "scoreA": 0,
+            "timerControlledBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "shootout": {
+              "keeperA": null,
+              "kicks": [
+                {
+                  "id": "pk_1792277510675_34tnhi713k2",
+                  "kickerId": "guest:mvcynetv-npalqu",
+                  "keeperId": "guest:mvcyqdz7-zn2xty",
+                  "team": "A",
+                  "scored": true,
+                  "outcome": "goal",
+                  "at": 1792277511579.5
+                }
+              ],
+              "keeperB": "guest:mvcyqdz7-zn2xty",
+              "firstTeam": "A"
+            },
+            "startedAt": 1792274400000,
+            "startedAtBy": "server",
+            "timerEvents": [],
+            "timerRunning": false,
+            "scoreB": 0
+          },
+          "updatedAt": 1792277510979,
+          "lastCommittedRoundId": "r_mvcz0yqv_bjwhi3s0",
+          "status": "open",
+          "committedRoundCount": 2,
+          "advancedTieMode": "bothOut",
+          "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        }
+      },
+      "history": [
+        {
+          "id": "r_mvcyypnr_9reyq55j",
+          "fields": {
+            "roundId": "r_mvcyypnr_9reyq55j",
+            "teamA": [
+              "guest:mvcyjsg7-3n61s4",
+              "guest:mvcykk0e-uw4e4q",
+              "guest:mvcyim0f-81tp8d",
+              "guest:mvcyji3o-nsqrwc",
+              "guest:mvcyiwsz-tlan92",
+              "guest:mvcymg0y-6tw9f2",
+              "guest:mvcynetv-npalqu"
+            ],
+            "teamB": [
+              "guest:mvcyqdz7-zn2xty",
+              "guest:mvcyq35x-sa74ys",
+              "guest:mvcyomjc-izziaf",
+              "guest:mvcymsc6-ska8pb",
+              "guest:mvcyoayx-vb0yhd",
+              "guest:mvcyk48b-bc6tfc",
+              "guest:mvcypsl7-kp8wd4"
+            ],
+            "teamAIndex": 0,
+            "teamBIndex": 1,
+            "scoreA": 0,
+            "scoreB": 0,
+            "winnerSide": "tie",
+            "goals": [],
+            "penalties": [],
+            "at": 1792276245762
+          }
+        },
+        {
+          "id": "r_mvcz0yqv_bjwhi3s0",
+          "fields": {
+            "roundId": "r_mvcz0yqv_bjwhi3s0",
+            "teamA": [
+              "guest:mvcym43v-7h7apx",
+              "guest:mvcyj6sp-bzxjdr",
+              "guest:mvcylshl-orw4aq",
+              "guest:mvcynpww-27doyu",
+              "guest:mvcyn3ov-zusrqh",
+              "guest:mvcyqdz7-zn2xty",
+              "guest:mvcyq35x-sa74ys",
+              "guest:mvcylhjs-hmr1pa"
+            ],
+            "teamB": [
+              "guest:mvcykw5f-slqqso",
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "guest:mvcyo0ty-n1am4b",
+              "guest:mvcyp7up-ek4f2v",
+              "guest:mvcyl6v5-ivx66m",
+              "guest:mvcypi4h-hlmbmt",
+              "guest:mvcyoxd8-vavlmk"
+            ],
+            "teamAIndex": 2,
+            "teamBIndex": 3,
+            "scoreA": 1,
+            "scoreB": 0,
+            "winnerSide": "A",
+            "goals": [
+              {
+                "scorerId": "guest:mvcyqdz7-zn2xty",
+                "assistStatus": "player",
+                "assisterId": "guest:mvcylhjs-hmr1pa",
+                "ownGoal": false,
+                "minute": 1,
+                "team": "A"
+              }
+            ],
+            "penalties": [],
+            "at": 1792276596528
+          }
+        }
+      ],
+      "commits": [
+        {
+          "id": "r_mvcyypnr_9reyq55j",
+          "fields": {
+            "committedAt": 1792276245762,
+            "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "winnerSide": "tie",
+            "tieResolution": "bothOut"
+          }
+        },
+        {
+          "id": "r_mvcz0yqv_bjwhi3s0",
+          "fields": {
+            "committedAt": 1792276596528,
+            "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "winnerSide": "A"
+          }
+        }
+      ],
+      "playerStats": [
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 1,
+            "losses": 1,
+            "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyim0f-81tp8d",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcyim0f-81tp8d",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyiwsz-tlan92",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcyiwsz-tlan92",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyj6sp-bzxjdr",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcyj6sp-bzxjdr",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyji3o-nsqrwc",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcyji3o-nsqrwc",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyjsg7-3n61s4",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcyjsg7-3n61s4",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyk48b-bc6tfc",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcyk48b-bc6tfc",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcykk0e-uw4e4q",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcykk0e-uw4e4q",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcykw5f-slqqso",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvcykw5f-slqqso",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyl6v5-ivx66m",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvcyl6v5-ivx66m",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcylhjs-hmr1pa",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "wins": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcylhjs-hmr1pa",
+            "teamScoreRounds": 1,
+            "assists": 1,
+            "teamGoalsAgainst": 0,
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcylshl-orw4aq",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcylshl-orw4aq",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcym43v-7h7apx",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcym43v-7h7apx",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcymg0y-6tw9f2",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcymg0y-6tw9f2",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcymsc6-ska8pb",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcymsc6-ska8pb",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyn3ov-zusrqh",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcyn3ov-zusrqh",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcynetv-npalqu",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcynetv-npalqu",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcynpww-27doyu",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcynpww-27doyu",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyo0ty-n1am4b",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvcyo0ty-n1am4b",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyoayx-vb0yhd",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcyoayx-vb0yhd",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyomjc-izziaf",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcyomjc-izziaf",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyoxd8-vavlmk",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvcyoxd8-vavlmk",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyp7up-ek4f2v",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvcyp7up-ek4f2v",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcypi4h-hlmbmt",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvcypi4h-hlmbmt",
+            "rounds": 1,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcypsl7-kp8wd4",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "cleanSheets": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcypsl7-kp8wd4",
+            "rounds": 1,
+            "updatedAt": 1792276245762
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyq35x-sa74ys",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcyq35x-sa74ys",
+            "wins": 1,
+            "teamScoreRounds": 2,
+            "cleanSheets": 2,
+            "actualTeamGoalsFor": 1,
+            "rounds": 2,
+            "updatedAt": 1792276596528
+          }
+        },
+        {
+          "id": "FQ4T7izEbuYfprKFS75n__guest:mvcyqdz7-zn2xty",
+          "fields": {
+            "gameId": "FQ4T7izEbuYfprKFS75n",
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "ties": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsAgainst": 0,
+            "userId": "guest:mvcyqdz7-zn2xty",
+            "wins": 1,
+            "teamScoreRounds": 2,
+            "cleanSheets": 2,
+            "actualTeamGoalsFor": 1,
+            "rounds": 2,
+            "updatedAt": 1792276596528,
+            "goals": 1
+          }
+        }
+      ],
+      "roundSummary": null,
+      "finishProof": {
+        "attendanceCredit": null,
+        "stages": [],
+        "qaEveningStanding": null
+      }
+    }
+  ],
+  "reads": [
+    {
+      "document": "users/8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "document": "groups/J060YQu6QTcgk3glUDj2"
+    },
+    {
+      "document": "communityPlayerStats/J060YQu6QTcgk3glUDj2__8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "document": "communityStats/J060YQu6QTcgk3glUDj2"
+    },
+    {
+      "document": "communityShowcase/J060YQu6QTcgk3glUDj2"
+    },
+    {
+      "document": "clubRecords/J060YQu6QTcgk3glUDj2"
+    },
+    {
+      "document": "games/lmUUmQru2HtKvQkRDVeD"
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "lmUUmQru2HtKvQkRDVeD"
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "lmUUmQru2HtKvQkRDVeD"
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "lmUUmQru2HtKvQkRDVeD"
+    },
+    {
+      "document": "roundSummaries/lmUUmQru2HtKvQkRDVeD"
+    },
+    {
+      "document": "games/lmUUmQru2HtKvQkRDVeD/finishCredited/once"
+    },
+    {
+      "query": "finishStages",
+      "gameId": "lmUUmQru2HtKvQkRDVeD"
+    },
+    {
+      "document": "eveningStandings/lmUUmQru2HtKvQkRDVeD__8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "document": "games/YEdIR3MviDK82D581ELk"
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "YEdIR3MviDK82D581ELk"
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "YEdIR3MviDK82D581ELk"
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "YEdIR3MviDK82D581ELk"
+    },
+    {
+      "document": "roundSummaries/YEdIR3MviDK82D581ELk"
+    },
+    {
+      "document": "games/YEdIR3MviDK82D581ELk/finishCredited/once"
+    },
+    {
+      "query": "finishStages",
+      "gameId": "YEdIR3MviDK82D581ELk"
+    },
+    {
+      "document": "eveningStandings/YEdIR3MviDK82D581ELk__8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "document": "games/mBO5HqJdnOPWjRE2zMh8"
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8"
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8"
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8"
+    },
+    {
+      "document": "roundSummaries/mBO5HqJdnOPWjRE2zMh8"
+    },
+    {
+      "document": "games/mBO5HqJdnOPWjRE2zMh8/finishCredited/once"
+    },
+    {
+      "query": "finishStages",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8"
+    },
+    {
+      "document": "eveningStandings/mBO5HqJdnOPWjRE2zMh8__8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "document": "games/Ra5ZBzOUjR5zQlMojHke"
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "Ra5ZBzOUjR5zQlMojHke"
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "Ra5ZBzOUjR5zQlMojHke"
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "Ra5ZBzOUjR5zQlMojHke"
+    },
+    {
+      "document": "roundSummaries/Ra5ZBzOUjR5zQlMojHke"
+    },
+    {
+      "document": "games/Ra5ZBzOUjR5zQlMojHke/finishCredited/once"
+    },
+    {
+      "query": "finishStages",
+      "gameId": "Ra5ZBzOUjR5zQlMojHke"
+    },
+    {
+      "document": "eveningStandings/Ra5ZBzOUjR5zQlMojHke__8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    },
+    {
+      "document": "games/FQ4T7izEbuYfprKFS75n"
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "FQ4T7izEbuYfprKFS75n"
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "FQ4T7izEbuYfprKFS75n"
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "FQ4T7izEbuYfprKFS75n"
+    },
+    {
+      "document": "roundSummaries/FQ4T7izEbuYfprKFS75n"
+    },
+    {
+      "document": "games/FQ4T7izEbuYfprKFS75n/finishCredited/once"
+    },
+    {
+      "query": "finishStages",
+      "gameId": "FQ4T7izEbuYfprKFS75n"
+    },
+    {
+      "document": "eveningStandings/FQ4T7izEbuYfprKFS75n__8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    }
+  ],
+  "label": "seven-alternative-unconfirmed"
+}

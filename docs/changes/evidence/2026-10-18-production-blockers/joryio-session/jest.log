@@ -1,0 +1,16 @@
+[copy-template] copied public\c\index.html → functions\templates\community.html
+[copy-template] copied public\invite.html → functions\templates\invite.html
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in C:/Users/elira/Teamder/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+PASS tests/logic/joryioOfficialWiring.test.ts
+PASS tests/logic/joryioInitializationRetry.test.ts
+PASS tests/logic/joryioNativeInitializationDiagnostics.test.ts
+PASS tests/logic/encryptedPersistence.test.ts
+PASS tests/logic/joryioPushRegistration.test.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       24 passed, 24 total
+Snapshots:   0 total
+Time:        4.967 s
+Ran all test suites matching /tests\\logic\\joryioOfficialWiring.test.ts|tests\\logic\\joryioPushRegistration.test.ts|tests\\logic\\joryioInitializationRetry.test.ts|tests\\logic\\joryioNativeInitializationDiagnostics.test.ts|tests\\logic\\encryptedPersistence.test.ts/i.

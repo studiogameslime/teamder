@@ -1,3 +1,4 @@
+import { useSupportStep } from '@/hooks/useSupportStep';
 // Two-step wizard shared by Create / Edit Community (rolling-ball
 // StepIndicator, mirroring the create-game flow):
 //   • Step 1 "פרטים"  — name, city, contact phone, description, rules.
@@ -37,7 +38,7 @@ import { InputField } from '@/components/InputField';
 import { FormSectionHeader } from '@/components/FormSectionHeader';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { InfoTip } from '@/components/InfoTip';
-import { StepIndicator } from '@/components/StepIndicator';
+import { FormDesignContext, FormIntro, FormProgress, FormSections, FormStandalone, FORM_BG, FORM_BLUE } from '@/components/forms/FormDesign';
 import { RichRulesInput } from '@/components/community/RichRulesInput';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { searchCities } from '@/services/israelLocationService';
@@ -46,7 +47,6 @@ import { colors, radius, spacing, typography, RTL_LABEL_ALIGN, shadows } from '@
 import { he } from '@/i18n/he';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
-const ACCENT = '#3B82F6';
 
 import {
   NewClubSeasons,
@@ -169,6 +169,9 @@ export function GroupWizardForm({
   // Two-step wizard (rolling-ball indicator, like the create-game flow):
   // step 1 "פרטים" (identity/contact) + step 2 "מתקדם" (rating + cards).
   const [step, setStep] = useState<1 | 2>(1);
+  useSupportStep(step);
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: false }); }, [step]);
 
   // Unsaved-changes guard (edit flow): dirty = any field differs from initial.
   const savingRef = useRef(false);
@@ -277,7 +280,7 @@ export function GroupWizardForm({
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+    <FormDesignContext.Provider value={true}><SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={headerTitle} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -288,19 +291,21 @@ export function GroupWizardForm({
             contact fields; "מתקדם" holds the internal-rating + cards config
             so the create screen isn't a wall of options. */}
         <View style={styles.stickyHeader}>
-          <StepIndicator
+          <FormProgress
             current={step}
             labels={[he.groupFormTabDetails, he.groupFormTabAdvanced]}
           />
         </View>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.body}>
+            <FormIntro>{step === 1 ? "כל הפרטים שהופכים קבוצה למועדון" : "התאימו את המועדון לדרך שבה אתם משחקים"}</FormIntro>
             {step === 1 ? (
-              <>
+              <FormSections>
                 {/* Identity first (name → description → rules), then the
                     location/contact block — grouped under headers so the form
                     reads as labeled sections. */}
@@ -320,19 +325,6 @@ export function GroupWizardForm({
                   onChangeText={(v) => set('description', v)}
                   multiline
                   maxLength={500}
-                />
-
-                {/* Code-of-conduct (rich text: **bold** + bullets). Stored
-                    as the raw markdown-lite string; RichRulesText renders
-                    it on the community details screen. */}
-                <RichRulesInput
-                  label={he.communityDetailsRules}
-                  value={values.rules}
-                  // Hard-cap at 2000 (the createGroup rule's limit) so a long rules
-                  // block can't fail submission with "rules too long" (report nfn19l).
-                  maxLength={2000}
-                  onChangeText={(v) => set('rules', v.slice(0, 2000))}
-                  placeholder={'לדוגמה:\n- מגיעים בזמן\n- **אסור** לעשן במגרש'}
                 />
 
                 <FormSectionHeader title={he.groupSectionLocation} />
@@ -360,15 +352,29 @@ export function GroupWizardForm({
                     </Text>
                   ) : null}
                 </View>
-              </>
+                <FormSectionHeader title={he.communityDetailsRules} />
+                {/* Code-of-conduct (rich text: **bold** + bullets). Stored
+                    as the raw markdown-lite string; RichRulesText renders
+                    it on the community details screen. */}
+                <RichRulesInput
+                  value={values.rules}
+                  // Hard-cap at 2000 (the createGroup rule's limit) so a long rules
+                  // block can't fail submission with "rules too long" (report nfn19l).
+                  maxLength={2000}
+                  onChangeText={(v) => set('rules', v.slice(0, 2000))}
+                  placeholder={'לדוגמה:\n- מגיעים בזמן\n- **אסור** לעשן במגרש'}
+                />
+
+              </FormSections>
             ) : (
-              <>
+              <FormSections>
                 {/* Open-join toggle — membership behaviour (auto-approve vs
                     admin gate). Lives in "מתקדם" alongside the other
                     membership/rating switches. */}
                 <FormSectionHeader title={he.groupSectionAccess} first />
                 <ToggleCard
                   label={he.createGroupIsOpen}
+                  hint="שחקנים יכולים להצטרף ללא אישור מנהל"
                   info={{ title: he.createGroupIsOpen, text: he.createGroupIsOpenHint }}
                   value={values.isOpen}
                   onValueChange={(v) => setToggle('isOpen', v)}
@@ -379,12 +385,13 @@ export function GroupWizardForm({
                     existing community on edit, default on create) so removing the
                     input doesn't reset an existing cap. */}
 
-                <FormSectionHeader title={he.groupSectionRating} />
+                <FormSectionHeader title="דירוג שחקנים" />
                 {/* Internal rating — admins set player skill levels themselves
                     instead of the peer-voting system. The chosen rating is what
                     the community / match-details surfaces display. */}
                 <ToggleCard
                   label={he.createGroupInternalRating}
+                  hint="משמש לחלוקת כוחות מאוזנת"
                   info={{
                     title: he.createGroupInternalRating,
                     text: he.createGroupInternalRatingHint,
@@ -403,6 +410,7 @@ export function GroupWizardForm({
                 {values.internalRating ? (
                   <ToggleCard
                     label={he.createGroupHideInternalRating}
+                    hint="רק מנהלי המועדון יראו את הדירוג"
                     info={{
                       title: he.createGroupHideInternalRating,
                       text: he.createGroupHideInternalRatingHint,
@@ -415,8 +423,10 @@ export function GroupWizardForm({
                 {/* Cards master toggle — when on, admins can issue yellow/red
                     cards from the community player menu. The validity fields
                     only appear once it's enabled. */}
+                <FormSectionHeader title="כרטיסים ומשמעת" />
                 <ToggleCard
                   label={he.cardsToggleLabel}
+                  hint="ניהול כרטיסים צהובים ואדומים"
                   info={{ title: he.cardsToggleLabel, text: he.cardsToggleHint }}
                   value={values.cardsEnabled}
                   onValueChange={(v) => setToggle('cardsEnabled', v)}
@@ -450,6 +460,7 @@ export function GroupWizardForm({
                     form and the create screen acts on it once the club
                     exists. Only the two questions a club with no past can
                     answer — see NewClubSeasons. */}
+                <FormStandalone>
                 {askSeasons ? (
                   <NewClubSeasons
                     value={values.seasons}
@@ -461,7 +472,8 @@ export function GroupWizardForm({
                     passes `SeasonsSettings` here; the create flow uses the
                     block above instead. */}
                 {extraAdvanced}
-              </>
+                </FormStandalone>
+              </FormSections>
             )}
           </View>
         </ScrollView>
@@ -479,16 +491,19 @@ export function GroupWizardForm({
             <Button
               title={he.wizardStepBack}
               variant="outline"
+              style={{ borderRadius: 12, borderColor: "transparent", alignSelf: "center", paddingVertical: 4, minHeight: 36 }}
               size="lg"
               onPress={goBack}
               disabled={busy}
             />
           ) : null}
-          <View style={{ flex: 1 }}>
+          <View style={{ alignSelf: "stretch" }}>
             {step < 2 ? (
               <Button
                 title={he.wizardStepNext}
                 variant="primary"
+                style={{ borderRadius: 12, backgroundColor: FORM_BLUE, borderColor: FORM_BLUE }}
+                iconLeft={step === 2 ? "checkmark" : "arrow-back"}
                 size="lg"
                 fullWidth
                 onPress={goNext}
@@ -498,6 +513,8 @@ export function GroupWizardForm({
               <Button
                 title={submitLabel}
                 variant="primary"
+                style={{ borderRadius: 12, backgroundColor: FORM_BLUE, borderColor: FORM_BLUE }}
+                iconLeft={step === 2 ? "checkmark" : "arrow-back"}
                 size="lg"
                 fullWidth
                 onPress={submit}
@@ -508,7 +525,7 @@ export function GroupWizardForm({
           </View>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </SafeAreaView></FormDesignContext.Provider>
   );
 }
 
@@ -528,20 +545,17 @@ function ToggleCard({
   onValueChange: (v: boolean) => void;
 }) {
   return (
-    <Pressable
-      accessible={false}
-      onPress={() => onValueChange(!value)}
-      style={styles.toggleCard}
-    >
+    <View style={styles.toggleCard}>
       <View style={styles.toggleText}>
         <View style={styles.toggleLabelRow}>
-          <Text style={[styles.toggleLabel, styles.toggleLabelFlex]} numberOfLines={2}>
+          <Pressable accessible={false} onPress={() => onValueChange(!value)} style={styles.toggleLabelFlex}>
+          <Text style={styles.toggleLabel}>
             {label}
-          </Text>
+          </Text></Pressable>
           {info ? <InfoTip title={info.title ?? label} text={info.text} /> : null}
         </View>
         {hint ? (
-          <Text style={styles.toggleHint} numberOfLines={2}>
+          <Text style={styles.toggleHint} >
             {hint}
           </Text>
         ) : null}
@@ -550,22 +564,22 @@ function ToggleCard({
         accessibilityLabel={label}
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: colors.border, true: ACCENT }}
+        trackColor={{ false: colors.border, true: FORM_BLUE }}
         thumbColor="#fff"
       />
-    </Pressable>
+    </View>
   );
 }
 
 // ─── Styles ──────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+  root: { flex: 1, backgroundColor: FORM_BG },
   scroll: { paddingBottom: spacing.xl },
-  body: { padding: spacing.lg, gap: spacing.md },
+  body: { padding: 18, paddingTop: 8 },
 
   stickyHeader: {
-    backgroundColor: colors.surface,
+    backgroundColor: FORM_BG,
   },
   missingHint: {
     ...typography.caption,
@@ -597,13 +611,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: 0,
+    paddingVertical: 8,
     gap: spacing.md,
-    ...shadows.card,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEF2F8",
   },
   toggleText: {
-    flexShrink: 1,
+    flex: 1,
     alignItems: 'flex-start',
   },
   toggleLabel: {
@@ -626,12 +641,12 @@ const styles = StyleSheet.create({
   },
 
   footer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: spacing.sm,
-    padding: spacing.lg,
+    padding: 14,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
-    backgroundColor: colors.bg,
+    backgroundColor: "#FFFFFF",
     alignItems: 'center',
   },
 });

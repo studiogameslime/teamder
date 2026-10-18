@@ -29,7 +29,7 @@ export function EveningScoreInfoSheet({ visible, onClose }: { visible: boolean; 
       <View style={s.note}><Ionicons name="information-circle-outline" size={22} color="#2469F4" />
         <Text style={[s.body, s.flex]}>הציון מבוסס על הנתונים שתועדו. הגנה, מסירות ומאמץ אינם נמדדים כאן, ולכן הוא אינו הערכה מלאה של היכולת שלך.</Text></View>
       <View style={s.ranking}><Text style={s.factorTitle}>הציון והטבלה במועדון</Text>
-        <Text style={s.body}>המיקום במחזור מבוסס על הציון. טבלת העונה מבוססת על נקודות: שתי נקודות לכל שער ונקודה לכל בישול.</Text></View>
+        <Text style={s.body}>המיקום במחזור מבוסס על הציון. טבלת המועדון והעונה מדורגת קודם לפי ניצחונות, ובשוויון לפי שערים ואז בישולים.</Text></View>
     </ScrollView>
     <View style={s.footer}><Pressable onPress={onClose} accessibilityRole="button" style={({ pressed }) => [s.button, pressed && { opacity: 0.85 }]}>
       <Text style={s.buttonText}>הבנתי</Text></Pressable></View>

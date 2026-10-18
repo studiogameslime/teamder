@@ -1,3 +1,6 @@
+import { hydrateClubAdminRatings } from './clubAdminRatings';
+import { assertCreationOwner } from './creationOwner';
+import { readPlayerIdentities } from './publicPlayerService';
 // groupService — group CRUD + community-membership operations.
 //
 // Mock mode: in-memory map seeded from mockGroup + mockOtherGroup. Resets
@@ -15,6 +18,7 @@ import {
   doc,
   documentId,
   getDoc,
+  getDocFromServer,
   getDocs,
   limit,
   onSnapshot,
@@ -45,7 +49,8 @@ import { col, docs, GroupJoinRequestDoc, type PublicUser } from '@/firebase/fire
 import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
 import { logError, logUnexpected, isExpectedDenial } from '@/services/errorLog';
-import { StaleSessionError } from '@/services/staleSession';
+import { StaleSessionError, isStaleSession } from '@/services/staleSession';
+import { subscribeUserSession } from '@/services/userSessionListeners';
 
 export { StaleSessionError, isStaleSession } from '@/services/staleSession';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -148,7 +153,7 @@ export const groupService = {
     // Hide personal/orphan-host groups from the user's "my communities"
     // list — they're an implementation detail of the orphan-game flow,
     // never surfaced as real communities until the user promotes.
-    return snap.docs.map((d) => d.data()).filter((g) => g.isPersonal !== true);
+    return Promise.all(snap.docs.map((d) => d.data()).filter((g) => g.isPersonal !== true).map(hydrateClubAdminRatings));
   },
 
   /**
@@ -184,19 +189,22 @@ export const groupService = {
       return () => {};
     }
     const q = query(col.groups(), where('playerIds', 'array-contains', userId));
-    return onSnapshot(
-      q,
-      (snap) => {
-        onChange(
-          snap.docs.map((d) => d.data()).filter((g) => g.isPersonal !== true),
-        );
-      },
-      (err) => {
-        logError('subscribeForUser', err, { userId });
-        if (__DEV__) console.warn('[groupService] subscribeForUser failed', err);
-        onError?.(err);
-      },
-    );
+    const reportError = (error: unknown) => {
+      if (onError) onError(error);
+      else logError('subscribeForUser', error, { userId });
+    };
+    return subscribeUserSession(userId, () => isCurrentSession(userId), isActive => {
+      let active = true, revision = 0;
+      const unsubscribe = onSnapshot(q, snap => {
+        if (!active || !isActive()) return;
+        const current = ++revision;
+        void Promise.all(snap.docs.map(d => d.data()).filter(g => g.isPersonal !== true).map(hydrateClubAdminRatings))
+          .then(groups => { if (active && isActive() && current === revision) onChange(groups); })
+          .catch(error => { if (active && isActive() && current === revision) reportError(error); });
+      }, error => { if (active && isActive()) reportError(error); });
+      return () => { active = false; ++revision; unsubscribe(); };
+    }, reportError);
+
   },
 
   /**
@@ -223,11 +231,11 @@ export const groupService = {
     return snap.docs.map((d) => d.data());
   },
 
-  async get(groupId: GroupId): Promise<Group | null> {
+  async get(groupId: GroupId, options?: { fromServer?: boolean }): Promise<Group | null> {
     if (USE_MOCK_DATA) return groupsById[groupId] ?? null;
     try {
-      const snap = await getDoc(docs.group(groupId));
-      return snap.exists() ? snap.data() : null;
+      const snap = await (options?.fromServer ? getDocFromServer(docs.group(groupId)) : getDoc(docs.group(groupId)));
+      return snap.exists() ? await hydrateClubAdminRatings(snap.data()) : null;
     } catch (err) {
       // A DELETED club reads back as `permission-denied`, not "not found":
       // `allow get` is a membership test, and on a missing document there is
@@ -351,6 +359,8 @@ export const groupService = {
   },
 
   async createGroup(input: {
+    /** Durable wizard attempt; omitted by legacy callers. */
+    creationAttemptId?: string;
     // ── Identity (Step 1 of the wizard) ───────────────────────────
     name: string;
     description?: string;
@@ -385,7 +395,7 @@ export const groupService = {
     maxMembers?: number;
     /** Built-in gallery cover id (random default chosen at creation). */
     coverImageId?: string;
-    creator: User;
+    creator: Pick<User, 'id'>;
     // ── Removed (now per-Game) ────────────────────────────────────
     // fieldName / fieldAddress / street / addressNote / preferredDays /
     // preferredHour / recurringGameEnabled / defaultMaxPlayers /
@@ -450,7 +460,10 @@ export const groupService = {
     };
 
     if (USE_MOCK_DATA) {
-      const g: Group = { id: genId('g'), ...baseGroup };
+      const id = input.creationAttemptId ? `create-${input.creator.id}-${input.creationAttemptId}` : genId('g');
+      const existing = groupsById[id];
+      if (existing) return existing;
+      const g: Group = { id, ...baseGroup };
       groupsById[g.id] = g;
       // Mirror to mock public list so the Communities feed sees it.
       mockPublicGroups.push(toPublic(g));
@@ -478,7 +491,9 @@ export const groupService = {
     const fn = httpsCallable(functions, 'createGroupCallable');
     let groupId: string;
     try {
+      assertCreationOwner(input.creator.id);
       const res = (await fn({
+        ...(input.creationAttemptId ? { creationAttemptId: input.creationAttemptId } : {}),
         name: baseGroup.name,
         description: baseGroup.description,
         isOpen: baseGroup.isOpen,
@@ -497,6 +512,7 @@ export const groupService = {
         lng: baseGroup.lng,
         coverImageId: baseGroup.coverImageId,
       })) as { data?: { ok?: boolean; groupId?: string } };
+      assertCreationOwner(input.creator.id);
       groupId = res?.data?.groupId ?? '';
       if (!groupId) {
         throw new Error('createGroupCallable: no groupId returned');
@@ -505,6 +521,7 @@ export const groupService = {
       // Re-throw with the Firebase error code preserved so the UI can
       // distinguish rate-limit (`resource-exhausted`) from validation
       // (`invalid-argument`) from auth (`unauthenticated`).
+      if (isStaleSession(err)) throw err;
       const e = err as { code?: string; message?: string };
       const code = (e.code ?? 'unknown').replace(/^functions\//, '');
       if (
@@ -537,9 +554,11 @@ export const groupService = {
         throw new Error('createGroup: callable wrote no doc');
       }
       const g = fresh.data() as Group;
+      assertCreationOwner(input.creator.id);
       await storage.setCurrentGroupId(g.id);
       return g;
     } catch (e) {
+      if (isStaleSession(e)) throw e;
       logError('createGroup', e, { groupId, phase: 'postCreateRead' });
       throw e;
     }
@@ -1205,10 +1224,9 @@ export const groupService = {
     if (!g.adminIds.includes(callerId)) {
       throw new Error('setAdminRating: caller is not a coach');
     }
-    await updateDoc(docs.group(groupId), {
-      [`adminRatings.${playerId}`]: clear ? deleteField() : (rating as number),
-      updatedAt: Date.now(),
-    });
+    const { httpsCallable } = require('firebase/functions');
+    await httpsCallable(getFirebase().functions, 'setClubAdminRating')({ groupId, playerId, rating: clear ? null : rating });
+
   },
 
   /**
@@ -1924,17 +1942,8 @@ export const groupService = {
         '— discovery feed will filter at read time',
       );
     }
-    // 5) Notify every former member that the community is gone.
-    // Done last so the dispatch doesn't fire if the cascade itself
-    // throws — if we get here, the canonical doc is reliably deleted
-    // and the push reflects truth on the server.
-    for (const uid of memberRecipients) {
-      notificationsService.dispatch({
-        type: 'groupDeleted',
-        recipientId: uid,
-        payload: { groupId, groupName },
-      });
-    }
+    // The deletion trigger sends notices from the canonical pre-delete roster.
+
   },
 
   async hydrateUsers(userIds: UserId[]): Promise<User[]> {
@@ -1944,62 +1953,22 @@ export const groupService = {
         return {
           id,
           name: p?.displayName ?? id,
-          photoUrl: p?.avatarUrl,
+          avatarId: p?.avatarId,
+          photoUrl: p?.photoUrl,
           createdAt: 0,
         };
       });
     }
-    // Batch by documentId 'in' (max 30 ids/query) instead of one getDoc per
-    // id. A 200-member roster went from 200 billed reads to ~7 queries.
-    const chunk = <T,>(arr: T[], n: number): T[][] => {
-      const out: T[][] = [];
-      for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
-      return out;
-    };
-    let fetched: User[] = [];
-    try {
-      const chunks = chunk(userIds, 30);
-      // Retried once through the cold-start auth race: this is one of the very
-      // first reads after an app restart, and it failed permission-denied in
-      // production within five seconds of launch — together with the two other
-      // reads that fire at the same moment.
-      const results = await withAuthRaceRetry(() =>
-        Promise.all(
-          chunks.map((ids) =>
-            getDocs(query(col.users(), where(documentId(), 'in', ids))),
-          ),
-        ),
-      );
-      fetched = results.flatMap((snap) => snap.docs.map((d) => d.data()));
-    } catch (err) {
-      logError('hydrateUsers', err, { userCount: userIds.length });
-      if (__DEV__) console.warn('[groupService] hydrateUsers failed', err);
-      throw err;
-    }
-    return fetched.filter((u): u is User => !!u);
+    return readPlayerIdentities(userIds);
   },
 
   /**
    * Names and avatars for a public surface — from /usersPublic, not /users.
    *
-   * `hydrateUsers` above reads the canonical user documents, which a Firebase
-   * ANONYMOUS session may no longer do: /users is gated on `isFullAccount()`
-   * so a guest cannot read anyone's email, phone, push tokens or referral
-   * attribution. The roster on a PUBLIC game screen still has to render, and
-   * it only ever needed four fields — so it reads the mirror instead.
-   *
-   * Two paths, on purpose:
-   *
-   *   • A full account issues the same batched `documentId() in` query as
-   *     hydrateUsers. That optimisation matters — a 200-member roster is ~7
-   *     queries rather than 200 billed reads — and a real account could
-   *     already enumerate /users anyway, so listing four public fields is
-   *     strictly less than what it has.
-   *   • A guest reads per document, because LIST on /usersPublic is denied to
-   *     anonymous sessions: resolving a name BY id is what a roster needs,
-   *     while a downloadable index of every name in the product is a different
-   *     thing to hand out. A guest is looking at one game, so the cost is a
-   *     couple of dozen gets, not two hundred.
+   * Both hydration methods now return identity only. Anonymous public rosters
+   * resolve the existing mirror by id; full accounts can batch public mirrors.
+   * hydrateUsers uses a server allowlist so legacy missing mirrors still work.
+   * Neither method reads another player's private /users record.
    *
    * Reads the auth session directly rather than the user store: this sits
    * below the store in the import graph and must not reach back up into it.
@@ -2017,7 +1986,7 @@ export const groupService = {
       return userIds
         .map((id) => mockPlayers.find((p) => p.id === id))
         .filter((p): p is (typeof mockPlayers)[number] => !!p)
-        .map((p) => ({ id: p.id, name: p.displayName, photoUrl: p.avatarUrl }));
+        .map((p) => ({ id: p.id, name: p.displayName, avatarId: p.avatarId, photoUrl: p.photoUrl }));
     }
     const ids = Array.from(new Set(userIds.filter(Boolean)));
     if (ids.length === 0) return [];
@@ -2031,23 +2000,14 @@ export const groupService = {
         );
         return snaps.filter((s) => s.exists()).map((s) => s.data());
       }
-      const chunks: UserId[][] = [];
-      for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
-      const results = await withAuthRaceRetry(() =>
-        Promise.all(
-          chunks.map((c) =>
-            getDocs(query(col.usersPublic(), where(documentId(), 'in', c))),
-          ),
-        ),
-      );
-      return results.flatMap((snap) => snap.docs.map((d) => d.data()));
+      return readPlayerIdentities(ids);
+
     } catch (err) {
-      // Never throw into a roster render. A missing name shows as the
-      // existing "…" placeholder, which is what happens today when the
-      // hydrate call fails for any other reason.
+      // Transport failure is not a successful empty roster. The caller may
+      // retain its previous names or offer retry.
       logError('hydratePublicUsers', err, { userCount: ids.length, isAnon });
       if (__DEV__) console.warn('[groupService] hydratePublicUsers failed', err);
-      return [];
+      throw err;
     }
   },
 };
@@ -2142,8 +2102,14 @@ function mockSubmitJoin(
     err.code = 'GROUP_FULL';
     throw err;
   }
-  if (g.isOpen) {
+  // Match the server's manager-invitation approval in the disconnected demo.
+  const managerInvite = notificationsService.__getMockDispatches().some(n =>
+    n.type === 'groupInvitation' && n.recipientId === userId && n.payload?.groupId === g.id &&
+    g.adminIds.includes(n.payload?.inviterId as string) && n.payload?.managerApproved !== false &&
+    (typeof n.payload?.expiresAt === 'number' ? n.payload.expiresAt : (typeof n.createdAt === 'number' ? n.createdAt : 0) + 7 * 86400000) > Date.now());
+  if (g.isOpen || managerInvite) {
     g.playerIds = [...g.playerIds, userId];
+    g.pendingPlayerIds = g.pendingPlayerIds.filter(id => id !== userId);
     g.updatedAt = Date.now();
     syncMockPublic(g);
     return { group: g, status: 'joined' };
@@ -2165,38 +2131,8 @@ async function submitJoin(
   if (g.playerIds.includes(userId) || g.adminIds.includes(userId)) {
     return { group: g, status: 'already_member' };
   }
-  if (
-    typeof g.maxMembers === 'number' &&
-    g.maxMembers > 0 &&
-    g.playerIds.length >= g.maxMembers
-  ) {
-    const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
-    err.code = 'GROUP_FULL';
-    throw err;
-  }
-  await writeJoin(g.id, userId, !!g.isOpen);
-  // The join-by-code twin of the guard removed from submitJoinByPublic, and
-  // dead for the same reason: every branch below puts the user into one of the
-  // two arrays it then checks, so the condition could not be true. See the
-  // note there for where the join is actually verified.
-  const nextPlayerIds = g.isOpen ? [...g.playerIds, userId] : g.playerIds;
-  const nextPendingPlayerIds =
-    !g.isOpen && !g.pendingPlayerIds.includes(userId)
-      ? [...g.pendingPlayerIds, userId]
-      : g.pendingPlayerIds;
-  if (g.isOpen) {
-    return {
-      group: { ...g, playerIds: nextPlayerIds },
-      status: 'joined',
-    };
-  }
-  return {
-    group: {
-      ...g,
-      pendingPlayerIds: nextPendingPlayerIds,
-    },
-    status: 'pending',
-  };
+  return submitJoinByPublic(g.id, userId);
+
 }
 
 /**
@@ -2210,37 +2146,23 @@ async function submitJoinByPublic(
   groupId: GroupId,
   userId: UserId
 ): Promise<{ group: Group; status: 'pending' | 'joined' }> {
-  // Read the public projection so we can branch on `isOpen` without needing
-  // read access to /groups (non-members can't read it).
-  const pubSnap = await getDoc(docs.groupPublic(groupId));
-  const isOpen = pubSnap.exists() ? !!pubSnap.data()?.isOpen : false;
-  // Capacity gate based on the public projection — that's all a
-  // non-member can see. memberCount is denormalised; if it lags a
-  // newly-approved member, we'll let the canonical-side check on
-  // approveMember catch it.
-  if (pubSnap.exists()) {
-    const pub = pubSnap.data();
-    if (
-      typeof pub.maxMembers === 'number' &&
-      pub.maxMembers > 0 &&
-      pub.memberCount >= pub.maxMembers
-    ) {
-      const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
-      err.code = 'GROUP_FULL';
-      throw err;
-    }
+  if (!isCurrentSession(userId)) throw new StaleSessionError(userId,getFirebase().auth.currentUser?.uid??'');
+  const {httpsCallable}=require('firebase/functions');
+  let serverStatus: 'joined'|'pending'|undefined;
+  try {
+    const result=await httpsCallable(getFirebase().functions,'joinSocialClub')({groupId});
+    if(!isCurrentSession(userId))throw new StaleSessionError(userId,getFirebase().auth.currentUser?.uid??'');
+    if(!['joined','pending'].includes(result.data?.status))throw new Error('Invalid club join result');
+    serverStatus=result.data.status;
+    logEvent(AnalyticsEvent.GroupJoined,{groupId,instant:serverStatus==='joined'});
+  } catch(error) {
+    const e=error as {code?:string;message?:string};
+    if(e.message?.includes('GROUP_JOIN_REJECTED'))throw new GroupJoinRejectedError();
+    if(e.message?.includes('GROUP_FULL'))throw Object.assign(new Error('GROUP_FULL'),{code:'GROUP_FULL'});
+    // A missing secure endpoint must fail visibly; never bypass its checks.
+    throw error;
   }
-  await writeJoin(groupId, userId, isOpen);
-  // There WAS a "silent-failure guard" here, and it could never fire: it built
-  // `[userId]` and then asked whether it contained userId. Nothing about the
-  // write was being checked. Removed rather than left as a decoration —
-  // a guard that cannot fail reads like coverage and is not.
-  //
-  // There is nothing to verify from here anyway: writeJoin's batch either
-  // commits or throws, and confirming the result would cost a fresh read the
-  // caller is about to do regardless. The join IS verified, one level up —
-  // the store re-reads the user's clubs (with a retry) and the screen reports
-  // `communityJoinNotReflected` if the club still isn't there.
+  const isOpen = serverStatus === 'joined';
   return {
     group: {
       id: groupId,
@@ -2257,104 +2179,6 @@ async function submitJoinByPublic(
     },
     status: isOpen ? 'joined' : 'pending',
   };
-}
-
-async function writeJoin(
-  groupId: GroupId,
-  userId: UserId,
-  isOpen: boolean,
-): Promise<void> {
-  const { db } = getFirebase();
-  // Block re-requesting after a rejection. Open communities auto-join with
-  // no approval step, so a rejection can only exist for closed ones — only
-  // check there. The rejected audit doc is kept (status:'rejected') exactly
-  // so we can enforce this.
-  if (!isOpen) {
-    try {
-      const rejected = await getDocs(
-        query(
-          col.joinRequests(),
-          where('groupId', '==', groupId),
-          where('userId', '==', userId),
-          where('status', '==', 'rejected'),
-        ),
-      );
-      if (!rejected.empty) throw new GroupJoinRejectedError();
-    } catch (e) {
-      if (e instanceof GroupJoinRejectedError) throw e;
-      // A read failure here (rules race / offline) shouldn't hard-block a
-      // legitimate join — fall through and let the write be attempted.
-    }
-  }
-  const batch = writeBatch(db);
-  if (isOpen) {
-    // Open community: skip the join-request doc entirely and add the user
-    // straight to playerIds. Mirrors the rule clause that allows a self-add
-    // to playerIds when the group has isOpen=true.
-    //
-    // Note: we deliberately do NOT bump /groupsPublic.memberCount from the
-    // client. The /groupsPublic update rule requires isGroupAdmin(gid),
-    // and the joining user is not an admin. The public count can drift
-    // by one until an admin write touches it; that's a cosmetic-only
-    // staleness that's not worth a Cloud Function for now.
-    batch.update(docs.group(groupId), {
-      playerIds: arrayUnion(userId),
-      updatedAt: Date.now(),
-    });
-  } else {
-    const existing = await getDocs(
-      query(
-        col.joinRequests(),
-        where('groupId', '==', groupId),
-        where('userId', '==', userId),
-        where('status', '==', 'pending'),
-      ),
-    );
-    if (existing.empty) {
-      const reqRef = doc(col.joinRequests());
-      batch.set(reqRef, {
-        id: reqRef.id,
-        groupId,
-        userId,
-        status: 'pending',
-        createdAt: Date.now(),
-      } as GroupJoinRequestDoc);
-    }
-    batch.update(docs.group(groupId), {
-      pendingPlayerIds: arrayUnion(userId),
-      updatedAt: Date.now(),
-    });
-  }
-  try {
-    await batch.commit();
-    // An OPEN community adds the user straight to playerIds — no join-request
-    // doc, so group_join_requested/approved never fire and the join was
-    // invisible in the funnel. Emit the completed join explicitly; `isOpen`
-    // distinguishes it from the approval path.
-    logEvent(AnalyticsEvent.GroupJoined, { groupId, instant: isOpen });
-  } catch (e) {
-    const code = (e as { code?: string })?.code;
-    if (
-      ![
-        'GROUP_FULL',
-        'GROUP_MAX_BELOW_CURRENT',
-        'LAST_ADMIN',
-        'resource-exhausted',
-        'functions/resource-exhausted',
-        'unauthenticated',
-        'functions/unauthenticated',
-        // Transient/recoverable — network blip, offline, timeout, or a stale
-        // App Check token. The user just retries; not a bug to surface.
-        'unavailable',
-        'deadline-exceeded',
-        'cancelled',
-        'firebase-app-check-token-is-invalid',
-      ].includes(code as string)
-    ) {
-      logError('joinGroup', e, { groupId, isOpen });
-    }
-    throw e;
-  }
 }
 
 export function __resetGroupServiceForTests() {

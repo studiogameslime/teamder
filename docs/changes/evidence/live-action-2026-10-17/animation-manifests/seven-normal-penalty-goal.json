@@ -1,0 +1,87 @@
+{
+  "source": "shots\\seven-normal-penalty-goal.mp4",
+  "sourceSha256": "f452a82cfaecf580bbfc59762ab912107da286884df98267c9d906b723810615",
+  "output": "native-qa\\frames\\seven-normal-penalty-goal",
+  "timesMs": [
+    1500,
+    1800,
+    2100,
+    2400,
+    2700,
+    3000,
+    3300
+  ],
+  "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+  "frames": [
+    {
+      "requestedTimeUs": 1500000,
+      "durationMs": 4871,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 999100,
+      "file": "frame-000001500000us.png",
+      "sha256": "d74169fb54aea1cde3daf63bb03f7d59ec35988c66bce73f6667e70f6436b302"
+    },
+    {
+      "requestedTimeUs": 1800000,
+      "durationMs": 4871,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1033643,
+      "file": "frame-000001800000us.png",
+      "sha256": "de404acd6d3980d2432eb2f1c434235f550f89e3e73fc957649415e4d64b1891"
+    },
+    {
+      "requestedTimeUs": 2100000,
+      "durationMs": 4871,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1034235,
+      "file": "frame-000002100000us.png",
+      "sha256": "0a81b90ae9bea0ae14c2d228ad3ef16c4c3308e7f10629a76ceb9d10a9dbd269"
+    },
+    {
+      "requestedTimeUs": 2400000,
+      "durationMs": 4871,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1038883,
+      "file": "frame-000002400000us.png",
+      "sha256": "e4c18db611473dc6192a82d4a3bf9d585e816016d87e197cf406ccaf771fb77d"
+    },
+    {
+      "requestedTimeUs": 2700000,
+      "durationMs": 4871,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1070862,
+      "file": "frame-000002700000us.png",
+      "sha256": "053ef33c84ee4ca11008e3a9eefb2ed4f570708077d77621830017c91b0175d2"
+    },
+    {
+      "requestedTimeUs": 3000000,
+      "durationMs": 4871,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1054017,
+      "file": "frame-000003000000us.png",
+      "sha256": "773619262eeed4ae75596634493f9da028e71967527c2b7411fc80607ebb7a5c"
+    },
+    {
+      "requestedTimeUs": 3300000,
+      "durationMs": 4871,
+      "width": 1080,
+      "height": 2400,
+      "selection": "closest",
+      "outputBytes": 1047420,
+      "file": "frame-000003300000us.png",
+      "sha256": "1fc7c3e2a5fbe83e09926100a8033f9b8d910266e3aa0dfc0dc6b3fb7cd7de23"
+    }
+  ]
+}

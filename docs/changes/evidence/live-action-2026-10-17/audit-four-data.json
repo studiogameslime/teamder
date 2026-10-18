@@ -1,0 +1,2250 @@
+{
+  "generatedAtUtc": "2026-10-16T23:42:26.936453+00:00",
+  "scope": "קריאת תמונות נתוני ייצור שנאספו דרך המוצר; ללא כתיבת נתוני מוצר",
+  "gameId": "lmUUmQru2HtKvQkRDVeD",
+  "groupId": "J060YQu6QTcgk3glUDj2",
+  "latestSource": "data-round-four-sealed-proof.json",
+  "readyForRelease": false,
+  "counts": {
+    "passed": 76,
+    "unproven": 6,
+    "observed-dependency": 6
+  },
+  "dependencyGroups": [
+    "זקיפת הופעת אורח שיצא אחרי תרומת שער טרם נפרסה",
+    "כלילת כובש לא ידוע בסיכום המחזור טרם נפרסה",
+    "שימור מבשל וסיווג בישול ב־commitRoundStats טרם נפרס"
+  ],
+  "sources": [
+    {
+      "file": "data-round-four-created.json",
+      "sha256": "362faff2f3160063e56b782b863a3be1bd68fe00587731fb2e3db577dc9119d1",
+      "readAt": "2026-10-16T22:25:31.230611+00:00"
+    },
+    {
+      "file": "data-round-four-first-guest.json",
+      "sha256": "717591aaacfa914584ab72db33e91a5ec62d9334bdc7b4f4b72d46b57174ec24",
+      "readAt": "2026-10-16T22:28:01.186164+00:00"
+    },
+    {
+      "file": "data-round-four-full-roster.json",
+      "sha256": "11c336e32bb52cbc7dcea6e16d7ff97d8e46f1dfc55414da20afd3a609d9e56a",
+      "readAt": "2026-10-16T22:33:19.626798+00:00"
+    },
+    {
+      "file": "data-round-four-random.json",
+      "sha256": "7dd655aeced2ab137eaa0a1183d19790356cf4fd606d705b3e5aef1da94bcaaf",
+      "readAt": "2026-10-16T22:36:39.487591+00:00"
+    },
+    {
+      "file": "data-round-four-manual-edit.json",
+      "sha256": "7898f7f5e4b7ed442ed205eeea3efe0042619ed358e6d1be4fc263036f1a8354",
+      "readAt": "2026-10-16T22:38:37.274817+00:00"
+    },
+    {
+      "file": "data-round-four-captains.json",
+      "sha256": "79c37aba4fedb65f0c3a5687e68fdd59003e7b73b13f93c1027297f4c79b294f",
+      "readAt": "2026-10-16T22:51:37.150408+00:00"
+    },
+    {
+      "file": "data-round-four-ready.json",
+      "sha256": "66540096aa704b006d09bf225da48e25d092ae90e52b4af43f870aa8948a969d",
+      "readAt": "2026-10-16T23:00:30.791074+00:00"
+    },
+    {
+      "file": "data-round-four-goal-one.json",
+      "sha256": "b65aa7d9ce01d075ed08b346e3085967e1ec1120ec7ab9216bdb85f2bf1107c8",
+      "readAt": "2026-10-16T23:02:29.838232+00:00"
+    },
+    {
+      "file": "data-round-four-five-goals.json",
+      "sha256": "8e1cf2415616a43731ebb53cba51a9a971b5d6ce9300b49bd6c462acb169d49d",
+      "readAt": "2026-10-16T23:05:05.000770+00:00"
+    },
+    {
+      "file": "data-round-four-removed.json",
+      "sha256": "81178909f51b054b9d72158d639f2d5645acdb1d7d48bed63b7a11c14a81e8e1",
+      "readAt": "2026-10-16T23:06:13.768630+00:00"
+    },
+    {
+      "file": "data-round-four-temp-swap.json",
+      "sha256": "c7815b47684ef084cbe3bf12d68e8705daa8ba7c2a20dfc33b382ae4c4aa3e50",
+      "readAt": "2026-10-16T23:07:14.834472+00:00"
+    },
+    {
+      "file": "data-round-four-first-commit.json",
+      "sha256": "e4ac4b9bb68c6c4a13addee960bbdd62945334a211d53bcd2431180aa992e052",
+      "readAt": "2026-10-16T23:12:50.181473+00:00"
+    },
+    {
+      "file": "data-round-four-second-ready.json",
+      "sha256": "0791d041ad469b88bb03d0104bab95cd99e39bcd6cbf922a2f2c2df12a665b10",
+      "readAt": "2026-10-16T23:16:23.631045+00:00"
+    },
+    {
+      "file": "data-round-four-second-commit.json",
+      "sha256": "8452ee4ad67949a83f76012a87857f6632c16be1c5c021f241f9c06d4ffa0da4",
+      "readAt": "2026-10-16T23:19:13.019747+00:00"
+    },
+    {
+      "file": "data-round-four-finished.json",
+      "sha256": "81c458c24b3cd255dac747132da3774ee37df8df92031a2bea316246ab5b8e63",
+      "readAt": "2026-10-16T23:20:22.535989+00:00"
+    },
+    {
+      "file": "data-round-four-sealed-proof.json",
+      "sha256": "fc551c7ccefce10de4b953dfa59115ff7d0fbbb998210b77a642d08cdb4fd114",
+      "readAt": "2026-10-16T23:38:54.322400+00:00"
+    }
+  ],
+  "identities": [
+    {
+      "role": "כובש חשבון בדיקה",
+      "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "name": "בדיקות לייב"
+    },
+    {
+      "role": "מבשל ויוצא זמני",
+      "id": "guest:mvbjiyzz-8ugfdn",
+      "name": "תומר בדיקה ג"
+    },
+    {
+      "role": "כובש יריב ללא בישול",
+      "id": "guest:mvbjgb67-u04vso",
+      "name": "דניאל בדיקה א"
+    },
+    {
+      "role": "כובש עצמי בצד שספג",
+      "id": "guest:mvbjjc1i-eftlp1",
+      "name": "אורי בדיקה ד"
+    },
+    {
+      "role": "נכנס זמני",
+      "id": "guest:mvbjilg2-21mb8n",
+      "name": "איתי בדיקה ב"
+    }
+  ],
+  "rounds": [
+    {
+      "id": "r_mvbkmbvw_hoku9lb8",
+      "teamAIndex": 0,
+      "teamBIndex": 1,
+      "teamAColor": "yellow",
+      "teamBColor": "blue",
+      "score": [
+        3,
+        1
+      ],
+      "winner": "A",
+      "goals": 4,
+      "penalties": 0
+    },
+    {
+      "id": "r_mvbl2aod_9j30k8mo",
+      "teamAIndex": 0,
+      "teamBIndex": 2,
+      "teamAColor": "yellow",
+      "teamBColor": "green",
+      "score": [
+        0,
+        0
+      ],
+      "winner": "B",
+      "goals": 0,
+      "penalties": 0
+    }
+  ],
+  "fieldGoals": 4,
+  "savedSummaryGoals": 3,
+  "savedAppearances": 16,
+  "expectedAppearancesIncludingOutgoingGuest": 17,
+  "activityIntervalsMs": 27150,
+  "canonicalLocalModelResult": {
+    "score": 8.2,
+    "games": [
+      {
+        "id": "YEdIR3MviDK82D581ELk",
+        "state": "pending",
+        "counted": false
+      },
+      {
+        "id": "lmUUmQru2HtKvQkRDVeD",
+        "state": "happened",
+        "counted": true
+      }
+    ]
+  },
+  "canonicalLocalModelSources": [
+    {
+      "file": "src/utils/eveningPlayed.ts",
+      "sha256": "4b192645046f0528c39aa084d81f99436c0c92fb1006f441222ce3baa1a3491d"
+    },
+    {
+      "file": "src/utils/eveningScore.ts",
+      "sha256": "b6712c64070e721041e0dd949748e60634cb5c381580aeb3a69af9fc587a2edd"
+    }
+  ],
+  "checks": [
+    {
+      "id": "one-round-scope",
+      "title": "כל תמונות הנתונים שייכות למחזור הבדיקה היחיד",
+      "status": "passed",
+      "expected": "lmUUmQru2HtKvQkRDVeD",
+      "observed": [
+        "lmUUmQru2HtKvQkRDVeD"
+      ],
+      "evidence": [
+        "data-round-four-captains.json",
+        "data-round-four-created.json",
+        "data-round-four-finished.json",
+        "data-round-four-first-commit.json",
+        "data-round-four-first-guest.json",
+        "data-round-four-five-goals.json",
+        "data-round-four-full-roster.json",
+        "data-round-four-goal-one.json",
+        "data-round-four-manual-edit.json",
+        "data-round-four-random.json",
+        "data-round-four-ready.json",
+        "data-round-four-removed.json",
+        "data-round-four-sealed-proof.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-second-ready.json",
+        "data-round-four-temp-swap.json"
+      ]
+    },
+    {
+      "id": "format-capacity",
+      "title": "הגדרת 4 מול 4, שלוש קבוצות וקיבולת 12",
+      "status": "passed",
+      "expected": {
+        "format": "4v4",
+        "teams": 3,
+        "capacity": 12
+      },
+      "observed": {
+        "captains": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "created": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "finished": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "first-commit": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "first-guest": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "five-goals": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "full-roster": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "goal-one": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "manual-edit": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "random": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "ready": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "removed": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "sealed-proof": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "second-commit": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "second-ready": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        },
+        "temp-swap": {
+          "format": "4v4",
+          "numberOfTeams": 3,
+          "maxPlayers": 12
+        }
+      },
+      "evidence": [
+        "data-round-four-captains.json",
+        "data-round-four-created.json",
+        "data-round-four-finished.json",
+        "data-round-four-first-commit.json",
+        "data-round-four-first-guest.json",
+        "data-round-four-five-goals.json",
+        "data-round-four-full-roster.json",
+        "data-round-four-goal-one.json",
+        "data-round-four-manual-edit.json",
+        "data-round-four-random.json",
+        "data-round-four-ready.json",
+        "data-round-four-removed.json",
+        "data-round-four-sealed-proof.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-second-ready.json",
+        "data-round-four-temp-swap.json"
+      ]
+    },
+    {
+      "id": "initial-empty",
+      "title": "המחזור נוצר לפני צירוף משתתפי הבדיקה",
+      "status": "passed",
+      "expected": 0,
+      "observed": 0,
+      "evidence": [
+        "data-round-four-created.json"
+      ]
+    },
+    {
+      "id": "dedicated-roster",
+      "title": "חשבון בדיקה אחד ואחד עשר אורחים, ללא כפילות או ממתינים",
+      "status": "passed",
+      "expected": {
+        "accounts": 1,
+        "guests": 11,
+        "unique": 12,
+        "waitlist": []
+      },
+      "observed": {
+        "accounts": 1,
+        "guests": 11,
+        "unique": 12,
+        "waitlist": []
+      },
+      "evidence": [
+        "data-round-four-full-roster.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "allocation-random",
+      "title": "סגלים מלאים וייחודיים: random",
+      "status": "passed",
+      "expected": "שלוש קבוצות של ארבעה; קפטן בכל סגל; כל 12 הרשומים פעם אחת",
+      "observed": {
+        "sizes": [
+          4,
+          4,
+          4
+        ],
+        "unique": 12,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-round-four-random.json"
+      ]
+    },
+    {
+      "id": "allocation-manual-edit",
+      "title": "סגלים מלאים וייחודיים: manual-edit",
+      "status": "passed",
+      "expected": "שלוש קבוצות של ארבעה; קפטן בכל סגל; כל 12 הרשומים פעם אחת",
+      "observed": {
+        "sizes": [
+          4,
+          4,
+          4
+        ],
+        "unique": 12,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-round-four-manual-edit.json"
+      ]
+    },
+    {
+      "id": "allocation-captains",
+      "title": "סגלים מלאים וייחודיים: captains",
+      "status": "passed",
+      "expected": "שלוש קבוצות של ארבעה; קפטן בכל סגל; כל 12 הרשומים פעם אחת",
+      "observed": {
+        "sizes": [
+          4,
+          4,
+          4
+        ],
+        "unique": 12,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-round-four-captains.json"
+      ]
+    },
+    {
+      "id": "allocation-ready",
+      "title": "סגלים מלאים וייחודיים: ready",
+      "status": "passed",
+      "expected": "שלוש קבוצות של ארבעה; קפטן בכל סגל; כל 12 הרשומים פעם אחת",
+      "observed": {
+        "sizes": [
+          4,
+          4,
+          4
+        ],
+        "unique": 12,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-round-four-ready.json"
+      ]
+    },
+    {
+      "id": "allocation-temp-swap",
+      "title": "סגלים מלאים וייחודיים: temp-swap",
+      "status": "passed",
+      "expected": "שלוש קבוצות של ארבעה; קפטן בכל סגל; כל 12 הרשומים פעם אחת",
+      "observed": {
+        "sizes": [
+          4,
+          4,
+          4
+        ],
+        "unique": 12,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json"
+      ]
+    },
+    {
+      "id": "allocation-second-ready",
+      "title": "סגלים מלאים וייחודיים: second-ready",
+      "status": "passed",
+      "expected": "שלוש קבוצות של ארבעה; קפטן בכל סגל; כל 12 הרשומים פעם אחת",
+      "observed": {
+        "sizes": [
+          4,
+          4,
+          4
+        ],
+        "unique": 12,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-round-four-second-ready.json"
+      ]
+    },
+    {
+      "id": "allocation-second-commit",
+      "title": "סגלים מלאים וייחודיים: second-commit",
+      "status": "passed",
+      "expected": "שלוש קבוצות של ארבעה; קפטן בכל סגל; כל 12 הרשומים פעם אחת",
+      "observed": {
+        "sizes": [
+          4,
+          4,
+          4
+        ],
+        "unique": 12,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-round-four-second-commit.json"
+      ]
+    },
+    {
+      "id": "allocation-sealed-proof",
+      "title": "סגלים מלאים וייחודיים: sealed-proof",
+      "status": "passed",
+      "expected": "שלוש קבוצות של ארבעה; קפטן בכל סגל; כל 12 הרשומים פעם אחת",
+      "observed": {
+        "sizes": [
+          4,
+          4,
+          4
+        ],
+        "unique": 12,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "manual-change",
+      "title": "העריכה הידנית שינתה את ההקצאה ושמרה את אותם משתתפים",
+      "status": "passed",
+      "expected": "סגל שונה; רשומים זהים",
+      "observed": {
+        "changed": true
+      },
+      "evidence": [
+        "data-round-four-random.json",
+        "data-round-four-manual-edit.json"
+      ]
+    },
+    {
+      "id": "publish-colors",
+      "title": "פרסום וצבעים נשמרו מההכנה לסיום",
+      "status": "passed",
+      "expected": "צהובים, כחולים וירוקים; פרסום נשמר",
+      "observed": {
+        "0": "yellow",
+        "1": "blue",
+        "2": "green"
+      },
+      "evidence": [
+        "data-round-four-ready.json",
+        "data-round-four-second-ready.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "algorithm-ui",
+      "title": "אופן ביצוע כל שיטת חלוקה אינו מוכח מתשובת הנתונים בלבד",
+      "status": "unproven",
+      "reason": "שמות הקבצים מציינים תרחישי ממשק; method=snake/regular אינו רישום חד־משמעי של כל לחיצה. נדרשות ראיות הממשק הנפרדות.",
+      "evidence": [
+        "data-round-four-random.json",
+        "data-round-four-manual-edit.json",
+        "data-round-four-captains.json"
+      ]
+    },
+    {
+      "id": "opening-pair",
+      "title": "בחירת צהובים וכחולים למשחק הראשון וירוקים להמתנה",
+      "status": "passed",
+      "expected": {
+        "playingColors": [
+          "yellow",
+          "blue"
+        ],
+        "waitingColor": "green"
+      },
+      "observed": {
+        "playing": [
+          0,
+          1
+        ],
+        "waiting": [
+          2
+        ],
+        "loans": [],
+        "wins": {},
+        "round": 1,
+        "updatedAt": 1792191624544,
+        "baseTeams": [
+          {
+            "index": 0,
+            "playerIds": [
+              "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+              "guest:mvbjiyzz-8ugfdn",
+              "guest:mvbjks6b-y7m9ey",
+              "guest:mvbjl50h-jh9uot"
+            ]
+          },
+          {
+            "index": 1,
+            "playerIds": [
+              "guest:mvbjgb67-u04vso",
+              "guest:mvbjjc1i-eftlp1",
+              "guest:mvbjkex3-i5vwra",
+              "guest:mvbjlic4-08kp80"
+            ]
+          },
+          {
+            "index": 2,
+            "playerIds": [
+              "guest:mvbjilg2-21mb8n",
+              "guest:mvbjjot4-5lpn25",
+              "guest:mvbjk1tn-9phn5y",
+              "guest:mvbjlvvj-qf4zqq"
+            ]
+          }
+        ],
+        "roundInstanceId": "r_mvbkmbvw_hoku9lb8",
+        "roundInstanceRound": 1
+      },
+      "evidence": [
+        "data-round-four-ready.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "before-clock",
+      "title": "גולים, ביטול, חילוף ושמירה נעשו ללא הפעלת שעון המשחק הראשון",
+      "status": "passed",
+      "expected": "אין זמן ריצה, מקטעי פעילות או שעון פעיל",
+      "observed": {
+        "goal-one": {
+          "running": false,
+          "accumulatedMs": 0,
+          "intervals": []
+        },
+        "five-goals": {
+          "running": false,
+          "accumulatedMs": 0,
+          "intervals": []
+        },
+        "removed": {
+          "running": false,
+          "accumulatedMs": 0,
+          "intervals": []
+        },
+        "temp-swap": {
+          "running": false,
+          "accumulatedMs": 0,
+          "intervals": []
+        },
+        "first-commit": {
+          "running": false,
+          "accumulatedMs": 0,
+          "intervals": []
+        }
+      },
+      "evidence": [
+        "data-round-four-goal-one.json",
+        "data-round-four-five-goals.json",
+        "data-round-four-removed.json",
+        "data-round-four-temp-swap.json",
+        "data-round-four-first-commit.json"
+      ]
+    },
+    {
+      "id": "first-goal",
+      "title": "גול לחשבון הבדיקה עם מבשל אורח מהקבוצה הנכונה",
+      "status": "passed",
+      "expected": "כובש ומבשל מצהובים",
+      "observed": {
+        "scorer": "בדיקות לייב",
+        "assister": "תומר בדיקה ג",
+        "team": "A",
+        "assistStatus": "player"
+      },
+      "evidence": [
+        "data-round-four-goal-one.json"
+      ]
+    },
+    {
+      "id": "five-semantics",
+      "title": "חמש משמעויות שער נשמרו בלייב",
+      "status": "passed",
+      "expected": "עם בישול, ללא בישול, כובש לא ידוע, עצמי, בישול לא ידוע",
+      "observed": [
+        {
+          "id": "g_1792191733841_bpe6izece8e",
+          "team": "A",
+          "scorer": "בדיקות לייב",
+          "assistStatus": "player",
+          "ownGoal": false
+        },
+        {
+          "id": "g_1792191812633_vrkqelmsv7g",
+          "team": "B",
+          "scorer": "דניאל בדיקה א",
+          "assistStatus": "none",
+          "ownGoal": false
+        },
+        {
+          "id": "g_1792191830162_swuy59lhzuf",
+          "team": "A",
+          "scorer": null,
+          "assistStatus": null,
+          "ownGoal": false
+        },
+        {
+          "id": "g_1792191890243_rk1kpz6bjjq",
+          "team": "A",
+          "scorer": "אורי בדיקה ד",
+          "assistStatus": null,
+          "ownGoal": true
+        },
+        {
+          "id": "g_1792191901072_23ctegl4ufyj",
+          "team": "A",
+          "scorer": "תומר בדיקה ג",
+          "assistStatus": "unknown",
+          "ownGoal": false
+        }
+      ],
+      "evidence": [
+        "data-round-four-five-goals.json"
+      ]
+    },
+    {
+      "id": "undo-one-event",
+      "title": "ביטול אירוע אחד מחזיר 4:1 ל־3:1 ומשאיר את ארבעת האירועים המקוריים",
+      "status": "passed",
+      "expected": {
+        "removed": 1,
+        "before": [
+          4,
+          1
+        ],
+        "after": [
+          3,
+          1
+        ],
+        "remaining": 4
+      },
+      "observed": {
+        "removedIds": [
+          "g_1792191901072_23ctegl4ufyj"
+        ],
+        "remaining": 4,
+        "score": [
+          3,
+          1
+        ]
+      },
+      "evidence": [
+        "data-round-four-five-goals.json",
+        "data-round-four-removed.json"
+      ]
+    },
+    {
+      "id": "undo-tally",
+      "title": "ביטול הגול מנכה פעם אחת את מונה הכובש",
+      "status": "passed",
+      "expected": [
+        1,
+        0
+      ],
+      "observed": [
+        1,
+        0
+      ],
+      "evidence": [
+        "data-round-four-five-goals.json",
+        "data-round-four-removed.json"
+      ]
+    },
+    {
+      "id": "event-identities-goal-one",
+      "title": "זהויות ייחודיות ותוצאה תואמת לאירועי א׳/ב׳: goal-one",
+      "status": "passed",
+      "expected": "מזהים ייחודיים; כל אירוע מזכה צד אחד",
+      "observed": {
+        "ids": [
+          "g_1792191733841_bpe6izece8e"
+        ],
+        "scores": [
+          1,
+          0
+        ]
+      },
+      "evidence": [
+        "data-round-four-goal-one.json"
+      ]
+    },
+    {
+      "id": "event-identities-five-goals",
+      "title": "זהויות ייחודיות ותוצאה תואמת לאירועי א׳/ב׳: five-goals",
+      "status": "passed",
+      "expected": "מזהים ייחודיים; כל אירוע מזכה צד אחד",
+      "observed": {
+        "ids": [
+          "g_1792191733841_bpe6izece8e",
+          "g_1792191812633_vrkqelmsv7g",
+          "g_1792191830162_swuy59lhzuf",
+          "g_1792191890243_rk1kpz6bjjq",
+          "g_1792191901072_23ctegl4ufyj"
+        ],
+        "scores": [
+          4,
+          1
+        ]
+      },
+      "evidence": [
+        "data-round-four-five-goals.json"
+      ]
+    },
+    {
+      "id": "event-identities-removed",
+      "title": "זהויות ייחודיות ותוצאה תואמת לאירועי א׳/ב׳: removed",
+      "status": "passed",
+      "expected": "מזהים ייחודיים; כל אירוע מזכה צד אחד",
+      "observed": {
+        "ids": [
+          "g_1792191733841_bpe6izece8e",
+          "g_1792191812633_vrkqelmsv7g",
+          "g_1792191830162_swuy59lhzuf",
+          "g_1792191890243_rk1kpz6bjjq"
+        ],
+        "scores": [
+          3,
+          1
+        ]
+      },
+      "evidence": [
+        "data-round-four-removed.json"
+      ]
+    },
+    {
+      "id": "event-identities-temp-swap",
+      "title": "זהויות ייחודיות ותוצאה תואמת לאירועי א׳/ב׳: temp-swap",
+      "status": "passed",
+      "expected": "מזהים ייחודיים; כל אירוע מזכה צד אחד",
+      "observed": {
+        "ids": [
+          "g_1792191733841_bpe6izece8e",
+          "g_1792191812633_vrkqelmsv7g",
+          "g_1792191830162_swuy59lhzuf",
+          "g_1792191890243_rk1kpz6bjjq"
+        ],
+        "scores": [
+          3,
+          1
+        ]
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json"
+      ]
+    },
+    {
+      "id": "temporary-pair",
+      "title": "החילוף הזמני שמר שתי השאלות תואמות עם אותו מזהה",
+      "status": "passed",
+      "expected": "שני שחקנים; בית ויעד הפוכים; אותו swapId",
+      "observed": [
+        {
+          "playerId": "guest:mvbjiyzz-8ugfdn",
+          "homeTeam": 0,
+          "filledTeam": 2,
+          "swapId": "swap_1792192029885_ilnouwemplc"
+        },
+        {
+          "playerId": "guest:mvbjilg2-21mb8n",
+          "homeTeam": 2,
+          "filledTeam": 0,
+          "swapId": "swap_1792192029885_ilnouwemplc"
+        }
+      ],
+      "evidence": [
+        "data-round-four-removed.json",
+        "data-round-four-temp-swap.json"
+      ]
+    },
+    {
+      "id": "temporary-preserves",
+      "title": "החילוף לא שינה קבוצות מקור, אירועים או זהות משחק",
+      "status": "passed",
+      "expected": "מקור, אירועים ומזהה נשמרים",
+      "observed": {
+        "goals": 4,
+        "roundId": "r_mvbkmbvw_hoku9lb8"
+      },
+      "evidence": [
+        "data-round-four-removed.json",
+        "data-round-four-temp-swap.json"
+      ]
+    },
+    {
+      "id": "effective-swap",
+      "title": "הרכב השדה לאחר חילוף מכיל את איתי ומוציא את תומר",
+      "status": "passed",
+      "expected": "ארבעה בהרכב; נכנס קיים ויוצא אינו קיים",
+      "observed": [
+        "בדיקות לייב",
+        "ליאור בדיקה ח",
+        "נועם בדיקה ט",
+        "איתי בדיקה ב"
+      ],
+      "evidence": [
+        "data-round-four-temp-swap.json"
+      ]
+    },
+    {
+      "id": "first-round-stable",
+      "title": "מזהה המשחק הראשון נשאר יציב לאורך גולים, ביטול וחילוף",
+      "status": "passed",
+      "expected": "r_mvbkmbvw_hoku9lb8",
+      "observed": {
+        "ready": "r_mvbkmbvw_hoku9lb8",
+        "goal-one": "r_mvbkmbvw_hoku9lb8",
+        "five-goals": "r_mvbkmbvw_hoku9lb8",
+        "removed": "r_mvbkmbvw_hoku9lb8",
+        "temp-swap": "r_mvbkmbvw_hoku9lb8",
+        "first-commit": "r_mvbkmbvw_hoku9lb8"
+      },
+      "evidence": [
+        "data-round-four-ready.json",
+        "data-round-four-temp-swap.json",
+        "data-round-four-first-commit.json"
+      ]
+    },
+    {
+      "id": "first-score",
+      "title": "היסטוריית המשחק הראשון שומרת 3:1 ומנצחת א׳",
+      "status": "passed",
+      "expected": {
+        "score": [
+          3,
+          1
+        ],
+        "winner": "A",
+        "goals": 4
+      },
+      "observed": {
+        "score": [
+          3,
+          1
+        ],
+        "winner": "A",
+        "goals": 4
+      },
+      "evidence": [
+        "data-round-four-first-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "field-events-retained",
+      "title": "ההיסטוריה שומרת צד, כובש, עצמי ודקה של ארבעת האירועים",
+      "status": "passed",
+      "expected": [
+        {
+          "team": "A",
+          "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "ownGoal": false,
+          "minute": 1
+        },
+        {
+          "team": "B",
+          "scorerId": "guest:mvbjgb67-u04vso",
+          "ownGoal": false,
+          "minute": 1
+        },
+        {
+          "team": "A",
+          "scorerId": null,
+          "ownGoal": false,
+          "minute": 1
+        },
+        {
+          "team": "A",
+          "scorerId": "guest:mvbjjc1i-eftlp1",
+          "ownGoal": true,
+          "minute": 1
+        }
+      ],
+      "observed": [
+        {
+          "team": "A",
+          "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "ownGoal": false,
+          "minute": 1
+        },
+        {
+          "team": "B",
+          "scorerId": "guest:mvbjgb67-u04vso",
+          "ownGoal": false,
+          "minute": 1
+        },
+        {
+          "team": "A",
+          "scorerId": null,
+          "ownGoal": false,
+          "minute": 1
+        },
+        {
+          "team": "A",
+          "scorerId": "guest:mvbjjc1i-eftlp1",
+          "ownGoal": true,
+          "minute": 1
+        }
+      ],
+      "evidence": [
+        "data-round-four-removed.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "guest-assister-history",
+      "title": "מזהה המבשל האורח נשמר באירוע ההיסטורי",
+      "status": "observed-dependency",
+      "expected": {
+        "id": "guest:mvbjiyzz-8ugfdn",
+        "name": "תומר בדיקה ג"
+      },
+      "observed": null,
+      "evidence": [
+        "data-round-four-goal-one.json",
+        "data-round-four-first-commit.json",
+        "data-round-four-sealed-proof.json"
+      ],
+      "dependency": "שימור מבשל וסיווג בישול ב־commitRoundStats טרם נפרס"
+    },
+    {
+      "id": "assist-classification-history",
+      "title": "סיווג בישול מפורש נשמר מעבר ללייב",
+      "status": "observed-dependency",
+      "expected": [
+        "player",
+        "none"
+      ],
+      "observed": [],
+      "evidence": [
+        "data-round-four-removed.json",
+        "data-round-four-sealed-proof.json"
+      ],
+      "dependency": "שימור מבשל וסיווג בישול ב־commitRoundStats טרם נפרס"
+    },
+    {
+      "id": "history-event-ids",
+      "title": "מזהי אירועי הגול אינם נשמרים בהיסטוריה הקיימת",
+      "status": "unproven",
+      "reason": "ניתן להשוות תוכן וסדר ארבעה אירועים, אך אי אפשר להוכיח שימור מזהה אירוע לאחר השמירה מן הרשומה הזו.",
+      "evidence": [
+        "data-round-four-removed.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "outgoing-history-participant",
+      "title": "כל מי שתרם ושיחק לפני חילוף מופיע בסגל ההיסטורי",
+      "status": "observed-dependency",
+      "expected": {
+        "A": [
+          "בדיקות לייב",
+          "ליאור בדיקה ח",
+          "נועם בדיקה ט",
+          "איתי בדיקה ב",
+          "תומר בדיקה ג"
+        ],
+        "B": [
+          "דניאל בדיקה א",
+          "אורי בדיקה ד",
+          "רון בדיקה ז",
+          "גל בדיקה י"
+        ]
+      },
+      "observed": {
+        "A": [
+          "בדיקות לייב",
+          "ליאור בדיקה ח",
+          "נועם בדיקה ט",
+          "איתי בדיקה ב"
+        ],
+        "B": [
+          "דניאל בדיקה א",
+          "אורי בדיקה ד",
+          "רון בדיקה ז",
+          "גל בדיקה י"
+        ]
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-sealed-proof.json"
+      ],
+      "dependency": "זקיפת הופעת אורח שיצא אחרי תרומת שער טרם נפרסה"
+    },
+    {
+      "id": "commit-identity-first-commit",
+      "title": "היסטוריה וסימן שמירה תואמים פעם אחת: first-commit",
+      "status": "passed",
+      "expected": {
+        "count": 1,
+        "onePerRound": true
+      },
+      "observed": {
+        "historyIds": [
+          "r_mvbkmbvw_hoku9lb8"
+        ],
+        "commitIds": [
+          "r_mvbkmbvw_hoku9lb8"
+        ],
+        "counter": 1
+      },
+      "evidence": [
+        "data-round-four-first-commit.json"
+      ]
+    },
+    {
+      "id": "commit-clear-first-commit",
+      "title": "לוח השדה נוקה בלי לנקות את מוני המחזור: first-commit",
+      "status": "passed",
+      "expected": "0:0, ללא אירועים או הכרעת פנדלים פעילה",
+      "observed": {
+        "scoreA": 0,
+        "scoreB": 0,
+        "goals": [],
+        "shootout": null
+      },
+      "evidence": [
+        "data-round-four-first-commit.json"
+      ]
+    },
+    {
+      "id": "commit-identity-second-ready",
+      "title": "היסטוריה וסימן שמירה תואמים פעם אחת: second-ready",
+      "status": "passed",
+      "expected": {
+        "count": 1,
+        "onePerRound": true
+      },
+      "observed": {
+        "historyIds": [
+          "r_mvbkmbvw_hoku9lb8"
+        ],
+        "commitIds": [
+          "r_mvbkmbvw_hoku9lb8"
+        ],
+        "counter": 1
+      },
+      "evidence": [
+        "data-round-four-second-ready.json"
+      ]
+    },
+    {
+      "id": "commit-clear-second-ready",
+      "title": "לוח השדה נוקה בלי לנקות את מוני המחזור: second-ready",
+      "status": "passed",
+      "expected": "0:0, ללא אירועים או הכרעת פנדלים פעילה",
+      "observed": {
+        "scoreA": 0,
+        "scoreB": 0,
+        "goals": [],
+        "shootout": null
+      },
+      "evidence": [
+        "data-round-four-second-ready.json"
+      ]
+    },
+    {
+      "id": "commit-identity-second-commit",
+      "title": "היסטוריה וסימן שמירה תואמים פעם אחת: second-commit",
+      "status": "passed",
+      "expected": {
+        "count": 2,
+        "onePerRound": true
+      },
+      "observed": {
+        "historyIds": [
+          "r_mvbkmbvw_hoku9lb8",
+          "r_mvbl2aod_9j30k8mo"
+        ],
+        "commitIds": [
+          "r_mvbkmbvw_hoku9lb8",
+          "r_mvbl2aod_9j30k8mo"
+        ],
+        "counter": 2
+      },
+      "evidence": [
+        "data-round-four-second-commit.json"
+      ]
+    },
+    {
+      "id": "commit-clear-second-commit",
+      "title": "לוח השדה נוקה בלי לנקות את מוני המחזור: second-commit",
+      "status": "passed",
+      "expected": "0:0, ללא אירועים או הכרעת פנדלים פעילה",
+      "observed": {
+        "scoreA": 0,
+        "scoreB": 0,
+        "goals": [],
+        "shootout": null
+      },
+      "evidence": [
+        "data-round-four-second-commit.json"
+      ]
+    },
+    {
+      "id": "commit-identity-sealed-proof",
+      "title": "היסטוריה וסימן שמירה תואמים פעם אחת: sealed-proof",
+      "status": "passed",
+      "expected": {
+        "count": 2,
+        "onePerRound": true
+      },
+      "observed": {
+        "historyIds": [
+          "r_mvbkmbvw_hoku9lb8",
+          "r_mvbl2aod_9j30k8mo"
+        ],
+        "commitIds": [
+          "r_mvbkmbvw_hoku9lb8",
+          "r_mvbl2aod_9j30k8mo"
+        ],
+        "counter": 2
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "commit-clear-sealed-proof",
+      "title": "לוח השדה נוקה בלי לנקות את מוני המחזור: sealed-proof",
+      "status": "passed",
+      "expected": "0:0, ללא אירועים או הכרעת פנדלים פעילה",
+      "observed": {
+        "scoreA": 0,
+        "scoreB": 0,
+        "goals": [],
+        "shootout": null
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "rotation-after-first",
+      "title": "רוטציה למשחק שני השאירה מנצחת והחזירה קבוצות מקור",
+      "status": "passed",
+      "expected": "צהובים מול ירוקים; כחולים בחוץ; ללא השאלות; מזהה חדש",
+      "observed": {
+        "playing": [
+          0,
+          2
+        ],
+        "waiting": [
+          1
+        ],
+        "loans": [],
+        "wins": {
+          "0": 1
+        },
+        "round": 2,
+        "lastRoundWinners": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "lastRoundLosers": [],
+        "lastRoundAt": 1792192369512,
+        "updatedAt": 1792192369512,
+        "roundInstanceId": "r_mvbl2aod_9j30k8mo",
+        "roundInstanceRound": 2
+      },
+      "evidence": [
+        "data-round-four-second-ready.json"
+      ]
+    },
+    {
+      "id": "source-rosters-return",
+      "title": "החילוף הזמני הסתיים ואיתי ותומר חזרו לקבוצות המקור",
+      "status": "passed",
+      "expected": {
+        "outgoingHome": 0,
+        "incomingHome": 2
+      },
+      "observed": {
+        "secondA": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvbjiyzz-8ugfdn",
+          "guest:mvbjks6b-y7m9ey",
+          "guest:mvbjl50h-jh9uot"
+        ],
+        "secondB": [
+          "guest:mvbjilg2-21mb8n",
+          "guest:mvbjjot4-5lpn25",
+          "guest:mvbjk1tn-9phn5y",
+          "guest:mvbjlvvj-qf4zqq"
+        ]
+      },
+      "evidence": [
+        "data-round-four-ready.json",
+        "data-round-four-second-ready.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "manual-draw-result",
+      "title": "המשחק השני שומר 0:0 עם מנצחת ידנית ב׳ וללא בעיטות",
+      "status": "passed",
+      "expected": {
+        "score": [
+          0,
+          0
+        ],
+        "winner": "B",
+        "penalties": []
+      },
+      "observed": {
+        "scoreA": 0,
+        "scoreB": 0,
+        "winnerSide": "B",
+        "penalties": []
+      },
+      "evidence": [
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "round-three-not-credited",
+      "title": "משחק שלישי מוכן לא הפך בטעות למשחק ששוחק",
+      "status": "passed",
+      "expected": "שלושה מזהים נפרדים, שתי שמירות בלבד",
+      "observed": {
+        "preparedId": "r_mvblaet6_r7z8myn3",
+        "savedIds": [
+          "r_mvbkmbvw_hoku9lb8",
+          "r_mvbl2aod_9j30k8mo"
+        ]
+      },
+      "evidence": [
+        "data-round-four-second-ready.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "clock-run-pause-resume",
+      "title": "שני מקטעי ריצה סגורים עם פער מוכיחים ריצה, עצירה, חידוש ועצירה",
+      "status": "passed",
+      "expected": "שני מקטעים תקפים ללא חפיפה, שהופיעו אחרי הכנת משחק שני",
+      "observed": {
+        "intervals": [
+          {
+            "s": 1792192588910,
+            "e": 1792192612790
+          },
+          {
+            "s": 1792192680842,
+            "e": 1792192684112
+          }
+        ],
+        "activeMs": 27150
+      },
+      "evidence": [
+        "data-round-four-second-ready.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "clock-stopped-at-end",
+      "title": "בסיום המחזור השעון עצור ומקטעי הריצה נשמרו",
+      "status": "passed",
+      "expected": {
+        "running": false,
+        "lastStarted": null,
+        "retainedIntervals": 2
+      },
+      "observed": {
+        "running": false,
+        "lastStarted": null,
+        "intervals": [
+          {
+            "s": 1792192588910,
+            "e": 1792192612790
+          },
+          {
+            "s": 1792192680842,
+            "e": 1792192684112
+          }
+        ]
+      },
+      "evidence": [
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "clock-historical-duration",
+      "title": "משך השעון של משחק שני אינו נשמר ברשומת ההיסטוריה",
+      "status": "unproven",
+      "reason": "activeIntervals הם מקטעי פעילות של המחזור שנשמרים בין משחקים לפי eveningPlayed; הם אינם תחת מזהה משחק. השיוך לחלון משחק שני נובע מהשוואת נקודות הבדיקה. timerEvents ריק, timerAccumulatedMs התאפס. אין ראיה שמורה לזמן התצוגה או למי שלח כל לחיצה.",
+      "evidence": [
+        "data-round-four-second-ready.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "finished-once",
+      "title": "סיום המחזור אינו מוסיף שמירה או מוני משחק נוספים",
+      "status": "passed",
+      "expected": "המחזור הסתיים; נתוני שני המשחקים נשמרו ללא תוספת",
+      "observed": {
+        "status": "finished",
+        "phase": "finished",
+        "endedAt": 1792192813836,
+        "history": 2
+      },
+      "evidence": [
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "all-participant-rows",
+      "title": "לכל 12 משתתפי שני המשחקים קיימת שורת נתוני מחזור ייחודית",
+      "status": "passed",
+      "expected": [
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "guest:mvbjgb67-u04vso",
+        "guest:mvbjilg2-21mb8n",
+        "guest:mvbjiyzz-8ugfdn",
+        "guest:mvbjjc1i-eftlp1",
+        "guest:mvbjjot4-5lpn25",
+        "guest:mvbjk1tn-9phn5y",
+        "guest:mvbjkex3-i5vwra",
+        "guest:mvbjks6b-y7m9ey",
+        "guest:mvbjl50h-jh9uot",
+        "guest:mvbjlic4-08kp80",
+        "guest:mvbjlvvj-qf4zqq"
+      ],
+      "observed": [
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "guest:mvbjgb67-u04vso",
+        "guest:mvbjilg2-21mb8n",
+        "guest:mvbjiyzz-8ugfdn",
+        "guest:mvbjjc1i-eftlp1",
+        "guest:mvbjjot4-5lpn25",
+        "guest:mvbjk1tn-9phn5y",
+        "guest:mvbjkex3-i5vwra",
+        "guest:mvbjks6b-y7m9ey",
+        "guest:mvbjl50h-jh9uot",
+        "guest:mvbjlic4-08kp80",
+        "guest:mvbjlvvj-qf4zqq"
+      ],
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "player-stats-8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "title": "מוני המשתתף: בדיקות לייב",
+      "status": "passed",
+      "expected": {
+        "rounds": 2,
+        "wins": 1,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 1,
+        "assists": 0,
+        "teamScoreRounds": 2,
+        "actualTeamGoalsFor": 3,
+        "actualTeamGoalsAgainst": 1
+      },
+      "observed": {
+        "rounds": 2,
+        "wins": 1,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 1,
+        "assists": 0,
+        "teamScoreRounds": 2,
+        "actualTeamGoalsFor": 3,
+        "actualTeamGoalsAgainst": 1
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "player-stats-guest:mvbjks6b-y7m9ey",
+      "title": "מוני המשתתף: ליאור בדיקה ח",
+      "status": "passed",
+      "expected": {
+        "rounds": 2,
+        "wins": 1,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 2,
+        "actualTeamGoalsFor": 3,
+        "actualTeamGoalsAgainst": 1
+      },
+      "observed": {
+        "rounds": 2,
+        "wins": 1,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 2,
+        "actualTeamGoalsFor": 3,
+        "actualTeamGoalsAgainst": 1
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "player-stats-guest:mvbjl50h-jh9uot",
+      "title": "מוני המשתתף: נועם בדיקה ט",
+      "status": "passed",
+      "expected": {
+        "rounds": 2,
+        "wins": 1,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 2,
+        "actualTeamGoalsFor": 3,
+        "actualTeamGoalsAgainst": 1
+      },
+      "observed": {
+        "rounds": 2,
+        "wins": 1,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 2,
+        "actualTeamGoalsFor": 3,
+        "actualTeamGoalsAgainst": 1
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "player-stats-guest:mvbjilg2-21mb8n",
+      "title": "מוני המשתתף: איתי בדיקה ב",
+      "status": "passed",
+      "expected": {
+        "rounds": 2,
+        "wins": 2,
+        "losses": 0,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 2,
+        "actualTeamGoalsFor": 3,
+        "actualTeamGoalsAgainst": 1
+      },
+      "observed": {
+        "rounds": 2,
+        "wins": 2,
+        "losses": 0,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 2,
+        "actualTeamGoalsFor": 3,
+        "actualTeamGoalsAgainst": 1
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "player-stats-guest:mvbjiyzz-8ugfdn",
+      "title": "מוני המשתתף: תומר בדיקה ג",
+      "status": "observed-dependency",
+      "expected": {
+        "rounds": 2,
+        "wins": 1,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 1,
+        "teamScoreRounds": 2,
+        "actualTeamGoalsFor": 3,
+        "actualTeamGoalsAgainst": 1
+      },
+      "observed": {
+        "rounds": 1,
+        "wins": 0,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 1,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 0,
+        "actualTeamGoalsAgainst": 0
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ],
+      "dependency": "זקיפת הופעת אורח שיצא אחרי תרומת שער טרם נפרסה"
+    },
+    {
+      "id": "player-stats-guest:mvbjgb67-u04vso",
+      "title": "מוני המשתתף: דניאל בדיקה א",
+      "status": "passed",
+      "expected": {
+        "rounds": 1,
+        "wins": 0,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 0,
+        "goals": 1,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 3
+      },
+      "observed": {
+        "rounds": 1,
+        "wins": 0,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 0,
+        "goals": 1,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 3
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "player-stats-guest:mvbjjc1i-eftlp1",
+      "title": "מוני המשתתף: אורי בדיקה ד",
+      "status": "passed",
+      "expected": {
+        "rounds": 1,
+        "wins": 0,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 0,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 3
+      },
+      "observed": {
+        "rounds": 1,
+        "wins": 0,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 0,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 3
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "player-stats-guest:mvbjkex3-i5vwra",
+      "title": "מוני המשתתף: רון בדיקה ז",
+      "status": "passed",
+      "expected": {
+        "rounds": 1,
+        "wins": 0,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 0,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 3
+      },
+      "observed": {
+        "rounds": 1,
+        "wins": 0,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 0,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 3
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "player-stats-guest:mvbjlic4-08kp80",
+      "title": "מוני המשתתף: גל בדיקה י",
+      "status": "passed",
+      "expected": {
+        "rounds": 1,
+        "wins": 0,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 0,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 3
+      },
+      "observed": {
+        "rounds": 1,
+        "wins": 0,
+        "losses": 1,
+        "ties": 0,
+        "cleanSheets": 0,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 3
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "player-stats-guest:mvbjjot4-5lpn25",
+      "title": "מוני המשתתף: אלין בדיקה ה",
+      "status": "passed",
+      "expected": {
+        "rounds": 1,
+        "wins": 1,
+        "losses": 0,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 0,
+        "actualTeamGoalsAgainst": 0
+      },
+      "observed": {
+        "rounds": 1,
+        "wins": 1,
+        "losses": 0,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 0,
+        "actualTeamGoalsAgainst": 0
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "player-stats-guest:mvbjk1tn-9phn5y",
+      "title": "מוני המשתתף: בן בדיקה ו",
+      "status": "passed",
+      "expected": {
+        "rounds": 1,
+        "wins": 1,
+        "losses": 0,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 0,
+        "actualTeamGoalsAgainst": 0
+      },
+      "observed": {
+        "rounds": 1,
+        "wins": 1,
+        "losses": 0,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 0,
+        "actualTeamGoalsAgainst": 0
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "player-stats-guest:mvbjlvvj-qf4zqq",
+      "title": "מוני המשתתף: רועי בדיקה יא",
+      "status": "passed",
+      "expected": {
+        "rounds": 1,
+        "wins": 1,
+        "losses": 0,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 0,
+        "actualTeamGoalsAgainst": 0
+      },
+      "observed": {
+        "rounds": 1,
+        "wins": 1,
+        "losses": 0,
+        "ties": 0,
+        "cleanSheets": 1,
+        "goals": 0,
+        "assists": 0,
+        "teamScoreRounds": 1,
+        "actualTeamGoalsFor": 0,
+        "actualTeamGoalsAgainst": 0
+      },
+      "evidence": [
+        "data-round-four-temp-swap.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "outgoing-first-appearance",
+      "title": "אורח יוצא קיבל את הבישול וגם הופעה וניצחון במשחק הראשון",
+      "status": "observed-dependency",
+      "expected": {
+        "assists": 1,
+        "rounds": 1,
+        "wins": 1
+      },
+      "observed": {
+        "assists": 1,
+        "rounds": 0,
+        "wins": 0
+      },
+      "evidence": [
+        "data-round-four-first-commit.json"
+      ],
+      "dependency": "זקיפת הופעת אורח שיצא אחרי תרומת שער טרם נפרסה"
+    },
+    {
+      "id": "guest-markers",
+      "title": "שורות האורחים מסומנות כאורחים ואינן שורות חשבון אמיתי",
+      "status": "passed",
+      "expected": "11 שורות אורח ושורת חשבון אחת",
+      "observed": {
+        "guestRows": 11,
+        "accountRows": 1
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "evening-tally",
+      "title": "מונה המחזור כולל רק שערי כובשים רגילים שלא בוטלו",
+      "status": "passed",
+      "expected": {
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1,
+        "guest:mvbjgb67-u04vso": 1
+      },
+      "observed": {
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1,
+        "guest:mvbjgb67-u04vso": 1
+      },
+      "evidence": [
+        "data-round-four-removed.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "real-global-tallies",
+      "title": "שערים, ניצחונות ושערים נקיים של חשבון הבדיקה תואמים למחזורי הבדיקה שנקראו",
+      "status": "passed",
+      "expected": {
+        "goals": 1,
+        "wins": 1,
+        "cleanSheets": 1
+      },
+      "observed": {
+        "cleanSheets": 1,
+        "goals": 1,
+        "wins": 1
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "no-shootout-state",
+      "title": "בתרחיש זה אין הכרעת פנדלים, בעיטות או מוני פנדל",
+      "status": "passed",
+      "expected": "shootout חסר או ריק, penalties ריק, מוני פנדלים אפסיים",
+      "observed": {
+        "penaltiesPerRound": [
+          0,
+          0
+        ]
+      },
+      "evidence": [
+        "data-round-four-captains.json",
+        "data-round-four-created.json",
+        "data-round-four-finished.json",
+        "data-round-four-first-commit.json",
+        "data-round-four-first-guest.json",
+        "data-round-four-five-goals.json",
+        "data-round-four-full-roster.json",
+        "data-round-four-goal-one.json",
+        "data-round-four-manual-edit.json",
+        "data-round-four-random.json",
+        "data-round-four-ready.json",
+        "data-round-four-removed.json",
+        "data-round-four-sealed-proof.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-second-ready.json",
+        "data-round-four-temp-swap.json"
+      ]
+    },
+    {
+      "id": "shootout-branches",
+      "title": "זרימות פנדלים אינן מוכחות במחזור ארבעה מול ארבעה זה",
+      "status": "unproven",
+      "reason": "לא נרשמו בו בעיטות, ולכן אין כאן בדיקת שוער יריב, עצירה, החטאה, עריכה או סיום הכרעה. הוכחות קוד ומחזורים אחרים נדרשות בנפרד.",
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "summary-created",
+      "title": "סיכום חתום נוצר אחרי סיום לאותו מחזור ומועדון",
+      "status": "passed",
+      "expected": "זהויות נכונות וחתימה אחרי הסיום",
+      "observed": {
+        "gameId": "lmUUmQru2HtKvQkRDVeD",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "generatedAt": 1792192820588
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "summary-all-field-goals",
+      "title": "סיכום המחזור כולל את כל ארבעת שערי השדה",
+      "status": "observed-dependency",
+      "expected": 4,
+      "observed": 3,
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ],
+      "dependency": "כלילת כובש לא ידוע בסיכום המחזור טרם נפרסה"
+    },
+    {
+      "id": "summary-other-counts",
+      "title": "משחקים, בישולים, הכרעות פנדלים ותיקו תואמים ליחידות הנתונים",
+      "status": "passed",
+      "expected": {
+        "rounds": 2,
+        "assists": 1,
+        "shootouts": 0,
+        "ties": 0
+      },
+      "observed": {
+        "rounds": 2,
+        "goals": 3,
+        "ties": 0,
+        "shootouts": 0,
+        "assists": 1
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "summary-guests-excluded-from-leaders",
+      "title": "אורחים נספרים בסכומים אך אינם מקבלים תואר אישי",
+      "status": "passed",
+      "expected": "ללא מוביל אורח; המבשל היחיד הוא אורח",
+      "observed": {
+        "topScorers": {
+          "userIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "value": 1
+        },
+        "topAssisters": null,
+        "topCleanSheets": {
+          "userIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "value": 1
+        },
+        "topGoalInvolvement": {
+          "userIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "value": 1
+        },
+        "topWinners": {
+          "value": 1,
+          "userIds": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ]
+        }
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "summary-basis-players",
+      "title": "בסיס תיקון הסיכום שומר בדיוק את שורות השחקנים שנחתמו",
+      "status": "passed",
+      "expected": "כל 12 הזהויות והמונים כפי שנקראו",
+      "observed": {
+        "players": 12,
+        "rounds": 2
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "attendance-indirect",
+      "title": "בסיס הסיכום מציין מחזור נוכחות אחד לחשבון הבדיקה",
+      "status": "passed",
+      "expected": 1,
+      "observed": 1,
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "attendance-read-scope",
+      "title": "ראיות הנוכחות נקראו רק לחשבון, למועדון ולמחזורי הבדיקה המאושרים",
+      "status": "passed",
+      "expected": "מזהים מתוך קבלת זהויות הבדיקה",
+      "observed": {
+        "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "clubId": "J060YQu6QTcgk3glUDj2",
+        "allowedRoundIds": [
+          "YEdIR3MviDK82D581ELk",
+          "lmUUmQru2HtKvQkRDVeD"
+        ],
+        "access": "document GET and documents:runQuery only; no product writes"
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "attendance-credit",
+      "title": "נשמר סימן זקיפת נוכחות יחיד אחרי סיום המחזור",
+      "status": "passed",
+      "expected": {
+        "id": "once",
+        "afterEnd": true
+      },
+      "observed": {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/lmUUmQru2HtKvQkRDVeD/finishCredited/once",
+        "id": "once",
+        "at": 1792192816304
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "finish-stages",
+      "title": "חתימת הדירוג והשלמת כל שלבי המחזור נשמרו אחרי הנוכחות",
+      "status": "passed",
+      "expected": "נוכחות ← דירוג ← סיכום ← השלמה",
+      "observed": {
+        "complete": {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/lmUUmQru2HtKvQkRDVeD/finishStages/complete",
+          "id": "complete",
+          "at": 1792192821136
+        },
+        "standings": {
+          "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/lmUUmQru2HtKvQkRDVeD/finishStages/standings",
+          "id": "standings",
+          "at": 1792192817464,
+          "hadPointsTable": false,
+          "summaryRefreshVersion": 1,
+          "scoreCalibration": {
+            "goalsFor10": 1,
+            "assistsFor10": 2
+          }
+        }
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "qa-standing-identity",
+      "title": "מסמך הסיכום האישי שייך לחשבון ולמחזור הנכונים",
+      "status": "passed",
+      "expected": {
+        "gameId": "lmUUmQru2HtKvQkRDVeD",
+        "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "groupId": "J060YQu6QTcgk3glUDj2"
+      },
+      "observed": {
+        "gameId": "lmUUmQru2HtKvQkRDVeD",
+        "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "at": 1792192500000
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "evening-played-source",
+      "title": "מודול ההשתתפות הקנוני מאשר שהמחזור התקיים",
+      "status": "passed",
+      "expected": "happened",
+      "observed": "happened",
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "attendance-counter",
+      "title": "מונה המחזורים במועדון זקף כל מחזור שהתקיים פעם אחת, לפי מקור ההשתתפות",
+      "status": "passed",
+      "expected": 1,
+      "observed": 1,
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "community-account-counters",
+      "title": "מוני חשבון הבדיקה במועדון תואמים לסכום שורותיו במחזורי הבדיקה",
+      "status": "passed",
+      "expected": {
+        "goals": 1,
+        "assists": 0,
+        "rounds": 2,
+        "wins": 1,
+        "losses": 1,
+        "cleanSheets": 1
+      },
+      "observed": {
+        "goals": 1,
+        "assists": 0,
+        "rounds": 2,
+        "wins": 1,
+        "losses": 1,
+        "cleanSheets": 1
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "standing-score-calculation",
+      "title": "הציון השמור תואם לחישוב במודול הציון הקנוני ובכיול שנחתם",
+      "status": "passed",
+      "expected": 8.2,
+      "observed": {
+        "score": 8.2,
+        "basis": {
+          "goalsFor10": 1,
+          "assistsFor10": 2,
+          "counted": true,
+          "previousAt": null,
+          "previousScore": null
+        }
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "score-counter-once",
+      "title": "מספר ציוני המחזור וסכומם נצברו פעם אחת לכל סיכום אישי מדוד",
+      "status": "passed",
+      "expected": {
+        "count": 1,
+        "sum": 8.2
+      },
+      "observed": {
+        "count": 1,
+        "sum": 8.2
+      },
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "attendance-redelivery-experiment",
+      "title": "לא בוצע ניסוי מסירה חוזרת של אירוע סיום בייצור",
+      "status": "unproven",
+      "reason": "הסימן והמונים תואמים לזקיפה יחידה ולחתימה מלאה. אידמפוטנטיות תחת מסירה חוזרת מאומתת בבדיקות הקוד, אך לא הופעלה כאן מסירה חוזרת בייצור.",
+      "evidence": [
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "reload-reconnect",
+      "title": "חזרה לממשק וחידוש חיבור אינם מוכחים מקריאות מסד בלבד",
+      "status": "unproven",
+      "reason": "היסטוריה ומונים זהים בכמה קריאות מוכיחים יציבות נתונים בין נקודות הבדיקה, אך אין תיעוד סיבת כל קריאה או ניתוק/חיבור של הלקוח.",
+      "evidence": [
+        "data-round-four-first-commit.json",
+        "data-round-four-second-ready.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    },
+    {
+      "id": "saved-data-stability",
+      "title": "שמירות קודמות נשמרות ללא שינוי לאורך נקודות הבדיקה המאוחרות",
+      "status": "passed",
+      "expected": "המשחק הראשון לא השתנה; סיום המחזור לא הוסיף סימן שמירה",
+      "observed": {
+        "roundId": "r_mvbkmbvw_hoku9lb8",
+        "laterCheckpoints": 4
+      },
+      "evidence": [
+        "data-round-four-first-commit.json",
+        "data-round-four-second-ready.json",
+        "data-round-four-second-commit.json",
+        "data-round-four-sealed-proof.json"
+      ]
+    }
+  ]
+}

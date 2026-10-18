@@ -1,0 +1,18 @@
+{
+  "createdAtUtc": "2026-10-17T03:03:35.418744+00:00",
+  "gameId": "YEdIR3MviDK82D581ELk",
+  "phase": "בדיקת קריאה ושיקוף סיכום במסך אחרי הפעלה מחדש; לא הזרקת כשל",
+  "files": [
+    {
+      "file": "seven-summary-sdk-read-result.json",
+      "source": "tmp/live-action-production/native-qa/summary-sdk-read-result.json",
+      "originalSha256": "67998dd40602832dedf316490014d18890069f97459512c6c3905f2f156aa21f",
+      "sha256": "67998dd40602832dedf316490014d18890069f97459512c6c3905f2f156aa21f",
+      "filtered": false
+    }
+  ],
+  "notes": [
+    "קריאת cache החזירה unavailable; קריאות default ו-server החזירו 2 משחקים, 3 שערים, 2 בישולים והכרעה אחת, fromCache=false.",
+    "אבחון הקריאה מהמפענח המקורי משלים את צילומי המסך; אינו שחזור חזותי של כשל שמירה או כשל סיכום."
+  ]
+}

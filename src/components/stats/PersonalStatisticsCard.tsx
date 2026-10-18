@@ -35,27 +35,28 @@ function PitchLines() {
   </View>;
 }
 
-export function PersonalStatisticsCard({ user, stats, people, pen, highlightsLoading = false }: {
+export function PersonalStatisticsCard({ user, stats, people, pen, highlightsLoading = false, isOwn = true }: {
   user: StatisticsPerson | null;
   stats: PlayerStatsSummary;
   people: Record<string, StatisticsPerson>;
   pen: PersonalPenalties | null;
   highlightsLoading?: boolean;
+  isOwn?: boolean;
 }) {
   const relations: [keyof typeof Ionicons.glyphMap, string, NamedStat | null, (n: number) => string][] = [
     ['people-outline', he.statMostPlayedWith, stats.mostPlayedWith, he.statMostPlayedWithSub],
     ['trophy-outline', he.statMostWinsWith, stats.mostWinsWith, he.statMostWinsWithSub],
-    ['hand-right-outline', he.statMostAssistedBy, stats.mostAssistedBy, he.statMostAssistedBySub],
-    ['hand-left-outline', he.statMostAssistedTo, stats.mostAssistedTo, he.statMostAssistedToSub],
-    ['thumbs-up-outline', he.statBiggestVictim, stats.biggestVictim, he.statBiggestVictimSub],
-    ['flame-outline', he.statNemesis, stats.nemesis, he.statNemesisSub],
+    ['hand-right-outline', isOwn ? he.statMostAssistedBy : 'הכי בישל לשחקן', stats.mostAssistedBy, isOwn ? he.statMostAssistedBySub : n => `${n} בישולים לשחקן`],
+    ['hand-left-outline', isOwn ? he.statMostAssistedTo : 'הכי קיבל בישולים מהשחקן', stats.mostAssistedTo, isOwn ? he.statMostAssistedToSub : n => `${n} בישולים מהשחקן`],
+    ['thumbs-up-outline', isOwn ? he.statBiggestVictim : 'היריב שניצח הכי הרבה', stats.biggestVictim, isOwn ? he.statBiggestVictimSub : n => `${n} ניצחונות מול היריב`],
+    ['flame-outline', he.statNemesis, stats.nemesis, isOwn ? he.statNemesisSub : n => `${n} הפסדים מול היריב`],
   ];
   return <View style={s.wrap}>
     <View style={[s.card, s.identity]}>
       <UserAvatar user={user} size={64} />
       <View style={s.identityCopy}>
-        <Text style={s.name}>{user?.name || 'הכרטיס שלי'}</Text>
-        <Text style={s.subtitle}>המספרים שלך על המגרש</Text>
+        <Text style={s.name}>{user?.name || (isOwn ? 'הכרטיס שלי' : 'כרטיס השחקן')}</Text>
+        <Text style={s.subtitle}>{isOwn ? 'המספרים שלך על המגרש' : 'המספרים על המגרש'}</Text>
       </View>
     </View>
     <LinearGradient colors={['#287BFF', '#1354DC']} start={{x:0,y:0}} end={{x:1,y:1}} style={s.numbers}>
@@ -70,28 +71,28 @@ export function PersonalStatisticsCard({ user, stats, people, pen, highlightsLoa
         <Text style={s.bigNumber}>{value}</Text><Text style={s.metricText}>{label}</Text>
       </View>)}
       </View>
-      <Text style={s.heroCaption}>{stats.attendedGames>0?stats.goalsPerEvening.toFixed(1):'—'} שערים למחזור · {stats.distinctPlayers} שחקנים ששיחקת איתם</Text>
+      <Text style={s.heroCaption}>{stats.attendedGames>0?stats.goalsPerEvening.toFixed(1):'—'} שערים למחזור · {stats.distinctPlayers} {isOwn ? 'שחקנים ששיחקת איתם' : 'שחקנים ששיחק איתם'}</Text>
     </LinearGradient>
     {pen && pen.ownGoals>0?<View style={s.ownGoals}><Text style={s.subtitle}>{pen.ownGoals} שערים עצמיים</Text><Ionicons name="football-outline" size={18} color="#657696"/></View>:null}
-    <PersonalScoreChart points={stats.highlights?.points ?? []} recentCount={stats.highlights?.recentCount ?? Math.min(5,stats.attendedGames)} loading={highlightsLoading} />
+    <PersonalScoreChart isOwn={isOwn} points={stats.highlights?.points ?? []} recentCount={stats.highlights?.recentCount ?? Math.min(5,stats.attendedGames)} loading={highlightsLoading} />
     {highlightsLoading ? <Text style={s.subtitle}>טוען את נתוני המחזורים…</Text> : stats.highlights?.incomplete ? <Text style={s.subtitle}>חלק מנתוני המחזורים לא נטענו. מוצגים הנתונים הזמינים בלבד.</Text> : null}
     {stats.highlights && ((stats.highlights.bestGoals ?? 0)>0 || (stats.highlights.bestAssists ?? 0)>0) ? <>
-      <Text style={s.section}>הרגעים הבולטים שלך</Text>
+      <Text style={s.section}>{isOwn ? 'הרגעים הבולטים שלך' : 'הרגעים הבולטים'}</Text>
       <View style={s.highlights}>
         {(stats.highlights.bestGoals??0)>0&&<View style={[s.card,s.highlight,{backgroundColor:'#FFFCF4'}]}><View style={s.personCopy}><Text style={s.personTitle}>המחזור הכי פורה</Text><Text style={s.highlightNumber}>{stats.highlights.bestGoals}</Text><Text style={s.personSub}>שערים במחזור אחד</Text></View><StatisticsIllustration kind="trophy" size={55}/></View>}
         {(stats.highlights.bestAssists??0)>0&&<View style={[s.card,s.highlight,{backgroundColor:'#F3F9FF'}]}><View style={s.personCopy}><Text style={s.personTitle}>שיא בישולים</Text><Text style={s.highlightNumber}>{stats.highlights.bestAssists}</Text><Text style={s.personSub}>במחזור אחד</Text></View><StatisticsIllustration kind="boot" size={55}/></View>}
       </View><Text style={[s.subtitle,{fontSize:11}]}>לפי {stats.highlights.recordedRounds} מחזורים עם נתונים מתועדים</Text>
     </>:null}
     <View style={s.card}>
-      <Text style={s.section}>עוד על המשחק שלך</Text>
+      <Text style={s.section}>{isOwn ? 'עוד על המשחק שלך' : 'עוד על המשחק'}</Text>
       <View style={s.personalGrid}>
         <SmallStat value={stats.attendedGames>0?(stats.assists/stats.attendedGames).toFixed(1):'—'} label="בישולים למחזור" icon="shoe-cleat"/>
         <SmallStat value={stats.attendedGames>0?((stats.goals+stats.assists)/stats.attendedGames).toFixed(1):'—'} label="שערים ובישולים למחזור" icon="chart-bar"/>
-        <SmallStat value={stats.totalRegistered>0?`${stats.attendanceRate}%`:'—'} label="השתתפות במחזורים שנרשמת אליהם" icon="account-group-outline"/>
+        <SmallStat value={stats.totalRegistered>0?`${stats.attendanceRate}%`:'—'} label={isOwn ? 'השתתפות במחזורים שנרשמת אליהם' : 'השתתפות במחזורים שנרשם אליהם'} icon="account-group-outline"/>
       </View>
     </View>
     {stats.highlights?.results && <View style={s.card}>
-      <Text style={s.section}>תוצאות המשחקים שלך</Text>
+      <Text style={s.section}>{isOwn ? 'תוצאות המשחקים שלך' : 'תוצאות המשחקים'}</Text>
       <View style={s.personalGrid}><SmallStat value={stats.highlights.results.wins} label="ניצחונות" color="#139A55"/><SmallStat value={stats.highlights.results.losses} label="הפסדים" color="#DF4B50"/><SmallStat value={stats.highlights.results.ties} label="תיקו"/></View>
       <View style={s.resultBar} accessible accessibilityLabel="התפלגות תוצאות המשחקים">
         <View style={{flex:stats.highlights.results.wins,backgroundColor:'#3DC77B'}}/>
@@ -101,7 +102,7 @@ export function PersonalStatisticsCard({ user, stats, people, pen, highlightsLoa
       <Text style={[s.subtitle,{textAlign:'center',marginTop:10}]}>{stats.highlights.results.games>0?`${Math.round(stats.highlights.results.wins/stats.highlights.results.games*100)}% ניצחונות · `:''}{stats.highlights.results.games} משחקים בתוך {stats.highlights.results.rounds} מחזורים מתועדים</Text>
     </View>}
     <View style={s.card}>
-      <Text style={s.section}>החבר׳ה שלך</Text>
+      <Text style={s.section}>{isOwn ? 'החבר׳ה שלך' : 'שותפים ויריבים'}</Text>
       {relations.map(([icon, title, stat, sub], index) => {
         const person = stat ? people[stat.uid] : null;
         return <View key={title} style={[s.person, index > 0 && s.divider]}>
@@ -119,7 +120,7 @@ export function PersonalStatisticsCard({ user, stats, people, pen, highlightsLoa
       <Text style={s.section}>פנדלים</Text>
       <View style={s.penaltyGrid}>
         <View style={[s.penaltySmall,s.penaltyDivider]}><View style={s.personCopy}><Text style={s.personTitle}>בועט</Text><Text style={s.smallNumber}>{pen.penScored} מתוך {pen.penTaken}</Text><Text style={s.personSub}>{pen.penTaken>0?`${Math.round(pen.penScored/pen.penTaken*100)}% הבקעה`:'טרם נבעטו פנדלים'}</Text></View><StatisticsIllustration kind="ball" size={37}/></View>
-        <View style={s.penaltySmall}><View style={s.personCopy}><Text style={s.personTitle}>שוער</Text><Text style={s.smallNumber}>{pen.penSaved} מתוך {pen.penFaced}</Text><Text style={s.personSub}>{pen.penFaced>0?`${Math.round(pen.penSaved/pen.penFaced*100)}% עצירה`:'טרם עמדת בשער בפנדלים'}</Text></View><StatisticsIllustration kind="glove" size={37}/></View>
+        <View style={s.penaltySmall}><View style={s.personCopy}><Text style={s.personTitle}>שוער</Text><Text style={s.smallNumber}>{pen.penSaved} מתוך {pen.penFaced}</Text><Text style={s.personSub}>{pen.penFaced>0?`${Math.round(pen.penSaved/pen.penFaced*100)}% עצירה`:isOwn ? 'טרם עמדת בשער בפנדלים' : 'טרם עמד בשער בפנדלים'}</Text></View><StatisticsIllustration kind="glove" size={37}/></View>
       </View>
     </View>:null}
   </View>;

@@ -1,3 +1,4 @@
+import { overlayTheme } from '@/theme/overlays';
 // SpringSheet — wraps the inner content of a Modal-based bottom sheet
 // in a Reanimated spring entry so the panel rises with a satisfying
 // bounce instead of the default abrupt slide-up. Backdrop fades in
@@ -132,9 +133,8 @@ const styles = StyleSheet.create({
   host: {
     ...StyleSheet.absoluteFillObject,
   },
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   panelBottom: {
     position: 'absolute',

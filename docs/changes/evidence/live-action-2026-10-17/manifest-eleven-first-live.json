@@ -1,0 +1,175 @@
+{
+  "createdAtUtc": "2026-10-17T03:20:12.647898+00:00",
+  "gameId": "mBO5HqJdnOPWjRE2zMh8",
+  "groupId": "J060YQu6QTcgk3glUDj2",
+  "phase": "חלוקה ופרסום קפואים; תוספת מאוחרת לכניסה ללייב וגול ראשון ללא שעון; אין משחק חתום או סיום מחזור",
+  "counts": {
+    "passed": 43,
+    "unproven": 5
+  },
+  "countsLatestSource": "data-eleven-time-confirm-check.json",
+  "notes": [
+    "43 האימותים שייכים לביקורת ההקצאה הקפואה בלבד. ready, first-goal ומקור הגדרת הזמן המאוחר הם תוספת נפרדת.",
+    "התאמת XML המקורית הייתה לפני תיקון הכיווניות המאוחר; צילום RTL החדש נבחן בנפרד.",
+    "רק מחזור אחד עשר מתוך קריאות מעורבות; אין דואר, קוד הזמנה או מיקום."
+  ],
+  "files": [
+    {
+      "file": "data-eleven-created.json",
+      "readAt": "2026-10-17T02:14:43.591058+00:00",
+      "sha256": "c5d15046845c4df8c97df1480554b77f1edfa3ff394299e549ad26591c148b92",
+      "originalSha256": "25d8b6943337935de7d7a50bb701b4493e2e5393f75e444babbb087dfbd861bd",
+      "filtered": true
+    },
+    {
+      "file": "data-round-eleven-first-guest.json",
+      "readAt": "2026-10-17T02:15:55.505635+00:00",
+      "sha256": "b0526e60bd80e5e9caf3af727090adc4033ac02164f44f26c0b4bf848f2efee1",
+      "originalSha256": "be154ccd6658505ce1d1ca2ec3d6240a315cd8d4fe5acbc933b349e90e5861aa",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-date-edited.json",
+      "readAt": "2026-10-17T02:18:52.833154+00:00",
+      "sha256": "b06d6acc57157f0311668c78d620eba655e356bafe3974ac5cd8a2637e694253",
+      "originalSha256": "3ac681b550cdb95f80227c941dea6b245d2dc692556c0a913d7cbf56ced97e0f",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-host-joined.json",
+      "readAt": "2026-10-17T02:19:12.288936+00:00",
+      "sha256": "04a295ebb2b88c226583e10cd579f4179a3e12a3a77dba62307bb7ad2785659c",
+      "originalSha256": "afc956051357a07796492f78645b49f794594a71fe658a7f812155df6b063da8",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-full-roster.json",
+      "readAt": "2026-10-17T02:25:17.201948+00:00",
+      "sha256": "1446ac0aa5b14eb9d0fd0057d3cd16dfd682c6279d195f0d8cee827fc93ec235",
+      "originalSha256": "3bf2070cf67f78da263ece05ab151486893bd8f4e5472172f9c0f465619c84dc",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-partial-manual.json",
+      "readAt": "2026-10-17T02:30:47.021232+00:00",
+      "sha256": "0d42ee241185652d65947e672dbf0623bc75adc05974efc7a622d6d901a63dd6",
+      "originalSha256": "5a474b9d4ce2c7b46ffeeeca034b8796b0346ca19a6a3b5b4e9bd9fb276d208e",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-manual-saved.json",
+      "readAt": "2026-10-17T02:41:20.306589+00:00",
+      "sha256": "fdf51e121b11c9843ae27ded2d4729343f4aa0e6c789c4293d51e576e9e9b086",
+      "originalSha256": "5cfce0f0ffac6ef9b73adc922d2b1d684b673bd92b66485cf2b706863f4373df",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-regenerated.json",
+      "readAt": "2026-10-17T02:43:20.653843+00:00",
+      "sha256": "3424fc4f630f5f434d98aa75a229cc93e930d067c0cde1e3fe83fd72cc75e88d",
+      "originalSha256": "24e9c53f93999f9b203e6823122969cde730e7ca4508c054c305fc50c30c1797",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-regenerated-traced.json",
+      "readAt": "2026-10-17T02:49:09.514356+00:00",
+      "sha256": "a7717d76f0fea11b6d7d48c771f436a69faa0052e3061af72b654063fccbb3b8",
+      "originalSha256": "be4c1a818c95cb529f01d2c3a0e30387671b5f1dd4ef4ffa729bedf0b2a1fee7",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-regenerated-stream.json",
+      "readAt": "2026-10-17T03:02:36.531653+00:00",
+      "sha256": "30da40524089973bf8bff4cae175796d3fa8beea4e2f939887a32bd7eb8176f9",
+      "originalSha256": "d5adb8e4da5f87d8978657c79a21f46d0d856ea6310536676668918247a0097a",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-published-time-ready.json",
+      "readAt": "2026-10-17T03:06:15.899749+00:00",
+      "sha256": "3a1ba481dc062da15987301266ae1c7b91b320e0d48f6c732384891773fc3556",
+      "originalSha256": "62d3959f1fc4d40fbdc57bf6bcc2582df2864501738b4ce2f2ad1c6a39288745",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-time-confirm-check.json",
+      "readAt": "2026-10-17T03:06:54.668518+00:00",
+      "sha256": "9cef79795cdb192052ab515b003617a4fa595cbd7de3a7344e3463a2f7a09eb5",
+      "originalSha256": "eacf611984593ae92be129fbba3411295faa679be02cd2c221305f3445607821",
+      "filtered": true
+    },
+    {
+      "file": "test-identities.json",
+      "readAt": null,
+      "sha256": "e6709573a4f3ca99c8a147fb126387fd9e37aa64b02adc177640d1f64bd26922",
+      "originalSha256": "e6709573a4f3ca99c8a147fb126387fd9e37aa64b02adc177640d1f64bd26922",
+      "filtered": false
+    },
+    {
+      "file": "guests-eleven-receipt.json",
+      "readAt": null,
+      "sha256": "3dad0370a71cccc5f35c6d8c716382c2832b09fda380610f51cd564a886d1a35",
+      "originalSha256": "3dad0370a71cccc5f35c6d8c716382c2832b09fda380610f51cd564a886d1a35",
+      "filtered": false
+    },
+    {
+      "file": "eleven-manual-local-proof.json",
+      "readAt": null,
+      "sha256": "90adac4a8934d21ed1f0f4b9c8a6bc6f4616d4d2a8e63fc3791cf2c2a345f706",
+      "originalSha256": "90adac4a8934d21ed1f0f4b9c8a6bc6f4616d4d2a8e63fc3791cf2c2a345f706",
+      "filtered": false
+    },
+    {
+      "file": "eleven-native-draft-stream-proof.json",
+      "readAt": null,
+      "sha256": "62a87214b649b524777fc5638bb60338ac5db471bf05f16129a245f1746a29a3",
+      "originalSha256": "62a87214b649b524777fc5638bb60338ac5db471bf05f16129a245f1746a29a3",
+      "filtered": false
+    },
+    {
+      "file": "data-eleven-time-ready-confirmed.json",
+      "readAt": "2026-10-17T03:10:10.286975+00:00",
+      "sha256": "6a0a72a9650ea9de3276a3c761e09768d0c2fed8dc7c908bf2921cfeeba392c2",
+      "originalSha256": "1c244cf551d1fae61c7e04ca0bf6488583e9c724fbe0bf77caa77902d0728ff3",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-ready.json",
+      "readAt": "2026-10-17T03:14:25.386288+00:00",
+      "sha256": "9bc7ad904220d8b8b5eebe137a733c03b650b210fe066fc448ce7b04c1d3972e",
+      "originalSha256": "0a36dd6f28c7d6d054b6898f58258b580637cb738f82339bb7d37881b98874bf",
+      "filtered": true
+    },
+    {
+      "file": "data-eleven-first-goal.json",
+      "readAt": "2026-10-17T03:15:27.462851+00:00",
+      "sha256": "c0ed7202a3adfc2736dffd8b3171f62304174d3c4cd1a8b05dc3ce175fe1052d",
+      "originalSha256": "82781e2ea0830d27e9e79af304ada50c69946a1295393788af8523153ac75f52",
+      "filtered": true
+    },
+    {
+      "file": "audit-eleven-allocation-partial-data.md",
+      "sha256": "de7e8f64242788c33a83b884da294730514f5df022df74134544774c92653dbd",
+      "originalSha256": "de7e8f64242788c33a83b884da294730514f5df022df74134544774c92653dbd",
+      "filtered": false
+    },
+    {
+      "file": "audit-eleven-allocation-partial-data.json",
+      "sha256": "8d341e5f2a507d33ddf9bb610b5812cda65e6bb0ae4e6208322144b9aea54fde",
+      "originalSha256": "8d341e5f2a507d33ddf9bb610b5812cda65e6bb0ae4e6208322144b9aea54fde",
+      "filtered": false
+    },
+    {
+      "file": "eleven-native-draft-stream-proof.md",
+      "sha256": "a6da66e94c6b40bc8bdfc54c0bc571f01f8c6dd52c8ae8fd5547742728f6bfec",
+      "originalSha256": "a6da66e94c6b40bc8bdfc54c0bc571f01f8c6dd52c8ae8fd5547742728f6bfec",
+      "filtered": false
+    },
+    {
+      "file": "eleven-regenerate-stream-ui-proof.xml",
+      "sha256": "e01de415fb6736bc4fb931f6e1e6075ab1c3aae105098301028020ef4b649337",
+      "originalSha256": "e01de415fb6736bc4fb931f6e1e6075ab1c3aae105098301028020ef4b649337",
+      "filtered": false
+    }
+  ]
+}

@@ -24,6 +24,7 @@ export type StatsScope =
 export interface ScopeSeason {
   seasonId: string;
   no: number;
+  nonSeason?: boolean;
 }
 
 export interface ScopeOption {
@@ -31,6 +32,11 @@ export interface ScopeOption {
   text: string;
   active: boolean;
   scope: StatsScope;
+}
+
+/** Archived non-competitive periods are lifetime data too. */
+export function hasArchivedStats(seasons: GroupSeasons | undefined): boolean {
+  return (seasons?.count ?? 0) > 0 || seasons?.hasArchivedPeriods === true;
 }
 
 /**
@@ -45,7 +51,7 @@ export function buildScopeOptions(
   scope: StatsScope,
 ): ScopeOption[] {
   return [
-    {
+    ...(seasons?.enabled === false ? [] : [{
       key: 'current',
       // A club that switched seasons OFF has no running season: the switch-off
       // closed it, and the live rows hold everything played since. The line
@@ -55,11 +61,11 @@ export function buildScopeOptions(
           ? he.communityStatsScopeSinceOff(seasons.count ?? 1)
           : he.communityStatsScopeCurrent(seasons?.currentNo ?? 1),
       active: scope.k === 'current',
-      scope: { k: 'current' },
-    },
+      scope: { k: 'current' } as StatsScope,
+    }]),
     // Only once there IS a closed season to add — offered to a club with none
     // it was a second line identical to the first.
-    ...(pastSeasons.length > 0
+    ...((pastSeasons.length > 0 || seasons?.enabled === false)
       ? [
           {
             key: 'all',
@@ -69,7 +75,7 @@ export function buildScopeOptions(
           },
         ]
       : []),
-    ...pastSeasons.map((ps) => ({
+    ...pastSeasons.filter((ps) => !ps.nonSeason).map((ps) => ({
       key: ps.seasonId,
       text: he.communityStatsScopePast(ps.no),
       active: scope.k === 'season' && scope.id === ps.seasonId,

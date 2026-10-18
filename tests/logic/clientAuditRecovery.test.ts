@@ -58,7 +58,7 @@ test('chat read and scroll effects see a new message in a full 100-message slidi
   for (const needle of ['chatService.markChatRead', 'listRef.current?.scrollToEnd']) {
     const effect = find(file, n => ts.isCallExpression(n) && n.expression.getText(file) === 'useEffect' && !!n.arguments[0]?.getText(file).includes(needle)) as ts.CallExpression;
     const deps = (shift: number) => {
-      const context: any = { messages: Array.from({ length: 100 }, (_, i) => ({ id: String(i + shift) })), me: { id: 'a' }, scope: 'community', parentId: 'g', denied: false, reduced: false };
+      const context: any = { messages: Array.from({ length: 100 }, (_, i) => ({ id: String(i + shift) })), me: { id: 'a' }, scope: 'community', parentId: 'g', denied: false, reduced: false, focused: true };
       context.latestMessageId = expression(latest.initializer!.getText(file), context);
       return expression(effect.arguments[1].getText(file), context);
     };
@@ -135,7 +135,7 @@ test('statistics distinguishes compute failure from empty and retries without lo
   let stats: any = { attendedGames: 8 }, failed = false, loading = false;
   const compute = jest.fn().mockRejectedValueOnce(Error('offline')).mockResolvedValueOnce({ attendedGames: 9 });
   const run = expression(effect.arguments[0].getText(file), {
-    statsOwnerRef: { current: 'me' }, localUser: { id: 'me', stats: {} }, userService: { getUserById: async () => ({ stats: {} }) }, playerStatsService: { compute },
+    targetId:'me',ownerKey:'me:me',otherPlayer:false,setRestricted(){},statsOwnerRef: { current: 'me:me' }, localUser: { id: 'me', stats: {} }, userService: { getUserById: async () => ({ stats: {} }) }, playerStatsService: { compute },
     setStats: (s: any) => { stats = s; }, setFailed: (s: boolean) => { failed = s; }, setLoading: (s: boolean) => { loading = s; }, setHighlightsLoading() {}, setPen() {}, setPeople() {}, logError() {},
   });
   run(); await new Promise(setImmediate);
@@ -144,23 +144,30 @@ test('statistics distinguishes compute failure from empty and retries without lo
   expect(stats.attendedGames).toBe(9); expect(failed).toBe(false); expect(loading).toBe(false);
 });
 
-test('round chat treats failed read and genuinely absent round as different states', async () => {
+test('round chat treats listener failure, an absent round and live updates as different states', () => {
   const file = ast('src/screens/chat/GameChatScreen.tsx');
-  const effect = find(file, n => ts.isCallExpression(n) && n.expression.getText(file) === 'useEffect') as ts.CallExpression;
-  let failed = false, loading = false, game: any;
-  const read = jest.fn().mockRejectedValueOnce(Error('offline')).mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'g' });
-  const run = expression(effect.arguments[0].getText(file), {
-    gameId: 'g', gameService: { getGameById: read }, setFailed: (s: boolean) => { failed = s; }, setLoading: (s: boolean) => { loading = s; }, setGame: (s: any) => { game = s; }, logEvent() {}, AnalyticsEvent: {},
+  const effect = find(file, n => ts.isCallExpression(n) && n.expression.getText(file) === 'useEffect' && n.arguments[0].getText(file).includes('subscribeGameParent')) as ts.CallExpression;
+  let failed=false, loading=false, game:any, next!:(g:any)=>void, fail!:(e:any)=>void;
+  const stop=jest.fn();
+  const run=expression(effect.arguments[0].getText(file), {
+    gameId:'g',qaState:undefined,me:{id:'me'},
+    chatService:{subscribeGameParent:(_id:string,n:any,f:any)=>{next=n;fail=f;return stop;}},
+    setFailed:(s:boolean)=>{failed=s;},setLoading:(s:boolean)=>{loading=s;},setGame:(s:any)=>{game=s;},logEvent(){},AnalyticsEvent:{},
   });
-  run(); await new Promise(setImmediate); expect(failed).toBe(true); expect(loading).toBe(false);
-  run(); await new Promise(setImmediate); expect(failed).toBe(false); expect(game).toBeNull();
-  run(); await new Promise(setImmediate); expect(failed).toBe(false); expect(game.id).toBe('g');
+  const unsubscribe=run(); expect(loading).toBe(true);
+  fail(Error('offline')); expect(failed).toBe(true);expect(loading).toBe(false);
+  run(); next(null); expect(failed).toBe(false);expect(game).toBeNull();
+  next({id:'g',status:'active'});expect(game.status).toBe('active');
+  next({id:'g',status:'finished'});expect(game.status).toBe('finished');
+  fail({code:'permission-denied'});expect(failed).toBe(false);expect(game).toBeNull();
+  unsubscribe();expect(stop).toHaveBeenCalledTimes(1);
 });
 
 
 test('referral services propagate read errors all the way to their screens and achievements', async () => {
   const service = load('src/services/userService.ts', {
     '@/firebase/config': { USE_MOCK_DATA: false },
+    './publicPlayerService': { playerReadCall: async () => { throw Error('offline'); } },
     '@/firebase/firestore': { col: { users: () => ({}) } },
     'firebase/firestore': { query() {}, where() {}, getDocs: async () => { throw Error('offline'); }, getCountFromServer: async () => { throw Error('offline'); } },
     './errorLog': { logError() {}, isExpectedDenial: () => false },
@@ -183,7 +190,7 @@ test('statistics service propagates source failures instead of reporting zero at
 test('statistics clears previous account data even when the next account read fails',async()=>{
  const file=ast('src/screens/profile/StatisticsScreen.tsx');const effect=find(file,n=>ts.isCallExpression(n)&&n.expression.getText(file)==='useEffect') as ts.CallExpression;
  let stats:any={attendedGames:99},pen:any={penTaken:20},people:any={old:{id:'old'}},failed=false;
- const ctx={statsOwnerRef:{current:'old'},localUser:{id:'new'},setStats:(s:any)=>{stats=s;},setPen:(s:any)=>{pen=s;},setPeople:(s:any)=>{people=s;},setFailed:(s:boolean)=>{failed=s;},setLoading(){},setHighlightsLoading(){},logError(){},userService:{getUserById:async()=>{throw Error('offline');}}};
+ const ctx={targetId:'new',ownerKey:'new:new',otherPlayer:false,setRestricted(){},statsOwnerRef:{current:'old:old'},localUser:{id:'new'},setStats:(s:any)=>{stats=s;},setPen:(s:any)=>{pen=s;},setPeople:(s:any)=>{people=s;},setFailed:(s:boolean)=>{failed=s;},setLoading(){},setHighlightsLoading(){},logError(){},userService:{getUserById:async()=>{throw Error('offline');}}};
  expression(effect.arguments[0].getText(file),ctx)();await new Promise(setImmediate);
  expect(stats).toBeNull();expect(pen).toBeNull();expect(people).toEqual({});expect(failed).toBe(true);
 });

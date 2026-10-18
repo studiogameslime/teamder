@@ -27,10 +27,15 @@ const copy = (value: any) => JSON.parse(JSON.stringify(value));
 function store() {
   const data = new Map<string, any>();
   let failure: ((paths: string[]) => boolean) | undefined;
-  const snapshot = (key: string) => ({ exists: data.has(key), id: key.split('/').pop(), ref: ref(key), data: () => copy(data.get(key) ?? {}), get: (field: string) => data.get(key)?.[field] });
+  const snapshot = (key: string) => ({ exists: data.has(key), updateTime: 1, id: key.split('/').pop(), ref: ref(key), data: () => copy(data.get(key) ?? {}), get: (field: string) => data.get(key)?.[field] });
   const merge = (target: any, patch: any): any => {
     const next = { ...target };
     for (const [key, value] of Object.entries(patch) as [string, any][]) {
+      if (key.includes('.')) {
+        const [head,...tail] = key.split('.');
+        next[head] = merge(next[head] ?? {}, { [tail.join('.')]: value });
+        continue;
+      }
       if (value?.increment !== undefined) next[key] = (next[key] ?? 0) + value.increment;
       else if (value && typeof value === 'object' && !Array.isArray(value)) next[key] = merge(next[key] ?? {}, value);
       else next[key] = value;
@@ -51,10 +56,16 @@ function store() {
     };
   }
   const db = { collection: ref, getAll: async (...refs: any[]) => Promise.all(refs.map(ref => ref.get())), batch: () => {
-    const ops: { type: string; path: string; value: any }[] = [];
+    const ops: { type: string; path: string; value: any; precondition?: any }[] = [];
     return { create: (ref: any, value: any) => ops.push({ type: 'create', path: ref.path, value }),
       set: (ref: any, value: any) => ops.push({ type: 'set', path: ref.path, value }),
+      update: (ref: any, value: any, precondition?: any) => ops.push({ type: 'update', path: ref.path, value, precondition }),
       commit: async () => {
+        for (const op of ops) {
+          if (ops.some(other => other !== op && other.path === op.path && JSON.stringify(other.precondition) !== JSON.stringify(op.precondition))) {
+            throw new Error('Cannot collapse mutations with different version preconditions');
+          }
+        }
         if (failure?.(ops.map(op => op.path))) throw new Error('injected batch failure');
         if (ops.some(op => op.type === 'create' && data.has(op.path))) throw { code: 6 };
         // All validation happens first, matching an atomic Firestore batch.
@@ -146,6 +157,7 @@ describe('real chunked chemistry rollup recovery', () => {
 describe('summary and baseline use the actual atomic write body', () => {
   it('a failed summary batch writes no summary or counter, then retries once', async () => {
     const w = store();
+    w.data.set('groups/club', {});
     const statements = summaryFunction.body!.statements;
     const start = statements.findIndex(statement => statement.getText(source).startsWith('const next = nextRecordBaseline'));
     const end = statements.findIndex(statement => statement.getText(source).startsWith('console.log('));
@@ -153,12 +165,12 @@ describe('summary and baseline use the actual atomic write body', () => {
     expect(body).toContain('batch.create(summaryRef'); expect(body).not.toContain('summaryRef.create(');
     let failed = false; w.fail(() => { if (!failed) { failed = true; return true; } return false; });
     const context: any = { module: { exports: {} }, db: w.db, admin, gameId: 'g', groupId: 'club',
-      summaryRef: w.ref('roundSummaries/g'), summary: { stats: { rounds: 1 } }, lateConfirmation: false,
+      summaryRef: w.ref('roundSummaries/g'), summary: { stats: { rounds: 1 } }, correctionBasis: { players: [] }, lateConfirmation: false,
       nextRecordBaseline: () => ({}), baseline: {}, players: [], rec: {}, args: { at: 100 },
       num: (v: any) => typeof v === 'number' ? v : 0, seasonRoundsAtStart: 0, personalBests: {},
-      guardFinishSeasonBatch: async () => {},
+      assertSeasonOpenForGame,
     };
-    vm.runInNewContext(compile('module.exports = async function(){' + body + '}'), context);
+    vm.runInNewContext(compile(seasonGuard.getText(source) + '\nmodule.exports = async function(){' + body + '}'), context);
     await expect(context.module.exports()).rejects.toThrow('injected');
     expect(w.data.has('roundSummaries/g')).toBe(false); expect(w.data.has('clubRecords/club')).toBe(false);
     await context.module.exports(); await context.module.exports();

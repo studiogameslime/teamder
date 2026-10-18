@@ -114,3 +114,10 @@ describe('a block that cannot be trusted', () => {
     expect(s?.currentId).toBe('s4');
   });
 });
+
+
+it('retains the off-period boundary and lifecycle recovery state from actual server data', () => {
+  const s = readGroupSeasons({ ...serverBlock(), enabled: false, disabledAt: 123, operation: { token: 'private', kind: 'enableClubSeasons', until: 0, failed: true } });
+  expect(s?.disabledAt).toBe(123);
+  expect(s?.operation).toEqual({ kind: 'enableClubSeasons', until: 0, failed: true });
+});

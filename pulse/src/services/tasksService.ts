@@ -14,7 +14,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import { listAll, patchDoc, deleteDoc } from './firestoreRest';
 import { cached, invalidate } from './cache';
 import { readClaude, type ClaudeCompletion } from './claudeWork';

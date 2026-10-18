@@ -1,0 +1,10 @@
+{
+  "readCompletedAt": "2026-10-18T00:59:57.950312+00:00",
+  "sourceSha256": "a3b4de90c27c3445957c9ffd87647b5bef69cdd59b95662383e97f812c166197",
+  "checks": {
+    "allThreeNewRoundsUnchanged": true,
+    "businessCountersUnchanged": true,
+    "oldRoundProtectionUnchanged": true
+  },
+  "limits": "Business counters exclude document updatedAt metadata. Three full new round rows are compared separately; old-round protections use the existing reader digests. Authentication lifecycle tests do not prove signup or every provider."
+}

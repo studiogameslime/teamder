@@ -10,9 +10,12 @@
 // a fixed count.
 
 import type { DraftTeamsResult, GameFormat, UserId } from '@/types';
+import { balanceWithFill, fillAverage } from './balancedFill';
 import { TEAM_COUNT_MAX, TEAM_COUNT_MIN, teamSizeFromFormat } from '@/types';
 import {
   balanceCore,
+  balanceBand,
+  repeatPenalty,
   buildPairRepeatWeights,
   NEUTRAL_RATING,
   normalizeRating,
@@ -127,6 +130,7 @@ export function reconstructPicks(draft: DraftTeamsResult): string[] {
 // the draft shape the app stores (captain first in `playerIds`).
 
 export interface BalanceTeamsInput {
+  completionMode?: 'balanced';
   /** Roster ids: real uids + prefixed `guest:<id>`. */
   playerIds: string[];
   /** Roster id → rating. A missing entry = unrated (scored NEUTRAL_RATING). */
@@ -202,13 +206,18 @@ export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
       ? normalizeRating(ratings[id])
       : NEUTRAL_RATING;
 
-  const draftTeams = core.teams.map((ids, index) => {
+  const withFill = input.completionMode === 'balanced' && numTeams > 2 && unique.length < numTeams * perTeam;
+  const finalTeams = withFill ? balanceWithFill(core.teams, perTeam, ratings) : core.teams;
+  const averages = finalTeams.map(ids => fillAverage(ids, ratings));
+  const actualGap = Math.max(...averages) - Math.min(...averages);
+  const draftTeams = finalTeams.map((ids, index) => {
     // Captain = the highest-rated member (ties → first after the stable sort).
     const ordered = ids.slice().sort((a, b) => ratingOf(b) - ratingOf(a));
     return { index, captainId: ordered[0], playerIds: ordered };
   });
 
   const result: DraftTeamsResult = {
+    ...(withFill ? {completionMode: 'balanced' as const, fillMode: 'temporary' as const} : {}),
     method: 'snake',
     numTeams: draftTeams.length,
     createdAt: Date.now(),
@@ -218,13 +227,13 @@ export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
   return {
     result,
     unratedCount: core.unratedCount,
-    teamAverages: core.teams.map((ids) => {
+    teamAverages: finalTeams.map((ids) => {
       const avg = ids.reduce((s, id) => s + ratingOf(id), 0) / (ids.length || 1);
       return Math.round(avg * 10) / 10;
     }),
-    gap: core.gap,
-    repeat: core.repeat,
-    fallback: core.fallback,
-    band: core.band,
+    gap: actualGap,
+    repeat: repeatPenalty(finalTeams.map(ids => ({ids, size: ids.length, total: ids.reduce((s,id)=>s+ratingOf(id),0)})), input.history?.length ? buildPairRepeatWeights(input.history) : undefined),
+    fallback: actualGap > 0.2,
+    band: balanceBand(actualGap),
   };
 }

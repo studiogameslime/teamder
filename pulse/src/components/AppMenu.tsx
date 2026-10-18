@@ -60,7 +60,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: 'פיתוח',
     items: [
-      { route: 'Messages', label: 'הודעות', icon: 'chatbubble-ellipses', tint: '#0EA5E9' },
+      { route: 'Messages', label: 'שיחות עם משתמשים', icon: 'chatbubble-ellipses', tint: '#0EA5E9' },
       { route: 'DevInbox', label: 'תיבת פיתוח', icon: 'construct', tint: '#A855F7' },
       { route: 'Ideas', label: 'רעיונות', icon: 'bulb', tint: '#FACC15' },
       { route: 'Chats', label: "צ'אטים", icon: 'chatbubbles', tint: '#06B6D4' },

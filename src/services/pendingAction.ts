@@ -404,8 +404,9 @@ export async function consumePendingAction(
   now: number = Date.now(),
 ): Promise<PendingAction | null> {
   const action = await readPendingAction(now);
-  if (action) await clearPendingActionIfMatches(action);
-  return action;
+  // Concurrent readers may all see the same value before the queued clear.
+  // Only the reader that actually claimed it may navigate with it.
+  return action && await clearPendingActionIfMatches(action) ? action : null;
 }
 
 function safeJson(raw: string): unknown {

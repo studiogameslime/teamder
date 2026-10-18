@@ -1,0 +1,53 @@
+// Local integration checks only: refuses any real project or non-loopback host.
+const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
+const admin = require('../functions/node_modules/firebase-admin');
+if (!/^127\.0\.0\.1:\d+$/.test(process.env.FIRESTORE_EMULATOR_HOST || '') || !process.env.GCLOUD_PROJECT?.startsWith('demo-')) throw new Error('Local demo emulator required');
+admin.initializeApp({ projectId: process.env.GCLOUD_PROJECT });
+const db = admin.firestore();
+const { recordClientError, errorFingerprint } = require('../functions/lib/clientDiagnostics');
+const { setClubAdminRating, getClubAdminRatings } = require('../functions/lib/clubAdminRatings');
+const uid = 'security-integration-owner';
+const fields = { operation: 'security-integration', lastMessage: 'local check', count: 1, lastUserId: 'forged', status: 'resolved', arbitrary: 'blocked' };
+(async () => {
+  await assert.rejects(recordClientError.run({ data: fields }), /Session required/);
+  await recordClientError.run({ auth: { uid }, data: fields });
+  const error = db.doc(`errors/${errorFingerprint(fields)}`);
+  let stored = (await error.get()).data();
+  assert.equal(stored.lastUserId, uid); assert.equal(stored.status, 'new'); assert.equal(stored.arbitrary, undefined);
+  await error.update({ status: 'resolved' });
+  await recordClientError.run({ auth: { uid }, data: fields });
+  stored = (await error.get()).data(); assert.equal(stored.status, 'resolved'); assert.equal(stored.count, 2);
+  await db.doc(`serverRateLimits/${uid}_diagnostics`).set({ start: Date.now(), count: 1000 });
+  await assert.rejects(recordClientError.run({ auth: { uid }, data: fields }), /rate limit/);
+  const club = db.doc('groups/security-integration-club');
+  await club.set({ adminIds: [uid], playerIds: [uid, 'security-peer'], adminRatings: { [uid]: 4, 'security-peer': 3, outsider: 5 } });
+  for (let i = 0; i < 2; i++) {
+    const result = spawnSync(process.execPath, ['scripts/security-migrate-club-ratings.cjs', '--apply'], { cwd: require('node:path').resolve(__dirname, '..'), env: process.env, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr); console.log(result.stdout.trim());
+  }
+  assert.equal((await club.get()).data().adminRatings, undefined);
+  assert.deepEqual((await club.collection('private').doc('adminRatings').get()).data().ratings, { [uid]: 4, 'security-peer': 3 });
+  await assert.rejects(setClubAdminRating.run({ auth: { uid: 'outsider', token: { firebase: { sign_in_provider: 'password' } } }, data: { groupId: club.id, playerId: uid, rating: 5 } }), /Club admin required/);
+  await setClubAdminRating.run({ auth: { uid, token: { firebase: { sign_in_provider: 'password' } } }, data: { groupId: club.id, playerId: 'security-peer', rating: 4.5 } });
+  assert.equal((await club.collection('private').doc('adminRatings').get()).data().ratings['security-peer'], 4.5);
+  process.env.TEAMDER_LEGACY_CLUB_RATINGS_COMPAT = 'true';
+  await club.collection('private').doc('adminRatings').delete();
+  await club.set({ adminIds: [uid], playerIds: [uid, 'security-peer'], adminRatings: { [uid]: 4, 'security-peer': 3 } });
+  const call = (who, data = {groupId: club.id}) => ({ auth: { uid: who, token: { firebase: { sign_in_provider: 'password' } } }, data });
+  assert.deepEqual((await getClubAdminRatings.run(call('security-peer'))).ratings, { [uid]: 4, 'security-peer': 3 });
+  await assert.rejects(getClubAdminRatings.run(call('outsider')), /private/);
+  await club.update({ hideInternalRating: true });
+  await assert.rejects(getClubAdminRatings.run(call('security-peer')), /private/);
+  await setClubAdminRating.run(call(uid, { groupId: club.id, playerId: 'security-peer', rating: 4.5 }));
+  assert.equal((await club.get()).data().adminRatings['security-peer'], 4.5);
+  assert.equal((await club.collection('private').doc('adminRatings').get()).exists, false);
+  await club.update({ 'adminRatings.security-peer': 2.5 });
+  assert.equal((await getClubAdminRatings.run(call(uid))).ratings['security-peer'], 2.5);
+  delete process.env.TEAMDER_LEGACY_CLUB_RATINGS_COMPAT;
+  console.log('PASS: staged rating compatibility, member/admin access, hidden/outsider denied, old-client update visible, no migration');
+  await error.delete(); await db.doc(`serverRateLimits/${uid}_diagnostics`).delete();
+  await club.collection('private').doc('adminRatings').delete(); await club.delete();
+  console.log('PASS: unauthenticated ingest denied, identity/status whitelist, rate limit, rating migration twice, outsider rating denied');
+  await admin.app().delete();
+})().catch(async error => { console.error(error); process.exitCode = 1; await admin.app().delete(); });

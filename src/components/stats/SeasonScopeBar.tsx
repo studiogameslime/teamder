@@ -42,12 +42,14 @@ export {
  */
 export function SeasonScopeBar({
   options,
+  appearance,
   open,
   onToggle,
   onSelect,
   title,
 }: {
   options: readonly ScopeOption[];
+  appearance?: 'club';
   open: boolean;
   onToggle: () => void;
   onSelect: (scope: StatsScope) => void;
@@ -69,20 +71,20 @@ export function SeasonScopeBar({
           because it is written first), the chosen scope filling the middle,
           the chevron closing the row on the left. */}
       <Pressable
-        style={styles.bar}
+        style={[styles.bar, appearance === 'club' && { backgroundColor: '#FFFFFF', borderRadius: 9, height: 38, borderWidth: 1, borderColor: '#E0E8F0', elevation: 0, shadowOpacity: 0 }]}
         onPress={onToggle}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         accessibilityLabel={he.communityStatsScopeLabel}
       >
-        <ChangeMotion triggerKey={title ?? titleOf(options)} pulse><Ionicons name="calendar" size={20} color={clubAccent.blue} /></ChangeMotion>
-        <Text style={styles.current} numberOfLines={1}>
+        {appearance === 'club' ? null : <ChangeMotion triggerKey={title ?? titleOf(options)} pulse><Ionicons name="calendar" size={20} color={appearance === 'club' ? '#2463F5' : clubAccent.blue} /></ChangeMotion>}
+        <Text style={[styles.current, appearance === 'club' && { fontSize: 13, color: '#13213F', fontWeight: '600' }]} numberOfLines={1}>
           {title ?? titleOf(options)}
         </Text>
         <Ionicons
           name={open ? 'chevron-up' : 'chevron-down'}
           size={18}
-          color={clubAccent.blue}
+          color={appearance === 'club' ? '#2463F5' : clubAccent.blue}
         />
       </Pressable>
       <HeightReveal visible={open}>
@@ -103,7 +105,7 @@ export function SeasonScopeBar({
                 {o.text}
               </Text>
               {o.active ? (
-                <Ionicons name="checkmark" size={18} color={clubAccent.blue} />
+                <Ionicons name="checkmark" size={18} color={appearance === 'club' ? '#2463F5' : clubAccent.blue} />
               ) : null}
             </Pressable>
           ))}

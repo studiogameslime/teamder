@@ -38,8 +38,15 @@ export interface SeasonCoverage {
  * closed before 20.09.2026 has winners with no such field and must keep
  * rendering as it does now.
  */
-export function readSeasonCoverage(raw: unknown): SeasonCoverage | undefined {
-  const c = (raw as { coverage?: unknown } | null | undefined)?.coverage as
+export function readSeasonCoverage(raw: unknown, userId?: string): SeasonCoverage | undefined {
+  const value = raw as { coverage?: unknown; coverageByWinner?: unknown } | null | undefined;
+  const map = value?.coverageByWinner;
+  // New archives carry each winner's real sample. Do not fall back to a
+  // different holder's shared number when a per-winner map is present.
+  const candidate = userId && map !== undefined
+    ? (map && typeof map === 'object' ? (map as Record<string, unknown>)[userId] : undefined)
+    : value?.coverage;
+  const c = candidate as
     | { rated?: unknown; of?: unknown }
     | null
     | undefined;
@@ -47,5 +54,6 @@ export function readSeasonCoverage(raw: unknown): SeasonCoverage | undefined {
   const rated = typeof c.rated === 'number' && Number.isFinite(c.rated) ? c.rated : 0;
   const of = typeof c.of === 'number' && Number.isFinite(c.of) ? c.of : 0;
   if (of <= 0 || rated <= 0 || rated > of) return undefined;
+  if (userId && map !== undefined && rated === of) return undefined;
   return { rated, of };
 }

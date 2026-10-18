@@ -23,7 +23,7 @@ test('pre-auth taps persist and are delivered when existing guest authentication
   recordOnboardingActivity('entry_intent_selected', { intent: 'invite', password: 'never' });
   await drain(); await jest.advanceTimersByTimeAsync(2000);
   expect(mockSend).not.toHaveBeenCalled();
-  expect(JSON.parse(mockStorage.get(key)!)[0].params).toEqual({ intent: 'invite' });
+  expect(JSON.parse(mockStorage.get(key)!)[0].params).toEqual({ intent: 'invite', entry_source: 'unknown' });
   mockUser = { uid: 'guest' };
   mockSend.mockImplementation(async ({ events }) => ({ data: { acknowledged: events.map((event: any) => event.id) } }));
   mockAuthChanged(); await jest.advanceTimersByTimeAsync(2000); await drain();
@@ -53,7 +53,7 @@ test('temporary storage failure keeps the tap in memory for the next attempt', a
   recordOnboardingActivity('entry_intent_selected', { intent: 'find_game' });
   await drain(); await jest.advanceTimersByTimeAsync(4000); await drain();
   expect(mockSend).toHaveBeenCalledTimes(1);
-  expect(mockSend.mock.calls[0][0].events[0].params).toEqual({ intent: 'find_game' });
+  expect(mockSend.mock.calls[0][0].events[0].params).toEqual({ intent: 'find_game', entry_source: 'unknown' });
   expect(JSON.parse(mockStorage.get(key)!)).toEqual([]);
 });
 

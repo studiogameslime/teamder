@@ -1,0 +1,971 @@
+{
+  "phase": "החזרת03 במשחק השני השאירה01 באדומים:12/10/11; זקיפות המשחק הראשון נשמרו",
+  "gameId": "cF3CjQbLH8vzo7uaFqHx",
+  "sources": [
+    {
+      "file": "data-eleven-full-roster.json",
+      "sha256": "5f9ee12cf32b6c7ab0d23bb1ca9b63575aa105cb9a49fed7db16786396222056",
+      "readCompletedAt": "2026-10-17T23:31:13.831892+00:00"
+    },
+    {
+      "file": "data-eleven-captains-saved.json",
+      "sha256": "03b5cb94bd737baacf8bf9bb09a12685cca4d7e57eb1e99fd26ec5fe737fe784",
+      "readCompletedAt": "2026-10-17T23:41:36.862138+00:00"
+    },
+    {
+      "file": "data-eleven-player-left.json",
+      "sha256": "bb4b1d1098d3135ff1026ec4d9de8e23aaac6a0ca0fd562a39a6f59bf28ac5f5",
+      "readCompletedAt": "2026-10-17T23:44:36.120134+00:00"
+    },
+    {
+      "file": "data-eleven-permanent-move.json",
+      "sha256": "35586a99de25272833ad21f353f7af93c143807249483d5c2058a0d321c64a87",
+      "readCompletedAt": "2026-10-17T23:48:28.155839+00:00"
+    },
+    {
+      "file": "data-eleven-permanent-restored.json",
+      "sha256": "fef6e313460edd09c77dde8e39926538f148bc77e3c5d6b629373ec0eb2a98ba",
+      "readCompletedAt": "2026-10-17T23:49:35.223087+00:00"
+    },
+    {
+      "file": "data-eleven-auto-refill-saved.json",
+      "sha256": "b6ea1c0126d58dab6f08faa979c0c622096603bc445ce3ce5b5c605a23031b8f",
+      "readCompletedAt": "2026-10-17T23:58:57.339073+00:00"
+    },
+    {
+      "file": "data-eleven-auto-refill-restored.json",
+      "sha256": "2e9d30f128ff6f8598f80cdfe85656a75470051601a4700b8b9797e4857aae2e",
+      "readCompletedAt": "2026-10-18T00:00:10.441189+00:00"
+    },
+    {
+      "file": "data-eleven-penalty-miss.json",
+      "sha256": "96ad9d659ff0dadd52455820e8e455f70b9d4241d3309fe2cfd527b0c0af3e59",
+      "readCompletedAt": "2026-10-18T00:03:02.094095+00:00"
+    },
+    {
+      "file": "data-eleven-alternative-before-confirm.json",
+      "sha256": "37ac62a2bdaf4760464e3b59bbf1cb8111fba98ecaeea002fd671b212a7011a4",
+      "readCompletedAt": "2026-10-18T00:04:41.035415+00:00"
+    },
+    {
+      "file": "data-eleven-round-one-committed.json",
+      "sha256": "d1880632bfc0971239355178cc6e9dbb59e21334f413419197c41268772e8374",
+      "readCompletedAt": "2026-10-18T00:05:12.558474+00:00"
+    },
+    {
+      "file": "data-eleven-clock-paused.json",
+      "sha256": "c8fdd2f2393cfe353ff710f964e6e70407367b250796b9257b84b01989efc9bc",
+      "readCompletedAt": "2026-10-18T00:06:55.993921+00:00"
+    },
+    {
+      "file": "data-eleven-captain-fixed-saved.json",
+      "sha256": "78be37d3b7a152557ac7838e98ece9a3ed2c751fb981d17a4bc530ae12a8920a",
+      "readCompletedAt": "2026-10-18T00:11:16.956352+00:00"
+    },
+    {
+      "file": "data-eleven-captain-fixed-restored.json",
+      "sha256": "d307853df2ad781d5ef217f8cc2efffea7ba6e360a4ca8ec9ab984af11c38a0b",
+      "readCompletedAt": "2026-10-18T00:12:34.124543+00:00"
+    }
+  ],
+  "passed": 200,
+  "failed": 2,
+  "historicalResolvedFailures": 1,
+  "checks": [
+    {
+      "name": "full-roster: היקף הקבלה והבעלות נכונים",
+      "passed": true
+    },
+    {
+      "name": "full-roster: שלוש קבוצות אחד־עשר בהשלמות קבועות וללא גיוס חיצוני",
+      "passed": true
+    },
+    {
+      "name": "full-roster: הסגל שומר 33 זהויות זכאיות ו־32 אורחים ללא ממתינים",
+      "passed": true
+    },
+    {
+      "name": "full-roster: אין עדיין אירועים או זקיפות משחק או נוכחות",
+      "passed": true
+    },
+    {
+      "name": "full-roster: השעון אינו תנאי לפעולות שבוצעו ולא התחיל",
+      "passed": true
+    },
+    {
+      "name": "full-roster: אין כפילות או שחקן לא זכאי בכוחות שנשמרו",
+      "passed": true
+    },
+    {
+      "name": "full-roster: כל הקפטנים הנוכחיים משובצים בקבוצתם",
+      "passed": true
+    },
+    {
+      "name": "full-roster: שלושת הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "full-roster: אין זקיפה או איפוס במקור account",
+      "passed": true
+    },
+    {
+      "name": "full-roster: אין זקיפה או איפוס במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "full-roster: אין זקיפה או איפוס במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "full-roster: אין זקיפה או איפוס במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "full-roster: אין זקיפה או איפוס במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: היקף הקבלה והבעלות נכונים",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: שלוש קבוצות אחד־עשר בהשלמות קבועות וללא גיוס חיצוני",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: הסגל שומר 33 זהויות זכאיות ו־32 אורחים ללא ממתינים",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: אין עדיין אירועים או זקיפות משחק או נוכחות",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: השעון אינו תנאי לפעולות שבוצעו ולא התחיל",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: אין כפילות או שחקן לא זכאי בכוחות שנשמרו",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: כל הקפטנים הנוכחיים משובצים בקבוצתם",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: שלושת הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: אין זקיפה או איפוס במקור account",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: אין זקיפה או איפוס במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: אין זקיפה או איפוס במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: אין זקיפה או איפוס במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "captains-saved: אין זקיפה או איפוס במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "player-left: היקף הקבלה והבעלות נכונים",
+      "passed": true
+    },
+    {
+      "name": "player-left: שלוש קבוצות אחד־עשר בהשלמות קבועות וללא גיוס חיצוני",
+      "passed": true
+    },
+    {
+      "name": "player-left: הסגל שומר 33 זהויות זכאיות ו־32 אורחים ללא ממתינים",
+      "passed": true
+    },
+    {
+      "name": "player-left: אין עדיין אירועים או זקיפות משחק או נוכחות",
+      "passed": true
+    },
+    {
+      "name": "player-left: השעון אינו תנאי לפעולות שבוצעו ולא התחיל",
+      "passed": true
+    },
+    {
+      "name": "player-left: אין כפילות או שחקן לא זכאי בכוחות שנשמרו",
+      "passed": true
+    },
+    {
+      "name": "player-left: כל הקפטנים הנוכחיים משובצים בקבוצתם",
+      "passed": true
+    },
+    {
+      "name": "player-left: שלושת הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "player-left: אין זקיפה או איפוס במקור account",
+      "passed": true
+    },
+    {
+      "name": "player-left: אין זקיפה או איפוס במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "player-left: אין זקיפה או איפוס במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "player-left: אין זקיפה או איפוס במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "player-left: אין זקיפה או איפוס במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: היקף הקבלה והבעלות נכונים",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: שלוש קבוצות אחד־עשר בהשלמות קבועות וללא גיוס חיצוני",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: הסגל שומר 33 זהויות זכאיות ו־32 אורחים ללא ממתינים",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: אין עדיין אירועים או זקיפות משחק או נוכחות",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: השעון אינו תנאי לפעולות שבוצעו ולא התחיל",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: אין כפילות או שחקן לא זכאי בכוחות שנשמרו",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: כל הקפטנים הנוכחיים משובצים בקבוצתם",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: שלושת הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: אין זקיפה או איפוס במקור account",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: אין זקיפה או איפוס במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: אין זקיפה או איפוס במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: אין זקיפה או איפוס במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: אין זקיפה או איפוס במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: היקף הקבלה והבעלות נכונים",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: שלוש קבוצות אחד־עשר בהשלמות קבועות וללא גיוס חיצוני",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: הסגל שומר 33 זהויות זכאיות ו־32 אורחים ללא ממתינים",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: אין עדיין אירועים או זקיפות משחק או נוכחות",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: השעון אינו תנאי לפעולות שבוצעו ולא התחיל",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: אין כפילות או שחקן לא זכאי בכוחות שנשמרו",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: כל הקפטנים הנוכחיים משובצים בקבוצתם",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: שלושת הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: אין זקיפה או איפוס במקור account",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: אין זקיפה או איפוס במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: אין זקיפה או איפוס במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: אין זקיפה או איפוס במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: אין זקיפה או איפוס במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: היקף הקבלה והבעלות נכונים",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: שלוש קבוצות אחד־עשר בהשלמות קבועות וללא גיוס חיצוני",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: הסגל שומר 33 זהויות זכאיות ו־32 אורחים ללא ממתינים",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: אין עדיין אירועים או זקיפות משחק או נוכחות",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: השעון אינו תנאי לפעולות שבוצעו ולא התחיל",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: אין כפילות או שחקן לא זכאי בכוחות שנשמרו",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: כל הקפטנים הנוכחיים משובצים בקבוצתם",
+      "passed": false,
+      "resolvedBy": "data-eleven-captain-fixed-saved.json",
+      "resolution": "הכשל נשמר כראיית לפני תיקון; העברת קפטן חוזרת בייצור מעדכנת את קפטן קבוצת המקור לשחקן שנשאר בה."
+    },
+    {
+      "name": "auto-refill-saved: שלושת הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: אין זקיפה או איפוס במקור account",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: אין זקיפה או איפוס במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: אין זקיפה או איפוס במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: אין זקיפה או איפוס במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-saved: אין זקיפה או איפוס במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: היקף הקבלה והבעלות נכונים",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: שלוש קבוצות אחד־עשר בהשלמות קבועות וללא גיוס חיצוני",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: הסגל שומר 33 זהויות זכאיות ו־32 אורחים ללא ממתינים",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: אין עדיין אירועים או זקיפות משחק או נוכחות",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: השעון אינו תנאי לפעולות שבוצעו ולא התחיל",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: אין כפילות או שחקן לא זכאי בכוחות שנשמרו",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: כל הקפטנים הנוכחיים משובצים בקבוצתם",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: שלושת הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: אין זקיפה או איפוס במקור account",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: אין זקיפה או איפוס במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: אין זקיפה או איפוס במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: אין זקיפה או איפוס במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "auto-refill-restored: אין זקיפה או איפוס במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "קפטנים: הקפטנים שנבחרו הם החשבון, אורח01 ואורח02",
+      "passed": true
+    },
+    {
+      "name": "קפטנים: שלושה הרכבים מלאים המכסים את כל 33 הזכאים",
+      "passed": true
+    },
+    {
+      "name": "קפטנים: טיוטת נחש נשמרה עם צילום הרכבים זהה לפני פרסום",
+      "passed": true
+    },
+    {
+      "name": "קפטנים: כל 30 הבחירות תואמות לסדר הנחש ולשמות שנבחרו",
+      "passed": true
+    },
+    {
+      "name": "יציאה: אורח03 יצא מהאדומים ומסומן בחוץ עם בית אדום",
+      "passed": true
+    },
+    {
+      "name": "יציאה: סגלי הבסיס הם צילום החלוקה המקורית לפני יציאה",
+      "passed": true
+    },
+    {
+      "name": "מעבר קבוע: אורח02 עבר מהירוקים לחור באדומים ללא השאלה",
+      "passed": true
+    },
+    {
+      "name": "מעבר קבוע: האדומים מלאים והירוקים חסרים, והשחקן שיצא עדיין בחוץ",
+      "passed": true
+    },
+    {
+      "name": "מעבר קבוע: שינוי קפטן הירוקים משאיר קפטן זכאי בהרכב",
+      "passed": true
+    },
+    {
+      "name": "מעבר קבוע: סגלי הבסיס והצילום המקורי נשמרו לצורך החזרה",
+      "passed": true
+    },
+    {
+      "name": "החזרה: אורח03 חזר לאדומים ואורח02 לירוקים ללא כפילות",
+      "passed": true
+    },
+    {
+      "name": "החזרה: שלוש קבוצות מלאות, אין יוצאים ואין השאלות",
+      "passed": true
+    },
+    {
+      "name": "החזרה: חלוקת הזהויות בכל קבוצה תואמת למקור ללא תלות במיקום ברשימה",
+      "passed": true
+    },
+    {
+      "name": "החזרה: צילום הבסיס לא הוחלף בעקבות ההשלמה וההחזרה",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: זהות המשחק הראשון והצדדים נשארו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "permanent-move: כל הלוח והשעון נותרו בדיוק כמו לאחר היציאה",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: זהות המשחק הראשון והצדדים נשארו ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "permanent-restored: כל הלוח והשעון נותרו בדיוק כמו לאחר היציאה",
+      "passed": true
+    },
+    {
+      "name": "הצעה אוטומטית שנשמרה: הפעם05 באדומים ולא02",
+      "passed": true
+    },
+    {
+      "name": "הצעה אוטומטית שנשמרה: שינוי יחיד מול ההרכב שהוחזר קודם",
+      "passed": true
+    },
+    {
+      "name": "הצעה אוטומטית שנשמרה: השלמה קבועה ללא השאלות ו03 בחוץ",
+      "passed": true
+    },
+    {
+      "name": "הצעה אוטומטית שנשמרה: זהות המשחק והשעון נשמרו",
+      "passed": true
+    },
+    {
+      "name": "החזרה אחרי הצעה אוטומטית:03 באדומים ו05 חזר לירוקים",
+      "passed": true
+    },
+    {
+      "name": "החזרה אחרי הצעה אוטומטית: שלוש קבוצות מלאות וללא יוצאים או השאלות",
+      "passed": true
+    },
+    {
+      "name": "החזרה אחרי הצעה אוטומטית: החברות בקבוצות תואמת לחלוקת הקפטנים",
+      "passed": true
+    },
+    {
+      "name": "החזרה אחרי הצעה אוטומטית: כל הלוח, השעון והמשחק המקורי נשמרו",
+      "passed": true
+    },
+    {
+      "name": "החזרה אחרי הצעה אוטומטית: בסיס ההחזרה עדיין תואם לצילום המקורי",
+      "passed": true
+    },
+    {
+      "name": "penalty-miss: היקף זהות המחזור והבעלות תקין",
+      "passed": true
+    },
+    {
+      "name": "penalty-miss: המחזורים הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "penalty-miss: אין סיכום או זקיפת נוכחות לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "penalty-miss: אין כפילות בין היסטוריה לסמני החתימה",
+      "passed": true
+    },
+    {
+      "name": "penalty-miss: דלתאות המונים מדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "penalty-miss: דלתאות המונים מדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "penalty-miss: דלתאות המונים מדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "penalty-miss: דלתאות המונים מדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "penalty-miss: דלתאות המונים מדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "alternative-before-confirm: היקף זהות המחזור והבעלות תקין",
+      "passed": true
+    },
+    {
+      "name": "alternative-before-confirm: המחזורים הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "alternative-before-confirm: אין סיכום או זקיפת נוכחות לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "alternative-before-confirm: אין כפילות בין היסטוריה לסמני החתימה",
+      "passed": true
+    },
+    {
+      "name": "alternative-before-confirm: דלתאות המונים מדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "alternative-before-confirm: דלתאות המונים מדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "alternative-before-confirm: דלתאות המונים מדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "alternative-before-confirm: דלתאות המונים מדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "alternative-before-confirm: דלתאות המונים מדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "round-one-committed: היקף זהות המחזור והבעלות תקין",
+      "passed": true
+    },
+    {
+      "name": "round-one-committed: המחזורים הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "round-one-committed: אין סיכום או זקיפת נוכחות לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "round-one-committed: אין כפילות בין היסטוריה לסמני החתימה",
+      "passed": true
+    },
+    {
+      "name": "round-one-committed: דלתאות המונים מדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "round-one-committed: דלתאות המונים מדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "round-one-committed: דלתאות המונים מדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "round-one-committed: דלתאות המונים מדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "round-one-committed: דלתאות המונים מדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "clock-paused: היקף זהות המחזור והבעלות תקין",
+      "passed": true
+    },
+    {
+      "name": "clock-paused: המחזורים הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "clock-paused: אין סיכום או זקיפת נוכחות לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "clock-paused: אין כפילות בין היסטוריה לסמני החתימה",
+      "passed": true
+    },
+    {
+      "name": "clock-paused: דלתאות המונים מדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "clock-paused: דלתאות המונים מדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "clock-paused: דלתאות המונים מדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "clock-paused: דלתאות המונים מדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "clock-paused: דלתאות המונים מדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-saved: היקף זהות המחזור והבעלות תקין",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-saved: המחזורים הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-saved: אין סיכום או זקיפת נוכחות לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-saved: אין כפילות בין היסטוריה לסמני החתימה",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-saved: דלתאות המונים מדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-saved: דלתאות המונים מדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-saved: דלתאות המונים מדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-saved: דלתאות המונים מדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-saved: דלתאות המונים מדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-restored: היקף זהות המחזור והבעלות תקין",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-restored: המחזורים הישנים ושני החדשים הקודמים ללא שינוי",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-restored: אין סיכום או זקיפת נוכחות לפני סיום המחזור",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-restored: אין כפילות בין היסטוריה לסמני החתימה",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-restored: דלתאות המונים מדויקות במקור account",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-restored: דלתאות המונים מדויקות במקור qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-restored: דלתאות המונים מדויקות במקור clubTotals",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-restored: דלתאות המונים מדויקות במקור clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "captain-fixed-restored: דלתאות המונים מדויקות במקור clubRecords",
+      "passed": true
+    },
+    {
+      "name": "החמצת פנדל: בעיטה יחידה בעלת זהות של השם הארוך מול קפטן01 הכחול",
+      "passed": true
+    },
+    {
+      "name": "החמצת פנדל: הבועט והשוער שייכים לצדדים היריבים הנכונים",
+      "passed": true
+    },
+    {
+      "name": "החמצת פנדל: הלוח אפסי והשעון טרם הופעל",
+      "passed": true
+    },
+    {
+      "name": "החמצת פנדל: אין זקיפות פנדל או משחק לפני החלטה סופית",
+      "passed": true
+    },
+    {
+      "name": "לפני אישור חלופה: אותה בעיטה נשמרת בשלמותה, אין מחיקה מוקדמת",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: זהות המשחק המקורית נשמרה בניצחון אדום ידני אפס־אפס",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אין אירועי שדה או בעיטות הכרעה אחרי הנטישה",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: בדיוק22 שחקנים מההרכבים ששיחקו ללא ממתיני הירוקים",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: תוצאות והופעה לכל11 בצד A",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: תוצאות והופעה לכל11 בצד B",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: אף שחקן לא קיבל מונה פנדל מהסדרה שננטשה",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה:11 ניצחונות11 הפסדים22 שערים נקיים וללא תרומות",
+      "passed": true
+    },
+    {
+      "name": "חתימה ראשונה: משחק שני חדש באדומים וירוקים ולוח נקי",
+      "passed": true
+    },
+    {
+      "name": "שעון משחק שני: התחלה, השהיה, המשך והשהיה מתועדים בסדר",
+      "passed": true
+    },
+    {
+      "name": "שעון משחק שני: שני מקטעים חיוביים לא חופפים ותואמים לאירועים",
+      "passed": true
+    },
+    {
+      "name": "שעון משחק שני:44743 מילישניות תואמות לסכום ושעון מושהה",
+      "passed": true
+    },
+    {
+      "name": "שעון משחק שני: הזהות והתוצאות לא השתנו בזמן פעולות השעון",
+      "passed": true
+    },
+    {
+      "name": "עקבת חלופה: הקריאה הראשונה עדיין מציגה את סדרת ההכרעה הקודמת",
+      "passed": true
+    },
+    {
+      "name": "עקבת חלופה: הקריאות המאוחרות תואמות למצב ללא סדרה ועם חתימת המשחק",
+      "passed": true
+    },
+    {
+      "name": "תיקון קפטן:01 עבר מהכחולים לאדומים במקום03 שיצא",
+      "passed": true
+    },
+    {
+      "name": "תיקון קפטן: הכחולים בחרו04 כקפטן שנמצא בהרכב",
+      "passed": true
+    },
+    {
+      "name": "תיקון קפטן: קפטן האדומים נשאר החשבון וקפטן כל קבוצה משובץ בה",
+      "passed": true
+    },
+    {
+      "name": "תיקון קפטן:32 משובצים ייחודיים ואורח03 בחוץ בלבד",
+      "passed": true
+    },
+    {
+      "name": "תיקון קפטן: זהות המשחק השני והצדדים ותור ההמתנה לא השתנו",
+      "passed": true
+    },
+    {
+      "name": "תיקון קפטן: כל אירועי השעון והמקטעים והלוח נשמרו",
+      "passed": true
+    },
+    {
+      "name": "תיקון קפטן: ההיסטוריה וכל הסטטיסטיקה נשמרו בדיוק",
+      "passed": true
+    },
+    {
+      "name": "החזרה במשחק שני:03 חזר לאדומים ו01 חזר לכחולים",
+      "passed": false
+    },
+    {
+      "name": "החזרה במשחק שני: שלושת הסגלים מלאים באחד־עשר לכל צד",
+      "passed": false
+    },
+    {
+      "name": "החזרה במשחק שני: אין כפילות או שחקן שנעלם למרות חלוקה בלתי מאוזנת",
+      "passed": true
+    },
+    {
+      "name": "החזרה במשחק שני: הלוח, השעון וההיסטוריה נשמרו",
+      "passed": true
+    },
+    {
+      "name": "מקור כשל ההחזרה: baseTeams חסר כבר לאחר החתימה הראשונה",
+      "passed": true
+    }
+  ],
+  "actors": {
+    "departedAndRestored": "guest:mvd0w4ym-ingxdl",
+    "permanentFillerAndReturned": "guest:mvd0vuna-fnoeo2",
+    "longName": "guest:mvd152yq-3ebjj2"
+  },
+  "latestRoster": {
+    "0": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "guest:mvd0xnrj-tjh9tt",
+      "guest:mvd0xybi-m35dd0",
+      "guest:mvd0zp9o-rrny5s",
+      "guest:mvd100i6-z7ct6s",
+      "guest:mvd11k50-tzwfs3",
+      "guest:mvd11v4d-44941z",
+      "guest:mvd13apd-adek4f",
+      "guest:mvd13kwx-5qos4h",
+      "guest:mvd152yq-3ebjj2",
+      "guest:mvd0vjxq-0g1lq1",
+      "guest:mvd0w4ym-ingxdl"
+    ],
+    "1": [
+      "guest:mvd0wfdk-466dv3",
+      "guest:mvd0xc1z-73rbw4",
+      "guest:mvd0ycc9-z0t5wz",
+      "guest:mvd0zdfn-ar4g4f",
+      "guest:mvd10bg7-d2c7o2",
+      "guest:mvd119aq-oyq8h0",
+      "guest:mvd125lr-ljh7d2",
+      "guest:mvd130io-5acdpt",
+      "guest:mvd13vi3-pq5bfp",
+      "guest:mvd14sr6-bf7sgb"
+    ],
+    "2": [
+      "guest:mvd0x1ps-7ixc9q",
+      "guest:mvd0yonx-b7ct3f",
+      "guest:mvd0z0wa-y09vp7",
+      "guest:mvd10m8o-l6gurd",
+      "guest:mvd10x7k-3wrf22",
+      "guest:mvd12fv8-i79hga",
+      "guest:mvd12q0h-3kdp0c",
+      "guest:mvd147a2-7x9qv8",
+      "guest:mvd14ieu-7xm78a",
+      "guest:mvd0vuna-fnoeo2",
+      "guest:mvd0wrfs-kh2vtr"
+    ]
+  },
+  "roundId": "r_mvd2d3wl_mrhpor45",
+  "limits": [
+    "מקורות השרת מוכיחים את התוצאה הסופית של 30 בחירות הנחש; ביטול ובחירה מחדש של הבחירה האחרונה דורשים את תצפית הממשק של המוביל ואינם נשמרים כאירועים נפרדים.",
+    "ההצעה האוטומטית הראשונה לא אומתה; לאחר תיקון ההמתנה נצפתה הצעה אוטומטית בממשק המוביל, נשמר המשלים05, והמקורות המאוחרים מוכיחים את ההשלמה וההחזרה. אירוע המאזין עצמו לא נלכד בעקבה.",
+    "baseTeams ו־originalTeams הם תמונות בסיס להחזרה; במהלך המעבר הקבוע אין דרישה שיהיו זהים לסגלים הנוכחיים. אחרי ההחזרה אותן זהויות חזרו לאותן קבוצות, עם סדר רשימה וקפטן ירוק שיכולים להשתנות.",
+    "נחתם משחק אחד. טרם נמסרו שערי המשחק השני או סיום מחזור. אין לטעון סיכום מחזור או נוכחות סופיים.",
+    "אין לתאר את ההחזרה במשחק השני כשלושה הרכבים מלאים: מקור השרת עצמו מציג12/10/11. זהו ממצא נתונים, לא חשד לתצוגה ישנה."
+  ],
+  "observedFindings": [
+    {
+      "source": "data-eleven-auto-refill-saved.json",
+      "field": "draftTeams.teams[index=2].captainId",
+      "actor": "guest:mvd0wrfs-kh2vtr",
+      "finding": "הקפטן הירוק עדיין05 בזמן שהוא עבר לאדומים. אחרי החזרתו לירוקים שוב יש קפטן משובץ. לא בוצע תיקון מוצר במסגרת האודיט.",
+      "status": "תוקן בקוד ואומת בהעברת קפטן נוספת בייצור במשחק השני:01 עבר לאדומים,04 נבחר בכחולים ונשאר בהם."
+    },
+    {
+      "source": "data-eleven-captain-fixed-restored.json",
+      "status": "פתוח; המוביל עודכן",
+      "finding": "הנתונים מראים03 וגם01 באדומים12, כחולים10 וירוקים11. רשימת היוצאים התרוקנה אבל01 לא חזר לכחולים. אין אובדן זהות; יש שיוך לא מאוזן.",
+      "codePath": "restorePlayer checks rotation.baseTeams before reversing a permanent fill. This field is absent from round2 after prepareRoundResult normal winner skeleton replaced the rotation."
+    }
+  ],
+  "alternativeTrace": {
+    "file": "C:\\Users\\elira\\Teamder\\artifacts\\final-deep-audit-2026-10-17\\eleven-alternative-fixed-trace.json",
+    "sha256": "1da6c5dd53cc8e7cb2ed5d33c462d4ab35bfefa5280e4b48612624b43f3d4aeb",
+    "directListenerEventCaptured": false
+  },
+  "latestGamePhase": {
+    "round": 2,
+    "roundId": "r_mvd2d3wl_mrhpor45",
+    "historyCount": 1,
+    "statCount": 22,
+    "elapsedMs": 44743
+  }
+}

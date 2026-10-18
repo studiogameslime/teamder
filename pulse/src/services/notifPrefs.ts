@@ -12,7 +12,8 @@ export interface NotifTypeDef {
 }
 
 export const NOTIF_TYPES: NotifTypeDef[] = [
-  { key: 'onboardingActivity', label: 'כניסה ובחירת מסלול הצטרפות', emoji: '👣', hint: 'פוש בכניסת אורח ובבחירה איך להתחיל; שאר הפעולות נשמרות ברצף בלבד. הרשמה ויצירה משתמשות בהתראות הקיימות' },
+  { key: 'teamderReply', label: 'תשובות לשיחות עם צוות טימדר', emoji: '💬', hint: 'התראה כשמשתמש עונה לנו, עם פתיחה ישירה של השיחה' },
+  { key: 'onboardingActivity', label: 'כניסות, התחברות ומסלול ההצטרפות', emoji: '👣', hint: 'התראה בפתיחת האפליקציה, בהתחברות לחשבון ובבחירה איך להתחיל, עם שם ומקור כניסה כשידועים. כל אבן דרך נשלחת פעם אחת בביקור; יתר הפעולות נשמרות ברצף בלבד' },
   { key: 'newUser', label: 'משתמש חדש נרשם', emoji: '🎉' },
   { key: 'gameCreate', label: 'מישהו יצר משחק', emoji: '⚽' },
   { key: 'gameJoin', label: 'מישהו נרשם למשחק', emoji: '🙋' },

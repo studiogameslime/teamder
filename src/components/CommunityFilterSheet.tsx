@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // CommunityFilterSheet — modal sheet for filtering the Communities feed.
 //
 // Filter dimensions:
@@ -225,7 +226,7 @@ export function CommunityFilterSheet({
                           color={colors.success}
                         />
                         <Text style={styles.nearbyActiveTitle}>
-                          {he.gameFiltersNearbyActive}
+                          מועדונים בקרבת מקום
                         </Text>
                       </View>
                       {nearbyCaption ? (
@@ -236,13 +237,13 @@ export function CommunityFilterSheet({
                     <>
                       <Text style={styles.nearbyPromptTitle}>
                         {locationGranted
-                          ? he.gameFiltersNearbyEnableTitle
+                          ? 'מועדונים בקרבת מקום'
                           : he.gameFiltersNearbyNeedPermission}
                       </Text>
                       <Text style={styles.nearbyPromptHint}>
                         {locationGranted
                           ? he.gameFiltersNearbyEnableHint
-                          : he.gameFiltersNearbyPermissionHint}
+                          : 'כדי להציג מועדונים בקרבתך'}
                       </Text>
                       <Pressable
                         onPress={() => {
@@ -266,7 +267,7 @@ export function CommunityFilterSheet({
                         />
                         <Text style={styles.nearbyAllowText}>
                           {locationGranted
-                            ? he.gameFiltersNearbyEnable
+                            ? 'הצג מועדונים קרובים'
                             : he.gameFiltersNearbyAllow}
                         </Text>
                       </Pressable>
@@ -454,15 +455,11 @@ export function applyGroupFilters(
 // ─── Styles ─────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  sheet: { ...overlaySurfaces.sheet,
     // Fill the SpringSheet panel (top:10%→bottom = 90% of screen) so the
     // sheet has a DEFINITE height — that's what lets the body ScrollView's
     // `flex:1` resolve and scroll, with the footer pinned at the bottom.

@@ -6,6 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { getFirebase } from '@/firebase/config';
 import { ONBOARDING_ACTIONS, safeActivityParams } from '@/utils/onboardingActivity';
+import { getEntryContext } from '@/services/entrySource';
 
 const KEY = 'teamder:onboarding-activity:v1';
 const QUARANTINE = 'teamder:onboarding-activity:quarantine';
@@ -134,7 +135,7 @@ export function recordOnboardingActivity(action: string, params: Record<string, 
     onAuthStateChanged(getFirebase().auth, () => { syncIdentity(); schedule(); });
     AppState.addEventListener('change', state => { if (state === 'active') { syncIdentity(); schedule(); } });
   }
-  const event: Event = { id: `${sessionId}-${++sequence}`, sessionId, sequence, occurredAt: Date.now(), action, params: safeActivityParams(params), ownerUid };
+  const event: Event = { id: `${sessionId}-${++sequence}`, sessionId, sequence, occurredAt: Date.now(), action, params: safeActivityParams({ ...getEntryContext(), ...params }), ownerUid };
   awaitingPersistence.push(event);
   chain = chain.then(persistPending).catch(retryLater);
 }

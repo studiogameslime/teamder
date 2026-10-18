@@ -88,8 +88,8 @@ const TITLE = {
   topWinner: 'מלך הניצחונות',
   mostLoyal: 'מלך ההתמדה',
   cleanSheetKing: 'מלך השער הנקי',
-  penaltyKing: 'מלך הפנדלים',
-  penaltyKeeper: 'מלך העצירות',
+  penaltyKing: 'מלך הבקעות הפנדלים',
+  penaltyKeeper: 'מלך עצירות הפנדלים',
   deadlyDuo: 'הצמד הקטלני',
 } as const;
 
@@ -203,10 +203,12 @@ export const he = {
   // App-update prompts
   updateForceTitle: 'נדרש עדכון',
   updateForceBody: 'יש גרסה חדשה לאפליקציה. חובה לעדכן כדי להמשיך להשתמש.',
-  updateOptionalTitle: 'גרסה חדשה זמינה',
-  updateOptionalBody: 'יש גרסה חדשה זמינה לאפליקציה.',
-  updateNow: 'עדכן עכשיו',
-  updateLater: 'אולי אחר כך',
+  updateOptionalTitle: 'יש עדכון חדש',
+  updateOptionalBody: 'שיפורים קטנים לחוויה טובה יותר',
+  updateNow: 'לעדכון',
+  updateLater: 'אחר כך',
+  updateDismiss: 'סגירת הצעת העדכון',
+  updateStoreFailed: 'לא הצלחנו לפתוח את החנות. אפשר לנסות שוב.',
 
   // Destructive confirmation (irreversible delete dialog)
   confirmDeleteAck: 'אני מבין שהפעולה בלתי הפיכה',
@@ -394,6 +396,7 @@ export const he = {
   liveStartMatch: 'התחל מחזור',
   liveResumeMatch: 'המשך מחזור',
   liveTimerOfTotal: (total: number) => `מתוך ${total} דקות`,
+  liveTimerCompactTotal: (total: number) => `${total} דק׳`,
   /** Label above the "+MM:SS" added-time counter shown once the configured
    *  duration is exceeded (the main clock freezes at the duration). */
   liveTimerOvertime: 'תוספת זמן',
@@ -478,7 +481,7 @@ export const he = {
   // stats and mini-game management they'd turned on were not running.
   liveNoTeamsTitle: 'עוד לא חולקו כוחות',
   liveNoTeamsBody:
-    'המחזור הזה מוגדר עם מסך לייב מתקדם, אבל עוד לא חולקו כוחות — אז אי אפשר להפעיל אותו.\n\nאם תמשיכו בלי כוחות תקבלו טיימר בלבד: בלי ניהול משחקים, בלי גולים ובישולים, ובלי סטטיסטיקות שנספרות לשחקנים.',
+    'חלקו את השחקנים לקבוצות כדי לנהל משחקים, שערים ובישולים ולשמור את הסטטיסטיקות.\n\nאפשר גם להמשיך עם שעון בלבד, ללא תיעוד ביצועי השחקנים.',
   liveNoTeamsGoDraft: 'לחלוקת כוחות',
   liveNoTeamsContinue: 'המשך בלי כוחות',
   rotationStartRound: 'התחל משחק',
@@ -493,6 +496,16 @@ export const he = {
   // step, so the admin ended a match without being told who was coming on —
   // the one case where BOTH teams can leave the pitch at once.
   rotationEndRoundConfirmOk: 'סיים משחק',
+  liveEndMatchTitle: 'לסיים את המשחק?',
+  liveEndMatchWinner: (team: string) => `${team} ניצחו`,
+  liveEndMatchNext: 'במשחק הבא',
+  liveEndMatchVersus: 'מול',
+  liveEndMatchStaying: 'נשארים',
+  liveEndMatchIncoming: 'עולים',
+  liveEndMatchWaiting: (team: string) => `${team} עוברים להמתנה`,
+  liveEndMatchNoWaiting: 'אותן קבוצות ממשיכות למשחק הבא',
+  liveEndMatchConfirm: 'אישור וסיום משחק',
+  liveEndMatchReturn: 'חזרה למשחק',
   /** `team` arrives WITHOUT its leading ה — see teamNameAfterPreposition. */
   fillPickerTitle: (team: string) => `השלמת שחקנים ל${team}`,
   /**
@@ -661,7 +674,7 @@ export const he = {
   // ── Retro goals (admin, post-match) ──
   retroEntryCta: 'השלם גול שהוחמץ',
   retroTitle: 'השלמת גולים',
-  retroNote: 'מזכה את השחקן בגול — לא משנה מי ניצח את המשחקים.',
+  retroNote: 'השלמת שערים ובישולים מעדכנת גם את הציונים ואת סיכום המחזור. תוצאות המשחקים נשארות כפי שנרשמו.',
   retroEmpty: 'עדיין לא הושלמו גולים',
   retroAddCta: 'הוסף גול שהוחמץ',
   retroPickScorer: 'מי הבקיע?',
@@ -677,16 +690,21 @@ export const he = {
   winnerPickCancel: 'ביטול',
   winnerPickConfirm: 'אישור',
   // ── Penalty shootout (drawn-round tiebreaker) ──
-  shDecideTitle: 'איך מכריעים את התיקו?',
+  shDecideTitle: 'תיקו במשחק',
+  shTieLabel: 'תיקו',
+  shDecideQuestion: 'איך ממשיכים?',
+  shDecideConfirm: 'אישור',
+  shDecideIncoming: (a: string, b: string) => `${a} ו${b} עולים`,
   shDecideSubtitle: 'המשחק נגמר בתיקו — בחרו איך לקבוע מנצחת',
-  shDecideManual: 'בחירה ידנית',
-  shDecideManualHint: 'בוחרים קבוצה מנצחת בלי פנדלים',
-  shDecidePenalties: 'שובר שוויון בפנדלים',
-  shDecidePenaltiesHint: 'סבב בעיטות פנדל עד להכרעה',
+  shDecideManual: 'בחירת מנצחים',
+  shDecideManualHint: 'בחירה ידנית של אחת הקבוצות',
+  shDecidePenalties: 'פנדלים',
+  shDecidePenaltiesHint: 'מכריעים מהנקודה הלבנה',
   // Third way out of a draw, offered only when there are teams waiting: send
   // BOTH sides off and bring the next two on. Used to be a create-form toggle
   // that applied itself silently; it is a choice made at the whistle now.
-  shDecideBothOut: 'שתי הקבוצות יורדות',
+  shDecideBothOut: 'שתי הקבוצות יוצאות',
+  shDecideBothOutInlineHint: 'המשחק ייסגר בתיקו ללא מנצחים',
   shDecideBothOutHint: 'אף אחת לא ניצחה — שתיהן יורדות ועולות הבאות בתור',
   shDecideBothOutConfirmTitle: 'שתי הקבוצות יורדות?',
   shDecideBothOutConfirmBody: (a: string, b: string) =>
@@ -1361,6 +1379,7 @@ export const he = {
     'עד המועד שתבחר רק מנהל המחזור יוכל להוסיף אורחים. שאר השחקנים יוכלו להוסיף אורחים רק מהמועד הזה ואילך. למנהל אין הגבלה.',
   wizardGuestsOpenLabel: 'פתיחת הוספת אורחים לשחקנים',
   wizardAutoTeamsToggle: 'תזמון יצירת כוחות אוטומטיים',
+  wizardAutoTeamsRequiresRating: 'כדי להפעיל תזמון כוחות, יש להפעיל דירוג פנימי בהגדרות המועדון.',
   wizardAutoTeamsHint:
     'במועד שתבחר, המערכת תחלק את הנרשמים לקבוצות מאוזנות (לפי הדירוג הפנימי או באקראי — לבחירתך), וכל שחקן יקבל פוש עם הקבוצה שלו. אפשר לערוך אחר כך. שחקן ללא דירוג פנימי ייחשב בדירוג ממוצע.\n\nשים לב: אם כבר קבעת כוחות ידנית (בכל שיטה — ידני, דירוג או אקראי) — התזמון לא ירוץ ולא ישנה אותם.',
   wizardAutoTeamsLabel: 'מועד יצירת הכוחות',
@@ -1428,7 +1447,7 @@ export const he = {
   promoteOrphanErrorBody: 'נסה שוב בעוד רגע.',
   createGameOrphanCta: 'צור מחזור חד־פעמי',
   createGameOrphanCtaSub: 'בלי מועדון — מהיר, רק עבור המחזור',
-  createGameOrphanBanner: 'מחזור חד־פעמי — תוכל לקבע מועדון אחרי שתשחקו',
+  createGameOrphanBanner: 'מחזור חד־פעמי\nאחרי שתשחקו, אפשר להקים מועדון קבוע',
   createGameQuickLoading: 'מכינים מחזור מהיר…',
   createGameOrphanErrorTitle: 'תקלה ביצירה',
   createGameOrphanErrorBody: 'לא הצלחנו להכין את הסביבה. נסה שוב בעוד רגע.',
@@ -1556,8 +1575,9 @@ export const he = {
   // woman, and the one club that runs seasons prints it beside 'מלך ההתמדה'
   // for the same attendance.
   communityStatsMostLoyal: TITLE.mostLoyal,
-  communityStatsPenaltyKing: TITLE.penaltyKing,
-  communityStatsPenaltyKeeperKing: TITLE.penaltyKeeper,
+  communityStatsPenaltyKing: 'מצטיין הפנדלים',
+  communityStatsPenaltyKeeperKing: 'מצטיין עצירות הפנדלים',
+  communityPenaltyRankingNote: 'מצטייני הפנדלים במועדון נבחרים לפי אחוזי הצלחה וכמות בעיטות. תארי העונה נקבעים לפי מספר ההבקעות או העצירות.',
   // The dubious crown. No season awards it, so it has no TITLE entry — but it
   // was 'מלך השערים העצמיים' and carries the same problem the rename was for,
   // so it wears the same word.
@@ -2529,7 +2549,10 @@ export const he = {
   seasonClosingGameBanner:
     'העונה בחלון סגירה — אי אפשר להתחיל את המחזור עד שהיא תיסגר',
   seasonsDisableTitle: 'לכבות עונות?',
-  seasonsDisableBodyOf: (no: number, played: number) =>
+  seasonsCadenceLocked: 'לאחר תחילת העונה אפשר לשנות את היעד, אך סוג העונה נשאר קבוע.',
+  seasonsDisableBodyOf: (no: number, played: number) => played < 2
+    ? 'טרם התקיימו שני מחזורים בעונה. העונות יכובו בלי ארכיון ובלי חלוקת תארים. הנתונים שכבר נצברו יישמרו בנתוני כל הזמנים, וכך גם העונות הקודמות והתארים שלהן.'
+    :
     `${count(played, 'מחזור אחד', 'מחזורים')} בעונה ${no}.\n\n` +
     'כיבוי העונות מסיים את העונה הפעילה עכשיו:\n' +
     '• התארים של העונה מחולקים לפי הנתונים שנצברו עד הרגע הזה\n' +
@@ -2759,6 +2782,9 @@ export const he = {
    *  what naming them "מלך" costs. Every surface that prints one reads it
    *  from here. */
   seasonTitleNames: TITLE,
+  seasonsRestartTitle: 'פותחים עונה חדשה ונקייה',
+  seasonsRestartBody: 'העונה החדשה מתחילה מאפס כדי שהנתונים מהתקופה הקודמת לא ייכנסו לתחרות החדשה. הנתונים הקודמים נשמרים בהיסטוריה ובנתוני כל הזמנים. תקופה של פחות משני מחזורים נשמרת ללא חלוקת תארים.',
+  communityStatsAllTimeWithPeriods: 'הנתונים כוללים את העונה הנוכחית, עונות קודמות ותקופות שנשמרו ללא תארים.',
   communityStatsSeasonFresh: (no: number) =>
     `עונה ${no} רק התחילה, אז הטבלה עוד ריקה. שום דבר לא נמחק — כל מה ששיחקתם שמור בעונה הקודמת, והסטטיסטיקה המצטברת בפרופיל לא השתנתה.`,
   communityStatsSeasonFreshCta: 'לראות את העונה הקודמת ואת התארים שחולקו',
@@ -4214,7 +4240,7 @@ export const he = {
   matchDetailsAcceptOffer: 'נפתח לך מקום — אשר הגעה',
   matchDetailsClosedForRegistration: 'ההרשמה נסגרה',
   matchDetailsRegistrationOpensAt: (when: string) =>
-    `ההרשמה עדיין לא נפתחה — היא תיפתח ב-${when}`,
+    `ההרשמה עדיין לא נפתחה\nפתיחת הרשמה: ${when}`,
   matchDetailsAlreadyStarted: 'המחזור כבר התחיל',
   matchDetailsAlreadyLive: 'המחזור כבר במצב לייב',
   matchDetailsJoinRejected: 'בקשתך למחזור זה נדחתה ולא ניתן להירשם שוב.',
@@ -4317,7 +4343,7 @@ export const he = {
   // ריק: המחזור טרם שוחק — הפיצ'ר זמין, פשוט אין עדיין תוכן.
   gdGamesEmptyTitle: 'המחזור עוד לא שוחק',
   gdGamesEmptyBody: 'כאן יופיעו המשחקים והתוצאות לאחר תחילת המחזור.',
-  gdStatsEmptyTitle: 'הסטטיסטיקות יופיעו אחרי שהמחזור יתחיל',
+  gdStatsEmptyTitle: 'הסטטיסטיקות יופיעו אחרי שהמחזור יסתיים',
   gdStatsEmptyBody: 'לאחר שיירשמו משחקים, הנתונים והסיכומים יופיעו כאן.',
   // ⚠️ ריק מסוג אחר לגמרי: המחזור כן שוחק, אבל הוא קדם לאיסוף הנתונים. אסור
   // לומר לו "עוד לא שוחק" — זה פשוט לא נכון.
@@ -4372,7 +4398,7 @@ export const he = {
   matchDetailsLabelCity: 'עיר',
   matchDetailsLabelAddress: 'כתובת',
   matchDetailsLabelLocation: 'מיקום',
-  matchDetailsNavigateButton: 'נווט למגרש ב-Waze',
+  matchDetailsNavigateButton: 'נווט למגרש',
   matchDetailsLabelFieldType: 'סוג מגרש',
   matchDetailsLabelNotes: 'הערות',
   matchDetailsLabelOrganizer: 'יוצר המחזור',
@@ -4578,7 +4604,7 @@ export const he = {
   seasonPartialCoverageNote:
     'הבישולים נאספים מאמצע יוני והשערים הנקיים מאמצע אוגוסט. אצל ותיקים האחוזים מחושבים רק מהמשחקים שבהם הנתון כבר נאסף.',
   effPartialNote:
-    'שערים נקיים נאספים מאמצע אוגוסט. אצל ותיקים האחוז מחושב רק מהמשחקים שבהם הנתון נאסף בפועל.',
+    'בישולים ושערים נקיים מחושבים רק במשחקים שבהם נאספו. מקף מציין כיסוי חסר; שערים ובישולים למשחק מוצגים יחד רק כשהכיסוי תואם.',
   pairStatsSharedCommunities: 'מועדונים משותפים',
   pairStatsSharedCommunitiesPlural: (n: number) =>
     n === 1 ? 'מועדון אחד משותף' : `${n} מועדונים משותפים`,
@@ -4617,7 +4643,7 @@ export const he = {
   matchManageAdminOnly: 'רק מנהל יכול לנהל את המחזור',
   // Manage section toggle title
   matchManageToggle: 'ניהול מחזור',
-  matchInviteAvailable: 'הזמן שחקנים פנויים',
+  matchInviteAvailable: 'הזמן שחקנים זמינים מהאפליקציה',
   matchInviteAvailableHelper: 'שחקנים שזמינים ביום ובשעה של המחזור, באזור',
   // Admin "register members from the community" flow (MatchDetails menu →
   // AddMembersScreen).
@@ -4949,7 +4975,7 @@ export const he = {
 
   // ── Chat ──────────────────────────────────────────────────────────
   delete: 'מחק',
-  tabChat: "צ'אטים",
+  tabChat: 'חברים',
   chatsListTitle: "צ'אטים",
   chatsListEmpty: 'אין עדיין שיחות',
   chatsListEmptyHint: 'שיחות של מחזורים ומועדונים שאתה חבר בהם יופיעו כאן',
@@ -5080,3 +5106,4 @@ export const he = {
   clubTabLockedBody: 'הצטרפו למועדון כדי לראות את הסגל ואת הסטטיסטיקות.',
   clubPairsEmpty: 'עוד אין מספיק משחקונים כדי לזהות צמדים',
 } as const;
+

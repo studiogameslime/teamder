@@ -22,6 +22,9 @@ import {
 } from 'react-native';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
+import { useFormDesign, formFieldStyle } from './forms/FormTheme';
+import { Ionicons } from '@expo/vector-icons';
+
 interface Props {
   label: string;
   value: string;
@@ -55,6 +58,7 @@ export function AutocompleteInput({
   required,
   style,
 }: Props) {
+  const designed = useFormDesign();
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -132,11 +136,12 @@ export function AutocompleteInput({
 
   return (
     <View style={[styles.field, style]}>
-      <Text style={styles.label}>
+      <Text style={[styles.label, designed && { textAlign: RTL_LABEL_ALIGN, fontSize: 14 }]}>
         {label}
         {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
       </Text>
       <View style={styles.inputWrap}>
+        {designed && !loading ? <Ionicons pointerEvents="none" name="location-outline" size={19} color="#64748B" style={{ position: "absolute", end: 12, top: 14, zIndex: 1 }} /> : null}
         <TextInput
           value={value}
           onChangeText={handleChange}
@@ -150,7 +155,7 @@ export function AutocompleteInput({
           // strict "must pick from list" gate downstream, can strand users.
           autoCorrect={false}
           autoComplete="off"
-          style={[styles.input, disabled && styles.inputDisabled]}
+          style={[styles.input, designed && { ...formFieldStyle, fontSize: 15, paddingVertical: 10, paddingEnd: 38 }, disabled && styles.inputDisabled]}
           textAlign="right"
         />
         {loading ? (

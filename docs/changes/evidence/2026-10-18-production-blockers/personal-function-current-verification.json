@@ -1,0 +1,10 @@
+{
+  "function": "ensurePersonalGroup",
+  "state": "ACTIVE",
+  "updatedAt": "2026-10-17T14:50:54.773124296Z",
+  "runtime": "nodejs20",
+  "archiveSha256": "39d206369d304640d878cc1ddae93bd4657b7bd04460cc44745789aa5ee75f7d",
+  "functionBodyMatches": true,
+  "functionBodySha256": "8cad4334a1c3a96a271e0cf97900574ff8f519f0ead6551657670a3ec5c3b77a",
+  "scope": "Exact ensurePersonalGroup body only; other exports excluded"
+}

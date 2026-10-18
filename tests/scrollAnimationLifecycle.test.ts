@@ -48,7 +48,7 @@ describe('counter work during a gesture', () => {
     queue = new Map(); now = 0; nextId = 0;
     jest.spyOn(Date, 'now').mockImplementation(() => now);
     global.requestAnimationFrame = jest.fn(callback => { queue.set(++nextId, callback); return nextId; });
-    global.cancelAnimationFrame = jest.fn(id => { queue.delete(id); });
+    global.cancelAnimationFrame = jest.fn(id => { if (typeof id === 'number') queue.delete(id); });
   });
   afterEach(() => jest.restoreAllMocks());
   function frame(time: number) {

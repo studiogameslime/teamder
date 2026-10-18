@@ -6,7 +6,7 @@
 //
 // Stat model (all optional on UserStats; absent = never took/faced a penalty):
 //   kicker:  penTaken = penScored + penMissed
-//   keeper:  penFaced = penSaved  + penConceded
+//   keeper: every kick counts as faced; an off-target miss is neither saved nor conceded.
 // A SHOOTOUT kick is never a mini-game goal — these fields are independent of
 // goals/score.
 
@@ -16,6 +16,7 @@ export interface PenaltyKick {
   kickerId?: string | null;
   keeperId?: string | null;
   scored?: boolean;
+  outcome?: 'goal' | 'save' | 'miss';
 }
 
 export interface KickerPen {
@@ -29,9 +30,8 @@ export interface KeeperPen {
   conceded: number;
 }
 
-/** Max penalties credited per round — op-count safety (the round-end Firestore
- *  batch already runs near the 500-op ceiling). Matches the server cap. Real
- *  shootouts are far smaller, so this never truncates a genuine round. */
+/** Legacy unverified payload bound. A verified live shootout counts every kick;
+ * StatBatch folds repeated player updates into one operation per document. */
 export const PENALTY_ROUND_CAP = 16;
 
 /** Build the commit payload from a live shootout: one entry per kick, in order. */
@@ -44,22 +44,23 @@ export function buildShootoutPenaltyPayload(
     kickerId: k.kickerId || null,
     keeperId: k.keeperId || null,
     scored: !!k.scored,
+    ...(k.outcome ? { outcome: k.outcome } : {}),
   }));
 }
 
 /**
  * Aggregate a round's penalty kicks into per-kicker + per-keeper deltas.
  * Both kicker and keeper are gated through `isReal` + `isOnField` (guests and
- * off-field ids carry no stats — same rule as goals/assists). Capped at
- * PENALTY_ROUND_CAP kicks. Deduped per player (each accumulates once).
+ * off-field ids carry no stats — same rule as goals/assists). Counts all kicks
+ * unless the caller explicitly sets the legacy input bound. Deduped per player.
  * ⚠️ MIRRORED in commitRoundStats §1c — keep in sync.
  */
 export function aggregatePenalties(
   penalties: PenaltyKick[] | undefined | null,
-  opts: { isOnField: (id: string) => boolean; isReal: (id: string) => boolean },
+  opts: { isOnField: (id: string) => boolean; isReal: (id: string) => boolean; maxKicks?: number },
 ): { byKicker: Record<string, KickerPen>; byKeeper: Record<string, KeeperPen> } {
   const { isOnField, isReal } = opts;
-  const pens = (penalties ?? []).slice(0, PENALTY_ROUND_CAP);
+  const pens = (penalties ?? []).slice(0, opts.maxKicks ?? Infinity);
   const byKicker: Record<string, KickerPen> = {};
   const byKeeper: Record<string, KeeperPen> = {};
   for (const p of pens) {
@@ -76,7 +77,7 @@ export function aggregatePenalties(
       const s = (byKeeper[gk] ??= { faced: 0, saved: 0, conceded: 0 });
       s.faced += 1;
       if (scored) s.conceded += 1;
-      else s.saved += 1;
+      else if (p.outcome !== 'miss') s.saved += 1;
     }
   }
   return { byKicker, byKeeper };

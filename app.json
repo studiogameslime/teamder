@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "1.1.46",
+    "version": "1.1.56",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -99,6 +99,7 @@
       ]
     },
     "plugins": [
+      "./plugins/withStoreUpdate.js",
       "./plugins/withNotificationColorMerge.js",
       "./plugins/withLegacyBackHandling.js",
       "expo-localization",
@@ -155,7 +156,14 @@
       "./plugins/withWearApp.js",
       "./plugins/withFmtConstevalFix.js",
       "./plugins/withRemoveAlwaysLocation.js",
-      "./plugins/withJoryioSdk.js"
+      "./plugins/withJoryioSdk.js",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": false
+        }
+      ],
+      "./plugins/withAuthBackupExclusions.js"
     ],
     "experiments": {
       "typedRoutes": false

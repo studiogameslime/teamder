@@ -1,0 +1,32 @@
+{
+  "verifiedAt": "2026-10-18T03:02:35.751160+00:00",
+  "verified": true,
+  "functions": [
+    {
+      "name": "commitRoundStats",
+      "state": "ACTIVE",
+      "updatedAt": "2026-10-18T03:01:39.570246185Z",
+      "runtime": "nodejs20",
+      "archiveSha256": "2611785b31c2965a9c342e978d6d551a5a4239d9a90fcf4bb1aade2e75d1d480",
+      "comparedFiles": 136,
+      "sourceMismatches": [],
+      "localMismatches": [],
+      "unauthenticatedProbeStatus": 401
+    },
+    {
+      "name": "createGroupCallable",
+      "state": "ACTIVE",
+      "updatedAt": "2026-10-18T03:01:29.910364360Z",
+      "runtime": "nodejs20",
+      "archiveSha256": "2611785b31c2965a9c342e978d6d551a5a4239d9a90fcf4bb1aade2e75d1d480",
+      "comparedFiles": 136,
+      "sourceMismatches": [],
+      "localMismatches": [],
+      "unauthenticatedProbeStatus": 401
+    }
+  ],
+  "untargetedCount": 95,
+  "unexpectedChanges": [],
+  "productWrites": false,
+  "probeScope": "Unauthenticated requests rejected before product access; no successful business flow asserted"
+}

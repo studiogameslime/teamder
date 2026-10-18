@@ -93,9 +93,10 @@ export interface User {
    */
   friends?: UserId[];
 
-  /** When true, only friends may start a direct-message conversation with this
-   *  user. Default (undefined/false) = anyone can send a DM. */
+  /** Legacy preference. New messages always require mutual friendship,
+   * irrespective of this historical value. */
   dmFriendsOnly?: boolean;
+  socialPrivacy?: { discoverable: boolean; statistics: 'everyone' | 'friends' | 'onlyMe' };
 
   /** Preferred playing position on the pitch (profile flavour + a setup
    *  step on the home checklist). Undefined until the user picks one. */
@@ -588,6 +589,8 @@ export interface NotificationDoc {
   createdAt: number;
   delivered?: boolean;
   deliveredAt?: number;
+  read?: boolean;
+  readAt?: number;
 }
 
 // ─── Chat ───────────────────────────────────────────────────────────────────
@@ -610,6 +613,9 @@ export interface ChatMessage {
   senderPhotoUrl?: string;
   /** ms epoch. Messages are ordered by this. */
   createdAt: number;
+  /** Official support only; written by the authenticated support callable. */
+  supportImage?: string;
+  supportContext?: { screen: string; screenLabel?: string; step?: number; groupId?: string; gameId?: string; appVersion?: string; platform?: string };
 }
 
 /**
@@ -635,6 +641,7 @@ export interface ChatUnreadEntry {
    *  entry so the chats list can render their face without a user lookup. */
   avatarId?: string;
   photoUrl?: string;
+  lastMessageId?: string;
 }
 
 /** ISO weekday: 0=Sunday, 6=Saturday. */
@@ -727,7 +734,8 @@ export interface UserStats {
    *  admin attributes an assist to the goal during an advanced-match round. */
   assists?: number;
   /** Penalty stats (penalty SHOOTOUTS only — not general shots/saves).
-   *  As kicker: taken = scored + missed. As keeper: faced = saved + conceded.
+   *  As kicker: taken = scored + missed. Keeper faced includes off-target misses;
+   *  only an explicit save credits saved on new kicks (legacy misses retain their stats).
    *  All incremented server-side by `commitRoundStats`. All optional → no
    *  migration; a player with no penalties simply has them undefined. */
   penTaken?: number;
@@ -980,6 +988,10 @@ export interface Group {
 export type SeasonCadenceType = 'date' | 'rounds';
 
 export interface GroupSeasons {
+  disabledAt?: number;
+  /** Non-competitive archived periods exist even before the first title season. */
+  hasArchivedPeriods?: boolean;
+  operation?: { kind: string; until: number; failed?: boolean };
   enabled: boolean;
   /** 1-based. Survives the feature being switched off and on again, so a club
    *  that ran seasons 1–3 and re-enables opens season 4, never season 1. */
@@ -1279,6 +1291,8 @@ export interface DraftTeam {
 export type FillMode = 'temporary' | 'permanent';
 
 export interface DraftTeamsResult {
+  /** Opt-in: balance completed matchups and reselect temporary loans each match. */
+  completionMode?: 'balanced';
   method: 'snake' | 'regular';
   numTeams: number;
   createdAt: number;
@@ -1315,6 +1329,8 @@ export interface RotationLoan {
   homeTeam: number;
   /** The team they're currently filling in for. */
   filledTeam: number;
+  /** Connected temporary exchanges return together, preventing half a swap. */
+  swapId?: string;
 }
 
 /**
@@ -1324,6 +1340,8 @@ export interface RotationLoan {
  * completed by borrowing random players from the team that just lost.
  */
 export interface MatchRotation {
+  /** Completed matches only; used for fair filler recommendations, never lifetime stats. */
+  fillUsage?: Record<string, { games: number; fills: number; lastRound: number }>;
   /** The two team indices on the field right now. */
   playing: [number, number];
   /** Team indices waiting to come on; front = next up. */
@@ -1344,10 +1362,9 @@ export interface MatchRotation {
   /** Monotonic stamp of the last recorded result — the server function only
    *  awards wins when this advances (idempotent across listener ticks). */
   lastRoundAt?: number;
-  /** Snapshot of the drafted rosters as they stood when the rotation STARTED,
-   *  taken before any 'permanent' fill reassignments. `stopRotation` restores
-   *  `draftTeams` from this so a reset returns to the original teams (permanent
-   *  mode rewrites the rosters round-by-round). */
+  /** Latest deliberately saved allocation, before temporary/permanent fills.
+   * Explicit reallocation replaces this together with draftTeams.originalTeams.
+   * `stopRotation` restores these rosters, never a superseded allocation. */
   baseTeams?: { index: number; playerIds: string[] }[];
   /** Immutable identity of the mini-game currently being played.
    *
@@ -1381,6 +1398,8 @@ export interface MatchRotation {
  * `minute` is the match-clock minute (0-based) captured at entry — recorded
  * behind the scenes even if not shown prominently.
  */
+export type PenaltyOutcome = 'goal' | 'save' | 'miss';
+
 export interface RoundGoal {
   id: string;
   team: 'A' | 'B';
@@ -1388,6 +1407,7 @@ export interface RoundGoal {
   /** Player who assisted the goal (same team, not the scorer), or null when
    *  there was no assist / unknown scorer / own goal. */
   assisterId?: UserId | null;
+  assistStatus?: 'player' | 'none' | 'unknown';
   ownGoal?: boolean;
   minute: number;
   at: number; // epoch ms
@@ -1602,6 +1622,8 @@ export interface GameSeriesSettings {
 }
 
 export interface Game {
+  /** Content bound to a durable create attempt; never an edit revision. */
+  creationFingerprint?: string;
   id: string;
   groupId: GroupId;             // FK to /groups/{groupId}
   title: string;                // e.g. "חמישי כדורגל"
@@ -1676,8 +1698,10 @@ export interface Game {
    * Terminal: only an admin clears it.
    */
   rejectedPlayerIds?: UserId[];
-  /** Users explicitly invited to this game — they bypass approval. */
+  /** Read invitations, including automatic filler notifications. */
   invitedUserIds?: UserId[];
+  /** Server-owned grants; the server also verifies the inviter's authority. */
+  approvedInvites?: Record<UserId, { inviterId: UserId; expiresAt: number }>;
   /**
    * Denormalized union of `players + waitlist + pending`. Lets the
    * "my games" query be a single `array-contains` instead of three
@@ -1815,6 +1839,8 @@ export interface Game {
    *  who's waiting, and any borrowed fillers. Absent until the manager
    *  starts the rotation. */
   rotation?: MatchRotation;
+  /** Server marker: result is saved but the next rotation may still need confirmation. */
+  lastCommittedRoundId?: string;
 
   /**
    * ms epoch — the moment when this game's registration officially
@@ -2051,7 +2077,7 @@ export interface Game {
     generatedAt: number;
     /** v1 balanced rating SUMS; v2 balances team AVERAGES + refines by swaps.
      *  Old games keep their v1 tag, so both must stay readable. */
-    algorithm: 'rating_greedy_v1' | 'rating_balanced_v2';
+    algorithm: 'rating_greedy_v1' | 'rating_balanced_v2' | 'random_even_v1';
     unratedCount: number;
     /** v1: rating sum of the first two teams. v2: average of every team. */
     teamRatings: number[];
@@ -2252,6 +2278,8 @@ export interface LiveMatchState {
       keeperId: UserId;
       team: 'A' | 'B';
       scored: boolean;
+      /** Absent on legacy kicks; never infer whether an old miss was a save. */
+      outcome?: PenaltyOutcome;
       at: number;
     }[];
   };

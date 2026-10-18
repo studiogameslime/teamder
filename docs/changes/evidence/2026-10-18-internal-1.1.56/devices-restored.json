@@ -1,0 +1,18 @@
+{
+  "verifiedAt": "2026-10-18T05:48:04.681303+00:00",
+  "qaDevice": "emulator-5556",
+  "animatorDurationScale": "null",
+  "transitionAnimationScale": "1",
+  "windowAnimationScale": "1",
+  "airplaneMode": "disabled",
+  "mockDevice": "emulator-5554",
+  "mockRuntimePort": 8084,
+  "mockRuntimeVerified": {
+    "dev": true,
+    "fixtureP7": true,
+    "mock": true,
+    "route": "Profile"
+  },
+  "accountCredentialsChanged": false,
+  "businessDataReset": false
+}

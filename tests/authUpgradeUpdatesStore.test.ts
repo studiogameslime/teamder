@@ -146,7 +146,7 @@ describe('signing in through the email screen', () => {
   it('only does it for a sign-in, not a sign-up', () => {
     const at = src.indexOf('const submit = async');
     const body = src.slice(at, at + 2200);
-    expect(body).toMatch(/if \(mode === 'signIn'\) \{\s*await finishParkedAction\(\);/);
+    expect(body).toMatch(/if \(mode === 'signIn' && useUserStore\.getState\(\)\.hasCompletedOnboarding\(\)\) \{\s*await finishParkedAction\(\);/);
   });
 });
 

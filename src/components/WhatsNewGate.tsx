@@ -3,11 +3,10 @@
 // is past splash, signed in, onboarded, and NOT showing a force/optional update
 // modal — so the What's New sheet never competes with an update prompt.
 //
-// One-time guarantee: we write seenVersion = current the instant we decide to
-// show (before rendering), so the modal can't reappear for that version even if
-// the app is killed mid-modal.
+// Persist after a visible render. Failure/cancellation must not consume a release.
 
 import React, { useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { WhatsNewModal } from '@/components/WhatsNewModal';
 import {
   resolveWhatsNew,
@@ -30,28 +29,56 @@ export function WhatsNewGate({
   // One resolve per app session — the modal is one-time, and re-checking on
   // every foreground would be wasteful (and already blocked by seenVersion).
   const checkedRef = useRef(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!active || checkedRef.current) return;
     checkedRef.current = true;
     let alive = true;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    let complete = false;
     (async () => {
-      const p = await resolveWhatsNew();
-      if (!alive || !p) return;
-      // Write-through BEFORE showing → strictly one-time per version.
-      await markWhatsNewSeen(p.version);
-      if (alive) setPayload(p);
+      try {
+        const p = await resolveWhatsNew();
+        if (!alive) return;
+        complete = true;
+        if (p) setPayload(p);
+      } catch {
+        // Transient network/storage failures must not consume this release.
+        if (alive) {
+          checkedRef.current = false;
+          retry = setTimeout(() => setAttempt(value => value + 1), 30_000);
+        }
+      }
     })();
     return () => {
       alive = false;
+      if (retry) clearTimeout(retry);
+      if (!complete) checkedRef.current = false;
     };
-  }, [active]);
+  }, [active, attempt]);
 
   useEffect(() => {
-    onVisibilityChange?.(!!payload);
-  }, [payload, onVisibilityChange]);
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active' && !checkedRef.current) setAttempt(value => value + 1);
+    });
+    return () => subscription.remove();
+  }, []);
 
-  if (!payload) return null;
+  useEffect(() => {
+    if (!active || !payload) return;
+    // Persist only after a committed render of the visible sheet. A gate
+    // deactivated during the fetch must not mark an unseen sheet as shown.
+    void markWhatsNewSeen(payload.version).catch(() => {
+      // Keep the session visible/usable; a later launch can retry persistence.
+    });
+  }, [active, payload]);
+
+  useEffect(() => {
+    onVisibilityChange?.(active && !!payload);
+  }, [active, payload, onVisibilityChange]);
+
+  if (!active || !payload) return null;
   return (
     <WhatsNewModal
       version={payload.version}

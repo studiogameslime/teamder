@@ -1,3 +1,4 @@
+import { upsertSavedGuest } from '@/utils/savedGuest';
 // MatchPlayersScreen — full roster for a single game.
 //
 // Sections:
@@ -101,6 +102,8 @@ export interface MatchPlayersScreenProps {
   /** Drop the screen chrome (safe area + "שחקני המחזור" header) and let the
    *  caller's layout own it — the match screen's שחקנים tab. */
   embedded?: boolean;
+  /** Share the parent's live roster instead of maintaining a second copy. */
+  gameState?: { game: Game; setGame: React.Dispatch<React.SetStateAction<Game | null>> };
   /** Embedded only: the match screen's hero + tab bar, carried inside THIS
    *  list's scroll so the hero can leave and the bar can stick. */
   header?: React.ReactNode;
@@ -133,14 +136,30 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
   const currentUser = useUserStore((s) => s.currentUser);
 
   const { arrivals, observe: observeRoster } = useArrivalTracker(gameId ?? '');
-  const [game, setGame] = useState<Game | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [localGame, setLocalGame] = useState<Game | null>(null);
+  const game = props.gameState?.game ?? localGame;
+  const setGame = props.gameState?.setGame ?? setLocalGame;
+  const controlled = !!props.gameState;
+  const [loading, setLoading] = useState(!controlled);
   const [busyOffer, setBusyOffer] = useState(false);
   // Guest being edited (rename by admin / rate by the adder).
   const [editingGuest, setEditingGuest] = useState<GameGuest | null>(null);
   // Player ⋮ action menu (open player card / remove). Rating is NOT here — it
   // lives only in the community players list.
   const [menuTarget, setMenuTarget] = useState<PlayerMenuTarget | null>(null);
+
+  useEffect(() => {
+    if (!controlled || !game) return;
+    observeRoster(game.players);
+    const ids = [...new Set([
+      ...game.players, ...game.waitlist, ...(game.pending ?? []),
+      ...Object.keys(game.cancellations ?? {}),
+      ...Object.keys(game.adminRemovals ?? {}),
+      ...Object.values(game.adminRemovedBy ?? {}),
+      ...(game.guests ?? []).map((guest) => guest.addedBy),
+    ])];
+    if (ids.length) void hydratePlayers(ids);
+  }, [controlled, game, hydratePlayers, observeRoster]);
 
   const reload = useCallback(async () => {
     if (!gameId) {
@@ -180,15 +199,15 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
     } finally {
       setLoading(false);
     }
-  }, [gameId, hydratePlayers, observeRoster]);
+  }, [gameId, hydratePlayers, observeRoster, setGame]);
 
   useEffect(() => {
-    reload();
-  }, [reload]);
+    if (!controlled) reload();
+  }, [reload, controlled]);
   useFocusEffect(
     useCallback(() => {
-      reload();
-    }, [reload]),
+      if (!controlled) reload();
+    }, [reload, controlled]),
   );
 
   // Live subscription — keep the roster + guests in sync WITHOUT a
@@ -196,7 +215,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
   // reorder from another device) now reflects on the spot (user report: guest
   // rating "didn't sync"). Mirrors MatchDetailsScreen's live listener; the
   // `prev ? g : prev` guard avoids clobbering the very first load.
-  useGameEvents(gameId, {
+  useGameEvents(controlled ? undefined : gameId, {
     onUpdate: useCallback(
       (g: Game) => {
         observeRoster(g.players);
@@ -214,7 +233,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
         );
         if (uids.length > 0) hydratePlayers(uids);
       },
-      [hydratePlayers, observeRoster],
+      [hydratePlayers, observeRoster, setGame],
     ),
   });
 
@@ -634,21 +653,15 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
   // that did not exist.
   const onGuestChanged = (action: 'added' | 'updated', saved: GameGuest) => {
             // Reflect the change IMMEDIATELY (don't wait for the reload) so an
-            // edited guest rating updates on the spot, then refresh in bg.
+            // edited guest rating updates on the spot without a stale post-write read.
             setGame((g) =>
               g
                 ? {
                     ...g,
-                    guests:
-                      action === 'added'
-                        ? [...(g.guests ?? []), saved]
-                        : (g.guests ?? []).map((x) =>
-                            x.id === saved.id ? saved : x,
-                          ),
+                    guests: upsertSavedGuest(g.guests, saved),
                   }
                 : g,
             );
-            reload();
           };
 
   const sections = (

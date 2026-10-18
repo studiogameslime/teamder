@@ -34,7 +34,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { AttentionPulse, INFINITE } from '@/components/anim/AttentionPulse';
 import { PressableScale } from '@/components/PressableScale';
 import { getCoverSource } from '@/data/coverImages';
 import { clubDefaultCoverId } from '@/utils/clubDefaultCoverId';
@@ -55,12 +54,6 @@ const CTA_LABEL: Record<string, string> = {
   request: he.clubCardRequest,
   requested: he.clubCardRequested,
 };
-
-const ACTIVITY = {
-  veryActive: { dot: '#22C55E', label: he.clubCardVeryActive },
-  active: { dot: '#22C55E', label: he.clubCardActive },
-  inactive: { dot: '#D97706', label: he.clubCardInactive },
-} as const;
 
 interface Props {
   vm: ClubCardViewModel;
@@ -90,7 +83,6 @@ export function ClubCard({
   const [failedPhoto, setFailedPhoto] = useState(false);
   useEffect(() => setFailedPhoto(false), [coverPhotoUrl]);
   const cta = CTA_STYLE[vm.cta];
-  const activity = vm.activity ? ACTIVITY[vm.activity] : null;
   // The member state is a status, not an action — tapping it should open the
   // club like the rest of the card, not fire a join.
   const ctaActs = vm.cta === 'join' || vm.cta === 'request';
@@ -148,25 +140,6 @@ export function ClubCard({
             ) : null}
           </View>
 
-          {activity ? (
-            // Only "פעיל מאוד" breathes. It is the one activity level that is
-            // an invitation rather than a fact — "פעיל" and "לא פעיל" are just
-            // the club's state and pulsing them would make the whole feed
-            // twitch, which tells the eye nothing about where to look.
-            //
-            // It breathes CONTINUOUSLY. Two breaths was the original call and
-            // it was wrong here: the feed scrolls, so a finite pulse burned
-            // itself out below the fold and the badge you actually looked at
-            // never moved. Owner's call, 2026-08-29.
-            <AttentionPulse active={vm.activity === 'veryActive'} cycles={INFINITE}>
-              <View style={styles.activityBadge}>
-                <View style={[styles.dot, { backgroundColor: activity.dot }]} />
-                <Text style={[styles.activityTxt, { color: activity.dot }]}>{activity.label}</Text>
-              </View>
-            </AttentionPulse>
-          ) : (
-            <View />
-          )}
         </View>
         <ImageBackground
           source={
@@ -183,9 +156,7 @@ export function ClubCard({
             colors={['rgba(7,12,32,0.35)', 'rgba(7,12,32,0.10)', 'rgba(7,12,32,0.55)']}
             style={StyleSheet.absoluteFillObject}
           />
-          {/* The cover is space-between, so with only ONE child the activity
-              badge floated to the TOP. An explicit empty top slot keeps it
-              pinned to the bottom corner where the spec puts it. */}
+          {/* Membership and management badges remain separate from activity. */}
           {vm.topBadge === 'manager' ? (
             <View style={[styles.topBadge, { backgroundColor: '#F0A03C' }]}>
               <Text style={styles.topBadgeTxt}>{he.clubCardManager}</Text>
@@ -287,20 +258,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   topBadgeTxt: { color: '#FFF', fontSize: 11, fontWeight: '800' },
-  activityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    alignSelf: 'flex-start',
-    backgroundColor: 'transparent',
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    margin: 0,
-    borderRadius: 99,
-  },
-  dot: { width: 7, height: 7, borderRadius: 4 },
-  activityTxt: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-
   body: { flex: 1, justifyContent: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8 },
   name: { fontSize: 16, fontWeight: '800', color: '#0F172A', textAlign: RTL_LABEL_ALIGN },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

@@ -1,0 +1,97 @@
+{
+  "at": "2026-10-18T05:31:58.952976+00:00",
+  "exitCode": 0,
+  "version": "1.1.56",
+  "code": "289",
+  "mode": "register",
+  "result": {
+    "schema": 1,
+    "mode": "register",
+    "nativeFirebaseAuthUsed": false,
+    "jsAuthQaUiConfirmedByOperator": true,
+    "pushNotificationSent": false,
+    "targetVersionName": "1.1.56",
+    "targetVersionCode": 289,
+    "targetCertificateMatched": true,
+    "targetDebuggable": false,
+    "reactInstanceActive": true,
+    "sdkInitialized": true,
+    "qaSdkIdentityMatched": true,
+    "qaUidSha256": "00083869a52da5a0ce17e4eecbb8da9ec056bf5f3a4e739153bd1d5ea9016aa3",
+    "expectedApiHostMatched": true,
+    "sdkDebugLoggingEnabled": false,
+    "lastTransportErrorPresent": false,
+    "currentSessionPresent": true,
+    "sessionResumedAtLaunch": true,
+    "sessionIdSha256": "eb030350673f9db44cada44a93f99761bffcde7dc6c11ea50d587e024a493862",
+    "sessionIdReadSkippedWithoutCurrent": false,
+    "publicDiagnosticsRead": true,
+    "predicateFixturesRequested": true,
+    "predicateCases": [
+      {
+        "case": "fresh",
+        "expectedValid": true,
+        "actualValid": true,
+        "passed": true
+      },
+      {
+        "case": "expired",
+        "expectedValid": false,
+        "actualValid": false,
+        "passed": true
+      },
+      {
+        "case": "allMissing",
+        "expectedValid": false,
+        "actualValid": false,
+        "passed": true
+      },
+      {
+        "case": "nullId",
+        "expectedValid": false,
+        "actualValid": false,
+        "passed": true
+      },
+      {
+        "case": "emptyId",
+        "expectedValid": false,
+        "actualValid": false,
+        "passed": true
+      },
+      {
+        "case": "blankId",
+        "expectedValid": false,
+        "actualValid": false,
+        "passed": true
+      },
+      {
+        "case": "nullStart",
+        "expectedValid": false,
+        "actualValid": false,
+        "passed": true
+      },
+      {
+        "case": "nullActivity",
+        "expectedValid": false,
+        "actualValid": false,
+        "passed": true
+      }
+    ],
+    "predicatePassCount": 8,
+    "predicateCaseCount": 8,
+    "predicateFixturesPassed": true,
+    "predicateUsedOnlyDetachedFixtures": true,
+    "sessionStateReferencesUnchangedDuringFixtures": true,
+    "registrationRequested": true,
+    "registrationRequestStarted": true,
+    "registrationCallbackReceived": true,
+    "registrationCallbackSuccess": true,
+    "registrationUnauthorized": false,
+    "registrationRetryable": false,
+    "qaIdentityMatchedAfterCallback": true,
+    "registrationProviderMessageOmitted": true,
+    "completed": true,
+    "status": "PROBE_COMPLETED",
+    "finishedAtEpochMs": 1792301517997
+  }
+}

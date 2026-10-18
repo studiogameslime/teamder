@@ -117,16 +117,11 @@ export function orientPair(
 }
 
 /**
- * Win rate, with draws OUT of the denominator.
- *
- * The app has computed it this way everywhere since the compare card was
- * written (`playerCompareService`), and the two screens merging here must not
- * start disagreeing about what a percentage means. A pair with no decided
- * mini-game has no rate — `null`, never 0, because 0% is a claim about a team
- * that lost and this one has not played.
+ * Wins out of ALL played games, including draws. No games is unknown;
+ * games consisting only of draws have a known win percentage of zero.
  */
-export function winPct(wins: number, losses: number): number | null {
-  const decided = wins + losses;
-  if (decided <= 0) return null;
-  return Math.round((wins / decided) * 100);
+export function winPct(wins: number, losses: number, ties = 0): number | null {
+  const played = wins + losses + ties;
+  if (played <= 0) return null;
+  return Math.round((wins / played) * 100);
 }

@@ -82,13 +82,10 @@ export async function initAppCheck(app: FirebaseApp): Promise<void> {
   try {
     const native = appCheckMod();
     const provider = native.newReactNativeFirebaseAppCheckProvider();
-    const debugToken =
-      (process.env.EXPO_PUBLIC_APP_CHECK_DEBUG_TOKEN as string) || undefined;
-    // Use the debug provider in dev builds, OR whenever an explicit debug
-    // token is supplied via env (e.g. QA on an emulator where Play
-    // Integrity can't attest). Production builds set neither, so they
-    // always fall through to Play Integrity below — no security change.
-    if (__DEV__ || debugToken) {
+    // Debug credentials must never select a debug provider in a release build.
+    if (__DEV__) {
+      const debugToken =
+        (process.env.EXPO_PUBLIC_APP_CHECK_DEBUG_TOKEN as string) || undefined;
       // Debug provider — Firebase mints a stable token printed once
       // to logcat. Paste it into Firebase Console → App Check → Apps
       // → Manage debug tokens to whitelist the device.

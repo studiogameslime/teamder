@@ -70,7 +70,7 @@ const HIDDEN: { name: string; title: string; component: React.ComponentType<any>
   { name: 'Push', title: 'פושים', component: PushScreen },
   { name: 'TokenHealth', title: 'בריאות טוקנים', component: TokenHealthScreen },
   { name: 'Ads', title: 'מודעות', component: AdsScreen },
-  { name: 'Messages', title: 'הודעות', component: MessagesScreen },
+  { name: 'Messages', title: 'שיחות עם משתמשים', component: MessagesScreen },
   { name: 'Chats', title: "צ'אטים", component: ChatsScreen },
   { name: 'Ideas', title: 'רעיונות', component: IdeasScreen },
   { name: 'Settings', title: 'הגדרות', component: SettingsScreen },

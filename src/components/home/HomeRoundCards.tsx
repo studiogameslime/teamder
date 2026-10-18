@@ -24,8 +24,10 @@
 // "12/15" does.
 
 import { HeightReveal } from '@/components/anim/HeightReveal';
-import React from 'react';
+import React, { useRef, useState } from 'react';
+import { resolveRoundCover, type RoundCoverClub } from '@/data/roundCover';
 import {
+  ActivityIndicator,
   ImageBackground,
   Pressable,
   StyleSheet,
@@ -48,10 +50,6 @@ import {
   type UpcomingRoundState,
 } from '@/utils/homeRoundState';
 
-/** The ball-on-grass photo the card has always used. No per-game image
- *  exists on the document, so this is the one fallback for every round —
- *  bundled, so it costs no request. */
-const BALL_FIELD: ImageSourcePropType = require('../../assets/images/ball-field.jpg');
 /** The floodlit pitch, for the finished round. */
 const NIGHT_PITCH: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
 
@@ -74,11 +72,11 @@ const CARD_SHADOW = {
 const TONE: Record<RoundStateKind, { ink: string; wash: string; onInk: string }> = {
   open: { ink: '#2563EB', wash: '#EFF4FF', onInk: '#FFFFFF' },
   registered: { ink: '#15803D', wash: '#ECFDF3', onInk: '#FFFFFF' },
-  today: { ink: '#6D28D9', wash: '#F3EEFF', onInk: '#FFFFFF' },
+  today: { ink: '#15803D', wash: '#ECFDF3', onInk: '#FFFFFF' },
   live: { ink: '#6D28D9', wash: '#F3EEFF', onInk: '#FFFFFF' },
   waitlist: { ink: '#C2410C', wash: '#FFF3E6', onInk: '#FFFFFF' },
   pending: { ink: '#C2410C', wash: '#FFF3E6', onInk: '#FFFFFF' },
-  opensSoon: { ink: '#6D28D9', wash: '#F3EEFF', onInk: '#FFFFFF' },
+  opensSoon: { ink: '#15803D', wash: '#ECFDF3', onInk: '#FFFFFF' },
   full: { ink: '#DC2626', wash: '#FEF2F2', onInk: '#FFFFFF' },
   closed: { ink: '#475569', wash: '#F1F5F9', onInk: '#FFFFFF' },
 };
@@ -164,6 +162,8 @@ export function UpcomingRoundCard({
   game,
   state,
   clubName,
+  cover,
+  coverLoading = false,
   actions,
   busy,
   now,
@@ -171,11 +171,17 @@ export function UpcomingRoundCard({
   game: Game;
   state: UpcomingRoundState;
   clubName?: string;
+  cover?: RoundCoverClub | null;
+  coverLoading?: boolean;
   actions: RoundActions;
   /** A join is in flight — the primary action locks so it cannot double-fire. */
   busy?: boolean;
   now: number;
 }) {
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
+  const activePhoto = useRef(cover?.coverPhotoUrl);
+  activePhoto.current = cover?.coverPhotoUrl;
+  const source = resolveRoundCover(game, cover, coverLoading, failedPhotoUrl);
   const tone = TONE[state.kind];
   const venue = [game.fieldName, game.city].filter(Boolean).join(' · ');
   const club = (clubName || game.title || '').trim();
@@ -227,7 +233,10 @@ export function UpcomingRoundCard({
 
         <View style={styles.photo}>
           <ImageBackground
-            source={BALL_FIELD}
+            source={source}
+            onError={() => {
+              if (cover?.coverPhotoUrl && activePhoto.current === cover.coverPhotoUrl) setFailedPhotoUrl(cover.coverPhotoUrl);
+            }}
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
           />
@@ -490,15 +499,15 @@ function PrimaryCta({
       haptic={false}
       style={[styles.cta, { backgroundColor: tone.ink }, busy && { opacity: 0.6 }]}
       accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !!busy }}
+      accessibilityLabel={busy ? 'שומרים את ההרשמה' : label}
+      accessibilityState={{ disabled: !!busy, busy: !!busy }}
     >
       {/* The row lives on this inner View, not on PressableScale: a style
           given to it reaches the Pressable, whose only child is its transform
           wrapper, so the row would never touch these two. */}
       <View style={styles.ctaRow}>
-        <Text style={styles.ctaText}>{label}</Text>
-        <Ionicons name={icon} size={17} color="#FFFFFF" />
+        <Text style={styles.ctaText}>{busy ? 'שומרים את ההרשמה…' : label}</Text>
+        {busy ? <ActivityIndicator size="small" color="#FFFFFF"/> : <Ionicons name={icon} size={17} color="#FFFFFF" />}
       </View>
     </PressableScale>
   );

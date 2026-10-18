@@ -1,0 +1,46 @@
+{
+  "source": "data-eleven-finished.json",
+  "sourceSha256": "a65ad35de8e55cb98c3683b8447ceb29ddab383a153784f11b6f22916a88b8d1",
+  "moduleHashes": {
+    "src/utils/roundSummary.ts": "b80e5ce43ef332827245931e631f07cf0c3ab16ec8ba109668b13b32334985c4",
+    "functions/src/roundSummary.ts": "db42b87dde25d0ae8daa56f70dcdd3f20f6fc6be8740602e48f56cbec5759a04",
+    "src/utils/eveningScore.ts": "b6712c64070e721041e0dd949748e60634cb5c381580aeb3a69af9fc587a2edd",
+    "functions/src/eveningScoreCore.ts": "a1efc60f847e23f0835bee034b525bade44a43dc95516c0c0c1ecb1a80be35aa"
+  },
+  "fullSealedClientSummaryMatches": true,
+  "fullSealedServerSummaryMatches": true,
+  "sealedStats": {
+    "shootouts": 0,
+    "goals": 3,
+    "ties": 0,
+    "assists": 1,
+    "rounds": 3
+  },
+  "scoreInput": {
+    "goals": 0,
+    "assists": 1,
+    "wins": 3,
+    "gamesPlayed": 3,
+    "goalsFor10": 1,
+    "assistsFor10": 1,
+    "pen": {
+      "scored": 0,
+      "saved": 0,
+      "missed": 0,
+      "conceded": 0
+    }
+  },
+  "clientScore": 8.4,
+  "serverScore": 8.4,
+  "storedScore": 8.4,
+  "storedScoreDelta": 1.7,
+  "historicalInvalidRoundSize": {
+    "round": 2,
+    "sides": [
+      12,
+      11
+    ],
+    "retained": true
+  },
+  "proof": "Pure calculations over saved server correctionBasis and gamePlayerStats. The invalid second-game lineup remains included; parity does not validate that lineup."
+}

@@ -1,3 +1,4 @@
+import { readSeasonArchiveData } from './seasonArchiveData';
 // seasonSummaryService — one player's season, fetched.
 //
 // A season IS the club's live stat rows: closing one archives them into
@@ -221,7 +222,7 @@ function titlesFor(
       key,
       value: num(a.value),
       sharedWith: Math.max(0, holders.length - 1),
-      ...(readSeasonCoverage(a) ? { coverage: readSeasonCoverage(a) } : {}),
+      ...(readSeasonCoverage(a, me) ? { coverage: readSeasonCoverage(a, me) } : {}),
     });
   }
   return out;
@@ -453,7 +454,7 @@ export const seasonSummaryService = {
           doc(db, 'seasonSummary', `${groupId}__${seasonId}`),
         );
         if (archived.exists()) {
-          return fromArchive(archived.data() as Record<string, unknown>, {
+          return fromArchive(await readSeasonArchiveData(db, archived.data() as Record<string, unknown>), {
             groupId,
             userId,
             seasonId,
@@ -472,7 +473,7 @@ export const seasonSummaryService = {
       // the RUNNING one — and a club with seasons switched off has none. A
       // closed season is served above, from its own archive, whether or not the
       // feature is still on.
-      if (!seasons?.enabled) return null;
+      if (!seasons?.enabled || (seasonId && seasonId !== seasons.currentId)) return null;
       const groupName = str(g.name);
 
       // Reaching here means the running season: a specific one was either

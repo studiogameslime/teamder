@@ -10,13 +10,15 @@
 // Both need a UI.
 
 import { groupService } from '@/services/groupService';
-import { seasonService } from '@/services/seasonService';
+import { seasonService, SeasonRefusedError } from '@/services/seasonService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import { newClubSeasonsArgs } from '@/utils/newClubSeasons';
 import type { GroupFormValues } from '@/screens/groups/GroupWizardForm';
 import type { User } from '@/types';
 import { pickRandomCoverId } from '@/data/coverImages';
+import { runCreationAttempt } from '@/services/creationAttempt';
+import { assertCreationOwner } from '@/services/creationOwner';
 
 export interface CreatedClub {
   groupId: string;
@@ -38,7 +40,11 @@ export interface CreatedClub {
 export async function createClubFromValues(
   v: GroupFormValues,
   creator: User,
+  draftId?: string,
 ): Promise<CreatedClub> {
+  return runCreationAttempt({ kind: 'club', uid: creator.id, draftId, values: v,
+    assertOwner: () => assertCreationOwner(creator.id),
+  }, async () => {
   const cityVal = v.city.trim();
   const phone = v.contactPhone.trim();
   const parsedMaxMembers = parseInt(v.maxMembers, 10);
@@ -56,7 +62,7 @@ export async function createClubFromValues(
     }
   }
 
-  const group = await groupService.createGroup({
+  return {
     name: v.name.trim(),
     description: v.description.trim() || undefined,
     isOpen: v.isOpen,
@@ -82,8 +88,11 @@ export async function createClubFromValues(
     maxMembers:
       Number.isFinite(parsedMaxMembers) && parsedMaxMembers > 0 ? parsedMaxMembers : undefined,
     coverImageId: pickRandomCoverId(),
-    creator,
-  });
+    creator: { id: creator.id },
+  };
+  }, async (input, creationAttemptId) => {
+  const group = await groupService.createGroup({ ...input, creationAttemptId });
+  assertCreationOwner(creator.id);
   logEvent(AnalyticsEvent.GroupCreated, { groupId: group.id });
 
   // Seasons AFTER the club exists, and deliberately not blocking on it: a
@@ -96,12 +105,15 @@ export async function createClubFromValues(
   let seasonsFailed = false;
   if (v.seasons.enabled) {
     try {
+      assertCreationOwner(creator.id);
       await seasonService.enable(newClubSeasonsArgs(v.seasons, group.id)!);
     } catch (seasonErr) {
-      seasonsFailed = true;
-      logError('createGroupSeasons', seasonErr, { groupId: group.id });
+      assertCreationOwner(creator.id);
+      seasonsFailed = !(seasonErr instanceof SeasonRefusedError && seasonErr.reason === 'seasonsAlreadyOn');
+      if (seasonsFailed) logError('createGroupSeasons', seasonErr, { groupId: group.id });
     }
   }
 
   return { groupId: group.id, seasonsFailed };
+  });
 }

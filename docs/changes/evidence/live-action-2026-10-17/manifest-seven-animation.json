@@ -1,0 +1,197 @@
+{
+  "createdAtUtc": "2026-10-17T02:19:09.213738+00:00",
+  "gameId": "YEdIR3MviDK82D581ELk",
+  "platform": "Android",
+  "environment": "סביבת ייצור בחשבון הבדיקה; לקוח פיתוח מקומי",
+  "timestampExact": false,
+  "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+  "notes": [
+    "זמן מבוקש בחילוץ אינו זמן פריים מדויק; המפענח בוחר את הפריים הקרוב ביותר.",
+    "נשמרו פריימים מקוריים ללא שינוי או חיתוך. דפי מגע שימשו סקירה בלבד ואינם ראיות.",
+    "זמן הצילום נשען על קובץ ההקלטה, וזמן החילוץ נשמר בנפרד. אזהרת פיתוח בתחתית אינה מסתירה את המגרש."
+  ],
+  "videos": [
+    {
+      "file": "animation-sources/seven-normal-penalty-goal.mp4",
+      "source": "tmp/live-action-production/shots/seven-normal-penalty-goal.mp4",
+      "sha256": "f452a82cfaecf580bbfc59762ab912107da286884df98267c9d906b723810615",
+      "extractionManifest": "animation-manifests/seven-normal-penalty-goal.json",
+      "extractionManifestSha256": "2131e921c030958b8c976478707294f1fe0d1cf0f85a4a439fe38f232823f3ea",
+      "capturedAtUtc": "2026-10-17T01:01:54.382108+00:00",
+      "durationMs": 4871
+    },
+    {
+      "file": "animation-sources/seven-normal-penalty-save.mp4",
+      "source": "tmp/live-action-production/shots/seven-normal-penalty-save.mp4",
+      "sha256": "e0966e738a9e7095a5386e9c58f3ad2ce9f90e9a6269ed68160dd9bc9a167d69",
+      "extractionManifest": "animation-manifests/seven-normal-penalty-save.json",
+      "extractionManifestSha256": "7e0425d0ef2021e7017707d41fec7cfb6566c85b54c19344ff17ccec331fab99",
+      "capturedAtUtc": "2026-10-17T01:04:21.753106+00:00",
+      "durationMs": 4915
+    },
+    {
+      "file": "animation-sources/seven-normal-penalty-miss.mp4",
+      "source": "tmp/live-action-production/shots/seven-normal-penalty-miss.mp4",
+      "sha256": "0fa5e2ac7d00a0ef50c718e2a27f458e6f6702f6d49e0139935fa5709ff79574",
+      "extractionManifest": "animation-manifests/seven-normal-penalty-miss.json",
+      "extractionManifestSha256": "3441827c7c44bda4b3ea4dcf81569d35af221ebe3952c11ee3429660e08fc841",
+      "capturedAtUtc": "2026-10-17T01:06:08.453082+00:00",
+      "durationMs": 5183
+    }
+  ],
+  "frames": [
+    {
+      "file": "action-pitch-production-seven-penalty-goal-start-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-seven-penalty-goal-start-2026-10-17.png",
+      "sha256": "e4c18db611473dc6192a82d4a3bf9d585e816016d87e197cf406ccaf771fb77d",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/seven-normal-penalty-goal.mp4",
+      "sourceVideoSha256": "f452a82cfaecf580bbfc59762ab912107da286884df98267c9d906b723810615",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/seven-normal-penalty-goal.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 2400000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T02:08:10.705810+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-seven-penalty-goal-approach-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-seven-penalty-goal-approach-2026-10-17.png",
+      "sha256": "053ef33c84ee4ca11008e3a9eefb2ed4f570708077d77621830017c91b0175d2",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/seven-normal-penalty-goal.mp4",
+      "sourceVideoSha256": "f452a82cfaecf580bbfc59762ab912107da286884df98267c9d906b723810615",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/seven-normal-penalty-goal.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 2700000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T02:08:12.278999+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-seven-penalty-goal-net-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-seven-penalty-goal-net-2026-10-17.png",
+      "sha256": "1fc7c3e2a5fbe83e09926100a8033f9b8d910266e3aa0dfc0dc6b3fb7cd7de23",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/seven-normal-penalty-goal.mp4",
+      "sourceVideoSha256": "f452a82cfaecf580bbfc59762ab912107da286884df98267c9d906b723810615",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/seven-normal-penalty-goal.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 3300000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T02:08:15.353129+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-seven-penalty-save-moving-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-seven-penalty-save-moving-2026-10-17.png",
+      "sha256": "3e1e7499fd247a558e604eaa68e30d9ee591980b3d57f918cfb21eb1dc185994",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/seven-normal-penalty-save.mp4",
+      "sourceVideoSha256": "e0966e738a9e7095a5386e9c58f3ad2ce9f90e9a6269ed68160dd9bc9a167d69",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/seven-normal-penalty-save.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 1800000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T02:08:37.518255+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-seven-penalty-save-contact-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-seven-penalty-save-contact-2026-10-17.png",
+      "sha256": "1647060f82baa5cecaf9722473a0e682005c1921552411e8058dfef83fc0f939",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/seven-normal-penalty-save.mp4",
+      "sourceVideoSha256": "e0966e738a9e7095a5386e9c58f3ad2ce9f90e9a6269ed68160dd9bc9a167d69",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/seven-normal-penalty-save.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 2100000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T02:08:38.459237+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-seven-penalty-save-result-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-seven-penalty-save-result-2026-10-17.png",
+      "sha256": "1f801817fd358cfa36e4802f856638e4e2daa658e3fa163d88c6b94354315a0d",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/seven-normal-penalty-save.mp4",
+      "sourceVideoSha256": "e0966e738a9e7095a5386e9c58f3ad2ce9f90e9a6269ed68160dd9bc9a167d69",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/seven-normal-penalty-save.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 2700000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T02:08:40.293587+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-seven-penalty-miss-start-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-seven-penalty-miss-start-2026-10-17.png",
+      "sha256": "8dc3dcb2cfb0ee6ce2cb3b5aef81bd183b39eb11eda7060cbc9739cc97e79b83",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/seven-normal-penalty-miss.mp4",
+      "sourceVideoSha256": "0fa5e2ac7d00a0ef50c718e2a27f458e6f6702f6d49e0139935fa5709ff79574",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/seven-normal-penalty-miss.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 2400000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T02:08:44.956800+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-seven-penalty-miss-moving-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-seven-penalty-miss-moving-2026-10-17.png",
+      "sha256": "b89b867e949c8bf10e4349bf6dbe8b72d6e5c113c66b836e96b79e7237cbca99",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/seven-normal-penalty-miss.mp4",
+      "sourceVideoSha256": "0fa5e2ac7d00a0ef50c718e2a27f458e6f6702f6d49e0139935fa5709ff79574",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/seven-normal-penalty-miss.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 2700000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T02:08:46.042832+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "file": "action-pitch-production-seven-penalty-miss-outside-2026-10-17.png",
+      "path": "docs/features/screenshots/action-pitch-production-seven-penalty-miss-outside-2026-10-17.png",
+      "sha256": "cedc9884b79cff5dc19e2a5b638db6c26831a4f2a9032f49077a2b09035e55fb",
+      "sourceVideo": "docs/changes/evidence/live-action-2026-10-17/animation-sources/seven-normal-penalty-miss.mp4",
+      "sourceVideoSha256": "0fa5e2ac7d00a0ef50c718e2a27f458e6f6702f6d49e0139935fa5709ff79574",
+      "sourceExtractionManifest": "docs/changes/evidence/live-action-2026-10-17/animation-manifests/seven-normal-penalty-miss.json",
+      "decoder": "MediaMetadataRetriever.OPTION_CLOSEST",
+      "selection": "closest",
+      "requestedTimeUs": 3000000,
+      "timestampExact": false,
+      "extractedAtUtc": "2026-10-17T02:08:47.196350+00:00",
+      "dimensions": {
+        "width": 1080,
+        "height": 2400
+      }
+    }
+  ]
+}

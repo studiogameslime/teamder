@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // Reusable date / time form fields. Each renders a labelled tappable
 // input that opens a modal picker — no horizontal chip rows.
 //
@@ -25,6 +26,7 @@ import { Button } from './Button';
 import { InfoTip } from './InfoTip';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { useFormDesign, formFieldStyle } from './forms/FormTheme';
 import { formatDateFull, formatDateTimeFull } from '@/utils/format';
 
 const HEBREW_DAY_HEADERS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
@@ -73,6 +75,7 @@ export function AppTimeField({
   style,
   required,
 }: AppTimeFieldProps) {
+  const designed = useFormDesign();
   const [open, setOpen] = useState(false);
   return (
     <View style={[styles.field, style]}>
@@ -84,15 +87,16 @@ export function AppTimeField({
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
           styles.input,
+          designed && formFieldStyle,
           styles.inputRow,
           pressed && { opacity: 0.85 },
         ]}
       >
-        <Ionicons
+        {!designed ? <Ionicons
           name="time-outline"
           size={18}
           color={colors.textMuted}
-        />
+        /> : null}
         <Text
           style={[
             styles.value,
@@ -101,6 +105,11 @@ export function AppTimeField({
         >
           {value || placeholder || he.dtfPickTime}
         </Text>
+        {designed ? <Ionicons
+          name="time-outline"
+          size={18}
+          color={colors.textMuted}
+        /> : null}
       </Pressable>
       <TimePickerModal
         visible={open}
@@ -141,6 +150,7 @@ export function AppDateField({
   style,
   required,
 }: AppDateFieldProps) {
+  const designed = useFormDesign();
   const [open, setOpen] = useState(false);
   return (
     <View style={[styles.field, style]}>
@@ -152,16 +162,22 @@ export function AppDateField({
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
           styles.input,
+          designed && formFieldStyle,
           styles.inputRow,
           pressed && { opacity: 0.85 },
         ]}
       >
-        <Ionicons
+        {!designed ? <Ionicons
           name="calendar-outline"
           size={18}
           color={colors.textMuted}
-        />
+        /> : null}
         <Text style={styles.value}>{formatDateFull(value)}</Text>
+        {designed ? <Ionicons
+          name="calendar-outline"
+          size={18}
+          color={colors.textMuted}
+        /> : null}
       </Pressable>
       <DatePickerModal
         visible={open}
@@ -202,6 +218,7 @@ export function AppDateTimeField({
   required,
   info,
 }: AppDateTimeFieldProps) {
+  const designed = useFormDesign();
   const [open, setOpen] = useState(false);
   return (
     <View style={[styles.field, style]}>
@@ -223,16 +240,22 @@ export function AppDateTimeField({
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
           styles.input,
+          designed && formFieldStyle,
           styles.inputRow,
           pressed && { opacity: 0.85 },
         ]}
       >
-        <Ionicons
+        {!designed ? <Ionicons
           name="calendar-outline"
           size={18}
           color={colors.textMuted}
-        />
+        /> : null}
         <Text style={styles.value}>{formatDateTimeFull(value)}</Text>
+        {designed ? <Ionicons
+          name="calendar-outline"
+          size={18}
+          color={colors.textMuted}
+        /> : null}
       </Pressable>
       <DateTimePickerModal
         visible={open}
@@ -740,18 +763,15 @@ const styles = StyleSheet.create({
   },
 
   // Modal
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
   },
-  card: {
+  card: { ...overlaySurfaces.dialog,
     width: '100%',
     maxWidth: 360,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.md,
   },

@@ -1,0 +1,17 @@
+[copy-template] copied public\c\index.html → functions\templates\community.html
+[copy-template] copied public\invite.html → functions\templates\invite.html
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in C:/Users/elira/Teamder/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+PASS tests/logic/liveGameWrites.test.ts (13.938 s)
+PASS tests/logic/finalAtomicAlternativeAudit.test.ts (7.629 s)
+PASS tests/logic/finalAlternateDecisionAudit.test.ts
+PASS tests/logic/finalGoalAuditDecisionContext.test.ts
+PASS tests/logic/dataLiveAuditServerCommit.test.ts
+PASS tests/logic/preReleaseRoundIntegrity.test.ts
+PASS tests/logic/finalLineupAudit.test.ts
+
+Test Suites: 7 passed, 7 total
+Tests:       183 passed, 183 total
+Snapshots:   0 total
+Time:        26.589 s

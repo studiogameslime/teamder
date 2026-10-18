@@ -1,3 +1,4 @@
+import { groupWorkSections } from '../services/unresolvedWork';
 import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
 // TasksScreen — the app's home, and the ONE place all work lives.
 //
@@ -21,7 +22,7 @@ import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
 // streams share the same caches the old screens used, so nothing here costs a
 // read that wasn't already being paid.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -60,7 +61,6 @@ import {
   KIND_LABEL,
   KIND_ORDER,
   closeItem,
-  groupByKind,
   listWork,
   reopenItem,
   invalidateStream,
@@ -143,7 +143,9 @@ export function TasksScreen() {
         setLoading(false);
       }
       try {
-        const fresh = await listWork();
+        const fresh = await listWork(false, partial => {
+          if (alive) setItems(partial);
+        });
         if (alive) setItems(fresh);
       } catch {
         /* keep whatever the snapshot gave us */
@@ -181,7 +183,7 @@ export function TasksScreen() {
     return filter === 'all' ? list : list.filter((i) => i.kind === filter);
   }, [byState, tab, filter]);
 
-  const groups = useMemo(() => groupByKind(visible), [visible]);
+  const groups = useMemo(() => groupWorkSections(visible, KIND_ORDER), [visible]);
 
   /** Counts per KIND inside the CURRENT tab — drives the filter chips. */
   const kindCounts = useMemo(() => {
@@ -190,20 +192,19 @@ export function TasksScreen() {
     return out;
   }, [byState, tab]);
 
-  /** Accept an item: close it in whatever word its own collection speaks. */
-  const accept = async (item: WorkItem) => {
-    setItems((prev) =>
-      prev.map((i) => (i.key === item.key ? { ...i, state: 'done' } : i)),
-    );
-    await closeItem(item).catch(() => {});
+  const savingItems = useRef(new Set<string>());
+  const saveState = async (item: WorkItem, reopen: boolean) => {
+    if (savingItems.current.has(item.key)) return;
+    savingItems.current.add(item.key);
+    try {
+      const ok = await (reopen ? reopenItem(item) : closeItem(item));
+      if (!ok) throw new Error('SAVE_FAILED');
+      setItems(previous => previous.map(i => i.key === item.key ? {...i, state: reopen ? (i.claude ? 'claude' : 'open') : 'done'} : i));
+    } catch { Alert.alert('השינוי לא נשמר', 'הפריט נשאר במצבו הקודם. נסו שוב.'); }
+    finally { savingItems.current.delete(item.key); }
   };
-
-  const reopen = async (item: WorkItem) => {
-    setItems((prev) =>
-      prev.map((i) => (i.key === item.key ? { ...i, state: i.claude ? 'claude' : 'open' } : i)),
-    );
-    await reopenItem(item).catch(() => {});
-  };
+  const accept = (item: WorkItem) => saveState(item, false);
+  const reopen = (item: WorkItem) => saveState(item, true);
 
   /** Withdraw Claude's handover — the item goes back to plain open. */
   const withdraw = async (item: WorkItem) => {
@@ -332,11 +333,11 @@ export function TasksScreen() {
               <View key={g.kind} style={st.group}>
                 <View style={st.groupHead}>
                   <Ionicons
-                    name={KIND_ICON[g.kind] as never}
+                    name={(g.kind === 'unresolved' ? 'construct-outline' : KIND_ICON[g.kind]) as never}
                     size={16}
                     color={colors.primary}
                   />
-                  <Text style={st.groupTitle}>{KIND_LABEL[g.kind]}</Text>
+                  <Text style={st.groupTitle}>{g.kind === 'unresolved' ? 'באגים שלא נפתרו' : KIND_LABEL[g.kind]}</Text>
                   <Text style={st.groupCount}>{g.items.length}</Text>
                 </View>
                 {g.items.map((item) => (
@@ -362,6 +363,7 @@ export function TasksScreen() {
       <ImageLightbox {...lightbox.props} onClose={lightbox.close} />
 
       <TeamderChatSheet
+        onStatusChanged={() => { void reload(true); }}
         visible={replyTo !== null || openThread !== null}
         userId={replyTo?.reporterId ?? openThread?.id ?? ''}
         userName={replyTo?.reporterName ?? openThread?.name ?? ''}
@@ -420,6 +422,7 @@ function WorkRow({
   onZoom: (images: string[], at?: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [savingStatus, setSavingStatus] = useState(false);
   // Images are NOT in the list payload — they are the bulk of it, so the list
   // projects them away and one document is fetched here when it is opened.
   const [shots, setShots] = useState<{ images: string[]; claudeImages: string[] } | null>(
@@ -462,12 +465,16 @@ function WorkRow({
       <Pressable
         style={st.rowMain}
         // A conversation has no body to expand — tapping it opens the thread,
-        // which is the only thing you can do about it.
+        // while the separate check button resolves it without sending.
         onPress={() => (item.stream === 'chat' ? onReply?.() : setExpanded((v) => !v))}
       >
         <Pressable
           hitSlop={10}
-          onPress={item.stream === 'chat' ? onReply : isDone ? onReopen : onAccept}
+          onPress={async event => { event.stopPropagation(); if (savingStatus) return; setSavingStatus(true); try { await (isDone ? onReopen : onAccept)(); } finally { setSavingStatus(false); } }}
+          disabled={savingStatus}
+          accessibilityState={{disabled:savingStatus,busy:savingStatus}}
+          accessibilityRole="button"
+          accessibilityLabel={isDone ? 'פתיחה מחדש' : item.stream === 'chat' ? 'סמן שיחה כפתורה ללא תשובה' : 'סגירת המשימה'}
           style={[
             st.check,
             isDone && st.checkOn,
@@ -475,9 +482,7 @@ function WorkRow({
             item.stream === 'chat' && st.checkChat,
           ]}
         >
-          {item.stream === 'chat' ? (
-            <Ionicons name="arrow-undo" size={13} color={colors.primary} />
-          ) : null}
+          {savingStatus ? <ActivityIndicator size="small" color={colors.primary}/> : item.stream === 'chat' && !isDone ? <Ionicons name="checkmark" size={16} color={colors.primary} /> : null}
           {isDone ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
           {byClaude ? <Ionicons name="sparkles" size={12} color={colors.primary} /> : null}
         </Pressable>
@@ -528,6 +533,7 @@ function WorkRow({
       {expanded ? (
         <View style={st.expand}>
           {(item.stream==='error'||item.stream==='report')?<DiagnosticTimeline docPath={item.docPath}/>:null}
+          {item.unresolved && item.state === 'open' ? <View style={{padding:12,borderRadius:12,backgroundColor:'#F59E0B18',gap:8}}><Text style={[st.notes,{color:colors.text}]}>מה כבר נבדק: {item.unresolved.reason}</Text><Text style={st.notes}>מה חסר לפתרון: {item.unresolved.nextStep}</Text></View> : null}
           {item.body ? <Text style={st.notes}>{item.body}</Text> : null}
           {loadingShots ? (
             <ActivityIndicator color={colors.primary} style={{ alignSelf: 'flex-end' }} />

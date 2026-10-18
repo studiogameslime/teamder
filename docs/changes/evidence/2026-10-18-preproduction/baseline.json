@@ -1,0 +1,846 @@
+{
+  "readStartedAt": "2026-10-17T21:39:13.623033+00:00",
+  "readCompletedAt": "2026-10-17T21:39:19.478373+00:00",
+  "readScope": {
+    "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "clubId": "J060YQu6QTcgk3glUDj2",
+    "oldRoundIds": [
+      "lmUUmQru2HtKvQkRDVeD",
+      "YEdIR3MviDK82D581ELk",
+      "mBO5HqJdnOPWjRE2zMh8"
+    ],
+    "newRoundsIncluded": false,
+    "access": "Document GET with field masks and scoped documents:runQuery only"
+  },
+  "account": {
+    "exists": true,
+    "numbers": {
+      "stats": {
+        "penFaced": 3,
+        "penSaved": 2,
+        "wins": 4,
+        "assists": 1,
+        "cleanSheets": 3,
+        "goals": 3,
+        "penConceded": 1
+      },
+      "updatedAt": 1792203554079
+    },
+    "digest": "34ca88cbf25a69a028a7f4f82d135479e5252d75bd5d11098cbc092fa072b95a"
+  },
+  "qaClubStats": {
+    "exists": true,
+    "numbers": {
+      "eveningScoreSum": 26.0,
+      "penSaved": 2,
+      "penConceded": 1,
+      "goals": 3,
+      "rounds": 6,
+      "lastEveningScore": 9,
+      "assists": 1,
+      "games": 3,
+      "penFaced": 3,
+      "csRounds": 6,
+      "cleanSheets": 3,
+      "eveningScoreCount": 3,
+      "asRounds": 6,
+      "bestEvening": {
+        "involvement": 2,
+        "wins": 2,
+        "assists": 1,
+        "goals": 1,
+        "cleanSheets": 1
+      },
+      "losses": 2,
+      "wins": 4,
+      "lastEveningAt": 1792216800000,
+      "updatedAt": 1792210110093
+    },
+    "digest": "cd2e8122a19a68ac44b2d0ff69ec1365e9c18b70f6d7d80b5e55bda1cf5726e4"
+  },
+  "clubTotals": {
+    "exists": true,
+    "numbers": {
+      "countedRounds": 6,
+      "rounds": 6,
+      "updatedAt": 1792210111370,
+      "kingAssistsCount": 1,
+      "kingGoalsSum": 3,
+      "goals": 3,
+      "kingAssistsSum": 1,
+      "kingGoalsCount": 3,
+      "chemistrySince": 1792192500000,
+      "scorelessRounds": 1,
+      "shootoutRounds": 1,
+      "tiedRounds": 0,
+      "guestGoals": 5
+    },
+    "digest": "f8ecfb3e818a0008d50c5c4204a42770cec9c48a617092b6959088435924555d"
+  },
+  "clubShowcase": {
+    "exists": true,
+    "numbers": {
+      "updatedAt": 1792210111625,
+      "totalMembers": 1,
+      "organizationRatePct": 100,
+      "totalGamesFinished": 3,
+      "thisMonthGames": 3,
+      "foundedAt": 1792188733060,
+      "activeMembersThisYear": 1,
+      "activeMembersThisMonth": 1,
+      "totalGamesCancelled": 0,
+      "avgAttendance": 1
+    },
+    "digest": "005262689ab6f954dab7914130e80bcb122d32b56756e017b5745753fdd9f561"
+  },
+  "clubRecords": {
+    "exists": true,
+    "numbers": {
+      "goals": {
+        "value": 1
+      },
+      "involvement": {
+        "value": 2
+      },
+      "since": 1792192500000,
+      "eveningsSealed": 3,
+      "wins": {
+        "value": 2
+      },
+      "updatedAt": 1792210116131,
+      "lastEveningAt": 1792216800000,
+      "cleanSheets": {
+        "value": 1
+      },
+      "assists": {
+        "value": 1
+      }
+    },
+    "digest": "e0ac64f05a2e26af2710b48b7d0eef1b138c09b08e5bc2fe03390368050eb47f"
+  },
+  "membershipCounts": {
+    "members": 1,
+    "admins": 1,
+    "pending": 1
+  },
+  "clubSeasons": null,
+  "oldRounds": [
+    {
+      "gameId": "lmUUmQru2HtKvQkRDVeD",
+      "status": "finished",
+      "format": "4v4",
+      "committedRoundCount": 2,
+      "lastCommittedRoundId": "r_mvbl2aod_9j30k8mo",
+      "registeredUsers": 1,
+      "participantCount": 1,
+      "guestCount": 11,
+      "gameDigest": "b757c65870dec6a0fe406bca3b9516f0c3f094218b324f5dbe2eb0bb266823ee",
+      "history": {
+        "count": 2,
+        "digest": "f2da7055cbc11bb21bb3b5b55bd887de742e06fe4af6020e09909df687df22a8",
+        "scores": [
+          {
+            "roundId": "r_mvbkmbvw_hoku9lb8",
+            "scoreA": 3,
+            "scoreB": 1,
+            "goals": 4,
+            "penalties": 0
+          },
+          {
+            "roundId": "r_mvbl2aod_9j30k8mo",
+            "scoreA": 0,
+            "scoreB": 0,
+            "goals": 0,
+            "penalties": 0
+          }
+        ]
+      },
+      "commits": {
+        "count": 2,
+        "digest": "983ba68d012f131b5d6a9052e064c959b8578070a439899aa421c9c4f1454bc0"
+      },
+      "playerStats": {
+        "count": 12,
+        "guests": 11,
+        "aggregate": {
+          "wins": 8,
+          "teamScoreRounds": 16,
+          "cleanSheets": 8,
+          "losses": 8,
+          "actualTeamGoalsFor": 16,
+          "actualTeamGoalsAgainst": 16,
+          "rounds": 16,
+          "goals": 2,
+          "assists": 1
+        },
+        "digest": "495650f4ceb730d394204e7a2cdb93018aa80b5c9c36bdf2beacf1d82ddb63bd",
+        "qa": {
+          "wins": 1,
+          "teamScoreRounds": 2,
+          "cleanSheets": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 3,
+          "actualTeamGoalsAgainst": 1,
+          "rounds": 2,
+          "goals": 1,
+          "updatedAt": 1792192746667
+        }
+      },
+      "summary": {
+        "exists": true,
+        "digest": "41defa674f776bd800b3551498a2049402d6cc308320dc97a82cd4779d2769a9",
+        "stats": {
+          "rounds": 2,
+          "shootouts": 0,
+          "ties": 0,
+          "goals": 3,
+          "assists": 1
+        }
+      },
+      "attendance": {
+        "exists": true,
+        "numbers": {
+          "at": 1792192816304
+        },
+        "digest": "67ef06850cb6d0afd2b8e0f57e2bfc848516feefcc28e9dbc9b78e0d3ca736ca"
+      },
+      "finishStages": {
+        "count": 2,
+        "digest": "96821271633a965a72c911065ff109b521215e3c3ed98e670f453051844c4aee"
+      },
+      "qaStanding": {
+        "exists": true,
+        "numbers": {
+          "scoreBasis": {
+            "assistsFor10": 2,
+            "goalsFor10": 1
+          },
+          "score": 8.2,
+          "scoreTotal": 1,
+          "rankTotal": 1,
+          "at": 1792192500000,
+          "scoreRank": 1,
+          "rank": 1
+        },
+        "digest": "546399d0b8b5e6aaa07bba1d00f909702ff4c76647e9e5ce57910a49c49a7aa0"
+      }
+    },
+    {
+      "gameId": "YEdIR3MviDK82D581ELk",
+      "status": "finished",
+      "format": "7v7",
+      "committedRoundCount": 2,
+      "lastCommittedRoundId": "r_mvbpasvp_s94nyeui",
+      "registeredUsers": 1,
+      "participantCount": 1,
+      "guestCount": 20,
+      "gameDigest": "d168d24db29134860f60af68f4d880339eb787b2021b62ebfe706f281dd0a778",
+      "history": {
+        "count": 2,
+        "digest": "e8ca9f66ad99c55f53fc81b46e6de1801e4b6f7f843c6067456f619ebcef6633",
+        "scores": [
+          {
+            "roundId": "r_mvboblq9_ynnomoks",
+            "scoreA": 1,
+            "scoreB": 1,
+            "goals": 2,
+            "penalties": 5
+          },
+          {
+            "roundId": "r_mvbpasvp_s94nyeui",
+            "scoreA": 1,
+            "scoreB": 0,
+            "goals": 1,
+            "penalties": 0
+          }
+        ]
+      },
+      "commits": {
+        "count": 2,
+        "digest": "8b75dee634d5dbe3d83b241d3acdbfe405d71e06bd8257464595a7edab3ff6e6"
+      },
+      "playerStats": {
+        "count": 21,
+        "guests": 20,
+        "aggregate": {
+          "wins": 14,
+          "penSaved": 2,
+          "cleanSheets": 7,
+          "actualTeamGoalsFor": 21,
+          "actualTeamGoalsAgainst": 21,
+          "teamScoreRounds": 28,
+          "penConceded": 1,
+          "penFaced": 3,
+          "rounds": 28,
+          "goals": 3,
+          "losses": 14,
+          "assists": 2
+        },
+        "digest": "fb66dca5c2eb444c74f77fdfe23c9086d1ce57b1d1d4c16c875917949897356b",
+        "qa": {
+          "wins": 2,
+          "penSaved": 2,
+          "cleanSheets": 1,
+          "actualTeamGoalsFor": 2,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 2,
+          "penConceded": 1,
+          "penFaced": 3,
+          "rounds": 2,
+          "goals": 1,
+          "updatedAt": 1792202210858
+        }
+      },
+      "summary": {
+        "exists": true,
+        "digest": "75c6bdbfa832a0114d26692c70d645969fc330543e9c311f80ff208d3012f69b",
+        "stats": {
+          "rounds": 2,
+          "assists": 2,
+          "shootouts": 1,
+          "ties": 0,
+          "goals": 3
+        }
+      },
+      "attendance": {
+        "exists": true,
+        "numbers": {
+          "at": 1792202609093
+        },
+        "digest": "3b7302a0709504719edf649d44e9248b511807ac4a22b6b744f2f2d5797d1e7b"
+      },
+      "finishStages": {
+        "count": 2,
+        "digest": "0d74edc6c54a6cf2de762321eb369d100c77a7ddc415379e83e10fdcc9bf4de2"
+      },
+      "qaStanding": {
+        "exists": true,
+        "numbers": {
+          "scoreDelta": 0.6,
+          "score": 8.8,
+          "rank": 1,
+          "rankDelta": 0,
+          "rankTotal": 1,
+          "metrics": {
+            "wins": {
+              "passedByCount": 0,
+              "value": 3,
+              "delta": 0,
+              "rank": 1,
+              "passedCount": 0
+            },
+            "goals": {
+              "passedCount": 0,
+              "rank": 1,
+              "passedByCount": 0,
+              "delta": 0,
+              "value": 2
+            }
+          },
+          "scoreRank": 1,
+          "at": 1792194600000,
+          "scoreTotal": 1,
+          "scoreBasis": {
+            "previousScore": 8.2,
+            "previousAt": 1792192500000,
+            "assistsFor10": 2,
+            "goalsFor10": 1
+          }
+        },
+        "digest": "4fab46eedb6f7ce37c3bca325ef33927ec0a820b22929afff99c1ca66e4e52d3"
+      }
+    },
+    {
+      "gameId": "mBO5HqJdnOPWjRE2zMh8",
+      "status": "finished",
+      "format": "11v11",
+      "committedRoundCount": 2,
+      "lastCommittedRoundId": "r_mvbuu5ds_i2fcwkqp",
+      "registeredUsers": 1,
+      "participantCount": 1,
+      "guestCount": 32,
+      "gameDigest": "dc7a966d822c787e297f09a2c63230c86e4e54244dbdaedafebcfed9dacba7ec",
+      "history": {
+        "count": 2,
+        "digest": "0cbef033b3fd5890db4a849a6e6807c0714fa80880b67529e6b8c763205f4527",
+        "scores": [
+          {
+            "roundId": "r_mvbtoxwh_f3ntv5pc",
+            "scoreA": 1,
+            "scoreB": 1,
+            "goals": 2,
+            "penalties": 0
+          },
+          {
+            "roundId": "r_mvbuu5ds_i2fcwkqp",
+            "scoreA": 0,
+            "scoreB": 1,
+            "goals": 1,
+            "penalties": 0
+          }
+        ]
+      },
+      "commits": {
+        "count": 2,
+        "digest": "44e1de3293f3e7716a890e8043c7a68a0422a71bbf9c3ea1979914b0e9c7e461"
+      },
+      "playerStats": {
+        "count": 32,
+        "guests": 31,
+        "aggregate": {
+          "wins": 22,
+          "teamScoreRounds": 45,
+          "assists": 3,
+          "cleanSheets": 11,
+          "losses": 23,
+          "actualTeamGoalsFor": 34,
+          "actualTeamGoalsAgainst": 34,
+          "rounds": 45,
+          "goals": 3
+        },
+        "digest": "17b0c605ce27faf1a6b203ab040a40a09ce13c275593c25fb5b64d618fdf6858",
+        "qa": {
+          "wins": 1,
+          "teamScoreRounds": 2,
+          "assists": 1,
+          "cleanSheets": 1,
+          "losses": 1,
+          "actualTeamGoalsFor": 2,
+          "actualTeamGoalsAgainst": 1,
+          "rounds": 2,
+          "goals": 1,
+          "updatedAt": 1792208964282
+        }
+      },
+      "summary": {
+        "exists": true,
+        "digest": "3ba0b55159c782c5e00d7f896b42a0139eb94a866f8ebd2d35eece56d3402fb3",
+        "stats": {
+          "rounds": 2,
+          "goals": 3,
+          "assists": 3,
+          "ties": 0,
+          "shootouts": 0
+        }
+      },
+      "attendance": {
+        "exists": true,
+        "numbers": {
+          "at": 1792210110093
+        },
+        "digest": "314cc01a63d1d3dd0aaa76822abdfaf118aa67a1d78973d48ad923645481a72c"
+      },
+      "finishStages": {
+        "count": 2,
+        "digest": "4304228a86b5d8f13c146daf94bb143d100cbf20a55932e4146e78b4b129b167"
+      },
+      "qaStanding": {
+        "exists": true,
+        "numbers": {
+          "metrics": {
+            "goals": {
+              "rank": 1,
+              "passedByCount": 0,
+              "value": 3,
+              "delta": 0,
+              "passedCount": 0
+            },
+            "wins": {
+              "passedByCount": 0,
+              "delta": 0,
+              "value": 4,
+              "passedCount": 0,
+              "rank": 1
+            }
+          },
+          "rankTotal": 1,
+          "scoreRank": 1,
+          "score": 9,
+          "scoreDelta": 0.2,
+          "rank": 1,
+          "rankDelta": 0,
+          "scoreBasis": {
+            "assistsFor10": 1,
+            "previousScore": 8.8,
+            "previousAt": 1792194600000,
+            "goalsFor10": 1
+          },
+          "scoreTotal": 1,
+          "at": 1792216800000
+        },
+        "digest": "022434e76015f06f249227fbaea49c016c493f46542abe00fb1a7bd2c3e43b11"
+      }
+    }
+  ],
+  "reads": [
+    {
+      "document": "users/8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "fields": [
+        "stats",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "groups/J060YQu6QTcgk3glUDj2",
+      "fields": [
+        "playerIds",
+        "adminIds",
+        "pendingPlayerIds",
+        "seasons",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "communityPlayerStats/J060YQu6QTcgk3glUDj2__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "document": "communityStats/J060YQu6QTcgk3glUDj2",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "document": "communityShowcase/J060YQu6QTcgk3glUDj2",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "document": "clubRecords/J060YQu6QTcgk3glUDj2",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "document": "games/lmUUmQru2HtKvQkRDVeD",
+      "fields": [
+        "createdBy",
+        "groupId",
+        "status",
+        "startsAt",
+        "createdAt",
+        "updatedAt",
+        "endedAt",
+        "endedBy",
+        "format",
+        "numberOfTeams",
+        "committedRoundCount",
+        "lastCommittedRoundId",
+        "players",
+        "participantIds",
+        "guests",
+        "rotation",
+        "draftTeams",
+        "liveMatch"
+      ]
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "lmUUmQru2HtKvQkRDVeD",
+      "fields": [
+        "roundId",
+        "teamA",
+        "teamB",
+        "teamAIndex",
+        "teamBIndex",
+        "scoreA",
+        "scoreB",
+        "winnerSide",
+        "goals",
+        "penalties",
+        "at"
+      ]
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "lmUUmQru2HtKvQkRDVeD",
+      "fields": [
+        "committedAt",
+        "by",
+        "winnerSide",
+        "tieResolution"
+      ]
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "lmUUmQru2HtKvQkRDVeD",
+      "fields": [
+        "gameId",
+        "userId",
+        "isGuest",
+        "goals",
+        "assists",
+        "ownGoals",
+        "rounds",
+        "wins",
+        "ties",
+        "losses",
+        "cleanSheets",
+        "csRounds",
+        "asRounds",
+        "actualTeamGoalsFor",
+        "actualTeamGoalsAgainst",
+        "teamScoreRounds",
+        "penTaken",
+        "penScored",
+        "penMissed",
+        "penFaced",
+        "penSaved",
+        "penConceded",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "roundSummaries/lmUUmQru2HtKvQkRDVeD",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "document": "games/lmUUmQru2HtKvQkRDVeD/finishCredited/once",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "query": "finishStages",
+      "gameId": "lmUUmQru2HtKvQkRDVeD",
+      "fields": [
+        "done",
+        "at",
+        "updatedAt",
+        "completedAt",
+        "stage",
+        "status"
+      ]
+    },
+    {
+      "document": "eveningStandings/lmUUmQru2HtKvQkRDVeD__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "document": "games/YEdIR3MviDK82D581ELk",
+      "fields": [
+        "createdBy",
+        "groupId",
+        "status",
+        "startsAt",
+        "createdAt",
+        "updatedAt",
+        "endedAt",
+        "endedBy",
+        "format",
+        "numberOfTeams",
+        "committedRoundCount",
+        "lastCommittedRoundId",
+        "players",
+        "participantIds",
+        "guests",
+        "rotation",
+        "draftTeams",
+        "liveMatch"
+      ]
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "YEdIR3MviDK82D581ELk",
+      "fields": [
+        "roundId",
+        "teamA",
+        "teamB",
+        "teamAIndex",
+        "teamBIndex",
+        "scoreA",
+        "scoreB",
+        "winnerSide",
+        "goals",
+        "penalties",
+        "at"
+      ]
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "YEdIR3MviDK82D581ELk",
+      "fields": [
+        "committedAt",
+        "by",
+        "winnerSide",
+        "tieResolution"
+      ]
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "YEdIR3MviDK82D581ELk",
+      "fields": [
+        "gameId",
+        "userId",
+        "isGuest",
+        "goals",
+        "assists",
+        "ownGoals",
+        "rounds",
+        "wins",
+        "ties",
+        "losses",
+        "cleanSheets",
+        "csRounds",
+        "asRounds",
+        "actualTeamGoalsFor",
+        "actualTeamGoalsAgainst",
+        "teamScoreRounds",
+        "penTaken",
+        "penScored",
+        "penMissed",
+        "penFaced",
+        "penSaved",
+        "penConceded",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "roundSummaries/YEdIR3MviDK82D581ELk",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "document": "games/YEdIR3MviDK82D581ELk/finishCredited/once",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "query": "finishStages",
+      "gameId": "YEdIR3MviDK82D581ELk",
+      "fields": [
+        "done",
+        "at",
+        "updatedAt",
+        "completedAt",
+        "stage",
+        "status"
+      ]
+    },
+    {
+      "document": "eveningStandings/YEdIR3MviDK82D581ELk__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "document": "games/mBO5HqJdnOPWjRE2zMh8",
+      "fields": [
+        "createdBy",
+        "groupId",
+        "status",
+        "startsAt",
+        "createdAt",
+        "updatedAt",
+        "endedAt",
+        "endedBy",
+        "format",
+        "numberOfTeams",
+        "committedRoundCount",
+        "lastCommittedRoundId",
+        "players",
+        "participantIds",
+        "guests",
+        "rotation",
+        "draftTeams",
+        "liveMatch"
+      ]
+    },
+    {
+      "query": "roundHistory",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8",
+      "fields": [
+        "roundId",
+        "teamA",
+        "teamB",
+        "teamAIndex",
+        "teamBIndex",
+        "scoreA",
+        "scoreB",
+        "winnerSide",
+        "goals",
+        "penalties",
+        "at"
+      ]
+    },
+    {
+      "query": "committedRounds",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8",
+      "fields": [
+        "committedAt",
+        "by",
+        "winnerSide",
+        "tieResolution"
+      ]
+    },
+    {
+      "query": "gamePlayerStats",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8",
+      "fields": [
+        "gameId",
+        "userId",
+        "isGuest",
+        "goals",
+        "assists",
+        "ownGoals",
+        "rounds",
+        "wins",
+        "ties",
+        "losses",
+        "cleanSheets",
+        "csRounds",
+        "asRounds",
+        "actualTeamGoalsFor",
+        "actualTeamGoalsAgainst",
+        "teamScoreRounds",
+        "penTaken",
+        "penScored",
+        "penMissed",
+        "penFaced",
+        "penSaved",
+        "penConceded",
+        "updatedAt"
+      ]
+    },
+    {
+      "document": "roundSummaries/mBO5HqJdnOPWjRE2zMh8",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "document": "games/mBO5HqJdnOPWjRE2zMh8/finishCredited/once",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    },
+    {
+      "query": "finishStages",
+      "gameId": "mBO5HqJdnOPWjRE2zMh8",
+      "fields": [
+        "done",
+        "at",
+        "updatedAt",
+        "completedAt",
+        "stage",
+        "status"
+      ]
+    },
+    {
+      "document": "eveningStandings/mBO5HqJdnOPWjRE2zMh8__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "fields": [
+        "all relevant document fields; persisted only as counters/digest"
+      ]
+    }
+  ]
+}

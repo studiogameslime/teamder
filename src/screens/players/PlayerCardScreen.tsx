@@ -1,11 +1,6 @@
-// PlayerCardScreen — read-only profile of any user in the system.
-//
-// Inputs (route param): userId. Outputs: avatar + name + email + 3 stats
-// derived from the raw counters via getAttendanceRate / getCancelRate.
-//
-// "Invite to Game" CTA is intentionally a stub for v1 — the actual invite
-// flow (organizer picks a game, target accepts) is post-MVP. Disabled
-// when the target user has `availability.isAvailableForInvites === false`.
+// Existing PlayerCard route: self/guest remain here; another full-account
+// player uses SocialPlayerProfile with server-projected identity and statistics.
+// Do not introduce a second profile route when extending discovery.
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -26,6 +21,7 @@ import {
 } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { SocialPlayerProfile } from '@/components/social/SocialPlayerProfile';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { FriendActionButton } from '@/components/profile/FriendActionButton';
 import { goToDirectChat } from '@/navigation/navigationRef';
@@ -154,7 +150,7 @@ export function PlayerCardScreen() {
         .finally(() => {
           if (alive) setLoading(false);
         });
-    } else {
+    } else if (me?.id === userId) {
       userService
         .getUserById(userId)
         .then((u) => {
@@ -170,7 +166,7 @@ export function PlayerCardScreen() {
     return () => {
       alive = false;
     };
-  }, [userId, isGuestViewer]);
+  }, [userId, isGuestViewer, me?.id]);
 
   // Referral count: re-fetched on every screen focus so a new
   // referral that lands while the user is elsewhere in the app
@@ -183,7 +179,7 @@ export function PlayerCardScreen() {
     React.useCallback(() => {
       // `where('invitedBy','==',uid)` is a LIST on /users. Denied for a guest,
       // and the number is a self-view stat they never see anyway.
-      if (isGuestViewer) return;
+      if (isGuestViewer || me?.id !== userId) return;
       let alive = true;
       userService
         .getInvitedUsersCount(userId)
@@ -203,7 +199,7 @@ export function PlayerCardScreen() {
       return () => {
         alive = false;
       };
-    }, [userId, isGuestViewer]),
+    }, [userId, isGuestViewer, me?.id]),
   );
 
   // Pre-load the inviter's next admin-organized game so the CTA can
@@ -214,7 +210,7 @@ export function PlayerCardScreen() {
     // so the guard has to name the real condition. A guest organises no games
     // and invites nobody, and getMyGames would query on their behalf for
     // nothing.
-    if (!me || isGuestViewer) {
+    if (!me || isGuestViewer || me.id !== userId) {
       setGamesLoading(false);
       return;
     }
@@ -244,6 +240,11 @@ export function PlayerCardScreen() {
       alive = false;
     };
   }, [me?.id]);
+
+  const qaSocialPreview = __DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES==='1' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK==='1' ? (route.params as {qaSocialPreview?:'friend'|'stranger'}).qaSocialPreview : undefined;
+  if(qaSocialPreview)return <View style={{flex:1}}><SocialPlayerProfile userId={userId} preview={(require('@/dev/socialPlayersFixture') as typeof import('@/dev/socialPlayersFixture')).socialDemoProfile(userId,qaSocialPreview==='friend')}/></View>;
+
+  if (!isGuestViewer && me && me.id !== userId) return <SocialPlayerProfile key={`${me.id}:${userId}`} userId={userId} groupId={routeGroupId} />;
 
   if (loading) {
     return (

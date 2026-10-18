@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // Global styled dialog — a drop-in replacement for React Native's
 // Alert.alert that renders the app's popup style (SpringSheet card, tone
 // icon, themed buttons) instead of the grey OS alert.
@@ -13,7 +14,7 @@
 // Mount <AppDialogHost /> exactly once at the app root (App.tsx).
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 import { create } from 'zustand';
@@ -31,6 +32,7 @@ export interface AppAlertButton {
 }
 
 interface AppAlertOptions {
+  football?: boolean;
   /** Icon + accent. Defaults to danger when a destructive button exists,
    *  otherwise info. */
   tone?: AppDialogTone;
@@ -42,6 +44,7 @@ interface AppAlertOptions {
 }
 
 interface DialogRequest {
+  football?: boolean;
   title: string;
   message?: string;
   buttons: AppAlertButton[];
@@ -85,6 +88,7 @@ export function appAlert(
     buttons: btns,
     tone,
     onDismiss: options?.onDismiss,
+    football: options?.football,
   });
 }
 
@@ -104,6 +108,7 @@ function buttonVariant(style?: AppAlertButton['style']): 'primary' | 'outline' |
 }
 
 export function AppDialogHost() {
+  const { height } = useWindowDimensions();
   const current = useDialogStore((s) => s.current);
   const close = useDialogStore((s) => s.close);
 
@@ -123,7 +128,7 @@ export function AppDialogHost() {
   const t = current ? TONE[current.tone] : TONE.info;
   // Two buttons sit in a row (cancel + action); one or 3+ stack so long
   // Hebrew labels never clip.
-  const stacked = !current || current.buttons.length !== 2;
+  const stacked = !!current?.football || !current || current.buttons.length !== 2;
 
   return (
     <Modal
@@ -139,15 +144,29 @@ export function AppDialogHost() {
         fromOffsetY={60}
         panelStyle={{ paddingHorizontal: spacing.lg, alignSelf: 'stretch' }}
       >
-        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <View style={[styles.iconWrap, { backgroundColor: t.bg }]}>
-            <Ionicons name={t.icon} size={28} color={t.color} />
+        <Pressable style={[styles.card, current?.football && {padding:24,borderWidth:1,borderColor:'#DCE7F8',overflow:'hidden',maxHeight:Math.max(220,height-80)}]} onPress={(e) => e.stopPropagation()}>
+          {current?.football && <View pointerEvents="none" style={{position:'absolute',start:-25,top:0,width:150,height:110,borderWidth:1,borderColor:'#E6EDF8',borderRadius:60,transform:[{rotate:'-20deg'}]}}/>}
+          {current?.football ? (
+            <ScrollView style={{flexShrink:1}} contentContainerStyle={{gap:spacing.md}}>
+          <View style={[styles.iconWrap, { backgroundColor: t.bg },current?.football && {alignSelf:'center',width:68,height:68,borderRadius:24}]}>
+            <Ionicons name={current?.football ? 'football-outline' : t.icon} size={28} color={t.color} />
           </View>
 
-          <Text style={styles.title}>{current?.title}</Text>
+          <Text style={[styles.title,current?.football && {textAlign:'center',fontSize:25}]}>{current?.title}</Text>
           {current?.message ? (
-            <Text style={styles.body}>{current.message}</Text>
+            <Text style={[styles.body,current?.football && {textAlign:'center',lineHeight:25}]}>{current.message}</Text>
           ) : null}
+            </ScrollView>
+          ) : <>
+          <View style={[styles.iconWrap, { backgroundColor: t.bg },current?.football && {alignSelf:'center',width:68,height:68,borderRadius:24}]}>
+            <Ionicons name={current?.football ? 'football-outline' : t.icon} size={28} color={t.color} />
+          </View>
+
+          <Text style={[styles.title,current?.football && {textAlign:'center',fontSize:25}]}>{current?.title}</Text>
+          {current?.message ? (
+            <Text style={[styles.body,current?.football && {textAlign:'center',lineHeight:25}]}>{current.message}</Text>
+          ) : null}
+          </>}
 
           <View style={[styles.footer, stacked && styles.footerStacked]}>
             {(current?.buttons ?? []).map((b, i) => (
@@ -155,7 +174,7 @@ export function AppDialogHost() {
                 <Button
                   title={b.text}
                   variant={buttonVariant(b.style)}
-                  size="sm"
+                  size={current?.football ? "lg" : "sm"}
                   fullWidth={stacked}
                   onPress={() => handlePress(b)}
                 />
@@ -169,9 +188,7 @@ export function AppDialogHost() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+  card: { ...overlaySurfaces.dialog,
     padding: spacing.xl,
     gap: spacing.md,
     // Fill the panel width (minus its horizontal padding) instead of
@@ -193,6 +210,7 @@ const styles = StyleSheet.create({
   body: { ...typography.body, color: colors.textMuted, lineHeight: 22 },
   footer: {
     flexDirection: 'row',
+    flexShrink: 0,
     justifyContent: 'flex-end',
     gap: spacing.sm,
     marginTop: spacing.sm,

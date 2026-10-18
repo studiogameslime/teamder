@@ -1,8 +1,9 @@
 // seriesService — the weekly fixture's settings, independent of any match.
 //
 // A `GameSeries` doc is the template the weekly cron builds each occurrence
-// from. Nothing here touches individual matches: an occurrence is disposable,
-// and deleting one has no effect on the series.
+// from. The creation helper links the first game atomically to its series;
+// other settings operations do not rewrite occurrences, and deleting a game
+// has no effect on the series.
 //
 // Deliberately NO Firestore converter. The converters in firebase/firestore.ts
 // rebuild objects field by field on READ, so a field added to the type but not
@@ -18,6 +19,7 @@ import {
   getDoc,
   getDocs,
   query,
+  runTransaction,
   updateDoc,
   where,
 } from 'firebase/firestore';
@@ -25,6 +27,8 @@ import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import type { GameSeries, GameSeriesSettings, GroupId, UserId } from '@/types';
+import { mockGamesV2 } from '@/data/mockData';
+import { assertCreationOwner } from '@/services/creationOwner';
 
 // The pure half lives in utils so it can be unit-tested without Firebase.
 export { settingsFromGame } from '@/utils/seriesSchedule';
@@ -48,6 +52,42 @@ function toSeries(id: string, data: Record<string, unknown>): GameSeries {
 }
 
 export const seriesService = {
+  /** Create and link a first occurrence atomically. Read the existing GAME,
+   * never a not-yet-existing series (whose read rules require groupId). */
+  async ensureForGame(gameId: string, input: {
+    groupId: GroupId; createdBy: UserId; firstOccurrenceAt: number; settings: GameSeriesSettings;
+  }): Promise<string> {
+    assertCreationOwner(input.createdBy);
+    const now = Date.now();
+    const payload = { groupId: input.groupId, active: true, createdBy: input.createdBy,
+      createdAt: now, updatedAt: now, lastOccurrenceAt: input.firstOccurrenceAt, settings: input.settings };
+    if (USE_MOCK_DATA) {
+      const game = mockGamesV2.find(item => item.id === gameId);
+      if (!game || game.groupId !== input.groupId || game.createdBy !== input.createdBy) throw Error('series game owner mismatch');
+      if (game.seriesId) return game.seriesId;
+      const id = `series-${gameId}`;
+      mockSeries.push({ id, ...payload });
+      game.seriesId = id;
+      return id;
+    }
+    const { db } = getFirebase();
+    const gameRef = doc(db, 'games', gameId);
+    const seriesRef = doc(collection(db, COL));
+    const id = await runTransaction(db, async tx => {
+      const snapshot = await tx.get(gameRef);
+      const game = snapshot.data();
+      if (!snapshot.exists() || !game || game.groupId !== input.groupId || game.createdBy !== input.createdBy) {
+        throw Error('series game owner mismatch');
+      }
+      if (typeof game.seriesId === 'string' && game.seriesId) return game.seriesId;
+      assertCreationOwner(input.createdBy);
+      tx.set(seriesRef, payload);
+      tx.update(gameRef, { seriesId: seriesRef.id });
+      return seriesRef.id;
+    });
+    assertCreationOwner(input.createdBy);
+    return id;
+  },
   /** Create the series a recurring fixture repeats from. */
   async create(input: {
     groupId: GroupId;

@@ -9,6 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
+import { ClubStatsTableHeading } from './ClubStatsDashboard';
 import { CommunityStatsTable } from '@/components/community/CommunityStatsTable';
 import { MatchSegmentControl } from '@/components/match/MatchSegmentControl';
 import { gameService } from '@/services';
@@ -20,6 +21,7 @@ import type { ChampionshipRow } from '@/utils/championship';
 
 export function CommunityChampionship({
   groupId,
+  appearance,
   // The club's registered members — passed so the table lists EVERYONE, not
   // only players who already have stats (members with no games show as zero).
   memberIds,
@@ -54,6 +56,7 @@ export function CommunityChampionship({
   clubEvenings,
 }: {
   groupId: string;
+  appearance?: 'club';
   memberIds?: string[];
   attendedByUser?: Record<string, number>;
   seasonNo?: number;
@@ -149,13 +152,18 @@ export function CommunityChampionship({
 
   return (
     <View style={styles.wrap}>
+      {appearance === 'club' ? <ClubStatsTableHeading>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text style={[styles.title, { color: '#13213F' }]}>{he.communityChampTitle}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={he.communityChampInfoTitle} hitSlop={12} onPress={() => appAlert(he.communityChampInfoTitle, he.communityChampInfoBody)}><Ionicons name="information-circle-outline" size={18} color="#2463F5" /></Pressable>
+        </View>
+      </ClubStatsTableHeading> : (
       <View style={styles.titleRow}>
         {/* Icon FIRST in source order → rightmost under forceRTL, which is
             where every other section heading on this screen carries its own
             (see SectionTitle in CommunityStatsScreen). This heading was the
             only one without one and read as a stray line of bold text. */}
-        <Ionicons name="podium" size={16} color={colors.primary} />
-        <Text style={styles.title}>{he.communityChampTitle}</Text>
+        <Ionicons name="podium" size={16} color={appearance === 'club' ? '#143E2E' : colors.primary} />
+        <Text style={[styles.title, appearance === 'club' && { color: '#143E2E' }]}>{he.communityChampTitle}</Text>
         <Pressable
           onPress={() =>
             appAlert(he.communityChampInfoTitle, he.communityChampInfoBody)
@@ -170,7 +178,8 @@ export function CommunityChampionship({
             color={colors.textMuted}
           />
         </Pressable>
-      </View>
+        <View style={styles.titleRule} />
+      </View>      )}
       {/* The "ממוין לפי ניצחונות…" note used to sit here. It said what the
           tooltip beside the title already says, one line lower. */}
 
@@ -178,6 +187,9 @@ export function CommunityChampionship({
           two numbers open this tab in "המועדון במספרים", and a second copy
           four sections later read as a different figure. */}
 
+      {appearance === 'club' ? <View style={{ flexDirection: 'row', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E0E8F0', borderRadius: 9, paddingHorizontal: 6 }}>
+        {(['cumulative', 'efficiency'] as const).map(mode => <Pressable key={mode} accessibilityRole="tab" accessibilityState={{ selected: tab === mode }} onPress={() => setTab(mode)} style={{ flex: 1, paddingVertical: 11, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: tab === mode ? '#2463F5' : 'transparent' }}><Text style={{ color: tab === mode ? '#2463F5' : '#687797', fontWeight: tab === mode ? '800' : '500', fontSize: 13 }}>{mode === 'cumulative' ? he.statsTabCumulative : he.statsTabEfficiency}</Text></Pressable>)}
+      </View> : (
       <MatchSegmentControl
         value={tab}
         onChange={setTab}
@@ -189,8 +201,10 @@ export function CommunityChampionship({
           { value: 'efficiency', label: he.statsTabEfficiency },
         ]}
       />
+      )}
 
       <CommunityStatsTable
+        appearance={appearance}
         players={data.players}
         groupId={groupId}
         // Suppressed when the club runs seasons.
@@ -233,12 +247,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   title: {
-    ...typography.body,
-    color: colors.text,
+    fontSize: 18,
+    color: '#152D57',
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
+  titleRule: { flex: 1, height: 1, backgroundColor: '#E1E8F2', marginStart: spacing.sm },
   coverageNote: {
     ...typography.caption,
     color: colors.textMuted,

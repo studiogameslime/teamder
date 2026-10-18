@@ -23,6 +23,16 @@ const logEvent = jest.fn();
 const createGameV2 = jest.fn();
 const inviteToGame = jest.fn();
 const ensurePersonalGroupId = jest.fn();
+const mockCreationDisk = new Map<string, string>();
+let mockCreationToken = 0;
+jest.mock('@react-native-async-storage/async-storage', () => ({ __esModule: true, default: {
+  getItem: async (key: string) => mockCreationDisk.get(key) ?? null,
+  setItem: async (key: string, value: string) => { mockCreationDisk.set(key, value); },
+} }));
+jest.mock('expo-crypto', () => ({ CryptoDigestAlgorithm: { SHA256: 'sha256' },
+  digestStringAsync: async (_: string, value: string) => require('crypto').createHash('sha256').update(value).digest('hex'),
+  randomUUID: () => `stable-game-attempt-${++mockCreationToken}`,
+}));
 
 jest.mock('@/services/gameService', () => ({
   gameService: { createGameV2: (...a: unknown[]) => createGameV2(...a) },
@@ -34,6 +44,7 @@ jest.mock('@/services/groupService', () => ({
   groupService: { ensurePersonalGroupId: (...a: unknown[]) => ensurePersonalGroupId(...a) },
 }));
 jest.mock('@/types', () => ({ teamSizeFromFormat: () => 5 }));
+jest.mock('@/services/creationOwner', () => ({ assertCreationOwner: jest.fn() }));
 
 (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
@@ -81,8 +92,42 @@ const values = (over: Record<string, unknown> = {}) =>
 
 beforeEach(() => {
   jest.clearAllMocks();
-  createGameV2.mockResolvedValue({ id: 'g1' });
+  mockCreationDisk.clear();
+  createGameV2.mockImplementation(async (input) => ({ id: 'g1', ...(input.recurring ? { seriesId: 'series-g1' } : {}) }));
   ensurePersonalGroupId.mockResolvedValue('personal-of-u1');
+});
+
+test('lost ACK then restart after kickoff and club rename reuses the frozen request and attempt', async () => {
+  const originalStartsAt = Date.now() + 60_000;
+  const original = values({ title: '', startsAt: originalStartsAt,
+    registrationOpensAt: Date.now() - 1000, publicOpenAt: 0, guestsOpenAt: 0, autoTeamsAt: 0 });
+  createGameV2.mockRejectedValueOnce(Error('ACK lost'));
+  await expect(createGameFromValues({ values: original, uid: 'u1', groupId: 'c1', groupName: 'שם קודם', draftId: 'sent-draft' }))
+    .rejects.toThrow('ACK lost');
+  const first = createGameV2.mock.calls[0][0];
+  const now = jest.spyOn(Date, 'now').mockReturnValue(originalStartsAt + 60_000);
+  try {
+    jest.resetModules();
+    const restarted = require('@/services/gameCreation') as typeof import('@/services/gameCreation');
+    await restarted.createGameFromValues({ values: original, uid: 'u1', groupId: 'c1', groupName: 'שם חדש', draftId: 'sent-draft' });
+    const retry = createGameV2.mock.calls[1][0];
+    expect(retry).toEqual(first);
+    expect(retry.title).toBe('שם קודם');
+    expect(retry.startsAt).toBe(originalStartsAt);
+  } finally { now.mockRestore(); }
+});
+
+test('series failure after game creation stays retryable and pending; retry completes same game and series', async () => {
+  const form = values({ recurringGameEnabled: true });
+  createGameV2.mockResolvedValueOnce({ id: 'same-game' });
+  await expect(createGameFromValues({ values: form, uid: 'u1', groupId: 'c1', draftId: 'recurring-draft' }))
+    .rejects.toMatchObject({ code: 'unavailable', creationSaved: true, message: expect.stringContaining('המחזור נוצר') });
+  const pending = [...mockCreationDisk.values()].map(raw => JSON.parse(raw)).find(item => item.id);
+  expect(pending.completed).toBeUndefined();
+  createGameV2.mockResolvedValueOnce({ id: 'same-game', seriesId: 'same-series' });
+  expect(await createGameFromValues({ values: form, uid: 'u1', groupId: 'c1', draftId: 'recurring-draft' }))
+    .toEqual({ gameId: 'same-game', isOrphan: false });
+  expect(createGameV2.mock.calls[1][0].creationAttemptId).toBe(createGameV2.mock.calls[0][0].creationAttemptId);
 });
 
 const arg = () => createGameV2.mock.calls[0][0];

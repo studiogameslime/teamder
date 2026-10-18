@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // ---------------------------------------------------------------------------
 // Chat terms-of-service gate.
 //
@@ -138,21 +139,16 @@ export function ChatTermsModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
   },
-  card: {
+  card: { ...overlaySurfaces.dialog,
     width: '100%',
     maxWidth: 420,
-    backgroundColor: colors.surface,
-    borderRadius: 20,
     padding: spacing.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
   },
   header: {
     flexDirection: 'row-reverse',

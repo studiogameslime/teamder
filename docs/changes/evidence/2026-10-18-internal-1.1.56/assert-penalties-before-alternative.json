@@ -1,0 +1,662 @@
+{
+  "createdAt": "2026-10-18T05:28:18.760545+00:00",
+  "kind": "offline assertions over bounded lead-captured production snapshots",
+  "gameId": "create_8HYLuzxlnOeZAAoCQwfd8tnPWCq1_646f3705-5d6b-4260-84b7-3c8db50a529f",
+  "sources": {
+    "baseline": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/data/baseline.json",
+      "sha256": "bebfbb387b44a0a22fc13fe52ed78eb277d76f5e8784512ac388526991b62ba5"
+    },
+    "opening-ready": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/data/opening-ready.json",
+      "sha256": "dbfec8fa8844b02ae887062dbf4a834f1993c6526d27f44ec0418544252aa3cb"
+    },
+    "release-game2-rotation": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/data/release-game2-rotation.json",
+      "sha256": "38b5bd2b8e1b842a24646d0bb87fa934ecad35a3917499ad0352491523e83a55"
+    },
+    "release-player-restored": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/data/release-player-restored.json",
+      "sha256": "eebc0b1d992ee36cc1edf3d1db87d57eaa494772640124b89d3bcfa0c9fcffd7"
+    },
+    "release-three-penalties": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/data/release-three-penalties.json",
+      "sha256": "6b22b4ce8a11d9804099de7e7828827f088ed7e7cfcec70b970fcb8ee991b3ef"
+    },
+    "release-penalties-resumed": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/data/release-penalties-resumed.json",
+      "sha256": "65d1549e3932e5844eed257620b4f617265c5b41d4fc2ddf4a4c7bd5ea91fe28"
+    },
+    "release-offline-alternative-failed": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/data/release-offline-alternative-failed.json",
+      "sha256": "44e8353ffb090ff7c81ce3ef6deaa1323c561a79c0b7beae7f2219b934ac2844"
+    },
+    "release-alternative-committed": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/data/release-alternative-committed.json",
+      "sha256": "9240ca2eb5f5d0c3199200fec0c3ae76c9495a45f9ed3167132b83c884657c54"
+    }
+  },
+  "pureServerFingerprintSourceSha256": "9c2add07bdb4c06f7260a96b9ef680b88df796cd89d4a52c0074ef17fadc6fea",
+  "verifierSha256": "6c9d6b089be77d7441320dd992a636955dae1175e6acef449df3073909326726",
+  "passed": 145,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "baseline: same QA account and club",
+      "passed": true
+    },
+    {
+      "name": "baseline: six protected IDs match",
+      "passed": true
+    },
+    {
+      "name": "baseline: old evening unchanged lmUUmQru2HtKvQkRDVeD",
+      "passed": true
+    },
+    {
+      "name": "baseline: old evening unchanged YEdIR3MviDK82D581ELk",
+      "passed": true
+    },
+    {
+      "name": "baseline: old evening unchanged mBO5HqJdnOPWjRE2zMh8",
+      "passed": true
+    },
+    {
+      "name": "baseline: old evening unchanged Ra5ZBzOUjR5zQlMojHke",
+      "passed": true
+    },
+    {
+      "name": "baseline: old evening unchanged FQ4T7izEbuYfprKFS75n",
+      "passed": true
+    },
+    {
+      "name": "baseline: old evening unchanged cF3CjQbLH8vzo7uaFqHx",
+      "passed": true
+    },
+    {
+      "name": "opening-ready: same QA account and club",
+      "passed": true
+    },
+    {
+      "name": "opening-ready: six protected IDs match",
+      "passed": true
+    },
+    {
+      "name": "opening-ready: old evening unchanged lmUUmQru2HtKvQkRDVeD",
+      "passed": true
+    },
+    {
+      "name": "opening-ready: old evening unchanged YEdIR3MviDK82D581ELk",
+      "passed": true
+    },
+    {
+      "name": "opening-ready: old evening unchanged mBO5HqJdnOPWjRE2zMh8",
+      "passed": true
+    },
+    {
+      "name": "opening-ready: old evening unchanged Ra5ZBzOUjR5zQlMojHke",
+      "passed": true
+    },
+    {
+      "name": "opening-ready: old evening unchanged FQ4T7izEbuYfprKFS75n",
+      "passed": true
+    },
+    {
+      "name": "opening-ready: old evening unchanged cF3CjQbLH8vzo7uaFqHx",
+      "passed": true
+    },
+    {
+      "name": "opening-ready: exactly the captured new evening",
+      "passed": true
+    },
+    {
+      "name": "release-game2-rotation: same QA account and club",
+      "passed": true
+    },
+    {
+      "name": "release-game2-rotation: six protected IDs match",
+      "passed": true
+    },
+    {
+      "name": "release-game2-rotation: old evening unchanged lmUUmQru2HtKvQkRDVeD",
+      "passed": true
+    },
+    {
+      "name": "release-game2-rotation: old evening unchanged YEdIR3MviDK82D581ELk",
+      "passed": true
+    },
+    {
+      "name": "release-game2-rotation: old evening unchanged mBO5HqJdnOPWjRE2zMh8",
+      "passed": true
+    },
+    {
+      "name": "release-game2-rotation: old evening unchanged Ra5ZBzOUjR5zQlMojHke",
+      "passed": true
+    },
+    {
+      "name": "release-game2-rotation: old evening unchanged FQ4T7izEbuYfprKFS75n",
+      "passed": true
+    },
+    {
+      "name": "release-game2-rotation: old evening unchanged cF3CjQbLH8vzo7uaFqHx",
+      "passed": true
+    },
+    {
+      "name": "release-game2-rotation: exactly the captured new evening",
+      "passed": true
+    },
+    {
+      "name": "release-player-restored: same QA account and club",
+      "passed": true
+    },
+    {
+      "name": "release-player-restored: six protected IDs match",
+      "passed": true
+    },
+    {
+      "name": "release-player-restored: old evening unchanged lmUUmQru2HtKvQkRDVeD",
+      "passed": true
+    },
+    {
+      "name": "release-player-restored: old evening unchanged YEdIR3MviDK82D581ELk",
+      "passed": true
+    },
+    {
+      "name": "release-player-restored: old evening unchanged mBO5HqJdnOPWjRE2zMh8",
+      "passed": true
+    },
+    {
+      "name": "release-player-restored: old evening unchanged Ra5ZBzOUjR5zQlMojHke",
+      "passed": true
+    },
+    {
+      "name": "release-player-restored: old evening unchanged FQ4T7izEbuYfprKFS75n",
+      "passed": true
+    },
+    {
+      "name": "release-player-restored: old evening unchanged cF3CjQbLH8vzo7uaFqHx",
+      "passed": true
+    },
+    {
+      "name": "release-player-restored: exactly the captured new evening",
+      "passed": true
+    },
+    {
+      "name": "release-three-penalties: same QA account and club",
+      "passed": true
+    },
+    {
+      "name": "release-three-penalties: six protected IDs match",
+      "passed": true
+    },
+    {
+      "name": "release-three-penalties: old evening unchanged lmUUmQru2HtKvQkRDVeD",
+      "passed": true
+    },
+    {
+      "name": "release-three-penalties: old evening unchanged YEdIR3MviDK82D581ELk",
+      "passed": true
+    },
+    {
+      "name": "release-three-penalties: old evening unchanged mBO5HqJdnOPWjRE2zMh8",
+      "passed": true
+    },
+    {
+      "name": "release-three-penalties: old evening unchanged Ra5ZBzOUjR5zQlMojHke",
+      "passed": true
+    },
+    {
+      "name": "release-three-penalties: old evening unchanged FQ4T7izEbuYfprKFS75n",
+      "passed": true
+    },
+    {
+      "name": "release-three-penalties: old evening unchanged cF3CjQbLH8vzo7uaFqHx",
+      "passed": true
+    },
+    {
+      "name": "release-three-penalties: exactly the captured new evening",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: same QA account and club",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: six protected IDs match",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: old evening unchanged lmUUmQru2HtKvQkRDVeD",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: old evening unchanged YEdIR3MviDK82D581ELk",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: old evening unchanged mBO5HqJdnOPWjRE2zMh8",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: old evening unchanged Ra5ZBzOUjR5zQlMojHke",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: old evening unchanged FQ4T7izEbuYfprKFS75n",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: old evening unchanged cF3CjQbLH8vzo7uaFqHx",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: exactly the captured new evening",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: same QA account and club",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: six protected IDs match",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: old evening unchanged lmUUmQru2HtKvQkRDVeD",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: old evening unchanged YEdIR3MviDK82D581ELk",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: old evening unchanged mBO5HqJdnOPWjRE2zMh8",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: old evening unchanged Ra5ZBzOUjR5zQlMojHke",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: old evening unchanged FQ4T7izEbuYfprKFS75n",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: old evening unchanged cF3CjQbLH8vzo7uaFqHx",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: exactly the captured new evening",
+      "passed": true
+    },
+    {
+      "name": "release-alternative-committed: same QA account and club",
+      "passed": true
+    },
+    {
+      "name": "release-alternative-committed: six protected IDs match",
+      "passed": true
+    },
+    {
+      "name": "release-alternative-committed: old evening unchanged lmUUmQru2HtKvQkRDVeD",
+      "passed": true
+    },
+    {
+      "name": "release-alternative-committed: old evening unchanged YEdIR3MviDK82D581ELk",
+      "passed": true
+    },
+    {
+      "name": "release-alternative-committed: old evening unchanged mBO5HqJdnOPWjRE2zMh8",
+      "passed": true
+    },
+    {
+      "name": "release-alternative-committed: old evening unchanged Ra5ZBzOUjR5zQlMojHke",
+      "passed": true
+    },
+    {
+      "name": "release-alternative-committed: old evening unchanged FQ4T7izEbuYfprKFS75n",
+      "passed": true
+    },
+    {
+      "name": "release-alternative-committed: old evening unchanged cF3CjQbLH8vzo7uaFqHx",
+      "passed": true
+    },
+    {
+      "name": "release-alternative-committed: exactly the captured new evening",
+      "passed": true
+    },
+    {
+      "name": "three unique kick identities in exact recorded order",
+      "passed": true
+    },
+    {
+      "name": "kick outcomes are goal, save, miss without conflation",
+      "passed": true
+    },
+    {
+      "name": "shooting sides alternate A/B/A",
+      "passed": true
+    },
+    {
+      "name": "QA took two kicks and faced one",
+      "passed": true
+    },
+    {
+      "name": "kick 1: kicker belongs only to attacking side",
+      "passed": true
+    },
+    {
+      "name": "kick 1: keeper belongs only to opposing side",
+      "passed": true
+    },
+    {
+      "name": "kick 2: kicker belongs only to attacking side",
+      "passed": true
+    },
+    {
+      "name": "kick 2: keeper belongs only to opposing side",
+      "passed": true
+    },
+    {
+      "name": "kick 3: kicker belongs only to attacking side",
+      "passed": true
+    },
+    {
+      "name": "kick 3: keeper belongs only to opposing side",
+      "passed": true
+    },
+    {
+      "name": "ordinary score stays 1:1 with two normal goal events",
+      "passed": true
+    },
+    {
+      "name": "normal goals belong to QA without assist and an unknown opponent scorer",
+      "passed": true
+    },
+    {
+      "name": "penalty recording and alternative require no timer",
+      "passed": true
+    },
+    {
+      "name": "second immutable round identity remains current",
+      "passed": true
+    },
+    {
+      "name": "opening base remains exact after kicks",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: complete series identities, participants, outcomes and timestamps preserved",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: entire game document is unchanged",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: unchanged history",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: unchanged commits",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: unchanged playerStats",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: unchanged roundSummary",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: unchanged finishProof",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: business counters do not change on reconsideration or failed offline attempt",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: complete series identities, participants, outcomes and timestamps preserved",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: entire game document is unchanged",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: unchanged history",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: unchanged commits",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: unchanged playerStats",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: unchanged roundSummary",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: unchanged finishProof",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: business counters do not change on reconsideration or failed offline attempt",
+      "passed": true
+    },
+    {
+      "name": "release-three-penalties: no second result credited yet",
+      "passed": true
+    },
+    {
+      "name": "release-three-penalties: first game stats still unchanged",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: no second result credited yet",
+      "passed": true
+    },
+    {
+      "name": "release-penalties-resumed: first game stats still unchanged",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: no second result credited yet",
+      "passed": true
+    },
+    {
+      "name": "release-offline-alternative-failed: first game stats still unchanged",
+      "passed": true
+    },
+    {
+      "name": "original series fingerprint can be recomputed from saved source",
+      "passed": true
+    },
+    {
+      "name": "alternative produces exactly two original round histories and receipts",
+      "passed": true
+    },
+    {
+      "name": "alternative preserves ordinary 1:1 score and manually selected winner A",
+      "passed": true
+    },
+    {
+      "name": "alternative has no recorded penalties in second history",
+      "passed": true
+    },
+    {
+      "name": "receipt fingerprint equals exact original series and board",
+      "passed": true
+    },
+    {
+      "name": "first history and receipt not rewritten by alternative",
+      "passed": true
+    },
+    {
+      "name": "saved alternative clears score, goals and series together",
+      "passed": true
+    },
+    {
+      "name": "saved alternative preserves initial base snapshot",
+      "passed": true
+    },
+    {
+      "name": "second history has eleven on both sides and no waiting players",
+      "passed": true
+    },
+    {
+      "name": "second history retains both ordinary goal identities/attributions",
+      "passed": true
+    },
+    {
+      "name": "two games produce 33 distinct player rows",
+      "passed": true
+    },
+    {
+      "name": "two-game aggregate rounds",
+      "passed": true,
+      "actual": {
+        "expected": 44,
+        "value": 44
+      }
+    },
+    {
+      "name": "two-game aggregate wins",
+      "passed": true,
+      "actual": {
+        "expected": 22,
+        "value": 22
+      }
+    },
+    {
+      "name": "two-game aggregate losses",
+      "passed": true,
+      "actual": {
+        "expected": 22,
+        "value": 22
+      }
+    },
+    {
+      "name": "two-game aggregate cleanSheets",
+      "passed": true,
+      "actual": {
+        "expected": 11,
+        "value": 11
+      }
+    },
+    {
+      "name": "two-game aggregate goals",
+      "passed": true,
+      "actual": {
+        "expected": 2,
+        "value": 2
+      }
+    },
+    {
+      "name": "two-game aggregate assists",
+      "passed": true,
+      "actual": {
+        "expected": 1,
+        "value": 1
+      }
+    },
+    {
+      "name": "QA credited two appearances, wins and goals, one clean sheet, no assists",
+      "passed": true
+    },
+    {
+      "name": "discarded series credits no player penTaken",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves account penTaken unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves qaClubStats penTaken unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series credits no player penScored",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves account penScored unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves qaClubStats penScored unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series credits no player penMissed",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves account penMissed unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves qaClubStats penMissed unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series credits no player penFaced",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves account penFaced unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves qaClubStats penFaced unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series credits no player penSaved",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves account penSaved unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves qaClubStats penSaved unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series credits no player penConceded",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves account penConceded unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series leaves qaClubStats penConceded unchanged",
+      "passed": true
+    },
+    {
+      "name": "discarded series does not add a club shootout",
+      "passed": true
+    }
+  ],
+  "verifiedAlternative": {
+    "histories": 2,
+    "receipts": 2,
+    "playerRows": 33,
+    "appearances": 44,
+    "discardedKicks": 3,
+    "alternativeFingerprintMatched": true
+  },
+  "notYetVerified": [
+    "evening finish/summary",
+    "lost ACK after a successful real write"
+  ],
+  "limits": "No network/device/product write. Offline attempt is a pre-save network failure, not a lost acknowledgement after commit. Serial snapshots prove saved states; atomic intermediate visibility is a server-contract/test assertion."
+}

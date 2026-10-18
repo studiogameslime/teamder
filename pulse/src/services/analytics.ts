@@ -1,8 +1,9 @@
+import { pulseFetch as fetch } from './adminTransport';
 // Google Analytics (GA4) — totals + breakdowns via the Analytics Data API,
 // using the user's OAuth token (same consent as AdMob).
 
 import { config } from '../config';
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import type { AnalyticsSummary, DailyPoint, NameCount } from '../types';
 import { googleOAuthToken } from './auth';
 

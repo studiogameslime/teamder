@@ -2,15 +2,17 @@
 // shared ChatView in game scope. Reached from the chats list AND from the
 // match-details screen.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, View, StyleSheet } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
+import { RoundChatBanner } from '@/components/chat/RoundChatBanner';
 import { ChatView } from '@/components/chat/ChatView';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { gameService } from '@/services/gameService';
+import { chatService } from '@/services/chatService';
+import { roundChatState } from '@/utils/chatInbox';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { colors, spacing, typography } from '@/theme';
@@ -23,37 +25,31 @@ export function GameChatScreen() {
   const { gameId } = route.params;
   const me = useUserStore((s) => s.currentUser);
   const groups = useGroupStore((s) => s.groups);
+  const qaState = __DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES === '1' && process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK === '1'
+    ? (route.params as {qaChatState?:string}).qaChatState : undefined;
+  const previewMessages = useMemo(() => qaState ? (require('@/dev/chatInboxFixture') as typeof import('@/dev/chatInboxFixture')).chatPreviewMessages(me?.id ?? '') : undefined,[qaState,me?.id]);
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
+  const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setFailed(false);
-    setGame(null);
-    gameService
-      .getGameById(gameId)
-      .then((g) => {
-        if (alive) {
-          if (!g) {
-            logEvent(AnalyticsEvent.ChatLoadFailed, { scope: 'game', reason: 'game_unavailable' });
-          }
-          setGame(g);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        const code = String((err as { code?: string })?.code ?? '');
-        const blocked = code === 'ACCESS_BLOCKED' || code === 'permission-denied';
-        logEvent(AnalyticsEvent.ChatLoadFailed, { scope: 'game', reason: blocked ? 'game_unavailable' : 'fetch_failed' });
-        if (alive) { setFailed(!blocked); setLoading(false); }
-      });
-    return () => {
-      alive = false;
-    };
-  }, [gameId, reloadTick]);
+    setNow(Date.now());
+    if(!game || game.status!=='finished') return;
+    const remaining=roundChatState(game,Date.now()).remainingMs ?? 0;
+    if(remaining<=0) return;
+    const timer=setTimeout(()=>setNow(Date.now()),Math.min(remaining,2147483647));
+    return ()=>clearTimeout(timer);
+  },[game]);
+  useEffect(() => {
+    setLoading(true); setFailed(false); setGame(null);
+    return chatService.subscribeGameParent(gameId, g => { setGame(g && qaState ? {...g,players:[...g.players,me?.id ?? ''],status:'finished',endedAt:Date.now()-(qaState==='_chat_closed'?25:16)*3600000} : g); setLoading(false); }, err => {
+      const code = String((err as {code?:string})?.code ?? '');
+      logEvent(AnalyticsEvent.ChatLoadFailed, {scope:'game',reason:code.includes('permission-denied')?'game_unavailable':'fetch_failed'});
+      setFailed(!code.includes('permission-denied')); setGame(null); setLoading(false);
+    });
+  }, [gameId, reloadTick, qaState, me?.id]);
 
   if (loading) {
     // Keep a header (with back button) while the game resolves, so the user
@@ -95,7 +91,7 @@ export function GameChatScreen() {
 
   // Game couldn't be resolved (deleted, or no read access) — show a friendly
   // fallback with a way back instead of an empty-titled chat that can't load.
-  if (!game) {
+  if (!game || !me || (!game.players.includes(me.id) && !canModerate)) {
     return (
       <View style={styles.flex}>
         <ScreenHeader title={he.chatOpenGame} />
@@ -106,13 +102,18 @@ export function GameChatScreen() {
     );
   }
 
+  const state = roundChatState(game, now);
+
   return (
     <ChatView
       scope="game"
       parentId={gameId}
       title={game?.title ?? ''}
       canModerate={canModerate}
-      memberIds={memberIds}
+      memberIds={Array.from(new Set([...memberIds,...adminIds]))}
+      readOnly={state.closed}
+      statusBanner={<RoundChatBanner game={game}/>}
+      previewMessages={previewMessages}
       adminIds={adminIds}
     />
   );

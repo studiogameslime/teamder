@@ -1,0 +1,5289 @@
+{
+  "generatedAtUtc": "2026-10-17T01:50:16.028192+00:00",
+  "phase": "committed",
+  "scope": "אימות קבצים מקומיים בלבד; ללא רשת, ממשק או כתיבת מוצר",
+  "readyForRelease": false,
+  "gameId": "YEdIR3MviDK82D581ELk",
+  "groupId": "J060YQu6QTcgk3glUDj2",
+  "latestSource": "data-seven-clock-paused.json",
+  "counts": {
+    "passed": 115,
+    "unproven": 7,
+    "observed-dependency": 3
+  },
+  "dependencyGroups": [
+    "הפרדת החטאה מעצירה בחישוב השוער בשרת טרם נפרסה",
+    "שימור מבשל אורח וסיווג בישול בשרת טרם נפרס",
+    "שימור סיווג תוצאת בעיטה בשרת טרם נפרס"
+  ],
+  "sources": [
+    {
+      "file": "data-round-seven-created.json",
+      "sha256": "81cdd1d6303141b97115bb604bbf7f610b279ab619a0a845d922a409f2da76ea",
+      "readAt": "2026-10-16T23:29:18.662144+00:00"
+    },
+    {
+      "file": "data-round-seven-host-joined.json",
+      "sha256": "dc1864656453ff4bd7fb651e0b5919a6778288de814137f11ac4daae6ae2a87e",
+      "readAt": "2026-10-16T23:31:02.573825+00:00"
+    },
+    {
+      "file": "data-round-seven-first-guest.json",
+      "sha256": "dcfd7eae10cfc073ed77675f05fd0093ab43f0d4edad865d3b09710fb9b86fd3",
+      "readAt": "2026-10-16T23:33:01.204650+00:00"
+    },
+    {
+      "file": "data-round-seven-full-roster.json",
+      "sha256": "3e4362943eb7f97085208dfbe523095a8baccbd8769c04928b0989165cb7b5cc",
+      "readAt": "2026-10-16T23:43:59.312339+00:00"
+    },
+    {
+      "file": "data-round-seven-rated-club.json",
+      "sha256": "34df4a675b701de53895c99f10d0e7190ed69d77c26bef722b476d71002e56d0",
+      "readAt": "2026-10-16T23:54:33.969604+00:00"
+    },
+    {
+      "file": "data-round-seven-auto.json",
+      "sha256": "a2edd20c9ce70f1113027ab4a31f6d43f1ad877cdb1c71e220a431d78cacc273",
+      "readAt": "2026-10-16T23:59:41.692398+00:00"
+    },
+    {
+      "file": "data-round-seven-auto-clean.json",
+      "sha256": "822298873a06de1167209178b8258520a5d4583b5e5144ebedbbc3b4337a7f11",
+      "readAt": "2026-10-17T00:18:35.227127+00:00"
+    },
+    {
+      "file": "data-seven-regenerate-version.json",
+      "sha256": "8b6e23b8a2c4e277657fe5bcfac5c195e6b0005e41f3657b49f93402201970e3",
+      "readAt": "2026-10-17T00:40:08.160132+00:00"
+    },
+    {
+      "file": "data-round-seven-ready.json",
+      "sha256": "7d80c6b287fab1ea97c1fc8ab9bde2778b80a5a2612d882496b2f86607c1bef2",
+      "readAt": "2026-10-17T00:44:08.076555+00:00"
+    },
+    {
+      "file": "data-seven-reduced-goal.json",
+      "sha256": "fc99a2b12a9ea7b7cb1650e721adb0639a92d54fd0b8743a83182a65f7195a66",
+      "readAt": "2026-10-17T00:50:23.531710+00:00"
+    },
+    {
+      "file": "data-seven-tie-goals.json",
+      "sha256": "4594d83f0a5e4785f47a2adc8a3839cfeaaa84a893f614e381e9b32db47eefd5",
+      "readAt": "2026-10-17T00:52:10.790821+00:00"
+    },
+    {
+      "file": "data-seven-kick-one.json",
+      "sha256": "eebea9578906e547a7b220eed4657508cfd0e4ced88136a19282268ff123754a",
+      "readAt": "2026-10-17T00:56:06.128152+00:00"
+    },
+    {
+      "file": "data-seven-reconnected.json",
+      "sha256": "940b7ac5288ce53cf211ae83f8cdd6b4e6e37e1ad67f5105f5d0764a2d56d154",
+      "readAt": "2026-10-17T00:57:25.600738+00:00"
+    },
+    {
+      "file": "data-seven-kick-two.json",
+      "sha256": "32a8f8c38425577712ceb32aae766bc75cc140793622ee9cf0bfa03af979e2e2",
+      "readAt": "2026-10-17T01:01:55.200489+00:00"
+    },
+    {
+      "file": "data-seven-kick-three.json",
+      "sha256": "7859892b93d1070b724dae69f9b5198fac97b4a5546f8c8e6263c576bbfcb480",
+      "readAt": "2026-10-17T01:04:22.392098+00:00"
+    },
+    {
+      "file": "data-seven-kick-four.json",
+      "sha256": "99547d26da28450a68b2c236eb1d87951093450bfe7b5b62db0354ae8d5b4d5f",
+      "readAt": "2026-10-17T01:06:09.089703+00:00"
+    },
+    {
+      "file": "data-seven-kick-five.json",
+      "sha256": "10d0ce533f027355062e2624b407e70c84c2dfef3888c988d130b7f71cb1a8e3",
+      "readAt": "2026-10-17T01:07:22.108032+00:00"
+    },
+    {
+      "file": "data-seven-kick-six.json",
+      "sha256": "824be908545eba8f1b1838f26257dafd166cb45f5e8b3fc96c816a237c5c6f16",
+      "readAt": "2026-10-17T01:08:40.032863+00:00"
+    },
+    {
+      "file": "data-seven-kick-six-edited.json",
+      "sha256": "1f4521482ca4036eb4e0cb1e00a57ad95e05445f34e0a73297e728f72dfa6061",
+      "readAt": "2026-10-17T01:09:43.651443+00:00"
+    },
+    {
+      "file": "data-seven-kick-six-undone.json",
+      "sha256": "9626525d8231d8b416577995ece44d122ae6c09b5000a9b95a799b81d5ebf6f0",
+      "readAt": "2026-10-17T01:10:29.892944+00:00"
+    },
+    {
+      "file": "data-seven-first-commit.json",
+      "sha256": "497e79e91bca8494fb7b63b3437e123f5c81c15ef3ef718adea0a3e4677308b0",
+      "readAt": "2026-10-17T01:11:26.233823+00:00"
+    },
+    {
+      "file": "data-seven-second-goal.json",
+      "sha256": "4ba8baedac6b247423470e28fadafac7a13acd059224555792d60bdf3faafec7",
+      "readAt": "2026-10-17T01:19:08.601953+00:00"
+    },
+    {
+      "file": "data-seven-clock-disconnect.json",
+      "sha256": "7d53c05246de12d1ed23ea717510c2fdd021b48013a9360e68251c7fad08c2c4",
+      "readAt": "2026-10-17T01:22:14.229215+00:00"
+    },
+    {
+      "file": "data-seven-clock-paused.json",
+      "sha256": "53ea809e095298f9641881a6c4f54ccccbc6b66e60d6b62b1608c2745b19a7d4",
+      "readAt": "2026-10-17T01:28:53.124664+00:00"
+    },
+    {
+      "file": "seven-native-draft-members-proof.json",
+      "sha256": "ef2386f77bb8f21c60212ecee0f17548077e6f1c5a07c3a3e0c20560b809f720",
+      "readAt": null
+    }
+  ],
+  "identities": [
+    {
+      "role": "כובש לצד א׳ ללא בישול",
+      "id": "guest:mvbm3ekm-bwv413",
+      "name": "משה שבע טז"
+    },
+    {
+      "role": "כובש לצד ב׳",
+      "id": "guest:mvbm1i0e-fn72ab",
+      "name": "אסף שבע יב"
+    },
+    {
+      "role": "מבשל לצד ב׳",
+      "id": "guest:mvblzjh8-sqyjaj",
+      "name": "ליאור שבע ח"
+    }
+  ],
+  "firstRoundId": "r_mvboblq9_ynnomoks",
+  "teams": [
+    {
+      "index": 0,
+      "color": "red",
+      "label": "האדומים",
+      "role": "ממתינה",
+      "players": [
+        {
+          "id": "guest:mvbm5h1y-qz8250",
+          "name": "אלכסנדר בדיקת שבע כ"
+        },
+        {
+          "id": "guest:mvblz1wa-09tytj",
+          "name": "רון שבע ז"
+        },
+        {
+          "id": "guest:mvblx3in-fi5e6t",
+          "name": "תומר שבע ג"
+        },
+        {
+          "id": "guest:mvbls3w3-qut4pc",
+          "name": "דניאל שבע א"
+        },
+        {
+          "id": "guest:mvblylnr-huvc9y",
+          "name": "בן שבע ו"
+        },
+        {
+          "id": "guest:mvbm4gz2-r90mh5",
+          "name": "עמית שבע יח"
+        },
+        {
+          "id": "guest:mvbm00m2-rk55cp",
+          "name": "נועם שבע ט"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "color": "green",
+      "label": "הירוקים",
+      "role": "א׳",
+      "players": [
+        {
+          "id": "guest:mvbm3ekm-bwv413",
+          "name": "משה שבע טז"
+        },
+        {
+          "id": "guest:mvblxnik-8zuslm",
+          "name": "אורי שבע ד"
+        },
+        {
+          "id": "guest:mvbm4zwg-e3ggog",
+          "name": "עומר שבע יט"
+        },
+        {
+          "id": "guest:mvbm2xhv-yzilc4",
+          "name": "יוסי שבע טו"
+        },
+        {
+          "id": "guest:mvbm2gjb-1c84fv",
+          "name": "נדב שבע יד"
+        },
+        {
+          "id": "guest:mvbly3u1-bpeqbv",
+          "name": "אלין שבע ה"
+        },
+        {
+          "id": "guest:mvbm1z93-flw4fb",
+          "name": "עידן שבע יג"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "color": "white",
+      "label": "הלבנים",
+      "role": "ב׳",
+      "players": [
+        {
+          "id": "guest:mvbm1i0e-fn72ab",
+          "name": "אסף שבע יב"
+        },
+        {
+          "id": "guest:mvblzjh8-sqyjaj",
+          "name": "ליאור שבע ח"
+        },
+        {
+          "id": "guest:mvbm108b-57st7y",
+          "name": "רועי שבע יא"
+        },
+        {
+          "id": "guest:mvblukkd-mqv80v",
+          "name": "איתי שבע ב"
+        },
+        {
+          "id": "guest:mvbm0j6i-mkdjg5",
+          "name": "גל שבע י"
+        },
+        {
+          "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "name": "בדיקות לייב"
+        },
+        {
+          "id": "guest:mvbm3vl4-zsisrg",
+          "name": "לירן שבע יז"
+        }
+      ]
+    }
+  ],
+  "goals": [
+    {
+      "id": "g_1792198217132_ktus20y6u6q",
+      "team": "A",
+      "scorerId": "guest:mvbm3ekm-bwv413",
+      "assistStatus": "none",
+      "minute": 1,
+      "at": 1792198217402.5
+    },
+    {
+      "id": "g_1792198324917_psuloczqwdi",
+      "team": "B",
+      "scorerId": "guest:mvbm1i0e-fn72ab",
+      "assisterId": "guest:mvblzjh8-sqyjaj",
+      "assistStatus": "player",
+      "minute": 1,
+      "at": 1792198325186.5
+    }
+  ],
+  "kickCheckpoints": [
+    {
+      "source": "data-seven-kick-one.json",
+      "roundId": "r_mvboblq9_ynnomoks",
+      "firstTeam": "A",
+      "penaltyScore": {
+        "A": 1,
+        "B": 0
+      },
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        }
+      ]
+    },
+    {
+      "source": "data-seven-reconnected.json",
+      "roundId": "r_mvboblq9_ynnomoks",
+      "firstTeam": "A",
+      "penaltyScore": {
+        "A": 1,
+        "B": 0
+      },
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        }
+      ]
+    },
+    {
+      "source": "data-seven-kick-two.json",
+      "roundId": "r_mvboblq9_ynnomoks",
+      "firstTeam": "A",
+      "penaltyScore": {
+        "A": 1,
+        "B": 1
+      },
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198905492
+        }
+      ]
+    },
+    {
+      "source": "data-seven-kick-three.json",
+      "roundId": "r_mvboblq9_ynnomoks",
+      "firstTeam": "A",
+      "penaltyScore": {
+        "A": 1,
+        "B": 1
+      },
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198905492
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false,
+          "outcome": "save",
+          "at": 1792199052376.5
+        }
+      ]
+    },
+    {
+      "source": "data-seven-kick-four.json",
+      "roundId": "r_mvboblq9_ynnomoks",
+      "firstTeam": "A",
+      "penaltyScore": {
+        "A": 1,
+        "B": 1
+      },
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198905492
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false,
+          "outcome": "save",
+          "at": 1792199052376.5
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": false,
+          "outcome": "miss",
+          "at": 1792199159393.5
+        }
+      ]
+    },
+    {
+      "source": "data-seven-kick-five.json",
+      "roundId": "r_mvboblq9_ynnomoks",
+      "firstTeam": "A",
+      "penaltyScore": {
+        "A": 1,
+        "B": 1
+      },
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198905492
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false,
+          "outcome": "save",
+          "at": 1792199052376.5
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": false,
+          "outcome": "miss",
+          "at": 1792199159393.5
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false,
+          "outcome": "miss",
+          "at": 1792199238077
+        }
+      ]
+    },
+    {
+      "source": "data-seven-kick-six.json",
+      "roundId": "r_mvboblq9_ynnomoks",
+      "firstTeam": "A",
+      "penaltyScore": {
+        "A": 1,
+        "B": 1
+      },
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198905492
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false,
+          "outcome": "save",
+          "at": 1792199052376.5
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": false,
+          "outcome": "miss",
+          "at": 1792199159393.5
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false,
+          "outcome": "miss",
+          "at": 1792199238077
+        },
+        {
+          "id": "pk_1792199316346_x8kq0iqjbkp",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": false,
+          "outcome": "miss",
+          "at": 1792199316634
+        }
+      ]
+    },
+    {
+      "source": "data-seven-kick-six-edited.json",
+      "roundId": "r_mvboblq9_ynnomoks",
+      "firstTeam": "A",
+      "penaltyScore": {
+        "A": 1,
+        "B": 1
+      },
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198905492
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false,
+          "outcome": "save",
+          "at": 1792199052376.5
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": false,
+          "outcome": "miss",
+          "at": 1792199159393.5
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false,
+          "outcome": "miss",
+          "at": 1792199238077
+        },
+        {
+          "id": "pk_1792199316346_x8kq0iqjbkp",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": false,
+          "outcome": "save",
+          "at": 1792199316634
+        }
+      ]
+    },
+    {
+      "source": "data-seven-kick-six-undone.json",
+      "roundId": "r_mvboblq9_ynnomoks",
+      "firstTeam": "A",
+      "penaltyScore": {
+        "A": 1,
+        "B": 1
+      },
+      "kicks": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198560359.5
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": true,
+          "outcome": "goal",
+          "at": 1792198905492
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false,
+          "outcome": "save",
+          "at": 1792199052376.5
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": false,
+          "outcome": "miss",
+          "at": 1792199159393.5
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false,
+          "outcome": "miss",
+          "at": 1792199238077
+        }
+      ]
+    }
+  ],
+  "kickTransitions": [
+    {
+      "action": "edit",
+      "beforeSource": "data-seven-kick-six.json",
+      "afterSource": "data-seven-kick-six-edited.json",
+      "id": "pk_1792199316346_x8kq0iqjbkp",
+      "before": {
+        "id": "pk_1792199316346_x8kq0iqjbkp",
+        "kickerId": "guest:mvbm1i0e-fn72ab",
+        "keeperId": "guest:mvbm3ekm-bwv413",
+        "team": "B",
+        "scored": false,
+        "outcome": "miss",
+        "at": 1792199316634
+      },
+      "after": {
+        "id": "pk_1792199316346_x8kq0iqjbkp",
+        "kickerId": "guest:mvbm1i0e-fn72ab",
+        "keeperId": "guest:mvbm3ekm-bwv413",
+        "team": "B",
+        "scored": false,
+        "outcome": "save",
+        "at": 1792199316634
+      }
+    },
+    {
+      "action": "undo",
+      "beforeSource": "data-seven-kick-six-edited.json",
+      "afterSource": "data-seven-kick-six-undone.json",
+      "removedIds": [
+        "pk_1792199316346_x8kq0iqjbkp"
+      ],
+      "countAfter": 5
+    }
+  ],
+  "clockCheckpoints": [
+    {
+      "source": "data-seven-clock-disconnect.json",
+      "running": true,
+      "accumulatedMs": 0,
+      "lastStartedAt": 1792199984931.5,
+      "events": [
+        {
+          "type": "start",
+          "at": 1792199984931.5,
+          "byName": "בדיקות לייב"
+        }
+      ],
+      "intervals": [],
+      "closedActivityMs": 0
+    },
+    {
+      "source": "data-seven-clock-paused.json",
+      "running": false,
+      "accumulatedMs": 460742.5,
+      "lastStartedAt": null,
+      "events": [
+        {
+          "type": "start",
+          "at": 1792199984931.5,
+          "byName": "בדיקות לייב"
+        },
+        {
+          "type": "pause",
+          "at": 1792200445674,
+          "byName": "בדיקות לייב"
+        }
+      ],
+      "intervals": [
+        {
+          "s": 1792199984931.5,
+          "e": 1792200445675
+        }
+      ],
+      "closedActivityMs": 460743.5
+    }
+  ],
+  "expectedPlayerStats": {
+    "guest:mvbm3ekm-bwv413": {
+      "rounds": 1,
+      "wins": 0,
+      "losses": 1,
+      "cleanSheets": 0,
+      "goals": 1,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvblxnik-8zuslm": {
+      "rounds": 1,
+      "wins": 0,
+      "losses": 1,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvbm4zwg-e3ggog": {
+      "rounds": 1,
+      "wins": 0,
+      "losses": 1,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvbm2xhv-yzilc4": {
+      "rounds": 1,
+      "wins": 0,
+      "losses": 1,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvbm2gjb-1c84fv": {
+      "rounds": 1,
+      "wins": 0,
+      "losses": 1,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvbly3u1-bpeqbv": {
+      "rounds": 1,
+      "wins": 0,
+      "losses": 1,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvbm1z93-flw4fb": {
+      "rounds": 1,
+      "wins": 0,
+      "losses": 1,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvbm1i0e-fn72ab": {
+      "rounds": 1,
+      "wins": 1,
+      "losses": 0,
+      "cleanSheets": 0,
+      "goals": 1,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvblzjh8-sqyjaj": {
+      "rounds": 1,
+      "wins": 1,
+      "losses": 0,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 1,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvbm108b-57st7y": {
+      "rounds": 1,
+      "wins": 1,
+      "losses": 0,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvblukkd-mqv80v": {
+      "rounds": 1,
+      "wins": 1,
+      "losses": 0,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvbm0j6i-mkdjg5": {
+      "rounds": 1,
+      "wins": 1,
+      "losses": 0,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": {
+      "rounds": 1,
+      "wins": 1,
+      "losses": 0,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    },
+    "guest:mvbm3vl4-zsisrg": {
+      "rounds": 1,
+      "wins": 1,
+      "losses": 0,
+      "cleanSheets": 0,
+      "goals": 0,
+      "assists": 0,
+      "actualTeamGoalsFor": 1,
+      "actualTeamGoalsAgainst": 1,
+      "teamScoreRounds": 1
+    }
+  },
+  "canonicalHistoryReducer": [
+    {
+      "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+      "stored": {
+        "contribution": {
+          "pct": 0,
+          "touched": 0,
+          "teamGoals": 1
+        },
+        "heldPitch": 1,
+        "scoringStreak": 0,
+        "teamGoalsFor": 1,
+        "teamGoalsAgainst": 1,
+        "bestMiniGame": null,
+        "playedRounds": 1,
+        "pen": {
+          "scored": 0,
+          "saved": 2,
+          "missed": 0,
+          "conceded": 1
+        }
+      },
+      "fromVerifiedLive": {
+        "contribution": {
+          "pct": 0,
+          "touched": 0,
+          "teamGoals": 1
+        },
+        "heldPitch": 1,
+        "scoringStreak": 0,
+        "teamGoalsFor": 1,
+        "teamGoalsAgainst": 1,
+        "bestMiniGame": null,
+        "playedRounds": 1,
+        "pen": {
+          "scored": 0,
+          "saved": 1,
+          "missed": 0,
+          "conceded": 1
+        }
+      }
+    },
+    {
+      "id": "guest:mvbm3ekm-bwv413",
+      "stored": {
+        "contribution": {
+          "pct": 100,
+          "touched": 1,
+          "teamGoals": 1
+        },
+        "heldPitch": 0,
+        "scoringStreak": 1,
+        "teamGoalsFor": 1,
+        "teamGoalsAgainst": 1,
+        "bestMiniGame": {
+          "round": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "playedRounds": 1,
+        "pen": {
+          "scored": 1,
+          "saved": 1,
+          "missed": 2,
+          "conceded": 1
+        }
+      },
+      "fromVerifiedLive": {
+        "contribution": {
+          "pct": 100,
+          "touched": 1,
+          "teamGoals": 1
+        },
+        "heldPitch": 0,
+        "scoringStreak": 1,
+        "teamGoalsFor": 1,
+        "teamGoalsAgainst": 1,
+        "bestMiniGame": {
+          "round": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "playedRounds": 1,
+        "pen": {
+          "scored": 1,
+          "saved": 0,
+          "missed": 2,
+          "conceded": 1
+        }
+      }
+    },
+    {
+      "id": "guest:mvbm1i0e-fn72ab",
+      "stored": {
+        "contribution": {
+          "pct": 100,
+          "touched": 1,
+          "teamGoals": 1
+        },
+        "heldPitch": 1,
+        "scoringStreak": 1,
+        "teamGoalsFor": 1,
+        "teamGoalsAgainst": 1,
+        "bestMiniGame": {
+          "round": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "playedRounds": 1,
+        "pen": {
+          "scored": 1,
+          "saved": 0,
+          "missed": 1,
+          "conceded": 0
+        }
+      },
+      "fromVerifiedLive": {
+        "contribution": {
+          "pct": 100,
+          "touched": 1,
+          "teamGoals": 1
+        },
+        "heldPitch": 1,
+        "scoringStreak": 1,
+        "teamGoalsFor": 1,
+        "teamGoalsAgainst": 1,
+        "bestMiniGame": {
+          "round": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "playedRounds": 1,
+        "pen": {
+          "scored": 1,
+          "saved": 0,
+          "missed": 1,
+          "conceded": 0
+        }
+      }
+    },
+    {
+      "id": "guest:mvblzjh8-sqyjaj",
+      "stored": {
+        "contribution": {
+          "pct": 0,
+          "touched": 0,
+          "teamGoals": 1
+        },
+        "heldPitch": 1,
+        "scoringStreak": 0,
+        "teamGoalsFor": 1,
+        "teamGoalsAgainst": 1,
+        "bestMiniGame": null,
+        "playedRounds": 1,
+        "pen": {
+          "scored": 0,
+          "saved": 0,
+          "missed": 0,
+          "conceded": 0
+        }
+      },
+      "fromVerifiedLive": {
+        "contribution": {
+          "pct": 100,
+          "touched": 1,
+          "teamGoals": 1
+        },
+        "heldPitch": 1,
+        "scoringStreak": 0,
+        "teamGoalsFor": 1,
+        "teamGoalsAgainst": 1,
+        "bestMiniGame": {
+          "round": 1,
+          "goals": 0,
+          "assists": 1
+        },
+        "playedRounds": 1,
+        "pen": {
+          "scored": 0,
+          "saved": 0,
+          "missed": 0,
+          "conceded": 0
+        }
+      }
+    }
+  ],
+  "canonicalHistoryReducerSources": [
+    {
+      "file": "src/utils/eveningStats.ts",
+      "sha256": "7125a543c49f7ca527e4d37261a3f3694e005c0a946863292a36f147de065d39"
+    },
+    {
+      "file": "src/utils/roundParticipants.ts",
+      "sha256": "5623460e63f3a0ab2427645d2e606f2a6a97a90ed82caa88c4ed866e3f4b4ad3"
+    }
+  ],
+  "canonicalLocalModelResult": null,
+  "canonicalLocalModelSources": [],
+  "expectedPenaltyStatsFromRetainedLive": {
+    "kickers": {
+      "guest:mvbm3ekm-bwv413": {
+        "penTaken": 3,
+        "penScored": 1,
+        "penMissed": 2,
+        "stopped": 1,
+        "offTarget": 1
+      },
+      "guest:mvbm1i0e-fn72ab": {
+        "penTaken": 2,
+        "penScored": 1,
+        "penMissed": 1,
+        "stopped": 0,
+        "offTarget": 1
+      }
+    },
+    "keepers": {
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": {
+        "penFaced": 3,
+        "penSaved": 1,
+        "penConceded": 1,
+        "offTarget": 1,
+        "savePctAllFaced": 33
+      },
+      "guest:mvbm3ekm-bwv413": {
+        "penFaced": 2,
+        "penSaved": 0,
+        "penConceded": 1,
+        "offTarget": 1,
+        "savePctAllFaced": 0
+      }
+    }
+  },
+  "latestFacts": {
+    "status": "active",
+    "rotation": {
+      "playing": [
+        2,
+        0
+      ],
+      "waiting": [
+        1
+      ],
+      "loans": [],
+      "wins": {
+        "2": 1
+      },
+      "round": 2,
+      "lastRoundWinners": [
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      ],
+      "lastRoundLosers": [],
+      "lastRoundAt": 1792199484770,
+      "updatedAt": 1792199484770,
+      "roundInstanceId": "r_mvbpasvp_s94nyeui",
+      "roundInstanceRound": 2
+    },
+    "shootout": null,
+    "history": [
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/YEdIR3MviDK82D581ELk/roundHistory/r_mvboblq9_ynnomoks",
+        "id": "r_mvboblq9_ynnomoks",
+        "roundId": "r_mvboblq9_ynnomoks",
+        "teamA": [
+          "guest:mvbm3ekm-bwv413",
+          "guest:mvblxnik-8zuslm",
+          "guest:mvbm4zwg-e3ggog",
+          "guest:mvbm2xhv-yzilc4",
+          "guest:mvbm2gjb-1c84fv",
+          "guest:mvbly3u1-bpeqbv",
+          "guest:mvbm1z93-flw4fb"
+        ],
+        "teamB": [
+          "guest:mvbm1i0e-fn72ab",
+          "guest:mvblzjh8-sqyjaj",
+          "guest:mvbm108b-57st7y",
+          "guest:mvblukkd-mqv80v",
+          "guest:mvbm0j6i-mkdjg5",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvbm3vl4-zsisrg"
+        ],
+        "teamAIndex": 1,
+        "teamBIndex": 2,
+        "scoreA": 1,
+        "scoreB": 1,
+        "winnerSide": "B",
+        "goals": [
+          {
+            "scorerId": "guest:mvbm3ekm-bwv413",
+            "assisterId": null,
+            "ownGoal": false,
+            "minute": 1,
+            "team": "A"
+          },
+          {
+            "scorerId": "guest:mvbm1i0e-fn72ab",
+            "assisterId": null,
+            "ownGoal": false,
+            "minute": 1,
+            "team": "B"
+          }
+        ],
+        "penalties": [
+          {
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "scored": true,
+            "team": "A"
+          },
+          {
+            "kickerId": "guest:mvbm1i0e-fn72ab",
+            "keeperId": "guest:mvbm3ekm-bwv413",
+            "scored": true,
+            "team": "B"
+          },
+          {
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "scored": false,
+            "team": "A"
+          },
+          {
+            "kickerId": "guest:mvbm1i0e-fn72ab",
+            "keeperId": "guest:mvbm3ekm-bwv413",
+            "scored": false,
+            "team": "B"
+          },
+          {
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "scored": false,
+            "team": "A"
+          }
+        ],
+        "at": 1792199483832
+      }
+    ],
+    "commits": [
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/YEdIR3MviDK82D581ELk/committedRounds/r_mvboblq9_ynnomoks",
+        "id": "r_mvboblq9_ynnomoks",
+        "committedAt": 1792199483832,
+        "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "winnerSide": "B"
+      }
+    ],
+    "playerStats": [
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "id": "YEdIR3MviDK82D581ELk__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "wins": 1,
+        "penSaved": 2,
+        "teamGoalsFor": 0,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "teamScoreRounds": 1,
+        "penConceded": 1,
+        "penFaced": 3,
+        "teamGoalsAgainst": 0,
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblukkd-mqv80v",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvblukkd-mqv80v",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "wins": 1,
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvblukkd-mqv80v",
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblxnik-8zuslm",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvblxnik-8zuslm",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "losses": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvblxnik-8zuslm",
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbly3u1-bpeqbv",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvbly3u1-bpeqbv",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "losses": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvbly3u1-bpeqbv",
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblzjh8-sqyjaj",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvblzjh8-sqyjaj",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "wins": 1,
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "assists": 1,
+        "teamGoalsAgainst": 0,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvblzjh8-sqyjaj",
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm0j6i-mkdjg5",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvbm0j6i-mkdjg5",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "wins": 1,
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvbm0j6i-mkdjg5",
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm108b-57st7y",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvbm108b-57st7y",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "wins": 1,
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvbm108b-57st7y",
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm1i0e-fn72ab",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvbm1i0e-fn72ab",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "wins": 1,
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvbm1i0e-fn72ab",
+        "rounds": 1,
+        "updatedAt": 1792199483832,
+        "goals": 1
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm1z93-flw4fb",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvbm1z93-flw4fb",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "losses": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvbm1z93-flw4fb",
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm2gjb-1c84fv",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvbm2gjb-1c84fv",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "losses": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvbm2gjb-1c84fv",
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm2xhv-yzilc4",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvbm2xhv-yzilc4",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "losses": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvbm2xhv-yzilc4",
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm3ekm-bwv413",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvbm3ekm-bwv413",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "losses": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvbm3ekm-bwv413",
+        "rounds": 1,
+        "updatedAt": 1792199483832,
+        "goals": 1
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm3vl4-zsisrg",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvbm3vl4-zsisrg",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "wins": 1,
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvbm3vl4-zsisrg",
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      },
+      {
+        "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm4zwg-e3ggog",
+        "id": "YEdIR3MviDK82D581ELk__guest:mvbm4zwg-e3ggog",
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "teamScoreRounds": 1,
+        "teamGoalsFor": 0,
+        "isGuest": true,
+        "teamGoalsAgainst": 0,
+        "losses": 1,
+        "actualTeamGoalsFor": 1,
+        "actualTeamGoalsAgainst": 1,
+        "userId": "guest:mvbm4zwg-e3ggog",
+        "rounds": 1,
+        "updatedAt": 1792199483832
+      }
+    ],
+    "roundSummary": null,
+    "finishProof": {
+      "attendanceCredit": null,
+      "stages": [],
+      "qaEveningStanding": null
+    }
+  },
+  "checks": [
+    {
+      "id": "scope",
+      "title": "כל קריאות הנתונים שייכות לאותו מחזור בדיקה ולמועדון שלו",
+      "status": "passed",
+      "expected": {
+        "gameId": "YEdIR3MviDK82D581ELk",
+        "groupId": "J060YQu6QTcgk3glUDj2"
+      },
+      "observed": [
+        [
+          "YEdIR3MviDK82D581ELk",
+          "J060YQu6QTcgk3glUDj2"
+        ]
+      ],
+      "evidence": [
+        "data-round-seven-auto-clean.json",
+        "data-round-seven-auto.json",
+        "data-round-seven-created.json",
+        "data-round-seven-first-guest.json",
+        "data-round-seven-full-roster.json",
+        "data-round-seven-host-joined.json",
+        "data-round-seven-rated-club.json",
+        "data-round-seven-ready.json",
+        "data-seven-clock-disconnect.json",
+        "data-seven-clock-paused.json",
+        "data-seven-first-commit.json",
+        "data-seven-kick-five.json",
+        "data-seven-kick-four.json",
+        "data-seven-kick-one.json",
+        "data-seven-kick-six-edited.json",
+        "data-seven-kick-six-undone.json",
+        "data-seven-kick-six.json",
+        "data-seven-kick-three.json",
+        "data-seven-kick-two.json",
+        "data-seven-reconnected.json",
+        "data-seven-reduced-goal.json",
+        "data-seven-regenerate-version.json",
+        "data-seven-second-goal.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "format",
+      "title": "המחזור מוגדר לשבעה מול שבעה, שלוש קבוצות וקיבולת 21",
+      "status": "passed",
+      "expected": {
+        "format": "7v7",
+        "numberOfTeams": 3,
+        "maxPlayers": 21
+      },
+      "observed": {
+        "data-round-seven-auto-clean.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-auto.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-created.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-first-guest.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-full-roster.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-host-joined.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-rated-club.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-round-seven-ready.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-clock-disconnect.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-clock-paused.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-first-commit.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-kick-five.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-kick-four.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-kick-one.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-kick-six-edited.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-kick-six-undone.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-kick-six.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-kick-three.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-kick-two.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-reconnected.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-reduced-goal.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-regenerate-version.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-second-goal.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        },
+        "data-seven-tie-goals.json": {
+          "format": "7v7",
+          "numberOfTeams": 3,
+          "maxPlayers": 21
+        }
+      },
+      "evidence": [
+        "data-round-seven-auto-clean.json",
+        "data-round-seven-auto.json",
+        "data-round-seven-created.json",
+        "data-round-seven-first-guest.json",
+        "data-round-seven-full-roster.json",
+        "data-round-seven-host-joined.json",
+        "data-round-seven-rated-club.json",
+        "data-round-seven-ready.json",
+        "data-seven-clock-disconnect.json",
+        "data-seven-clock-paused.json",
+        "data-seven-first-commit.json",
+        "data-seven-kick-five.json",
+        "data-seven-kick-four.json",
+        "data-seven-kick-one.json",
+        "data-seven-kick-six-edited.json",
+        "data-seven-kick-six-undone.json",
+        "data-seven-kick-six.json",
+        "data-seven-kick-three.json",
+        "data-seven-kick-two.json",
+        "data-seven-reconnected.json",
+        "data-seven-reduced-goal.json",
+        "data-seven-regenerate-version.json",
+        "data-seven-second-goal.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "dedicated-roster",
+      "title": "חשבון הבדיקה ועשרים אורחים ייעודיים, ללא כפילות או ממתינים",
+      "status": "passed",
+      "expected": {
+        "accounts": 1,
+        "guests": 20,
+        "unique": 21,
+        "waitlist": []
+      },
+      "observed": {
+        "players": [
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        ],
+        "guests": 20,
+        "unique": 21,
+        "waitlist": []
+      },
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "allocation-first",
+      "title": "שלוש קבוצות של שבעה עם כל הרשומים פעם אחת — הגול הראשון",
+      "status": "passed",
+      "expected": "שלוש קבוצות מלאות; אין כפילויות או זרים; כל קפטן בסגלו",
+      "observed": {
+        "sizes": [
+          7,
+          7,
+          7
+        ],
+        "unique": 21,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "opening-sides-first",
+      "title": "שיוך הצדדים וההמתנה נשמר — הגול הראשון",
+      "status": "passed",
+      "expected": {
+        "playing": [
+          1,
+          2
+        ],
+        "waiting": [
+          0
+        ],
+        "colors": {
+          "0": "red",
+          "1": "green",
+          "2": "white"
+        }
+      },
+      "observed": {
+        "playing": [
+          1,
+          2
+        ],
+        "waiting": [
+          0
+        ],
+        "colors": {
+          "0": "red",
+          "1": "green",
+          "2": "white"
+        }
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "published-first",
+      "title": "הכוחות פורסמו וצבעי שלוש הקבוצות ייחודיים — הגול הראשון",
+      "status": "passed",
+      "expected": {
+        "published": true,
+        "uniqueColors": 3
+      },
+      "observed": {
+        "published": true,
+        "colors": [
+          "red",
+          "green",
+          "white"
+        ]
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "no-timer-first",
+      "title": "הזנת שער ללא הפעלת השעון — הגול הראשון",
+      "status": "passed",
+      "expected": "שעון עצור; אפס זמן; אין מקטעי ריצה או אירועי שעון",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "timerLastStartedAt": null,
+        "activeIntervals": null,
+        "timerEvents": []
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "before-commit-first",
+      "title": "לפני סיום אין היסטוריה, סימן שמירה, מוני שחקנים או סיכום — הגול הראשון",
+      "status": "passed",
+      "expected": {
+        "history": [],
+        "commits": [],
+        "playerStats": [],
+        "roundSummary": null,
+        "lastCommittedRoundId": null
+      },
+      "observed": {
+        "history": [],
+        "commits": [],
+        "playerStats": [],
+        "roundSummary": null,
+        "lastCommittedRoundId": null
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "event-side-roster-first",
+      "title": "זהויות הכובשים והמבשל שייכות לסגל הצד הנכון — הגול הראשון",
+      "status": "passed",
+      "expected": "כל שחקן מוכר ונמצא בהרכב קבוצת האירוע",
+      "observed": [
+        {
+          "id": "g_1792198217132_ktus20y6u6q",
+          "team": "A",
+          "scorerId": "guest:mvbm3ekm-bwv413",
+          "assisterId": null
+        }
+      ],
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "goal-tally-first",
+      "title": "מוני הכובשים שווים לאירועים שנשמרו — הגול הראשון",
+      "status": "passed",
+      "expected": {
+        "guest:mvbm3ekm-bwv413": 1
+      },
+      "observed": {
+        "guest:mvbm3ekm-bwv413": 1
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "allocation-tie",
+      "title": "שלוש קבוצות של שבעה עם כל הרשומים פעם אחת — התיקו",
+      "status": "passed",
+      "expected": "שלוש קבוצות מלאות; אין כפילויות או זרים; כל קפטן בסגלו",
+      "observed": {
+        "sizes": [
+          7,
+          7,
+          7
+        ],
+        "unique": 21,
+        "captainsValid": true
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "opening-sides-tie",
+      "title": "שיוך הצדדים וההמתנה נשמר — התיקו",
+      "status": "passed",
+      "expected": {
+        "playing": [
+          1,
+          2
+        ],
+        "waiting": [
+          0
+        ],
+        "colors": {
+          "0": "red",
+          "1": "green",
+          "2": "white"
+        }
+      },
+      "observed": {
+        "playing": [
+          1,
+          2
+        ],
+        "waiting": [
+          0
+        ],
+        "colors": {
+          "0": "red",
+          "1": "green",
+          "2": "white"
+        }
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "published-tie",
+      "title": "הכוחות פורסמו וצבעי שלוש הקבוצות ייחודיים — התיקו",
+      "status": "passed",
+      "expected": {
+        "published": true,
+        "uniqueColors": 3
+      },
+      "observed": {
+        "published": true,
+        "colors": [
+          "red",
+          "green",
+          "white"
+        ]
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "no-timer-tie",
+      "title": "הזנת שער ללא הפעלת השעון — התיקו",
+      "status": "passed",
+      "expected": "שעון עצור; אפס זמן; אין מקטעי ריצה או אירועי שעון",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "timerLastStartedAt": null,
+        "activeIntervals": null,
+        "timerEvents": []
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "before-commit-tie",
+      "title": "לפני סיום אין היסטוריה, סימן שמירה, מוני שחקנים או סיכום — התיקו",
+      "status": "passed",
+      "expected": {
+        "history": [],
+        "commits": [],
+        "playerStats": [],
+        "roundSummary": null,
+        "lastCommittedRoundId": null
+      },
+      "observed": {
+        "history": [],
+        "commits": [],
+        "playerStats": [],
+        "roundSummary": null,
+        "lastCommittedRoundId": null
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "event-side-roster-tie",
+      "title": "זהויות הכובשים והמבשל שייכות לסגל הצד הנכון — התיקו",
+      "status": "passed",
+      "expected": "כל שחקן מוכר ונמצא בהרכב קבוצת האירוע",
+      "observed": [
+        {
+          "id": "g_1792198217132_ktus20y6u6q",
+          "team": "A",
+          "scorerId": "guest:mvbm3ekm-bwv413",
+          "assisterId": null
+        },
+        {
+          "id": "g_1792198324917_psuloczqwdi",
+          "team": "B",
+          "scorerId": "guest:mvbm1i0e-fn72ab",
+          "assisterId": "guest:mvblzjh8-sqyjaj"
+        }
+      ],
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "goal-tally-tie",
+      "title": "מוני הכובשים שווים לאירועים שנשמרו — התיקו",
+      "status": "passed",
+      "expected": {
+        "guest:mvbm3ekm-bwv413": 1,
+        "guest:mvbm1i0e-fn72ab": 1
+      },
+      "observed": {
+        "guest:mvbm3ekm-bwv413": 1,
+        "guest:mvbm1i0e-fn72ab": 1
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "first-goal-once",
+      "title": "הגול הראשון נשמר פעם אחת ובסיווג ללא בישול",
+      "status": "passed",
+      "expected": {
+        "events": 1,
+        "score": [
+          1,
+          0
+        ],
+        "assistStatus": "none"
+      },
+      "observed": {
+        "events": 1,
+        "score": [
+          1,
+          0
+        ],
+        "event": {
+          "id": "g_1792198217132_ktus20y6u6q",
+          "team": "A",
+          "scorerId": "guest:mvbm3ekm-bwv413",
+          "assistStatus": "none",
+          "minute": 1,
+          "at": 1792198217402.5
+        }
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "opposite-goal-with-assist",
+      "title": "לצד היריב נשמר גול עם מבשל נפרד ובסיווג בישול שחקן",
+      "status": "passed",
+      "expected": "כובש ומבשל נפרדים מאותו צד; בישול שחקן",
+      "observed": {
+        "id": "g_1792198324917_psuloczqwdi",
+        "team": "B",
+        "scorerId": "guest:mvbm1i0e-fn72ab",
+        "assisterId": "guest:mvblzjh8-sqyjaj",
+        "assistStatus": "player",
+        "minute": 1,
+        "at": 1792198325186.5
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "tie-two-unique-events",
+      "title": "בתיקו 1:1 נשמרו בדיוק שני מזהי שער שונים ולכל צד שער אחד",
+      "status": "passed",
+      "expected": {
+        "events": 2,
+        "unique": 2,
+        "score": [
+          1,
+          1
+        ]
+      },
+      "observed": {
+        "events": 2,
+        "unique": 2,
+        "score": [
+          1,
+          1
+        ]
+      },
+      "evidence": [
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "same-round-instance",
+      "title": "שני השערים נשמרו באותו משחק ראשון ובאותה חלוקה",
+      "status": "passed",
+      "expected": {
+        "round": 1,
+        "roundId": "r_mvboblq9_ynnomoks"
+      },
+      "observed": {
+        "firstRoundId": "r_mvboblq9_ynnomoks",
+        "tieRoundId": "r_mvboblq9_ynnomoks",
+        "sameDraft": true
+      },
+      "evidence": [
+        "data-seven-reduced-goal.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "native-all-members",
+      "title": "כל 21 הזהויות בקבוצות תואמות בין מסד והוכחת המכשיר",
+      "status": "passed",
+      "expected": {
+        "draftCreatedAt": 1792197590117,
+        "teams": [
+          [
+            "אלכסנדר בדיקת שבע כ",
+            "רון שבע ז",
+            "תומר שבע ג",
+            "דניאל שבע א",
+            "בן שבע ו",
+            "עמית שבע יח",
+            "נועם שבע ט"
+          ],
+          [
+            "משה שבע טז",
+            "אורי שבע ד",
+            "עומר שבע יט",
+            "יוסי שבע טו",
+            "נדב שבע יד",
+            "אלין שבע ה",
+            "עידן שבע יג"
+          ],
+          [
+            "אסף שבע יב",
+            "ליאור שבע ח",
+            "רועי שבע יא",
+            "איתי שבע ב",
+            "גל שבע י",
+            "בדיקות לייב",
+            "לירן שבע יז"
+          ]
+        ]
+      },
+      "observed": {
+        "draftCreatedAt": 1792197590117,
+        "nativeTeams": [
+          [
+            "עמית שבע יח",
+            "בן שבע ו",
+            "דניאל שבע א",
+            "תומר שבע ג",
+            "רון שבע ז",
+            "אלכסנדר בדיקת שבע כ",
+            "נועם שבע ט"
+          ],
+          [
+            "אלין שבע ה",
+            "נדב שבע יד",
+            "יוסי שבע טו",
+            "עומר שבע יט",
+            "אורי שבע ד",
+            "משה שבע טז",
+            "עידן שבע יג"
+          ],
+          [
+            "בדיקות לייב",
+            "גל שבע י",
+            "איתי שבע ב",
+            "רועי שבע יא",
+            "ליאור שבע ח",
+            "אסף שבע יב",
+            "לירן שבע יז"
+          ]
+        ],
+        "declaredMatch": true
+      },
+      "evidence": [
+        "data-seven-tie-goals.json",
+        "seven-native-draft-members-proof.json"
+      ]
+    },
+    {
+      "id": "double-tap-ui",
+      "title": "פעולת לחיצה כפולה במכשיר אינה מוכחת מקריאת נתונים בלבד",
+      "status": "unproven",
+      "reason": "הנתונים מוכיחים אירוע אחד, מונה אחד ותוצאה 1:0 אחרי התרחיש הראשון. תיעוד שתי הלחיצות עצמן נמצא בראיות הממשק הנפרדות.",
+      "evidence": [
+        "data-seven-reduced-goal.json"
+      ]
+    },
+    {
+      "id": "color-transition-ui",
+      "title": "רצף החלפת הצבעים בממשק",
+      "status": "unproven",
+      "reason": "המסד מוכיח את שלושת הצבעים הסופיים ואת שימורם. אין בתמונות הנתונים שלפני הסיום יומן לכל בחירת צבע ולפעולת החלפת צבע תפוס.",
+      "evidence": [
+        "data-seven-reduced-goal.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "goal-animation-ui",
+      "title": "אנימציות, הפחתת תנועה ומספר הלחיצות",
+      "status": "unproven",
+      "reason": "מקור הנתונים מאמת אירועים וזהויות; תנועה ומספר לחיצות דורשים ראיות מכשיר.",
+      "evidence": [
+        "data-seven-reduced-goal.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-identities-data-seven-kick-one.json",
+      "title": "בכל בעיטה הבועט מקבוצתו והשוער רק מהיריבה — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": "בועט מהצד הבועט, שוער מהצד היריב, אין שחקנים מקבוצה ממתינה",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "kick-outcomes-data-seven-kick-one.json",
+      "title": "תוצאה מפורשת תואמת לסימון הגול — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": "גול=true; עצירה/החטאה=false; כל בעיטה מסווגת",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "outcome": "goal",
+          "scored": true
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "kick-ids-data-seven-kick-one.json",
+      "title": "אין בעיטות כפולות לפי מזהה — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": 1,
+      "observed": 1,
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "kick-field-separation-data-seven-kick-one.json",
+      "title": "בעיטות ההכרעה אינן משנות את שערי השדה — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "observed": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "evidence": [
+        "data-seven-kick-one.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-alternating-data-seven-kick-one.json",
+      "title": "הבעיטות השמורות מתחלפות בין הצדדים — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": "סדר לסירוגין החל מהצד הראשון",
+      "observed": [
+        "A"
+      ],
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "kick-zero-timer-data-seven-kick-one.json",
+      "title": "רישום ההכרעה עובד ללא הפעלת השעון — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": "אין זמן ריצה או מקטעי פעילות",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "activeIntervals": null
+      },
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "sticky-keepers-data-seven-kick-one.json",
+      "title": "ברירת המחדל של שוער כל צד תואמת לשוער שנבחר מולו — data-seven-kick-one.json",
+      "status": "passed",
+      "expected": {
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "observed": {
+        "keeperA": null,
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "kick-identities-data-seven-reconnected.json",
+      "title": "בכל בעיטה הבועט מקבוצתו והשוער רק מהיריבה — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": "בועט מהצד הבועט, שוער מהצד היריב, אין שחקנים מקבוצה ממתינה",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        }
+      ],
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "kick-outcomes-data-seven-reconnected.json",
+      "title": "תוצאה מפורשת תואמת לסימון הגול — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": "גול=true; עצירה/החטאה=false; כל בעיטה מסווגת",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "outcome": "goal",
+          "scored": true
+        }
+      ],
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "kick-ids-data-seven-reconnected.json",
+      "title": "אין בעיטות כפולות לפי מזהה — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": 1,
+      "observed": 1,
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "kick-field-separation-data-seven-reconnected.json",
+      "title": "בעיטות ההכרעה אינן משנות את שערי השדה — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "observed": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "evidence": [
+        "data-seven-reconnected.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-alternating-data-seven-reconnected.json",
+      "title": "הבעיטות השמורות מתחלפות בין הצדדים — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": "סדר לסירוגין החל מהצד הראשון",
+      "observed": [
+        "A"
+      ],
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "kick-zero-timer-data-seven-reconnected.json",
+      "title": "רישום ההכרעה עובד ללא הפעלת השעון — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": "אין זמן ריצה או מקטעי פעילות",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "activeIntervals": null
+      },
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "sticky-keepers-data-seven-reconnected.json",
+      "title": "ברירת המחדל של שוער כל צד תואמת לשוער שנבחר מולו — data-seven-reconnected.json",
+      "status": "passed",
+      "expected": {
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "observed": {
+        "keeperA": null,
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "evidence": [
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "kick-identities-data-seven-kick-two.json",
+      "title": "בכל בעיטה הבועט מקבוצתו והשוער רק מהיריבה — data-seven-kick-two.json",
+      "status": "passed",
+      "expected": "בועט מהצד הבועט, שוער מהצד היריב, אין שחקנים מקבוצה ממתינה",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-two.json"
+      ]
+    },
+    {
+      "id": "kick-outcomes-data-seven-kick-two.json",
+      "title": "תוצאה מפורשת תואמת לסימון הגול — data-seven-kick-two.json",
+      "status": "passed",
+      "expected": "גול=true; עצירה/החטאה=false; כל בעיטה מסווגת",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "outcome": "goal",
+          "scored": true
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-two.json"
+      ]
+    },
+    {
+      "id": "kick-ids-data-seven-kick-two.json",
+      "title": "אין בעיטות כפולות לפי מזהה — data-seven-kick-two.json",
+      "status": "passed",
+      "expected": 2,
+      "observed": 2,
+      "evidence": [
+        "data-seven-kick-two.json"
+      ]
+    },
+    {
+      "id": "kick-field-separation-data-seven-kick-two.json",
+      "title": "בעיטות ההכרעה אינן משנות את שערי השדה — data-seven-kick-two.json",
+      "status": "passed",
+      "expected": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "observed": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "evidence": [
+        "data-seven-kick-two.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-alternating-data-seven-kick-two.json",
+      "title": "הבעיטות השמורות מתחלפות בין הצדדים — data-seven-kick-two.json",
+      "status": "passed",
+      "expected": "סדר לסירוגין החל מהצד הראשון",
+      "observed": [
+        "A",
+        "B"
+      ],
+      "evidence": [
+        "data-seven-kick-two.json"
+      ]
+    },
+    {
+      "id": "kick-zero-timer-data-seven-kick-two.json",
+      "title": "רישום ההכרעה עובד ללא הפעלת השעון — data-seven-kick-two.json",
+      "status": "passed",
+      "expected": "אין זמן ריצה או מקטעי פעילות",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "activeIntervals": null
+      },
+      "evidence": [
+        "data-seven-kick-two.json"
+      ]
+    },
+    {
+      "id": "sticky-keepers-data-seven-kick-two.json",
+      "title": "ברירת המחדל של שוער כל צד תואמת לשוער שנבחר מולו — data-seven-kick-two.json",
+      "status": "passed",
+      "expected": {
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "keeperA": "guest:mvbm3ekm-bwv413"
+      },
+      "observed": {
+        "keeperA": "guest:mvbm3ekm-bwv413",
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "evidence": [
+        "data-seven-kick-two.json"
+      ]
+    },
+    {
+      "id": "kick-identities-data-seven-kick-three.json",
+      "title": "בכל בעיטה הבועט מקבוצתו והשוער רק מהיריבה — data-seven-kick-three.json",
+      "status": "passed",
+      "expected": "בועט מהצד הבועט, שוער מהצד היריב, אין שחקנים מקבוצה ממתינה",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-three.json"
+      ]
+    },
+    {
+      "id": "kick-outcomes-data-seven-kick-three.json",
+      "title": "תוצאה מפורשת תואמת לסימון הגול — data-seven-kick-three.json",
+      "status": "passed",
+      "expected": "גול=true; עצירה/החטאה=false; כל בעיטה מסווגת",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "outcome": "save",
+          "scored": false
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-three.json"
+      ]
+    },
+    {
+      "id": "kick-ids-data-seven-kick-three.json",
+      "title": "אין בעיטות כפולות לפי מזהה — data-seven-kick-three.json",
+      "status": "passed",
+      "expected": 3,
+      "observed": 3,
+      "evidence": [
+        "data-seven-kick-three.json"
+      ]
+    },
+    {
+      "id": "kick-field-separation-data-seven-kick-three.json",
+      "title": "בעיטות ההכרעה אינן משנות את שערי השדה — data-seven-kick-three.json",
+      "status": "passed",
+      "expected": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "observed": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "evidence": [
+        "data-seven-kick-three.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-alternating-data-seven-kick-three.json",
+      "title": "הבעיטות השמורות מתחלפות בין הצדדים — data-seven-kick-three.json",
+      "status": "passed",
+      "expected": "סדר לסירוגין החל מהצד הראשון",
+      "observed": [
+        "A",
+        "B",
+        "A"
+      ],
+      "evidence": [
+        "data-seven-kick-three.json"
+      ]
+    },
+    {
+      "id": "kick-zero-timer-data-seven-kick-three.json",
+      "title": "רישום ההכרעה עובד ללא הפעלת השעון — data-seven-kick-three.json",
+      "status": "passed",
+      "expected": "אין זמן ריצה או מקטעי פעילות",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "activeIntervals": null
+      },
+      "evidence": [
+        "data-seven-kick-three.json"
+      ]
+    },
+    {
+      "id": "sticky-keepers-data-seven-kick-three.json",
+      "title": "ברירת המחדל של שוער כל צד תואמת לשוער שנבחר מולו — data-seven-kick-three.json",
+      "status": "passed",
+      "expected": {
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "keeperA": "guest:mvbm3ekm-bwv413"
+      },
+      "observed": {
+        "keeperA": "guest:mvbm3ekm-bwv413",
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "evidence": [
+        "data-seven-kick-three.json"
+      ]
+    },
+    {
+      "id": "kick-identities-data-seven-kick-four.json",
+      "title": "בכל בעיטה הבועט מקבוצתו והשוער רק מהיריבה — data-seven-kick-four.json",
+      "status": "passed",
+      "expected": "בועט מהצד הבועט, שוער מהצד היריב, אין שחקנים מקבוצה ממתינה",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-four.json"
+      ]
+    },
+    {
+      "id": "kick-outcomes-data-seven-kick-four.json",
+      "title": "תוצאה מפורשת תואמת לסימון הגול — data-seven-kick-four.json",
+      "status": "passed",
+      "expected": "גול=true; עצירה/החטאה=false; כל בעיטה מסווגת",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "outcome": "save",
+          "scored": false
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "outcome": "miss",
+          "scored": false
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-four.json"
+      ]
+    },
+    {
+      "id": "kick-ids-data-seven-kick-four.json",
+      "title": "אין בעיטות כפולות לפי מזהה — data-seven-kick-four.json",
+      "status": "passed",
+      "expected": 4,
+      "observed": 4,
+      "evidence": [
+        "data-seven-kick-four.json"
+      ]
+    },
+    {
+      "id": "kick-field-separation-data-seven-kick-four.json",
+      "title": "בעיטות ההכרעה אינן משנות את שערי השדה — data-seven-kick-four.json",
+      "status": "passed",
+      "expected": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "observed": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "evidence": [
+        "data-seven-kick-four.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-alternating-data-seven-kick-four.json",
+      "title": "הבעיטות השמורות מתחלפות בין הצדדים — data-seven-kick-four.json",
+      "status": "passed",
+      "expected": "סדר לסירוגין החל מהצד הראשון",
+      "observed": [
+        "A",
+        "B",
+        "A",
+        "B"
+      ],
+      "evidence": [
+        "data-seven-kick-four.json"
+      ]
+    },
+    {
+      "id": "kick-zero-timer-data-seven-kick-four.json",
+      "title": "רישום ההכרעה עובד ללא הפעלת השעון — data-seven-kick-four.json",
+      "status": "passed",
+      "expected": "אין זמן ריצה או מקטעי פעילות",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "activeIntervals": null
+      },
+      "evidence": [
+        "data-seven-kick-four.json"
+      ]
+    },
+    {
+      "id": "sticky-keepers-data-seven-kick-four.json",
+      "title": "ברירת המחדל של שוער כל צד תואמת לשוער שנבחר מולו — data-seven-kick-four.json",
+      "status": "passed",
+      "expected": {
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "keeperA": "guest:mvbm3ekm-bwv413"
+      },
+      "observed": {
+        "keeperA": "guest:mvbm3ekm-bwv413",
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "evidence": [
+        "data-seven-kick-four.json"
+      ]
+    },
+    {
+      "id": "kick-identities-data-seven-kick-five.json",
+      "title": "בכל בעיטה הבועט מקבוצתו והשוער רק מהיריבה — data-seven-kick-five.json",
+      "status": "passed",
+      "expected": "בועט מהצד הבועט, שוער מהצד היריב, אין שחקנים מקבוצה ממתינה",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-five.json"
+      ]
+    },
+    {
+      "id": "kick-outcomes-data-seven-kick-five.json",
+      "title": "תוצאה מפורשת תואמת לסימון הגול — data-seven-kick-five.json",
+      "status": "passed",
+      "expected": "גול=true; עצירה/החטאה=false; כל בעיטה מסווגת",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "outcome": "save",
+          "scored": false
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "outcome": "miss",
+          "scored": false
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "outcome": "miss",
+          "scored": false
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-five.json"
+      ]
+    },
+    {
+      "id": "kick-ids-data-seven-kick-five.json",
+      "title": "אין בעיטות כפולות לפי מזהה — data-seven-kick-five.json",
+      "status": "passed",
+      "expected": 5,
+      "observed": 5,
+      "evidence": [
+        "data-seven-kick-five.json"
+      ]
+    },
+    {
+      "id": "kick-field-separation-data-seven-kick-five.json",
+      "title": "בעיטות ההכרעה אינן משנות את שערי השדה — data-seven-kick-five.json",
+      "status": "passed",
+      "expected": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "observed": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "evidence": [
+        "data-seven-kick-five.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-alternating-data-seven-kick-five.json",
+      "title": "הבעיטות השמורות מתחלפות בין הצדדים — data-seven-kick-five.json",
+      "status": "passed",
+      "expected": "סדר לסירוגין החל מהצד הראשון",
+      "observed": [
+        "A",
+        "B",
+        "A",
+        "B",
+        "A"
+      ],
+      "evidence": [
+        "data-seven-kick-five.json"
+      ]
+    },
+    {
+      "id": "kick-zero-timer-data-seven-kick-five.json",
+      "title": "רישום ההכרעה עובד ללא הפעלת השעון — data-seven-kick-five.json",
+      "status": "passed",
+      "expected": "אין זמן ריצה או מקטעי פעילות",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "activeIntervals": null
+      },
+      "evidence": [
+        "data-seven-kick-five.json"
+      ]
+    },
+    {
+      "id": "sticky-keepers-data-seven-kick-five.json",
+      "title": "ברירת המחדל של שוער כל צד תואמת לשוער שנבחר מולו — data-seven-kick-five.json",
+      "status": "passed",
+      "expected": {
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "keeperA": "guest:mvbm3ekm-bwv413"
+      },
+      "observed": {
+        "keeperA": "guest:mvbm3ekm-bwv413",
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "evidence": [
+        "data-seven-kick-five.json"
+      ]
+    },
+    {
+      "id": "kick-identities-data-seven-kick-six.json",
+      "title": "בכל בעיטה הבועט מקבוצתו והשוער רק מהיריבה — data-seven-kick-six.json",
+      "status": "passed",
+      "expected": "בועט מהצד הבועט, שוער מהצד היריב, אין שחקנים מקבוצה ממתינה",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792199316346_x8kq0iqjbkp",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-six.json"
+      ]
+    },
+    {
+      "id": "kick-outcomes-data-seven-kick-six.json",
+      "title": "תוצאה מפורשת תואמת לסימון הגול — data-seven-kick-six.json",
+      "status": "passed",
+      "expected": "גול=true; עצירה/החטאה=false; כל בעיטה מסווגת",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "outcome": "save",
+          "scored": false
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "outcome": "miss",
+          "scored": false
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "outcome": "miss",
+          "scored": false
+        },
+        {
+          "id": "pk_1792199316346_x8kq0iqjbkp",
+          "outcome": "miss",
+          "scored": false
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-six.json"
+      ]
+    },
+    {
+      "id": "kick-ids-data-seven-kick-six.json",
+      "title": "אין בעיטות כפולות לפי מזהה — data-seven-kick-six.json",
+      "status": "passed",
+      "expected": 6,
+      "observed": 6,
+      "evidence": [
+        "data-seven-kick-six.json"
+      ]
+    },
+    {
+      "id": "kick-field-separation-data-seven-kick-six.json",
+      "title": "בעיטות ההכרעה אינן משנות את שערי השדה — data-seven-kick-six.json",
+      "status": "passed",
+      "expected": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "observed": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "evidence": [
+        "data-seven-kick-six.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-alternating-data-seven-kick-six.json",
+      "title": "הבעיטות השמורות מתחלפות בין הצדדים — data-seven-kick-six.json",
+      "status": "passed",
+      "expected": "סדר לסירוגין החל מהצד הראשון",
+      "observed": [
+        "A",
+        "B",
+        "A",
+        "B",
+        "A",
+        "B"
+      ],
+      "evidence": [
+        "data-seven-kick-six.json"
+      ]
+    },
+    {
+      "id": "kick-zero-timer-data-seven-kick-six.json",
+      "title": "רישום ההכרעה עובד ללא הפעלת השעון — data-seven-kick-six.json",
+      "status": "passed",
+      "expected": "אין זמן ריצה או מקטעי פעילות",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "activeIntervals": null
+      },
+      "evidence": [
+        "data-seven-kick-six.json"
+      ]
+    },
+    {
+      "id": "sticky-keepers-data-seven-kick-six.json",
+      "title": "ברירת המחדל של שוער כל צד תואמת לשוער שנבחר מולו — data-seven-kick-six.json",
+      "status": "passed",
+      "expected": {
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "keeperA": "guest:mvbm3ekm-bwv413"
+      },
+      "observed": {
+        "keeperA": "guest:mvbm3ekm-bwv413",
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "evidence": [
+        "data-seven-kick-six.json"
+      ]
+    },
+    {
+      "id": "kick-identities-data-seven-kick-six-edited.json",
+      "title": "בכל בעיטה הבועט מקבוצתו והשוער רק מהיריבה — data-seven-kick-six-edited.json",
+      "status": "passed",
+      "expected": "בועט מהצד הבועט, שוער מהצד היריב, אין שחקנים מקבוצה ממתינה",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792199316346_x8kq0iqjbkp",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-six-edited.json"
+      ]
+    },
+    {
+      "id": "kick-outcomes-data-seven-kick-six-edited.json",
+      "title": "תוצאה מפורשת תואמת לסימון הגול — data-seven-kick-six-edited.json",
+      "status": "passed",
+      "expected": "גול=true; עצירה/החטאה=false; כל בעיטה מסווגת",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "outcome": "save",
+          "scored": false
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "outcome": "miss",
+          "scored": false
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "outcome": "miss",
+          "scored": false
+        },
+        {
+          "id": "pk_1792199316346_x8kq0iqjbkp",
+          "outcome": "save",
+          "scored": false
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-six-edited.json"
+      ]
+    },
+    {
+      "id": "kick-ids-data-seven-kick-six-edited.json",
+      "title": "אין בעיטות כפולות לפי מזהה — data-seven-kick-six-edited.json",
+      "status": "passed",
+      "expected": 6,
+      "observed": 6,
+      "evidence": [
+        "data-seven-kick-six-edited.json"
+      ]
+    },
+    {
+      "id": "kick-field-separation-data-seven-kick-six-edited.json",
+      "title": "בעיטות ההכרעה אינן משנות את שערי השדה — data-seven-kick-six-edited.json",
+      "status": "passed",
+      "expected": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "observed": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "evidence": [
+        "data-seven-kick-six-edited.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-alternating-data-seven-kick-six-edited.json",
+      "title": "הבעיטות השמורות מתחלפות בין הצדדים — data-seven-kick-six-edited.json",
+      "status": "passed",
+      "expected": "סדר לסירוגין החל מהצד הראשון",
+      "observed": [
+        "A",
+        "B",
+        "A",
+        "B",
+        "A",
+        "B"
+      ],
+      "evidence": [
+        "data-seven-kick-six-edited.json"
+      ]
+    },
+    {
+      "id": "kick-zero-timer-data-seven-kick-six-edited.json",
+      "title": "רישום ההכרעה עובד ללא הפעלת השעון — data-seven-kick-six-edited.json",
+      "status": "passed",
+      "expected": "אין זמן ריצה או מקטעי פעילות",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "activeIntervals": null
+      },
+      "evidence": [
+        "data-seven-kick-six-edited.json"
+      ]
+    },
+    {
+      "id": "sticky-keepers-data-seven-kick-six-edited.json",
+      "title": "ברירת המחדל של שוער כל צד תואמת לשוער שנבחר מולו — data-seven-kick-six-edited.json",
+      "status": "passed",
+      "expected": {
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "keeperA": "guest:mvbm3ekm-bwv413"
+      },
+      "observed": {
+        "keeperA": "guest:mvbm3ekm-bwv413",
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "evidence": [
+        "data-seven-kick-six-edited.json"
+      ]
+    },
+    {
+      "id": "kick-identities-data-seven-kick-six-undone.json",
+      "title": "בכל בעיטה הבועט מקבוצתו והשוער רק מהיריבה — data-seven-kick-six-undone.json",
+      "status": "passed",
+      "expected": "בועט מהצד הבועט, שוער מהצד היריב, אין שחקנים מקבוצה ממתינה",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "team": "B",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413"
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "team": "A",
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-six-undone.json"
+      ]
+    },
+    {
+      "id": "kick-outcomes-data-seven-kick-six-undone.json",
+      "title": "תוצאה מפורשת תואמת לסימון הגול — data-seven-kick-six-undone.json",
+      "status": "passed",
+      "expected": "גול=true; עצירה/החטאה=false; כל בעיטה מסווגת",
+      "observed": [
+        {
+          "id": "pk_1792198560083_9kh0go869q8",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792198905239_gqp2zt74n8j",
+          "outcome": "goal",
+          "scored": true
+        },
+        {
+          "id": "pk_1792199052098_5279qm840xh",
+          "outcome": "save",
+          "scored": false
+        },
+        {
+          "id": "pk_1792199159115_7owiohteec",
+          "outcome": "miss",
+          "scored": false
+        },
+        {
+          "id": "pk_1792199238298_fjbzqybkos5",
+          "outcome": "miss",
+          "scored": false
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-six-undone.json"
+      ]
+    },
+    {
+      "id": "kick-ids-data-seven-kick-six-undone.json",
+      "title": "אין בעיטות כפולות לפי מזהה — data-seven-kick-six-undone.json",
+      "status": "passed",
+      "expected": 5,
+      "observed": 5,
+      "evidence": [
+        "data-seven-kick-six-undone.json"
+      ]
+    },
+    {
+      "id": "kick-field-separation-data-seven-kick-six-undone.json",
+      "title": "בעיטות ההכרעה אינן משנות את שערי השדה — data-seven-kick-six-undone.json",
+      "status": "passed",
+      "expected": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "observed": {
+        "fieldScore": [
+          1,
+          1
+        ],
+        "fieldGoals": 2,
+        "tally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1
+        }
+      },
+      "evidence": [
+        "data-seven-kick-six-undone.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "kick-alternating-data-seven-kick-six-undone.json",
+      "title": "הבעיטות השמורות מתחלפות בין הצדדים — data-seven-kick-six-undone.json",
+      "status": "passed",
+      "expected": "סדר לסירוגין החל מהצד הראשון",
+      "observed": [
+        "A",
+        "B",
+        "A",
+        "B",
+        "A"
+      ],
+      "evidence": [
+        "data-seven-kick-six-undone.json"
+      ]
+    },
+    {
+      "id": "kick-zero-timer-data-seven-kick-six-undone.json",
+      "title": "רישום ההכרעה עובד ללא הפעלת השעון — data-seven-kick-six-undone.json",
+      "status": "passed",
+      "expected": "אין זמן ריצה או מקטעי פעילות",
+      "observed": {
+        "timerRunning": false,
+        "timerAccumulatedMs": 0,
+        "activeIntervals": null
+      },
+      "evidence": [
+        "data-seven-kick-six-undone.json"
+      ]
+    },
+    {
+      "id": "sticky-keepers-data-seven-kick-six-undone.json",
+      "title": "ברירת המחדל של שוער כל צד תואמת לשוער שנבחר מולו — data-seven-kick-six-undone.json",
+      "status": "passed",
+      "expected": {
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "keeperA": "guest:mvbm3ekm-bwv413"
+      },
+      "observed": {
+        "keeperA": "guest:mvbm3ekm-bwv413",
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "evidence": [
+        "data-seven-kick-six-undone.json"
+      ]
+    },
+    {
+      "id": "first-kick-once",
+      "title": "הבעיטה הראשונה נשמרה כאירוע יחיד: כובש א׳ מול שוער חשבון הבדיקה מהיריבה",
+      "status": "passed",
+      "expected": "בעיטה אחת א׳, גול; שוער ב׳ נשמר, שוער א׳ טרם נבחר",
+      "observed": {
+        "firstTeam": "A",
+        "keeperA": null,
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "kicks": [
+          {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          }
+        ]
+      },
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "first-kick-stays-identical",
+      "title": "הבעיטה הראשונה נשארת באותו מזהה ותוכן בכל מקורות ההכרעה המאוחרים",
+      "status": "passed",
+      "expected": {
+        "id": "pk_1792198560083_9kh0go869q8",
+        "kickerId": "guest:mvbm3ekm-bwv413",
+        "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "team": "A",
+        "scored": true,
+        "outcome": "goal",
+        "at": 1792198560359.5
+      },
+      "observed": [
+        {
+          "source": "data-seven-kick-one.json",
+          "firstKick": {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          }
+        },
+        {
+          "source": "data-seven-reconnected.json",
+          "firstKick": {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          }
+        },
+        {
+          "source": "data-seven-kick-two.json",
+          "firstKick": {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          }
+        },
+        {
+          "source": "data-seven-kick-three.json",
+          "firstKick": {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          }
+        },
+        {
+          "source": "data-seven-kick-four.json",
+          "firstKick": {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          }
+        },
+        {
+          "source": "data-seven-kick-five.json",
+          "firstKick": {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          }
+        },
+        {
+          "source": "data-seven-kick-six.json",
+          "firstKick": {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          }
+        },
+        {
+          "source": "data-seven-kick-six-edited.json",
+          "firstKick": {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          }
+        },
+        {
+          "source": "data-seven-kick-six-undone.json",
+          "firstKick": {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          }
+        }
+      ],
+      "evidence": [
+        "data-seven-kick-one.json",
+        "data-seven-reconnected.json",
+        "data-seven-kick-two.json",
+        "data-seven-kick-three.json",
+        "data-seven-kick-four.json",
+        "data-seven-kick-five.json",
+        "data-seven-kick-six.json",
+        "data-seven-kick-six-edited.json",
+        "data-seven-kick-six-undone.json"
+      ]
+    },
+    {
+      "id": "reconnect-data-stability",
+      "title": "אחרי תרחיש חידוש החיבור נשמרו אותה בעיטה, זהויות, שערים ורוטציה ללא כפילות",
+      "status": "passed",
+      "expected": "אותו מצב לייב ורוטציה; אירוע בעיטה יחיד",
+      "observed": {
+        "sameLive": true,
+        "sameRotation": true,
+        "kickCount": 1
+      },
+      "evidence": [
+        "data-seven-kick-one.json",
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "offline-interaction",
+      "title": "אין הוכחת כתיבה ללא חיבור או תגובה אבודה",
+      "status": "unproven",
+      "reason": "התרחיש כלל ניתוק וחיבור ללא פעולה עסקית בזמן הניתוק. המסד מוכיח יציבות בלבד; הצלחה או ניסיון חוזר של כתיבה בזמן ניתוק לא הופעלו.",
+      "evidence": [
+        "data-seven-kick-one.json",
+        "data-seven-reconnected.json"
+      ]
+    },
+    {
+      "id": "kick-double-tap-ui",
+      "title": "שתי לחיצות על תוצאת בעיטה במכשיר",
+      "status": "unproven",
+      "reason": "מקור הנתונים מוכיח אירוע יחיד; עצם שתי הלחיצות והסדר שלהן מתועדים בנפרד במכשיר.",
+      "evidence": [
+        "data-seven-kick-one.json"
+      ]
+    },
+    {
+      "id": "second-kick-opposite-side",
+      "title": "הבעיטה השנייה היא של כובש ב׳ מול כובש א׳ כשוער; תוצאת ההכרעה 1:1",
+      "status": "passed",
+      "expected": "שני גולים בהכרעה, אחד לכל צד; שוער יריב נכון",
+      "observed": {
+        "firstTeam": "A",
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "keeperA": "guest:mvbm3ekm-bwv413",
+        "kicks": [
+          {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          },
+          {
+            "id": "pk_1792198905239_gqp2zt74n8j",
+            "kickerId": "guest:mvbm1i0e-fn72ab",
+            "keeperId": "guest:mvbm3ekm-bwv413",
+            "team": "B",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198905492
+          }
+        ]
+      },
+      "evidence": [
+        "data-seven-kick-two.json"
+      ]
+    },
+    {
+      "id": "planned-kick-three",
+      "title": "תוצאת הבעיטה החדשה תואמת לתרחיש: עצירה — data-seven-kick-three.json",
+      "status": "passed",
+      "expected": {
+        "kicks": 3,
+        "side": "A",
+        "outcome": "save",
+        "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "observed": {
+        "firstTeam": "A",
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "keeperA": "guest:mvbm3ekm-bwv413",
+        "kicks": [
+          {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          },
+          {
+            "id": "pk_1792198905239_gqp2zt74n8j",
+            "kickerId": "guest:mvbm1i0e-fn72ab",
+            "keeperId": "guest:mvbm3ekm-bwv413",
+            "team": "B",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198905492
+          },
+          {
+            "id": "pk_1792199052098_5279qm840xh",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": false,
+            "outcome": "save",
+            "at": 1792199052376.5
+          }
+        ]
+      },
+      "evidence": [
+        "data-seven-kick-three.json"
+      ]
+    },
+    {
+      "id": "planned-kick-four",
+      "title": "תוצאת הבעיטה החדשה תואמת לתרחיש: החטאה — data-seven-kick-four.json",
+      "status": "passed",
+      "expected": {
+        "kicks": 4,
+        "side": "B",
+        "outcome": "miss",
+        "keeperId": "guest:mvbm3ekm-bwv413"
+      },
+      "observed": {
+        "firstTeam": "A",
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "keeperA": "guest:mvbm3ekm-bwv413",
+        "kicks": [
+          {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          },
+          {
+            "id": "pk_1792198905239_gqp2zt74n8j",
+            "kickerId": "guest:mvbm1i0e-fn72ab",
+            "keeperId": "guest:mvbm3ekm-bwv413",
+            "team": "B",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198905492
+          },
+          {
+            "id": "pk_1792199052098_5279qm840xh",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": false,
+            "outcome": "save",
+            "at": 1792199052376.5
+          },
+          {
+            "id": "pk_1792199159115_7owiohteec",
+            "kickerId": "guest:mvbm1i0e-fn72ab",
+            "keeperId": "guest:mvbm3ekm-bwv413",
+            "team": "B",
+            "scored": false,
+            "outcome": "miss",
+            "at": 1792199159393.5
+          }
+        ]
+      },
+      "evidence": [
+        "data-seven-kick-four.json"
+      ]
+    },
+    {
+      "id": "planned-kick-five",
+      "title": "תוצאת הבעיטה החדשה תואמת לתרחיש: החטאה — data-seven-kick-five.json",
+      "status": "passed",
+      "expected": {
+        "kicks": 5,
+        "side": "A",
+        "outcome": "miss",
+        "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "observed": {
+        "firstTeam": "A",
+        "keeperB": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "keeperA": "guest:mvbm3ekm-bwv413",
+        "kicks": [
+          {
+            "id": "pk_1792198560083_9kh0go869q8",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198560359.5
+          },
+          {
+            "id": "pk_1792198905239_gqp2zt74n8j",
+            "kickerId": "guest:mvbm1i0e-fn72ab",
+            "keeperId": "guest:mvbm3ekm-bwv413",
+            "team": "B",
+            "scored": true,
+            "outcome": "goal",
+            "at": 1792198905492
+          },
+          {
+            "id": "pk_1792199052098_5279qm840xh",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": false,
+            "outcome": "save",
+            "at": 1792199052376.5
+          },
+          {
+            "id": "pk_1792199159115_7owiohteec",
+            "kickerId": "guest:mvbm1i0e-fn72ab",
+            "keeperId": "guest:mvbm3ekm-bwv413",
+            "team": "B",
+            "scored": false,
+            "outcome": "miss",
+            "at": 1792199159393.5
+          },
+          {
+            "id": "pk_1792199238298_fjbzqybkos5",
+            "kickerId": "guest:mvbm3ekm-bwv413",
+            "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "team": "A",
+            "scored": false,
+            "outcome": "miss",
+            "at": 1792199238077
+          }
+        ]
+      },
+      "evidence": [
+        "data-seven-kick-five.json"
+      ]
+    },
+    {
+      "id": "edit-kick-data-seven-kick-six-edited.json",
+      "title": "תיקון מחליף רק את תוצאת הבעיטה האחרונה בלי לשנות זהות או להוסיף אירוע",
+      "status": "passed",
+      "expected": "החטאה→עצירה באותו אירוע אחרון; חמש הקודמות לא השתנו",
+      "observed": {
+        "before": {
+          "id": "pk_1792199316346_x8kq0iqjbkp",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": false,
+          "outcome": "miss",
+          "at": 1792199316634
+        },
+        "after": {
+          "id": "pk_1792199316346_x8kq0iqjbkp",
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": false,
+          "outcome": "save",
+          "at": 1792199316634
+        },
+        "countBefore": 6,
+        "countAfter": 6
+      },
+      "evidence": [
+        "data-seven-kick-six.json",
+        "data-seven-kick-six-edited.json"
+      ]
+    },
+    {
+      "id": "undo-kick-data-seven-kick-six-undone.json",
+      "title": "ביטול מסיר רק את הבעיטה האחרונה ומשאיר את חמש הקודמות ללא שינוי",
+      "status": "passed",
+      "expected": {
+        "removed": 1,
+        "countAfter": 5,
+        "remainingIdentical": true
+      },
+      "observed": {
+        "removedIds": [
+          "pk_1792199316346_x8kq0iqjbkp"
+        ],
+        "countBefore": 6,
+        "countAfter": 5,
+        "remainingIdentical": true
+      },
+      "evidence": [
+        "data-seven-kick-six-edited.json",
+        "data-seven-kick-six-undone.json"
+      ]
+    },
+    {
+      "id": "second-round-new-goal",
+      "title": "במשחק השני כבש חשבון הבדיקה ובישל אורח מקבוצתו, לפני הפעלת השעון",
+      "status": "passed",
+      "expected": "משחק חדש; QA כובש ואסף מבשל ללבנים; 1:0; שעון אפס",
+      "observed": {
+        "roundId": "r_mvbpasvp_s94nyeui",
+        "playing": [
+          2,
+          0
+        ],
+        "goals": [
+          {
+            "id": "g_1792199944732_i1x0xz2tbji",
+            "team": "A",
+            "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "assisterId": "guest:mvbm1i0e-fn72ab",
+            "assistStatus": "player",
+            "minute": 1,
+            "at": 1792199945030.5
+          }
+        ],
+        "timerRunning": false
+      },
+      "evidence": [
+        "data-seven-second-goal.json"
+      ]
+    },
+    {
+      "id": "second-goal-not-yet-credited",
+      "title": "גול המשחק השני עדכן לייב אך לא זקף משחק או מוני שחקנים לפני סיום",
+      "status": "passed",
+      "expected": "ההיסטוריה, סימן הזקיפה והמונים של המשחק הראשון נשארו זהים",
+      "observed": {
+        "sameHistory": true,
+        "sameCommits": true,
+        "samePlayerStats": true
+      },
+      "evidence": [
+        "data-seven-first-commit.json",
+        "data-seven-second-goal.json"
+      ]
+    },
+    {
+      "id": "second-goal-evening-tally",
+      "title": "יומן המשחק השני נפרד, ומפת הכובשים ממשיכה לצבור את כל המחזור",
+      "status": "passed",
+      "expected": {
+        "currentGoals": 1,
+        "eveningTally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1,
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1
+        }
+      },
+      "observed": {
+        "currentGoals": 1,
+        "eveningTally": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvbm1i0e-fn72ab": 1,
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1
+        }
+      },
+      "evidence": [
+        "data-seven-tie-goals.json",
+        "data-seven-second-goal.json"
+      ]
+    },
+    {
+      "id": "clock-events-data-seven-clock-disconnect.json",
+      "title": "אירועי השעון ייחודיים ומזוהים עם מנהל הבדיקה — data-seven-clock-disconnect.json",
+      "status": "passed",
+      "expected": "פתיחה יחידה והמשך/עצירה נפרדים, כולם מחשבון הבדיקה",
+      "observed": [
+        {
+          "type": "start",
+          "at": 1792199984931.5,
+          "byName": "בדיקות לייב"
+        }
+      ],
+      "evidence": [
+        "data-seven-clock-disconnect.json"
+      ]
+    },
+    {
+      "id": "clock-state-data-seven-clock-disconnect.json",
+      "title": "מצב ריצה ומדדי השעון תואמים — data-seven-clock-disconnect.json",
+      "status": "passed",
+      "expected": "בזמן ריצה נשמרת תחילה; בעצירה אין תחילה פתוחה; זמן ומקטעים תקינים",
+      "observed": {
+        "source": "data-seven-clock-disconnect.json",
+        "running": true,
+        "accumulatedMs": 0,
+        "lastStartedAt": 1792199984931.5,
+        "events": [
+          {
+            "type": "start",
+            "at": 1792199984931.5,
+            "byName": "בדיקות לייב"
+          }
+        ],
+        "intervals": [],
+        "closedActivityMs": 0
+      },
+      "evidence": [
+        "data-seven-clock-disconnect.json"
+      ]
+    },
+    {
+      "id": "clock-keeps-goal-data-seven-clock-disconnect.json",
+      "title": "פעולות השעון לא שכפלו או מחקו את גול המשחק השני — data-seven-clock-disconnect.json",
+      "status": "passed",
+      "expected": {
+        "score": [
+          1,
+          0
+        ],
+        "goals": [
+          {
+            "id": "g_1792199944732_i1x0xz2tbji",
+            "team": "A",
+            "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "assisterId": "guest:mvbm1i0e-fn72ab",
+            "assistStatus": "player",
+            "minute": 1,
+            "at": 1792199945030.5
+          }
+        ]
+      },
+      "observed": {
+        "score": [
+          1,
+          0
+        ],
+        "goals": [
+          {
+            "id": "g_1792199944732_i1x0xz2tbji",
+            "team": "A",
+            "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "assisterId": "guest:mvbm1i0e-fn72ab",
+            "assistStatus": "player",
+            "minute": 1,
+            "at": 1792199945030.5
+          }
+        ]
+      },
+      "evidence": [
+        "data-seven-clock-disconnect.json",
+        "data-seven-second-goal.json"
+      ]
+    },
+    {
+      "id": "clock-events-data-seven-clock-paused.json",
+      "title": "אירועי השעון ייחודיים ומזוהים עם מנהל הבדיקה — data-seven-clock-paused.json",
+      "status": "passed",
+      "expected": "פתיחה יחידה והמשך/עצירה נפרדים, כולם מחשבון הבדיקה",
+      "observed": [
+        {
+          "type": "start",
+          "at": 1792199984931.5,
+          "byName": "בדיקות לייב"
+        },
+        {
+          "type": "pause",
+          "at": 1792200445674,
+          "byName": "בדיקות לייב"
+        }
+      ],
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "clock-state-data-seven-clock-paused.json",
+      "title": "מצב ריצה ומדדי השעון תואמים — data-seven-clock-paused.json",
+      "status": "passed",
+      "expected": "בזמן ריצה נשמרת תחילה; בעצירה אין תחילה פתוחה; זמן ומקטעים תקינים",
+      "observed": {
+        "source": "data-seven-clock-paused.json",
+        "running": false,
+        "accumulatedMs": 460742.5,
+        "lastStartedAt": null,
+        "events": [
+          {
+            "type": "start",
+            "at": 1792199984931.5,
+            "byName": "בדיקות לייב"
+          },
+          {
+            "type": "pause",
+            "at": 1792200445674,
+            "byName": "בדיקות לייב"
+          }
+        ],
+        "intervals": [
+          {
+            "s": 1792199984931.5,
+            "e": 1792200445675
+          }
+        ],
+        "closedActivityMs": 460743.5
+      },
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "clock-keeps-goal-data-seven-clock-paused.json",
+      "title": "פעולות השעון לא שכפלו או מחקו את גול המשחק השני — data-seven-clock-paused.json",
+      "status": "passed",
+      "expected": {
+        "score": [
+          1,
+          0
+        ],
+        "goals": [
+          {
+            "id": "g_1792199944732_i1x0xz2tbji",
+            "team": "A",
+            "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "assisterId": "guest:mvbm1i0e-fn72ab",
+            "assistStatus": "player",
+            "minute": 1,
+            "at": 1792199945030.5
+          }
+        ]
+      },
+      "observed": {
+        "score": [
+          1,
+          0
+        ],
+        "goals": [
+          {
+            "id": "g_1792199944732_i1x0xz2tbji",
+            "team": "A",
+            "scorerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "assisterId": "guest:mvbm1i0e-fn72ab",
+            "assistStatus": "player",
+            "minute": 1,
+            "at": 1792199945030.5
+          }
+        ]
+      },
+      "evidence": [
+        "data-seven-clock-paused.json",
+        "data-seven-second-goal.json"
+      ]
+    },
+    {
+      "id": "clock-accumulator-data-seven-clock-paused.json",
+      "title": "זמן הריצה המצטבר שווה למשכי ההפעלה עד העצירות — data-seven-clock-paused.json",
+      "status": "passed",
+      "expected": 460742.5,
+      "observed": 460742.5,
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "clock-pause-resume-pending",
+      "title": "רצף עצירה וחידוש של שעון המשחק השני",
+      "status": "unproven",
+      "reason": "קיימת ראיית פתיחה, אך טרם נקרא רצף עצירה וחידוש מלא",
+      "evidence": [
+        "data-seven-clock-disconnect.json",
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "one-game-commit",
+      "title": "לכל משחק שנשמר יש היסטוריה אחת וסימן זקיפה אחד באותו מזהה",
+      "status": "passed",
+      "expected": {
+        "firstRoundId": "r_mvboblq9_ynnomoks",
+        "historyCount": 1,
+        "commitCount": 1,
+        "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      },
+      "observed": {
+        "historyIds": [
+          "r_mvboblq9_ynnomoks"
+        ],
+        "commits": [
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/games/YEdIR3MviDK82D581ELk/committedRounds/r_mvboblq9_ynnomoks",
+            "id": "r_mvboblq9_ynnomoks",
+            "committedAt": 1792199483832,
+            "by": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "winnerSide": "B"
+          }
+        ]
+      },
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "saved-field-score-winner",
+      "title": "תוצאת השדה 1:1 נשמרה ומנצחת ההכרעה היא צד ב׳ הלבן",
+      "status": "passed",
+      "expected": {
+        "score": [
+          1,
+          1
+        ],
+        "winnerSide": "B",
+        "teamIndices": [
+          1,
+          2
+        ]
+      },
+      "observed": {
+        "scoreA": 1,
+        "scoreB": 1,
+        "winnerSide": "B",
+        "teamAIndex": 1,
+        "teamBIndex": 2
+      },
+      "evidence": [
+        "data-seven-clock-paused.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "history-full-rosters",
+      "title": "בהיסטוריה נשמרו כל שבעת השחקנים בכל צד, כולל האורחים",
+      "status": "passed",
+      "expected": {
+        "A": [
+          "guest:mvbm3ekm-bwv413",
+          "guest:mvblxnik-8zuslm",
+          "guest:mvbm4zwg-e3ggog",
+          "guest:mvbm2xhv-yzilc4",
+          "guest:mvbm2gjb-1c84fv",
+          "guest:mvbly3u1-bpeqbv",
+          "guest:mvbm1z93-flw4fb"
+        ],
+        "B": [
+          "guest:mvbm1i0e-fn72ab",
+          "guest:mvblzjh8-sqyjaj",
+          "guest:mvbm108b-57st7y",
+          "guest:mvblukkd-mqv80v",
+          "guest:mvbm0j6i-mkdjg5",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvbm3vl4-zsisrg"
+        ]
+      },
+      "observed": {
+        "A": [
+          "guest:mvbm3ekm-bwv413",
+          "guest:mvblxnik-8zuslm",
+          "guest:mvbm4zwg-e3ggog",
+          "guest:mvbm2xhv-yzilc4",
+          "guest:mvbm2gjb-1c84fv",
+          "guest:mvbly3u1-bpeqbv",
+          "guest:mvbm1z93-flw4fb"
+        ],
+        "B": [
+          "guest:mvbm1i0e-fn72ab",
+          "guest:mvblzjh8-sqyjaj",
+          "guest:mvbm108b-57st7y",
+          "guest:mvblukkd-mqv80v",
+          "guest:mvbm0j6i-mkdjg5",
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "guest:mvbm3vl4-zsisrg"
+        ]
+      },
+      "evidence": [
+        "data-seven-clock-paused.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "history-field-goals",
+      "title": "שני שערי השדה נשמרו בהיסטוריה בסדר, בזהויות ובצדדים הנכונים",
+      "status": "passed",
+      "expected": [
+        {
+          "team": "A",
+          "scorerId": "guest:mvbm3ekm-bwv413",
+          "ownGoal": false,
+          "minute": 1
+        },
+        {
+          "team": "B",
+          "scorerId": "guest:mvbm1i0e-fn72ab",
+          "ownGoal": false,
+          "minute": 1
+        }
+      ],
+      "observed": [
+        {
+          "team": "A",
+          "scorerId": "guest:mvbm3ekm-bwv413",
+          "ownGoal": false,
+          "minute": 1
+        },
+        {
+          "team": "B",
+          "scorerId": "guest:mvbm1i0e-fn72ab",
+          "ownGoal": false,
+          "minute": 1
+        }
+      ],
+      "evidence": [
+        "data-seven-clock-paused.json",
+        "data-seven-tie-goals.json"
+      ]
+    },
+    {
+      "id": "history-guest-assist",
+      "title": "המבשל האורח וסיווג הבישול נשמרו בהיסטוריה",
+      "status": "observed-dependency",
+      "expected": [
+        {
+          "assisterId": null,
+          "assistStatus": "none"
+        },
+        {
+          "assisterId": "guest:mvblzjh8-sqyjaj",
+          "assistStatus": "player"
+        }
+      ],
+      "observed": [
+        {
+          "assisterId": null,
+          "assistStatus": null
+        },
+        {
+          "assisterId": null,
+          "assistStatus": null
+        }
+      ],
+      "evidence": [
+        "data-seven-clock-paused.json",
+        "data-seven-tie-goals.json"
+      ],
+      "dependency": "שימור מבשל אורח וסיווג בישול בשרת טרם נפרס"
+    },
+    {
+      "id": "history-retained-penalties",
+      "title": "רק הבעיטות שנותרו אחרי ביטול נשמרו בהיסטוריה, בזהויות ובצדדים הנכונים",
+      "status": "passed",
+      "expected": [
+        {
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true
+        },
+        {
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": true
+        },
+        {
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false
+        },
+        {
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": false
+        },
+        {
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false
+        }
+      ],
+      "observed": [
+        {
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": true
+        },
+        {
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": true
+        },
+        {
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false
+        },
+        {
+          "kickerId": "guest:mvbm1i0e-fn72ab",
+          "keeperId": "guest:mvbm3ekm-bwv413",
+          "team": "B",
+          "scored": false
+        },
+        {
+          "kickerId": "guest:mvbm3ekm-bwv413",
+          "keeperId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+          "team": "A",
+          "scored": false
+        }
+      ],
+      "evidence": [
+        "data-seven-clock-paused.json",
+        "data-seven-kick-six-undone.json"
+      ]
+    },
+    {
+      "id": "history-penalty-outcomes",
+      "title": "ההיסטוריה משמרת גול, עצירה והחטאה כסיווגים נפרדים",
+      "status": "observed-dependency",
+      "expected": [
+        "goal",
+        "goal",
+        "save",
+        "miss",
+        "miss"
+      ],
+      "observed": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "evidence": [
+        "data-seven-clock-paused.json",
+        "data-seven-kick-six-undone.json"
+      ],
+      "dependency": "שימור סיווג תוצאת בעיטה בשרת טרם נפרס"
+    },
+    {
+      "id": "saved-player-appearances",
+      "title": "מוני ההופעות תואמים למשתתפי כל משחק; קבוצת ההמתנה אינה נזקפת בו",
+      "status": "passed",
+      "expected": {
+        "unique": 14,
+        "appearances": 14,
+        "roundsByPlayer": {
+          "guest:mvbm3ekm-bwv413": 1,
+          "guest:mvblxnik-8zuslm": 1,
+          "guest:mvbm4zwg-e3ggog": 1,
+          "guest:mvbm2xhv-yzilc4": 1,
+          "guest:mvbm2gjb-1c84fv": 1,
+          "guest:mvbly3u1-bpeqbv": 1,
+          "guest:mvbm1z93-flw4fb": 1,
+          "guest:mvbm1i0e-fn72ab": 1,
+          "guest:mvblzjh8-sqyjaj": 1,
+          "guest:mvbm108b-57st7y": 1,
+          "guest:mvblukkd-mqv80v": 1,
+          "guest:mvbm0j6i-mkdjg5": 1,
+          "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": 1,
+          "guest:mvbm3vl4-zsisrg": 1
+        }
+      },
+      "observed": {
+        "unique": 14,
+        "appearances": 14,
+        "rows": [
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "id": "YEdIR3MviDK82D581ELk__8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "wins": 1,
+            "penSaved": 2,
+            "teamGoalsFor": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+            "teamScoreRounds": 1,
+            "penConceded": 1,
+            "penFaced": 3,
+            "teamGoalsAgainst": 0,
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblukkd-mqv80v",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvblukkd-mqv80v",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvblukkd-mqv80v",
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblxnik-8zuslm",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvblxnik-8zuslm",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvblxnik-8zuslm",
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbly3u1-bpeqbv",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvbly3u1-bpeqbv",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvbly3u1-bpeqbv",
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvblzjh8-sqyjaj",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvblzjh8-sqyjaj",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "assists": 1,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvblzjh8-sqyjaj",
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm0j6i-mkdjg5",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvbm0j6i-mkdjg5",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvbm0j6i-mkdjg5",
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm108b-57st7y",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvbm108b-57st7y",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvbm108b-57st7y",
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm1i0e-fn72ab",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvbm1i0e-fn72ab",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvbm1i0e-fn72ab",
+            "rounds": 1,
+            "updatedAt": 1792199483832,
+            "goals": 1
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm1z93-flw4fb",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvbm1z93-flw4fb",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvbm1z93-flw4fb",
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm2gjb-1c84fv",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvbm2gjb-1c84fv",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvbm2gjb-1c84fv",
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm2xhv-yzilc4",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvbm2xhv-yzilc4",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvbm2xhv-yzilc4",
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm3ekm-bwv413",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvbm3ekm-bwv413",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvbm3ekm-bwv413",
+            "rounds": 1,
+            "updatedAt": 1792199483832,
+            "goals": 1
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm3vl4-zsisrg",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvbm3vl4-zsisrg",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "wins": 1,
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvbm3vl4-zsisrg",
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          },
+          {
+            "path": "projects/soccer-app-52b6b/databases/(default)/documents/gamePlayerStats/YEdIR3MviDK82D581ELk__guest:mvbm4zwg-e3ggog",
+            "id": "YEdIR3MviDK82D581ELk__guest:mvbm4zwg-e3ggog",
+            "gameId": "YEdIR3MviDK82D581ELk",
+            "teamScoreRounds": 1,
+            "teamGoalsFor": 0,
+            "isGuest": true,
+            "teamGoalsAgainst": 0,
+            "losses": 1,
+            "actualTeamGoalsFor": 1,
+            "actualTeamGoalsAgainst": 1,
+            "userId": "guest:mvbm4zwg-e3ggog",
+            "rounds": 1,
+            "updatedAt": 1792199483832
+          }
+        ]
+      },
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "saved-results-per-player",
+      "title": "מוני הניצחונות, ההפסדים והשערים הנקיים תואמים למשחקים שבהם השתתף כל שחקן",
+      "status": "passed",
+      "expected": {
+        "guest:mvbm3ekm-bwv413": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvblxnik-8zuslm": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvbm4zwg-e3ggog": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvbm2xhv-yzilc4": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvbm2gjb-1c84fv": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvbly3u1-bpeqbv": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvbm1z93-flw4fb": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvbm1i0e-fn72ab": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvblzjh8-sqyjaj": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvbm108b-57st7y": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvblukkd-mqv80v": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvbm0j6i-mkdjg5": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvbm3vl4-zsisrg": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        }
+      },
+      "observed": {
+        "guest:mvblzjh8-sqyjaj": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvbm2xhv-yzilc4": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvbm3vl4-zsisrg": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvbm4zwg-e3ggog": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvbm2gjb-1c84fv": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvbm1z93-flw4fb": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvbly3u1-bpeqbv": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvblukkd-mqv80v": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvbm1i0e-fn72ab": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvbm0j6i-mkdjg5": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvblxnik-8zuslm": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        },
+        "guest:mvbm108b-57st7y": {
+          "wins": 1,
+          "losses": 0,
+          "cleanSheets": 0
+        },
+        "guest:mvbm3ekm-bwv413": {
+          "wins": 0,
+          "losses": 1,
+          "cleanSheets": 0
+        }
+      },
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "saved-scorers-assister",
+      "title": "מוני הכובשים והמבשל תואמים לכל שערי השדה במשחקים שנשמרו",
+      "status": "passed",
+      "expected": {
+        "guest:mvbm3ekm-bwv413": {
+          "goals": 1,
+          "assists": 0
+        },
+        "guest:mvblxnik-8zuslm": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm4zwg-e3ggog": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm2xhv-yzilc4": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm2gjb-1c84fv": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbly3u1-bpeqbv": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm1z93-flw4fb": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm1i0e-fn72ab": {
+          "goals": 1,
+          "assists": 0
+        },
+        "guest:mvblzjh8-sqyjaj": {
+          "goals": 0,
+          "assists": 1
+        },
+        "guest:mvbm108b-57st7y": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvblukkd-mqv80v": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm0j6i-mkdjg5": {
+          "goals": 0,
+          "assists": 0
+        },
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm3vl4-zsisrg": {
+          "goals": 0,
+          "assists": 0
+        }
+      },
+      "observed": {
+        "guest:mvblzjh8-sqyjaj": {
+          "goals": 0,
+          "assists": 1
+        },
+        "guest:mvbm2xhv-yzilc4": {
+          "goals": 0,
+          "assists": 0
+        },
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm3vl4-zsisrg": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm4zwg-e3ggog": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm2gjb-1c84fv": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm1z93-flw4fb": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbly3u1-bpeqbv": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvblukkd-mqv80v": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm1i0e-fn72ab": {
+          "goals": 1,
+          "assists": 0
+        },
+        "guest:mvbm0j6i-mkdjg5": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvblxnik-8zuslm": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm108b-57st7y": {
+          "goals": 0,
+          "assists": 0
+        },
+        "guest:mvbm3ekm-bwv413": {
+          "goals": 1,
+          "assists": 0
+        }
+      },
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "saved-exact-team-score",
+      "title": "שערי הזכות והחובה בפועל תואמים לצד ולתוצאה בכל הופעה",
+      "status": "passed",
+      "expected": {
+        "guest:mvbm3ekm-bwv413": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvblxnik-8zuslm": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm4zwg-e3ggog": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm2xhv-yzilc4": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm2gjb-1c84fv": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbly3u1-bpeqbv": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm1z93-flw4fb": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm1i0e-fn72ab": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvblzjh8-sqyjaj": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm108b-57st7y": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvblukkd-mqv80v": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm0j6i-mkdjg5": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm3vl4-zsisrg": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        }
+      },
+      "observed": {
+        "guest:mvblzjh8-sqyjaj": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm2xhv-yzilc4": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm3vl4-zsisrg": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm4zwg-e3ggog": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm2gjb-1c84fv": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm1z93-flw4fb": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbly3u1-bpeqbv": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvblukkd-mqv80v": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm1i0e-fn72ab": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm0j6i-mkdjg5": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvblxnik-8zuslm": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm108b-57st7y": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        },
+        "guest:mvbm3ekm-bwv413": {
+          "actualTeamGoalsFor": 1,
+          "actualTeamGoalsAgainst": 1,
+          "teamScoreRounds": 1
+        }
+      },
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "saved-qa-keeper",
+      "title": "לשוער הבדיקה נזקפה עצירה אחת בלבד; ההחטאה אינה עצירה",
+      "status": "observed-dependency",
+      "expected": {
+        "penFaced": 3,
+        "penSaved": 1,
+        "penConceded": 1
+      },
+      "observed": {
+        "penFaced": 3,
+        "penSaved": 2,
+        "penConceded": 1
+      },
+      "evidence": [
+        "data-seven-clock-paused.json",
+        "data-seven-kick-six-undone.json"
+      ],
+      "dependency": "הפרדת החטאה מעצירה בחישוב השוער בשרת טרם נפרסה"
+    },
+    {
+      "id": "next-game-rotation",
+      "title": "אחרי המשחק האחרון המנצחת נשארת, הממתינה עולה והמפסידה עוברת להמתנה",
+      "status": "passed",
+      "expected": {
+        "round": 2,
+        "playing": [
+          2,
+          0
+        ],
+        "waiting": [
+          1
+        ],
+        "lastCommittedRoundId": "r_mvboblq9_ynnomoks"
+      },
+      "observed": {
+        "rotation": {
+          "playing": [
+            2,
+            0
+          ],
+          "waiting": [
+            1
+          ],
+          "loans": [],
+          "wins": {
+            "2": 1
+          },
+          "round": 2,
+          "lastRoundWinners": [
+            "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+          ],
+          "lastRoundLosers": [],
+          "lastRoundAt": 1792199484770,
+          "updatedAt": 1792199484770,
+          "roundInstanceId": "r_mvbpasvp_s94nyeui",
+          "roundInstanceRound": 2
+        },
+        "lastCommittedRoundId": "r_mvboblq9_ynnomoks"
+      },
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "team-win-counter",
+      "title": "מוני הניצחון הקבוצתי תואמים לכל המשחקים שנשמרו",
+      "status": "passed",
+      "expected": {
+        "2": 1
+      },
+      "observed": {
+        "2": 1
+      },
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    },
+    {
+      "id": "finish-pending",
+      "title": "סיכום מחזור, נוכחות וחתימה",
+      "status": "unproven",
+      "reason": "המחזור עדיין לא הסתיים במקור האחרון",
+      "evidence": [
+        "data-seven-clock-paused.json"
+      ]
+    }
+  ]
+}

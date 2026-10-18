@@ -1,0 +1,725 @@
+{
+  "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+  "clubId": "J060YQu6QTcgk3glUDj2",
+  "roundIds": [
+    "Ra5ZBzOUjR5zQlMojHke",
+    "FQ4T7izEbuYfprKFS75n",
+    "cF3CjQbLH8vzo7uaFqHx"
+  ],
+  "totals": {
+    "uniqueAccountsCreated": 0,
+    "existingRegisteredAccountsUsed": 1,
+    "guestsCreated": 71,
+    "guestsActiveInFinalRosters": 70,
+    "guestsRemovedFromRoundRoster": 1,
+    "guestIdsListedInCreationReceipts": 70,
+    "additionalWaitlistedGuestFromApprovedSnapshot": 1
+  },
+  "rounds": [
+    {
+      "gameId": "Ra5ZBzOUjR5zQlMojHke",
+      "format": "4v4",
+      "numberOfTeams": 3,
+      "createdGuestCount": 11,
+      "activeGuestCount": 11,
+      "removedGuestCount": 0,
+      "registeredAccountIds": [
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      ],
+      "historyCount": 2,
+      "sources": [
+        "data-four-four-goals.json",
+        "guests-four-receipt.json",
+        "data-eleven-finished.json"
+      ],
+      "guests": [
+        {
+          "id": "mvcxepvd-4wgeo9",
+          "canonicalId": "guest:mvcxepvd-4wgeo9",
+          "name": "בדיקה4־01",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcxf3b2-spv47b",
+          "canonicalId": "guest:mvcxf3b2-spv47b",
+          "name": "בדיקה4־02",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcxfhvn-amejwi",
+          "canonicalId": "guest:mvcxfhvn-amejwi",
+          "name": "בדיקה4־03",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcxfud1-jvzn1w",
+          "canonicalId": "guest:mvcxfud1-jvzn1w",
+          "name": "בדיקה4־04",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcxg66v-bqnjce",
+          "canonicalId": "guest:mvcxg66v-bqnjce",
+          "name": "בדיקה4־05",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcxghj9-off0hi",
+          "canonicalId": "guest:mvcxghj9-off0hi",
+          "name": "בדיקה4־06",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcxgsau-dtji6o",
+          "canonicalId": "guest:mvcxgsau-dtji6o",
+          "name": "בדיקה4־07",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcxh346-qdwb3o",
+          "canonicalId": "guest:mvcxh346-qdwb3o",
+          "name": "בדיקה4־08",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcxhdu6-z6f2ak",
+          "canonicalId": "guest:mvcxhdu6-z6f2ak",
+          "name": "בדיקה4־09",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcxhomb-b2hn9j",
+          "canonicalId": "guest:mvcxhomb-b2hn9j",
+          "name": "בדיקה4־10",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcxhzbu-003h7x",
+          "canonicalId": "guest:mvcxhzbu-003h7x",
+          "name": "בדיקה4־11",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        }
+      ]
+    },
+    {
+      "gameId": "FQ4T7izEbuYfprKFS75n",
+      "format": "7v7",
+      "numberOfTeams": 4,
+      "createdGuestCount": 28,
+      "activeGuestCount": 27,
+      "removedGuestCount": 1,
+      "registeredAccountIds": [
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      ],
+      "historyCount": 3,
+      "sources": [
+        "data-seven-full-with-waitlist.json",
+        "guests-seven-receipt.json",
+        "data-eleven-finished.json"
+      ],
+      "guests": [
+        {
+          "id": "mvcyi974-ceoxzk",
+          "canonicalId": "guest:mvcyi974-ceoxzk",
+          "name": "שבע־01",
+          "activeInFinalRoundRoster": false,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": false
+        },
+        {
+          "id": "mvcyim0f-81tp8d",
+          "canonicalId": "guest:mvcyim0f-81tp8d",
+          "name": "שבע־02",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyiwsz-tlan92",
+          "canonicalId": "guest:mvcyiwsz-tlan92",
+          "name": "שבע־03",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyj6sp-bzxjdr",
+          "canonicalId": "guest:mvcyj6sp-bzxjdr",
+          "name": "שבע־04",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyji3o-nsqrwc",
+          "canonicalId": "guest:mvcyji3o-nsqrwc",
+          "name": "שבע־05",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyjsg7-3n61s4",
+          "canonicalId": "guest:mvcyjsg7-3n61s4",
+          "name": "שבע־06",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyk48b-bc6tfc",
+          "canonicalId": "guest:mvcyk48b-bc6tfc",
+          "name": "שבע־07",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcykk0e-uw4e4q",
+          "canonicalId": "guest:mvcykk0e-uw4e4q",
+          "name": "שבע־08",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcykw5f-slqqso",
+          "canonicalId": "guest:mvcykw5f-slqqso",
+          "name": "שבע־09",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyl6v5-ivx66m",
+          "canonicalId": "guest:mvcyl6v5-ivx66m",
+          "name": "שבע־10",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcylhjs-hmr1pa",
+          "canonicalId": "guest:mvcylhjs-hmr1pa",
+          "name": "שבע־11",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcylshl-orw4aq",
+          "canonicalId": "guest:mvcylshl-orw4aq",
+          "name": "שבע־12",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcym43v-7h7apx",
+          "canonicalId": "guest:mvcym43v-7h7apx",
+          "name": "שבע־13",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcymg0y-6tw9f2",
+          "canonicalId": "guest:mvcymg0y-6tw9f2",
+          "name": "שבע־14",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcymsc6-ska8pb",
+          "canonicalId": "guest:mvcymsc6-ska8pb",
+          "name": "שבע־15",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyn3ov-zusrqh",
+          "canonicalId": "guest:mvcyn3ov-zusrqh",
+          "name": "שבע־16",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcynetv-npalqu",
+          "canonicalId": "guest:mvcynetv-npalqu",
+          "name": "שבע־17",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcynpww-27doyu",
+          "canonicalId": "guest:mvcynpww-27doyu",
+          "name": "שבע־18",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyo0ty-n1am4b",
+          "canonicalId": "guest:mvcyo0ty-n1am4b",
+          "name": "שבע־19",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyoayx-vb0yhd",
+          "canonicalId": "guest:mvcyoayx-vb0yhd",
+          "name": "שבע־20",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyomjc-izziaf",
+          "canonicalId": "guest:mvcyomjc-izziaf",
+          "name": "שבע־21",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyoxd8-vavlmk",
+          "canonicalId": "guest:mvcyoxd8-vavlmk",
+          "name": "שבע־22",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyp7up-ek4f2v",
+          "canonicalId": "guest:mvcyp7up-ek4f2v",
+          "name": "שבע־23",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcypi4h-hlmbmt",
+          "canonicalId": "guest:mvcypi4h-hlmbmt",
+          "name": "שבע־24",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcypsl7-kp8wd4",
+          "canonicalId": "guest:mvcypsl7-kp8wd4",
+          "name": "שבע־25",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyq35x-sa74ys",
+          "canonicalId": "guest:mvcyq35x-sa74ys",
+          "name": "שבע־26",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyqdz7-zn2xty",
+          "canonicalId": "guest:mvcyqdz7-zn2xty",
+          "name": "שבע־27",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvcyr422-23pos1",
+          "canonicalId": "guest:mvcyr422-23pos1",
+          "name": "בהמתנה שבע",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": true,
+          "listedInGuestCreationReceipt": false,
+          "hasPlayerStats": false
+        }
+      ]
+    },
+    {
+      "gameId": "cF3CjQbLH8vzo7uaFqHx",
+      "format": "11v11",
+      "numberOfTeams": 3,
+      "createdGuestCount": 32,
+      "activeGuestCount": 32,
+      "removedGuestCount": 0,
+      "registeredAccountIds": [
+        "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+      ],
+      "historyCount": 3,
+      "sources": [
+        "data-eleven-full-roster.json",
+        "guests-eleven-receipt.json",
+        "data-eleven-finished.json"
+      ],
+      "guests": [
+        {
+          "id": "mvd0vjxq-0g1lq1",
+          "canonicalId": "guest:mvd0vjxq-0g1lq1",
+          "name": "אחדעשר־01",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0vuna-fnoeo2",
+          "canonicalId": "guest:mvd0vuna-fnoeo2",
+          "name": "אחדעשר־02",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0w4ym-ingxdl",
+          "canonicalId": "guest:mvd0w4ym-ingxdl",
+          "name": "אחדעשר־03",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0wfdk-466dv3",
+          "canonicalId": "guest:mvd0wfdk-466dv3",
+          "name": "אחדעשר־04",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0wrfs-kh2vtr",
+          "canonicalId": "guest:mvd0wrfs-kh2vtr",
+          "name": "אחדעשר־05",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0x1ps-7ixc9q",
+          "canonicalId": "guest:mvd0x1ps-7ixc9q",
+          "name": "אחדעשר־06",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0xc1z-73rbw4",
+          "canonicalId": "guest:mvd0xc1z-73rbw4",
+          "name": "אחדעשר־07",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0xnrj-tjh9tt",
+          "canonicalId": "guest:mvd0xnrj-tjh9tt",
+          "name": "אחדעשר־08",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0xybi-m35dd0",
+          "canonicalId": "guest:mvd0xybi-m35dd0",
+          "name": "אחדעשר־09",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0ycc9-z0t5wz",
+          "canonicalId": "guest:mvd0ycc9-z0t5wz",
+          "name": "אחדעשר־10",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0yonx-b7ct3f",
+          "canonicalId": "guest:mvd0yonx-b7ct3f",
+          "name": "אחדעשר־11",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0z0wa-y09vp7",
+          "canonicalId": "guest:mvd0z0wa-y09vp7",
+          "name": "אחדעשר־12",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0zdfn-ar4g4f",
+          "canonicalId": "guest:mvd0zdfn-ar4g4f",
+          "name": "אחדעשר־13",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd0zp9o-rrny5s",
+          "canonicalId": "guest:mvd0zp9o-rrny5s",
+          "name": "אחדעשר־14",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd100i6-z7ct6s",
+          "canonicalId": "guest:mvd100i6-z7ct6s",
+          "name": "אחדעשר־15",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd10bg7-d2c7o2",
+          "canonicalId": "guest:mvd10bg7-d2c7o2",
+          "name": "אחדעשר־16",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd10m8o-l6gurd",
+          "canonicalId": "guest:mvd10m8o-l6gurd",
+          "name": "אחדעשר־17",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd10x7k-3wrf22",
+          "canonicalId": "guest:mvd10x7k-3wrf22",
+          "name": "אחדעשר־18",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd119aq-oyq8h0",
+          "canonicalId": "guest:mvd119aq-oyq8h0",
+          "name": "אחדעשר־19",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd11k50-tzwfs3",
+          "canonicalId": "guest:mvd11k50-tzwfs3",
+          "name": "אחדעשר־20",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd11v4d-44941z",
+          "canonicalId": "guest:mvd11v4d-44941z",
+          "name": "אחדעשר־21",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd125lr-ljh7d2",
+          "canonicalId": "guest:mvd125lr-ljh7d2",
+          "name": "אחדעשר־22",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd12fv8-i79hga",
+          "canonicalId": "guest:mvd12fv8-i79hga",
+          "name": "אחדעשר־23",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd12q0h-3kdp0c",
+          "canonicalId": "guest:mvd12q0h-3kdp0c",
+          "name": "אחדעשר־24",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd130io-5acdpt",
+          "canonicalId": "guest:mvd130io-5acdpt",
+          "name": "אחדעשר־25",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd13apd-adek4f",
+          "canonicalId": "guest:mvd13apd-adek4f",
+          "name": "אחדעשר־26",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd13kwx-5qos4h",
+          "canonicalId": "guest:mvd13kwx-5qos4h",
+          "name": "אחדעשר־27",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd13vi3-pq5bfp",
+          "canonicalId": "guest:mvd13vi3-pq5bfp",
+          "name": "אחדעשר־28",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd147a2-7x9qv8",
+          "canonicalId": "guest:mvd147a2-7x9qv8",
+          "name": "אחדעשר־29",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd14ieu-7xm78a",
+          "canonicalId": "guest:mvd14ieu-7xm78a",
+          "name": "אחדעשר־30",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd14sr6-bf7sgb",
+          "canonicalId": "guest:mvd14sr6-bf7sgb",
+          "name": "אחדעשר־31",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        },
+        {
+          "id": "mvd152yq-3ebjj2",
+          "canonicalId": "guest:mvd152yq-3ebjj2",
+          "name": "שחקן בדיקה שם ארוך",
+          "activeInFinalRoundRoster": true,
+          "initiallyWaitlisted": false,
+          "listedInGuestCreationReceipt": true,
+          "hasPlayerStats": true
+        }
+      ]
+    }
+  ],
+  "removedCanonicalIds": [
+    "guest:mvcyi974-ceoxzk"
+  ],
+  "finalSourceSha256": "a65ad35de8e55cb98c3683b8447ceb29ddab383a153784f11b6f22916a88b8d1",
+  "limits": [
+    "פעיל פירושו קיים ברשימת אורחי המחזור הסופית, ולא בהכרח שיחק. האורח שקודם מהמתנה במחזור שבע שובץ רק לאחר שהאדומים יצאו ולכן אין לו הופעה.",
+    "קבלת יצירת האורחים של שבע כוללת27 אורחים; האורח ה28 שהצטרף להמתנה מזוהה מהצילום המאושר לפני החלוקה ומאותה זהות לאחר הקידום. אין מזהה שהוקלד ידנית.",
+    "הסרת אורח פירושה שנגרע מרשימת אורחי מחזור הבדיקה הזה. אין כאן טענה למחיקה כללית של חשבון או זהות במערכת."
+  ]
+}

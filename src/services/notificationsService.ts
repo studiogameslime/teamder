@@ -277,7 +277,18 @@ export const notificationsService = {
     }
 
     try {
-      const existing = await getDoc(ref);
+      let existing;
+      try {
+        existing = await getDoc(ref);
+      } catch (err) {
+        // Missing documents are readable; an existing recipient-owned marker
+        // is not. This is a duplicate, not a failed write. Keep actual create
+        // failures and errors on our own notifications in the outer catch.
+        const sender = getFirebase().auth.currentUser?.uid;
+        if ((err as { code?: string })?.code === 'permission-denied' &&
+            sender && sender !== input.recipientId) return;
+        throw err;
+      }
       if (existing.exists()) {
         const data = existing.data() as { read?: boolean } | undefined;
         if (!data?.read) {
@@ -456,7 +467,12 @@ export const notificationsService = {
   },
 
   async markRead(notificationId: string): Promise<void> {
-    if (USE_MOCK_DATA || !notificationId) return;
+    if (!notificationId) return;
+    if (USE_MOCK_DATA) {
+      const item=mockNotifications.find(n=>n.id===notificationId);
+      if(item){item.read=true;item.readAt=Date.now();}
+      return;
+    }
     try {
       const { db: firestoreDb } = getFirebase();
       await updateDoc(doc(firestoreDb, 'notifications', notificationId), {
@@ -882,7 +898,7 @@ export const notificationsService = {
     startsAt?: number;
     /** @deprecated kept for backwards-compat with old call sites. Server ignores. */
     inviterId?: UserId;
-  }): Promise<void> {
+  }): Promise<{invited: boolean; reason?: string}> {
     if (!input?.recipientId || !input?.gameId) {
       throw new Error('inviteToGame: missing recipientId or gameId');
     }
@@ -901,7 +917,7 @@ export const notificationsService = {
         createdAt: Date.now(),
         delivered: false,
       });
-      return;
+      return {invited:true};
     }
     // Lazy-import the callable infra so the bundle stays lean for
     // mock-mode users.
@@ -910,10 +926,11 @@ export const notificationsService = {
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'sendGameInvite');
     try {
-      await fn({
+      const result = await fn({
         recipientId: input.recipientId,
         gameId: input.gameId,
       });
+      return { invited: result.data?.invited !== false, reason: result.data?.reason };
     } catch (err) {
       logError('inviteToGame', err, {
         recipientId: input.recipientId,

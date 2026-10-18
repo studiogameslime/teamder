@@ -1,9 +1,9 @@
 // Reading the sealed round summary.
 //
-// There is deliberately no builder here. The summary is written once by the
+// There is deliberately no builder here. The summary is sealed by the
 // Cloud Function that closes the evening, against a history that has already
 // moved on by the time anyone opens the screen — so the client's only job is to
-// fetch it. If the document is missing, the honest answer is "no summary for
+// fetch it, including server corrections after missed goals. If the document is missing, the honest answer is "no summary for
 // this evening", not a second, differently-computed one.
 import {
   collection,
@@ -12,6 +12,7 @@ import {
   getDocs,
   limit as fsLimit,
   orderBy,
+  onSnapshot,
   query,
   where,
 } from 'firebase/firestore';
@@ -63,6 +64,15 @@ function normalise(raw: unknown): RoundSummary {
 }
 
 export const roundSummaryService = {
+  /** Follow a not-yet-sealed evening while its statistics tab is focused. */
+  watch(gameId: string, groupId: string, onValue: (value: RoundSummary | null) => void, onError: (error: unknown) => void): () => void {
+    if (USE_MOCK_DATA) return () => {};
+    return onSnapshot(query(collection(getFirebase().db, 'roundSummaries'),
+      where('groupId', '==', groupId), where('gameId', '==', gameId), fsLimit(1)), snapshot => {
+      if (snapshot.empty && snapshot.metadata.fromCache) return;
+      onValue(snapshot.empty ? null : normalise(snapshot.docs[0].data()));
+    }, onError);
+  },
   /**
    * The club's summary for one evening, or null when there is none.
    *
@@ -147,18 +157,30 @@ export const roundSummaryService = {
     }
   },
 
-  async get(gameId: string): Promise<RoundSummary | null> {
+  /** A successful absent document returns null; failed reads reject unchanged. */
+  async get(gameId: string, groupId?: string): Promise<RoundSummary | null> {
     if (!gameId) return null;
     if (USE_MOCK_DATA) return mockRoundSummary(gameId);
     try {
+      if (groupId) {
+        // A missing document cannot satisfy resource.data.groupId in rules.
+        // A club-scoped query can prove membership even when no summary exists.
+        const result = await getDocs(query(collection(getFirebase().db, 'roundSummaries'),
+          where('groupId', '==', groupId), where('gameId', '==', gameId), fsLimit(1)));
+        if (result.empty && result.metadata?.fromCache) {
+          throw Object.assign(new Error('לא התקבל אישור מהשרת שהסיכום חסר'), { code: 'unavailable' });
+        }
+        return result.empty ? null : normalise(result.docs[0].data());
+      }
       const snap = await getDoc(doc(getFirebase().db, 'roundSummaries', gameId));
       if (!snap.exists()) return null;
       return normalise(snap.data());
     } catch (err) {
-      // A member of another club reading a shared link is denied by the rules;
-      // that is the rule working, not an error worth reporting.
+      // Missing documents are the only successful null. A denied or failed
+      // read must remain a failure so the screen can offer a retry rather
+      // than claim this evening has no recorded data.
       if (!isExpectedDenial(err)) logError('roundSummaryGet', err, { gameId });
-      return null;
+      throw err;
     }
   },
 };

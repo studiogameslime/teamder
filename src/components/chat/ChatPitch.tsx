@@ -29,7 +29,7 @@ export function PitchLinesBackdrop() {
   // Draw in the real screen box; the header/composer paint over the rest.
   const W = SW;
   const H = SH;
-  const stroke = 'rgba(21,128,61,0.10)';
+  const stroke = 'rgba(37,99,235,0.045)';
   const sw = 2;
   const boxW = Math.min(W * 0.6, 320);
   const boxH = H * 0.11;

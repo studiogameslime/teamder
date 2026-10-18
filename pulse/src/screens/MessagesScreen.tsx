@@ -1,152 +1,101 @@
-// MessagesScreen — every conversation between a user and the Teamder account,
-// in one place.
-//
-// Before this the only way in was a small box at the top of the tasks screen
-// that appeared solely when someone was waiting: a thread vanished the moment
-// it was answered, so "did they ever reply to what I sent?" had no answer
-// short of finding the user and opening their profile. This lists all of them,
-// answered included, newest first, with the ones waiting on us pulled to the
-// top and marked.
-
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-
-import { colors } from '../theme';
+import { colors, font, radius } from '../theme';
 import { Card, Empty, Screen } from '../components/ui';
 import { TeamderChatSheet } from '../components/TeamderChatSheet';
-import { listThreads, type ThreadSummary } from '../services/teamderChatService';
+import { NewSupportChatPicker } from '../components/NewSupportChatPicker';
+import { listThreads, userNameOf, type ThreadSummary } from '../services/teamderChatService';
+import { filterSupportThreads, type SupportFilter } from '../services/supportInbox';
 import { timeAgo } from '../format';
+import { SupportOutreachPanel } from '../components/SupportOutreachPanel';
+
+const FILTERS: { key: SupportFilter; label: string }[] = [
+  { key: 'waiting', label: 'ממתינים לנו' }, { key: 'sent', label: 'ממתינים למשתמש' }, { key: 'resolved', label: 'פתורות' }, { key: 'all', label: 'הכול' },
+];
 
 export function MessagesScreen() {
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [open, setOpen] = useState<ThreadSummary | null>(null);
-
+  const [loading, setLoading] = useState(true), [refreshing, setRefreshing] = useState(false);
+  const [failed, setFailed] = useState(false), [updatedAt, setUpdatedAt] = useState(0);
+  const [search, setSearch] = useState(''), [filter, setFilter] = useState<SupportFilter>('all');
+  const [open, setOpen] = useState<{ userId: string; userName: string } | null>(null);
+  const [pickingUser, setPickingUser] = useState(false);
+  const mounted = useRef(true), inFlight = useRef(false);
+  const route = useRoute();
+  const params = route.params as { userId?: string; messageId?: string } | undefined;
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const load = useCallback(async (force = false) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     try {
-      setThreads(await listThreads(force));
-    } catch {
-      /* offline — whatever is on screen stays */
-    }
+      const rows = await listThreads(force);
+      if (mounted.current) { setThreads(rows); setFailed(false); setUpdatedAt(Date.now()); }
+    } catch { if (mounted.current) setFailed(true); }
+    finally { inFlight.current = false; if (mounted.current) setLoading(false); }
   }, []);
-
+  useFocusEffect(useCallback(() => {
+    const refresh = () => { if (AppState.currentState === 'active') void load(true); };
+    void load(true);
+    const timer = setInterval(refresh, 30_000);
+    const subscription = AppState.addEventListener('change', state => { if (state === 'active') refresh(); });
+    return () => { clearInterval(timer); subscription.remove(); };
+  }, [load]));
   useEffect(() => {
+    const userId = params?.userId;
+    if (!userId || userId === 'teamder' || /[\/\s]/.test(userId) || userId.includes('__')) return;
     let alive = true;
-    (async () => {
-      await load();
-      if (alive) setLoading(false);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [load]);
-
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
-    await load(true);
-    setRefreshing(false);
-  }, [load]);
-
-  // Waiting-on-us first, then by recency inside each half. A thread someone is
-  // waiting on is the only actionable row here, so it should never be below a
-  // conversation that's already closed.
-  const sorted = useMemo(
-    () =>
-      [...threads].sort((a, b) =>
-        a.awaitingReply === b.awaitingReply
-          ? b.lastMessageAt - a.lastMessageAt
-          : a.awaitingReply
-            ? -1
-            : 1,
-      ),
-    [threads],
-  );
-  const waiting = sorted.filter((t) => t.awaitingReply).length;
-
+    setOpen({ userId, userName: '' });
+    void userNameOf(userId).then(userName => { if (alive) setOpen({ userId, userName }); }).catch(() => {});
+    return () => { alive = false; };
+  }, [params?.userId, params?.messageId]);
+  const refresh = async () => { setRefreshing(true); await load(true); if (mounted.current) setRefreshing(false); };
+  const rows = useMemo(() => filterSupportThreads(threads, search, filter), [threads, search, filter]);
+  const waiting = threads.filter(t => t.awaitingReply).length;
   return (
-    <Screen
-      title="הודעות"
-      subtitle={
-        loading
-          ? undefined
-          : waiting > 0
-            ? `${waiting} ${waiting === 1 ? 'ממתין לתשובה' : 'ממתינים לתשובה'} · ${threads.length} שיחות`
-            : `${threads.length} שיחות`
-      }
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={refresh}
-          tintColor={colors.primary}
-        />
-      }
-    >
-      {loading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 28 }} />
-      ) : sorted.length === 0 ? (
-        <Empty text="עוד לא נפתחה שיחה עם משתמש" />
-      ) : (
-        sorted.map((t) => (
-          <Pressable key={t.userId} onPress={() => setOpen(t)}>
-            <Card style={st.row}>
-              <View
-                style={[
-                  st.dot,
-                  { backgroundColor: t.awaitingReply ? colors.red : 'transparent' },
-                ]}
-              />
-              <View style={st.body}>
-                <View style={st.line}>
-                  <Text style={st.name} numberOfLines={1}>
-                    {t.userName || 'משתמש'}
-                  </Text>
-                  <Text style={st.when}>{timeAgo(t.lastMessageAt)}</Text>
-                </View>
-                <Text
-                  style={[st.preview, t.awaitingReply && st.previewUnread]}
-                  numberOfLines={1}
-                >
-                  {/* Say who spoke last — otherwise our own outgoing message
-                      reads as if the user had sent it. */}
-                  {t.awaitingReply ? t.lastText : `Teamder: ${t.lastText}`}
-                </Text>
-              </View>
-              <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
-            </Card>
-          </Pressable>
-        ))
-      )}
-
-      <TeamderChatSheet
-        visible={open !== null}
-        userId={open?.userId ?? ''}
-        userName={open?.userName ?? ''}
-        onClose={() => {
-          setOpen(null);
-          load(true);
-        }}
-      />
+    <Screen title="שיחות עם משתמשים" subtitle="שולחים בשם טימדר ומלווים את השחקנים"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}>
+      <View style={st.stats}>
+        <Card style={st.stat}><Text style={st.number}>{waiting}</Text><Text style={font.small}>ממתינים למענה שלנו</Text></Card>
+        <Card style={st.stat}><Text style={st.number}>{threads.length}</Text><Text style={font.small}>שיחות במעקב</Text></Card>
+      </View>
+      <Pressable onPress={()=>setPickingUser(true)} accessibilityRole="button" style={[st.filter,st.selected,{flex:0,flexDirection:'row',direction:'rtl',justifyContent:'center',gap:8,marginBottom:14}]}><Ionicons name="create-outline" size={20} color={colors.primary}/><Text style={st.filterText}>שיחה חדשה עם משתמש</Text></Pressable>
+      <SupportOutreachPanel onOpenThread={(userId, userName) => setOpen({ userId, userName })} />
+      <View style={st.search}><Ionicons name="search" size={20} color={colors.textMuted} />
+        <TextInput value={search} onChangeText={setSearch} placeholder="חיפוש לפי שם או הודעה אחרונה" placeholderTextColor={colors.textMuted} style={st.input} />
+      </View>
+      <View style={st.filters}>{FILTERS.map(item => <Pressable key={item.key} onPress={() => setFilter(item.key)}
+        accessibilityRole="button" accessibilityState={{ selected: filter === item.key }} style={[st.filter, filter === item.key && st.selected]}>
+        <Text style={st.filterText}>{item.label}</Text></Pressable>)}</View>
+      <Text style={st.note}>אפשר להשיב או לסמן שיחה כפתורה בלי לשלוח הודעה. הודעה חדשה מהמשתמש תחזיר אותה לטיפול.</Text>
+      {failed ? <Pressable onPress={refresh} style={st.error}><Text style={st.errorText}>לא הצלחנו לעדכן את השיחות. הנתונים הקודמים נשמרו — לחצו לניסיון חוזר.</Text></Pressable> : null}
+      {updatedAt > 0 ? <Text style={st.note}>עודכן {timeAgo(updatedAt)} · מתרענן כל חצי דקה כשהמסך פתוח</Text> : null}
+      {loading ? <ActivityIndicator color={colors.primary} /> : !failed && rows.length === 0 ? <Empty text={threads.length ? 'אין שיחות שמתאימות לחיפוש ולסינון' : 'עוד לא נפתחה שיחה. אפשר לשלוח הודעה מתוך כרטיס המשתמש.'} /> : rows.map(t => (
+        <Pressable key={t.userId} onPress={() => setOpen(t)} accessibilityRole="button" accessibilityLabel={`שיחה עם ${t.userName || 'משתמש'}`}>
+          <Card style={[st.row, t.awaitingReply && st.waiting]}>
+            <View style={st.avatar}><Ionicons name="person-outline" size={24} color={colors.primary} /></View>
+            <View style={st.body}><View style={st.line}><Text style={st.name} numberOfLines={1}>{t.userName || 'משתמש'}</Text><Text style={st.when}>{timeAgo(t.lastMessageAt)}</Text></View>
+              <Text style={st.preview} numberOfLines={2}>{t.awaitingReply || t.resolved ? t.lastText : `אנחנו: ${t.lastText}`} </Text>
+              <Text style={[st.status, { color: t.awaitingReply ? colors.amber : colors.textMuted }]}>{t.resolved ? 'סומנה כפתורה' : t.awaitingReply ? 'ממתין למענה שלנו' : 'ההודעה האחרונה נשלחה מאיתנו'}</Text>
+            </View><Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+      ))}
+      <TeamderChatSheet onStatusChanged={() => { void load(true); }} visible={open !== null} userId={open?.userId ?? ''} userName={open?.userName ?? ''} onClose={() => { setOpen(null); void load(true); }} />
+      <NewSupportChatPicker visible={pickingUser} onClose={()=>setPickingUser(false)} onSelect={(userId,userName)=>{setPickingUser(false);setOpen({userId,userName});}}/>
     </Screen>
   );
 }
-
 const st = StyleSheet.create({
-  // row-reverse: this is an RTL app, so the first child lands on the right.
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  body: { flex: 1, gap: 2 },
-  line: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  name: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '800', textAlign: 'right' },
-  when: { color: colors.textMuted, fontSize: 11 },
-  preview: { color: colors.textMuted, fontSize: 13, textAlign: 'right' },
-  previewUnread: { color: colors.text, fontWeight: '600' },
+  stats: { flexDirection: 'row', direction: 'rtl', gap: 10 }, stat: { flex: 1, alignItems: 'center', gap: 5 }, number: { fontSize: 28, fontWeight: '800', color: colors.primary },
+  search: { flexDirection: 'row', direction: 'rtl', alignItems: 'center', gap: 10, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 12 },
+  input: { flex: 1, color: colors.text, textAlign: 'right', paddingVertical: 14 },
+  filters: { flexDirection: 'row', direction: 'rtl', gap: 7, marginVertical: 12 }, filter: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  selected: { backgroundColor: colors.primarySoft, borderColor: colors.primary, borderWidth: 1 }, filterText: { color: colors.text, fontSize: 12, fontWeight: '700' },
+  note: { ...font.small, marginBottom: 12 }, row: { flexDirection: 'row', direction: 'rtl', alignItems: 'center', gap: 10 }, waiting: { borderColor: colors.amber },
+  avatar: { width: 46, height: 46, borderRadius: 16, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }, body: { flex: 1, gap: 6 },
+  line: { flexDirection: 'row', direction: 'rtl', alignItems: 'center', gap: 8 }, name: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '800', textAlign: 'right' },
+  when: { color: colors.textMuted, fontSize: 11 }, preview: { ...font.body }, status: { fontSize: 11, textAlign: 'right' },
+  error: { backgroundColor: colors.surfaceAlt, padding: 14, borderRadius: radius.sm, marginBottom: 12 }, errorText: { ...font.body, color: colors.amber },
 });

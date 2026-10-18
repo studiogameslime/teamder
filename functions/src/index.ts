@@ -1,6 +1,19 @@
+import { ENFORCE_APP_CHECK } from './appCheckPolicy';
+import { creationReceiptId, fingerprintCreation } from './creationReceipt';
+import { guestJoinNotices, guestJoinMessage, joinNoticeRecipients } from './guestJoinNotice';
+import { clickDocumentId, clickSource } from './linkClickInput';
+import { readServerAdminRatings, prunePrivateClubRatings } from './clubAdminRatings';
+export { setClubAdminRating, getClubAdminRatings } from './clubAdminRatings';
+import { roundJoinAccess, validManagerInvitation, roundAcceptsInvitations, INVITATION_TTL_MS } from './invitationPolicy';
+import { assertSocialContact, sendClubInvitation } from './socialPlayers';
+export { getReceivedInvitations, joinSocialClub } from './socialPlayers';
+export { getPlayerIdentities, getMyPlayerReferrals, findAvailableSocialPlayers, checkSocialMessaging, sendSocialFriendRequest, searchSocialPlayers, getSocialPlayerProfile, setSocialPrivacy, inviteSocialPlayerToClub } from './socialPlayers';
 import { publicInviterFields, publicGameFields, publicCover, previewId } from './invitePreviewFields';
 export { recordOnboardingActivity, onOnboardingActivity } from './onboardingActivity';
+export { sendSupportMessage } from './supportMessage';
 import { clubReminderEligibility } from './clubRegistrationReminder';
+export { recordClientError } from './clientDiagnostics';
+import { requireRecentAuth } from './recentAuth';
 // Cloud Functions consumer for the /notifications outbound queue + a
 // scheduled reminder job for upcoming games.
 //
@@ -36,12 +49,16 @@ import { commitRoundInOrder } from './commitProtocol';
 import { liveRoundKey, matchesLiveRound } from './liveRoundCommit';
 import { decideSpotOffer } from './spotOfferDecision';
 import { eveningScoreServer } from './eveningScoreCore';
+import { prepareRetroScores } from './retroScores';
 import { readGameEveningScores, EveningScoresAccessError } from './gameEveningScores';
 import { occupancyOf, inFillerQuietHours } from './fillerRules';
 import { promoteWaitingGuests } from './guestPromotion';
+import { acquireSeasonOperation } from './seasonOperation';
 import { closeSeason, reopenSeason } from './seasonRollover';
 import { assertSeasonOpenForGame } from './seasonLock';
+import { liveSeasonStamp } from './liveSeasonStamp';
 import { buildRoundSides } from './roundSides';
+import { roundParticipantSides } from './roundParticipants';
 import { seasonSeed } from './seasonSeed';
 import {
   countPlayedEvenings,
@@ -60,9 +77,10 @@ import {
   isValidSeasonMonths,
   type CalendarDate,
 } from './seasonDates';
-import { planActivation, MIN_SEASON_ROUNDS, type HistoryChoice } from './seasonActivation';
+import { planActivation, MIN_SEASON_ROUNDS, isSeasonReactivation, type HistoryChoice } from './seasonActivation';
 import {
   eveningPlayState,
+  playEvidence,
   didEveningHappen,
   type PlayableEvening,
 } from './eveningPlayed';
@@ -101,6 +119,7 @@ import {
   type RoundRec,
 } from './roundSummary';
 import { pushToAdmins } from './adminPush';
+import { onboardingGuestNumber } from './onboardingGuest';
 import { processCampaign, sweepDueCampaigns, recordCampaignMetric } from './adminUserPush';
 import {
   NotificationKind as DedupeKind,
@@ -140,7 +159,8 @@ setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 // RE-ENABLE: set back to `true` and redeploy once App Attest is confirmed
 // minting valid tokens on iOS (check Firebase Console → App Check metrics
 // for "verified" iOS requests).
-const ENFORCE_APP_CHECK = false;
+// Default remains off until the separately approved enforcement deployment.
+
 
 /**
  * Require a REAL account — not a Firebase Anonymous "browse as guest" session.
@@ -454,6 +474,16 @@ function pruneUidsFromTeamsSrv(
   d: Record<string, unknown>,
   gone: Set<string>,
 ): Record<string, unknown> {
+  // A delayed removal event can run after the person has already rejoined.
+  // This helper receives the transaction's current document, never event data.
+  const currentRoster = new Set([
+    ...(Array.isArray(d.players) ? d.players as string[] : []),
+    ...(Array.isArray(d.waitlist) ? d.waitlist as string[] : []),
+    ...(Array.isArray(d.pending) ? d.pending as string[] : []),
+    ...(Array.isArray(d.guests) ? d.guests as { id?: string }[] : [])
+      .filter(guest => typeof guest?.id === 'string').map(guest => `guest:${guest.id}`),
+  ]);
+  gone = new Set([...gone].filter(id => !currentRoster.has(id)));
   if (gone.size === 0) return {};
   const out: Record<string, unknown> = {};
   const draft = d.draftTeams as
@@ -668,7 +698,7 @@ async function createNotificationOnce(input: {
     // existence/read read here is racy with a parallel update; that
     // race is benign because both racers want to merge into the
     // same doc.
-    if (AGGREGATE_ON_DUPLICATE[input.type]) {
+    if (AGGREGATE_ON_DUPLICATE[input.type] && !payload.guestId) {
       try {
         const snap = await ref.get();
         const data = snap.data() as
@@ -917,6 +947,8 @@ function buildMessage(
       };
     }
     case 'gamePlayersJoined': {
+      const guestMessage = guestJoinMessage(payload, gameTitle);
+      if (guestMessage) return guestMessage;
       // Batched admin push — N joiners in the LATEST window are
       // consolidated into ONE notification. The flushPendingJoinerNotifs
       // cron assembles `joinerNames` (CSV) + `count`. The count is
@@ -1096,7 +1128,7 @@ function buildMessage(
       const name = (payload.groupName as string) || groupName;
       return {
         title: 'הזמנה למועדון',
-        body: `${inviter} מזמין אותך להצטרף ל"${name}". להיכנס ולאשר?`,
+        body: `${inviter} מזמין אותך להצטרף ל"${name}". פתח את ההזמנה והצטרף למועדון`,
       };
     }
     case 'friendRequest': {
@@ -1496,18 +1528,20 @@ async function resolveRecipients(
     // self-exclude — an admin who joined their own game shouldn't
     // get a "you joined" push.
     const groupId = (payload.groupId as string) || '';
-    if (!groupId) return [];
-    const grpSnap = await db.collection('groups').doc(groupId).get();
-    if (!grpSnap.exists) return [];
-    const grp = grpSnap.data() as { adminIds?: string[] };
+    const gameId = typeof payload.gameId === 'string' ? payload.gameId : '';
+    const [grpSnap, gameSnap] = await Promise.all([
+      groupId ? db.collection('groups').doc(groupId).get() : Promise.resolve(null),
+      gameId ? db.collection('games').doc(gameId).get() : Promise.resolve(null),
+    ]);
+    const grp = grpSnap?.data() as { adminIds?: string[] } | undefined;
+    const game = gameSnap?.data() as { createdBy?: string } | undefined;
     const joinerCsv =
       typeof payload.joinerIds === 'string'
         ? (payload.joinerIds as string)
         : '';
-    const joinerSet = new Set(joinerCsv.split(',').filter(Boolean));
-    const recipients = (grp.adminIds || []).filter(
-      (uid) => !joinerSet.has(uid),
-    );
+    const excluded = joinerCsv.split(',').filter(Boolean);
+    if (typeof payload.guestId === 'string' && typeof payload.addedBy === 'string') excluded.push(payload.addedBy);
+    const recipients = joinNoticeRecipients(grp?.adminIds, game?.createdBy, excluded);
     return loadUsers(recipients);
   }
 
@@ -2567,7 +2601,7 @@ async function enqueueGameMoments(
 // whoever tapped first, not whoever's network was fastest. Mirrors the pure
 // `assignJoins` in src/services/joinFairness.ts (kept in sync by hand; the app
 // side has the exhaustive unit tests).
-const JOIN_SETTLE_MS = 2000;
+const JOIN_SETTLE_MS = 500;
 const TAP_BACKDATE_GRACE_MS = 15_000;
 
 async function reconcileGameJoins(gameId: string): Promise<void> {
@@ -2641,7 +2675,6 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
     const createdBy = typeof g.createdBy === 'string' ? (g.createdBy as string) : '';
     // Users who were explicitly INVITED to this game bypass approval (an
     // invite IS the approval) — same exemption as the creator.
-    const invitedUserIds = new Set((g.invitedUserIds as string[]) ?? []);
     const joinedAt: Record<string, number> =
       g.joinedAt && typeof g.joinedAt === 'object'
         ? { ...(g.joinedAt as Record<string, number>) }
@@ -2662,8 +2695,19 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
     // roster stays. One grouped read; mirrors src/utils/cardState.isActiveRedCard.
     const groupId = typeof g.groupId === 'string' ? (g.groupId as string) : '';
     const redBlocked = new Set<string>();
-    if (groupId) {
-      const grpSnap = await tx.get(db.collection('groups').doc(groupId));
+    const grpSnap = groupId ? await tx.get(db.collection('groups').doc(groupId)) : null;
+    const joinClub = grpSnap?.exists ? grpSnap.data()! : null;
+    const joinUsers = await Promise.all(reqs.map(r => tx.get(db.collection('users').doc(r.uid))));
+    const invitationBlocked = await Promise.all(reqs.map(async r => {
+      const inviterId = (g.approvedInvites as Record<string, {inviterId?: string}> | undefined)?.[r.uid]?.inviterId;
+      if (!inviterId || inviterId.includes('/')) return false;
+      const [a, b] = await Promise.all([
+        tx.get(db.collection('users').doc(inviterId).collection('blocked').doc(r.uid)),
+        tx.get(db.collection('users').doc(r.uid).collection('blocked').doc(inviterId)),
+      ]);
+      return a.exists || b.exists;
+    }));
+    if (groupId && grpSnap) {
       const grpData = grpSnap.exists
         ? (grpSnap.data() as {
             redCardValidityDays?: number | null;
@@ -2709,7 +2753,12 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
       }
     }
 
-    for (const r of reqs) {
+    for (const [index, r] of reqs.entries()) {
+      const access = roundJoinAccess(g, r.uid, joinClub, now);
+      if (!joinUsers[index].exists || joinUsers[index].data()?.isGuest === true || (!inAny.has(r.uid) && (access === 'denied' || (groupId && (!joinClub || joinClub.deletedAt)) || (access === 'invited' && invitationBlocked[index])))) {
+        tx.update(r.ref, { state: 'rejected', reason: 'GAME_JOIN_FORBIDDEN', assignedAt: now });
+        continue;
+      }
       if (rejected.includes(r.uid)) {
         tx.update(r.ref, {
           state: 'rejected',
@@ -2734,7 +2783,7 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
           : waitlist.includes(r.uid)
             ? 'waitlist'
             : 'pending';
-      } else if (requiresApproval && r.uid !== createdBy && !invitedUserIds.has(r.uid)) {
+      } else if ((access === 'candidate' || requiresApproval) && r.uid !== createdBy && !(joinClub?.adminIds ?? []).includes(r.uid) && !validManagerInvitation(g, r.uid, joinClub, now)) {
         // Approval needed only for someone who is NEITHER the creator NOR an
         // explicitly invited user. Invited / creator join directly.
         pending.push(r.uid);
@@ -3517,6 +3566,7 @@ async function runCloneRecurringGames(): Promise<void> {
     // them as "already invited" on the fresh game and can't re-invite them (user
     // report [DXo4]).
     delete next.invitedUserIds;
+    delete next.approvedInvites;
     delete next.invitesSent;
     // Per-instance moderation/dedup state must NOT carry over: last week's kick
     // log would show phantom removals on a fresh roster, and a stale filler-push
@@ -4350,15 +4400,10 @@ export const onGroupPendingChanged = onDocumentWritten(
         (after as { jerseysHolderIds?: string[] }).jerseysHolderIds ?? [];
       const ballGone = ball.filter((u) => !memberSet.has(u));
       const jerseysGone = jerseys.filter((u) => !memberSet.has(u));
-      // Also prune adminRatings for departed members — otherwise a stale
-      // admin-assigned rating lingers and silently re-applies (and feeds
-      // rating-based auto-teams) if the person ever re-joins the community.
-      const adminRatings =
-        (after as { adminRatings?: Record<string, unknown> }).adminRatings ?? {};
-      const ratingsGone = Object.keys(adminRatings).filter(
-        (u) => !memberSet.has(u),
-      );
-      if (ballGone.length || jerseysGone.length || ratingsGone.length) {
+      if (JSON.stringify(beforePlayers ?? []) !== JSON.stringify(afterPlayers)) {
+        await prunePrivateClubRatings(event.params.groupId);
+      }
+      if (ballGone.length || jerseysGone.length) {
         try {
           await db
             .collection('groups')
@@ -4376,12 +4421,6 @@ export const onGroupPendingChanged = onDocumentWritten(
                       admin.firestore.FieldValue.arrayRemove(...jerseysGone),
                   }
                 : {}),
-              ...Object.fromEntries(
-                ratingsGone.map((u) => [
-                  `adminRatings.${u}`,
-                  admin.firestore.FieldValue.delete(),
-                ]),
-              ),
               updatedAt: Date.now(),
             });
         } catch (err) {
@@ -4759,12 +4798,13 @@ async function guardFinishSeasonBatch(
   batch: admin.firestore.WriteBatch,
   groupId: string,
   seasonId?: string,
+  fields: admin.firestore.UpdateData<admin.firestore.DocumentData> = {},
 ): Promise<void> {
   const ref = db.collection('groups').doc(groupId);
   const snapshot = await ref.get();
   if (!snapshot.exists) throw new HttpsError('not-found', 'community missing');
   assertSeasonOpenForGame(snapshot.data(), { seasonId });
-  batch.update(ref, { updatedAt: Date.now() }, { lastUpdateTime: snapshot.updateTime! });
+  batch.update(ref, { ...fields, updatedAt: Date.now() }, { lastUpdateTime: snapshot.updateTime! });
 }
 
 async function rollUpClubPairs(args: {
@@ -5212,7 +5252,7 @@ async function sealRoundSummary(args: {
     };
   })();
 
-  const summary = buildRoundSummary({
+  const correctionBasis = {
     gameId,
     groupId,
     at: args.at,
@@ -5246,7 +5286,8 @@ async function sealRoundSummary(args: {
       ? { seasonEvenings: eveningsSealed + 1 - tableZeroedAt }
       : {}),
     now: Date.now(),
-  });
+  };
+  const summary = buildRoundSummary(correctionBasis);
 
   // Summary, baseline, season mirror and player bests are ONE create-latched
   // batch. A failure leaves none of them written; a retry can finish safely.
@@ -5254,6 +5295,7 @@ async function sealRoundSummary(args: {
   const batch = db.batch();
   batch.create(summaryRef, {
     ...(summary as unknown as admin.firestore.DocumentData),
+    correctionBasis,
     ...(lateConfirmation ? { lateConfirmation: true } : {}),
   });
   batch.set(
@@ -5302,21 +5344,12 @@ async function sealRoundSummary(args: {
   // אחרי 24 מחזורים" read identically on evening 1 and evening 23. One field
   // on a document the app already reads, written on the same batch that seals
   // the evening, and zeroed by every path that opens a season.
-  if (seasonRoundsAtStart !== null) {
-    batch.set(
-      db.collection('groups').doc(groupId),
-      // Incremented for the same reason as the counter it mirrors — computing
-      // it from the same stale read would reintroduce the lost update on the
-      // number the app actually SHOWS ("2 מתוך 3 מחזורים"). Every path that
-      // opens a season zeroes this field, so counting up from there is exact.
-      {
-        seasons: {
-          playedRounds: admin.firestore.FieldValue.increment(1),
-        },
-      },
-      { merge: true },
-    );
-  }
+  // The season increment and version guard must be ONE mutation. A merge-set
+  // followed by a guarded update of the same group is rejected by Firestore
+  // because the two writes have different version preconditions.
+  const seasonFields = seasonRoundsAtStart !== null
+    ? { 'seasons.playedRounds': admin.firestore.FieldValue.increment(1) }
+    : {};
   // Each player's own high-water mark, for next time.
   for (const p of players) {
     if (p.isGuest) continue;
@@ -5336,7 +5369,7 @@ async function sealRoundSummary(args: {
       { merge: true },
     );
   }
-  await guardFinishSeasonBatch(batch, groupId, args.seasonId);
+  await guardFinishSeasonBatch(batch, groupId, args.seasonId, seasonFields);
   try {
     await batch.commit();
   } catch (error) {
@@ -5564,6 +5597,29 @@ export const onGameRosterChanged = onDocumentWritten(
       return p;
     };
 
+    // Guest admission is a roster event even though guests have no user uid.
+    // Mint on the server so a regular player's successful guest write can
+    // notify managers without client fan-out permissions. Event time/id keep
+    // redelivery on the same notification, even across cooldown buckets.
+    if (after.status === 'open' && (after.groupId || after.createdBy)) {
+      for (const guest of guestJoinNotices(before?.guests, after.guests)) {
+        const addedByName = guest.addedBy ? await adminAlertUserName(guest.addedBy) : 'שחקן';
+        const result = await createNotificationOnce({
+          type: 'gamePlayersJoined',
+          recipientId: after.groupId || after.createdBy!,
+          reason: `guest-${guest.action}:${event.id}:${guest.id}`,
+          nowMs: Date.parse(event.time),
+          payload: {
+            gameId:event.params.gameId,groupId:after.groupId ?? '',
+            gameTitle:after.title || 'המחזור',startsAt:after.startsAt ?? null,
+            guestId:guest.id,guestName:guest.name,addedBy:guest.addedBy,addedByName,
+            guestWaitlisted:guest.waitlisted,guestAction:guest.action,
+          },
+        });
+        if (result.skipped === 'error') throw new Error('Guest admission notification write failed');
+      }
+    }
+
     // ── Scheduling switched OFF → open the game NOW ───────────────────────
     //
     // Turning off "תזמון פתיחת הרשמה" means the game should open on save and
@@ -5704,6 +5760,10 @@ export const onGameRosterChanged = onDocumentWritten(
       (g) => !g?.waitlisted,
     ).length;
     const guestSeatFreed = afterActiveGuests < beforeActiveGuests;
+    const afterGuestIds = new Set(((after.guests ?? []) as { id?: string }[]).map(guest => guest?.id));
+    const removedGuestRosterIds = new Set(((before?.guests ?? []) as { id?: string }[])
+      .filter(guest => typeof guest?.id === 'string' && !afterGuestIds.has(guest.id))
+      .map(guest => `guest:${guest.id}`));
     const previousOfferUid = before?.pendingPromotion?.uid;
     const guestOfferSeatFreed = typeof previousOfferUid === 'string' && previousOfferUid.length > 0 &&
       !after.pendingPromotion?.uid && !afterPlayers.includes(previousOfferUid);
@@ -5712,7 +5772,7 @@ export const onGameRosterChanged = onDocumentWritten(
       JSON.stringify(before?.waitlist ?? []) !==
         JSON.stringify(after.waitlist ?? []) ||
       JSON.stringify(before?.pending ?? []) !== JSON.stringify(after.pending ?? []) ||
-      guestSeatFreed || guestOfferSeatFreed;
+      guestSeatFreed || guestOfferSeatFreed || removedGuestRosterIds.size > 0;
     // GameStatus is 'scheduled'|'open'|'locked'|'active'|'finished'|'cancelled'.
     // PRUNE a departed ghost from drawn teams / live rotation for any game still
     // in play (incl. 'locked' near kickoff AND 'active' live play) — a player
@@ -5742,7 +5802,7 @@ export const onGameRosterChanged = onDocumentWritten(
         ...(after.pending ?? []),
       ]);
       const departed = new Set<string>(
-        beforePlayers.filter((p) => !stillHere.has(p)),
+        [...beforePlayers.filter((p) => !stillHere.has(p)), ...removedGuestRosterIds],
       );
       let promotedUid: string | null = null;
       let promotedTitle = '';
@@ -5910,17 +5970,18 @@ export const onGameRosterChanged = onDocumentWritten(
     // reads keep failing writes it once and stops, rather than re-triggering
     // itself in a loop.
     const stampStatusChanged = before?.status !== after.status;
+    const timerlessEvidence = !['finished', 'cancelled', 'scheduled'].includes(after.status ?? '') && !!playEvidence(after as PlayableEvening);
     const stampRetryPending =
       (after as { seasonStampRetry?: boolean }).seasonStampRetry === true;
     if (
       after.groupId &&
-      (stampStatusChanged || stampRetryPending) &&
+      (stampStatusChanged || stampRetryPending || timerlessEvidence) &&
       !(after as { seasonId?: string }).seasonId &&
-      (after.status === 'active' || after.status === 'finished')
+      (after.status === 'active' || after.status === 'finished' || timerlessEvidence)
     ) {
       try {
         const gSnap = await groupOnce();
-        const seasons = (gSnap.data() as { seasons?: { enabled?: boolean; currentId?: string } } | undefined)?.seasons;
+        const seasons = (gSnap.data() as { seasons?: { enabled?: boolean; currentId?: string; count?: number; disabledAt?: number } } | undefined)?.seasons;
         // The marker has done its job the moment the READ succeeds, whatever
         // the answer was: a club with seasons off is not waiting for a stamp,
         // and leaving the flag on would make every later write re-read the
@@ -5929,7 +5990,13 @@ export const onGameRosterChanged = onDocumentWritten(
         const clearRetry = stampRetryPending
           ? { seasonStampRetry: admin.firestore.FieldValue.delete() }
           : {};
-        if (seasons?.enabled && seasons.currentId) {
+        const timerlessStamp = liveSeasonStamp(gSnap.data(), after as PlayableEvening, event.data!.after.createTime?.toMillis());
+        if (timerlessEvidence && after.status !== 'active') {
+          if (timerlessStamp) {
+            await event.data!.after.ref.update({ seasonId: timerlessStamp, ...clearRetry }, { lastUpdateTime: event.data!.after.updateTime! });
+            stampedSeasonId = timerlessStamp;
+          }
+        } else if (seasons?.enabled && seasons.currentId) {
           await event.data!.after.ref.update({
             seasonId: seasons.currentId,
             ...clearRetry,
@@ -5939,6 +6006,10 @@ export const onGameRosterChanged = onDocumentWritten(
           // whether this evening credits the running season by comparing
           // exactly that field.
           stampedSeasonId = seasons.currentId;
+        } else if ((seasons?.count ?? 0) > 0) {
+          const periodId = `off_${seasons!.count}_${seasons!.disabledAt ?? 0}`;
+          await event.data!.after.ref.update({ seasonId: periodId, ...clearRetry });
+          stampedSeasonId = periodId;
         } else if (stampRetryPending) {
           await event.data!.after.ref.update(clearRetry);
         }
@@ -6416,7 +6487,7 @@ export const onGameRosterChanged = onDocumentWritten(
             const seasonGroup = await groupOnce();
             assertSeasonOpenForGame(seasonGroup.data(), after as unknown as Record<string, unknown>);
           }
-          standingBatch.create(standingsLatch, { at: Date.now(), hadPointsTable });
+          standingBatch.create(standingsLatch, { at: Date.now(), hadPointsTable, summaryRefreshVersion:1, scoreCalibration:{goalsFor10,assistsFor10} });
           for (const uid of attendees) {
             const e = evStat[uid];
             const score = eveningScore(
@@ -6451,6 +6522,7 @@ export const onGameRosterChanged = onDocumentWritten(
                 userId: uid,
                 groupId: gid,
                 score,
+                scoreBasis:{goalsFor10,assistsFor10,previousScore:prev,previousAt:prevRow?.lastScoreAt??null,counted:e.rounds>0},
                 scoreDelta:
                   prev == null ? null : Math.round((score - prev) * 10) / 10,
                 rank: rankNow > 0 ? rankNow : null,
@@ -6937,7 +7009,7 @@ export const onGameRosterChanged = onDocumentWritten(
     // first joiner in the 5-min bucket fires the push; any further joiners
     // (while the notice is still unread) AGGREGATE into it (count + names)
     // without a second push — so a join rush still collapses to one ping.
-    if (after.status === 'open' && after.groupId) {
+    if (after.status === 'open' && (after.groupId || after.createdBy)) {
       const beforePlayers = new Set(before?.players ?? []);
       const newJoiners = (after.players ?? []).filter(
         (uid) => !beforePlayers.has(uid),
@@ -6962,10 +7034,10 @@ export const onGameRosterChanged = onDocumentWritten(
         try {
           await createNotificationOnce({
             type: 'gamePlayersJoined',
-            recipientId: after.groupId,
+            recipientId: after.groupId || after.createdBy!,
             payload: {
               gameId: event.params.gameId,
-              groupId: after.groupId,
+              groupId: after.groupId ?? '',
               gameTitle: after.title || 'המשחק',
               startsAt: after.startsAt ?? null,
               joinerIds: newJoiners.join(','),
@@ -7586,9 +7658,10 @@ async function generateForGame(
       | undefined;
     let ratings: Record<string, number>;
     if (grpData?.internalRating) {
+      const privateRatings = await readServerAdminRatings(g.groupId!);
       ratings = {};
       for (const uid of players) {
-        const r = grpData.adminRatings?.[uid];
+        const r = privateRatings[uid];
         if (typeof r === 'number' && r > 0) ratings[uid] = r;
       }
     } else {
@@ -7984,9 +8057,10 @@ async function generateDraftTeamsForGame(
     if (g.autoTeamsMethod === 'random') {
       ratings = {};
     } else if (grp.internalRating) {
+      const privateRatings = await readServerAdminRatings(groupId);
       ratings = {};
       for (const uid of players) {
-        const r = grp.adminRatings?.[uid];
+        const r = privateRatings[uid];
         if (typeof r === 'number' && r > 0) ratings[uid] = r;
       }
     } else {
@@ -8286,7 +8360,14 @@ export const deleteMyAccount = onCall(
     }
     const uid = auth.uid;
     const now = Date.now();
+    requireRecentAuth(auth.token.auth_time,now);
+    const bearer=request.rawRequest.headers.authorization?.match(/^Bearer (\S+)$/i)?.[1];
+    if(!bearer)throw new HttpsError('unauthenticated','Session required');
+    // Verify revocation before any roster, club or profile side effect.
+    const verified=await admin.auth().verifyIdToken(bearer,true);
+    if(verified.uid!==uid)throw new HttpsError('unauthenticated','Session changed');
 
+    const cleanupFailures: string[] = [];
     // ── 1) Communities ── remove uid from every group's arrays; hand off or
     // dissolve ownership so no community is left orphaned.
     try {
@@ -8348,6 +8429,7 @@ export const deleteMyAccount = onCall(
       }
     } catch (err) {
       console.error('[deleteMyAccount] community sweep failed', uid, err);
+      cleanupFailures.push('communities');
     }
 
     // ── 2) Games ── remove uid from every game roster.
@@ -8375,6 +8457,7 @@ export const deleteMyAccount = onCall(
       }
     } catch (err) {
       console.error('[deleteMyAccount] game sweep failed', uid, err);
+      cleanupFailures.push('games');
     }
 
     // ── 3) Friends ── bilateral removal.
@@ -8386,10 +8469,11 @@ export const deleteMyAccount = onCall(
           .collection('users')
           .doc(fid)
           .update({ friends: admin.firestore.FieldValue.arrayRemove(uid) })
-          .catch(() => {});
+          .catch(() => { cleanupFailures.push('friend'); });
       }
     } catch (err) {
       console.error('[deleteMyAccount] friends cleanup failed', uid, err);
+      cleanupFailures.push('friends');
     }
 
     // ── 4) Chat display name ── anonymise the user's name on ALL their messages
@@ -8421,12 +8505,16 @@ export const deleteMyAccount = onCall(
         );
         await b.commit();
         if (msgs.size < PAGE) break; // last page
+        if (i === MAX_BATCHES - 1) throw new Error('ACCOUNT_MESSAGE_CLEANUP_LIMIT');
         cursor = msgs.docs[msgs.docs.length - 1];
       }
     } catch (err) {
-      // A missing collection-group index just means we skip this best-effort step.
+      // Do not claim deletion completed if anonymisation did not finish.
       console.warn('[deleteMyAccount] chat anonymise skipped', uid, err);
+      cleanupFailures.push('messages');
     }
+
+    if (cleanupFailures.length) throw new HttpsError('unavailable', 'ACCOUNT_CLEANUP_RETRY_REQUIRED');
 
     // ── 5) Anonymise the /users doc, then delete the Auth user LAST.
     try {
@@ -8451,10 +8539,10 @@ export const deleteMyAccount = onCall(
         .doc(uid)
         .collection('private')
         .doc('push')
-        .delete()
-        .catch(() => {});
+        .delete();
     } catch (err) {
       console.error('[deleteMyAccount] user doc anonymise failed', uid, err);
+      throw new HttpsError('unavailable', 'ACCOUNT_CLEANUP_RETRY_REQUIRED');
     }
     try {
       await admin.auth().deleteUser(uid);
@@ -8532,213 +8620,61 @@ export const reportChatMessage = onCall(
 );
 
 export const sendGameInvite = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
-  // 1) Auth
-  const auth = request.auth;
-  if (!auth?.uid) {
-    throw new HttpsError(
-      'unauthenticated',
-      'sign-in required to send invites',
-    );
+  const senderUid = request.auth?.uid;
+  if (!senderUid || request.auth?.token.firebase?.sign_in_provider === 'anonymous') {
+    throw new HttpsError('unauthenticated', 'Full account required');
   }
-  const senderUid = auth.uid;
-
-  // 2) Input shape — IDs only. Anything textual the function loads
-  //    server-side from canonical state.
-  const data = (request.data ?? {}) as {
-    recipientId?: unknown;
-    gameId?: unknown;
-  };
-  const recipientId = typeof data.recipientId === 'string' ? data.recipientId : '';
-  const gameId = typeof data.gameId === 'string' ? data.gameId : '';
-  if (
-    recipientId.length === 0 ||
-    recipientId.length > 128 ||
-    gameId.length === 0 ||
-    gameId.length > 128
-  ) {
-    throw new HttpsError('invalid-argument', 'invalid recipientId or gameId');
+  const { recipientId, gameId } = request.data ?? {};
+  if (![recipientId, gameId].every(x => typeof x === 'string' && x.length > 0 && x.length <= 128 && !x.includes('/')) || recipientId === senderUid) {
+    throw new HttpsError('invalid-argument', 'Invalid invitation');
   }
-  if (recipientId === senderUid) {
-    throw new HttpsError('invalid-argument', 'cannot invite yourself');
-  }
-
-  // 3) Server-side rate limit. Single transactional read+write so two
-  //    fast invocations can't both pass under the cap. The counter lives in
-  //    /serverRateLimits (deny-all from the client) so a malicious client
-  //    cannot reset it the way it could for /rateLimits (same hardening as
-  //    createGroupCallable).
-  const limitRef = db
-    .collection('serverRateLimits')
-    .doc(`${senderUid}_inviteToGame`);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(limitRef);
-    const now = Date.now();
-    if (!snap.exists) {
-      tx.set(limitRef, {
-        uid: senderUid,
-        op: 'inviteToGame',
-        windowStart: now,
-        count: 1,
-        updatedAt: now,
-      });
-      return;
-    }
-    const cur = snap.data() as {
-      windowStart?: number;
-      count?: number;
-    };
-    const expired =
-      typeof cur.windowStart !== 'number' ||
-      now - cur.windowStart > INVITE_RATE_LIMIT_WINDOW_MS;
-    if (expired) {
-      tx.set(limitRef, {
-        uid: senderUid,
-        op: 'inviteToGame',
-        windowStart: now,
-        count: 1,
-        updatedAt: now,
-      });
-      return;
-    }
-    const nextCount = (cur.count ?? 0) + 1;
-    if (nextCount > INVITE_RATE_LIMIT_CAP) {
-      throw new HttpsError(
-        'resource-exhausted',
-        'too many invites — try again later',
-      );
-    }
-    tx.update(limitRef, { count: nextCount, updatedAt: now });
-  });
-
-  // 4) Load sender, game, and recipient — all canonical, all server-side.
-  const [senderSnap, gameSnap, recipientSnap] = await Promise.all([
-    db.collection('users').doc(senderUid).get(),
-    db.collection('games').doc(gameId).get(),
-    db.collection('users').doc(recipientId).get(),
-  ]);
-  if (!senderSnap.exists) {
-    throw new HttpsError('failed-precondition', 'sender profile missing');
-  }
-  if (!gameSnap.exists) {
-    throw new HttpsError('failed-precondition', 'game not found');
-  }
-  if (!recipientSnap.exists) {
-    throw new HttpsError('failed-precondition', 'recipient not found');
-  }
-  const sender = senderSnap.data() as { name?: string };
-  const game = gameSnap.data() as {
-    title?: string;
-    groupId?: string;
-    startsAt?: number;
-    status?: string;
-    visibility?: string;
-    players?: string[];
-    waitlist?: string[];
-    pending?: string[];
-  };
-
-  // 5) Permission: caller must be allowed to see + invite to the game.
-  //    For community games we require that they're a group member or
-  //    admin (matching the read rule for /games). For public games any
-  //    signed-in user can already read, so we accept them as inviters.
-  if (game.visibility !== 'public') {
-    if (!game.groupId) {
-      throw new HttpsError('permission-denied', 'game has no community');
-    }
-    const groupSnap = await db
-      .collection('groups')
-      .doc(game.groupId)
-      .get();
-    if (!groupSnap.exists) {
-      throw new HttpsError('permission-denied', 'community missing');
-    }
-    const grp = groupSnap.data() as {
-      playerIds?: string[];
-      adminIds?: string[];
-    };
-    const ids = new Set<string>([
-      ...(grp.playerIds ?? []),
-      ...(grp.adminIds ?? []),
+  await assertSocialContact(senderUid, recipientId);
+  const gameRef = db.collection('games').doc(gameId);
+  const noticeRef = db.collection('notifications').doc();
+  const rateRef = db.collection('serverRateLimits').doc(`${senderUid}_inviteToGame`);
+  const result = await db.runTransaction(async tx => {
+    const [gameSnap, senderSnap, recipientSnap, rateSnap] = await Promise.all([
+      tx.get(gameRef), tx.get(db.collection('users').doc(senderUid)),
+      tx.get(db.collection('users').doc(recipientId)), tx.get(rateRef),
     ]);
-    if (!ids.has(senderUid)) {
-      throw new HttpsError(
-        'permission-denied',
-        'not a member of this community',
-      );
+    const game = gameSnap.data();
+    const sender = senderSnap.data(), recipient = recipientSnap.data();
+    if (!game || !sender || !recipient || sender.isGuest || recipient.isGuest) throw new HttpsError('failed-precondition', 'Player or round unavailable');
+    const group = typeof game.groupId === 'string' && game.groupId
+      ? (await tx.get(db.collection('groups').doc(game.groupId))).data() : undefined;
+    const manager = game.createdBy === senderUid || (group?.adminIds ?? []).includes(senderUid);
+    // Only a manager may issue an invitation which grants admission. Members
+    // can still share the ordinary round link without granting approval.
+    if (!manager || group?.deletedAt) throw new HttpsError('permission-denied', 'Manager required');
+    const now = Date.now();
+    if (!roundAcceptsInvitations(game, now)) throw new HttpsError('failed-precondition', 'Round no longer accepts invitations');
+    if ((game.rejectedPlayerIds ?? []).includes(recipientId)) throw new HttpsError('failed-precondition', 'Resolve the previous rejection before inviting');
+    if ([...(game.players ?? []), ...(game.waitlist ?? []), ...(game.pending ?? [])].includes(recipientId)) {
+      return { ok: true, invited: false, reason: 'already_registered' };
     }
-  }
-
-  // 6) Lifecycle: don't invite to a terminal or in-progress game.
-  if (game.status === 'finished' || game.status === 'cancelled') {
-    throw new HttpsError(
-      'failed-precondition',
-      'game is no longer accepting invites',
-    );
-  }
-
-  // 7) Recipient already in roster? Don't spam them.
-  const inRoster = new Set<string>([
-    ...(game.players ?? []),
-    ...(game.waitlist ?? []),
-    ...(game.pending ?? []),
-  ]);
-  if (inRoster.has(recipientId)) {
-    throw new HttpsError(
-      'failed-precondition',
-      'recipient is already registered',
-    );
-  }
-
-  // 8) Record the invitee on the game so the security rules grant them
-  //    read + self-join access even on a community-only game (they're not
-  //    a member, but they were explicitly invited). Admin-SDK write →
-  //    bypasses rules. Without this the invitee tapping the push hit the
-  //    "members only" wall (user report).
-  try {
-    await gameSnap.ref.update({
+    const prior = game.approvedInvites?.[recipientId];
+    if (prior?.expiresAt > now && validManagerInvitation(game, recipientId, group ?? null, now)) {
+      return { ok: true, invited: false, reason: 'already_invited' };
+    }
+    const rate = rateSnap.data();
+    const activeWindow = typeof rate?.windowStart === 'number' && now - rate.windowStart <= INVITE_RATE_LIMIT_WINDOW_MS;
+    const count = activeWindow ? (rate?.count ?? 0) + 1 : 1;
+    if (count > INVITE_RATE_LIMIT_CAP) throw new HttpsError('resource-exhausted', 'Too many invitations');
+    const expiresAt = Math.min(now + INVITATION_TTL_MS, typeof game.startsAt === 'number' ? game.startsAt + 3600000 : Infinity);
+    tx.set(rateRef, { uid: senderUid, op: 'inviteToGame', windowStart: activeWindow ? rate!.windowStart : now, count, updatedAt: now });
+    tx.update(gameRef, {
       invitedUserIds: admin.firestore.FieldValue.arrayUnion(recipientId),
-      updatedAt: Date.now(),
+      approvedInvites: { ...(game.approvedInvites ?? {}), [recipientId]: { inviterId: senderUid, expiresAt } },
+      updatedAt: now,
     });
-  } catch (err) {
-    console.warn('[sendGameInvite] invitedUserIds write failed', err);
-  }
-
-  // 9) Construct payload server-side ONLY. inviterName / gameTitle /
-  //    startsAt all come from canonical state — the client cannot
-  //    influence what the recipient sees.
-  await createNotificationOnce({
-    type: 'inviteToGame',
-    recipientId,
-    payload: {
-      gameId,
-      gameTitle: typeof game.title === 'string' ? game.title : 'המשחק',
-      inviterName: typeof sender.name === 'string' ? sender.name : '',
-      inviterId: senderUid,
-      startsAt: typeof game.startsAt === 'number' ? game.startsAt : 0,
-    },
-    createdByUid: senderUid,
+    // The read grant, approval and notification commit together or not at all.
+    tx.create(noticeRef, { type: 'inviteToGame', recipientId, createdByUid: senderUid,
+      payload: { gameId, gameTitle: game.title ?? 'המחזור', inviterName: sender.name ?? '', inviterId: senderUid, startsAt: game.startsAt ?? 0, expiresAt },
+      createdAt: now, delivered: false });
+    tx.set(senderSnap.ref, { achievements: { invitesSent: admin.firestore.FieldValue.increment(1) }, updatedAt: now }, { merge: true });
+    return { ok: true, invited: true };
   });
-
-  // 9) Fire-and-forget telemetry counter so analytics keep working
-  //    after the flow moves off the client (the client used to
-  //    `achievementsService.bump('invitesSent')` after this — bump
-  //    server-side instead so even non-app callers see consistent
-  //    counters).
-  try {
-    await db.collection('users').doc(senderUid).set(
-      {
-        achievements: {
-          invitesSent: admin.firestore.FieldValue.increment(1),
-        },
-        updatedAt: Date.now(),
-      },
-      { merge: true },
-    );
-  } catch (err) {
-    console.warn('[sendGameInvite] invitesSent bump failed', err);
-  }
-
-  return { ok: true };
+  return result;
 });
 
 // ─── Callable: admin registers community members to a game ─────────────
@@ -9186,62 +9122,63 @@ export const ensurePersonalGroup = onCall(
     }
     const uid = request.auth.uid;
     const userRef = db.collection('users').doc(uid);
-    const userSnap = await userRef.get();
-    if (!userSnap.exists) {
-      throw new HttpsError('not-found', 'user doc missing');
-    }
-    const userData = userSnap.data() as {
-      personalGroupId?: string;
-      name?: string;
-    };
-
-    // Fast path: already provisioned. Verify the group still exists AND is
-    // still a personal group — if it was deleted, OR PROMOTED to a real
-    // community (isPersonal flipped to false), we re-provision rather than
-    // handing back its id. Otherwise the next one-off game would be created
-    // INSIDE that public community (its members, chat, feed) — the personal
-    // group id is never reset on promotion.
-    if (
-      typeof userData.personalGroupId === 'string' &&
-      userData.personalGroupId.length > 0
-    ) {
-      const existing = await db
-        .collection('groups')
-        .doc(userData.personalGroupId)
-        .get();
-      if (existing.exists && existing.data()?.isPersonal === true) {
-        return { groupId: userData.personalGroupId, created: false };
-      }
-    }
-
-    // Create a fresh hidden group. We don't write a /groupsPublic
-    // mirror — `hidden: true` keeps it out of every feed.
+    // The group and its owner pointer must land together. Retrying a partial
+    // provisioning or two concurrent callers must not mint orphan groups.
     const groupRef = db.collection('groups').doc();
-    const now = Date.now();
-    const inviteCode = randomInviteCode();
-    const userName =
-      typeof userData.name === 'string' && userData.name.length > 0
-        ? userData.name
-        : 'משתמש';
-    await groupRef.set({
-      name: `המשחקים של ${userName}`,
-      normalizedName: `המשחקים של ${userName}`.toLowerCase().trim(),
-      adminIds: [uid],
-      playerIds: [uid],
-      pendingPlayerIds: [],
-      creatorId: uid,
-      inviteCode,
-      isOpen: false,
-      isPersonal: true,
-      hidden: true,
-      createdAt: now,
-      updatedAt: now,
+    return db.runTransaction(async (tx) => {
+      const userSnap = await tx.get(userRef);
+      if (!userSnap.exists) {
+        throw new HttpsError('not-found', 'user doc missing');
+      }
+      const userData = userSnap.data() as {
+        personalGroupId?: string;
+        name?: string;
+      };
+
+      // Fast path: already provisioned. Verify the group still exists AND is
+      // still a personal group — if it was deleted, OR PROMOTED to a real
+      // community (isPersonal flipped to false), we re-provision rather than
+      // handing back its id. Otherwise the next one-off game would be created
+      // INSIDE that public community (its members, chat, feed) — the personal
+      // group id is never reset on promotion.
+      if (
+        typeof userData.personalGroupId === 'string' &&
+        userData.personalGroupId.length > 0
+      ) {
+        const existing = await tx.get(db.collection('groups').doc(userData.personalGroupId));
+        if (existing.exists && existing.data()?.isPersonal === true) {
+          return { groupId: userData.personalGroupId, created: false };
+        }
+      }
+
+      // Create a fresh hidden group. We don't write a /groupsPublic
+      // mirror — `hidden: true` keeps it out of every feed.
+      const now = Date.now();
+      const inviteCode = randomInviteCode();
+      const userName =
+        typeof userData.name === 'string' && userData.name.length > 0
+          ? userData.name
+          : 'משתמש';
+      tx.create(groupRef, {
+        name: `המשחקים של ${userName}`,
+        normalizedName: `המשחקים של ${userName}`.toLowerCase().trim(),
+        adminIds: [uid],
+        playerIds: [uid],
+        pendingPlayerIds: [],
+        creatorId: uid,
+        inviteCode,
+        isOpen: false,
+        isPersonal: true,
+        hidden: true,
+        createdAt: now,
+        updatedAt: now,
     });
-    await userRef.set(
+    tx.set(userRef,
       { personalGroupId: groupRef.id, updatedAt: now },
       { merge: true },
     );
     return { groupId: groupRef.id, created: true };
+    });
   },
 );
 
@@ -9257,7 +9194,7 @@ export const ensurePersonalGroup = onCall(
 // time) and is cheap. No App Check / auth gate so the offset can be
 // measured even on a freshly-launched, not-yet-authed client.
 export const getServerTime = onCall(
-  { enforceAppCheck: false },
+  { enforceAppCheck: ENFORCE_APP_CHECK },
   async () => {
     return { now: Date.now() };
   },
@@ -9383,7 +9320,7 @@ export const promoteOrphanToGroup = onCall(
       city: city.length > 0 ? city : null,
       isPersonal: false,
       hidden: false,
-      pendingPlayerIds: dedupedInvitees,
+      pendingPlayerIds: [],
       promotedAt: now,
       ...(fromGameId ? { promotedFromGameId: fromGameId } : {}),
       updatedAt: now,
@@ -9604,23 +9541,10 @@ export const promoteOrphanToGroup = onCall(
         typeof inviter.data()?.name === 'string' &&
         (inviter.data()!.name as string).slice(0, 60)) ||
       '';
-    await Promise.allSettled(
-      dedupedInvitees.map((recipientUid) =>
-        createNotificationOnce({
-          type: 'groupInvitation',
-          recipientId: recipientUid,
-          payload: {
-            groupId,
-            groupName: name,
-            inviterName,
-            inviterId: callerUid,
-          },
-          createdByUid: callerUid,
-        }),
-      ),
-    );
+    const sentInvites = await Promise.allSettled(dedupedInvitees.map(recipientUid =>
+      sendClubInvitation(db, callerUid, {name:inviterName}, groupId, recipientUid, true)));
+    return { ok: true, invited: sentInvites.filter(r=>r.status==='fulfilled'&&r.value.invited).length };
 
-    return { ok: true, invited: dedupedInvitees.length };
   },
 );
 
@@ -9869,7 +9793,7 @@ export const createGroupCallable = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
   async (request) => {
     const auth = request.auth;
-    if (!auth?.uid) {
+    if (!auth?.uid || auth.token.firebase?.sign_in_provider === 'anonymous') {
       throw new HttpsError('unauthenticated', 'sign-in required');
     }
     const uid = auth.uid;
@@ -9881,36 +9805,15 @@ export const createGroupCallable = onCall(
       .collection('serverRateLimits')
       .doc(`${uid}_createGroup`);
     const now = Date.now();
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(rateRef);
-      const cur = snap.exists
-        ? (snap.data() as {
-            windowStart?: number;
-            count?: number;
-          })
-        : {};
-      const windowStart = cur.windowStart ?? 0;
-      const inWindow = now - windowStart < CREATE_GROUP_RATE_WINDOW_MS;
-      const count = inWindow ? (cur.count ?? 0) : 0;
-      if (count >= CREATE_GROUP_RATE_CAP) {
-        throw new HttpsError(
-          'resource-exhausted',
-          'יצירת מועדונים מוגבלת ל-5 ביום. נסה שוב מאוחר יותר.',
-        );
-      }
-      tx.set(rateRef, {
-        uid,
-        op: 'createGroup',
-        windowStart: inWindow ? windowStart : now,
-        count: count + 1,
-        updatedAt: now,
-      });
-    });
 
     // 2) Input validation. Server is the source of truth — client-side
     //    checks are nice-to-have but rules can't enforce length on the
     //    callable path. Slim shape per the new responsibility split.
-    const input = (request.data ?? {}) as Partial<CreateGroupInput>;
+    const input = (request.data ?? {}) as Partial<CreateGroupInput> & { creationAttemptId?: unknown };
+    const attemptId = input.creationAttemptId;
+    if (attemptId !== undefined && (typeof attemptId !== 'string' || !/^[A-Za-z0-9_-]{16,128}$/.test(attemptId))) {
+      throw new HttpsError('invalid-argument', 'invalid creation attempt');
+    }
     const name = pickShortString(input.name, 80, 'name', true)!;
     const description = pickShortString(
       input.description,
@@ -10018,32 +9921,45 @@ export const createGroupCallable = onCall(
     }
     if (coverImageId !== undefined) publicDoc.coverImageId = coverImageId;
 
-    // 4) Atomic dual-write of canonical + public projection.
-    const batch = db.batch();
-    batch.set(groupRef, groupDoc);
-    batch.set(db.collection('groupsPublic').doc(groupId), publicDoc);
-    await batch.commit();
-
-    // 5) Bump teamsCreated achievement (server-only path; the
-    //    hardened /users rules block this from the client when it
-    //    would target someone other than self, so doing it here keeps
-    //    counters honest no matter how the user reached this code
-    //    path).
-    try {
-      await db.collection('users').doc(uid).set(
-        {
-          achievements: {
-            teamsCreated: admin.firestore.FieldValue.increment(1),
-          },
-          updatedAt: now,
-        },
-        { merge: true },
-      );
-    } catch (err) {
-      console.warn('[createGroupCallable] teamsCreated bump failed', err);
-    }
-
-    return { ok: true, groupId };
+    // Bind only validated creation content, excluding server-generated identity,
+    // clock and invite code. Old clients omit the token and still create normally.
+    const fingerprint = fingerprintCreation({
+      name, description, city, contactPhone, rulesText, maxMembers, isOpen,
+      internalRating, hideInternalRating, cardsEnabled, yellowCardValidityDays,
+      redCardValidityDays, lat: hasGeo ? lat : undefined,
+      lng: hasGeo ? lng : undefined, coverImageId,
+    });
+    const receiptRef = typeof attemptId === 'string'
+      ? db.collection('serverCreationAttempts').doc(creationReceiptId(uid, attemptId)) : null;
+    return db.runTransaction(async (tx) => {
+      if (receiptRef) {
+        const receipt = await tx.get(receiptRef);
+        if (receipt.exists) {
+          const saved = receipt.data()!;
+          if (saved.uid !== uid || saved.fingerprint !== fingerprint || typeof saved.groupId !== 'string') {
+            throw new HttpsError('failed-precondition', 'creation attempt content changed');
+          }
+          // Return before charging the rate counter or incrementing achievements.
+          return { ok: true, groupId: saved.groupId as string };
+        }
+      }
+      const rate = await tx.get(rateRef);
+      const cur = rate.exists ? rate.data()! : {};
+      const windowStart = typeof cur.windowStart === 'number' ? cur.windowStart : 0;
+      const inWindow = now - windowStart < CREATE_GROUP_RATE_WINDOW_MS;
+      const count = inWindow && typeof cur.count === 'number' ? cur.count : 0;
+      if (count >= CREATE_GROUP_RATE_CAP) {
+        throw new HttpsError('resource-exhausted', 'יצירת מועדונים מוגבלת ל-5 ביום. נסה שוב מאוחר יותר.');
+      }
+      tx.set(rateRef, { uid, op: 'createGroup', windowStart: inWindow ? windowStart : now, count: count + 1, updatedAt: now });
+      tx.create(groupRef, groupDoc);
+      tx.create(db.collection('groupsPublic').doc(groupId), publicDoc);
+      tx.set(db.collection('users').doc(uid), {
+        achievements: { teamsCreated: admin.firestore.FieldValue.increment(1) }, updatedAt: now,
+      }, { merge: true });
+      if (receiptRef) tx.create(receiptRef, { uid, fingerprint, groupId, createdAt: now });
+      return { ok: true, groupId };
+    });
   },
 );
 
@@ -12854,38 +12770,24 @@ export const acceptFriendRequest = onCall(
     if (!fromUserId || fromUserId === uid) {
       throw new HttpsError('invalid-argument', 'bad fromUserId');
     }
+    await assertSocialContact(uid, fromUserId);
     const reqRef = db.collection('friendRequests').doc(`${fromUserId}__${uid}`);
-    const reqSnap = await reqRef.get();
-    if (!reqSnap.exists) {
-      throw new HttpsError('not-found', 'request not found');
-    }
-    const req = reqSnap.data() as { toUserId?: string; status?: string };
-    if (req.toUserId !== uid) {
-      throw new HttpsError('permission-denied', 'not your request');
-    }
-    if (req.status === 'declined') {
-      throw new HttpsError('failed-precondition', 'request was declined');
-    }
-    const now = Date.now();
-    const batch = db.batch();
-    batch.set(reqRef, { status: 'accepted', updatedAt: now }, { merge: true });
-    batch.set(
-      db.collection('users').doc(uid),
-      {
-        friends: admin.firestore.FieldValue.arrayUnion(fromUserId),
-        updatedAt: now,
-      },
-      { merge: true },
-    );
-    batch.set(
-      db.collection('users').doc(fromUserId),
-      {
-        friends: admin.firestore.FieldValue.arrayUnion(uid),
-        updatedAt: now,
-      },
-      { merge: true },
-    );
-    await batch.commit();
+    await db.runTransaction(async tx => {
+      const meRef = db.collection('users').doc(uid), otherRef = db.collection('users').doc(fromUserId);
+      const [reqSnap, me, other, blockA, blockB] = await Promise.all([
+        tx.get(reqRef), tx.get(meRef), tx.get(otherRef),
+        tx.get(db.doc(`users/${uid}/blocked/${fromUserId}`)), tx.get(db.doc(`users/${fromUserId}/blocked/${uid}`)),
+      ]);
+      if (blockA.exists || blockB.exists) throw new HttpsError('permission-denied', 'Contact blocked');
+      if (!reqSnap.exists || !me.exists || !other.exists) throw new HttpsError('not-found', 'request or player missing');
+      const req = reqSnap.data()!;
+      if (req.toUserId !== uid || req.fromUserId !== fromUserId) throw new HttpsError('permission-denied', 'not your request');
+      if (!['pending', 'accepted'].includes(req.status)) throw new HttpsError('failed-precondition', 'request unavailable');
+      const now = Date.now();
+      tx.update(reqRef, { status: 'accepted', updatedAt: now });
+      tx.update(meRef, { friends: admin.firestore.FieldValue.arrayUnion(fromUserId), updatedAt: now });
+      tx.update(otherRef, { friends: admin.firestore.FieldValue.arrayUnion(uid), updatedAt: now });
+    });
     // Push the original sender that their request was accepted.
     let accepterName = 'שחקן';
     try {
@@ -13011,49 +12913,10 @@ export const inviteFriendsToGroup = onCall(
     const toInvite = friendIds.filter(
       (fid) => inviterFriends.has(fid) && !members.has(fid),
     );
-    // Enforce the community's member cap. The old cap (200 − pendingCount) both
-    // used a fixed 200 and measured the WRONG array (pending) for open groups —
-    // where invitees land straight in playerIds — so an open club could be
-    // pushed well past maxMembers, after which the admin could no longer edit it
-    // (GROUP_MAX_BELOW_CURRENT). Count everyone already in the community and cap
-    // by maxMembers (hard-limited to 500 for the gRPC/arrayUnion safety) (#8).
-    const maxMembers =
-      typeof g.maxMembers === 'number' && g.maxMembers > 0
-        ? Math.min(g.maxMembers, 500)
-        : 500;
-    const currentCount =
-      (g.playerIds?.length || 0) + (g.pendingPlayerIds?.length || 0);
-    const room = Math.max(0, maxMembers - currentCount);
-    const accepted = toInvite.slice(0, room);
-    if (accepted.length === 0) return { invited: 0 };
-    // OPEN community → add invitees straight to playerIds (they'd auto-join
-    // anyway). Dropping them into pendingPlayerIds instead created membership
-    // drift (a user could end up in BOTH lists once they self-joined) and made
-    // admins get a bogus "wants to join" push for a member's invitee.
-    await groupRef.set(
-      {
-        [g.isOpen ? 'playerIds' : 'pendingPlayerIds']:
-          admin.firestore.FieldValue.arrayUnion(...accepted),
-        updatedAt: Date.now(),
-      },
-      { merge: true },
-    );
-    await Promise.all(
-      accepted.map((fid) =>
-        createNotificationOnce({
-          type: 'groupInvitation',
-          recipientId: fid,
-          payload: {
-            groupId,
-            groupName: g.name || '',
-            inviterName,
-            inviterId: uid,
-          },
-          createdByUid: uid,
-        }),
-      ),
-    );
-    return { invited: accepted.length };
+    const results = await Promise.allSettled([...new Set(toInvite)].map(fid =>
+      sendClubInvitation(db, uid, {name:inviterName}, groupId, fid)));
+    return { invited: results.filter(r=>r.status==='fulfilled'&&r.value.invited).length };
+
   },
 );
 
@@ -13126,7 +12989,7 @@ export const onNewUserJoined = onDocumentCreated('users/{uid}', async (event) =>
   await pushToAdmins(
     'newUser',
     'Teamder',
-    `מישהו נרשם לאפליקציה! 🎉 (${name})${via}`,
+    `מישהו נרשם לאפליקציה! 🎉 (${name})${await onboardingGuestNumber(uid).then(number => number ? ` · אורח ${number}` : '')}${via}`,
     { uid },
   );
 });
@@ -13526,20 +13389,28 @@ export const getInvitePreview = onRequest(
 export const trackLinkClick = onRequest(
   { region: 'us-central1', memory: '256MiB', cors: true },
   async (req, res) => {
+    if (!['GET', 'POST'].includes(req.method)) { res.status(204).send(''); return; }
     try {
-      const l = typeof req.query.l === 'string' ? req.query.l : '';
-      const s = typeof req.query.s === 'string' ? req.query.s : '';
+      const l = clickDocumentId(req.query.l);
+      let s = clickSource(req.query.s);
       // Personal invite links (`/app?invitedBy=<uid>`) carry the inviter uid.
       // Count those clicks per-inviter so the dashboard can show "how many
       // tapped this user's link" alongside "how many registered through them".
-      const inviter = typeof req.query.inviter === 'string' ? req.query.inviter : '';
+      let inviter = clickDocumentId(req.query.inviter);
       const inc = admin.firestore.FieldValue.increment(1);
       const now = Date.now();
       const db = admin.firestore();
+      if (inviter) {
+        const user = (await db.collection('users').doc(inviter).get()).data();
+        if (!user || user.deletedAt) inviter = '';
+      }
       if (l) {
-        await db.collection('adLinks').doc(l).set(
-          { clicks: inc, lastClickAt: now }, { merge: true },
-        );
+        const linkRef = db.collection('adLinks').doc(l);
+        const link = (await linkRef.get()).data();
+        if (!link) { res.status(204).send(''); return; }
+        s = clickSource(link.source);
+        // update, never set: a missing/deleted link must not be recreated.
+        await linkRef.update({ clicks: inc, lastClickAt: now });
       } else if (s) {
         // Old links with no id — bucket clicks by source.
         await db.collection('linkClicks').doc(s).set(
@@ -13552,6 +13423,7 @@ export const trackLinkClick = onRequest(
           { clicks: inc, lastClickAt: now }, { merge: true },
         );
       }
+      if (!l && !s && !inviter) { res.status(204).send(''); return; }
       // Cross-source daily aggregate so the dashboard can show clicks by
       // today / yesterday / this week (the per-link `clicks` fields are running
       // totals with no history). One click = one request = one bump. Attributed
@@ -14019,6 +13891,8 @@ export const setEveningPlayed = onCall(
     // finds out. Inside a transaction the second call re-reads, sees the
     // question already answered, and changes nothing.
     const outcome = await db.runTransaction(async (tx) => {
+      const currentClub = await tx.get(grp.ref);
+      assertSeasonOpenForGame(currentClub.data(), game);
       const fresh = await tx.get(ref);
       if (!fresh.exists) return { changed: false, state: 'pending' as const };
       const cur = fresh.data() as Record<string, unknown>;
@@ -14121,12 +13995,16 @@ export const commitRoundStats = onCall(
       penalties,
       liveGoalIds,
       rotationUpdatedAt,
+      liveLineupFingerprint,
+      alternativeDecision,
       tieResolution,
     } = (request.data ?? {}) as {
       gameId?: string;
       roundId?: number | string | null;
       liveGoalIds?: string[];
       rotationUpdatedAt?: number | null;
+      liveLineupFingerprint?: string;
+      alternativeDecision?: {fingerprint:string};
       tieResolution?: 'bothOut' | 'veteranOut';
       sideA?: string[];
       sideB?: string[];
@@ -14138,6 +14016,7 @@ export const commitRoundStats = onCall(
       goals?: {
         scorerId?: string | null;
         assisterId?: string | null;
+        assistStatus?: 'player' | 'none' | 'unknown';
         ownGoal?: boolean;
         minute?: number;
         // The side that GETS the point (beneficiary) — mirrors the live score,
@@ -14153,10 +14032,17 @@ export const commitRoundStats = onCall(
         kickerId?: string | null;
         keeperId?: string | null;
         scored?: boolean;
+        outcome?: 'goal' | 'save' | 'miss';
       }[];
     };
     if (!gameId || (winnerSide !== 'A' && winnerSide !== 'B' && winnerSide !== 'tie')) {
       throw new HttpsError('invalid-argument', 'gameId + winnerSide required');
+    }
+    if (alternativeDecision!==undefined && (typeof alternativeDecision?.fingerprint!=='string' || !alternativeDecision.fingerprint ||
+      !Array.isArray(liveGoalIds) || typeof liveLineupFingerprint!=='string' || !Array.isArray(penalties) || penalties.length!==0 ||
+      roundId===undefined || roundId===null || (winnerSide==='tie' && tieResolution!=='bothOut' && tieResolution!=='veteranOut') ||
+      (winnerSide!=='tie' && tieResolution!==undefined))) {
+      throw new HttpsError('invalid-argument','invalid alternative decision');
     }
     const snap = await db.collection('games').doc(gameId).get();
     if (!snap.exists) throw new HttpsError('not-found', 'game not found');
@@ -14178,30 +14064,39 @@ export const commitRoundStats = onCall(
       ((grpData?.adminIds as string[] | undefined) ?? []).includes(uid);
     if (!isAdmin) throw new HttpsError('permission-denied', 'admin only');
 
+    const assertAlternativeReceipt = (receipt: {get:(field:string)=>unknown}) => {
+      if (alternativeDecision && (receipt.get('alternativeDecisionFingerprint')!==alternativeDecision.fingerprint ||
+        receipt.get('winnerSide')!==winnerSide || (receipt.get('tieResolution')??null)!==(tieResolution??null))) {
+        throw new HttpsError('failed-precondition','המשחק כבר נשמר עם הכרעה אחרת. יש לפתוח את המצב המעודכן.');
+      }
+    };
+
     // A lost response is success on retry, even if the season closed after
     // the original write. No new statistics are written on this path.
     if (roundId !== undefined && roundId !== null) {
       const committed = await snap.ref.collection('committedRounds').doc(String(roundId)).get();
       const history = committed.exists ? await snap.ref.collection('roundHistory').doc(String(roundId)).get() : null;
       if (committed.exists && history?.exists) {
+        assertAlternativeReceipt(committed);
         const currentRotation = game.rotation as Parameters<typeof liveRoundKey>[0] | undefined;
         const currentGoals = (game.liveMatch as { goals?: unknown[] } | undefined)?.goals ?? [];
         if (liveGoalIds !== undefined && currentRotation && liveRoundKey(currentRotation) === String(roundId) &&
             currentGoals.length > 0 && (game.lastCommittedRoundId === String(roundId) ||
-            !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties }))) {
+            !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint,alternativeDecision }))) {
           throw new HttpsError('failed-precondition', 'נוספו שערים אחרי שמירת המשחק. הם נשמרו בלוח ולא נמחקו.');
         }
         // A pre-protocol-2 client might have committed statistics but lost its
         // response before clearing. Repair ONLY an exactly matching old board;
         // an uncredited late goal must remain visible and raise a conflict.
         if (liveGoalIds !== undefined && game.lastCommittedRoundId !== String(roundId) &&
-            matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties })) {
+            matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint,alternativeDecision })) {
           const goalShape = (rows: Record<string, unknown>[]) => rows.map(row => ({
             scorerId: row.scorerId ?? null, assisterId: row.assisterId ?? null,
             ownGoal: !!row.ownGoal, minute: Math.max(0, Math.floor(Number(row.minute) || 0)), team: row.team,
           }));
           const kickShape = (rows: Record<string, unknown>[]) => rows.map(row => ({
             kickerId: row.kickerId || null, keeperId: row.keeperId || null, scored: !!row.scored,
+            ...(row.outcome === 'goal' || row.outcome === 'save' || row.outcome === 'miss' ? { outcome: row.outcome } : {}),
           }));
           if (JSON.stringify(goalShape(history.get('goals') ?? [])) !== JSON.stringify(goalShape(goals ?? [])) ||
               JSON.stringify(kickShape(history.get('penalties') ?? [])) !== JSON.stringify(kickShape(penalties ?? []))) {
@@ -14214,11 +14109,19 @@ export const commitRoundStats = onCall(
           }, { lastUpdateTime: snap.updateTime! });
         }
         return { ok: true, alreadyCommitted: true, protocol: 2,
+          ...(alternativeDecision ? {alternativeDecisionFingerprint:alternativeDecision.fingerprint} : {}),
           winnerSide: committed.get('winnerSide') ?? history.get('winnerSide'),
           tieResolution: committed.get('tieResolution') ?? null };
       }
     }
-    if (liveGoalIds !== undefined && !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties })) {
+    if (game.status === 'finished' || game.status === 'cancelled') {
+      throw new HttpsError('failed-precondition', 'המחזור כבר הסתיים או בוטל. לא ניתן לשמור משחק נוסף.');
+    }
+    if (alternativeDecision && (game.liveMatch as {scoreA?:number;scoreB?:number}|undefined)?.scoreA !==
+      (game.liveMatch as {scoreA?:number;scoreB?:number}|undefined)?.scoreB) {
+      throw new HttpsError('failed-precondition','המשחק כבר אינו בתיקו. יש לבדוק את התוצאה המעודכנת.');
+    }
+    if (liveGoalIds !== undefined && !matchesLiveRound(game, roundId, liveGoalIds, { rotationUpdatedAt, penalties, lineupFingerprint: liveLineupFingerprint,alternativeDecision })) {
       throw new HttpsError('failed-precondition', 'המשחק השתנה. יש לנסות שוב עם התוצאה המעודכנת.');
     }
 
@@ -14231,7 +14134,10 @@ export const commitRoundStats = onCall(
     // the mini-game's goals, wins and pair stats would land on the season that
     // opened after it — credited to players for a night played in a season
     // they are no longer in.
-    if (grpData) assertSeasonOpenForGame(grpData, game);
+    const pendingLiveSeasonStamp = liveGoalIds !== undefined
+      ? liveSeasonStamp(grpData, game as PlayableEvening, snap.createTime?.toMillis())
+      : undefined;
+    if (grpData) assertSeasonOpenForGame(grpData, pendingLiveSeasonStamp ? { ...game, seasonId: pendingLiveSeasonStamp } : game);
 
     // Bind the credited sides to the game's ACTUAL registered roster. Without
     // this an admin of a throwaway game could name ANY uid on a side and
@@ -14253,14 +14159,13 @@ export const commitRoundStats = onCall(
     // — so crediting them rounds/wins/goals here (while games:0 elsewhere) left a
     // self-contradictory table (rounds=3, games=0). Skip them on both sides; since
     // onField = A∪B gates goals/assists too, their stats drop out consistently.
-    // Cap the goal log, the way `penalties` is already capped. It was
-    // unbounded: every distinct ASSISTED pair adds a communityPairStats
-    // document to the round batch, so a long (or forged) goals[] grew the
-    // batch without limit — straight into the 500-op wall that cannot be
-    // retried past. 60 is far beyond any real mini-game (the stored copy was
-    // already sliced at 100; the busiest round in production is single digits).
+    // Legacy unverified input retains its historical bound. A verified live
+    // board must commit EVERY event before clearing it: truncating the first
+    // sixty silently lost later goals despite matching all liveGoalIds. The
+    // exact StatBatch operation guard below rejects an oversized atomic write
+    // before it changes history, counters, the latch or the live board.
     const MAX_GOALS_PER_ROUND = 60;
-    const cappedGoals = (goals ?? []).slice(0, MAX_GOALS_PER_ROUND);
+    const cappedGoals = (goals ?? []).slice(0, liveGoalIds === undefined ? MAX_GOALS_PER_ROUND : undefined);
     const arrivals = (game.arrivals as Record<string, string> | undefined) ?? {};
     // Sides + the scorer-restoration rule, in ./roundSides so they can be
     // tested rather than trusted — see that file for why a substituted scorer
@@ -14279,17 +14184,19 @@ export const commitRoundStats = onCall(
           `and were no longer on a side: ${restored.join(', ')}`,
       );
     }
-    // Bound the sides before anything is written. This batch holds
-    // against-pairs (|A|×|B|) + same-team pairs + per-player tallies + the
-    // latch, roughly 2n² + 15n, which crosses Firestore's 500-op ceiling
-    // around n≈13 — and because the idempotency latch is IN the batch, a
-    // commit that overflows cannot be retried past. Checked AFTER the
-    // restoration, which is the only step that can grow a side.
+    // The current lineup is at most eleven per side. A scorer/assister who
+    // was substituted out still belongs in the credited participants above:
+    // eleven current players plus one restored scorer must not reject a
+    // perfectly valid 11-a-side game. The exact StatBatch operation guard
+    // below bounds the expanded participant set before any write occurs.
     const MAX_SIDE = 11;
-    if (A.length > MAX_SIDE || B.length > MAX_SIDE) {
+    const restoredSet = new Set(restored);
+    const currentA = A.filter(id => !restoredSet.has(id)).length;
+    const currentB = B.filter(id => !restoredSet.has(id)).length;
+    if (currentA > MAX_SIDE || currentB > MAX_SIDE) {
       throw new HttpsError(
         'invalid-argument',
-        `side too large (A=${A.length}, B=${B.length}, max ${MAX_SIDE})`,
+        `side too large (A=${currentA}, B=${currentB}, max ${MAX_SIDE})`,
       );
     }
     const onField = new Set<string>([...A, ...B]);
@@ -14310,22 +14217,21 @@ export const commitRoundStats = onCall(
       isReal(id)
         ? roster.has(id) && arrivals[id] !== 'no_show'
         : guestRoster.has(id);
-    // Same ceiling the stored roster was already sliced to. Enforced during
-    // the BUILD now, not only on the stored copy, because every guest on a side
-    // also costs one gamePlayerStats operation in the round batch — an
-    // unbounded guest list was an unbounded batch.
-    const MAX_DISPLAY_SIDE = 25;
-    const fseen = new Set<string>();
-    const fullA: string[] = [];
-    const fullB: string[] = [];
-    for (const id of sideA ?? []) {
-      if (fullA.length >= MAX_DISPLAY_SIDE) break;
-      if (typeof id === 'string' && id && !fseen.has(id) && okForDisplay(id)) { fseen.add(id); fullA.push(id); }
-    }
-    for (const id of sideB ?? []) {
-      if (fullB.length >= MAX_DISPLAY_SIDE) break;
-      if (typeof id === 'string' && id && !fseen.has(id) && okForDisplay(id)) { fseen.add(id); fullB.push(id); }
-    }
+    // Retain the old bound for unverified callers. Verified history must keep
+    // every registered contributor, even after many substitutions: otherwise
+    // the 26th guest could earn a goal but no appearance/result. Eligibility
+    // still comes from THIS game's roster; the exact batch guard bounds cost.
+    const MAX_DISPLAY_SIDE = liveGoalIds === undefined ? 25 : Infinity;
+    // A goal/assist also proves that a registered GUEST played before leaving
+    // the current lineup. Recover them for history and per-game tallies only;
+    // real-only A/B still bound global statistics and quadratic pair writes.
+    const { teamA: fullA, teamB: fullB } = roundParticipantSides({
+      teamA: [...(sideA ?? []), ...A],
+      teamB: [...(sideB ?? []), ...B],
+      goals: cappedGoals,
+      eligible: okForDisplay,
+      maxSide: MAX_DISPLAY_SIDE,
+    });
     const inc = (n: number) => admin.firestore.FieldValue.increment(n);
     const now = Date.now();
     // ONE write per DOCUMENT, not one per stat. See functions/src/statBatch.ts:
@@ -14354,6 +14260,7 @@ export const commitRoundStats = onCall(
       sb.create(
         db.collection('games').doc(gameId).collection('committedRounds').doc(String(roundId)),
         { committedAt: now, by: uid, winnerSide,
+          ...(alternativeDecision ? {alternativeDecisionFingerprint:alternativeDecision.fingerprint} : {}),
           ...(winnerSide === 'tie' && (tieResolution === 'bothOut' || tieResolution === 'veteranOut') ? { tieResolution } : {}) },
       );
     }
@@ -14420,20 +14327,18 @@ export const commitRoundStats = onCall(
       if (forA) scoreA++;
       else scoreB++;
     }
-    // Build the round-history doc (written AFTER the stats batch commits — see
-    // below). It is deliberately kept OUT of the atomic batch: (a) it would add
     // History shares the same atomic batch as statistics and its create-only
-    // latch. The bounded goal log and operation-count guard below protect the
+    // latch. The legacy input bound and operation-count guard below protect the
     // Firestore limits without allowing statistics/history to diverge.
     const roundHistoryDoc =
       roundId !== undefined && roundId !== null
         ? {
             roundId: String(roundId),
             // FULL rosters (guests included) so "מי שיחק" shows everyone who
-            // played. Sliced for doc-size safety. (A/B — real only — remain the
+            // played. Legacy callers retain their historical bound. (A/B — real only — remain the
             // basis for stat crediting above, not for this display roster.)
-            teamA: fullA.slice(0, 25),
-            teamB: fullB.slice(0, 25),
+            teamA: fullA,
+            teamB: fullB,
             // Bib-colour indices (0=red,1=blue,2=green,…) so the recap shows the
             // real colours. Default −1 → the client falls back to א׳/ב׳.
             teamAIndex: typeof teamAIndex === 'number' ? teamAIndex : -1,
@@ -14452,12 +14357,13 @@ export const commitRoundStats = onCall(
                   g.team === 'B' ||
                   (g.scorerId && isReal(g.scorerId) && onField.has(g.scorerId)),
               )
-              .slice(0, 100)
+              .slice(0, liveGoalIds === undefined ? 100 : undefined)
               .map((g) => ({
                 // null for own goals; the guest/real id otherwise.
                 scorerId: g.scorerId ?? null,
+                ...(g.assistStatus ? { assistStatus: g.assistStatus } : {}),
                 assisterId:
-                  g.assisterId && isReal(g.assisterId) && onField.has(g.assisterId)
+                  !g.ownGoal && g.scorerId && g.assisterId && g.assisterId !== g.scorerId && okForDisplay(g.assisterId)
                     ? g.assisterId
                     : null,
                 ownGoal: !!g.ownGoal,
@@ -14486,12 +14392,13 @@ export const commitRoundStats = onCall(
             // so every guest kicker would have been labelled team B.
             penalties: (penalties ?? [])
               .filter((p) => p.kickerId && okForDisplay(p.kickerId))
-              .slice(0, 100)
+              .slice(0, Array.isArray(liveGoalIds) ? undefined : 100)
               .map((p) => ({
                 kickerId: p.kickerId as string,
                 keeperId:
                   p.keeperId && okForDisplay(p.keeperId) ? p.keeperId : null,
                 scored: !!p.scored,
+                ...(p.outcome ? { outcome: p.outcome } : {}),
                 team: fullA.includes(p.kickerId as string) ? 'A' : 'B',
               })),
             at: now,
@@ -14584,13 +14491,14 @@ export const commitRoundStats = onCall(
     //     NOT mini-game goals — they never touch score/goals, only these
     //     pen-specific fields. Both kicker + keeper gated through `onField`,
     //     exactly like goals/assists. Deduped per player so each writes once.
-    //     CAP: the batch already runs near Firestore's 500-op ceiling at 11-a-
-    //     side (~385 ops). A cap of 16 kicks bounds the added ops to ≤ 16
-    //     kickers + 16 keepers × 3 stores ≈ 96 (total stays < 500). A
-    //     forged/oversized payload is clipped rather than overflowing the batch.
+    //     Repeated kicks fold into the same player's StatBatch entries, so
+    //     verified live series count every attempt. Only legacy unverified
+    //     payloads retain their historical 16-kick input bound.
     // ⚠️ This loop MIRRORS `aggregatePenalties` in src/utils/penaltyStats.ts
     //    (the unit-tested canonical spec). Keep the two in sync.
-    const pens = (penalties ?? []).slice(0, 16);
+    // The live snapshot was verified above. Repeated kicks are folded by player
+    // into StatBatch; they do not add document writes. Legacy callers stay capped.
+    const pens = Array.isArray(liveGoalIds) ? (penalties ?? []) : (penalties ?? []).slice(0, 16);
     const kickerPen: Record<string, { taken: number; scored: number; missed: number }> = {};
     const keeperPen: Record<string, { faced: number; saved: number; conceded: number }> = {};
     for (const p of pens) {
@@ -14607,7 +14515,7 @@ export const commitRoundStats = onCall(
         const s = (keeperPen[gk] ??= { faced: 0, saved: 0, conceded: 0 });
         s.faced += 1;
         if (scored) s.conceded += 1;
-        else s.saved += 1;
+        else if (p.outcome !== 'miss') s.saved += 1;
       }
     }
     for (const [kicker, s] of Object.entries(kickerPen)) {
@@ -14761,6 +14669,11 @@ export const commitRoundStats = onCall(
           ...(clean ? { cleanSheets: 1 } : {}),
           teamGoalsFor: onA ? creditedA : creditedB,
           teamGoalsAgainst: onA ? creditedB : creditedA,
+          // Separate exact scores from legacy credited-goal counters. Coverage
+          // prevents a mid-evening rollout from labelling partial totals complete.
+          actualTeamGoalsFor: onA ? scoreA : scoreB,
+          actualTeamGoalsAgainst: onA ? scoreB : scoreA,
+          teamScoreRounds: 1,
         },
       );
       // Lifetime tally, in the SAME latched batch as the other two so the three
@@ -14809,6 +14722,9 @@ export const commitRoundStats = onCall(
             ...(result ? { [result]: 1 } : {}),
             teamGoalsFor: onA ? creditedA : creditedB,
             teamGoalsAgainst: onA ? creditedB : creditedA,
+            actualTeamGoalsFor: onA ? scoreA : scoreB,
+            actualTeamGoalsAgainst: onA ? scoreB : scoreA,
+            teamScoreRounds: 1,
           },
         );
       }
@@ -14936,11 +14852,10 @@ export const commitRoundStats = onCall(
     // `sb.opCount` is the exact operation count the commit will issue. Firestore
     // rejects a batch over 500, and that rejection is UNRECOVERABLE here: the
     // idempotency latch is inside this batch, so it never lands, and every
-    // retry of the same payload overflows identically. MAX_SIDE bounds the
-    // quadratic pair writes and the caps on goals/penalties bound the rest, so
-    // this should be unreachable — which is exactly why it must shout if it
-    // ever isn't, instead of silently overflowing.
-    if (sb.opCount + (roundHistoryDoc ? 1 : 0) + (liveGoalIds !== undefined ? 1 : 0) > MAX_ROUND_BATCH_OPS) {
+    // retry of the same payload overflows identically. MAX_SIDE bounds each
+    // current lineup; restored scorers can expand it, so the exact count must
+    // remain authoritative rather than silently dropping credited events.
+    if (sb.opCount + (grpSnap ? 1 : 0) + (roundHistoryDoc ? 1 : 0) + (liveGoalIds !== undefined ? 1 : 0) > MAX_ROUND_BATCH_OPS) {
       console.error(
         `[commitRoundStats] batch too large: ${sb.opCount} ops ` +
           `(A=${A.length} B=${B.length} goals=${cappedGoals.length} pens=${pens.length})`,
@@ -14983,6 +14898,7 @@ export const commitRoundStats = onCall(
           // Any goal, undo, lineup or shootout edit since the snapshot rejects
           // the WHOLE batch. Nothing is credited or erased from a stale board.
           batch.update(snap.ref, {
+            ...(pendingLiveSeasonStamp ? { seasonId: pendingLiveSeasonStamp } : {}),
             'liveMatch.scoreA': 0,
             'liveMatch.scoreB': 0,
             'liveMatch.goals': [],
@@ -14991,6 +14907,7 @@ export const commitRoundStats = onCall(
             updatedAt: now,
           }, { lastUpdateTime: snap.updateTime! });
         }
+        if (grpSnap?.exists) batch.update(grpSnap.ref, { updatedAt: Date.now() }, { lastUpdateTime: grpSnap.updateTime! });
         await batch.commit();
       },
       healHistory:
@@ -15023,7 +14940,9 @@ export const commitRoundStats = onCall(
     });
     if (outcome.alreadyCommitted) {
       const stored = latchRef ? await latchRef.get() : null;
+      if (stored?.exists) assertAlternativeReceipt(stored);
       return { ok: true, alreadyCommitted: true, protocol: 2,
+        ...(alternativeDecision ? {alternativeDecisionFingerprint:alternativeDecision.fingerprint} : {}),
         winnerSide: stored?.get('winnerSide') ?? winnerSide,
         tieResolution: stored?.get('tieResolution') ?? null };
     }
@@ -15085,6 +15004,7 @@ export const commitRoundStats = onCall(
     }
 
     return { ok: true, scorers: Object.keys(byScorer).length, protocol: 2, winnerSide,
+      ...(alternativeDecision ? {alternativeDecisionFingerprint:alternativeDecision.fingerprint} : {}),
       tieResolution: winnerSide === 'tie' && (tieResolution === 'bothOut' || tieResolution === 'veteranOut') ? tieResolution : null };
   },
 );
@@ -15141,7 +15061,9 @@ export const saveGamePhysical = onCall(
     // re-syncs, so keep the MAX of stored vs incoming per numeric field — a
     // degraded read can never lower a previously-recorded metric.
     const ref = db.collection('games').doc(gameId).collection('physical').doc(uid);
-    const prev = ((await ref.get()).data() ?? {}) as Record<string, unknown>;
+    // Read/merge/write atomically: two syncs must not lower each other's maxima.
+    await db.runTransaction(async (tx) => {
+    const prev = ((await tx.get(ref)).data() ?? {}) as Record<string, unknown>;
     const prevNum = (k: string): number => {
       const n = prev[k];
       return typeof n === 'number' && Number.isFinite(n) ? n : 0;
@@ -15213,7 +15135,8 @@ export const saveGamePhysical = onCall(
       ...(heatGrid.length ? { heatGrid, gridRows: rows, gridCols: cols } : {}),
       updatedAt: Date.now(),
     };
-    await ref.set(doc, { merge: true });
+    tx.set(ref, doc, { merge: true });
+    });
     return { ok: true };
   },
 );
@@ -15346,16 +15269,15 @@ export const addRetroGoal = onCall(
     };
     if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
     if (!retroGoalId) throw new HttpsError('invalid-argument', 'retroGoalId required');
-    if (!scorerId || !isReal(scorerId)) {
-      throw new HttpsError('invalid-argument', 'a real (non-guest) scorer is required');
-    }
-    // Assister optional; ignore a guest / self-assist rather than failing.
+    if (!scorerId) throw new HttpsError('invalid-argument', 'scorer is required');
+    // Assister optional; self-assists never credit another counter.
     const assister =
-      assisterId && isReal(assisterId) && assisterId !== scorerId ? assisterId : null;
+      assisterId && assisterId !== scorerId ? assisterId : null;
     const { game, groupId } = await loadRetroGameContext(uid, gameId);
     // Scorer (and assister) must be on the game's registered roster — includes
-    // players who went home (they stay in players[]); excludes guests already.
-    const players = (game.players as string[] | undefined) ?? [];
+    // players who went home and registered guests; excludes waitlisted guests.
+    const players = [...((game.players as string[] | undefined) ?? []),
+      ...((game.guests as {id:string;waitlisted?:boolean}[] | undefined) ?? []).filter(g=>!g.waitlisted).map(g=>`guest:${g.id}`)];
     if (!players.includes(scorerId)) {
       throw new HttpsError('invalid-argument', 'scorer is not on this game roster');
     }
@@ -15364,55 +15286,58 @@ export const addRetroGoal = onCall(
     }
     const inc = (n: number) => admin.firestore.FieldValue.increment(n);
     const now = Date.now();
-    const batch = db.batch();
+    return db.runTransaction(async tx=>{
+    const marker=db.collection('games').doc(gameId as string).collection('retroGoals').doc(retroGoalId);
+    if((await tx.get(marker)).exists)return {ok:true,duplicate:true};
+    const currentClub=await tx.get(db.collection('groups').doc(groupId));
+    assertSeasonOpenForGame(currentClub.data(),game);
+    const applyScores=await prepareRetroScores(tx,db,gameId as string,groupId,game,{scorerId,assisterId:assister,step:1});
     // Idempotency marker + audit (create → collides on retry/double-tap).
-    batch.create(
+    tx.create(
       db.collection('games').doc(gameId as string).collection('retroGoals').doc(retroGoalId),
       { scorerId, assisterId: assister, addedBy: uid, at: now },
     );
     // Goal → the SAME four stores commitRoundStats writes (no rounds/wins/pairs).
-    batch.set(db.collection('users').doc(scorerId), { stats: { goals: inc(1) } }, { merge: true });
-    batch.set(
+    if (isReal(scorerId)) {
+    tx.set(db.collection('users').doc(scorerId), { stats: { goals: inc(1) } }, { merge: true });
+    tx.set(
       db.collection('communityPlayerStats').doc(`${groupId}__${scorerId}`),
       { groupId, userId: scorerId, goals: inc(1), updatedAt: now },
       { merge: true },
     );
-    batch.set(
+    }
+    tx.set(
       db.collection('gamePlayerStats').doc(`${gameId}__${scorerId}`),
-      { gameId, userId: scorerId, goals: inc(1), updatedAt: now },
+      { gameId, userId: scorerId, ...(!isReal(scorerId)?{isGuest:true}:{}), goals: inc(1), updatedAt: now },
       { merge: true },
     );
-    batch.set(
+    tx.set(
       db.collection('communityStats').doc(groupId),
       { groupId, goals: inc(1), updatedAt: now },
       { merge: true },
     );
     if (assister) {
-      batch.set(
+      if (isReal(assister)) {
+      tx.set(
         db.collection('users').doc(assister),
         { stats: { assists: inc(1) } },
         { merge: true },
       );
-      batch.set(
+      tx.set(
         db.collection('communityPlayerStats').doc(`${groupId}__${assister}`),
         { groupId, userId: assister, assists: inc(1), updatedAt: now },
         { merge: true },
       );
-      batch.set(
+      }
+      tx.set(
         db.collection('gamePlayerStats').doc(`${gameId}__${assister}`),
-        { gameId, userId: assister, assists: inc(1), updatedAt: now },
+        { gameId, userId: assister, ...(!isReal(assister)?{isGuest:true}:{}), assists: inc(1), updatedAt: now },
         { merge: true },
       );
     }
-    try {
-      await batch.commit();
-    } catch (err) {
-      // Marker already existed → this exact retro goal was already applied.
-      // Treat as success (idempotent) instead of double-counting.
-      if (isAlreadyExists(err)) return { ok: true, duplicate: true };
-      throw err;
-    }
+    applyScores();
     return { ok: true };
+    });
   },
 );
 
@@ -15426,7 +15351,7 @@ export const removeRetroGoal = onCall(
     };
     if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
     if (!retroGoalId) throw new HttpsError('invalid-argument', 'retroGoalId required');
-    const { groupId } = await loadRetroGameContext(uid, gameId);
+    const { game, groupId } = await loadRetroGameContext(uid, gameId);
     const inc = (n: number) => admin.firestore.FieldValue.increment(n);
     const now = Date.now();
     const markerRef = db
@@ -15435,11 +15360,15 @@ export const removeRetroGoal = onCall(
       .collection('retroGoals')
       .doc(retroGoalId);
     await db.runTransaction(async (tx) => {
+      const currentClub = await tx.get(db.collection('groups').doc(groupId));
+      assertSeasonOpenForGame(currentClub.data(), game);
       const m = await tx.get(markerRef);
       if (!m.exists) return; // already removed / never existed → no-op
       const d = m.data() as { scorerId?: string; assisterId?: string | null };
       const scorerId = d.scorerId;
       const assister = d.assisterId ?? null;
+      if(!scorerId)throw new HttpsError('failed-precondition','score-marker:missing');
+      const applyScores=await prepareRetroScores(tx,db,gameId as string,groupId,game,{scorerId,assisterId:assister,step:-1});
       tx.delete(markerRef);
       if (scorerId && isReal(scorerId)) {
         tx.set(db.collection('users').doc(scorerId), { stats: { goals: inc(-1) } }, { merge: true });
@@ -15448,6 +15377,8 @@ export const removeRetroGoal = onCall(
           { goals: inc(-1), updatedAt: now },
           { merge: true },
         );
+      }
+      {
         tx.set(
           db.collection('gamePlayerStats').doc(`${gameId}__${scorerId}`),
           { goals: inc(-1), updatedAt: now },
@@ -15470,12 +15401,15 @@ export const removeRetroGoal = onCall(
           { assists: inc(-1), updatedAt: now },
           { merge: true },
         );
+      }
+      if (assister) {
         tx.set(
           db.collection('gamePlayerStats').doc(`${gameId}__${assister}`),
           { assists: inc(-1), updatedAt: now },
           { merge: true },
         );
       }
+      applyScores();
     });
     return { ok: true };
   },
@@ -15538,6 +15472,7 @@ async function archivedCareerOf(groupId: string): Promise<
       goals: 0, assists: 0, rounds: 0, cleanSheets: 0, shootoutRounds: 0,
     };
     for (const doc of snap.docs) {
+      if (doc.get('kind') === 'pairPage') continue;
       // The CLUB's history too. Its milestones ("the club's 1,000th goal") and
       // its badges read communityStats, which the close zeroes — so without
       // this a club re-earns its bronze badge and re-announces its thousandth
@@ -15665,7 +15600,9 @@ async function announceSeasonClosed(args: {
       .collection('seasonSummary')
       .doc(`${groupId}__${seasonId}`)
       .get();
-    if (!snap.exists) return;
+    if (!snap.exists || !snap.get('zeroedAt') || snap.get('nonSeason')) return;
+    const club = await db.collection('groups').doc(groupId).get();
+    if (club.get('seasons.currentId') === seasonId || (club.get('seasons.count') ?? 0) < seasonNo) return;
     const players = (snap.data()?.players ?? {}) as Record<
       string,
       { rounds?: unknown; games?: unknown }
@@ -15688,12 +15625,15 @@ async function announceSeasonClosed(args: {
           entityType: 'group',
           entityId: groupId,
           reason: `season-${seasonId}`,
+          // A retry tomorrow must use the same deduplication bucket.
+          nowMs: archNum(snap.get('endsAt')) || archNum(snap.get('zeroedAt')),
           payload: { groupId, seasonId, seasonNo, groupName },
         }),
       );
     }
     const results = await Promise.allSettled(ops);
-    const failed = results.filter((r) => r.status === 'rejected').length;
+    const failed = results.filter((r) => r.status === 'rejected' || (r.value as { skipped?: string })?.skipped === 'error').length;
+    await snap.ref.set({ notificationPending: failed > 0, notificationAttemptAt: Date.now() }, { merge: true });
     if (failed > 0) {
       console.warn(
         `[season] ${failed}/${results.length} seasonSummary push(es) failed for ${groupId} ${seasonId}`,
@@ -15858,10 +15798,23 @@ async function openPendingClose(
     closeAt: now + PENDING_CLOSE_MS,
     reason,
   };
-  await db
-    .collection('groups')
-    .doc(groupId)
-    .set({ seasons: { pendingClose: pending } }, { merge: true });
+  const ref = db.collection('groups').doc(groupId);
+  const saved = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const sea = snap.get('seasons');
+    if (!sea?.enabled || sea.currentId !== seasonId || sea.operation) {
+      throw new HttpsError('failed-precondition', 'season-operation:stale');
+    }
+    const line = seasonFinishLine(sea.cadence ?? {});
+    const played = await completedRoundsOf(groupId, sea.roundsAtStart, sea.playedRounds);
+    if (played < MIN_SEASON_ROUNDS || !isSeasonDue(line, { played, now, today: todayIn(undefined, now) })) {
+      throw new HttpsError('failed-precondition', 'season-operation:stale');
+    }
+    const prior = currentPendingClose(sea);
+    if (prior) return prior;
+    tx.set(ref, { seasons: { pendingClose: pending } }, { merge: true });
+    return pending;
+  });
   console.log(
     '[season] correction window opened',
     groupId,
@@ -15869,19 +15822,18 @@ async function openPendingClose(
     reason,
     new Date(pending.closeAt).toISOString(),
   );
-  return pending;
+  return saved;
 }
 
 /** Shut the window without closing the season — an extension, an early manual
  *  close, or the season ceasing to be due because its target moved. */
-async function clearPendingClose(groupId: string): Promise<void> {
-  await db
-    .collection('groups')
-    .doc(groupId)
-    .set(
-      { seasons: { pendingClose: admin.firestore.FieldValue.delete() } },
-      { merge: true },
-    );
+async function clearPendingClose(groupId: string, expectedSeasonId?: string): Promise<void> {
+  const ref = db.collection('groups').doc(groupId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref); const sea = snap.get('seasons');
+    if (sea?.operation || (expectedSeasonId && sea?.currentId !== expectedSeasonId)) return;
+    tx.set(ref, { seasons: { pendingClose: admin.firestore.FieldValue.delete(), dueBlockedSince: admin.firestore.FieldValue.delete() } }, { merge: true });
+  });
 }
 
 /** An evening this old is not waiting for its seal any more. Generous: the seal
@@ -16097,21 +16049,16 @@ async function playedEveningsOfSeason(
  * that decides whether an evening happened, so this number can never disagree
  * with the "מפגשים שנערכו" the club screen has shown all along.
  */
-async function playedEveningsFromGames(groupId: string): Promise<number> {
-  try {
-    const snap = await db
-      .collection('games')
-      .where('groupId', '==', groupId)
-      .where('status', 'in', ['finished', 'cancelled'])
-      .orderBy('startsAt', 'desc')
-      .limit(200)
-      .get();
-    return countPlayedEvenings(snap.docs.map((d) => d.data() as PlayableEvening));
-  } catch (err) {
-    // Never fatal: a failed count falls back to the counter, which is the
-    // behaviour this replaced rather than something worse.
-    console.warn('[season] history count failed', groupId, err);
-    return 0;
+async function playedEveningsFromGames(groupId: string, periodId?: string): Promise<number> {
+  const base = db.collection('games').where('groupId', '==', groupId)
+    .where('status', 'in', ['finished', 'cancelled']).orderBy('startsAt', 'desc');
+  let cursor: admin.firestore.QueryDocumentSnapshot | undefined;
+  let count = 0;
+  for (;;) {
+    const page = await (cursor ? base.startAfter(cursor) : base).limit(200).get();
+    count += countPlayedEvenings(page.docs.filter((d) => !periodId || d.get('seasonId') === periodId).map((d) => d.data() as PlayableEvening));
+    if (page.size < 200) return count;
+    cursor = page.docs[page.size - 1];
   }
 }
 
@@ -16233,6 +16180,7 @@ function addMonthsClampedServer(from: number, months: number): number {
  * path that destroys production data.
  */
 async function performSeasonClose(args: {
+  operationToken?: string;
   groupId: string;
   groupName: string;
   seasonId: string;
@@ -16244,7 +16192,7 @@ async function performSeasonClose(args: {
   count: number;
   now: number;
 }): Promise<boolean> {
-  const { groupId, groupName, seasonId, seasonNo, cadence, now } = args;
+  const { groupId, groupName, seasonId, seasonNo, now } = args;
   const groupRef = db.collection('groups').doc(groupId);
 
   // ── Pre-flight: is this season still the one that is running? ───────────
@@ -16278,6 +16226,25 @@ async function performSeasonClose(args: {
     return false;
   }
 
+  const played = await completedRoundsOf(groupId, pre.roundsAtStart as number | undefined, pre.playedRounds as number | undefined);
+  const cadence = (pre.cadence ?? args.cadence) as typeof args.cadence;
+  if (played < MIN_SEASON_ROUNDS) return false;
+  if (args.operationToken) {
+    if ((pre.operation as { token?: string } | undefined)?.token !== args.operationToken) throw new HttpsError('failed-precondition', 'season-operation:stale');
+  } else if (!isSeasonDue(seasonFinishLine(cadence), { played, now, today: todayIn(undefined, now) })) {
+    await clearPendingClose(groupId, seasonId);
+    return false;
+  }
+  if (!args.operationToken) {
+    const window = currentPendingClose(pre);
+    if (!window || window.closeAt > now) return false;
+  }
+  const operation = args.operationToken ? null : await acquireSeasonOperation(db, groupRef, pre, 'performSeasonClose');
+  let succeeded = false;
+  try {
+  const quiet = await clubIsQuiet(groupId);
+  if (!quiet.ok) throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
+
   // Sealed WITH the season, because the block's copy is reset to [] two dozen
   // lines below and the archive is then the only place it exists.
   const targetHistory = Array.isArray(pre.targetHistory)
@@ -16291,14 +16258,15 @@ async function performSeasonClose(args: {
     | { at?: number; by?: string; byName?: string }
     | undefined;
 
+  await operation?.markMutating();
   const result = await closeSeason({
     db,
     groupId,
     groupName,
     seasonId,
     seasonNo,
-    startsAt: args.startedAt,
-    completedRounds: args.played,
+    startsAt: Number(pre.startedAt) || args.startedAt,
+    completedRounds: played,
     roundsAtStart: args.roundsAtStart,
     originalTarget: cadence as { type: string; endsAt?: number; targetRounds?: number },
     targetHistory,
@@ -16343,6 +16311,7 @@ async function performSeasonClose(args: {
       groupRef,
       {
         seasons: {
+          operation: { phase: false },
           currentNo: nextNo,
           currentId: `s${nextNo}`,
           startedAt: now,
@@ -16380,7 +16349,9 @@ async function performSeasonClose(args: {
   if (result.archived) {
     await announceSeasonClosed({ groupId, groupName, seasonId, seasonNo });
   }
+  succeeded = true;
   return advanced;
+  } finally { await operation?.finish(succeeded); }
 }
 
 /**
@@ -16496,6 +16467,22 @@ const MAX_CLOSES_PER_SWEEP = 5;
 const DUE_BLOCKED_STUCK_MS = 24 * 60 * 60 * 1000;
 
 async function runSeasonRollovers(): Promise<void> {
+  // Page the retry inbox too: a permanently failing recipient must not starve
+  // every archive beyond the first ten documents.
+  let deliveryCursor: admin.firestore.QueryDocumentSnapshot | undefined;
+  for (;;) {
+    let query = db.collection('seasonSummary').where('notificationPending', '==', true)
+      .orderBy(admin.firestore.FieldPath.documentId()).limit(100);
+    if (deliveryCursor) query = query.startAfter(deliveryCursor);
+    const delivery = await query.get();
+    if (delivery.empty) break;
+    deliveryCursor = delivery.docs[delivery.docs.length - 1];
+    for (const d of delivery.docs) {
+      const x = d.data();
+      if (x.zeroedAt) await announceSeasonClosed({ groupId: x.groupId, groupName: x.groupName ?? '', seasonId: x.seasonId, seasonNo: x.no });
+    }
+    if (delivery.size < 100) break;
+  }
   const now = Date.now();
 
   let closed = 0;
@@ -16603,7 +16590,7 @@ async function runSeasonRollovers(): Promise<void> {
           now,
           today: todayIn(undefined, now),
         });
-        if (!due) {
+        if (!due || await playedOnce() < MIN_SEASON_ROUNDS) {
           // Whatever was blocking it is moot now — the finish line moved, or the
           // count was corrected. Clearing costs a write only on the rare club
           // that actually carries the stamp.
@@ -16615,20 +16602,7 @@ async function runSeasonRollovers(): Promise<void> {
           // the season to keep playing has stopped the club playing.
           const stale =
             archNum(seasons.dueBlockedSince) > 0 || seasons.pendingClose != null;
-          if (stale) {
-            await db
-              .collection('groups')
-              .doc(doc.id)
-              .set(
-                {
-                  seasons: {
-                    dueBlockedSince: admin.firestore.FieldValue.delete(),
-                    pendingClose: admin.firestore.FieldValue.delete(),
-                  },
-                },
-                { merge: true },
-              );
-          }
+          if (stale) await clearPendingClose(doc.id, seasons.currentId);
           continue;
         }
 
@@ -16814,10 +16788,14 @@ export const enableClubSeasons = onCall(
       season1EndsOn?: unknown;
     };
     const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const operation = await acquireSeasonOperation(db, ref, group.seasons, 'enableClubSeasons', data);
+    let succeeded = false;
+    try {
+    const outcome = await (async () => {
     const groupId = data.groupId as string;
 
     const existing = group.seasons as
-      | { count?: number; enabled?: boolean; roundsAtStart?: number }
+      | { count?: number; enabled?: boolean; roundsAtStart?: number; disabledAt?: number }
       | undefined;
     if (existing?.enabled) {
       throw new HttpsError('failed-precondition', 'seasons already on');
@@ -16883,7 +16861,8 @@ export const enableClubSeasons = onCall(
       // admin chose it. Refusing here would be honest; rewriting silently is
       // not, and 6 was neither what they picked nor what they confirmed.
       const askedM = Number(data.months);
-      const months = isValidSeasonMonths(askedM) ? askedM : 6;
+      if (!isValidSeasonMonths(askedM)) throw new HttpsError('invalid-argument', 'months required');
+      const months = askedM;
       // `months` is stored beside the date, not just the date. Without it a
       // season that rolls over has no way to compute its OWN end date, and
       // inherits a deadline that has already passed — see rebaseCadence.
@@ -16908,7 +16887,10 @@ export const enableClubSeasons = onCall(
     // Numbering CONTINUES across the feature being switched off and on again:
     // a club that ran seasons 1-3 and re-enables opens season 4, never 1.
     const closedSoFar = existing?.count ?? 0;
-
+    const reactivation = isSeasonReactivation(existing);
+    const history = reactivation ? 0 : await playedEveningsFromGames(groupId);
+    const quiet = await clubIsQuiet(groupId);
+    if (!quiet.ok) throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
     // The SAME plan the settings screen and the confirmation sheet computed.
     //
     // Re-derived here from the club's own history rather than trusted from the
@@ -16916,7 +16898,7 @@ export const enableClubSeasons = onCall(
     // about the club's data, and a rule only the client enforces is a rule an
     // old build or a replayed call walks straight through.
     const choice: HistoryChoice =
-      data.historyChoice === 'sealNow' || data.closeFirstNow === true
+      !reactivation && (data.historyChoice === 'sealNow' || data.closeFirstNow === true)
         ? 'sealNow'
         : 'continue';
     const today = todayIn(undefined, now);
@@ -16931,7 +16913,7 @@ export const enableClubSeasons = onCall(
     // Absent, season 1 simply runs the chosen length from today, which is what
     // the app did before the picker existed. A client that DOES send a date
     // still gets exactly what the admin chose.
-    const season1EndsOn = isCalendarDate(data.season1EndsOn)
+    const season1EndsOn = !reactivation && isCalendarDate(data.season1EndsOn)
       ? data.season1EndsOn
       : type === 'date' && choice === 'continue' && isValidSeasonMonths(askedMonths)
         ? seasonEndDate(today, askedMonths as number)
@@ -16954,16 +16936,45 @@ export const enableClubSeasons = onCall(
       //
       // A season opened after a close starts at zero, which is what the close
       // itself already writes.
-      playedHistory: closedSoFar > 0 ? 0 : await playedEveningsFromGames(groupId),
+      playedHistory: history,
+      hasHistory: reactivation,
       today,
       season1EndsOn,
     });
     if (!plan.ok) {
       throw new HttpsError('failed-precondition', `season-plan:${plan.error}`);
     }
+    // Store the entire off-period separately before starting a clean season.
+    if (reactivation) {
+      await operation.markMutating();
+      const previous = await db.collection('seasonSummary').doc(`${groupId}__s${closedSoFar}`).get();
+      const boundary = Number(previous.get('endsAt')) || 0;
+      const disabledAt = (group.seasons as { disabledAt?: number })?.disabledAt ?? 0;
+      if (boundary > 0 || disabledAt > 0) {
+        // With no competitive archive, all live history (including the short
+        // first season) belongs to this non-competitive period, not to s1 again.
+        const games = await db.collection('games').where('groupId', '==', groupId).where('startsAt', '>=', closedSoFar > 0 ? boundary || disabledAt : 0).get();
+        for (let start = 0; start < games.size; start += 400) {
+          const batch = db.batch();
+          for (const game of games.docs.slice(start, start + 400)) {
+            if ((!game.get('seasonId') || game.get('seasonId') === (group.seasons as { currentId?: string })?.currentId) && ['finished', 'cancelled'].includes(game.get('status'))) {
+              batch.update(game.ref, { seasonId: `off_${closedSoFar}_${disabledAt}` });
+            }
+          }
+          await batch.commit();
+        }
+      }
+
+      await operation.markMutating();
+      await closeSeason({ db, groupId, groupName: group.name ?? '',
+        seasonId: `off_${closedSoFar}_${(group.seasons as { disabledAt?: number })?.disabledAt ?? 0}`, seasonNo: closedSoFar,
+        startsAt: closedSoFar > 0 ? boundary || disabledAt : 0,
+        completedRounds: await playedEveningsFromGames(groupId, `off_${closedSoFar}_${(group.seasons as { disabledAt?: number })?.disabledAt ?? 0}`), nonSeason: true, now });
+    }
+
     // Carrying season 1 on under a DATE cadence: the admin picked its last day,
     // and the chosen length only starts applying from season 2.
-    if (type === 'date' && choice === 'continue' && plan.endsOn) {
+    if (!reactivation && type === 'date' && choice === 'continue' && plan.endsOn) {
       cadence.startsOn = null; // season 1 reaches back as far as the club does
       cadence.endsOn = plan.endsOn;
       cadence.endsAt = null;
@@ -16975,6 +16986,7 @@ export const enableClubSeasons = onCall(
         throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
       }
       const firstNo = closedSoFar + 1;
+      await operation.markMutating();
       await closeSeason({
         db,
         groupId,
@@ -16982,7 +16994,7 @@ export const enableClubSeasons = onCall(
         seasonId: `s${firstNo}`,
         seasonNo: firstNo,
         startsAt: 0, // display resolves the club's first game
-        completedRounds: played,
+        completedRounds: history,
         roundsAtStart: 0,
         // Assists were only collected from 21.06 and clean sheets from 17.08,
         // while clubs predate both. The spec awards titles anyway and flags it.
@@ -16992,6 +17004,7 @@ export const enableClubSeasons = onCall(
       await ref.set(
         {
           seasons: {
+            operation: { phase: false },
             enabled: true,
             // Defence in depth: a stale correction window from before the feature
             // was switched off would stop this club starting an evening the moment
@@ -17039,14 +17052,14 @@ export const enableClubSeasons = onCall(
     // anything: an admin who confirmed a 2-round season got one as long as
     // "every evening since the last close, plus one", silently, against a sheet
     // that promised 2.
-    if (cadence.type === 'rounds' && closedSoFar === 0) {
-      cadence.targetRounds = Math.max(cadence.targetRounds ?? 0, played + 1);
-    }
+
     const no = closedSoFar + 1;
     await ref.set(
       {
         seasons: {
+          operation: { phase: false },
           enabled: true,
+          ...(reactivation ? { hasArchivedPeriods: true } : {}),
           // Defence in depth: a stale correction window from before the feature
           // was switched off would stop this club starting an evening the moment
           // it came back on, because the rules block on the stamp's PRESENCE.
@@ -17090,7 +17103,7 @@ export const enableClubSeasons = onCall(
           // ball was kicked (owner report, reproduced on a real club).
           ...seasonSeed(
             await sealedEveningsOf(groupId),
-            closedSoFar > 0 ? 0 : await playedEveningsFromGames(groupId),
+            history,
           ),
           cadence,
           targetHistory: [],
@@ -17099,7 +17112,11 @@ export const enableClubSeasons = onCall(
       },
       { merge: true },
     );
-    return { ok: true, currentNo: no, playedAlready: played };
+    return { ok: true, currentNo: no, playedAlready: history };
+    })();
+    succeeded = true;
+    return outcome;
+    } finally { await operation.finish(succeeded); }
   },
 );
 
@@ -17118,15 +17135,11 @@ export const enableClubSeasons = onCall(
 /**
  * Switch seasons off for a club.
  *
- * Deliberately does NOT close the running season. Closing is an archive plus a
- * table reset plus a set of titles, and none of that is what "I don't want this
- * feature" means — a manager who wants the season sealed has an action that
- * says so, with its own confirmation. Here the club simply goes back to one
- * table that never resets.
- *
- * Everything else on the block is left in place, `count` included, so
- * re-enabling continues the numbering: a club that ran seasons 1-3 opens
- * season 4, never season 1 again.
+ * A season with at least two completed evenings is archived before disabling.
+ * A shorter period remains in live counters without competitive awards. On
+ * reactivation it is archived as a non-season period, preserving lifetime
+ * totals while the newly enabled season starts empty.
+ * Closed season numbering is retained.
  */
 export const disableClubSeasons = onCall(
   {
@@ -17144,6 +17157,10 @@ export const disableClubSeasons = onCall(
     if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
     const data = (request.data ?? {}) as { groupId?: unknown };
     const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const operation = await acquireSeasonOperation(db, ref, group.seasons, 'disableClubSeasons', data);
+    let succeeded = false;
+    try {
+    const outcome = await (async () => {
     const seasons = group.seasons as
       | { enabled?: boolean; currentId?: string; pendingClose?: PendingClose }
       | undefined;
@@ -17182,6 +17199,7 @@ export const disableClubSeasons = onCall(
     // belongs to all-time only and is never back-dated into the new season,
     // which is exactly what §9 asks for.
     const groupId = data.groupId as string;
+    const disabledAt = Date.now();
     const live = group.seasons as LiveSeasonsBlock | undefined;
     if (live?.currentId) {
       const played = await completedRoundsOf(
@@ -17213,7 +17231,9 @@ export const disableClubSeasons = onCall(
           played,
         );
       } else {
+      await operation.markMutating();
       await performSeasonClose({
+        operationToken: operation.token,
         groupId,
         groupName: (group as { name?: string }).name ?? '',
         seasonId: live.currentId,
@@ -17243,13 +17263,19 @@ export const disableClubSeasons = onCall(
     await ref.set(
       {
         seasons: {
+          operation: { phase: false },
           enabled: false,
+          disabledAt,
           pendingClose: admin.firestore.FieldValue.delete(),
         },
       },
       { merge: true },
     );
     return { ok: true };
+    })();
+    succeeded = true;
+    return outcome;
+    } finally { await operation.finish(succeeded); }
   },
 );
 
@@ -17265,6 +17291,10 @@ export const updateSeasonTarget = onCall(
       targetRounds?: unknown;
     };
     const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const operation = await acquireSeasonOperation(db, ref, group.seasons, 'updateSeasonTarget', data);
+    let succeeded = false;
+    try {
+    const outcome = await (async () => {
     const groupId = data.groupId as string;
     const seasons = group.seasons as
       | {
@@ -17415,7 +17445,8 @@ export const updateSeasonTarget = onCall(
       // admin chose it. Refusing here would be honest; rewriting silently is
       // not, and 6 was neither what they picked nor what they confirmed.
       const askedM = Number(data.months);
-      const months = isValidSeasonMonths(askedM) ? askedM : 6;
+      if (!isValidSeasonMonths(askedM)) throw new HttpsError('invalid-argument', 'months required');
+      const months = askedM;
       // There used to be a `endsAt <= now` refusal here. It could not fire:
       // `months` is at least 1 by the time it reaches this line, so adding it
       // to `now` is always in the future. A guard that cannot fail reads like
@@ -17468,6 +17499,7 @@ export const updateSeasonTarget = onCall(
     await ref.set(
       {
         seasons: {
+          operation: { phase: false },
           cadence: next,
           targetHistory: admin.firestore.FieldValue.arrayUnion({
             at: now,
@@ -17509,6 +17541,10 @@ export const updateSeasonTarget = onCall(
       { merge: true },
     );
     return { ok: true, cadence: next, endsTheSeason };
+    })();
+    succeeded = true;
+    return outcome;
+    } finally { await operation.finish(succeeded); }
   },
 );
 
@@ -17571,6 +17607,10 @@ export const reopenLastSeason = onCall(
 
     const data = (request.data ?? {}) as { groupId?: unknown };
     const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const operation = await acquireSeasonOperation(db, ref, group.seasons, 'reopenLastSeason', data);
+    let succeeded = false;
+    try {
+    const outcome = await (async () => {
     const groupId = data.groupId as string;
     const seasons = group.seasons as
       | {
@@ -17590,6 +17630,14 @@ export const reopenLastSeason = onCall(
       throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
     }
 
+    const progress = await completedRoundsOf(groupId, seasons?.roundsAtStart, (group.seasons as { playedRounds?: number })?.playedRounds);
+    if (progress > 0) throw new HttpsError('failed-precondition', 'season-operation:historyAdvanced');
+    const liveRows = await db.collection('communityPlayerStats').where('groupId', '==', groupId).get();
+    if (liveRows.docs.some((d) => archNum(d.get('games')) > 0 || archNum(d.get('rounds')) > 0 || archNum(d.get('goals')) > 0)) {
+      throw new HttpsError('failed-precondition', 'season-operation:historyAdvanced');
+    }
+
+
     const lastNo = closedSoFar;
     const lastId = `s${lastNo}`;
     const archive = await db
@@ -17599,15 +17647,24 @@ export const reopenLastSeason = onCall(
     if (!archive.exists) {
       throw new HttpsError('not-found', 'no archive for the last season');
     }
+    const periodCards = await db.collection('seasonCards').where('groupId', '==', groupId).get();
+    if (periodCards.docs.some((d) => d.get('nonSeason') === true && d.get('no') === lastNo && d.get('players') > 0)) {
+      throw new HttpsError('failed-precondition', 'season-operation:historyAdvanced');
+    }
     // How far back the reopened season had counted — its own offset, which the
     // season that replaced it recorded when it opened.
     const reopenedRoundsAtStart = archNum(archive.get('roundsAtStartOfSeason'));
 
-    const result = await reopenSeason({ db, groupId, seasonId: lastId });
+    await operation.markMutating();
+    const result = await reopenSeason({ db, groupId, seasonId: lastId, preserveArchive: true });
 
-    await ref.set(
+    await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(ref);
+      if (fresh.get('seasons.operation.token') !== operation.token) throw new HttpsError('failed-precondition', 'season-operation:stale');
+      tx.set(ref,
       {
         seasons: {
+          operation: { phase: false },
           enabled: true,
           currentNo: lastNo,
           currentId: lastId,
@@ -17680,7 +17737,10 @@ export const reopenLastSeason = onCall(
         },
       },
       { merge: true },
-    );
+      );
+      for (const id of (archive.get('pairPages') ?? []) as string[]) tx.delete(db.collection('seasonSummary').doc(id));
+      tx.delete(archive.ref);
+    });
     // An audit row for every reopen (§12).
     //
     // This is the one operation in the seasons system that destroys sealed
@@ -17709,6 +17769,10 @@ export const reopenLastSeason = onCall(
     }
 
     return { ok: true, ...result, reopenedNo: lastNo };
+    })();
+    succeeded = true;
+    return outcome;
+    } finally { await operation.finish(succeeded); }
   },
 );
 
@@ -17727,6 +17791,10 @@ export const endSeasonNow = onCall(
     if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
     const data = (request.data ?? {}) as { groupId?: unknown };
     const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const operation = await acquireSeasonOperation(db, ref, group.seasons, 'endSeasonNow', data);
+    let succeeded = false;
+    try {
+    const outcome = await (async () => {
     const groupId = data.groupId as string;
     const seasons = group.seasons as
       | {
@@ -17789,6 +17857,7 @@ export const endSeasonNow = onCall(
 
     const now = Date.now();
     const who = await db.collection('users').doc(uid).get();
+    await operation.markMutating();
     const result = await closeSeason({
       db,
       groupId,
@@ -17852,6 +17921,7 @@ export const endSeasonNow = onCall(
       ref,
       {
         seasons: {
+          operation: { phase: false },
           currentNo: nextNo,
           currentId: `s${nextNo}`,
           startedAt: now,
@@ -17900,6 +17970,10 @@ export const endSeasonNow = onCall(
       });
     }
     return { ok: true, ...result, closedNo: seasons.currentNo ?? 1 };
+    })();
+    succeeded = true;
+    return outcome;
+    } finally { await operation.finish(succeeded); }
   },
 );
 
@@ -18053,3 +18127,8 @@ export const getClubReminderStatus = onCall({ enforceAppCheck: ENFORCE_APP_CHECK
  const record=(await db.collection('serverRateLimits').doc(`clubReminder_${gameId}`).get()).data();
  return {sentAt:record?.sentAt??{}};
 });
+
+export { onClubDeletedNotice } from './clubDeletedNotice';
+
+// Pulse administration has a separate, not-yet-deployed entry point (pulseEntry.ts).
+export { onSupportClubCreated, onSupportOutreachConfigChanged, cronSupportOutreach } from './supportOutreach';

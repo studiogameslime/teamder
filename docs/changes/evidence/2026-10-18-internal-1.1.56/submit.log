@@ -1,0 +1,31 @@
+★ eas-cli@25.1.1 is now available.
+To upgrade, run:
+npm install -g eas-cli
+Proceeding with outdated version.
+
+
+Uploading your app archive to EAS Submit
+- Uploading to EAS Submit 0%
+√ Uploaded to EAS Submit 10s
+
+Project ID:                     382fd359-9632-4210-ad26-fb967a8a893a
+Release track:                  internal
+Changes not sent for a review:  false
+Release status:                 COMPLETED
+Google Service Account Key:     
+    Key Source   :  local
+    Key Path     :  ./credentials/gplay-service-account.json
+    Account Email:  admin-dashboard@soccer-app-52b6b.iam.gserviceaccount.com
+Rollout:                        undefined
+Archive path:                   C:\Users\elira\Teamder\artifacts\internal-1.1.56-2026-10-18/Teamder-1.1.56-289.aab
+
+- Scheduling Android submission
+√ Scheduled Android submission
+
+Submission details: https://expo.dev/accounts/studiogameslimes-organization/projects/soccer-game/submissions/c04366aa-4ac7-46c7-8ad2-dab2348fcf1c
+
+Waiting for submission to complete. You can press Ctrl+C to exit.
+- Submitting
+√ Submitted your app to Google Play Store!
+
+All done!

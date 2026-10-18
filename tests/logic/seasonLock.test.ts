@@ -52,8 +52,8 @@ describe('which season an evening belongs to', () => {
     expect(seasonOfEvening(FRESH_CLUB, {})).toBe('s1');
   });
 
-  it('a club with seasons off has no answer to give', () => {
-    expect(seasonOfEvening(NO_SEASONS, { seasonId: 's1' })).toBe('');
+  it('an explicit historical stamp survives disabling the feature', () => {
+    expect(seasonOfEvening(NO_SEASONS, { seasonId: 's1' })).toBe('s1');
     expect(seasonOfEvening(undefined, {})).toBe('');
   });
 });
@@ -115,5 +115,22 @@ describe('and an OPEN season still accepts corrections', () => {
       },
     };
     expect(threw(() => assertSeasonOpenForGame(waiting, { seasonId: 's2' }))).toBeNull();
+  });
+});
+
+
+describe('disabled seasons retain their archive boundary', () => {
+  const off = { seasons: { enabled: false, count: 1, currentNo: 2, currentId: 's2', disabledAt: 123 } };
+  it('closed and unstamped legacy games remain locked', () => {
+    expect(seasonIsOpenForGame(off, { seasonId: 's1' })).toBe(false);
+    expect(seasonIsOpenForGame(off, {})).toBe(false);
+  });
+  it('only the current off-period accepts corrections', () => {
+    expect(seasonIsOpenForGame(off, { seasonId: 'off_1_123' })).toBe(true);
+    expect(seasonIsOpenForGame(off, { seasonId: 'off_1_100' })).toBe(false);
+    expect(seasonIsOpenForGame({ seasons: { ...off.seasons, enabled: true } }, { seasonId: 'off_1_123' })).toBe(false);
+  });
+  it('a lifecycle operation blocks statistical writes even while disabled', () => {
+    expect(() => assertSeasonOpenForGame({ seasons: { ...off.seasons, operation: {} } }, { seasonId: 's2' })).toThrow('season-operation:busy');
   });
 });

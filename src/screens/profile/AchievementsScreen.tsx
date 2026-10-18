@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // AchievementsScreen — dedicated view for the user's achievements.
 //
 // Reachable from the Profile-tab hamburger. Replaces the previous
@@ -368,16 +369,13 @@ const styles = StyleSheet.create({
     width: CELL_BASIS,
     alignItems: 'center',
   },
-  tooltipBackdrop: {
+  tooltipBackdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
   },
-  tooltipCard: {
-    backgroundColor: colors.bg,
-    borderRadius: 20,
+  tooltipCard: { ...overlaySurfaces.dialog,
     padding: spacing.lg,
     gap: spacing.sm,
     alignItems: 'center',

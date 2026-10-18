@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // RotationPanel — the live "winner stays" surface on LiveMatchScreen.
 // A live-scoreboard card (the two teams on the pitch: trophies + win streak +
 // player count + a single avatar row, fillers starred) plus the waiting-teams
@@ -11,6 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { TeamScore } from '@/components/match/TeamScore';
+import { TeamShirtIllustration } from '@/components/match/TeamShirt';
+import { SubstitutionModal } from './SubstitutionModal';
 import {
   PlayerActionMenu,
   MeasurablePressable,
@@ -24,6 +27,7 @@ import {
   makeResolver,
   teamName,
   teamColor,
+  teamTextColor,
   type PlayerLite,
   type RosterMember,
 } from '@/components/match/rotationView';
@@ -58,16 +62,20 @@ interface Props {
   /** Restore a player who had gone home. */
   onRestorePlayer?: (player: { id: string; name: string }) => void;
   /** Swap two on-field players ("החלפה"). */
-  onSwapPlayers?: (aId: string, bId: string) => void;
+  onSwapPlayers?: (aId: string, bId: string) => Promise<void> | void;
   /** Move the picked player onto another team — the "מקום פנוי" half of the
    *  same interaction, and the only one that changes a team's SIZE. */
-  onMovePlayer?: (playerId: string, teamIndex: number) => void;
+  onMovePlayer?: (playerId: string, teamIndex: number) => Promise<void> | void;
   /** On-field players per team for this game's format. Empty slots are the
    *  gap up to it; without it no slot is offered. */
   perTeam?: number;
   /** Reorder the waiting queue — the front is next up. Admin only; absent for
    *  everyone else, which is also how the control disappears. */
   onReorderWaiting?: (waiting: number[]) => void;
+  swapOpen?: boolean;
+  onSwapClose?: () => void;
+  running?: boolean;
+  fillMode?: 'temporary' | 'permanent';
 }
 
 type MenuTarget = PlayerMenuTarget & { kind: 'active' | 'left' };
@@ -87,7 +95,13 @@ export function RotationPanel({
   onMovePlayer,
   onReorderWaiting,
   perTeam,
+  swapOpen,
+  onSwapClose,
+  running,
+  fillMode,
 }: Props) {
+  const [localSwapOpen, setLocalSwapOpen] = useState(false);
+  const [swapInitialSource, setSwapInitialSource] = useState<string | null>(null);
   const [openTeam, setOpenTeam] = useState<number | null>(null);
   const [menu, setMenu] = useState<MenuTarget | null>(null);
   // Non-null while "החלפה" is active: the id of the picked source player.
@@ -212,7 +226,8 @@ export function RotationPanel({
               action: 'swap_started',
               midRound: !canMarkHome,
             });
-            setSwapSource(p.id);
+            setSwapInitialSource(p.id);
+            setLocalSwapOpen(true);
           },
         });
       }
@@ -268,6 +283,7 @@ export function RotationPanel({
                 wins={winsOf(aIdx)}
                 align="right"
                 variant="list"
+                compact
                 goalsByPlayer={goalsByPlayer}
                 onPlayerPress={
                   swapSource && !sourceOnA
@@ -291,6 +307,7 @@ export function RotationPanel({
                 wins={winsOf(bIdx)}
                 align="left"
                 variant="list"
+                compact
                 goalsByPlayer={goalsByPlayer}
                 onPlayerPress={
                   swapSource && !sourceOnB
@@ -351,7 +368,7 @@ export function RotationPanel({
                 key={idx}
                 // During a swap, tapping the card must NOT open the team picker —
                 // the swap target is a specific avatar below (user report [KSV6]).
-                onPress={swapSource ? undefined : () => setOpenTeam(idx)}
+                onPress={undefined}
                 // Three or more waiting: long-press promotes to the front. Not
                 // a tap — tapping already opens the roster, and that is the
                 // action people want ninety-nine times out of a hundred.
@@ -381,28 +398,27 @@ export function RotationPanel({
                 </View>
 
                 <View style={styles.waitTop}>
-                  <View style={[styles.waitBadge, next && styles.waitBadgeNext]}>
-                    <Ionicons name="people" size={20} color={next ? colors.primary : '#94A3B8'} />
+                  <View style={styles.waitBadge}>
+                    <TeamShirtIllustration color={teamColor(idx, draftTeams?.teams)} width={28}/>
                   </View>
                   <View style={styles.waitText}>
-                    <Text style={[styles.waitName, { color: teamColor(idx, draftTeams?.teams) }]}>{teamName(idx, draftTeams?.teams)}</Text>
+                    <Text style={[styles.waitName, { color: teamTextColor(idx, draftTeams?.teams) }]}>{teamName(idx, draftTeams?.teams)}</Text>
                     <Text style={styles.waitCount}>
-                      {he.rotationPlayersCount(roster.length)}
+                      {`${winsOf(idx)} ניצחונות במחזור`}
                       {/* Wins are shown for waiting/inviting teams too (user
                           request) — always, even at 0, matching the two playing
                           teams' "N ניצחונות" counter. */}
-                      {` · ⁦🏆 ${he.rotationWinsShort(winsOf(idx))}⁩`}
                     </Text>
                   </View>
                   <View style={styles.waitSpacer} />
-                  <Ionicons name="chevron-back" size={20} color="#94A3B8" />
+                  {isAdmin && onReorderWaiting && rotation.waiting.length > 1 && <View style={{flexDirection:'row'}}>{([-1,1] as const).map(delta=><Pressable key={delta} disabled={i+delta<0 || i+delta>=rotation.waiting.length} style={{width:36,height:44,alignItems:'center',justifyContent:'center'}} accessibilityRole="button" accessibilityLabel={`${teamName(idx,draftTeams.teams)}, ${delta===-1?'הקדמה':'דחייה'} בתור`} onPress={()=>{const queue=[...rotation.waiting];[queue[i],queue[i+delta]]=[queue[i+delta],queue[i]];onReorderWaiting(queue);}}><Ionicons name={delta===-1?'chevron-up':'chevron-down'} size={18} color={i+delta<0 || i+delta>=rotation.waiting.length?'#CBD5E1':'#2563EB'}/></Pressable>)}</View>}
                 </View>
 
-                <View style={styles.waitRoster}>
-                  {roster.slice(0, 6).map((m) => (
+                <WaitingRosterRows>
+                  {roster.map((m) => (
                     <View
                       key={m.id}
-                      style={[styles.waitMini, !!swapSource && styles.waitMiniSwap]}
+                      style={[styles.waitMini, styles.waitRosterCell, !!swapSource && styles.waitMiniSwap]}
                     >
                       {swapSource ? (
                         // Swap target — a waiting player can come in for the
@@ -437,16 +453,17 @@ export function RotationPanel({
                           ring
                         />
                       )}
-                      <Text style={styles.waitMiniName} numberOfLines={1}>
-                        {firstName(m.name)}
+                      <Text style={styles.waitMiniName} numberOfLines={2}>
+                        {m.name}
                       </Text>
+                      {rotation.loans.filter(loan=>loan.playerId===m.id && loan.homeTeam===idx).map(loan=><Text key={loan.playerId} style={{fontSize:9,color:'#64748B',textAlign:'center'}}>{`משלים אצל ${teamName(loan.filledTeam,draftTeams.teams)}`}</Text>)}
                     </View>
                   ))}
                   {/* A waiting team can be the short one just as easily — and
                       moving INTO it is often the right fix, since it is the
                       team that comes on next. */}
                   {Array.from({ length: slotsFor(idx, roster.length) }).map((_, k) => (
-                    <View key={`slot-${k}`} style={[styles.waitMini, styles.waitMiniSwap]}>
+                    <View key={`slot-${k}`} style={[styles.waitMini, styles.waitRosterCell, styles.waitMiniSwap]}>
                       <Pressable
                         onPress={() => handleSlotTap(idx)}
                         hitSlop={4}
@@ -461,7 +478,7 @@ export function RotationPanel({
                       </Text>
                     </View>
                   ))}
-                </View>
+                </WaitingRosterRows>
               </Pressable>
             );
           })}
@@ -481,7 +498,7 @@ export function RotationPanel({
             ) : null}
             <View style={styles.leftRoster}>
               {leftHomeList.map((m) => (
-                <View key={m.id} style={styles.waitMini}>
+                <View key={m.id} style={[styles.waitMini, styles.leftMini]}>
                   {onPlayerCard ? (
                     <MeasurablePressable
                       onMeasured={(rect) => openMenu(m, rect, 'left')}
@@ -518,6 +535,9 @@ export function RotationPanel({
 
       {/* Anchored per-player menu (כרטיס שחקן / הלך הביתה / החזר). */}
       <PlayerActionMenu target={menu} items={menuItems} onClose={() => setMenu(null)} />
+      <SubstitutionModal visible={!!isAdmin && (!!swapOpen || localSwapOpen)} initialSource={localSwapOpen ? swapInitialSource : null} running={!!running} capacity={perTeam} temporary={fillMode !== 'permanent'}
+        teams={[...rotation.playing,...rotation.waiting].map(index=>({index,label:teamName(index,draftTeams.teams),color:teamColor(index,draftTeams.teams),textColor:teamTextColor(index,draftTeams.teams),roster:clean(buildRoster(index,teams,rotation,resolve)),playing:rotation.playing.includes(index),position:rotation.waiting.indexOf(index)}))}
+        onSwap={onSwapPlayers} onMove={onMovePlayer} onClose={()=>{setLocalSwapOpen(false);setSwapInitialSource(null);onSwapClose?.();}}/>
 
       {/* ── Waiting-team roster peek ─────────────────────────────────────── */}
       <Modal
@@ -568,6 +588,15 @@ export function RotationPanel({
   );
 }
 
+/** Five equal cells per row avoid percentage rounding wrapping the fifth avatar. */
+function WaitingRosterRows({ children }: { children: React.ReactNode }) {
+  const cells = React.Children.toArray(children);
+  return <View style={styles.waitRoster}>{Array.from({ length: Math.ceil(cells.length / 5) }, (_, row) => {
+    const members = cells.slice(row * 5, row * 5 + 5);
+    return <View key={row} style={styles.waitRosterRow}>{members}{Array.from({ length: 5 - members.length }, (_, index) => <View key={`space-${index}`} style={styles.waitRosterCell}/>)}</View>;
+  })}</View>;
+}
+
 const styles = StyleSheet.create({
   wrap: { width: '100%', gap: spacing.md },
   scoreWrap: { width: '100%', gap: spacing.sm },
@@ -580,7 +609,7 @@ const styles = StyleSheet.create({
   sectionHeaderText: { ...typography.body, color: colors.text, fontWeight: '800' },
   scoreCard: { padding: spacing.md, gap: spacing.sm },
   swapBanner: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingVertical: 8,
@@ -686,21 +715,18 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  waitBadgeNext: { backgroundColor: 'rgba(29,78,216,0.10)' },
   waitText: { gap: 1 },
   waitName: { ...typography.body, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN },
   waitCount: { ...typography.caption, color: colors.textMuted, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
   waitSpacer: { flex: 1 },
-  waitRoster: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  waitMini: { alignItems: 'center', gap: 3, width: 52 },
+  waitRoster: { width: '100%', gap: 10 },
+  waitRosterRow: { width: '100%', flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
+  waitRosterCell: { flex: 1, minWidth: 0 },
+  waitMini: { alignItems: 'center', gap: 3, paddingHorizontal: 2 },
+  leftMini: { width: '20%' },
   // Same 32px footprint as a waiting player's avatar, so a short team's card
   // keeps its rhythm instead of the slot sitting half a row off.
   waitSlot: {
@@ -733,18 +759,15 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
   },
-  sheet: {
+  sheet: { ...overlaySurfaces.dialog,
     width: '100%',
     maxWidth: 360,
-    backgroundColor: colors.bg,
-    borderRadius: 22,
     padding: spacing.lg,
     gap: spacing.md,
     alignItems: 'center',

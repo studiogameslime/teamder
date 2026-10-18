@@ -45,6 +45,7 @@ import {
 } from '@/utils/seasonDates';
 import {
   planActivation,
+  isSeasonReactivation,
   isValidSeasonRounds,
   MIN_SEASON_ROUNDS,
   type ActivationPlan,
@@ -207,7 +208,9 @@ export function Chip({
   label,
   active,
   onPress,
+  disabled = false,
 }: {
+  disabled?: boolean;
   label: string;
   active: boolean;
   onPress: () => void;
@@ -215,9 +218,10 @@ export function Chip({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.chip, active && styles.chipActive]}
+      disabled={disabled}
+      style={[styles.chip, active && styles.chipActive, disabled && { opacity: 0.4 }]}
       accessibilityRole="button"
-      accessibilityState={{ selected: active }}
+      accessibilityState={{ selected: active, disabled }}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
     </Pressable>
@@ -312,7 +316,21 @@ export function SeasonsSettings({
   const [historyAttempt, setHistoryAttempt] = useState(0);
 
 
-  const firstTime = (seasons?.count ?? 0) === 0 && !live;
+  // Reconcile authoritative target changes (including a newly rolled season).
+  // Typing/chip changes do not alter these dependencies, so an unsaved draft
+  // is preserved while only participation counters refresh.
+  useEffect(() => {
+    const nextMonths = isValidSeasonMonths(seasons?.cadence?.months) ? seasons!.cadence.months! : 6;
+    const nextRounds = isValidSeasonRounds(seasons?.cadence?.targetRounds) ? seasons!.cadence.targetRounds! : 24;
+    setCadence(seasons?.cadence?.type === 'rounds' ? 'rounds' : 'date');
+    setMonths(nextMonths);
+    setRounds(nextRounds);
+    setCustomMonths(!MONTH_CHOICES.includes(nextMonths as never));
+    setCustomRounds(!ROUND_CHOICES.includes(nextRounds as never));
+  }, [groupId, seasons?.currentId, seasons?.cadence?.type, seasons?.cadence?.months, seasons?.cadence?.targetRounds]);
+
+  const reactivation = !live && isSeasonReactivation(seasons);
+  const firstTime = !live && !reactivation;
   /** The season this action is about. Numbering CONTINUES across the feature
    *  being switched off and on, so it is never simply 1 — and every label on
    *  this screen used to say so. */
@@ -737,14 +755,18 @@ export function SeasonsSettings({
             <Chip
               label={he.seasonsCadenceDate}
               active={cadence === 'date'}
+              disabled={live && playedThisSeason > 0 && seasons?.cadence.type !== 'date'}
               onPress={() => setCadence('date')}
             />
             <Chip
               label={he.seasonsCadenceRounds}
               active={cadence === 'rounds'}
+              disabled={live && playedThisSeason > 0 && seasons?.cadence.type !== 'rounds'}
               onPress={() => setCadence('rounds')}
             />
           </View>
+
+          {live && playedThisSeason > 0 ? <Text style={styles.fieldHint}>{he.seasonsCadenceLocked}</Text> : null}
 
           <Text style={styles.fieldLabel}>
             {cadence === 'rounds'
@@ -1138,6 +1160,7 @@ export function SeasonsSettings({
         months={months}
         rounds={rounds}
         seasonNo={thisSeasonNo}
+        reactivation={reactivation}
         busy={busy}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => {

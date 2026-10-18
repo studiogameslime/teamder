@@ -1,0 +1,13 @@
+FAIL missing-activity NullPointerException: Cannot invoke "java.util.Date.getTime()" because the return value of "io.joryio.sdk.models.SessionInfo.getLastActivity()" is null
+FAIL null-activity NullPointerException: Cannot invoke "java.util.Date.getTime()" because the return value of "io.joryio.sdk.models.SessionInfo.getLastActivity()" is null
+FAIL missing-start AssertionError: incomplete session cannot be resumed
+FAIL null-start AssertionError: incomplete session cannot be resumed
+FAIL missing-id AssertionError: incomplete session cannot be resumed
+FAIL null-id AssertionError: incomplete session cannot be resumed
+FAIL blank-id AssertionError: incomplete session cannot be resumed
+FAIL legacy-renamed-fields NullPointerException: Cannot invoke "java.util.Date.getTime()" because the return value of "io.joryio.sdk.models.SessionInfo.getLastActivity()" is null
+FAIL unparseable-activity NullPointerException: Cannot invoke "java.util.Date.getTime()" because the return value of "io.joryio.sdk.models.SessionInfo.getLastActivity()" is null
+PASS valid-session-retained
+PASS expired-session-existing-behaviour
+PASS absent-session-existing-behaviour
+RESULT passed=3 failed=9

@@ -32,6 +32,7 @@ interface Props {
    */
   actions?: HeaderAction[];
   showBack?: boolean;
+  onBack?: () => void;
 }
 
 export function ScreenHeader({
@@ -41,9 +42,10 @@ export function ScreenHeader({
   onRightPress,
   actions,
   showBack = true,
+  onBack,
 }: Props) {
   const navigation = useNavigation<any>();
-  const canGoBack = showBack && navigation.canGoBack();
+  const canGoBack = showBack && (!!onBack || navigation.canGoBack());
 
   // Merge legacy single-icon API into the actions array.
   const resolvedActions: HeaderAction[] =
@@ -57,7 +59,7 @@ export function ScreenHeader({
     <View style={styles.root}>
       <View style={styles.side}>
         {canGoBack && (
-          <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
+          <Pressable onPress={onBack ?? (() => navigation.goBack())} hitSlop={12} accessibilityRole="button" accessibilityLabel="חזרה">
             {/* In RTL, "back" is the right-pointing chevron. */}
             <Ionicons name="chevron-forward" size={26} color={colors.text} />
           </Pressable>

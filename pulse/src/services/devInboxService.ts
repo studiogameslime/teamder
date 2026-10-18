@@ -5,7 +5,7 @@
 // size — vs ~170 if we loaded the full lists just to count them.
 
 import { countCollection, countWhereEquals } from './firestoreRest';
-import { has } from '../secrets';
+import { has } from '../capabilities';
 
 export interface OpenCounts {
   errors: number;

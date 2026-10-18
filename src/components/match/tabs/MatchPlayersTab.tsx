@@ -24,19 +24,23 @@ import { he } from '@/i18n/he';
 export function MatchPlayerCounters({
   registered,
   waiting,
+  compact = false,
 }: {
   registered: string;
   waiting: number;
+  compact?: boolean;
 }) {
   return (
-    <ChangeMotion triggerKey={`${registered}:${waiting}`} pulse style={styles.counters}>
+    <ChangeMotion triggerKey={`${registered}:${waiting}`} pulse style={[styles.counters, compact && styles.compactCounters]}>
       <Counter
+        compact={compact}
         icon="people"
         tint={clubAccent.blue}
         value={registered}
         label={he.gdPlayersRegistered}
       />
       <Counter
+        compact={compact}
         icon="time"
         tint={clubAccent.gold}
         value={String(waiting)}
@@ -51,12 +55,18 @@ function Counter({
   tint,
   value,
   label,
+  compact,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   tint: string;
   value: string;
   label: string;
+  compact?: boolean;
 }) {
+  if (compact) return <View style={[styles.pill, {backgroundColor:clubCardTint(tint)}]}>
+    <Ionicons name={icon} size={18} color={tint} />
+    <Text style={styles.pillText}>{`⁦${value}⁩ ${label}`}</Text>
+  </View>;
   return (
     <View style={styles.counter}>
       <View style={[styles.counterIcon, { backgroundColor: clubCardTint(tint) }]}>
@@ -73,6 +83,9 @@ function Counter({
 }
 
 const styles = StyleSheet.create({
+  compactCounters: {justifyContent:'space-around',alignItems:'center',flexWrap:'wrap'},
+  pill: {flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:12,paddingVertical:7,borderRadius:24},
+  pillText: {fontSize:14,color:colors.text},
   counters: { flexDirection: 'row', gap: spacing.sm },
   counter: {
     flex: 1,

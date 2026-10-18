@@ -58,7 +58,11 @@ export function CreateGroupScreen() {
     const me = useUserStore.getState().currentUser;
     if (!me || me.isGuest === true) return;
     try {
-      const { groupId, seasonsFailed } = await createClubFromValues(v, me);
+      const draft = await draftStore.write('club', draftIdRef.current, {
+        ...v, __creationOwnerId: me.id,
+      });
+      const { groupId, seasonsFailed } = await createClubFromValues(v, me, draft.id);
+      await draftStore.consume('club', draft);
       if (seasonsFailed) appAlert(he.error, he.newClubSeasonsFailed);
       (nav as { replace: (s: string, p: unknown) => void }).replace(
         'CommunityDetails',
@@ -101,7 +105,7 @@ export function CreateGroupScreen() {
       try {
         const d = await draftStore.read('club');
         if (!alive) return;
-        if (d) {
+        if (d && (!d.values.__creationOwnerId || d.values.__creationOwnerId === user?.id)) {
           draftIdRef.current = d.id;
           setRestored(
             draftStore.merge(

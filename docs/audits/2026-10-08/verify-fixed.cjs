@@ -108,11 +108,11 @@ async function main() {
     roundHistoryDoc:{payload:value},
     roundHistoryRef:{create:async(doc)=>{if(history)throw Object.assign(new Error('exists'),{code:6});history=doc.payload}},
     sb:{build:batch=>batch},inc:()=>{},gameId:'g',roundId:'1',HttpsError:Error,
-    liveGoalIds:[],snap:{ref:'game',updateTime:'v1'},now:123,
+    pendingLiveSeasonStamp:undefined,liveGoalIds:[],snap:{ref:'game',updateTime:'v1'},grpSnap:{ref:'group',updateTime:'club-v1'},now:123,
     admin:{firestore:{FieldValue:{delete:()=>({delete:true})}}},
     db:{batch:()=>{let doc,clear;return {
       set:(ref,v)=>{doc=v},
-      update:(ref,patch,condition)=>{assert.equal(ref,'game');assert.equal(condition.lastUpdateTime,'v1');clear=patch},
+      update:(ref,patch,condition)=>{if(ref==='group'){assert.equal(condition.lastUpdateTime,'club-v1');return;}assert.equal(ref,'game');assert.equal(condition.lastUpdateTime,'v1');clear=patch},
       commit:async()=>{
         if(latch)throw Object.assign(new Error('exists'),{code:6});
         assert.equal(clear.lastCommittedRoundId,'1');assert.deepEqual(Array.from(clear['liveMatch.goals']),[]);
@@ -158,23 +158,24 @@ async function main() {
   const missing=['MatchDetails','CommunityHistory','CommunityEdit','AdminApproval'].filter(r=>!routes.includes(r));
   assert.equal(missing.length,0);
   note('B12',{host:'ChatStack',missingRoutes:missing,communityDetailsRegistered:routes.includes('CommunityDetails')});
+  const {validateDraftRoster,activeDraftRosterIds}=load('src/utils/draftIntegrity.ts',{'@/types':{toGuestRosterId:id=>'guest:'+id}});
   const participantsNode=node('src/screens/games/DraftSetupScreen.tsx',n=>ts.isVariableDeclaration(n)&&n.name.getText()==='participants');
   const participantsMod=loadString('const '+participantsNode+';exports.participants=participants;',{
     useMemo:fn=>fn(),game:{players:['p'],guests:[{id:'w',name:'waitlisted',waitlisted:true}]},
-    playersMap:{p:{displayName:'p'}},toGuestRosterId:id=>'guest:'+id,
+    playersMap:{p:{displayName:'p'}},toGuestRosterId:id=>'guest:'+id,activeDraftRosterIds,
   });
   assert.equal(participantsMod.participants.some(p=>p.id==='guest:w'),false);
   note('B13',{waitingGuestSelectableAsCaptain:false,participants:participantsMod.participants.map(p=>p.id)});
   const saveDraft=node('src/services/gameService.ts',n=>ts.isMethodDeclaration(n)&&n.name.getText()==='saveDraftTeams');
-  let roster={players:['p'],guests:[{id:'w',waitlisted:true}]},draftWrites=0;
+  let roster={players:['p','q'],guests:[{id:'w',waitlisted:true}],status:'open',format:'5v5',numberOfTeams:2},draftWrites=0;
   const draftService=loadString('exports.service={'+saveDraft+'};',{
-    USE_MOCK_DATA:false,toGuestRosterId:id=>'guest:'+id,docs:{game:()=>({})},getFirebase:()=>({db:{}}),stripUndefined:value=>value,
+    USE_MOCK_DATA:false,validateDraftRoster,toGuestRosterId:id=>'guest:'+id,docs:{game:()=>({})},getFirebase:()=>({db:{}}),stripUndefined:value=>value,
     runTransaction:async(_db,fn)=>fn({get:async()=>({exists:()=>true,data:()=>roster}),update:()=>{draftWrites++}}),
   }).service;
-  const draft={method:'snake',teams:[{index:0,captainId:'guest:w',playerIds:['guest:w','p']}]};
+  const draft={method:'snake',numTeams:2,teams:[{index:0,captainId:'guest:w',playerIds:['guest:w','p']},{index:1,captainId:'q',playerIds:['q']}]};
   await assert.rejects(draftService.saveDraftTeams('g',draft,undefined,true),/DRAFT_ROSTER_CHANGED/);
   assert.equal(draftWrites,0);
-  roster={players:['p'],guests:[{id:'w',waitlisted:false}]};
+  roster={players:['p','q'],guests:[{id:'w',waitlisted:false}],status:'open',format:'5v5',numberOfTeams:2};
   await draftService.saveDraftTeams('g',draft,undefined,true);
   assert.equal(draftWrites,1);
   results.find(r=>r.id==='B13').actual.transactionRejectsWaitingCaptain=true;
@@ -182,7 +183,7 @@ async function main() {
   let friends=[],incoming=[{request:{fromUserId:'p'},user:{id:'p'}}];
   let alertCount=0;
   const friendsMod=loadString('const '+accept+';exports.accept=handleAccept;',{
-    me:{id:'u'},incoming,friends,
+    me:{id:'u'},incoming,friends,isCurrentUser:()=>true,
     setBusyId:()=>{},setFriends:fn=>{friends=fn(friends)},setIncoming:fn=>{incoming=fn(incoming)},
     friendsService:{acceptRequest:fail},successHaptic:()=>{},toast:{success:()=>{}},he:{},load:async()=>{},
     __DEV__:false,appAlert:()=>{alertCount++},
@@ -190,34 +191,40 @@ async function main() {
   await friendsMod.accept('p');
   assert.equal(friends.length,0);assert.equal(incoming.length,1);assert.equal(alertCount,1);
   note('B14',{serverAcceptFailed:true,friends:friends.map(f=>f.id),remainingIncoming:incoming.length,errorShown:true});
-  const record=node('src/components/match/Shootout.tsx',n=>ts.isVariableDeclaration(n)&&n.name.getText()==='record');
-  let screen='entry',stillSaving=true;
+  const record=node('src/components/match/ShootoutWizard.tsx',n=>ts.isVariableDeclaration(n)&&n.name.getText()==='record');
+  let screen='result',stillSaving=true,completedKick=null;
+  const penaltyRosterOf=side=>side==='A'?[{id:'p',name:'בועט'}]:[{id:'k',name:'שוער'}];
   const save=deferred();
   const shot=loadString('const '+record+';exports.record=record;',{
-    writing:{current:false},attempt:{current:null},visibleRef:{current:true},uiEpoch:{current:0},reduced:true,setBusy:()=>{},setSaveError:()=>{},setTimeout,
-    kickerId:'p',facingKeeperId:'k',gameId:'g',kickingTeam:'A',kicks:[],scoredOf:()=>0,
+    writing:{current:false},attempt:{current:null},attemptPeople:{current:null},visibleRef:{current:true},uiEpoch:{current:0},setBusy:()=>{},setSaveError:()=>{},setReselectAllowed:()=>{},setSaveErrorMessage:()=>{},logError:()=>{},
+    kicker:{id:'p'},keeper:{id:'k'},gameId:'g',roundId:'round-one',signature:'[]',kickingTeam:'A',kicks:[],setShadow:()=>{},Math,
     gameService:{recordShootoutKick:()=>save.promise},logEvent:()=>{},AnalyticsEvent:{},
-    setKickerId:()=>{},setAsking:()=>{},setFlying:()=>{},setKickResult:()=>{},resetBall:()=>{},setScreen:s=>{screen=s},
+    rosterOf:penaltyRosterOf,contentScroll:{current:null},setCompleted:value=>{completedKick=value},setSelectedKeeperId:()=>{},setKickerId:()=>{},setScreen:s=>{screen=s},
   });
-  const saving=shot.record(true);
-  assert.equal(screen,'entry');
+  const saving=shot.record('goal');
+  assert.equal(screen,'result');
+  assert.equal(completedKick,null);
   note('B15',{writeStillPending:stillSaving,screenBeforeWriteCompletes:screen});
   save.resolve();
   await saving;
-  assert.equal(screen,'board');
+  stillSaving=false;
+  assert.equal(screen,'kicker');
+  assert.equal(completedKick.outcome,'goal');
+  assert.equal(completedKick.kicker.id,'p');assert.equal(completedKick.keeper.id,'k');
+  results.find(r=>r.id==='B15').celebrationRequiresAcknowledgement=true;
   const retryIds=[];
   const retryAttempt={current:null};
-  let retryScreen='entry',retryError=false;
+  let retryScreen='result',retryError=false;
   const retry=loadString('const '+record+';exports.record=record;',{
-    writing:{current:false},attempt:retryAttempt,visibleRef:{current:true},uiEpoch:{current:0},reduced:true,setBusy:()=>{},setSaveError:v=>{retryError=v},setTimeout,
-    kickerId:'p',facingKeeperId:'k',gameId:'g',kickingTeam:'A',kicks:[],scoredOf:()=>0,
+    writing:{current:false},attempt:retryAttempt,attemptPeople:{current:null},visibleRef:{current:true},uiEpoch:{current:0},setBusy:()=>{},setSaveError:v=>{retryError=v},setReselectAllowed:()=>{},setSaveErrorMessage:()=>{},logError:()=>{},
+    kicker:{id:'p'},keeper:{id:'k'},gameId:'g',roundId:'round-one',signature:'[]',kickingTeam:'A',kicks:[],setShadow:()=>{},Math,
     gameService:{recordShootoutKick:async(_game,kick)=>{retryIds.push(kick.id);if(retryIds.length===1)throw new Error('offline')}},logEvent:()=>{},AnalyticsEvent:{},
-    setKickerId:()=>{},setAsking:()=>{},setFlying:()=>{},setKickResult:()=>{},resetBall:()=>{},setScreen:s=>{retryScreen=s},
+    rosterOf:penaltyRosterOf,contentScroll:{current:null},setCompleted:()=>{},setSelectedKeeperId:()=>{},setKickerId:()=>{},setScreen:s=>{retryScreen=s},
   });
-  await retry.record(true);
-  assert.equal(retryScreen,'entry');assert.equal(retryError,true);assert.ok(retryAttempt.current);
-  await retry.record(true);
-  assert.equal(retryIds[0],retryIds[1]);assert.equal(retryScreen,'board');assert.equal(retryAttempt.current,null);
+  await retry.record('goal');
+  assert.equal(retryScreen,'result');assert.equal(retryError,true);assert.ok(retryAttempt.current);
+  await retry.record('goal');
+  assert.equal(retryIds[0],retryIds[1]);assert.equal(retryScreen,'kicker');assert.equal(retryAttempt.current,null);
   results.find(r=>r.id==='B15').retryUsesSameKickId=true;
   return results;
 }

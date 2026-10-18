@@ -1,0 +1,24 @@
+{
+  "createdAtUtc": "2026-10-17T04:30:43.070083+00:00",
+  "source": "tmp/live-action-production/data-final-verification.json",
+  "readAtUtc": "2026-10-17T04:28:39.206275+00:00",
+  "archivedFile": "data-final-verification.json",
+  "originalSha256": "5b1ab55ea8ca605fb67061ea6239cf30395ea8d95cd35c2618239420b82a3b21",
+  "sha256": "2b5b68f37cfa3c2cbf2a0554bea8f4eae4a85150f9bb774c8d2beb509a58017d",
+  "comparedTo": "data-eleven-sealed-proof.json",
+  "comparedToOriginalSha256": "6d4658efa0c924e09be7203d40a0f50dbf15891904e9091b74ad648fc48a9f41",
+  "approvedRoundIds": [
+    "lmUUmQru2HtKvQkRDVeD",
+    "YEdIR3MviDK82D581ELk",
+    "mBO5HqJdnOPWjRE2zMh8"
+  ],
+  "allGameBundlesIdentical": true,
+  "clubIdentical": true,
+  "qaClubStatsIdentical": true,
+  "qaClubTotalsIdentical": true,
+  "changedAccountKeys": [
+    "lastSeenAt"
+  ],
+  "frozenAuditUnchanged": true,
+  "note": "כל חבילת מחזור, כולל המשחק, ההיסטוריה, הסטטיסטיקה, סימני הזקיפה, הסיכום ומסמכי הסיום, זהה לקריאת החתימה. lastSeenAt הוא השינוי היחיד בחשבון. 240 האימותים לא הורצו מחדש ולא שוכתבו."
+}

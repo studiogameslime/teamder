@@ -45,12 +45,27 @@ describe('summary data authority', () => {
     expect(m?.teamGoalsKnown).toBe(false);
   });
   it('uses authoritative penalty and team totals even when event history is incomplete', async () => {
-    setup({ ...stat, penSaved: 2, penConceded: 1, teamGoalsFor: 5, teamGoalsAgainst: 4 }, []);
+    setup({ ...stat, penSaved: 2, penConceded: 1, actualTeamGoalsFor: 5, actualTeamGoalsAgainst: 4, teamScoreRounds: 2 }, []);
     const m = await eveningSummaryService.getEveningSummary('g', 'u');
     expect(m?.penalties).toEqual({ saved: 2, conceded: 1, scored: 0, missed: 0 });
     expect(m?.highlights?.map((h) => h.id)).toEqual(['saved']);
     expect(m?.teamGoalsFor).toBe(5);
     expect(m?.teamGoalsKnown).toBe(true);
+  });
+  it('does not treat old credited counters or a partial rollout as a complete score', async () => {
+    setup({...stat,teamGoalsFor:1,teamGoalsAgainst:1},[]);
+    expect((await eveningSummaryService.getEveningSummary('g','u'))?.teamGoalsKnown).toBe(false);
+    setup({...stat,actualTeamGoalsFor:5,actualTeamGoalsAgainst:4,teamScoreRounds:1},[]);
+    expect((await eveningSummaryService.getEveningSummary('g','u'))?.teamGoalsKnown).toBe(false);
+    setup({...stat,teamGoalsFor:99,teamGoalsAgainst:99},rounds);
+    const m=await eveningSummaryService.getEveningSummary('g','u');
+    expect(m?.teamGoalsFor).toBe(2);expect(m?.teamGoalsAgainst).toBe(2);
+  });
+  it('counts a draw in the win percentage denominator', async () => {
+    setup({...stat,rounds:4,wins:2,losses:1},[]);
+    expect((await eveningSummaryService.getEveningSummary('g','u'))?.winRate).toBe(50);
+    setup({...stat,rounds:4,wins:0,losses:0},[]);
+    expect((await eveningSummaryService.getEveningSummary('g','u'))?.winRate).toBe(0);
   });
   it('does not create a chronological sequence when aggregate and event results disagree', async () => {
     setup({ ...stat, wins: 2, losses: 0 });

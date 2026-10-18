@@ -39,7 +39,13 @@ export function DidYouKnowCard({ tips }: { tips: Tip[] }) {
       easing: Easing.inOut(Easing.cubic), useNativeDriver: true,
     });
     animation.start(({ finished }) => {
-      if (finished) { setIdx(incoming.index); setIncoming(null); }
+      if (finished) {
+        setIdx(incoming.index);
+        // Reset the native outgoing opacity before removing its binding.
+        // Fabric can otherwise retain opacity=0 on the now-static text layer.
+        progress.setValue(0);
+        setIncoming(null);
+      }
       moving.current = false;
     });
     return () => animation.stop();
@@ -88,7 +94,7 @@ export function DidYouKnowCard({ tips }: { tips: Tip[] }) {
           accessibilityLabel={`${tip.title}. ${tip.text}`}>
           <LinearGradient colors={['#15317B', '#294EC3']} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
           <View style={styles.contentHost}>
-            <Animated.View style={[styles.content, incoming && {
+            <Animated.View style={[styles.content, { opacity: 1, transform: [{ translateX: 0 }] }, incoming && {
               opacity: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
               transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, 18 * incoming.direction] }) }],
             }]}>{renderContent(tip)}</Animated.View>

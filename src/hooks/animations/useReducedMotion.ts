@@ -15,16 +15,20 @@ export function useReducedMotion(): boolean {
 
   useEffect(() => {
     let alive = true;
+    let receivedChange = false;
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => {
+      if (!alive) return;
+      receivedChange = true;
+      setReduced(!!v);
+    });
     AccessibilityInfo.isReduceMotionEnabled()
       .then((v) => {
-        if (alive) setReduced(!!v);
+        // A newer native event wins over the in-flight startup read.
+        if (alive && !receivedChange) setReduced(!!v);
       })
       .catch(() => {
         /* setting unavailable → assume motion allowed */
       });
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) =>
-      setReduced(!!v),
-    );
     return () => {
       alive = false;
       // RN returns an EmitterSubscription with .remove(); guard for older shims.

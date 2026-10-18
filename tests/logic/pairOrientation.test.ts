@@ -135,9 +135,10 @@ describe('a missing document', () => {
 });
 
 describe('win percentage', () => {
-  it('leaves draws OUT of the denominator — the app-wide definition', () => {
-    // 6 won, 2 lost, 2 drawn → 75%, not 60%.
-    expect(winPct(6, 2)).toBe(75);
+  it('includes draws in the denominator', () => {
+    expect(winPct(6, 2, 2)).toBe(60);
+    expect(winPct(2, 1, 1)).toBe(50);
+    expect(winPct(0, 0, 4)).toBe(0);
   });
 
   it('is NULL with nothing decided, never 0', () => {

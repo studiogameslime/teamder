@@ -14,6 +14,7 @@ export const personalStatisticsFixture: {
     goals: 31, assists: 24, goalsPerEvening: 0.6, distinctPlayers: 18,
     highlights: {points:[7,8.5,6.5,9,7.5].map((score,i)=>({gameId:`qa-score-${i}`,at:new Date(2026,2,13+i*7).getTime(),score})),recentCount:5,bestGoals:4,bestAssists:3,recordedRounds:54,incomplete:false,results:{wins:75,losses:42,ties:11,games:128,rounds:32}},
     mostPlayedWith: {uid:'qa-itay', count:44}, mostWinsWith: {uid:'qa-roy', count:17},
+    regularPartnerResults: {games:80,wins:45,losses:25,ties:10,winRate:56},
     biggestVictim: {uid:'qa-itay', count:12}, nemesis: {uid:'qa-roy', count:9},
     mostAssistedTo: {uid:'qa-itay', count:8}, mostAssistedBy: {uid:'qa-roy', count:6},
   },

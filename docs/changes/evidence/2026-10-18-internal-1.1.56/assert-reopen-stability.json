@@ -1,0 +1,596 @@
+{
+  "createdAt": "2026-10-18T05:47:14.019455+00:00",
+  "kind": "offline verification of persisted data after lead-operated native probe and application reopen",
+  "sources": {
+    "finished": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/data/release-evening-finished.json",
+      "sha256": "dddb7ca6658f2d9d5ed493c5bdafb61afa575bafb0f1b1a1ab4925656b9709ca"
+    },
+    "reopened": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/data/release-final-after-reopen.json",
+      "sha256": "d5ffea15c7a25270284a7f8d50fafa1cfcc3bf030cb6dde3c42c39b2ed06d583"
+    },
+    "probe": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/joryio-release-probe/new56-register.json",
+      "sha256": "a12df62af70523534c5ec7142802a162930a10512c5f2203593fb9594fbb25f1"
+    },
+    "finalAssertions": {
+      "file": "artifacts/internal-1.1.56-2026-10-18/assert-evening-finished-verified.json",
+      "sha256": "70e8c44030aa9591cc61125062661302ddd1730eb21974ed7ae1cbc7ff460619"
+    }
+  },
+  "verifierSha256": "e17327cf7b87a4b42b381a88e819e9d729e65669960f96d4dabb1f1b4649613d",
+  "passed": 88,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "before and after use exact same frozen reader",
+      "passed": true
+    },
+    {
+      "name": "before and after scopes match exactly",
+      "passed": true
+    },
+    {
+      "name": "complete captured evening data unchanged after reopen",
+      "passed": true
+    },
+    {
+      "name": "all protected round receipts unchanged after reopen",
+      "passed": true
+    },
+    {
+      "name": "membership counts unchanged after reopen",
+      "passed": true
+    },
+    {
+      "name": "both snapshots confirm six protected evenings unchanged",
+      "passed": true
+    },
+    {
+      "name": "exactly six distinct protected evenings in both sources",
+      "passed": true
+    },
+    {
+      "name": "all meaningful numeric counters stable: account",
+      "passed": true
+    },
+    {
+      "name": "account.stats.assists unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "account.stats.cleanSheets unchanged",
+      "passed": true,
+      "actual": {
+        "before": 7,
+        "after": 7
+      }
+    },
+    {
+      "name": "account.stats.goals unchanged",
+      "passed": true,
+      "actual": {
+        "before": 6,
+        "after": 6
+      }
+    },
+    {
+      "name": "account.stats.penConceded unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "account.stats.penFaced unchanged",
+      "passed": true,
+      "actual": {
+        "before": 6,
+        "after": 6
+      }
+    },
+    {
+      "name": "account.stats.penMissed unchanged",
+      "passed": true,
+      "actual": {
+        "before": 1,
+        "after": 1
+      }
+    },
+    {
+      "name": "account.stats.penSaved unchanged",
+      "passed": true,
+      "actual": {
+        "before": 3,
+        "after": 3
+      }
+    },
+    {
+      "name": "account.stats.penScored unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "account.stats.penTaken unchanged",
+      "passed": true,
+      "actual": {
+        "before": 3,
+        "after": 3
+      }
+    },
+    {
+      "name": "account.stats.wins unchanged",
+      "passed": true,
+      "actual": {
+        "before": 11,
+        "after": 11
+      }
+    },
+    {
+      "name": "all meaningful numeric counters stable: qaClubStats",
+      "passed": true
+    },
+    {
+      "name": "qaClubStats.asRounds unchanged",
+      "passed": true,
+      "actual": {
+        "before": 14,
+        "after": 14
+      }
+    },
+    {
+      "name": "qaClubStats.assists unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "qaClubStats.bestEvening.assists unchanged",
+      "passed": true,
+      "actual": {
+        "before": 1,
+        "after": 1
+      }
+    },
+    {
+      "name": "qaClubStats.bestEvening.cleanSheets unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "qaClubStats.bestEvening.goals unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "qaClubStats.bestEvening.wins unchanged",
+      "passed": true,
+      "actual": {
+        "before": 3,
+        "after": 3
+      }
+    },
+    {
+      "name": "qaClubStats.cleanSheets unchanged",
+      "passed": true,
+      "actual": {
+        "before": 7,
+        "after": 7
+      }
+    },
+    {
+      "name": "qaClubStats.csRounds unchanged",
+      "passed": true,
+      "actual": {
+        "before": 14,
+        "after": 14
+      }
+    },
+    {
+      "name": "qaClubStats.eveningScoreCount unchanged",
+      "passed": true,
+      "actual": {
+        "before": 7,
+        "after": 7
+      }
+    },
+    {
+      "name": "qaClubStats.eveningScoreSum unchanged",
+      "passed": true,
+      "actual": {
+        "before": 58.5,
+        "after": 58.5
+      }
+    },
+    {
+      "name": "qaClubStats.games unchanged",
+      "passed": true,
+      "actual": {
+        "before": 7,
+        "after": 7
+      }
+    },
+    {
+      "name": "qaClubStats.goals unchanged",
+      "passed": true,
+      "actual": {
+        "before": 6,
+        "after": 6
+      }
+    },
+    {
+      "name": "qaClubStats.lastEveningAt unchanged",
+      "passed": true,
+      "actual": {
+        "before": 1792296000000,
+        "after": 1792296000000
+      }
+    },
+    {
+      "name": "qaClubStats.lastEveningScore unchanged",
+      "passed": true,
+      "actual": {
+        "before": 8.7,
+        "after": 8.7
+      }
+    },
+    {
+      "name": "qaClubStats.losses unchanged",
+      "passed": true,
+      "actual": {
+        "before": 3,
+        "after": 3
+      }
+    },
+    {
+      "name": "qaClubStats.penConceded unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "qaClubStats.penFaced unchanged",
+      "passed": true,
+      "actual": {
+        "before": 6,
+        "after": 6
+      }
+    },
+    {
+      "name": "qaClubStats.penMissed unchanged",
+      "passed": true,
+      "actual": {
+        "before": 1,
+        "after": 1
+      }
+    },
+    {
+      "name": "qaClubStats.penSaved unchanged",
+      "passed": true,
+      "actual": {
+        "before": 3,
+        "after": 3
+      }
+    },
+    {
+      "name": "qaClubStats.penScored unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "qaClubStats.penTaken unchanged",
+      "passed": true,
+      "actual": {
+        "before": 3,
+        "after": 3
+      }
+    },
+    {
+      "name": "qaClubStats.rounds unchanged",
+      "passed": true,
+      "actual": {
+        "before": 14,
+        "after": 14
+      }
+    },
+    {
+      "name": "qaClubStats.wins unchanged",
+      "passed": true,
+      "actual": {
+        "before": 11,
+        "after": 11
+      }
+    },
+    {
+      "name": "all meaningful numeric counters stable: clubTotals",
+      "passed": true
+    },
+    {
+      "name": "clubTotals.chemistrySince unchanged",
+      "passed": true,
+      "actual": {
+        "before": 1792192500000,
+        "after": 1792192500000
+      }
+    },
+    {
+      "name": "clubTotals.countedRounds unchanged",
+      "passed": true,
+      "actual": {
+        "before": 16,
+        "after": 16
+      }
+    },
+    {
+      "name": "clubTotals.goals unchanged",
+      "passed": true,
+      "actual": {
+        "before": 6,
+        "after": 6
+      }
+    },
+    {
+      "name": "clubTotals.guestGoals unchanged",
+      "passed": true,
+      "actual": {
+        "before": 10,
+        "after": 10
+      }
+    },
+    {
+      "name": "clubTotals.kingAssistsCount unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "clubTotals.kingAssistsSum unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "clubTotals.kingGoalsCount unchanged",
+      "passed": true,
+      "actual": {
+        "before": 5,
+        "after": 5
+      }
+    },
+    {
+      "name": "clubTotals.kingGoalsSum unchanged",
+      "passed": true,
+      "actual": {
+        "before": 6,
+        "after": 6
+      }
+    },
+    {
+      "name": "clubTotals.rounds unchanged",
+      "passed": true,
+      "actual": {
+        "before": 16,
+        "after": 16
+      }
+    },
+    {
+      "name": "clubTotals.scorelessRounds unchanged",
+      "passed": true,
+      "actual": {
+        "before": 6,
+        "after": 6
+      }
+    },
+    {
+      "name": "clubTotals.shootoutRounds unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "clubTotals.tiedRounds unchanged",
+      "passed": true,
+      "actual": {
+        "before": 1,
+        "after": 1
+      }
+    },
+    {
+      "name": "all meaningful numeric counters stable: clubShowcase",
+      "passed": true
+    },
+    {
+      "name": "all meaningful numeric counters stable: clubRecords",
+      "passed": true
+    },
+    {
+      "name": "clubRecords.assists.value unchanged",
+      "passed": true,
+      "actual": {
+        "before": 1,
+        "after": 1
+      }
+    },
+    {
+      "name": "clubRecords.cleanSheets.value unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "clubRecords.goals.value unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "clubRecords.involvement.value unchanged",
+      "passed": true,
+      "actual": {
+        "before": 2,
+        "after": 2
+      }
+    },
+    {
+      "name": "clubRecords.wins.value unchanged",
+      "passed": true,
+      "actual": {
+        "before": 3,
+        "after": 3
+      }
+    },
+    {
+      "name": "prior final verification passed without failures",
+      "passed": true
+    },
+    {
+      "name": "prior final verification bound to same finished source",
+      "passed": true
+    },
+    {
+      "name": "one captured approved evening after reopen",
+      "passed": true
+    },
+    {
+      "name": "reopened evening stays finished",
+      "passed": true
+    },
+    {
+      "name": "exactly two histories and two receipts after reopen",
+      "passed": true
+    },
+    {
+      "name": "history and receipt IDs stay identical to one another",
+      "passed": true
+    },
+    {
+      "name": "both saved histories retain zero shootout kicks",
+      "passed": true
+    },
+    {
+      "name": "cleared live shootout remains absent after reopen",
+      "passed": true
+    },
+    {
+      "name": "after reopen aggregate rounds",
+      "passed": true
+    },
+    {
+      "name": "after reopen aggregate wins",
+      "passed": true
+    },
+    {
+      "name": "after reopen aggregate losses",
+      "passed": true
+    },
+    {
+      "name": "after reopen aggregate cleanSheets",
+      "passed": true
+    },
+    {
+      "name": "after reopen aggregate goals",
+      "passed": true
+    },
+    {
+      "name": "after reopen aggregate assists",
+      "passed": true
+    },
+    {
+      "name": "after reopen no per-game penalty credit: penTaken",
+      "passed": true
+    },
+    {
+      "name": "after reopen no per-game penalty credit: penScored",
+      "passed": true
+    },
+    {
+      "name": "after reopen no per-game penalty credit: penMissed",
+      "passed": true
+    },
+    {
+      "name": "after reopen no per-game penalty credit: penFaced",
+      "passed": true
+    },
+    {
+      "name": "after reopen no per-game penalty credit: penSaved",
+      "passed": true
+    },
+    {
+      "name": "after reopen no per-game penalty credit: penConceded",
+      "passed": true
+    },
+    {
+      "name": "after reopen stored score and delta remain 8.7/+0.3",
+      "passed": true
+    },
+    {
+      "name": "after reopen summary remains 2 games/3 score goals/1 assist/zero shootouts",
+      "passed": true
+    },
+    {
+      "name": "native probe completed between finished and reopened snapshots",
+      "passed": true
+    },
+    {
+      "name": "native probe reopened matching release application version",
+      "passed": true
+    },
+    {
+      "name": "native probe confirms QA identity, certificate and active runtime",
+      "passed": true
+    },
+    {
+      "name": "native SDK identity hash matches approved QA receipt",
+      "passed": true
+    }
+  ],
+  "observedAfterReopen": {
+    "histories": 2,
+    "receipts": 2,
+    "playerRows": 33,
+    "rounds": 44,
+    "wins": 22,
+    "losses": 22,
+    "cleanSheets": 11,
+    "goals": 2,
+    "assists": 1,
+    "score": 8.7,
+    "scoreDelta": 0.3,
+    "scoreGoals": 3
+  },
+  "completeGamesDigest": "947ef434506cd19670bcaae03cf9068d15a4c255ff8a0998e86f684c3828724f",
+  "protectedRoundsDigest": "dfda06aa31817dd74d0a0b08eee64b4b2654817e4a02b1cbe67c4d7ef36e7e4d",
+  "limits": "Offline file comparison only. The lead reports closing/reopening for the native probe; its receipt confirms matching application launch/runtime/QA identity between source snapshots. This does not prove Google Play installation, Play signing, track rollout or lost ACK after a product write. updatedAt is excluded only from global numeric counter comparison; games and protected records are compared in full."
+}

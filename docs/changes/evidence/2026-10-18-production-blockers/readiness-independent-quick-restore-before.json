@@ -1,0 +1,17 @@
+{
+  "kind": "actual restore effect with full-account quick route before asynchronous personal-group provisioning",
+  "effectDependencies": "[]",
+  "sourceSha256": "e82e056e019037326d5d506b54bc0ef3cd1225c79881f2db5c77c098298b28cc",
+  "atMount": {
+    "draftId": "new-draft-on-mount",
+    "checked": true,
+    "restored": null
+  },
+  "afterHydration": {
+    "draftId": "new-draft-on-mount",
+    "checked": true,
+    "restored": null
+  },
+  "confirmed": true,
+  "productionWrites": false
+}

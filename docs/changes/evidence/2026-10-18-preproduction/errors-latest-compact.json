@@ -1,0 +1,78 @@
+{
+  "readAt": "2026-10-17T22:18:00Z",
+  "note": "קריאת סוף שלב ארבעה; זמן מפורש משוער, lastSeen מדויק לפי שרת",
+  "items": [
+    {
+      "id": "b71c6ca0283e1a416df2b3b53b129028",
+      "title": "פעולה נכשלה · govmapSearch",
+      "operation": "govmapSearch",
+      "count": 22,
+      "lastSeen": "2026-10-17T22:14:14.457Z",
+      "lastMessage": "govmap autocomplete 403",
+      "appVersion": "1.1.52"
+    },
+    {
+      "id": "40e0ce8abee76cc992fd0f71ec9a3b55",
+      "title": "פעולה נכשלה · liveFinalizeRound",
+      "operation": "liveFinalizeRound",
+      "count": 3,
+      "lastSeen": "2026-10-17T21:58:54.578Z",
+      "lastMessage": "המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.",
+      "appVersion": "1.1.52"
+    },
+    {
+      "id": "38f078c846cba1e91c7c5d6b959427b0",
+      "title": "פעולה לא עבדה כצפוי · joryioRegisterPushToken",
+      "operation": "joryioRegisterPushToken",
+      "count": 68,
+      "lastSeen": "2026-10-17T19:59:11.557Z",
+      "lastMessage": "joryioRegisterPushToken",
+      "appVersion": "1.1.55"
+    },
+    {
+      "id": "e33f74f42af2eede1e5cc0a66fc24583",
+      "title": "פעולה נכשלה · liveFinalizeRoundTie",
+      "operation": "liveFinalizeRoundTie",
+      "count": 1,
+      "lastSeen": "2026-10-17T17:52:58.397Z",
+      "lastMessage": "המשחק או הפנדלים השתנו. יש לחזור לבחירה ולבדוק את הנתונים המעודכנים.",
+      "appVersion": "1.1.55"
+    },
+    {
+      "id": "cebad9e75333c56e3ec40dbea9a3f8df",
+      "title": "פעולה נכשלה · draftBoardLoad",
+      "operation": "draftBoardLoad",
+      "count": 3,
+      "lastSeen": "2026-10-17T02:49:19.869Z",
+      "lastMessage": "SAVED_DRAFT_UNAVAILABLE",
+      "appVersion": "1.1.52"
+    },
+    {
+      "id": "50500b12eebcd88758e222e1d3367122",
+      "title": "קריסה לא צפויה באפליקציה",
+      "operation": "uncaught",
+      "count": 2,
+      "lastSeen": "2026-10-16T13:38:18.361Z",
+      "lastMessage": "Cannot find native module 'ExpoSecureStore'",
+      "appVersion": "1.1.42"
+    },
+    {
+      "id": "606e9df247a432b7c7c2f14a3d3f00ee",
+      "title": "פעולה נכשלה · ensurePersonalGroupId",
+      "operation": "ensurePersonalGroupId",
+      "count": 1,
+      "lastSeen": "2026-10-16T07:03:16.989Z",
+      "lastMessage": "internal",
+      "appVersion": "1.1.52"
+    },
+    {
+      "id": "2ef60a1fdc17e25b4f6d09eb6b5d85f0",
+      "title": "פעולה נכשלה · ensurePersonalGroup",
+      "operation": "ensurePersonalGroup",
+      "count": 1,
+      "lastSeen": "2026-10-16T07:03:15.825Z",
+      "lastMessage": "internal",
+      "appVersion": "1.1.52"
+    }
+  ]
+}

@@ -1,9 +1,10 @@
+import { pulseFetch as fetch } from './adminTransport';
 // AdMob — estimated earnings + breakdowns via the networkReport. OAuth
 // user token. Runs a few targeted reports: daily totals, per-ad-unit
 // ("most profitable ad"), and per-country.
 
 import { config } from '../config';
-import { has } from '../secrets';
+import { has } from '../capabilities';
 import type { AdUnitStat, DailyPoint, NameCount, RevenueSummary } from '../types';
 import { googleOAuthToken } from './auth';
 

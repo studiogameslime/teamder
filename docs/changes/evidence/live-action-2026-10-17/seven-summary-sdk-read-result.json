@@ -1,0 +1,59 @@
+{
+  "completedAt": 1792202997547,
+  "error": null,
+  "phase": "complete",
+  "results": [
+    {
+      "elapsedMs": 4,
+      "errorCode": "unavailable",
+      "message": "Failed to get document from cache. (However, this document may exist on the server. Run again without setting 'source' in the GetOptions to attempt to retrieve the document from the server.)",
+      "source": "cache"
+    },
+    {
+      "coverage": {
+        "hasAssists": true,
+        "hasRoundHistory": true
+      },
+      "elapsedMs": 178,
+      "exists": true,
+      "fromCache": false,
+      "groupId": "J060YQu6QTcgk3glUDj2",
+      "hasPendingWrites": false,
+      "source": "default",
+      "stats": {
+        "assists": 2,
+        "goals": 3,
+        "rounds": 2,
+        "shootouts": 1,
+        "ties": 0
+      },
+      "summaryGameId": "YEdIR3MviDK82D581ELk"
+    },
+    {
+      "coverage": {
+        "hasAssists": true,
+        "hasRoundHistory": true
+      },
+      "elapsedMs": 327,
+      "exists": true,
+      "fromCache": false,
+      "groupId": "J060YQu6QTcgk3glUDj2",
+      "hasPendingWrites": false,
+      "source": "server",
+      "stats": {
+        "assists": 2,
+        "goals": 3,
+        "rounds": 2,
+        "shootouts": 1,
+        "ties": 0
+      },
+      "summaryGameId": "YEdIR3MviDK82D581ELk"
+    }
+  ],
+  "scope": {
+    "clubId": "J060YQu6QTcgk3glUDj2",
+    "gameId": "YEdIR3MviDK82D581ELk",
+    "ownerId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+  },
+  "startedAt": 1792202997037
+}

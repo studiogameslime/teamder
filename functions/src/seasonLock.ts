@@ -18,6 +18,9 @@ export interface SeasonLockClub {
     enabled?: boolean;
     currentId?: string;
     currentNo?: number;
+    count?: number;
+    disabledAt?: number;
+    operation?: unknown;
   };
 }
 
@@ -43,10 +46,10 @@ export function seasonOfEvening(
   game: SeasonLockGame,
 ): string {
   const seasons = club?.seasons;
-  if (!seasons?.enabled) return '';
   const stamped = typeof game.seasonId === 'string' ? game.seasonId : '';
   if (stamped) return stamped;
-  return seasons.currentNo === 1 ? seasons.currentId ?? '' : 's1';
+  if (!seasons?.enabled && !(seasons?.count)) return '';
+  return seasons?.currentNo === 1 ? seasons?.currentId ?? '' : 's1';
 }
 
 /** True when this evening's season is still open to corrections. */
@@ -56,7 +59,14 @@ export function seasonIsOpenForGame(
 ): boolean {
   const seasons = club?.seasons;
   // A club that runs no seasons has nothing to lock.
-  if (!seasons?.enabled) return true;
+  if (seasons?.operation) return false;
+  if (!seasons?.enabled) {
+    const closed = seasons?.count ?? Math.max(0, (seasons?.currentNo ?? 1) - 1);
+    if (!closed) return true;
+    const stamp = seasonOfEvening(club, game);
+    return stamp === '' || stamp === `off_${seasons?.count ?? 0}_${seasons?.disabledAt ?? 0}` ||
+      (stamp === seasons?.currentId && (seasons?.currentNo ?? 1) > (seasons?.count ?? 0));
+  }
   return seasonOfEvening(club, game) === seasons.currentId;
 }
 
@@ -79,6 +89,7 @@ export function assertSeasonOpenForGame(
   club: SeasonLockClub | undefined,
   game: SeasonLockGame,
 ): void {
+  if (club?.seasons?.operation) throw new HttpsError('failed-precondition', 'season-operation:busy');
   if (seasonIsOpenForGame(club, game)) return;
   throw new HttpsError(
     'failed-precondition',

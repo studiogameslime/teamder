@@ -1,0 +1,59 @@
+{
+  "source": "artifacts\\final-deep-audit-2026-10-17\\eleven-refill-fixed-trace.json",
+  "sourceSha256": "de35934beebf30c35b5f1c1a823e883e67c32baca4045b3d5487fb0af3ac6e64",
+  "gameId": "cF3CjQbLH8vzo7uaFqHx",
+  "roundId": "r_mvd1lc7d_cxuq50tk",
+  "passed": 9,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "העקבה שייכת למחזור הבדיקה השלישי שהמוצר החזיר",
+      "passed": true
+    },
+    {
+      "name": "הועברה קבלה מאושרת ולא רק בקשה לעזיבה",
+      "passed": true
+    },
+    {
+      "name": "לפני העזיבה שלושת ההרכבים מלאים",
+      "passed": true
+    },
+    {
+      "name": "תוצאת הקבלה מסירה רק את אורח03 מהאדומים",
+      "passed": true
+    },
+    {
+      "name": "הקבלה שומרת את אורח03 ברשימת היוצאים עם קבוצת בית אדומה",
+      "passed": true
+    },
+    {
+      "name": "הקריאה הראשונית מפורשת מהשרת אך מציגה את ההרכב הישן",
+      "passed": true
+    },
+    {
+      "name": "תוצאת הכנת ההשלמה תואמת לקבלה המאושרת ולא לקריאה הישנה",
+      "passed": true
+    },
+    {
+      "name": "תוצאת ההשלמה שומרת מצב קבוע ואת שני הצדדים שמשחקים",
+      "passed": true
+    },
+    {
+      "name": "זהות המשחק, הלוח והשעון האפסיים לא השתנו",
+      "passed": true
+    }
+  ],
+  "observed": {
+    "acknowledgedReceipt": true,
+    "initialServerReadWasStale": true,
+    "resultMatchesAcknowledgedAfter": true,
+    "snapshotListenerEventDirectlyCaptured": false
+  },
+  "codeInference": "prepareRefillPlaying passes the stale initial read and receipt to waitForRosterMutation. The helper accepts the post-write state only; on a pre-write state it waits for an uncached, non-pending snapshot matching receipt.after. The successful returned skeleton is consistent with this path, but the wrapper did not directly record that listener event.",
+  "limits": [
+    "בדיקה זו קוראת עקבה בלבד. פתיחת החלונית נצפתה וצולמה בידי המוביל, ולא נבדקה חזותית בסקריפט זה.",
+    "source:server באפשרויות אינו מוכיח שההרכב שקיבלנו הוא החדש: העקבה מוכיחה במפורש שהקריאה היחידה עדיין הייתה ישנה.",
+    "לא נלכדו metadata או אירועי מאזין ההמתנה עצמם. ההתאמה למסלול ההמתנה היא הסקה מהקוד ומהתוצאה, ולא אירוע מאזין מתועד.",
+    "העקבה מסתיימת בהצעת ההשלמה ואינה מוכיחה אישור משלים05 או החזרת03 אחריו."
+  ]
+}

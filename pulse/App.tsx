@@ -1,5 +1,7 @@
-import React, { useEffect } from 'react';
-import { LogBox } from 'react-native';
+import { AdminLoginScreen } from './src/screens/AdminLoginScreen';
+import { isPulseSignedIn, onPulseSessionChanged, restorePulseSession } from './src/services/adminSession';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View, LogBox } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 
@@ -38,7 +40,7 @@ const navTheme = {
   },
 };
 
-export default function App() {
+function AuthenticatedApp() {
   useEffect(() => {
     (async () => {
       await ensureNotificationSetup();
@@ -65,4 +67,15 @@ export default function App() {
       </DashboardProvider>
     </SafeAreaProvider>
   );
+}
+
+export default function App() {
+  const [ready, setReady] = useState(false), [signedIn, setSignedIn] = useState(isPulseSignedIn);
+  useEffect(() => {
+    const unsubscribe = onPulseSessionChanged(() => setSignedIn(isPulseSignedIn()));
+    void restorePulseSession().catch(() => {}).finally(() => setReady(true));
+    return unsubscribe;
+  }, []);
+  return !ready ? <View style={{flex:1,backgroundColor:colors.bg,justifyContent:'center'}}><ActivityIndicator color={colors.primary}/></View>
+    : signedIn ? <AuthenticatedApp/> : <SafeAreaProvider><AdminLoginScreen/></SafeAreaProvider>;
 }

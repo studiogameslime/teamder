@@ -1,0 +1,133 @@
+{
+  "gameId": "cF3CjQbLH8vzo7uaFqHx",
+  "accountId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+  "clubId": "J060YQu6QTcgk3glUDj2",
+  "source": "data-eleven-created.json",
+  "sourceSha256": "97fbcbb5bcda227d54c3de4874429e4df29dfc2ce494b6ac82be2e1266cec626",
+  "readCompletedAt": "2026-10-17T23:22:38.966087+00:00",
+  "globalCounters": {
+    "account": {
+      "exists": true,
+      "numbers": {
+        "updatedAt": 1792278880055,
+        "stats": {
+          "penConceded": 2,
+          "penScored": 2,
+          "penFaced": 6,
+          "assists": 1,
+          "goals": 4,
+          "penMissed": 1,
+          "penSaved": 3,
+          "penTaken": 3,
+          "wins": 6,
+          "cleanSheets": 4
+        }
+      },
+      "digest": "30220c87ca9e878818e69b8a4c06b11eb4e32144c5cb1d474621db67c83ade0c"
+    },
+    "qaClubStats": {
+      "exists": true,
+      "numbers": {
+        "eveningScoreCount": 5,
+        "cleanSheets": 4,
+        "penScored": 2,
+        "penFaced": 6,
+        "penConceded": 2,
+        "lastEveningScore": 6.7,
+        "bestEvening": {
+          "involvement": 2,
+          "cleanSheets": 1,
+          "assists": 1,
+          "goals": 1,
+          "wins": 2
+        },
+        "penMissed": 1,
+        "assists": 1,
+        "penSaved": 3,
+        "wins": 6,
+        "asRounds": 9,
+        "penTaken": 3,
+        "games": 5,
+        "rounds": 9,
+        "goals": 4,
+        "eveningScoreSum": 41.400000000000006,
+        "losses": 3,
+        "csRounds": 9,
+        "updatedAt": 1792278785810,
+        "lastEveningAt": 1792274400000
+      },
+      "digest": "796bc317379952d638462c4fc87b45c9d6ce7cfae19c375d364bf35449721515"
+    },
+    "clubTotals": {
+      "exists": true,
+      "numbers": {
+        "kingGoalsCount": 4,
+        "countedRounds": 11,
+        "tiedRounds": 1,
+        "scorelessRounds": 4,
+        "kingAssistsCount": 1,
+        "rounds": 11,
+        "updatedAt": 1792278786983,
+        "goals": 4,
+        "shootoutRounds": 2,
+        "kingAssistsSum": 1,
+        "kingGoalsSum": 4,
+        "chemistrySince": 1792192500000,
+        "guestGoals": 7
+      },
+      "digest": "554c511e0611be77e636c96b3c54d2861b7d984ef4e791c15f4895af3f173bfd"
+    },
+    "clubShowcase": {
+      "exists": true,
+      "numbers": {
+        "activeMembersThisMonth": 1,
+        "totalGamesFinished": 5,
+        "avgAttendance": 1,
+        "totalMembers": 1,
+        "totalGamesCancelled": 0,
+        "foundedAt": 1792188733060,
+        "organizationRatePct": 100,
+        "activeMembersThisYear": 1,
+        "thisMonthGames": 5,
+        "updatedAt": 1792278786296
+      },
+      "digest": "e6db792c56ae87c517aa1f53140b90dd2463c205a55a9d2d843f39c30175ab19"
+    },
+    "clubRecords": {
+      "exists": true,
+      "numbers": {
+        "involvement": {
+          "value": 2
+        },
+        "eveningsSealed": 5,
+        "cleanSheets": {
+          "value": 1
+        },
+        "since": 1792192500000,
+        "wins": {
+          "value": 2
+        },
+        "lastEveningAt": 1792274400000,
+        "updatedAt": 1792278791193,
+        "goals": {
+          "value": 1
+        },
+        "assists": {
+          "value": 1
+        }
+      },
+      "digest": "0e0a311b19f1b991113d5eccd5493f15b50c66d174cd012111bf5d16e6e3e162"
+    }
+  },
+  "priorNewRounds": [
+    {
+      "id": "Ra5ZBzOUjR5zQlMojHke",
+      "digest": "ebcc6044837e005bd462b0aa643a846647e0ee5046f0e4222948cc31cd48e971"
+    },
+    {
+      "id": "FQ4T7izEbuYfprKFS75n",
+      "digest": "feb39600d1329c4f505f88f4929fabbf706d49b18749371b931bf9bca1e1bcfa"
+    }
+  ],
+  "limit": "Business counters immediately after seven sealed and eleven created; account updatedAt changed on creation but account.stats did not."
+}

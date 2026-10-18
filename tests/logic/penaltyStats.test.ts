@@ -205,7 +205,7 @@ describe('aggregatePenalties — safety + edge cases', () => {
       keeperId: 'g',
       scored: true,
     }));
-    const { byKicker, byKeeper } = aggregatePenalties(pens, ALL);
+    const { byKicker, byKeeper } = aggregatePenalties(pens, { ...ALL, maxKicks: PENALTY_ROUND_CAP });
     expect(byKicker.k.taken).toBe(PENALTY_ROUND_CAP);
     expect(byKeeper.g.faced).toBe(PENALTY_ROUND_CAP);
   });
@@ -236,6 +236,19 @@ describe('aggregatePenalties — safety + edge cases', () => {
     expect(byKicker.k1).toEqual({ taken: 2, scored: 1, missed: 1 });
     expect(byKicker.k2).toEqual({ taken: 1, scored: 1, missed: 0 });
     expect(byKeeper.g1).toEqual({ faced: 3, saved: 1, conceded: 2 });
+  });
+});
+
+describe('explicit shootout outcomes', () => {
+  it('counts every faced kick, but an off-target miss is not a save', () => {
+    const penalties = Array.from({ length: 24 }, (_, i): PenaltyKick => ({ kickerId: 'k', keeperId: 'g', scored: i % 3 === 0, outcome: i % 3 === 0 ? 'goal' : i % 3 === 1 ? 'save' : 'miss' }));
+    const result = aggregatePenalties(penalties, ALL);
+    expect(result.byKicker.k).toEqual({ taken: 24, scored: 8, missed: 16 });
+    expect(result.byKeeper.g).toEqual({ faced: 24, saved: 8, conceded: 8 });
+  });
+  it('preserves the outcome in the server payload without inventing legacy outcomes', () => {
+    const data = { firstTeam: 'A' as const, kicks: [{ ...kick('k', 'g', false, 0), outcome: 'miss' as const }, kick('old', 'g', false, 1)] };
+    expect(buildShootoutPenaltyPayload(data)).toEqual([{ kickerId: 'k', keeperId: 'g', scored: false, outcome: 'miss' }, { kickerId: 'old', keeperId: 'g', scored: false }]);
   });
 });
 

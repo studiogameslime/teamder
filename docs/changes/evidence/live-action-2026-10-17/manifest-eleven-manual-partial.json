@@ -1,0 +1,25 @@
+{
+  "createdAtUtc": "2026-10-17T03:03:35.384564+00:00",
+  "gameId": "mBO5HqJdnOPWjRE2zMh8",
+  "phase": "חלוקה ידנית חלקית מקומית בלבד; אין חלוקה שמורה בשרת במקור הזה",
+  "files": [
+    {
+      "file": "data-eleven-partial-manual.json",
+      "readAt": "2026-10-17T02:30:47.021232+00:00",
+      "originalSha256": "5a474b9d4ce2c7b46ffeeeca034b8796b0346ca19a6a3b5b4e9bd9fb276d208e",
+      "sha256": "0d42ee241185652d65947e672dbf0623bc75adc05974efc7a622d6d901a63dd6",
+      "filtered": true
+    },
+    {
+      "file": "eleven-manual-local-proof.json",
+      "sha256": "90adac4a8934d21ed1f0f4b9c8a6bc6f4616d4d2a8e63fc3791cf2c2a345f706",
+      "originalSha256": "90adac4a8934d21ed1f0f4b9c8a6bc6f4616d4d2a8e63fc3791cf2c2a345f706",
+      "filtered": false,
+      "parseCount": 2
+    }
+  ],
+  "notes": [
+    "קובץ ההוכחה המקומית הוא מחרוזת המקודדת בתוך מסמך JSON; פוענח פעמיים לבדיקה אך המקור נשמר ללא שינוי.",
+    "ספירות 11,11,0 מוכיחות טיוטה חלקית מקומית בלבד; אין הוכחת חלוקה מפורסמת, לייב או שמירת משחק."
+  ]
+}

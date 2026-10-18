@@ -1,0 +1,116 @@
+{
+  "kind": "source-extracted request through installed Firebase functions encode and actual converter/fingerprint",
+  "checks": 18,
+  "passed": true,
+  "productionWrites": false,
+  "cases": [
+    {
+      "size": 4,
+      "winner": "A",
+      "legacy": false,
+      "passed": true
+    },
+    {
+      "size": 4,
+      "winner": "A",
+      "legacy": true,
+      "passed": true
+    },
+    {
+      "size": 4,
+      "winner": "B",
+      "legacy": false,
+      "passed": true
+    },
+    {
+      "size": 4,
+      "winner": "B",
+      "legacy": true,
+      "passed": true
+    },
+    {
+      "size": 4,
+      "winner": "bothOut",
+      "legacy": false,
+      "passed": true
+    },
+    {
+      "size": 4,
+      "winner": "bothOut",
+      "legacy": true,
+      "passed": true
+    },
+    {
+      "size": 7,
+      "winner": "A",
+      "legacy": false,
+      "passed": true
+    },
+    {
+      "size": 7,
+      "winner": "A",
+      "legacy": true,
+      "passed": true
+    },
+    {
+      "size": 7,
+      "winner": "B",
+      "legacy": false,
+      "passed": true
+    },
+    {
+      "size": 7,
+      "winner": "B",
+      "legacy": true,
+      "passed": true
+    },
+    {
+      "size": 7,
+      "winner": "bothOut",
+      "legacy": false,
+      "passed": true
+    },
+    {
+      "size": 7,
+      "winner": "bothOut",
+      "legacy": true,
+      "passed": true
+    },
+    {
+      "size": 11,
+      "winner": "A",
+      "legacy": false,
+      "passed": true
+    },
+    {
+      "size": 11,
+      "winner": "A",
+      "legacy": true,
+      "passed": true
+    },
+    {
+      "size": 11,
+      "winner": "B",
+      "legacy": false,
+      "passed": true
+    },
+    {
+      "size": 11,
+      "winner": "B",
+      "legacy": true,
+      "passed": true
+    },
+    {
+      "size": 11,
+      "winner": "bothOut",
+      "legacy": false,
+      "passed": true
+    },
+    {
+      "size": 11,
+      "winner": "bothOut",
+      "legacy": true,
+      "passed": true
+    }
+  ]
+}

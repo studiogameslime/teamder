@@ -1,0 +1,137 @@
+{
+  "createdAtUtc": "2026-10-16T23:43:22.722418+00:00",
+  "scope": "ראיות מחזור ארבעה מול ארבעה; נתוני חשבון, מועדון ואורחים ייעודיים לבדיקה בלבד",
+  "gameId": "lmUUmQru2HtKvQkRDVeD",
+  "groupId": "J060YQu6QTcgk3glUDj2",
+  "notes": [
+    "תמונות המסד עברו בחירת שדות; כתובת דואר וקוד הזמנה לא נשמרו.",
+    "חותמות המקור בדוח הביקורת מתייחסות לקובצי המקור המלאים; sha256 כאן מתייחס לעותק המסונן.",
+    "הארכיון מכיל מסמכי נוכחות וחתימה לחשבון הבדיקה; אינו אישור למסירה חוזרת, חידוש חיבור, תקינות שרת או פריסה."
+  ],
+  "files": [
+    {
+      "file": "data-round-four-created.json",
+      "readAt": "2026-10-16T22:25:31.230611+00:00",
+      "originalSha256": "362faff2f3160063e56b782b863a3be1bd68fe00587731fb2e3db577dc9119d1",
+      "sha256": "f81f745c564738de8eccdf8b3c3c1b90206b814c3d1a7c816238aea0d30e8871",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-first-guest.json",
+      "readAt": "2026-10-16T22:28:01.186164+00:00",
+      "originalSha256": "717591aaacfa914584ab72db33e91a5ec62d9334bdc7b4f4b72d46b57174ec24",
+      "sha256": "db6e1bfa5540a7c16f969b620a81eff487affe0745a98f6bd84fbdf4c0ac64bb",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-full-roster.json",
+      "readAt": "2026-10-16T22:33:19.626798+00:00",
+      "originalSha256": "11c336e32bb52cbc7dcea6e16d7ff97d8e46f1dfc55414da20afd3a609d9e56a",
+      "sha256": "786bfbf3e1c8376a6b442ab5a663a6995690bb65d6099893144b3f31465ea538",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-random.json",
+      "readAt": "2026-10-16T22:36:39.487591+00:00",
+      "originalSha256": "7dd655aeced2ab137eaa0a1183d19790356cf4fd606d705b3e5aef1da94bcaaf",
+      "sha256": "848da0a1ae4b1f04b3252ffc96186ce57510dab15ec6bc1bde2272d0c820fc68",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-manual-edit.json",
+      "readAt": "2026-10-16T22:38:37.274817+00:00",
+      "originalSha256": "7898f7f5e4b7ed442ed205eeea3efe0042619ed358e6d1be4fc263036f1a8354",
+      "sha256": "293674ce23c8184066fb9225eaacef96acb08b79711a49b00d9609c52f8ee3b9",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-captains.json",
+      "readAt": "2026-10-16T22:51:37.150408+00:00",
+      "originalSha256": "79c37aba4fedb65f0c3a5687e68fdd59003e7b73b13f93c1027297f4c79b294f",
+      "sha256": "8c19d6869ec74e1b3d72083c96eaa458e23308859e7c1b4d5cb162b52f058790",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-ready.json",
+      "readAt": "2026-10-16T23:00:30.791074+00:00",
+      "originalSha256": "66540096aa704b006d09bf225da48e25d092ae90e52b4af43f870aa8948a969d",
+      "sha256": "6d3a351a3c8a9c2fed26352f058dec0e3b5521f0474fdbf343b39f0f96cd6788",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-goal-one.json",
+      "readAt": "2026-10-16T23:02:29.838232+00:00",
+      "originalSha256": "b65aa7d9ce01d075ed08b346e3085967e1ec1120ec7ab9216bdb85f2bf1107c8",
+      "sha256": "b2c635013ab2a54f7f0fdbe7ac8d6f715ea6dfd97aaa9ae343ebad364f6a5068",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-five-goals.json",
+      "readAt": "2026-10-16T23:05:05.000770+00:00",
+      "originalSha256": "8e1cf2415616a43731ebb53cba51a9a971b5d6ce9300b49bd6c462acb169d49d",
+      "sha256": "76f55fb135c1c6785ccd21433ab8f03bf48093499790e1857b9b2213e47ccf21",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-removed.json",
+      "readAt": "2026-10-16T23:06:13.768630+00:00",
+      "originalSha256": "81178909f51b054b9d72158d639f2d5645acdb1d7d48bed63b7a11c14a81e8e1",
+      "sha256": "4410340a7d248afe83b8d8c2a54225f36274c8754a297833c352edf6c89a7fce",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-temp-swap.json",
+      "readAt": "2026-10-16T23:07:14.834472+00:00",
+      "originalSha256": "c7815b47684ef084cbe3bf12d68e8705daa8ba7c2a20dfc33b382ae4c4aa3e50",
+      "sha256": "2af049c2cc1436cbdc622ce2ddfaddc580b47830425b50182a70200afd52c0c2",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-first-commit.json",
+      "readAt": "2026-10-16T23:12:50.181473+00:00",
+      "originalSha256": "e4ac4b9bb68c6c4a13addee960bbdd62945334a211d53bcd2431180aa992e052",
+      "sha256": "e3a54107caf5852f0033f7c9b12f3ec4d0edca3674fd1c761206bcf00e7808f6",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-second-ready.json",
+      "readAt": "2026-10-16T23:16:23.631045+00:00",
+      "originalSha256": "0791d041ad469b88bb03d0104bab95cd99e39bcd6cbf922a2f2c2df12a665b10",
+      "sha256": "0cd9ee7dc8f91807bdc2352f8843e70c38263091d0cc9f6c55269f0883f49d09",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-second-commit.json",
+      "readAt": "2026-10-16T23:19:13.019747+00:00",
+      "originalSha256": "8452ee4ad67949a83f76012a87857f6632c16be1c5c021f241f9c06d4ffa0da4",
+      "sha256": "2a901b368af0ecdfef176501127ea936c968fd7c3e990640486157e051494e96",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-finished.json",
+      "readAt": "2026-10-16T23:20:22.535989+00:00",
+      "originalSha256": "81c458c24b3cd255dac747132da3774ee37df8df92031a2bea316246ab5b8e63",
+      "sha256": "d1eacb3d489133b5260e7f8d321d04c314c327c332677c41993b63d4a81f7e61",
+      "filtered": true
+    },
+    {
+      "file": "data-round-four-sealed-proof.json",
+      "readAt": "2026-10-16T23:38:54.322400+00:00",
+      "originalSha256": "fc551c7ccefce10de4b953dfa59115ff7d0fbbb998210b77a642d08cdb4fd114",
+      "sha256": "eba9f3d1c43fc87236ff7fd87c00a6501f8ab9b71f69e20ef2dd4ad39761a3d5",
+      "filtered": true
+    },
+    {
+      "file": "audit-four-data.json",
+      "originalSha256": "d145fdea7945b37cac8b5376d038b22452d604dcaeaae618eae05c20a9871854",
+      "sha256": "d145fdea7945b37cac8b5376d038b22452d604dcaeaae618eae05c20a9871854",
+      "filtered": false
+    },
+    {
+      "file": "audit-four-data.md",
+      "originalSha256": "597269aa12c14b251fe4648993464de18ff5b69a4b6b81e0f0e18505eb806c29",
+      "sha256": "597269aa12c14b251fe4648993464de18ff5b69a4b6b81e0f0e18505eb806c29",
+      "filtered": false
+    }
+  ]
+}

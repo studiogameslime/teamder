@@ -2,8 +2,10 @@ import * as admin from 'firebase-admin';
 import { createHash } from 'crypto';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
-import { ONBOARDING_ACTIONS, safeActivityParams, activityLabel } from './onboardingActivityCatalog';
+import { ONBOARDING_ACTIONS, safeActivityParams } from './onboardingActivityCatalog';
 import { onboardingPushMilestone } from './onboardingPushPolicy';
+import { onboardingPushContent } from './onboardingPushContent';
+import { onboardingGuestNumber } from './onboardingGuest';
 
 /** Authenticated anonymous sessions are valid; UID always comes from the token. */
 export const recordOnboardingActivity = onCall({ maxInstances: 5 }, async request => {
@@ -34,19 +36,47 @@ export const recordOnboardingActivity = onCall({ maxInstances: 5 }, async reques
   const quota = db.collection('onboardingActivityLimits').doc(uid);
   const actor = (await db.doc(`users/${uid}`).get()).data();
   const actorName = typeof actor?.name === 'string' ? actor.name.trim().slice(0, 60) : '';
+  const anonymous = request.auth.token.firebase?.sign_in_provider === 'anonymous';
+  // A queue may first reach the server after an in-place account upgrade.
+  const guestNumber = await onboardingGuestNumber(uid, anonymous || rows.some(row =>
+    row.action === 'guest_session_started' || row.params.is_guest === true));
+  const journeyRefs = [...new Set(rows.map(row => row.sessionId))].map(id =>
+    db.doc(`onboardingJourneyState/${createHash('sha256').update(`${uid}:${id}`).digest('hex')}`));
   await db.runTransaction(async tx => {
-    const [limit, ...snapshots] = await tx.getAll(quota, ...refs);
+    const [limit, ...snapshots] = await tx.getAll(quota, ...refs, ...journeyRefs);
+    const states = new Map<string, Record<string, any>>();
+    [...new Set(rows.map(row => row.sessionId))].forEach((id, index) => {
+      states.set(id, snapshots[refs.length + index].data() ?? {});
+    });
     const fresh = rows.filter((_, i) => !snapshots[i].exists);
     const previous = limit.data();
     const sameHour = Number(previous?.window) === Math.floor(now / 3600000);
     const used = sameHour ? Number(previous?.count) || 0 : 0;
     if (used + fresh.length > 600) throw new HttpsError('resource-exhausted', 'Activity rate limit; retry later');
     tx.set(quota, { window: Math.floor(now / 3600000), count: used + fresh.length });
-    rows.forEach((row, i) => {
+    rows.map((row, i) => ({ row, i })).sort((a, b) => a.row.sequence - b.row.sequence).forEach(({ row, i }) => {
       if (snapshots[i].exists) return;
-      tx.create(refs[i], { ...row, uid, actorName, anonymous: request.auth!.token.firebase?.sign_in_provider === 'anonymous',
+      const state = states.get(row.sessionId)!;
+      const choice = row.action === 'entry_intent_selected' && row.params.is_guest === true
+        && ['create_club', 'find_game', 'one_off_game', 'invite'].includes(String(row.params.intent));
+      const ordered = row.sequence > (state.intentSequence ?? 0);
+      const previousIntent = choice && ordered ? state.intent : undefined;
+      const repeatedIntent = choice && (!ordered || previousIntent === row.params.intent);
+      if (choice && ordered) {
+        state.intent = row.params.intent;
+        state.intentSequence = row.sequence;
+      }
+      // Preserve launch attribution for older clients that omit it on later actions.
+      if (row.action === 'entry_source_resolved') state.entryContext = row.params;
+      const entryContext = Object.fromEntries(Object.entries(state.entryContext ?? {}).filter(([key]) =>
+        ['entry_source', 'entry_channel', 'entry_campaign', 'resolved_by', 'target_type', 'target_id', 'has_inviter', 'inviter_uid'].includes(key)));
+      tx.create(refs[i], { ...row, params: { ...entryContext, ...row.params }, uid, actorName, anonymous,
+        ...(guestNumber ? { guestNumber } : {}),
+        ...(previousIntent && !repeatedIntent ? { previousIntent } : {}),
+        ...(choice ? { intentTracked: true, repeatedIntent } : {}),
         createdAt: now, pushStatus: 'pending', label: ONBOARDING_ACTIONS[row.action] });
     });
+    [...states.values()].forEach((state, index) => tx.set(journeyRefs[index], state));
   });
   return { acknowledged: rows.map(row => row.id) };
 });
@@ -58,8 +88,14 @@ export const onOnboardingActivity = onDocumentCreated({ document: 'onboardingAct
   const db = admin.firestore();
   const current = (await ref.get()).data();
   if (!current || ['sent', 'muted', 'history_only', 'milestone_duplicate'].includes(current.pushStatus)) return;
-  const milestone = onboardingPushMilestone(current.action, current.params);
-  if (!milestone) { await ref.update({ pushStatus: 'history_only' }); return; }
+  let milestone = onboardingPushMilestone(current.action, current.params);
+  if (current.intentTracked && current.action === 'entry_intent_selected') {
+    if (current.repeatedIntent) { await ref.update({ pushStatus: 'milestone_duplicate' }); return; }
+    if (milestone) milestone = `intent-event:${event.params.eventId}`;
+  }
+  const guestNumber = current.guestNumber ?? await onboardingGuestNumber(current.uid, current.anonymous === true || current.params?.is_guest === true);
+  if (milestone === 'registration_started' && !guestNumber) milestone = null;
+  if (!milestone || (milestone === 'authenticated' && current.anonymous === true)) { await ref.update({ pushStatus: 'history_only' }); return; }
   // A repeated tap/view is still in history, but only one push for this milestone per visit.
   const marker = db.collection('onboardingMilestonePushes').doc(createHash('sha256').update(`${current.sessionId}:${milestone}`).digest('hex'));
   const ownsMilestone = await db.runTransaction(async tx => {
@@ -75,10 +111,14 @@ export const onOnboardingActivity = onDocumentCreated({ document: 'onboardingAct
   const tokens = [...new Set<string>((config?.tokens ?? []).filter((v: unknown) => typeof v === 'string' && v.length))];
   if (!tokens.length) { await ref.update({ pushStatus: 'no_devices' }); return; }
   const user = (await db.doc(`users/${current.uid}`).get()).data();
-  const who = typeof user?.name === 'string' && user.name.trim() ? user.name.trim().slice(0, 60) : 'אורח';
-  const summary = milestone === 'entry'
-    ? `נכנס לאפליקציה${current.params?.has_inviter ? ' דרך הזמנה' : ''}`
-    : activityLabel(current.action, current.params);
+  // Use this visit's link identity only, never a historical referral from the
+  // actor profile. Names supplied by a client are not display-name authority.
+  const inviterUid = current.params?.inviter_uid;
+  const inviter = typeof inviterUid === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(inviterUid)
+    ? (await db.doc(`users/${inviterUid}`).get()).data() : undefined;
+  const inviterName = typeof inviter?.name === 'string' && inviter.name.trim() ? inviter.name : inviter?.displayName;
+  const content = onboardingPushContent({ action: current.action, actorName: current.actorName, anonymous: current.anonymous, params: current.params,
+    guestNumber, previousIntent: current.previousIntent, inviterName }, user);
   const tokenKey = (token: string) => createHash('sha256').update(token).digest('hex');
   const delivered = new Set<string>(Array.isArray(current.deliveredTargets) ? current.deliveredTargets : []);
   const permanent = new Set<string>(Array.isArray(current.invalidTargets) ? current.invalidTargets : []);
@@ -88,7 +128,7 @@ export const onOnboardingActivity = onDocumentCreated({ document: 'onboardingAct
     return;
   }
   const response = await admin.messaging().sendEachForMulticast({ tokens: pending,
-    notification: { title: 'תהליך ההצטרפות', body: `${who}: ${summary}` },
+    notification: content,
     data: { type: 'onboardingActivity', eventId: event.params.eventId, sessionId: current.sessionId, uid: current.uid },
     android: { priority: 'high', notification: { channelId: 'onboarding', sound: 'default', tag: event.params.eventId } },
     apns: { headers: { 'apns-collapse-id': createHash('sha256').update(event.params.eventId).digest('hex') }, payload: { aps: { sound: 'default' } } },
@@ -102,6 +142,7 @@ export const onOnboardingActivity = onDocumentCreated({ document: 'onboardingAct
     else { transient = true; transientCount++; }
   });
   await ref.update({ pushStatus: transient ? 'retrying' : delivered.size ? 'sent' : 'no_devices',
+    pushTitle: content.title, pushBody: content.body,
     deliveredTargets: [...delivered], invalidTargets: [...permanent],
     deliveredDevices: delivered.size, failedDevices: permanent.size + transientCount, pushAttemptAt: Date.now() });
   if (transient) throw new Error('Transient onboarding push delivery failure');

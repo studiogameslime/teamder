@@ -13,16 +13,15 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
-  Pressable,
   StyleSheet,
-  Text,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
-import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { spacing } from '@/theme';
+import { NoticeCard } from './NoticeCard';
 
-type BannerType = 'success' | 'info';
+type BannerType = 'success' | 'error' | 'info';
 
 interface BannerState {
   seq: number;
@@ -143,9 +142,6 @@ export function BannerHost() {
     return null;
   }
 
-  const iconName: keyof typeof Ionicons.glyphMap =
-    icon ?? (type === 'success' ? 'checkmark-circle' : 'information-circle');
-
   return (
     <Animated.View
       pointerEvents="box-none"
@@ -158,22 +154,7 @@ export function BannerHost() {
         },
       ]}
     >
-      <Pressable
-        onPress={() => useBannerStore.getState().hide()}
-        style={[
-          styles.card,
-          type === 'success' ? styles.cardSuccess : styles.cardInfo,
-        ]}
-      >
-        <Ionicons
-          name={iconName}
-          size={20}
-          color={type === 'success' ? colors.primary : colors.text}
-        />
-        <Text style={styles.text} numberOfLines={2}>
-          {message}
-        </Text>
-      </Pressable>
+      <NoticeCard message={message} type={type} icon={icon} onClose={() => useBannerStore.getState().hide()} />
     </Animated.View>
   );
 }
@@ -184,31 +165,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: spacing.lg,
-    zIndex: 999,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    ...shadows.card,
-  },
-  cardSuccess: {
-    borderColor: colors.primary,
-  },
-  cardInfo: {
-    borderColor: colors.divider,
-  },
-  text: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: RTL_LABEL_ALIGN,
+    zIndex: 999,
   },
 });

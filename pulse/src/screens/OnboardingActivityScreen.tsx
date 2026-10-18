@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { Screen } from '../components/ui';
 import { colors, font } from '../theme';
 import { queryByCreatedAt, queryEquals, type FsDoc } from '../services/firestoreRest';
 import { activityLabel } from '../services/onboardingActivityCatalog';
+import { createOnboardingActivityLoader } from '../services/onboardingActivityLoader';
 
 const time = (ms: number) => new Date(ms).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
@@ -16,17 +17,17 @@ export function OnboardingActivityScreen() {
   const [error, setError] = useState('');
   const [counts, setCounts] = useState(false);
   useEffect(() => { if (route.params?.sessionId) setSession(route.params.sessionId); }, [route.params?.sessionId]);
-  const load = useCallback(async () => {
-    setLoading(true); setError('');
-    try {
-      const result = session
-        ? await queryEquals('onboardingActivity', 'sessionId', session, 2000)
+  const loader = useMemo(() => createOnboardingActivityLoader<FsDoc>({
+    query: async (selectedSession) => {
+      const result = selectedSession
+        ? await queryEquals('onboardingActivity', 'sessionId', selectedSession, 2000)
         : await queryByCreatedAt('onboardingActivity', Date.now() - 86400000, Date.now(), 'integer', 2000);
-      setRows(result.sort((a, b) => session ? a.sequence - b.sequence : b.createdAt - a.createdAt));
-    } catch { setError('לא ניתן לטעון את הפעולות. נסו שוב.'); }
-    finally { setLoading(false); }
-  }, [session]);
-  useEffect(() => { void load(); }, [load]);
+      return result.sort((a, b) => selectedSession ? a.sequence - b.sequence : b.createdAt - a.createdAt);
+    },
+    rows: setRows, error: setError, loading: setLoading,
+  }), []);
+  const load = useCallback(() => loader.load(session), [loader, session]);
+  useEffect(() => { void load(); return () => loader.cancel(); }, [load, loader]);
   const grouped = Object.entries(rows.reduce<Record<string, number>>((out, row) => {
     const label = activityLabel(row.action, row.params);
     out[label] = (out[label] ?? 0) + 1; return out;

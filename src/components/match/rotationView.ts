@@ -15,6 +15,7 @@ export {
   teamNameAfterPreposition,
   teamDot,
   teamPaletteEntry,
+  teamTextColor,
   TEAM_PALETTE,
   type TeamPaletteEntry,
   type TeamLike,
@@ -30,6 +31,19 @@ const TEAM_COLORS = [
 /** The tint for a team index — the chosen colour when set, else the index one. */
 export function teamColor(i: number, teams?: readonly TeamLike[]): string {
   return chosenFor(i, teams)?.hex ?? TEAM_COLORS[i] ?? colors.textMuted;
+}
+
+/** Text/icon ink on the actual team colour, without darkening the team itself. */
+export function teamOnColor(i: number, teams?: readonly TeamLike[]): string {
+  const hex = teamColor(i, teams).slice(1);
+  const linear = [0, 2, 4].map(offset => {
+    const channel = parseInt(hex.slice(offset, offset + 2), 16) / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+  const darkLuminance = 0.0088; // #0F172A
+  return (luminance + 0.05) / (darkLuminance + 0.05) >= 1.05 / (luminance + 0.05)
+    ? '#0F172A' : '#FFFFFF';
 }
 
 /** First name only — keeps live roster rows compact ("Eliran Tzabari" →

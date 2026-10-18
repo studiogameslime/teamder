@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // IssueCardSheet — a small bottom sheet an admin uses to give a player a
 // yellow/red card in the community, with an optional free-text detail that
 // shows on the player's timeline.
@@ -49,11 +50,11 @@ export function IssueCardSheet({
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <SpringSheet visible={visible} onBackdropPress={saving ? undefined : onClose}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.kav}
         >
+      <SpringSheet visible={visible} onBackdropPress={saving ? undefined : onClose} panelStyle={{ justifyContent: 'flex-end' }}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.grip} />
             <View style={styles.titleRow}>
@@ -79,17 +80,8 @@ export function IssueCardSheet({
               textAlign={RTL_LABEL_ALIGN === 'left' ? 'right' : 'left'}
             />
 
-            {/* Save on the LEFT, Cancel on the RIGHT (user report). The row is
-                row-reverse, so Save is listed first here to land on the left. */}
+            {/* Under forceRTL the first child is on the right. */}
             <View style={styles.actions}>
-              <Button
-                title={he.save}
-                variant={isRed ? 'danger' : 'primary'}
-                size="lg"
-                style={styles.actionBtn}
-                loading={saving}
-                onPress={() => onSave(detail)}
-              />
               <Button
                 title={he.cancel}
                 variant="outline"
@@ -98,27 +90,32 @@ export function IssueCardSheet({
                 disabled={saving}
                 onPress={onClose}
               />
+              <Button
+                title={he.save}
+                variant={isRed ? 'danger' : 'primary'}
+                size="lg"
+                style={styles.actionBtn}
+                loading={saving}
+                onPress={() => onSave(detail)}
+              />
             </View>
           </Pressable>
-        </KeyboardAvoidingView>
       </SpringSheet>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  kav: { marginTop: 'auto' },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  kav: { flex: 1 },
+  sheet: { ...overlaySurfaces.sheet,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
     gap: spacing.sm,
   },
   grip: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.border, marginBottom: spacing.sm },
-  titleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   chip: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   label: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: spacing.xs },
@@ -134,6 +131,6 @@ const styles = StyleSheet.create({
     minHeight: 72,
     textAlignVertical: 'top',
   },
-  actions: { flexDirection: 'row-reverse', gap: spacing.sm, marginTop: spacing.sm },
+  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   actionBtn: { flex: 1 },
 });

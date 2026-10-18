@@ -20,8 +20,8 @@
 
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
+import { doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,6 +46,19 @@ before(async () => {
   });
 });
 after(async () => { await env.cleanup(); });
+
+test('dispatch can read an absent marker but an existing recipient-private marker denies the sender', async () => {
+  await seed();
+  const sender = env.authenticatedContext(ADMIN).firestore();
+  const absent = await assertSucceeds(getDoc(doc(sender, 'notifications', 'absent-marker')));
+  assert.equal(absent.exists(), false);
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'notifications', 'private-marker'), {
+    type: 'approved', recipientId: VICTIM, payload: { groupId: GID }, createdByUid: ADMIN,
+  }));
+  await assertFails(getDoc(doc(sender, 'notifications', 'private-marker')));
+  const recipient = env.authenticatedContext(VICTIM).firestore();
+  assert.equal((await assertSucceeds(getDoc(doc(recipient, 'notifications', 'private-marker')))).exists(), true);
+});
 
 async function seed() {
   await env.clearFirestore();
@@ -154,7 +167,7 @@ describe('the legitimate senders still get through', () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await deleteDoc(doc(ctx.firestore(), 'groups', GID));
     });
-    assert.equal(await send(ADMIN, 'groupDeleted', OF_GROUP), true);
+    assert.equal(await send(ADMIN, 'groupDeleted', OF_GROUP), false);
   });
 });
 
@@ -246,7 +259,7 @@ describe('every payload the SHIPPED client actually sends', () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await deleteDoc(doc(ctx.firestore(), 'groups', GID));
     });
-    assert.equal(await send(ADMIN, 'groupDeleted', { groupId: GID, groupName: 'club' }), true);
+    assert.equal(await send(ADMIN, 'groupDeleted', { groupId: GID, groupName: 'club' }), false);
   });
 
   // Not a gap: the shipped client does NOT dispatch this one for real. Its own
@@ -268,7 +281,7 @@ describe('every payload the SHIPPED client actually sends', () => {
 
 // ⚠️ The residual, stated rather than left to be discovered.
 describe('what this does NOT close', () => {
-  test('groupDeleted naming a club that does not exist is still accepted', async () => {
+  test('groupDeleted naming a club that does not exist is refused: deletion notices are server-only', async () => {
     // The rule for this type is "the club must be absent", because by the time
     // the real notification is sent the club IS absent and there is nothing
     // left to authorise against. So a forger can still say "your club was
@@ -281,7 +294,7 @@ describe('what this does NOT close', () => {
     await seed();
     assert.equal(
       await send(STRANGER, 'groupDeleted', { groupId: 'no-such-club', groupName: 'x' }),
-      true,
+      false,
     );
   });
 });

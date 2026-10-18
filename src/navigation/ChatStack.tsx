@@ -1,3 +1,7 @@
+import { FeedbackScreen } from '@/screens/FeedbackScreen';
+import { SocialPrivacyScreen } from '@/screens/profile/SocialPrivacyScreen';
+import { FriendsScreen } from '@/screens/profile/FriendsScreen';
+import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
 import { ManagerDashboardScreen } from '@/screens/communities/ManagerDashboardScreen';
 // ChatStack — the "צ'אטים" tab. A list of my chats, plus the two chat
 // screens (game + community). The same chat screens are ALSO reachable
@@ -44,9 +48,13 @@ import { MapScreen, type MapScreenParams } from '@/screens/map/MapScreen';
 
 export type ChatStackParamList = CommunitiesStackParamList & {
   ChatsList: undefined;
+  Friends: undefined;
+  SocialPrivacy: undefined;
   GameChat: { gameId: string };
   CommunityChat: { groupId: string };
   DirectChat: { convId: string };
+  Statistics: { userId?: string } | undefined;
+  Feedback: { type?: 'bug' | 'suggestion'; playerId?: string; playerName?: string } | undefined;
   PlayerCard: { userId: string; groupId?: string };
   PlayerCompare: { groupId: string; otherUid: string; otherName?: string };
   // A player card lists the clubs that person belongs to, and tapping one
@@ -54,7 +62,7 @@ export type ChatStackParamList = CommunitiesStackParamList & {
   // not, so from the chats tab that tap was a silent no-op — `navigate()` on a
   // name the focused stack does not register does nothing and says nothing.
   CommunityDetails: { groupId: string };
-  CommunityDetailsPublic: { groupId: string };
+  CommunityDetailsPublic: { groupId: string; fromInvitation?: boolean };
 };
 
 const Stack = createNativeStackNavigator<ChatStackParamList>();
@@ -66,10 +74,14 @@ export function ChatStack() {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="ChatsList" component={ChatsListScreen} />
+      <Stack.Screen name="Friends" component={FriendsScreen} />
+      <Stack.Screen name="SocialPrivacy" component={SocialPrivacyScreen} />
       <Stack.Screen name="GameChat" component={GameChatScreen} />
       <Stack.Screen name="CommunityChat" component={CommunityChatScreen} />
       <Stack.Screen name="DirectChat" component={DirectChatScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="Statistics" component={StatisticsScreen} />
+      <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
       <Stack.Screen

@@ -1,0 +1,86 @@
+{
+  "readAt": "2026-10-17T02:14:43.591058+00:00",
+  "account": {
+    "id": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "name": "בדיקות לייב",
+    "stats": {
+      "penFaced": 3,
+      "cleanSheets": 2,
+      "penSaved": 2,
+      "wins": 3,
+      "goals": 2,
+      "penConceded": 1
+    }
+  },
+  "club": {
+    "id": "J060YQu6QTcgk3glUDj2",
+    "name": "בדיקות לייב אוקטובר",
+    "playerIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ],
+    "creatorId": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+    "isOpen": false,
+    "adminIds": [
+      "8HYLuzxlnOeZAAoCQwfd8tnPWCq1"
+    ]
+  },
+  "games": [
+    {
+      "game": {
+        "id": "mBO5HqJdnOPWjRE2zMh8",
+        "groupId": "J060YQu6QTcgk3glUDj2",
+        "title": "בדיקות לייב אוקטובר",
+        "startsAt": 1792180800000,
+        "maxPlayers": 33,
+        "minPlayers": null,
+        "players": [],
+        "waitlist": [],
+        "pending": [],
+        "participantIds": [],
+        "teams": null,
+        "status": "open",
+        "currentMatchIndex": 0,
+        "createdBy": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "visibility": "community",
+        "format": "11v11",
+        "numberOfTeams": 3,
+        "matchDurationMinutes": 8,
+        "hasPenalties": false,
+        "hasHalfTime": false,
+        "liveMatch": null,
+        "draftTeams": null,
+        "rotation": null,
+        "arrivals": null,
+        "autoTeamsAt": null,
+        "autoTeamsMethod": null,
+        "teamsNotifiedAt": null,
+        "autoTeamsGeneratedAt": null,
+        "autoTeamsGeneratedBy": null,
+        "teamsEditedManually": false,
+        "teamBalanceMeta": null,
+        "acceptsFillers": false,
+        "advancedMode": true,
+        "advancedFillMode": "permanent",
+        "advancedTieMode": null,
+        "guests": [],
+        "createdAt": 1792203269877,
+        "updatedAt": 1792203269877
+      },
+      "history": [],
+      "commits": [],
+      "playerStats": [],
+      "roundSummary": null,
+      "finishProof": {
+        "attendanceCredit": null,
+        "stages": [],
+        "qaEveningStanding": null
+      }
+    }
+  ],
+  "archive": {
+    "source": "tmp/live-action-production/data-eleven-created.json",
+    "originalSha256": "25d8b6943337935de7d7a50bb701b4493e2e5393f75e444babbb087dfbd861bd",
+    "filtered": true,
+    "note": "רק מחזור אחד עשר ומועדון וחשבון הבדיקה; ללא מחזורי ארבעה ושבעה, דואר, קוד הזמנה ומיקום."
+  }
+}

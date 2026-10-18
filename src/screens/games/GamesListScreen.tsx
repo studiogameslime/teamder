@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // Sectioned rounds feed: my rounds first, upcoming registration, then discovery.
 // Club photos and personal status live on the cards; registration stays in the services.
 
@@ -24,6 +25,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '@/components/Button';
+import { ScrollSurface } from '@/components/ScrollSurface';
 import { MatchCardSkeleton } from '@/components/anim/MatchCardSkeleton';
 import { AppearItem } from '@/components/anim/AppearItem';
 import { joinLocation } from '@/utils/format';
@@ -149,6 +151,7 @@ export function GamesListScreen() {
   // first load / re-load with empty list.
   const [refreshing, setRefreshing] = useState(false);
   const [busyGameId, setBusyGameId] = useState<string | null>(null);
+  const joinInFlight = useRef(false);
   // Header bell badge — pending friend/community/game requests. Refreshed on
   // focus (cheap aggregation; see requestsService).
   const [requestCount, setRequestCount] = useState(0);
@@ -347,7 +350,7 @@ export function GamesListScreen() {
   };
 
   const handleCardPrimary = async (game: Game, cta: MatchCardCta) => {
-    if (!user || cta === 'none' || cta === 'pending') return;
+    if (!user || cta === 'none' || cta === 'pending' || joinInFlight.current) return;
     // Soft-confirm late cancellations. Only the cancel CTA goes
     // through the modal — `leaveWaitlist` is harmless, no prompt.
     if (cta === 'cancel' && isPastCancelDeadline(game)) {
@@ -389,6 +392,7 @@ export function GamesListScreen() {
       void authAction.request(guestJoinGameRequest(game.id));
       return;
     }
+    joinInFlight.current = true;
     setBusyGameId(game.id);
     try {
       if (cta === 'join' || cta === 'requestJoin' || cta === 'waitlist') {
@@ -491,6 +495,7 @@ export function GamesListScreen() {
         if (__DEV__) console.warn('[gamesList] action failed', err);
       }
     } finally {
+      joinInFlight.current = false;
       setBusyGameId(null);
     }
   };
@@ -744,7 +749,7 @@ export function GamesListScreen() {
           ) : null}
         </Pressable>
       </View>
-      <ScrollView
+      <ScrollSurface
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -853,7 +858,7 @@ export function GamesListScreen() {
             </>
           )}
         </View>
-      </ScrollView>
+      </ScrollSurface>
 
       <GameFilterSheet
         visible={filterOpen}
@@ -1102,15 +1107,12 @@ export function GamesListScreen() {
 }
 
 const createSheetStyles = StyleSheet.create({
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.55)',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+  card: { ...overlaySurfaces.dialog,
     padding: spacing.lg,
     gap: spacing.md,
   },

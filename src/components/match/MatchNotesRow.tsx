@@ -1,3 +1,4 @@
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // MatchNotesRow — a single compact row that hides the game's notes
 // behind a tap. Replaces the old text-wall block at the top of the
 // match details with one tappable line:
@@ -130,15 +131,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   // Bottom sheet
-  backdrop: {
+  backdrop: { backgroundColor: overlayTheme.backdrop,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  sheet: { ...overlaySurfaces.sheet,
     maxHeight: '80%',
     overflow: 'hidden',
   },

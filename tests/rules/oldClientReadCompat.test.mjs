@@ -171,14 +171,14 @@ test('discovery is untouched for an anonymous session', async () => {
 
 // ─── a full account loses nothing ─────────────────────────────────────────
 
-test('a full account keeps every /users read it has today', async () => {
+test('a full account cannot read private /users documents or enumerate them', async () => {
   const db = full();
-  await expectAccess('get another user', getDoc(doc(db, 'users', ALICE)), true);
-  await expectAccess('list the collection', getDocs(query(collection(db, 'users'), limit(10))), true);
+  await expectAccess('get another user', getDoc(doc(db, 'users', ALICE)), false);
+  await expectAccess('list the collection', getDocs(query(collection(db, 'users'), limit(10))), false);
   await expectAccess(
     'batched documentId() in — hydrateUsers',
     getDocs(query(collection(db, 'users'), where(documentId(), 'in', [ALICE, 'uBob']))),
-    true,
+    false,
   );
 });
 
@@ -203,11 +203,11 @@ test('usersPublic: get by id is open to everyone, list is not', async () => {
     false,
   );
 
-  await expectAccess('full: list', getDocs(query(collection(full(), 'usersPublic'), limit(10))), true);
+  await expectAccess('full: list', getDocs(query(collection(full(), 'usersPublic'), limit(10))), false);
   await expectAccess(
     'full: documentId() in',
     getDocs(query(collection(full(), 'usersPublic'), where(documentId(), 'in', [ALICE, 'uBob']))),
-    true,
+    false,
   );
 });
 
@@ -252,10 +252,8 @@ test('OLD BINARY, anonymous session: the two canonical reads it loses', async ()
   );
 });
 
-test('OLD BINARY, full account: canonical reads remain allowed', async () => {
-  // The population that matters most is untouched, which is what makes the
-  // hotfix deployable ahead of the client release.
+test('OLD BINARY, full account: canonical reads are blocked; coordinated client rollout required', async () => {
   const db = full();
-  await expectAccess('roster hydration', getDocs(query(collection(db, 'users'), where(documentId(), 'in', [ALICE]))), true);
-  await expectAccess('player card', getDoc(doc(db, 'users', ALICE)), true);
+  await expectAccess('roster hydration', getDocs(query(collection(db, 'users'), where(documentId(), 'in', [ALICE]))), false);
+  await expectAccess('player card', getDoc(doc(db, 'users', ALICE)), false);
 });

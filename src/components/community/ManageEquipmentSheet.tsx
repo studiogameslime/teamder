@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // ManageEquipmentSheet — a small bottom sheet an admin uses to mark which of
 // the club's shared equipment (ball / jerseys) is currently held by a given
 // player. Both are INDEPENDENT toggles (a club can have several people each
@@ -54,7 +55,7 @@ export function ManageEquipmentSheet({
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <SpringSheet visible={visible} onBackdropPress={saving ? undefined : onClose}>
+      <SpringSheet visible={visible} onBackdropPress={saving ? undefined : onClose} panelStyle={{ justifyContent: 'flex-end' }}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.grip} />
           <View style={styles.titleRow}>
@@ -86,6 +87,14 @@ export function ManageEquipmentSheet({
 
           <View style={styles.actions}>
             <Button
+              title={he.cancel}
+              variant="outline"
+              size="lg"
+              style={styles.actionBtn}
+              disabled={saving}
+              onPress={onClose}
+            />
+            <Button
               title={he.save}
               variant="primary"
               size="lg"
@@ -93,14 +102,6 @@ export function ManageEquipmentSheet({
               loading={saving}
               disabled={!dirty}
               onPress={() => onSave({ ball, jerseys })}
-            />
-            <Button
-              title={he.cancel}
-              variant="outline"
-              size="lg"
-              style={styles.actionBtn}
-              disabled={saving}
-              onPress={onClose}
             />
           </View>
         </Pressable>
@@ -149,10 +150,7 @@ function ToggleRow({
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  sheet: { ...overlaySurfaces.sheet,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
@@ -166,7 +164,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginBottom: spacing.sm,
   },
-  titleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   chip: {
     width: 32,
     height: 32,
@@ -178,7 +176,7 @@ const styles = StyleSheet.create({
   title: { flex: 1, ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   subtitle: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginBottom: spacing.xs },
   toggleRow: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     paddingVertical: spacing.sm,
@@ -194,6 +192,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toggleLabel: { flex: 1, ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
-  actions: { flexDirection: 'row-reverse', gap: spacing.sm, marginTop: spacing.md },
+  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   actionBtn: { flex: 1 },
 });

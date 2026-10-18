@@ -1,3 +1,4 @@
+import { overlaySurfaces } from '@/theme/overlays';
 // RetroGoalsSheet — admin-only, post-match "complete a missed goal" manager.
 //
 // Opened from the finished-game details screen (above the evening-scorers
@@ -8,7 +9,7 @@
 // mini-game score or winner. See the addRetroGoal callable for the full model.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -59,7 +60,7 @@ export function RetroGoalsSheet({
 }: {
   visible: boolean;
   gameId: string;
-  /** Registered players of THIS game (guests excluded — they carry no stats). */
+  /** Registered players and guests of THIS game; waitlisted guests excluded. */
   roster: RetroRosterMember[];
   onClose: () => void;
   /** Fired after a successful add/remove so the parent can refresh the table. */
@@ -69,6 +70,7 @@ export function RetroGoalsSheet({
   const [mode, setMode] = useState<Mode>('list');
   const [pendingScorer, setPendingScorer] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   // Synchronous re-entrancy latch: `busy` state doesn't flip until the next
   // render, so a rapid double-tap (esp. the no-assist row) could fire two
   // saves — each minting a fresh retroGoalId, defeating the server's dedupe
@@ -81,15 +83,17 @@ export function RetroGoalsSheet({
   );
 
   const reload = useCallback(async () => {
-    const rows = await gameService.getRetroGoals(gameId);
-    setList(rows);
+    setLoadFailed(false);
+    try { setList(await gameService.getRetroGoals(gameId)); }
+    catch (error) { setLoadFailed(true); throw error; }
   }, [gameId]);
 
   useEffect(() => {
     if (visible) {
       setMode('list');
       setPendingScorer(null);
-      reload();
+      setList(null);
+      void reload().catch(() => {});
     }
   }, [visible, reload]);
 
@@ -108,8 +112,10 @@ export function RetroGoalsSheet({
       toast.success(he.retroAddDone);
       setMode('list');
       setPendingScorer(null);
-      await reload();
       onChanged();
+      // A failed read after a successful commit must not look like a failed
+      // save: retrying the goal would mint another id and double-credit it.
+      await reload().catch(() => {});
     } catch (err) {
       logError('addRetroGoal', err, { gameId, scorerId });
       toast.error(retroErrorText(err));
@@ -131,8 +137,8 @@ export function RetroGoalsSheet({
       });
       warningHaptic();
       toast.success(he.retroRemoveDone);
-      await reload();
       onChanged();
+      await reload().catch(() => {});
     } catch (err) {
       logError('removeRetroGoal', err, { gameId, retroGoalId: id });
       toast.error(retroErrorText(err));
@@ -147,8 +153,8 @@ export function RetroGoalsSheet({
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <SpringSheet visible={visible} onBackdropPress={busy ? undefined : onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+      <SpringSheet visible={visible} onBackdropPress={busy ? undefined : onClose} panelStyle={{justifyContent:'flex-end'}}> 
+        <View style={styles.sheet}>
           <View style={styles.grip} />
 
           {mode === 'list' ? (
@@ -156,12 +162,22 @@ export function RetroGoalsSheet({
               <Text style={styles.title}>{he.retroTitle}</Text>
               <Text style={styles.note}>{he.retroNote}</Text>
 
-              {list === null ? null : list.length === 0 ? (
+              {loadFailed ? <View><Text style={styles.empty}>לא ניתן לטעון את ההשלמות כרגע</Text><Button title="נסה שוב" onPress={() => void reload().catch(() => {})}/></View> : list === null ? <ActivityIndicator color={colors.primary}/> : list.length === 0 ? (
                 <Text style={styles.empty}>{he.retroEmpty}</Text>
               ) : (
-                <ScrollView style={styles.listScroll} showsVerticalScrollIndicator={false}>
+                <ScrollView style={styles.listScroll} nestedScrollEnabled showsVerticalScrollIndicator={true}>
                   {list.map((g) => (
                     <View key={g.id} style={styles.row}>
+                      <Ionicons name="football" size={16} color={colors.primary} />
+
+
+                      <Text style={styles.rowText} numberOfLines={1}>
+                        {g.assisterId
+                          ? he.retroScorerWithAssist(nameOf(g.scorerId), nameOf(g.assisterId))
+                          : nameOf(g.scorerId)}
+                      </Text>
+
+
                       <Pressable
                         onPress={() => removeGoal(g.id)}
                         hitSlop={8}
@@ -171,13 +187,6 @@ export function RetroGoalsSheet({
                       >
                         <Ionicons name="close" size={16} color={colors.danger} />
                       </Pressable>
-                      <View style={{ flex: 1 }} />
-                      <Text style={styles.rowText} numberOfLines={1}>
-                        {g.assisterId
-                          ? he.retroScorerWithAssist(nameOf(g.scorerId), nameOf(g.assisterId))
-                          : nameOf(g.scorerId)}
-                      </Text>
-                      <Ionicons name="football" size={16} color={colors.primary} />
                     </View>
                   ))}
                 </ScrollView>
@@ -200,7 +209,7 @@ export function RetroGoalsSheet({
               <Text style={styles.title}>
                 {mode === 'scorer' ? he.retroPickScorer : he.retroPickAssist}
               </Text>
-              <ScrollView style={styles.pickerScroll} showsVerticalScrollIndicator={false}>
+              <ScrollView style={styles.pickerScroll} nestedScrollEnabled showsVerticalScrollIndicator={true}>
                 {mode === 'assister' ? (
                   <Pressable
                     style={styles.pickRow}
@@ -250,32 +259,31 @@ export function RetroGoalsSheet({
               </Pressable>
             </>
           )}
-        </Pressable>
+        </View>
       </SpringSheet>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: {
+  sheet: { ...overlaySurfaces.sheet,
     marginTop: 'auto',
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
     gap: spacing.sm,
+    maxHeight: '100%',
+    flexShrink: 1,
   },
   grip: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.border, marginBottom: spacing.sm },
   title: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   note: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   empty: { ...typography.body, color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.md },
-  listScroll: { maxHeight: 220 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.sm, paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
-  rowText: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, fontWeight: '600' },
+  listScroll: { maxHeight: 300, flexShrink: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
+  rowText: { flex: 1, ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, fontWeight: '600' },
   undoBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
-  pickerScroll: { maxHeight: 340 },
+  pickerScroll: { maxHeight: 420, flexShrink: 1 },
   // `row` (NOT row-reverse): under forceRTL the FIRST child (avatar) lands on
   // the RIGHT, the name right-aligned beside it.
   pickRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },

@@ -1,0 +1,14 @@
+{
+  "EXPO_PUBLIC_FOOTY_FORCE_MOCK": {
+    "present": false,
+    "enabled": false
+  },
+  "EXPO_PUBLIC_QA_ROUTES": {
+    "present": false,
+    "enabled": false
+  },
+  "EXPO_PUBLIC_SCREENSHOT_MODE": {
+    "present": false,
+    "enabled": false
+  }
+}

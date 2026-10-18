@@ -114,6 +114,7 @@ export function mockWork(now: number): WorkItem[] {
       docPath: 'errors/mock-4',
       title: 'commitRoundStats נכשל',
       body: 'DEADLINE_EXCEEDED בסגירת מחזור',
+      unresolved: { since: ago(240), reason: 'תקלה חוזרת שהפתרון הקודם לא סגר באופן מאומת.', nextStep: 'לשחזר במכשיר המדווח ולאמת את התיקון מול אותו תרחיש.' },
       images: [],
       state: 'open',
       claude: null,
