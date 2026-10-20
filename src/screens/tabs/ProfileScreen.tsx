@@ -1483,18 +1483,30 @@ export function ProfileScreen() {
               accessibilityRole="button"
               accessibilityLabel={he.homeSeasonClosedCta}
             >
-              <View style={styles.justPlayedText}>
-                <Text style={styles.seasonClosedTitle}>
-                  {he.homeSeasonClosedTitle(seasonClosed.seasonNo)}
-                </Text>
-                <Text style={styles.seasonClosedBody}>
-                  {he.homeSeasonClosedBodyOf(seasonClosed.groupName)}
-                </Text>
-                <View style={styles.justPlayedCtaRow}>
-                  <Text style={styles.seasonClosedCta}>{he.homeSeasonClosedCta}</Text>
-                  <Text style={styles.justPlayedCtaEmoji}>🏆</Text>
+              <LinearGradient
+                colors={['#315BEA', '#1E2A91']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.seasonClosedGradient}
+              >
+                <View style={styles.seasonClosedTopRow}>
+                  <View style={styles.seasonClosedContent}>
+                    <Text style={styles.seasonClosedTitle}>
+                      {he.homeSeasonClosedTitle(seasonClosed.seasonNo)}
+                    </Text>
+                    <Text style={styles.seasonClosedBody}>
+                      {he.homeSeasonClosedBodyOf(seasonClosed.groupName)}
+                    </Text>
+                  </View>
+                  <View style={styles.seasonClosedBadge}>
+                    <Ionicons name="trophy" size={30} color="#FFFFFF" />
+                  </View>
                 </View>
-              </View>
+                <View style={styles.seasonClosedCtaRow}>
+                  <Text style={styles.seasonClosedCta}>{he.homeSeasonClosedCta}</Text>
+                  <Ionicons name="arrow-back" size={16} color="#FFFFFF" />
+                </View>
+              </LinearGradient>
               {/* NO dismiss X. It existed because the card otherwise stayed
                   until it was opened; `getUnreadSeasonClose` now stops
                   returning it 48 hours after the close, so the card retires
@@ -1918,31 +1930,69 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   justPlayedCtaEmoji: { fontSize: 16 },
-  // The season-close card. Amber rather than the green of "you just played":
-  // one is about a night that happened, the other about a competition that
-  // ended, and two identical cards stacked would read as one repeated.
+  // The season-close card. Content comes first and the badge second so
+  // forceRTL places the content on the visual right and trophy on the left.
   seasonClosedCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#1E2A91',
+    shadowColor: '#1E2A91',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  seasonClosedGradient: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+  },
+  seasonClosedTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    backgroundColor: '#FFFBEB',
+  },
+  seasonClosedBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    borderColor: 'rgba(255,255,255,0.32)',
+  },
+  seasonClosedContent: {
+    flex: 1,
+    gap: 2,
   },
   seasonClosedTitle: {
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#92400E',
+    color: '#FFFFFF',
     textAlign: RTL_LABEL_ALIGN,
   },
-  seasonClosedBody: { fontSize: 13, color: '#B45309', textAlign: RTL_LABEL_ALIGN },
+  seasonClosedBody: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#E0E7FF',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  seasonClosedCtaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.86)',
+    borderRadius: 999,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
   seasonClosedCta: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#B45309',
+    color: '#FFFFFF',
     textAlign: RTL_LABEL_ALIGN,
   },
   // Amber "pending join requests" banner (admins only).

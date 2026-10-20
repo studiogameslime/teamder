@@ -8,14 +8,12 @@
       "domain": "entry",
       "technical": "entry/authentication.md",
       "simple": "entry/authentication.simple.md",
-      "capturedOn": "2026-10-19",
+      "capturedOn": "2026-10-20",
       "basis": "existing-documentation-only",
       "summary": "ביציאה מהחשבון נסגרים עכשיו חיבורי העדכון של ההודעות, המשחקים, הפרופיל והמועדונים לפני ביטול ההתחברות. כך תגובות מהחשבון הקודם אינן מעדכנות את החשבון הבא ואינן מציגות שגיאת הרשאות בגלל סדר היציאה. אם היציאה עצמה נכשלת והחשבון נשאר מחובר, החיבורים התקפים נפתחים מחדש. כשל אמיתי של החשבון הפעיל עדיין מדווח; הוא אינו הופך לרשימה ריקה.",
-      "latestDatedSection": "2026-10-19",
+      "latestDatedSection": "2026-10-20",
       "recentSections": [
-        "תלות בעדכון העונות — 19.10.2026",
-        "שם המצטיין וסדר התארים — 19.10.2026",
-        "הבהרת התצוגה וסיכום אישי — 19.10.2026"
+        "תלות במלל המשותף — 20.10.2026"
       ],
       "evidenceExcerpts": [
         "userSessionListeners.subscribeUserSession מרכז בעלות על קריאות החשבון בלבד: ההודעות שלא נקראו, שתי שאילתות המשחקים לשעון/רכיב, מסמך המשתמש ורשימת המועדונים. לכל חיבור יש דור ושומר זהות. הצלחה או כשל שהגיעו אחרי ניקוי, החלפת זהות או השהיה אינם מתעדכנים בחשבון…",
@@ -27,15 +25,15 @@
         "src/screens/auth/SignInScreen.tsx"
       ],
       "documents": {
-        "entry/authentication.md": "5d6fff54277d9cbf96581215b48aeec7749c21dc6220b66c471401f518b87a9c",
-        "entry/authentication.simple.md": "8925c6511064cc7285bf070ac3bf2f60b6795307b4f6d12659eaf480d9118ca6"
+        "entry/authentication.md": "3c119f1b06f6c7810d7258483bc88cd21712ce95641e0a3f53d6930d783de748",
+        "entry/authentication.simple.md": "05029c3abab0cbb60992f5e63db566734bb7d64581434b95ae73b962a7debc9b"
       },
       "sources": {
         "src/components/auth/ContextualAuthSheet.tsx": "2f0ae020d5e011f72026cc02e6898eec4ec81ea267e87db3de897030050e582f",
         "src/firebase/auth.ts": "005e3d6713ec4d3e2413a2c38986fd20d84e3efd4b9b3b32fd801469cba1b7f1",
         "src/firebase/firestore.ts": "664b8d0e3b5ea91f109dbce6c31079d8fad91451d904d7a5c2f9f0c291916ad8",
         "src/hooks/useAuthenticatedAction.tsx": "3cbe97b813371657cbd1af9346f0ff1c389ca3a242c402c99653b167d92c96e0",
-        "src/i18n/he.ts": "1b5b0cab8d8c07303d1d0d634334cc960c9e88ecb52f306217fec13b3b3decd2",
+        "src/i18n/he.ts": "2ee54f6a55ecf4c9cfec7bb43d8da76409e18025fc5bab3f34b96f7a33812737",
         "src/screens/auth/EmailAuthScreen.tsx": "9f12fdf35b72c22529f626cb56c1173a64180443d5c339d864c85312d9a3ba4b",
         "src/screens/auth/SignInScreen.tsx": "a401ad6e88de9078ff00e20730f5de8da632a4ee227d03335cf02c81ceca0c4c",
         "src/services/authUpgrade.ts": "b68cac2f9fb366dcb8e5b759bcef754cb975ecb6bdf1b92a43fe30d5bc2b0817",
@@ -284,23 +282,24 @@
       "domain": "home",
       "technical": "home/availability-preview.md",
       "simple": "home/availability-preview.simple.md",
-      "capturedOn": "2026-10-19",
+      "capturedOn": "2026-10-20",
       "basis": "existing-documentation-only",
       "summary": "הבית מציג באילו ימים קרובים יש יותר שחקנים פנויים באזור שלכם. אפשר לבחור יום כדי להתחיל מחזור או לפתוח את תמונת השבוע המלאה.",
-      "latestDatedSection": "2026-10-19",
+      "latestDatedSection": "2026-10-20",
       "recentSections": [
-        "תלות בעדכון העונות — 19.10.2026"
+        "תלות במסך הבית — 20.10.2026"
       ],
       "evidenceExcerpts": [
         "נבדק ההפרש בקבצים המשותפים הרשומים כאן: src/firebase/firestore.ts. השינוי ממוקד במדיניות העונות, קריאת מצבן, שיוך מחזור ופקודות ניהולן; אין שינוי מכוון בחוזה העצמאי המתואר במסמך זה. אין להסיק מכך שהמסך הזה הורץ מחדש.",
-        "מצב המימוש, הבדיקות ומגבלות האימות של העונות. מקומי בלבד; לא בוצעה פריסה במסגרת המשימה."
+        "מצב המימוש, הבדיקות ומגבלות האימות של העונות. מקומי בלבד; לא בוצעה פריסה במסגרת המשימה.",
+        "src/screens/tabs/ProfileScreen.tsx השתנה בשכבת התצוגה של כרטיס seasonClosed. תנאי הזמינות, חישובי היום המומלץ והפעולות לא השתנו; המסך לא הורץ באמולטור במסגרת שינוי זה."
       ],
       "screens": [
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "home/availability-preview.md": "42ba3065bdd420d42d46a052ccec6053f7d4812a0bfef385ba9b5ece6090b7bd",
-        "home/availability-preview.simple.md": "3e36acd380f58b7a134ae22f74bb3618b78a4aac0cf90d40bec71fd39a923f9c"
+        "home/availability-preview.md": "054952b0f07a6dfc8b8077185f82303ec505d8d20ee0c6e44c5f0600ff81e57a",
+        "home/availability-preview.simple.md": "d5e404467c631919b8f1b903168c638da94ae18a436ff3be8d3fc7fa61fabe4d"
       },
       "sources": {
         "src/components/home/AvailabilityCalendarCard.tsx": "435063982f2b186eb5511852b52724d13429b0dd04b1f89701c0aa202c51e5da",
@@ -308,7 +307,7 @@
         "src/components/home/HomeAvailabilityPanel.tsx": "eb7b9811157844598a3ae45dcd8021ce96bed4ebc4c7ef0840988cdf350058f0",
         "src/components/home/OnboardingChecklist.tsx": "e7e1ca4d3a14888a58f3c6bd770e78bb4b8b04f2703b6512b7c803c329724459",
         "src/firebase/firestore.ts": "664b8d0e3b5ea91f109dbce6c31079d8fad91451d904d7a5c2f9f0c291916ad8",
-        "src/screens/tabs/ProfileScreen.tsx": "e6cea1d49ffb7bed000c0d917012482cde039b3387e23dd193f0ba1106984f2f",
+        "src/screens/tabs/ProfileScreen.tsx": "086593a2d9b90180cb09a06bc8d1c0d992d4d16fb951e0018f1a9deadefd6172",
         "src/services/availabilityFeedService.ts": "e1b294dc83fa4fd4148292be59f7cda61c52e0ba2885834883158c264e8a569a",
         "src/utils/homeAvailabilityView.ts": "5f11193c3fa40e857cf6f0c05148704226cc0cc53710e67bead40064a5c7c353",
         "tests/logic/homeAvailabilityView.test.ts": "915f23815210ea5175f1a7f419591dc759b18ebe75fb02178510e2ef4e132b6f"
@@ -321,12 +320,12 @@
       "domain": "home",
       "technical": "home/dashboard.md",
       "simple": "home/dashboard.simple.md",
-      "capturedOn": "2026-10-19",
+      "capturedOn": "2026-10-20",
       "basis": "existing-documentation-only",
       "summary": "עדכון מקומי מ־13.10.2026: הבית מקבל גם את ההגנה המשותפת מפני כפתורים שנשארים חסומים כשאירוע סיום גלילה חסר. אין שינוי בכרטיסים או בפעולותיהם; עדיין נדרש אימות במכשיר שבו דווחה התקלה.",
-      "latestDatedSection": "2026-10-19",
+      "latestDatedSection": "2026-10-20",
       "recentSections": [
-        "תלות בעדכון העונות — 19.10.2026"
+        "תלות במסך הבית — 20.10.2026"
       ],
       "evidenceExcerpts": [
         "עדכון מגע מקומי מ־13.10.2026: משטח הגלילה הראשי של ProfileScreen משתמש ב־ScrollSurface ומעביר את אותה הפניה ל־useScrollToTop, אותו רענון במשיכה ואותם מאפייני תוכן. נוספו רישום גרירה/תנע וההגנה הקיימת מפני אירוע סיום תנע חסר; לא הוחלפו הכרטיסים או פעולותיהם.…",
@@ -337,8 +336,8 @@
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "home/dashboard.md": "691a5183ce2f9a34df9343df5853d754ff96ff3f6dc433309fd726f5a5c9a30d",
-        "home/dashboard.simple.md": "e7369f153f1476257f75814f625838ee02992549dc9d05e68997ac869380714d"
+        "home/dashboard.md": "cf33865d35b6286dabe24b19869c17b942a65b96c6c58fca64edcef732847480",
+        "home/dashboard.simple.md": "52cdf6e782a8c92b8bfe8508209713a1b9319799892fa2293fd87140b8fed3a6"
       },
       "sources": {
         "src/components/home/DidYouKnowCard.tsx": "3edd2adfc7bbf30e7d01b90ab15e6f3c86967d1b4f53206f043f83c10c901164",
@@ -348,7 +347,7 @@
         "src/components/home/HomeRoundCards.tsx": "43cee45c2e6772512f06457b3ff7c3263b85a2b2770992049f675f7cfaa359b1",
         "src/components/home/OnboardingChecklist.tsx": "e7e1ca4d3a14888a58f3c6bd770e78bb4b8b04f2703b6512b7c803c329724459",
         "src/firebase/firestore.ts": "664b8d0e3b5ea91f109dbce6c31079d8fad91451d904d7a5c2f9f0c291916ad8",
-        "src/screens/tabs/ProfileScreen.tsx": "e6cea1d49ffb7bed000c0d917012482cde039b3387e23dd193f0ba1106984f2f",
+        "src/screens/tabs/ProfileScreen.tsx": "086593a2d9b90180cb09a06bc8d1c0d992d4d16fb951e0018f1a9deadefd6172",
         "src/services/homeConfigService.ts": "e3787effeee567c49e3ce9d95bc38d85301828ddf1ad7238fe108216b450025e",
         "src/store/groupStore.ts": "7c4498dac20c581747662d9d10ad5952bb80345ca6e393b39dfaf8cdc6d6b0a2",
         "src/store/userStore.ts": "f7d9a8b8243f71131215abfe8917c1d2208d7685ab5e767601e2286d5f297976",
@@ -407,12 +406,12 @@
       "domain": "home",
       "technical": "home/home-menu.md",
       "simple": "home/home-menu.simple.md",
-      "capturedOn": "2026-10-19",
+      "capturedOn": "2026-10-20",
       "basis": "existing-documentation-only",
       "summary": "התפריט בבית מרכז את הפרופיל, ההיסטוריה, החברים וההגדרות שלכם. אפשר לסגור אותו גם במשיכה מטה, ומארגנים רואים בו פעולות נוספות לפי הצורך.",
-      "latestDatedSection": "2026-10-19",
+      "latestDatedSection": "2026-10-20",
       "recentSections": [
-        "תלות בעדכון העונות — 19.10.2026"
+        "תלות במסך הבית — 20.10.2026"
       ],
       "evidenceExcerpts": [
         "עדכון 11.10.2026: פריט החברים נקרא ״חברים והזמנות״, עם אותו מסלול Friends ושער feature_friends הקיימים. זהו אותו מסך שנפתח מהכניסה בלשונית החברים; נוספה בו רשימת הזמנות לצד ניהול החברות. פירוט ובדיקות. הכניסה מהלשונית נבדקה באימולטור; שם התפריט נבדק בקוד.",
@@ -423,8 +422,8 @@
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "home/home-menu.md": "e5131c2bbad74f1c8746254e808949e0e8941338c2c49dfdc33d121ddf57ebe0",
-        "home/home-menu.simple.md": "e289ac40f1e43c293ba79df7276391a50f2340153d5d223b5a9508ea232907c6"
+        "home/home-menu.md": "c4f3d852f014348e87cb6597a80d27529bfa66734b06df89578444d116380c39",
+        "home/home-menu.simple.md": "eaa660fe4c9bb9deed3bedc9cf8034b0e60720a247f7a53d86cb8f61e56601e1"
       },
       "sources": {
         "src/components/DraggableMenuSheet.tsx": "4724d96b666b198bf2dbab63d68570336fbdba2dec05dbb6338233721ca5378b",
@@ -432,7 +431,7 @@
         "src/components/profile/DeleteAccountSheet.tsx": "a955dd78fb58e905ba1bdb3f6e27c7d3eea573c4f864f13c00a488a997e4eecf",
         "src/firebase/firestore.ts": "664b8d0e3b5ea91f109dbce6c31079d8fad91451d904d7a5c2f9f0c291916ad8",
         "src/navigation/ProfileStack.tsx": "6181bf0ac75fb1fe98d1c6f3e9d00a3986997cd6e5c8f08924472064c6e11a2b",
-        "src/screens/tabs/ProfileScreen.tsx": "e6cea1d49ffb7bed000c0d917012482cde039b3387e23dd193f0ba1106984f2f",
+        "src/screens/tabs/ProfileScreen.tsx": "086593a2d9b90180cb09a06bc8d1c0d992d4d16fb951e0018f1a9deadefd6172",
         "tests/guestAuthEntryPoints.test.ts": "1c6a0f0bb9eee935ece64985218e129c459c45ffad9501ba98fbcaa2961f7aae",
         "tests/signOutRestoresGuest.test.ts": "085ff6403a96112523f52d7ae264bdb0c9a7f245046f1a05e7b983a376485312"
       },
@@ -444,12 +443,12 @@
       "domain": "home",
       "technical": "home/round-cards.md",
       "simple": "home/round-cards.simple.md",
-      "capturedOn": "2026-10-19",
+      "capturedOn": "2026-10-20",
       "basis": "existing-documentation-only",
-      "summary": "בדיקות ההצטרפות מתחילות במקביל כדי לחסוך המתנה בין קריאות. ההצלחה עדיין מוצגת רק אחרי שהשרת מאשר את ההרשמה.",
-      "latestDatedSection": "2026-10-19",
+      "summary": "כרטיס העונה שהסתיימה מעל המחזור הקרוב קיבל עיצוב כחול־סגול חדש: גביע בצד שמאל, כותרת עונה, הסבר קצר וכפתור לצפייה בסיכום. הפעולה והנתונים לא השתנו; זהו שינוי חזותי מקומי בלבד.",
+      "latestDatedSection": "2026-10-20",
       "recentSections": [
-        "תלות בעדכון העונות — 19.10.2026"
+        "עונה שהסתיימה — עיצוב כרטיס הסיכום, 20.10.2026"
       ],
       "evidenceExcerpts": [
         "בדיקות, צילומים ומגבלות.",
@@ -460,15 +459,15 @@
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "home/round-cards.md": "fe0da7159105c1455c01d1475c2a3458a9d7ad6be379ac0460f81da40ca4dbe6",
-        "home/round-cards.simple.md": "16a7c91f474a78ddd1095e48e74ed86e8a4753e37cb526a3826ea7f732d07020"
+        "home/round-cards.md": "54a4ecc7ca6aa8ddd793de0b602d7653ce8a90b322823b6eb0eae52b09adc00a",
+        "home/round-cards.simple.md": "a1ec3697886f2f2db879a06ca6b86566af8c1411a7e606defb18bc5757838d4f"
       },
       "sources": {
         "src/assets/images/roundCovers/manifest.json": "af14a4a15851e4b4a78dc9e9e2dd1ccd0c486cd461360d9fcb3930c414dda6a0",
         "src/components/home/HomeRoundCards.tsx": "43cee45c2e6772512f06457b3ff7c3263b85a2b2770992049f675f7cfaa359b1",
         "src/data/roundSurfaceCovers.ts": "2e7ebc6512d508bec73c182a10d1f3486070eb592c9e26c2427f7da53b4e0d6c",
         "src/firebase/firestore.ts": "664b8d0e3b5ea91f109dbce6c31079d8fad91451d904d7a5c2f9f0c291916ad8",
-        "src/screens/tabs/ProfileScreen.tsx": "e6cea1d49ffb7bed000c0d917012482cde039b3387e23dd193f0ba1106984f2f",
+        "src/screens/tabs/ProfileScreen.tsx": "086593a2d9b90180cb09a06bc8d1c0d992d4d16fb951e0018f1a9deadefd6172",
         "src/services/gameLifecycle.ts": "640b9e60010a9ae1215695cada37313eea79219a60b9fa7800e1b235704d950e",
         "src/services/gameService.ts": "d2ded21757c5eff0cd4a6954a05a831605d87e978c1feff6078657c70ece37a3",
         "src/utils/eveningPlayed.ts": "d68d2824cf46b3f8ab5c714e1734392f89868d4feba880b5d321addda102117b",
@@ -485,14 +484,12 @@
       "domain": "home",
       "technical": "home/tips-carousel.md",
       "simple": "home/tips-carousel.simple.md",
-      "capturedOn": "2026-10-19",
+      "capturedOn": "2026-10-20",
       "basis": "existing-documentation-only",
       "summary": "בקרוסלת הידעת מופיעים משפטים קצרים על הדברים שכדאי להכיר באפליקציה. אפשר להחליק, לבחור נקודה או ללחוץ על הטיפ כדי להגיע לפיצ׳ר.",
-      "latestDatedSection": "2026-10-19",
+      "latestDatedSection": "2026-10-20",
       "recentSections": [
-        "תלות בעדכון העונות — 19.10.2026",
-        "שם המצטיין וסדר התארים — 19.10.2026",
-        "הבהרת התצוגה וסיכום אישי — 19.10.2026"
+        "תלות במלל ובמסך הבית — 20.10.2026"
       ],
       "evidenceExcerpts": [
         "אין צילום סטטי שמוכיח חלקות. לא נבדקו כאן סרטון אמיתי מהאמולטור, מכשיר חלש או קורא מסך. צילום הבית העליון אינו מציג את הקרוסלה שמתחת לקפל. בדיקות האנימציה/תנועה הקיימות בפרויקט אינן מחליפות גלילה והחלקה בזמן ריצה.",
@@ -503,13 +500,13 @@
         "src/screens/tabs/ProfileScreen.tsx"
       ],
       "documents": {
-        "home/tips-carousel.md": "6e3ea30cd761a6ea2c9c8621227b48c4d27bd2edd28eb82bc060c61e940b126e",
-        "home/tips-carousel.simple.md": "45eaa4b71596301df30113f3938bd7fbc4cfbb402e783357c81b21749659edaf"
+        "home/tips-carousel.md": "2a78ac7738debd607c8d85848e211d59e662932dcd21aa6a601d623ea1f394d4",
+        "home/tips-carousel.simple.md": "4143705f77573b71533bb79ae7fedfe3c695d96b3d37902d77b1f1bb53f45861"
       },
       "sources": {
         "src/components/home/DidYouKnowCard.tsx": "3edd2adfc7bbf30e7d01b90ab15e6f3c86967d1b4f53206f043f83c10c901164",
-        "src/i18n/he.ts": "1b5b0cab8d8c07303d1d0d634334cc960c9e88ecb52f306217fec13b3b3decd2",
-        "src/screens/tabs/ProfileScreen.tsx": "e6cea1d49ffb7bed000c0d917012482cde039b3387e23dd193f0ba1106984f2f"
+        "src/i18n/he.ts": "2ee54f6a55ecf4c9cfec7bb43d8da76409e18025fc5bab3f34b96f7a33812737",
+        "src/screens/tabs/ProfileScreen.tsx": "086593a2d9b90180cb09a06bc8d1c0d992d4d16fb951e0018f1a9deadefd6172"
       },
       "missingDocumentedPaths": []
     },
@@ -1434,22 +1431,22 @@
       "simple": "clubs/seasons.simple.md",
       "capturedOn": "2026-10-20",
       "basis": "existing-documentation-only",
-      "summary": "במועדון הבדיקות נבדקו מול השרת האמיתי הפעלת עונה עם שבעה מחזורים, סגירה ידנית, חלוקת שמונה תארים ופתיחת עונה שנייה ריקה. הנתונים נשמרו בארכיון ובכל הזמנים. שירותי העונות נפרסו באישור; תיקון נוסף בלקוח מציג אפשרות לנסות שוב אחרי30 שניות של קריאה תקועה, והוא עדיין דורש הפצת לקוח. לא המתנו24 שעות בפועל ולא בדקנו כאן סגירה של עונה קצרה.",
+      "summary": "נבדקו כיבוי וסיום לפני חמישה מחזורים, שלוש דרכי ההפעלה מחדש, שמירת הנתונים בכל הזמנים וזכייה משותפת של שני שחקנים רשומים בחשבונות בדיקה. בעונה שנסגרה שני השחקנים זכו במצטיין9.20 ובמלך הניצחונות100%, והעונה הבאה נפתחה ריקה. הנתונים והעונות הקודמות נשמרו ללא הכפלה. הוכנה עונה נוספת לבדיקת סגירה טבעית: חלון24 השעות שלה מסתיים ב־21.10…",
       "latestDatedSection": "2026-10-20",
       "recentSections": [
+        "השלמת תרחישי ייצור וחלון טבעי ממתין — 20.10.2026",
         "אימות מול שרת אמיתי והגבלת המתנה — 20.10.2026",
-        "תיקון פערי העונות — 20.10.2026",
-        "בדיקת עונות חוזרת — 20.10.2026"
+        "תיקון פערי העונות — 20.10.2026"
       ],
       "evidenceExcerpts": [
-        "נפרסו באישור16 שירותי עונות ונבדקו140 קובצי מקור לכל שירות. במועדון הבדיקות עבר רצף הפעלה עם7 מחזורים, יעד שכבר הושג, חלון תיקונים מדויק, סגירה ידנית, שמונה תארים, ארכיון ופתיחת עונה2 עם0 מחזורים ויעד24. עברו50 השוואות נתונים; המצטיין8.36 ומלך…",
-        "הבדיקה, המקור, הצילומים והמגבלות.",
-        "seasonLock.ts אוכפת פקיעה גם לפני הסריקה; השלמת עיבוד מחזור מותרת במפורש בלי לפתוח ארכיון חתום. שינוי יעד נבדק גם בעסקת acquireSeasonOperation. seasonManager.needsVerification משותפת לרשימה ולחסמי הסגירה; setEveningPlayed בודקת מועד, שיוך והרשאה מתוך נתונים…"
+        "עברו68 השוואות נתונים בסבב נוסף במועדון הבדיקות: כיבוי וסיום ידני לפני5 מחזורים, שלוש בחירות ההפעלה מחדש, שחזור נתונים לא משויכים ללא הכפלה, שוויון בתארים בין שני חשבונות רשומים וכימיה ביניהם. עונה2 נחתמה עם5 מחזורים ושבעה תארים לכל חשבון: מצטיין9.20,…",
+        "עונה3 עם5 מחזורים פתחה בשרת pendingClose טבעי: dueAt=1792518034543, closeAt=1792604434543, הפרש86,400,000. מועד הסיום21.10.2026 בשעה20:40:34 בישראל. אין לה עדיין ארכיון או תארים אישיים; גם שירות הסיכום מסתיר את המצטיין. סכום ציוני המחזור של כל שחקן בעונה3…",
+        "דוח מלא, ראיות והמשך. קובצי הראיות ב־artifacts/seasons-live-remaining-2026-10-20; בדיקת טיפוסים וכל446 חבילות/5,093 בדיקות האפליקציה עברו מחדש. אין להשתמש באישור הבדיקה כאישור לבדיקות או לפריסה עתידית."
       ],
       "screens": [],
       "documents": {
-        "clubs/seasons.md": "eb85193fefea9682d51a0e722d3227a2997f96bdb95e8118d2829413f4328ac9",
-        "clubs/seasons.simple.md": "faf62ee5dda7681fca6a4ff7488eba886e6d556fa298d469682052015e95dc93"
+        "clubs/seasons.md": "66af9a35672abc43e19a99269cbe789a5320f23f68f244513933feea3996ef46",
+        "clubs/seasons.simple.md": "1e77e63484d9b5a75e85e3b74e752cbc0246e255b08cf25fcd5b0025607470c0"
       },
       "sources": {
         "functions/src/index.ts": "bac96c6d8588beb4d1cd2d4e445dccc0f4bcfabaf18d1ba6428925811e57d745",
@@ -2506,8 +2503,8 @@
         "src/screens/profile/SeasonSummaryScreen.tsx"
       ],
       "documents": {
-        "statistics/season-summary.md": "93f0ff6f19d8d96719a37a1c4d1e3f4bae327aad7ca12ea8d123d1bd1bf64991",
-        "statistics/season-summary.simple.md": "2ef6b1d54ef6cac8adfa5e778d0e19f4c514abb894b1f545daa1504f7c1041fc"
+        "statistics/season-summary.md": "57692c424427985f7c66590d1c8709bb3dc8db93eca0539eb0adc1a91cf21247",
+        "statistics/season-summary.simple.md": "f2743efa6d143013ad0ed7676f6516e31a40527794ae5f6a160c1bb53371df54"
       },
       "sources": {
         "functions/src/seasonAwards.ts": "c10e78b852731226a71a4fb832b527aa10332473f4339fef342f920f59b2a339",
@@ -2517,7 +2514,7 @@
         "src/components/SeasonTitleEmblem.tsx": "d6316cc3d5c6a8e66aa00a1d29be63288c18d21431f840c2eeb88cdb28583e3f",
         "src/components/summary/SeasonClubSummary.tsx": "930c551ea4f462280299b7ce5341e1c135b468b3544c99fc4167a964af521fd9",
         "src/components/summary/SeasonSummaryButton.tsx": "5a3c790088ba25c41ce07b953c39629ce79b54a085c3fbb2916d17a1d9f5ada6",
-        "src/i18n/he.ts": "1b5b0cab8d8c07303d1d0d634334cc960c9e88ecb52f306217fec13b3b3decd2",
+        "src/i18n/he.ts": "2ee54f6a55ecf4c9cfec7bb43d8da76409e18025fc5bab3f34b96f7a33812737",
         "src/screens/communities/CommunityStatsScreen.tsx": "4d5872512381a0de33c21e06f896ab0b187a65995084968d3f76bee4e7205221",
         "src/screens/profile/SeasonSummaryScreen.tsx": "8b6f70ea9f3e16782d4188cbc931b76dda2509090e12e664d9609386fef0c4fc",
         "src/services/seasonSummaryService.ts": "edfe4cbab4c66aca44a43a156d527f2ab9b5bb57d7253f0895dbec5748c2f8b3",

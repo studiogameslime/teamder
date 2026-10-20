@@ -18789,5 +18789,19 @@
       "צילום אחרי התיקון משתמש בדימוי קריאה מושהית במכשיר הבדיקות בלבד, כפי שמתועד בדוח."
     ],
     "sha256": "8a7aeb02cb19afbb1fca88d364a0212cefbbae5c2a2cb109b3db9b90a77e0622"
+  },
+  {
+    "file": "seasons-shared-awards-live-2026-10-20.png",
+    "source": "C:\\Users\\elira\\Teamder\\artifacts\\seasons-live-remaining-2026-10-20\\shared-awards.png",
+    "platform": "Android",
+    "environment": "מכשיר Teamder_Onboarding_QA מול השרת האמיתי במועדון הבדיקות בלבד",
+    "sourceCommit": "f5d74cf39ef202066a03d08043715477c6a5eb70",
+    "captured": "2026-10-20",
+    "notes": [
+      "תיעוד בדיקה ללא שינוי חזותי בקוד.",
+      "עונה2 חתומה עם5 מחזורים, זכייה משותפת9.20 ו־100% ניצחונות; אין הוכחת סגירה טבעית אחרי24 שעות.",
+      "לקוח פיתוח מקומי, חשבון הבדיקה הראשון; אינו צילום מגרסת החנות."
+    ],
+    "sha256": "d11e4328ec03ecf2f77df85b03c3b607de645061c1370f117f3d364f7aab29d1"
   }
 ]

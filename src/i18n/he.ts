@@ -3009,10 +3009,10 @@ export const he = {
   // §22 — the in-app message that a season has ended. There is no
   // notifications feed in the app (the bell opens the REQUESTS inbox), so this
   // is the card that carries it, on the home screen, once.
-  homeSeasonClosedTitle: (no: number) => `עונה ${no} הסתיימה 🏆`,
+  homeSeasonClosedTitle: (no: number) => `עונה ${no} הסתיימה!`,
   homeSeasonClosedBodyOf: (club: string) =>
-    club ? `התארים של ${club} חולקו. בוא לראות איך סיימת.` : 'התארים חולקו. בוא לראות איך סיימת.',
-  homeSeasonClosedCta: 'לסיכום העונה',
+    'כנס לראות את הביצועים שלך העונה!',
+  homeSeasonClosedCta: 'לצפייה בסיכום',
   // What a failed availability save actually says to the person in front of
   // it. Until now it printed `e.message` — which for the case production
   // recorded four times is the Firebase string "Missing or insufficient
