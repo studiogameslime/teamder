@@ -64,6 +64,7 @@ import { CommunityChampionship } from '@/components/community/CommunityChampions
 import { canEnterLive } from '@/services/gameLifecycle';
 import { SeasonsCard } from '@/components/community/SeasonsCard';
 import { UnverifiedEveningsCard } from '@/components/community/UnverifiedEveningsCard';
+import { seasonReadStamp } from '@/utils/seasonReadConsistency';
 import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
 import {resolveRoundCover} from '@/data/roundCover';
 import { NextGameCard } from '@/components/community/NextGameCard';
@@ -171,6 +172,7 @@ export function CommunityDetailsScreen() {
   const me = useUserStore((s) => s.currentUser);
   const leaveGroup = useGroupStore((s) => s.leaveGroup);
   const deleteGroup = useGroupStore((s) => s.deleteGroup);
+  const liveSeasons = useGroupStore(s => s.groups.find(g => g.id === groupId)?.seasons);
 
   // Which tab is on screen. Resets to מידע on every arrival — a club opens on
   // what it IS, not on wherever the last club was left.
@@ -190,6 +192,11 @@ export function CommunityDetailsScreen() {
     setSeen((prev) => (prev.has(k) ? prev : new Set(prev).add(k)));
   };
   const [group, setGroup] = useState<Group | null>(null);
+  useEffect(() => {
+    if (!liveSeasons) return;
+    setGroup(current => current?.id === groupId && (liveSeasons.revision ?? 0) >= (current.seasons?.revision ?? 0)
+      ? { ...current, seasons: liveSeasons } : current);
+  }, [groupId, liveSeasons]);
   const [members, setMembers] = useState<User[]>([]);
   const [upcoming, setUpcoming] = useState<Game[]>([]);
   // Loaded only as the pre-stats fallback for the "מפגשים שנערכו" count; the
@@ -810,7 +817,7 @@ export function CommunityDetailsScreen() {
                   });
                   (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                     'AdminApproval',
-                    undefined,
+                    { groupId: group.id },
                   );
                 },
               },
@@ -1375,7 +1382,8 @@ export function CommunityDetailsScreen() {
       ) : null}
       {seen.has('stats') ? (
         <View style={tab === 'stats' ? styles.tabPane : styles.tabPaneHidden}>
-          <CommunityStatsScreen groupId={group.id} header={header} active={tab === 'stats'} />
+          <CommunityStatsScreen groupId={group.id} header={header} active={tab === 'stats'}
+            seasonRevision={seasonReadStamp(group.seasons)} seasonBusy={!!group.seasons?.operation} />
         </View>
       ) : null}
 
@@ -1409,6 +1417,7 @@ export function CommunityDetailsScreen() {
 
       <ConfirmDestructiveModal
         visible={deleteOpen}
+        football
         title={he.deleteGroupTitle}
         body={he.deleteGroupBody}
         onClose={() => setDeleteOpen(false)}

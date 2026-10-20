@@ -3,8 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors, font, radius } from '../theme';
-import { Card, Screen, SectionHeader } from '../components/ui';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
+import { SectionTabs, Panel, Card, Screen, SectionHeader } from '../components/ui';
 import { config } from '../config';
 import { has } from '../capabilities';
 import { useDashboard } from '../state/DashboardContext';
@@ -60,6 +60,7 @@ function Btn({
 }
 
 export function SettingsScreen() {
+  const [section, setSection] = useState('notifications');
   const { refresh } = useDashboard();
   const nav = useNavigation<any>();
   const [msg, setMsg] = useState<string | null>(null);
@@ -87,7 +88,9 @@ export function SettingsScreen() {
 
   return (
     <Screen title="הגדרות" subtitle={config.appName}>
-      <Text onPress={() => { void signOutPulse(); }} style={styles.help}>יציאה מהחשבון</Text>
+      <SectionTabs value={section} onChange={setSection} items={[{key:'notifications',label:'התראות'}, {key:'system',label:'מערכת'}, {key:'account',label:'חשבון'}]} />
+      <Panel active={section === 'account'}><Card><Text style={styles.help}>מחוברים לחשבון הניהול</Text><Btn label="יציאה מהחשבון" tone="ghost" onPress={() => { void signOutPulse(); }} /></Card></Panel>
+      <Panel active={section === 'system'}>
       <SectionHeader>מקורות נתונים</SectionHeader>
       <Card style={{ gap: 4 }}>
         {sources.map((s) => (
@@ -99,6 +102,8 @@ export function SettingsScreen() {
         מפתחות ניהול אינם נשמרים באפליקציה.
       </Text>
 
+      </Panel>
+      <Panel active={section === 'notifications'}>
       <SectionHeader>התראות בזמן אמת</SectionHeader>
       <Card style={{ gap: 2 }}>
         {NOTIF_TYPES.map((t) => (
@@ -123,6 +128,8 @@ export function SettingsScreen() {
         כשהאפליקציה סגורה, וחל על כל המכשירים הרשומים.
       </Text>
 
+      </Panel>
+      <Panel active={section === 'system'}>
       <SectionHeader>תשתית</SectionHeader>
       <Pressable
         onPress={() => nav.navigate('Quota')}
@@ -172,6 +179,7 @@ export function SettingsScreen() {
           אותן). הכל רץ בשרת — מגיע אליך גם כשהאפליקציה סגורה.
         </Text>
       </Card>
+      </Panel>
     </Screen>
   );
 }
@@ -193,7 +201,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  btnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  btnText: { color: colors.onPrimary, fontWeight: '700', fontSize: 15 },
   msg: { ...font.small, color: colors.green, textAlign: 'center' },
   body: { ...font.body, color: colors.text, lineHeight: 21 },
   navCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -205,9 +213,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  navTitle: { ...font.title, color: colors.text, textAlign: 'right' },
-  navSub: { ...font.small, color: colors.textMuted, textAlign: 'right', marginTop: 2 },
+  navTitle: {  ...font.title, color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  navSub: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
   notifRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
-  notifLabel: { ...font.body, color: colors.text, textAlign: 'right' },
-  notifHint: { ...font.small, color: colors.textMuted, textAlign: 'right', marginTop: 1 },
+  notifLabel: {  ...font.body, color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  notifHint: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
 });

@@ -1,0 +1,44 @@
+[
+  {
+    "state": "overview",
+    "width": 390,
+    "file": "pulse-player-overview-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "info",
+    "width": 390,
+    "file": "pulse-player-info-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "history",
+    "width": 390,
+    "file": "pulse-player-history-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "overview",
+    "width": 320,
+    "file": "pulse-player-overview-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "info",
+    "width": 320,
+    "file": "pulse-player-info-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "history",
+    "width": 320,
+    "file": "pulse-player-history-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  }
+]

@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert,
-} from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { RtlTextInput as TextInput } from '../components/RtlTextInput';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, Card } from '../components/ui';
+import { SectionTabs, Panel, Screen, Card } from '../components/ui';
 import { Dropdown } from '../components/Dropdown';
 import { UserPicker } from '../components/UserPicker';
-import { colors, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, radius  } from '../theme';
 import type { AppUser } from '../types';
 import { fetchGroupMemberSet, fetchUsers, fetchUsersWithAuth } from '../services/firebase';
 import { matchUser, segmentNeedsAuth, describeSegment, EMPTY_SEGMENT, type SegmentDef } from '../services/segments';
@@ -37,7 +36,8 @@ function Arrow() {
 }
 
 export function CampaignsScreen() {
-  const [tab, setTab] = useState<'create' | 'list'>('create');
+  const [step, setStep] = useState('audience');
+  const [tab, setTab] = useState<'create' | 'list'>('list');
   const [type, setType] = useState<CampaignType>('push');
   const [segments, setSegments] = useState<SavedSegment[]>([]);
   const [segId, setSegId] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export function CampaignsScreen() {
       const real = users.filter((u) => !u.isTest && !u.deleted);
       setCount(real.filter((u) => matchUser(u, def, members, now)).length);
       setAudTotal(real.length);
-    } finally { setCalcBusy(false); }
+    } catch { Alert.alert('שגיאה', 'לא ניתן לחשב את הקהל כרגע'); } finally { setCalcBusy(false); }
   };
 
   const content = (): CampaignInput => ({
@@ -102,14 +102,15 @@ export function CampaignsScreen() {
       });
       if (res.ok) {
         Alert.alert('נוצר', type === 'push' ? (scheduled ? 'הקמפיין תוזמן ✓' : 'הפוש נשלח ✓') : 'הפופ-אפ פעיל ✓');
-        setTitle(''); setBody(''); setBtn(''); setActionValue('');
+        setTitle(''); setBody(''); setBtn(''); setActionValue(''); setStep('audience'); setTab('list');
         await reload();
       } else Alert.alert('שגיאה', res.error ?? 'יצירת הקמפיין נכשלה');
     } finally { setSending(false); }
   };
 
   const onSend = () => {
-    if (!title.trim()) { Alert.alert('חסר', 'כתוב כותרת'); return; }
+    if (!title.trim() || !body.trim()) { Alert.alert('חסר', 'מלאו כותרת ותוכן'); return; }
+    if (scheduled && (!Number.isFinite(Number(inHours)) || Number(inHours) <= 0)) { Alert.alert('תזמון לא תקין', 'הזינו מספר שעות גדול מאפס'); return; }
     Alert.alert(
       type === 'push' ? 'לשלוח פוש?' : 'להפעיל פופ-אפ?',
       `"${title}"\nקהל: ${selectedSeg ? selectedSeg.name : 'כל המשתמשים'}${count !== null ? `\nמוערך: ${count}` : ''}`,
@@ -139,7 +140,7 @@ export function CampaignsScreen() {
     <Screen
       title="קמפיינים"
       subtitle="שלח פוש או פופ-אפ לקהל לפי יעד"
-      right={<Ionicons name="add" size={26} color={colors.primary} />}
+      right={<Pressable accessibilityLabel="יצירת קמפיין" onPress={() => setTab('create')} style={{padding:12}}><Ionicons name="add" size={26} color={colors.primary} /></Pressable>}
     >
       {/* tabs */}
       <View style={s.tabs}>
@@ -155,7 +156,7 @@ export function CampaignsScreen() {
 
       {tab === 'list' ? (
         list.length === 0 ? (
-          <Card><Text style={s.empty}>אין עדיין</Text></Card>
+          <Card><Text style={s.empty}>אין עדיין קמפיינים. בחרו ביצירת קמפיין כדי להתחיל.</Text></Card>
         ) : (
           list.slice(0, 30).map((c) => {
             const st = campaignStats(c);
@@ -200,6 +201,8 @@ export function CampaignsScreen() {
         )
       ) : (
         <>
+          <SectionTabs value={step} onChange={setStep} items={[{key:'audience',label:'1 · קהל'}, {key:'content',label:'2 · תוכן'}, {key:'review',label:'3 · סיכום'}]} />
+          <Panel active={step === 'audience'}>
           {/* type */}
           <Text style={s.section}>סוג קמפיין</Text>
           <View style={s.typeRow}>
@@ -231,6 +234,9 @@ export function CampaignsScreen() {
             )}
           </Pressable>
 
+          <Pressable style={s.send} onPress={() => setStep('content')}><Text style={s.sendTxt}>המשך לכתיבת התוכן</Text></Pressable>
+          </Panel>
+          <Panel active={step === 'content'}>
           {/* content */}
           <Text style={s.section}>תוכן</Text>
           <Card style={{ gap: 8 }}>
@@ -265,6 +271,15 @@ export function CampaignsScreen() {
             </>
           ) : null}
 
+          <Pressable style={s.send} onPress={() => { if (!title.trim() || !body.trim()) { Alert.alert('חסר תוכן', 'מלאו כותרת וטקסט לפני ההמשך'); return; } setStep('review'); }}><Text style={s.sendTxt}>המשך לסיכום ושליחה</Text></Pressable>
+          </Panel>
+          <Panel active={step === 'review'}>
+          <Card style={{gap:8}}>
+            <Text style={s.histName}>{title || 'טרם הוזנה כותרת'}</Text>
+            <Text style={s.histSub}>{body || 'טרם הוזן תוכן'}</Text>
+            <Text style={s.calcLinkTxt}>{type === 'push' ? 'התראה' : 'פופ־אפ'} · {segments.find(seg => seg.id === segId)?.name || 'כל המשתמשים'}</Text>
+            <Text style={s.histSub}>{count === null ? 'גודל הקהל טרם חושב' : `${count.toLocaleString()} משתמשים מתאימים — לפני מגבלות המסירה`}</Text>
+          </Card>
           {/* schedule */}
           <Text style={s.section}>תזמון</Text>
           <View style={s.typeRow}>
@@ -294,11 +309,12 @@ export function CampaignsScreen() {
           ) : null}
 
           <Pressable style={[s.send, sending && { opacity: 0.6 }]} onPress={onSend} disabled={sending}>
-            {sending ? <ActivityIndicator color="#fff" /> : <Text style={s.sendTxt}>{type === 'push' ? (scheduled ? 'תזמן קמפיין' : 'שלח קמפיין עכשיו') : 'הפעל פופ-אפ'}</Text>}
+            {sending ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={s.sendTxt}>{type === 'push' ? (scheduled ? 'תזמן קמפיין' : 'שלח קמפיין עכשיו') : 'הפעל פופ-אפ'}</Text>}
           </Pressable>
           <Pressable style={[s.testBtn, testing && { opacity: 0.6 }]} onPress={onTest} disabled={testing}>
             {testing ? <ActivityIndicator color={colors.primary} /> : (<><Ionicons name="flask" size={17} color={colors.primary} /><Text style={s.testTxt}>שלח טסט למשתמש</Text></>)}
           </Pressable>
+          </Panel>
           <UserPicker visible={pickerOpen} onClose={() => setPickerOpen(false)} onPick={doTest} />
         </>
       )}
@@ -307,53 +323,53 @@ export function CampaignsScreen() {
 }
 
 const s = StyleSheet.create({
-  tabs: { flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: 4 },
+  tabs: { flexDirection: 'row', direction: 'rtl' as const, borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: 4 },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 10 },
   tabTxt: { color: colors.textMuted, fontSize: 14, fontWeight: '700' },
   tabOn: { color: colors.primary },
   tabBar: { height: 2, backgroundColor: colors.primary, alignSelf: 'stretch', marginTop: 8, borderRadius: 2 },
-  section: { color: colors.text, fontSize: 15, fontWeight: '800', textAlign: 'right', marginTop: 12, marginBottom: 6 },
-  typeRow: { flexDirection: 'row-reverse', gap: 10 },
-  typeCard: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingVertical: 16 },
-  schedCard: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingVertical: 13 },
+  section: { direction: 'rtl' as const, color: colors.text, fontSize: 15, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, marginTop: 12, marginBottom: 6 },
+  typeRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 10 },
+  typeCard: { flex: 1, flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingVertical: 16 },
+  schedCard: { flex: 1, flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingVertical: 13 },
   typeOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft + '22' },
   typeTxt: { color: colors.textSoft, fontSize: 14, fontWeight: '700' },
   calcLink: { alignSelf: 'flex-start', paddingVertical: 6 },
   calcLinkTxt: { color: colors.primary, fontSize: 13, fontWeight: '700' },
-  input: { color: colors.text, fontSize: 14, textAlign: 'right', backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10 },
-  twoCol: { flexDirection: 'row-reverse', gap: 10 },
+  input: { direction: 'rtl' as const, color: colors.text, fontSize: 14, textAlign: RTL_LABEL_ALIGN, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10 },
+  twoCol: { gap: 14 },
   colRight: { flex: 1, gap: 6 },
   colLeft: { flex: 1, justifyContent: 'center' },
-  miniLbl: { color: colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: 'right' },
+  miniLbl: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   pv: { backgroundColor: '#fff', borderRadius: 16, padding: 12, gap: 4, alignItems: 'center' },
   pvX: { alignSelf: 'flex-start', color: '#9CA3AF', fontSize: 13 },
   pvIcon: { fontSize: 26 },
   pvTitle: { color: '#111827', fontSize: 14, fontWeight: '800', textAlign: 'center' },
   pvBody: { color: '#6B7280', fontSize: 11, textAlign: 'center' },
   pvBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 7, paddingHorizontal: 14, alignSelf: 'stretch', alignItems: 'center' },
-  pvBtnTxt: { color: '#fff', fontSize: 12, fontWeight: '800' },
-  hoursRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: 8 },
+  pvBtnTxt: { color: colors.onPrimary, fontSize: 12, fontWeight: '800' },
+  hoursRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8, marginTop: 8 },
   num: { width: 56, textAlign: 'center', color: colors.text, fontSize: 15, fontWeight: '700', backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingVertical: 8 },
   safety: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: 12, marginTop: 12, gap: 6 },
-  safetyHead: { color: colors.textSoft, fontSize: 12, fontWeight: '800', textAlign: 'right' },
-  safetyRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  safetyTxt: { color: colors.textMuted, fontSize: 12, flex: 1, textAlign: 'right' },
+  safetyHead: { direction: 'rtl' as const, color: colors.textSoft, fontSize: 12, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  safetyRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8 },
+  safetyTxt: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, flex: 1, textAlign: RTL_LABEL_ALIGN },
   send: { backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 15, alignItems: 'center', marginTop: 14 },
-  sendTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  testBtn: { flexDirection: 'row-reverse', gap: 8, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  sendTxt: { color: colors.onPrimary, fontSize: 16, fontWeight: '800' },
+  testBtn: { flexDirection: 'row', direction: 'rtl' as const, gap: 8, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
   testTxt: { color: colors.primary, fontSize: 14, fontWeight: '800' },
   empty: { color: colors.textMuted, textAlign: 'center', paddingVertical: 14 },
-  histRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  histName: { color: colors.text, fontSize: 14, fontWeight: '600', textAlign: 'right' },
-  histSub: { color: colors.textMuted, fontSize: 12, textAlign: 'right', marginTop: 1 },
+  histRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  histName: { direction: 'rtl' as const, color: colors.text, fontSize: 14, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
+  histSub: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
   // results cards
   resCard: { gap: 12, marginBottom: 10 },
-  resHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
-  funnel: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
+  resHead: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 10 },
+  funnel: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', justifyContent: 'space-between' },
   statBox: { flex: 1, alignItems: 'center', gap: 1 },
   statVal: { color: colors.text, fontSize: 20, fontWeight: '700' },
   statLbl: { color: colors.textMuted, fontSize: 11 },
   statSub: { color: colors.primary, fontSize: 11, fontWeight: '700' },
   arrow: { color: colors.textMuted, fontSize: 18, paddingHorizontal: 2 },
-  blockTxt: { color: colors.textMuted, fontSize: 12, textAlign: 'right' },
+  blockTxt: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, textAlign: RTL_LABEL_ALIGN },
 });

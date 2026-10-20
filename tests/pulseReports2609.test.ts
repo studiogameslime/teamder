@@ -24,31 +24,21 @@ const SHEET = read(path.join('src', 'components', 'community', 'SeasonConfirmShe
 
 // ─── the season-length family (reports 01, 02, 03) ─────────────────────────
 
-describe('when season 1 carries the club history', () => {
-  it('the months chips say they govern season 2 onward', () => {
-    expect(HE).toContain('seasonsHowLongFromSeason2:');
-    expect(SETTINGS).toContain('carriesSeason1');
-    expect(SETTINGS).toContain('he.seasonsHowLongFromSeason2');
+describe('approved season target and confirmation wording', () => {
+  it('includes existing activity in the selected goal rather than silently measuring from today', () => {
+    expect(SETTINGS).toContain("choice === 'continue' && (history?.played ?? 0) > 0 ? history!.startsAt");
+    expect(SETTINGS).toContain('היעד נמדד מתחילת התקופה שנכללת');
   });
-
-  // Only on a first activation: a club already running seasons has no season 1
-  // to carry, and no date control for one.
-  it('only treats it that way before seasons are live', () => {
-    expect(SETTINGS).toMatch(
-      /carriesSeason1\s*=\s*live === false && cadence === 'date' && !sealHistory/,
-    );
+  it('names which season is edited and keeps the next defaults separate', () => {
+    expect(SETTINGS).toContain('העונה הנוכחית'); expect(SETTINGS).toContain('העונות הבאות');
+    expect(SETTINGS).toContain('העונה הפעילה לא משתנה');
   });
-
-  it('the confirmation names the season the number applies to', () => {
-    expect(SHEET).toContain('he.seasonsConfirmFromSeason2');
-    expect(SHEET).toMatch(/!plan\.sealsSeason1 && hasHistory/);
+  it('the confirmation explicitly describes historical inclusion and fresh starts', () => {
+    expect(SHEET).toContain("selected === 'fresh'"); expect(SHEET).toContain("selected === 'sealNow'");
+    expect(SHEET).toContain('היעד כולל את ההתקדמות שכבר נצברה');
   });
-
-  // The preview box renders the PLAN. On an untouched live club the plan is a
-  // season the club is not in — one was reported previewing 25.03.2027 under
-  // the club's own "העונה מסתיימת ב־25.09.2028".
-  it('no plan preview on a live club until the target is actually changed', () => {
-    expect(SETTINGS).toContain('plan.ok && plan.nextStartsOn && (!live || targetChanged)');
+  it('a live date preview uses the actual season start', () => {
+    expect(SETTINGS).toContain("scope === 'current' ? seasons?.startedAt");
   });
 });
 

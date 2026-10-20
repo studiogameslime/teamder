@@ -1,3 +1,4 @@
+import { collectionData } from './collectionData';
 import { createShortAdLink } from './shortAdLinks';
 // Acquisition (UTM) tracking. The admin creates a tracked link per
 // distribution channel (whatsapp / facebook / …); the app records
@@ -142,7 +143,7 @@ import { calculateLinkStats, type LinkStats } from './adLinkStats';
 /** uids that created (hosted) at least one game. */
 export async function fetchGameCreators(): Promise<Set<string>> {
   return cached('gameCreators', async () => {
-    const games = await listAll('games');
+    const games = await collectionData('games');
     const s = new Set<string>();
     for (const g of games) {
       const c = (g.createdBy ?? g.creatorId) as string | undefined;

@@ -47,11 +47,7 @@ describe('a HALF-WRITTEN coverage is dropped, not printed', () => {
     expect(readSeasonCoverage({ coverage })).toBeUndefined();
   });
 
-  it('and a rating that covers the WHOLE season says nothing either', () => {
-    // Not a defect — there is simply no caveat to give. The note exists to
-    // warn that the average is short of the season; when it is not, printing
-    // "based on 22 of 22" is noise that makes every other season look suspect
-    // by omission. closeSeason declines to record it in that case.
+  it('a full season also states how many actual round scores were included', () => {
     expect(readSeasonCoverage({ coverage: { rated: 22, of: 22 } })).toEqual({ rated: 22, of: 22 });
   });
 });
@@ -59,7 +55,7 @@ describe('a HALF-WRITTEN coverage is dropped, not printed', () => {
 describe('the sentence it produces', () => {
   it('names the numerator and denominator the right way round', () => {
     const t = he.seasonTitleCoverage(9, 22);
-    expect(t).toBe('מבוסס על 9 מתוך 22 ערבי העונה שבהם נאספו דירוגים');
+    expect(t).toBe('מבוסס על 9 מתוך 22 מחזורי העונה עם ציון תקף');
     // The trap that would make it a lie: 22 of 9.
     expect(t.indexOf('9')).toBeLessThan(t.indexOf('22'));
   });
@@ -69,11 +65,18 @@ describe('the sentence it produces', () => {
     // season was — a reader must not come away thinking 7.66 is the mean of
     // twenty-two evenings.
     const t = he.seasonTitleCoverage(9, 22);
-    expect(t).toContain('שבהם נאספו דירוגים');
+    expect(t).toContain('מחזורי העונה עם ציון תקף');
     expect(t).not.toMatch(/ממוצע/);
   });
 
   it('and reads correctly for the real Shoshi numbers', () => {
     expect(he.seasonTitleCoverage(9, 22)).toContain('9 מתוך 22');
   });
+});
+
+
+test('full and individual samples remain visible even when every round has a score', () => {
+  expect(readSeasonCoverage({ coverageByWinner: { a: { rated: 22, of: 22 }, b: { rated: 9, of: 22 } } }, 'a')).toEqual({ rated: 22, of: 22 });
+  expect(readSeasonCoverage({ coverageByWinner: { a: { rated: 22, of: 22 }, b: { rated: 9, of: 22 } } }, 'b')).toEqual({ rated: 9, of: 22 });
+  expect(readSeasonCoverage({ coverageByWinner: { a: { rated: 22, of: 22 } } }, 'b')).toBeUndefined();
 });

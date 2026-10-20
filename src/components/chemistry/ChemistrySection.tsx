@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PairChemistryIcon } from './PairChemistryIcon';
+import { SeasonSummaryIcon } from '@/components/summary/SeasonSummaryIcon';
 
 import { UserAvatar } from '@/components/UserAvatar';
 import {
@@ -115,6 +116,7 @@ export function ChemistrySection({
   appearance,
   preview = false,
   motionEnabled = true,
+  identities,
 }: {
   groupId: string;
   pairs?: Record<string, PairTotals> | null;
@@ -130,9 +132,11 @@ export function ChemistrySection({
    * chip naming the window and keeps the line.
    */
   seasonScoped?: boolean;
-  appearance?: 'club';
+  appearance?: 'club' | 'summary';
   preview?: boolean;
   motionEnabled?: boolean;
+  /** Supplied by a season archive: never replace frozen names with live identities. */
+  identities?: Record<string, PairPerson>;
 }) {
   const [loaded, setLoaded] = useState<{ groupId: string; source: typeof pairs; data: ClubChemistry | null; failed: boolean } | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -170,6 +174,7 @@ export function ChemistrySection({
           if (!y.startsWith('guest:')) ids.add(y);
         }
       }
+      if (identities) { setPeople(identities); return; }
       if (ids.size === 0) return;
       const users = await groupService.hydrateUsers(Array.from(ids)).catch(() => []);
       if (!alive) return;
@@ -185,7 +190,7 @@ export function ChemistrySection({
     return () => {
       alive = false;
     };
-  }, [groupId, pairs, attempt]);
+  }, [groupId, pairs, attempt, identities]);
 
   // Hide a previous club/scope synchronously, before its cleanup effect runs.
   const current = loaded?.groupId === groupId && loaded.source === pairs ? loaded : null;
@@ -208,7 +213,7 @@ export function ChemistrySection({
           it is not drawn at all, so a young club shows one or two cards rather
           than a grid of blanks — and the remaining cards still tile, because
           the row wraps rather than reserving slots. */}
-      <View style={styles.grid}>
+      <View style={[styles.grid, appearance === 'summary' && { gap: 5 }]}>
         {(() => {
           const drawn = GRID_KINDS.filter((k) => (!preview || k === 'winningDuo') && data.picks.some((x) => x.kind === k));
           return drawn;
@@ -225,6 +230,25 @@ export function ChemistrySection({
           const [x, y] = pairMembers(p.pairs[0]);
           const px = person(x);
           const py = person(y);
+          if (appearance === 'summary') return <Pressable key={kind} accessibilityRole="button"
+            accessibilityLabel={CHEMISTRY_LABEL[kind]} onPress={() => setOpen([x, y])}
+            style={{ width: '100%', flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#E2EBF8', borderRadius: 8, padding: 6, minHeight: 55 }}>
+            <View style={{ flex: 1, gap: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 11, lineHeight: 14, textAlign: RTL_LABEL_ALIGN }}>{CHEMISTRY_LABEL[kind]}</Text>
+              <Text style={{ color: colors.text, fontSize: 11, lineHeight: 14, textAlign: RTL_LABEL_ALIGN }}>{p.kind === 'bestRatio' ? metricText(p) : headline(p)}</Text>
+              {p.kind === 'bestRatio' ? <Text style={{ color: colors.textMuted, fontSize: 9, lineHeight: 12, textAlign: RTL_LABEL_ALIGN }}>{pairs?.[p.pairs[0]]?.winsTogether ?? 0} ניצחונות מתוך {pairs?.[p.pairs[0]]?.sameTeam ?? 0} משחקים יחד</Text> : null}
+              {p.tied ? <Text style={styles.tied}>{he.chemistryTied}</Text> : null}
+            </View>
+            <View style={{ alignItems: 'center', width: 47, gap: 1 }}>
+              <UserAvatar user={{ id: x, name: px?.name ?? '—', ...px }} size={28} />
+              <Text numberOfLines={2} style={{ fontSize: 9, lineHeight: 11, color: colors.text, textAlign: 'center' }}>{px?.name ?? '—'}</Text>
+            </View>
+            <SeasonSummaryIcon name={kind === 'bestRatio' ? 'pairTarget' : kind === 'winningDuo' ? 'pairTrophy' : kind === 'regulars' ? 'pitch' : kind === 'mostLosses' ? 'loss' : 'goal'} size={21} />
+            <View style={{ alignItems: 'center', width: 47, gap: 1 }}>
+              <UserAvatar user={{ id: y, name: py?.name ?? '—', ...py }} size={28} />
+              <Text numberOfLines={2} style={{ fontSize: 9, lineHeight: 11, color: colors.text, textAlign: 'center' }}>{py?.name ?? '—'}</Text>
+            </View>
+          </Pressable>;
           if (appearance === 'club') return <View key={kind} style={{ width: '100%', gap: 8 }}>
             {preview ? <Text style={styles.clubHeading}>צמד מנצח</Text> : null}
             <Pressable accessibilityRole="button" accessibilityLabel={`${CHEMISTRY_LABEL[kind]}: ${px?.name ?? ''} ${py?.name ?? ''}`} onPress={() => { logEvent(AnalyticsEvent.ScreenView, { screen: 'PairCard', kind }); setOpen([x, y]); }} style={({ pressed }) => [styles.clubPair, pressed && { opacity: 0.75 }]}>

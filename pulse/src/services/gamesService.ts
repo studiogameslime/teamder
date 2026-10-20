@@ -1,3 +1,4 @@
+import { collectionData } from './collectionData';
 // gamesService — UPCOMING / currently-active Teamder games with their
 // registration counts AND a managerial "was it active?" read-out (timer
 // started? mini-games played? live right now?). Read-only via Firestore REST.
@@ -146,14 +147,14 @@ function buildDetail(d: FsDoc, draft: Record<string, any>): GameDetail {
     jerseysHolderUserId: str(d.jerseysHolderUserId),
     ruleTags: strArr(d.ruleTags),
     notes: str(d.notes),
-    arrivals: len(d.arrivals),
-    cancellations: len(d.cancellations),
+    arrivals: Array.isArray(d.arrivals)?d.arrivals.length:Object.keys(obj(d.arrivals)).length,
+    cancellations: Array.isArray(d.cancellations)?d.cancellations.length:Object.keys(obj(d.cancellations)).length,
     createdBy: str(d.createdBy),
     createdAt: n(d.createdAt),
   };
 }
 
-function toRow(d: FsDoc): GameRow {
+export function toRow(d: FsDoc): GameRow {
   const lm = obj(d.liveMatch);
   const rot = obj(d.rotation);
   const draft = obj(d.draftTeams);
@@ -166,6 +167,7 @@ function toRow(d: FsDoc): GameRow {
   // Completed mini-games: rotation.round counts finalizes; roundNumber is the
   // CURRENT round (1-based), so completed = roundNumber-1. Take the max.
   const roundsPlayed = Math.max(
+    typeof d.committedRoundCount === 'number' ? d.committedRoundCount : 0,
     typeof rot.round === 'number' ? rot.round : 0,
     typeof lm.roundNumber === 'number' && lm.roundNumber > 0 ? lm.roundNumber - 1 : 0,
   );
@@ -219,10 +221,10 @@ export interface GamesReport {
 /** UPCOMING / now games only (future kickoff, or started within the last 8h,
  *  excluding finished/cancelled). Soonest first, with a summary. `now` is
  *  passed in so the caller controls the clock (and it's testable). */
-export async function fetchGames(now: number = Date.now()): Promise<GamesReport> {
+export async function fetchGames(now: number = Date.now(), force = false): Promise<GamesReport> {
   const [docs, groups] = await Promise.all([
-    listAll('games'),
-    listAll('groups').catch(() => []),
+    collectionData('games', force),
+    collectionData('groups', force).catch(() => []),
   ]);
   const groupName = new Map<string, string>();
   for (const g of groups) {

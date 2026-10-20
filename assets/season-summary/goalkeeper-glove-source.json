@@ -1,0 +1,9 @@
+{
+  "tool": "image_gen",
+  "date": "2026-10-18",
+  "transparent_background": true,
+  "prompt": "Use case: product-mockup. Create one isolated photorealistic goalkeeper glove for a football app statistics icon. Palm facing camera, upright fingers slightly spread, anatomically correct five fingers, soft white latex palm with cobalt blue wrist cuff and subtle navy details. Realistic padded sports equipment, clear silhouette readable at 40 pixels. Centered large single glove, square canvas, transparent background, no hand or person, no logo, no text, no watermark. Soft studio light.",
+  "source": "C:/Users/elira/.codex/generated_images/01a14fa3-8876-7fd1-bb35-84dd104c3600/exec-73c1077c-c183-40c5-aaf4-56b9affc1729.png",
+  "output": "assets/season-summary/goalkeeper-glove.png",
+  "outputSize": [192, 192]
+}

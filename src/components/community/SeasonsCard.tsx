@@ -26,6 +26,8 @@ import {
   msUntilSeasonCloses,
   formatCloseCountdown,
 } from '@/utils/seasonFinalRound';
+import { seasonService } from '@/services/seasonService';
+import { MIN_SEASON_ROUNDS, seasonTargetDue } from '@/utils/seasonPolicy';
 import type { GroupSeasons } from '@/types';
 
 function formatDate(ms: number): string {
@@ -81,6 +83,11 @@ export function SeasonsCard({
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [windowOpen]);
+
+  useEffect(() => {
+    if (!isMember || !seasons?.enabled || !windowOpen || (seasons?.pendingClose?.closeAt ?? Infinity) > now || seasons?.pendingClose?.pausedAt != null) return;
+    void seasonService.sync(groupId).catch(() => undefined);
+  }, [groupId, isMember, seasons?.enabled, seasons?.pendingClose?.closeAt, seasons?.pendingClose?.pausedAt, Math.floor(now / 60000)]);
 
   if (!isMember) return null;
 
@@ -209,9 +216,10 @@ export function SeasonsCard({
           is met there are none — what an admin wants then is the clock. */}
       {closesIn !== null ? (
         <Text style={[styles.note, styles.noteUrgent]}>
-          {he.seasonsClosesIn(formatCloseCountdown(closesIn))}
+          {seasons.manualClose ? 'ממתינים להשלמת סגירת העונה' : seasons.pendingClose?.pausedAt != null ? `הטיימר נעצר — ${seasons.pendingClose.awaitingVerification ?? 1} מחזורים ממתינים לאימות. נותרו ${formatCloseCountdown(closesIn)} שעות לתיקונים לאחר האימות.` : closesIn === 0 ? 'חלון התיקונים הסתיים. משלימים את סגירת העונה…' : he.seasonsClosesIn(formatCloseCountdown(closesIn))}
         </Text>
       ) : null}
+      {cadence && seasonTargetDue(cadence, seasons.playedRounds ?? 0, now) && (seasons.playedRounds ?? 0) < MIN_SEASON_ROUNDS ? <Text style={[styles.note, styles.noteUrgent]}>{`יעד הזמן הגיע. חסרים ${MIN_SEASON_ROUNDS - (seasons.playedRounds ?? 0)} מחזורים תקינים למינימום. העונה ממשיכה ואפשר להאריך אותה.`}</Text> : null}
       {daysLeft !== null ? (
         <Text style={styles.note}>{he.seasonsProgressDays(daysLeft)}</Text>
       ) : null}

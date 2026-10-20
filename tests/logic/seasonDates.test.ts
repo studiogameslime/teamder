@@ -67,7 +67,9 @@ describe('month ends, February and leap years', () => {
   it('31 August + 6 months clamps to 28 February, not 3 March', () => {
     // The naive setMonth(+6) lands on 03.03 because 31 February rolls over.
     expect(addMonths('2026-08-31', 6)).toBe('2027-02-28');
-    expect(seasonEndDate('2026-08-31', 6)).toBe('2027-02-27');
+    expect(seasonEndDate('2026-08-31', 6)).toBe('2027-02-28');
+    expect(seasonEndDate('2027-01-31', 1)).toBe('2027-02-28');
+    expect(seasonEndDate('2028-01-31', 1)).toBe('2028-02-29');
   });
 
   it('31 January + 1 month is 28 February', () => {

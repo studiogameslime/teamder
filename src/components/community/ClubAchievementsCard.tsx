@@ -1,108 +1,35 @@
-// ClubAchievementsCard — the club's badge grid ("הישגי המועדון").
-//
-// It used to live, inline, at the very bottom of CommunityStatsScreen. The
-// owner (report from Eliran, 1.1.9) asked for it on the club page instead,
-// directly under the "נתוני מועדון" block — so the grid moved here, into one
-// component both screens can mount, rather than being copied.
-//
-// Pure presentation: the caller owns the metrics. That matters, because the
-// six club metrics come from three different aggregates and each screen
-// already holds a different subset of them — a component that fetched its own
-// would be re-reading what its host just read.
-
-import React, { useMemo } from 'react';
+// Club eligibility stays live and host-owned; visuals match the personal cabinet.
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-
-import { Card } from '@/components/Card';
-import { AchievementBadge } from '@/components/AchievementBadge';
-import { appAlert } from '@/components/AppDialog';
-import {
-  computeClubBadges,
-  type ClubBadge,
-  type ClubMetrics,
-} from '@/data/clubAchievements';
+import { AchievementTile, AchievementDetail, type AchievementDisplayItem } from '@/components/profile/AchievementCabinetCards';
+import { computeClubBadges, type ClubMetrics } from '@/data/clubAchievements';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
-interface Props {
-  /** The club's lifetime metrics. `null` while they are still loading — the
-   *  section hides rather than showing six locked badges that then light up. */
-  metrics: ClubMetrics | null;
-}
-
-export function ClubAchievementsCard({ metrics }: Props) {
-  const badges = useMemo(
-    () => (metrics ? computeClubBadges(metrics) : []),
-    [metrics],
-  );
-
+export function ClubAchievementsCard({ metrics }: { metrics: ClubMetrics | null }) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const items = useMemo<AchievementDisplayItem[]>(() => metrics ? computeClubBadges(metrics).map(badge => ({
+    def: { ...badge.def, ...(badge.def.id === 'organization' ? { nounHe: 'מהמחזורים שהתקיימו' } : {}) },
+    value: badge.value,
+    currentTier: badge.def.tiers.find(step => step.tier === badge.tier) ?? null,
+    next: badge.next,
+    unlocked: badge.tier !== null,
+    ...(badge.def.id === 'organization' ? { unit: 'percent' as const } : {}),
+  })) : [], [metrics]);
   if (!metrics) return null;
-
-  const onBadgePress = (b: ClubBadge) => {
-    const target = b.next?.threshold ?? b.def.tiers[b.def.tiers.length - 1].threshold;
-    const progress =
-      b.tier && !b.next
-        ? he.clubAchievementGold
-        : he.clubAchievementProgress(b.value, target);
-    appAlert(b.def.titleHe, `${b.def.howHe}\n\n${progress}`);
-  };
-
-  return (
-    <View>
-      {/* No icon. "נתוני מועדון" sits directly above this on the same screen
-          with a bare heading, and the medal here made one of two neighbouring
-          section titles look like a different kind of thing. */}
-      <View style={styles.sectionTitle}>
-        <Text style={styles.sectionTitleText}>
-          {he.communityStatsSectionAchievements}
-        </Text>
-      </View>
-      <Card style={styles.badgeCard}>
-        <View style={styles.badgeGrid}>
-          {badges.map((b) => (
-            <AchievementBadge
-              key={b.def.id}
-              def={b.def}
-              tier={b.tier}
-              size={64}
-              showTierLabel
-              onPress={() => onBadgePress(b)}
-              style={styles.badgeItem}
-            />
-          ))}
-        </View>
-      </Card>
+  const active = items.find(item => item.def.id === activeId) ?? null;
+  return <View>
+    <View style={styles.sectionTitle}>
+      <Text style={styles.sectionTitleText}>{he.communityStatsSectionAchievements}</Text>
     </View>
-  );
+    <View style={styles.grid}>
+      {items.map(item => <AchievementTile key={item.def.id} item={item} unavailable={false} onPress={() => setActiveId(item.def.id)} />)}
+    </View>
+    <AchievementDetail item={active} unavailable={false} context="club" onClose={() => setActiveId(null)} />
+  </View>;
 }
-
 const styles = StyleSheet.create({
-  sectionTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  sectionTitleText: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
-  },
-  badgeCard: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
-  badgeGrid: {
-    // 'row', like the personal תארים grid — under forceRTL it puts the FIRST
-    // badge on the visual RIGHT, where a Hebrew reader's eye starts. The
-    // 'row-reverse' this grid was carrying since it lived on the stats screen
-    // cancelled that flip and laid the six badges out left-to-right: the
-    // reporter's own screenshot shows "מפגשים", the first of the catalogue,
-    // pinned to the far LEFT of the card.
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    rowGap: spacing.md,
-  },
-  badgeItem: { width: '33.3%' },
+  sectionTitle: { marginTop: spacing.md, marginBottom: spacing.sm },
+  sectionTitleText: { ...typography.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'space-between' },
 });

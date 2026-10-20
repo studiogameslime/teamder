@@ -1,14 +1,16 @@
+import { VersionInventory } from '../components/VersionInventory';
+import { fetchVersionInventory, type UserVersions } from '../services/deviceVersions';
 // "גרסאות" — one place to see which version is live in each store, since
 // when, and what was fixed/added there; what's done and waiting for the next
 // version; and a button to ship the next one. Live store states come from the
 // App Store / Google Play APIs; the friendly per-version changelog comes from
 // the release log in the DB (appConfig/releaseLog).
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, Image, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, Card } from '../components/ui';
-import { colors, radius } from '../theme';
+import { SectionTabs, Panel, Screen, Card } from '../components/ui';
+import { RTL_LABEL_ALIGN, colors, radius  } from '../theme';
 import { fetchAppleVersions, type StoreVersion } from '../services/appStoreConnect';
 import { fetchPlayProductionRelease, type PlayRelease } from '../services/googlePlay';
 import {
@@ -44,20 +46,42 @@ function cmpVer(a: string, b: string): number {
 }
 
 export function VersionsScreen() {
+  const [refreshing, setRefreshing] = useState(false);
+  const [failedSources, setFailedSources] = useState<string[]>([]);
+  const [inventory, setInventory] = useState<UserVersions[]|null>(null);
+  const [inventoryBusy, setInventoryBusy] = useState(false);
+  const [inventoryFailed, setInventoryFailed] = useState(false);
+  const [inventoryAt, setInventoryAt] = useState(0);
+  const [platform,setPlatform] = useState<'android'|'ios'>('android');
+  const inventoryLock = useRef(false);
+  const alive = useRef(true);
+  useEffect(()=>{alive.current=true;return()=>{alive.current=false}},[]);
+  const loadInventory = async()=>{
+    if(inventoryLock.current)return;inventoryLock.current=true;setInventoryBusy(true);setInventoryFailed(false);
+    try {const result=await fetchVersionInventory(inventory!==null);if(alive.current){setInventory(result);setInventoryAt(Date.now())}}
+    catch{if(alive.current)setInventoryFailed(true)}finally{inventoryLock.current=false;if(alive.current)setInventoryBusy(false)}
+  };
+  const [section, setSection] = useState('stores');
   const [loading, setLoading] = useState(true);
   const [log, setLog] = useState<ReleaseLog>({ items: [], versions: {} });
   const [apple, setApple] = useState<StoreVersion[]>([]);
   const [play, setPlay] = useState<PlayRelease | null>(null);
   const [wear, setWear] = useState<WearRelease | null>(null);
 
+  const storeLock=useRef(false);
   const load = useCallback(async () => {
-    const [a, p, l, w] = await Promise.all([
-      fetchAppleVersions().catch(() => [] as StoreVersion[]),
-      fetchPlayProductionRelease().catch(() => null),
-      fetchReleaseLog().catch(() => ({ items: [], versions: {} } as ReleaseLog)),
-      fetchWearRelease().catch(() => null),
-    ]);
-    setApple(a); setPlay(p); setLog(l); setWear(w);
+    if(storeLock.current)return;storeLock.current=true;
+    setRefreshing(true);
+    const results = await Promise.allSettled([fetchAppleVersions(), fetchPlayProductionRelease(), fetchReleaseLog(), fetchWearRelease()]);
+    storeLock.current=false;
+    if(!alive.current)return;
+    const [a,p,l,w] = results;
+    if (a.status === 'fulfilled') setApple(a.value); else setApple([]);
+    if (p.status === 'fulfilled') setPlay(p.value); else setPlay(null);
+    if (l.status === 'fulfilled') setLog(l.value);
+    if (w.status === 'fulfilled') setWear(w.value); else setWear(null);
+    setFailedSources(results.flatMap((result,index) => result.status === 'rejected' ? [['חנות אפל','חנות גוגל','יומן השינויים','השעון'][index]] : []));
+    setRefreshing(false);
     setLoading(false);
   }, []);
 
@@ -75,26 +99,15 @@ export function VersionsScreen() {
   let googleReview: StoreLine | undefined;
   if (play) {
     const st = playStatusHe(play.status);
-    // A freshly-submitted production release reads as "completed" in the Play
-    // API even while it's still in Google review. If its version is NEWER than
-    // the Apple live version, it's the one GOING UP — not the current live.
-    const reallyLive = st.live && (!appleLive || play.name === appleLive.version);
+    // Store states are independent; a different Apple version is not evidence of review.
+    const reallyLive = st.live;
     const line: StoreLine = {
       store: 'google',
       version: play.name,
-      status: reallyLive
-        ? st
-        : { he: 'ממתין לאישור', live: false, inReview: true },
+      status: st,
       since: reallyLive ? since(play.name) : log.versions[play.name]?.submittedAt,
     };
     if (reallyLive) googleLive = line; else googleReview = line;
-  } else {
-    const dated = Object.entries(log.versions)
-      .filter(([, m]) => m.releasedAt)
-      .sort((a, b) => (b[1].releasedAt ?? 0) - (a[1].releasedAt ?? 0))[0];
-    if (dated) {
-      googleLive = { store: 'google', version: dated[0], status: { he: 'באוויר', live: true, inReview: false }, since: dated[1].releasedAt };
-    }
   }
 
   // ── באוויר עכשיו: the one live version per surface (iOS / Android / שעון) ──
@@ -142,7 +155,7 @@ export function VersionsScreen() {
   upVersions.forEach((v) =>
     goingUp.push({
       version: v,
-      status: { he: 'ממתין לאישור החנויות', live: false, inReview: true },
+      status: { he: 'מתועד ביומן — מצב החנות לא אומת', live: false, inReview: false },
       since: log.versions[v]?.submittedAt,
       items: itemsForVersion(log, v),
       itemsCaption: 'מה יעלה בגרסה זו:',
@@ -164,7 +177,7 @@ export function VersionsScreen() {
   // and is not already on screen, newest first, collapsed.
   const onScreen = new Set([...liveLines, ...goingUp].map((l) => l.version));
   const history = [...new Set(log.items.map((i) => i.version))]
-    .filter((v) => v !== PENDING && !onScreen.has(v))
+    .filter((v) => v !== PENDING)
     .sort((a, b) => cmpVer(b, a));
   // A version nothing was ever logged against opens to an empty card. The
   // count badge was meant to make that honest, but four rows that cannot be
@@ -184,23 +197,22 @@ export function VersionsScreen() {
   return (
     <Screen
       title="גרסאות"
-      subtitle="מה באוויר, מה בבדיקה, ומה מחכה לגרסה הבאה"
-      refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} />}
+      subtitle="הפצה ואימוץ אצל המשתמשים"
+      right={<Pressable accessibilityRole="button" accessibilityLabel="רענון מצב החנויות" onPress={load} disabled={refreshing} style={{padding:12}}><Ionicons name="refresh-outline" size={23} color={colors.primary}/></Pressable>}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} tintColor={colors.primary} />}
     >
-      {/* באוויר עכשיו — name, status, AND what shipped in it. The changelog
-          used to be withheld here on the theory that the live version is "a
-          known quantity"; it isn't. It is the version everyone is actually
-          running, so it is the one people ask about — and with the answer
-          missing, the only way to see what a user has was to read the version
-          going up and subtract. Collapsed by default so the page stays short:
-          the version in flight is still the one that opens on its own. */}
-      <Text style={s.section}>באוויר עכשיו</Text>
+      {failedSources.length ? <Text style={{ direction: 'rtl' as const,color:colors.amber,textAlign: RTL_LABEL_ALIGN}}>לא ניתן לעדכן: {failedSources.join(' · ')}. יומן קודם, אם נטען, נשמר.</Text> : null}
+      <View style={{flexDirection:'row',direction:'rtl',borderBottomWidth:1,borderBottomColor:colors.border}}>{[{key:'stores',label:'סקירה'},{key:'users',label:'משתמשים'},{key:'history',label:'שינויים'}].map(tab=><Pressable accessibilityRole="tab" accessibilityState={{selected:section===tab.key}} key={tab.key} onPress={()=>setSection(tab.key)} style={{flex:1,minHeight:48,justifyContent:'center',alignItems:'center',borderBottomWidth:2,borderBottomColor:section===tab.key?colors.primary:'transparent'}}><Text style={{color:section===tab.key?colors.primary:colors.textSoft,fontWeight:'700'}}>{tab.label}</Text></Pressable>)}</View>
+      <Panel active={section === 'users'}><VersionInventory rows={inventory} busy={inventoryBusy} failed={inventoryFailed} loadedAt={inventoryAt} load={loadInventory} targets={{ios:appleLive?.version,android:googleLive?.version}} platform={platform} setPlatform={setPlatform}/></Panel>
+      <Panel active={section === 'stores'}>
+      <Text style={s.section}>זמין בחנויות</Text>
       {liveLines.length === 0 ? (
         <Card><Text style={s.empty}>אין מידע על גרסה באוויר כרגע</Text></Card>
       ) : (
         liveLines.map((l) => (
           <VersionRow
             key={`live-${l.store}`}
+            store={l.store!}
             badge={<StoreBadge store={l.store!} />}
             title={`גרסה ${l.version}`}
             statusText={`${l.status.he}${l.status.live && l.since ? ` · מאז ${dateHe(l.since)}` : ''}`}
@@ -211,10 +223,17 @@ export function VersionsScreen() {
         ))
       )}
 
+      {!appleLive?<Card><Text style={s.vTitle}>אפל</Text><Text style={s.pendNote}>גרסה זמינה בחנות לא אומתה</Text></Card>:null}
+      {!googleLive?<Card><Text style={s.vTitle}>גוגל</Text><Text style={s.pendNote}>גרסה זמינה בחנות לא אומתה</Text></Card>:null}
+      <Text style={s.section}>הגרסה הבאה</Text>
+      <Card style={{gap:12}}><Text style={{ direction: 'rtl' as const,color:colors.primary,fontWeight:'700',textAlign: RTL_LABEL_ALIGN}}>טרם הופצה</Text><Text style={[s.vTitle,{fontSize:18}]}>{pending.length===1?'שינוי אחד מתועד לגרסה הבאה':`${pending.length} שינויים מתועדים לגרסה הבאה`}</Text>{pending.slice(0,3).map((item,index)=><Text key={index} style={s.itemTxt}>• {item.title}</Text>)}<Text style={[s.pendNote,{borderTopWidth:1,borderTopColor:colors.border,paddingTop:12}]}>מתועדים ביומן · עדיין לא זמינים למשתמשים בגרסה חדשה</Text><Pressable onPress={()=>setSection('history')} style={{paddingVertical:10}}><Text style={{ direction: 'rtl' as const,color:colors.primary,textAlign: RTL_LABEL_ALIGN}}>פתיחת רשימת השינויים</Text></Pressable></Card>
+      <Text style={s.section}>אימוץ אצל המשתמשים</Text>
+      <VersionInventory compact rows={inventory} busy={inventoryBusy} failed={inventoryFailed} loadedAt={inventoryAt} load={loadInventory} targets={{ios:appleLive?.version,android:googleLive?.version}} platform={platform} setPlatform={setPlatform} onUsers={()=>setSection('users')}/>
+      <Text style={s.pendNote}>מצב החנות אינו מבטיח זמינות לכל משתמש. נתוני מכשירים אינם אישור שהגרסה עדיין מותקנת.</Text>
       {/* עולה עכשיו — what's in flight to the stores, expanded with its changes. */}
       {goingUp.length > 0 ? (
         <>
-          <Text style={s.section}>עולה עכשיו</Text>
+          <Text style={s.section}>בתהליך הפצה או בתיעוד</Text>
           {goingUp.map((l) => (
             <VersionRow
               key={`up-${l.store ?? 'db'}-${l.version}`}
@@ -224,7 +243,7 @@ export function VersionsScreen() {
                 ) : (
                   <View style={[s.badge, { backgroundColor: colors.amber + '22' }]}>
                     <Ionicons name="cloud-upload" size={14} color={colors.amber} />
-                    <Text style={[s.badgeTxt, { color: colors.amber }]}>הוגש</Text>
+                    <Text style={[s.badgeTxt, { color: colors.amber }]}>ביומן</Text>
                   </View>
                 )
               }
@@ -233,12 +252,13 @@ export function VersionsScreen() {
               tint={colors.amber}
               items={l.items ?? []}
               itemsCaption={l.itemsCaption}
-              defaultOpen
             />
           ))}
         </>
       ) : null}
 
+      </Panel>
+      <Panel active={section === 'history'}>
       {/* מחכה לגרסה הבאה — the `next` bucket. The subtitle has promised this
           section since the screen was written and nothing ever rendered it, so
           every fix logged between two ships was invisible here: the log filled
@@ -282,7 +302,7 @@ export function VersionsScreen() {
                   </View>
                 }
                 title={`גרסה ${v}`}
-                statusText={when ? `יצאה ${dateHe(when)}` : 'ללא תאריך'}
+                statusText={when ? `${log.versions[v]?.releasedAt?'תאריך הפצה מתועד':'תאריך הגשה מתועד'}: ${dateHe(when)}` : 'ללא תאריך מתועד'}
                 tint={colors.textMuted}
                 items={its}
                 itemsCaption="מה נכנס בגרסה הזו:"
@@ -292,6 +312,7 @@ export function VersionsScreen() {
         </>
       ) : null}
 
+      </Panel>
     </Screen>
   );
 }
@@ -316,6 +337,7 @@ function StoreBadge({ store }: { store: 'apple' | 'google' | 'wear' }) {
 // `defaultOpen` opens the changelog on mount (used for the version going up).
 function VersionRow({
   badge,
+  store,
   title,
   statusText,
   tint,
@@ -324,6 +346,7 @@ function VersionRow({
   defaultOpen = false,
 }: {
   badge: React.ReactNode;
+  store?: 'apple' | 'google' | 'wear';
   title: string;
   statusText: string;
   tint: string;
@@ -340,11 +363,7 @@ function VersionRow({
         onPress={() => hasItems && setOpen((o) => !o)}
         disabled={!hasItems}
       >
-        {badge}
-        <View style={{ flex: 1 }}>
-          <Text style={s.vTitle}>{title}</Text>
-          <Text style={[s.vStatus, { color: tint }]}>{statusText}</Text>
-        </View>
+        {store ? <><View style={{alignItems:'center',gap:5,width:48}}><Ionicons name={store==='apple'?'logo-apple':store==='google'?'logo-android':'watch-outline'} size={25} color={store==='google'?'#8BCFDF':colors.text}/><Text style={{color:colors.textSoft,fontSize:12}}>{store==='apple'?'iOS':store==='google'?'Android':'שעון'}</Text></View><View style={{flex:1,gap:4}}><Text style={s.vTitle}>{title.replace('גרסה ','')}</Text><Text style={{ direction: 'rtl' as const,color:colors.textMuted,fontSize:11,textAlign: RTL_LABEL_ALIGN}}>גרסה זמינה בחנות</Text></View><Text style={{color:colors.onPrimary,backgroundColor:colors.primary,paddingHorizontal:8,paddingVertical:5,borderRadius:7,fontSize:11,fontWeight:'700',maxWidth:'35%'}}>{statusText}</Text></> : <>{badge}<View style={{flex:1}}><Text style={s.vTitle}>{title}</Text><Text style={[s.vStatus,{color:tint}]}>{statusText}</Text></View></>}
         {hasItems ? (
           <Ionicons
             name={open ? 'chevron-up' : 'chevron-down'}
@@ -352,7 +371,7 @@ function VersionRow({
             color={colors.textMuted}
           />
         ) : null}
-        <View style={[s.dot, { backgroundColor: tint }]} />
+        {store ? null : <View style={[s.dot, { backgroundColor: tint }]} />}
       </Pressable>
       {open && hasItems ? (
         <View style={s.items}>
@@ -388,17 +407,19 @@ function ItemRow({ item }: { item: ReleaseItem }) {
   // Lazy-load the proof screenshot (base64) only when the item carries one.
   const [b64, setB64] = useState<string | null>(null);
   const [zoom, setZoom] = useState(false);
+  const [shotFailed,setShotFailed]=useState(false);
+  const [shotRetry,setShotRetry]=useState(0);
 
   useEffect(() => {
     if (!item.shotId) return;
-    let alive = true;
+    let alive = true;setShotFailed(false);
     fetchReleaseShot(item.shotId)
-      .then((v) => alive && setB64(v))
-      .catch(() => {});
+      .then((v) => {if(alive){setB64(v);setShotFailed(!v)}})
+      .catch(() => {if(alive)setShotFailed(true)});
     return () => {
       alive = false;
     };
-  }, [item.shotId]);
+  }, [item.shotId,shotRetry]);
 
   return (
     <View style={s.itemWrap}>
@@ -416,7 +437,7 @@ function ItemRow({ item }: { item: ReleaseItem }) {
               <Text style={s.shotZoomTxt}>הגדל</Text>
             </View>
           </Pressable>
-        ) : (
+        ) : shotFailed ? (<Pressable onPress={()=>setShotRetry(n=>n+1)} style={{padding:12}}><Text style={s.pendNote}>הצילום לא נטען. ניסיון חוזר</Text></Pressable>) : (
           <View style={[s.shotThumb, s.shotLoading]}>
             <ActivityIndicator size="small" color={colors.textMuted} />
           </View>
@@ -438,20 +459,20 @@ function ItemRow({ item }: { item: ReleaseItem }) {
 }
 
 const s = StyleSheet.create({
-  section: { color: colors.textMuted, fontSize: 13, fontWeight: '800', textAlign: 'right', marginTop: 18, marginBottom: 8 },
+  section: { direction: 'rtl' as const, color: colors.text, fontSize: 18, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, marginTop: 8, marginBottom: 0 },
   empty: { color: colors.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 8 },
-  vCard: { gap: 12, marginBottom: 10 },
-  vHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
-  vTitle: { color: colors.text, fontSize: 16, fontWeight: '800', textAlign: 'right' },
-  vStatus: { fontSize: 13, fontWeight: '700', textAlign: 'right', marginTop: 1 },
+  vCard: { gap: 12, marginBottom: 0 },
+  vHead: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 10 },
+  vTitle: { direction: 'rtl' as const, color: colors.text, fontSize: 22, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  vStatus: { direction: 'rtl' as const, fontSize: 13, fontWeight: '700', textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   items: { gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 10 },
-  itemsCap: { color: colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: 'right' },
+  itemsCap: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   areaBlock: { gap: 6, marginTop: 4 },
-  areaLabel: { color: colors.textSoft, fontSize: 12, fontWeight: '800', textAlign: 'right', opacity: 0.9 },
+  areaLabel: { direction: 'rtl' as const, color: colors.textSoft, fontSize: 12, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, opacity: 0.9 },
   itemWrap: { gap: 6 },
-  itemRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  itemTxt: { flex: 1, color: colors.textSoft, fontSize: 14, textAlign: 'right', lineHeight: 20 },
+  itemRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8 },
+  itemTxt: { direction: 'rtl' as const, flex: 1, color: colors.textSoft, fontSize: 14, textAlign: RTL_LABEL_ALIGN, lineHeight: 20 },
   // Proof screenshot — full-width thumbnail tucked under the item text.
   shotThumbWrap: {
     marginRight: 24,
@@ -473,7 +494,7 @@ const s = StyleSheet.create({
     position: 'absolute',
     bottom: 6,
     left: 6,
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 4,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -501,7 +522,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badge: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm },
+  badge: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm },
   badgeTxt: { fontSize: 12, fontWeight: '800' },
-  pendNote: { color: colors.textMuted, fontSize: 13, textAlign: 'right', marginBottom: 2 },
+  pendNote: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 13, textAlign: RTL_LABEL_ALIGN, marginBottom: 2 },
 });

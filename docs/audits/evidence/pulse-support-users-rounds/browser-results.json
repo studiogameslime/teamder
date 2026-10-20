@@ -1,0 +1,226 @@
+[
+  {
+    "state": "support",
+    "width": 390,
+    "file": "pulse-lists-support-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "support-thread",
+    "width": 390,
+    "file": "pulse-lists-support-thread-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "users",
+    "width": 390,
+    "file": "pulse-lists-users-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "users-page2",
+    "width": 390,
+    "file": "pulse-lists-users-page2-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "users-search",
+    "width": 390,
+    "file": "pulse-lists-users-search-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "users-page-error",
+    "width": 390,
+    "file": "pulse-lists-users-page-error-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "users-page-retry",
+    "width": 390,
+    "file": "pulse-lists-users-page-retry-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "rounds",
+    "width": 390,
+    "file": "pulse-lists-rounds-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-overview",
+    "width": 390,
+    "file": "pulse-lists-round-overview-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-players",
+    "width": 390,
+    "file": "pulse-lists-round-players-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-player-data",
+    "width": 390,
+    "file": "pulse-lists-round-player-data-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-settings",
+    "width": 390,
+    "file": "pulse-lists-round-settings-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-cards",
+    "width": 390,
+    "file": "pulse-lists-round-cards-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-matches",
+    "width": 390,
+    "file": "pulse-lists-round-matches-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-history",
+    "width": 390,
+    "file": "pulse-lists-round-history-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-error",
+    "width": 390,
+    "file": "pulse-lists-round-error-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "support",
+    "width": 320,
+    "file": "pulse-lists-support-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "support-thread",
+    "width": 320,
+    "file": "pulse-lists-support-thread-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "users",
+    "width": 320,
+    "file": "pulse-lists-users-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "users-page2",
+    "width": 320,
+    "file": "pulse-lists-users-page2-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "users-search",
+    "width": 320,
+    "file": "pulse-lists-users-search-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "users-page-error",
+    "width": 320,
+    "file": "pulse-lists-users-page-error-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "users-page-retry",
+    "width": 320,
+    "file": "pulse-lists-users-page-retry-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "rounds",
+    "width": 320,
+    "file": "pulse-lists-rounds-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-overview",
+    "width": 320,
+    "file": "pulse-lists-round-overview-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-players",
+    "width": 320,
+    "file": "pulse-lists-round-players-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-player-data",
+    "width": 320,
+    "file": "pulse-lists-round-player-data-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-settings",
+    "width": 320,
+    "file": "pulse-lists-round-settings-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-cards",
+    "width": 320,
+    "file": "pulse-lists-round-cards-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-matches",
+    "width": 320,
+    "file": "pulse-lists-round-matches-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-history",
+    "width": 320,
+    "file": "pulse-lists-round-history-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "round-error",
+    "width": 320,
+    "file": "pulse-lists-round-error-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  }
+]

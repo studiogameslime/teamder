@@ -200,6 +200,11 @@ describe('the launch source is published, not guessed', () => {
     expect(calls[1].details.inviter_uid).toBeUndefined();
   });
 
+  it('does not publish a stale pending invite as the current launch source', () => {
+    expect(app).toContain("reportEntrySource(initialUrl ? 'deep_link' : 'organic', initialUrl ? existing : null)");
+    expect(app).not.toContain("reportEntrySource(initialUrl ? 'deep_link' : 'stash', existing)");
+  });
+
   it('the guest Home reads it instead of assuming', () => {
     expect(home).toContain('entry_source: getEntrySource()');
     expect(home).not.toContain("entry_source: 'organic'");

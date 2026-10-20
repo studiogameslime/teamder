@@ -1,0 +1,280 @@
+{
+  "checkedAt": "2026-10-18T16:48:10.924Z",
+  "readOnlyInvestigation": true,
+  "sourceRevision": "96e94cf3066c5bcafa80fc304f654f025ea90872",
+  "functions": [
+    {
+      "name": "ensurePersonalGroup",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-17T14:50:54.773124296Z"
+    },
+    {
+      "name": "commitRoundStats",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-18T03:01:39.570246185Z"
+    }
+  ],
+  "sourceComparisons": [
+    {
+      "name": "ensurePersonalGroup",
+      "identical": true
+    },
+    {
+      "name": "commitRoundStats",
+      "identical": true
+    }
+  ],
+  "client": {
+    "revision": "96e94cf3066c5bcafa80fc304f654f025ea90872",
+    "files": [
+      {
+        "file": "src/services/gameService.ts",
+        "matchesRelease": true
+      },
+      {
+        "file": "src/screens/games/DraftBoardScreen.tsx",
+        "matchesRelease": true
+      },
+      {
+        "file": "src/screens/games/DraftSetupScreen.tsx",
+        "matchesRelease": true
+      },
+      {
+        "file": "src/firebase/firestore.ts",
+        "matchesRelease": true
+      },
+      {
+        "file": "src/utils/roundDecision.ts",
+        "matchesRelease": true
+      },
+      {
+        "file": "src/services/rotationWriteSource.ts",
+        "matchesRelease": true
+      },
+      {
+        "file": "src/services/secureAuthStorage.ts",
+        "matchesRelease": true
+      },
+      {
+        "file": "src/utils/encryptedPersistence.ts",
+        "matchesRelease": true
+      }
+    ],
+    "callbacks": [
+      {
+        "name": "onEndRound",
+        "matchesRelease": true
+      },
+      {
+        "name": "onTieWinner",
+        "matchesRelease": true
+      },
+      {
+        "name": "resolveTie",
+        "matchesRelease": true
+      },
+      {
+        "name": "onShootoutDecided",
+        "matchesRelease": true
+      },
+      {
+        "name": "onChangeShootoutDecision",
+        "matchesRelease": true
+      }
+    ]
+  },
+  "native": {
+    "aabSha256": "df932a43bc327af32bcea29521a3bcf4f34ae32b957e3fcb9b4450973e0e1e16",
+    "matchesVerifiedRelease": true,
+    "secureStoreClassInDex": [
+      "base/dex/classes5.dex"
+    ],
+    "version": "1.1.56",
+    "versionCode": "289",
+    "readOnly": true
+  },
+  "serverDependencies": [
+    {
+      "name": "ensurePersonalGroup",
+      "files": 63,
+      "mismatches": [
+        "src/liveRoundCommit.ts"
+      ]
+    },
+    {
+      "name": "commitRoundStats",
+      "files": 65,
+      "mismatches": []
+    }
+  ],
+  "items": [
+    {
+      "id": "2ef60a1fdc17e25b4f6d09eb6b5d85f0",
+      "operation": "ensurePersonalGroup",
+      "note": "נסגר לאחר בדיקת מקור פרוס ויומנים. ההערה הקודמת ״טרם נפרס״ הוחלפה: ensurePersonalGroup פעיל מאז 2026-10-17T14:50:54.773124296Z וגוף הפעולה האטומית תואם לקוד המקומי. נמצאו שתי בקשות HTTP 200 לגרסה הפרוסה ב־18.10, וכן הצלחה ב־16.10 07:03:39 לאחר האירוע המקורי. הקישור של המשתמש המדווח מצביע למועדון אישי קיים ומוסתר. בדיקות כשל עסקה, ניסיון חוזר ומקביליות עברו. שני רישומי הלקוח מתארים אותה תקלה היסטורית; לא נמצא כשל שרת עסקי פעיל שמצריך תיקון נוסף. הגורם המדויק ל־internal ההיסטורי אינו מוכח, ולכן הסגירה אינה ייחוס שלו לעסקה. לא נוצר מועדון בדיקה ולא בוצעה פריסה נוספת.",
+      "evidence": {
+        "functionUpdatedAt": "2026-10-17T14:50:54.773124296Z",
+        "successfulRequests": [
+          {
+            "at": "2026-10-18T09:14:49.094112Z",
+            "status": 200,
+            "latency": "4.355425787s"
+          },
+          {
+            "at": "2026-10-18T05:44:50.691887Z",
+            "status": 200,
+            "latency": "3.714220064s"
+          }
+        ],
+        "ownerPointerAndGroupExist": true
+      }
+    },
+    {
+      "id": "40e0ce8abee76cc992fd0f71ec9a3b55",
+      "operation": "liveFinalizeRound",
+      "note": "נסגר לאחר בדיקה חוזרת והודעת הבעלים שסיום המשחק עובד כעת. באותו מחזור נשמרו 1 תוצאות משחק לאחר השגיאה האחרונה, והמחזור הסתיים. תיקוני הקוד הקיימים כוללים תמונת משחק מלאה ועקבית במנוי, קריאה מחייבת מהשרת, המתנה לקבלת השמירה ושמירה אטומית של הכרעה חלופית אחרי פנדלים. קוד הלקוח הרלוונטי תואם למקור 1.1.56/289; גוף commitRoundStats וכל 65 מודולי המקור הנלווים תואמים לשרת הפעיל שנפרס ב־2026-10-18T03:01:39.570246185Z. בדיקות תחרות, מטמון ישן, עצירת שעון וניסיון חוזר עברו. לא נמצאה פעולה נוספת נדרשת; ההגנות מפני שינוי אמיתי נשארו. אין טענה שנשחזר כל אירוע היסטורי בדיוק, ולא שונו נתוני משחק.",
+      "evidence": {
+        "gameId": "Ra5ZBzOUjR5zQlMojHke",
+        "status": "finished",
+        "lastSeen": "2026-10-17T21:58:54.578Z",
+        "histories": 2,
+        "laterResults": [
+          {
+            "roundId": "r_mvcxs8k3_m21zadin",
+            "at": "2026-10-17T22:09:46.877Z",
+            "scoreA": 0,
+            "scoreB": 0,
+            "winnerSide": "B"
+          }
+        ]
+      }
+    },
+    {
+      "id": "50500b12eebcd88758e222e1d3367122",
+      "operation": "uncaught",
+      "note": "נסגר כאירוע של לקוח פיתוח ישן 1.1.42, לאחר אימות התיקון בבינארי הקיים של 1.1.56/289: חותמת החבילה תואמת לחבילת ההפצה המאומתת, והמחלקה expo.modules.securestore.SecureStoreModule קיימת ב־base/dex/classes5.dex. התלות, תוסף הבנייה, האחסון המוצפן והייבוא העצלים קיימים; קוד האחסון תואם למקור הבנייה. בדוח המוכנות מ־18.10 תועדה גם זמינות הרכיב במכשיר; לא בוצעה כאן בדיקת מכשיר חדשה. לא נדרשת החלשת האחסון או חזרה לאחסון גלוי. לא נבנה בינארי חדש ולא נטען שהבינארי הישן תוקן במקום.",
+      "evidence": {
+        "reportedVersion": "1.1.42",
+        "currentVersion": "1.1.56",
+        "aabSha256": "df932a43bc327af32bcea29521a3bcf4f34ae32b957e3fcb9b4450973e0e1e16",
+        "dexFiles": [
+          "base/dex/classes5.dex"
+        ]
+      }
+    },
+    {
+      "id": "606e9df247a432b7c7c2f14a3d3f00ee",
+      "operation": "ensurePersonalGroupId",
+      "note": "נסגר לאחר בדיקת מקור פרוס ויומנים. ההערה הקודמת ״טרם נפרס״ הוחלפה: ensurePersonalGroup פעיל מאז 2026-10-17T14:50:54.773124296Z וגוף הפעולה האטומית תואם לקוד המקומי. נמצאו שתי בקשות HTTP 200 לגרסה הפרוסה ב־18.10, וכן הצלחה ב־16.10 07:03:39 לאחר האירוע המקורי. הקישור של המשתמש המדווח מצביע למועדון אישי קיים ומוסתר. בדיקות כשל עסקה, ניסיון חוזר ומקביליות עברו. שני רישומי הלקוח מתארים אותה תקלה היסטורית; לא נמצא כשל שרת עסקי פעיל שמצריך תיקון נוסף. הגורם המדויק ל־internal ההיסטורי אינו מוכח, ולכן הסגירה אינה ייחוס שלו לעסקה. לא נוצר מועדון בדיקה ולא בוצעה פריסה נוספת.",
+      "evidence": {
+        "functionUpdatedAt": "2026-10-17T14:50:54.773124296Z",
+        "successfulRequests": [
+          {
+            "at": "2026-10-18T09:14:49.094112Z",
+            "status": 200,
+            "latency": "4.355425787s"
+          },
+          {
+            "at": "2026-10-18T05:44:50.691887Z",
+            "status": 200,
+            "latency": "3.714220064s"
+          }
+        ],
+        "ownerPointerAndGroupExist": true
+      }
+    },
+    {
+      "id": "9e61d433fcd8c945f5b376220c9f5891",
+      "operation": "liveResolveTie",
+      "note": "נסגר לאחר בדיקה חוזרת והודעת הבעלים שסיום המשחק עובד כעת. באותו מחזור נשמרו 2 תוצאות משחק לאחר השגיאה האחרונה, והמחזור הסתיים. תיקוני הקוד הקיימים כוללים תמונת משחק מלאה ועקבית במנוי, קריאה מחייבת מהשרת, המתנה לקבלת השמירה ושמירה אטומית של הכרעה חלופית אחרי פנדלים. קוד הלקוח הרלוונטי תואם למקור 1.1.56/289; גוף commitRoundStats וכל 65 מודולי המקור הנלווים תואמים לשרת הפעיל שנפרס ב־2026-10-18T03:01:39.570246185Z. בדיקות תחרות, מטמון ישן, עצירת שעון וניסיון חוזר עברו. לא נמצאה פעולה נוספת נדרשת; ההגנות מפני שינוי אמיתי נשארו. אין טענה שנשחזר כל אירוע היסטורי בדיוק, ולא שונו נתוני משחק.",
+      "evidence": {
+        "gameId": "FQ4T7izEbuYfprKFS75n",
+        "status": "finished",
+        "lastSeen": "2026-10-17T22:31:05.030Z",
+        "histories": 3,
+        "laterResults": [
+          {
+            "roundId": "r_mvcz0yqv_bjwhi3s0",
+            "at": "2026-10-17T22:36:36.528Z",
+            "scoreA": 1,
+            "scoreB": 0,
+            "winnerSide": "A"
+          },
+          {
+            "roundId": "r_mvcz8fms_pkqs6wti",
+            "at": "2026-10-17T23:11:36.216Z",
+            "scoreA": 0,
+            "scoreB": 0,
+            "winnerSide": "B"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cebad9e75333c56e3ec40dbea9a3f8df",
+      "operation": "draftBoardLoad",
+      "note": "נסגר לאחר אימות התאוששות באותו מחזור: נוצרה חלוקת כוחות חדשה אחרי השגיאה, נשמרו 2 משחקים והמחזור הסתיים. בקוד 1.1.56 קיים תיקון שממתין לגרסה המדויקת באירוע שרת מאושר, במקום להיכשל מיד על מטמון ישן. מסכי היצירה והכוחות, השירות והממיר תואמים למקור הבנייה המאומת. בדיקות העברת חותמת אחרי שמירה, אירוע ישן ואז הגרסה הנכונה, שינוי מטא־נתונים, ביטול ותשובה מאוחרת עברו. לא נמצא תיקון נוסף נדרש; הגנת שמונה השניות וההבחנה בכוחות חסרים נשמרו. לא נכתבו כוחות מחדש לצורך הבדיקה.",
+      "evidence": {
+        "gameId": "mBO5HqJdnOPWjRE2zMh8",
+        "lastSeen": "2026-10-17T02:49:19.869Z",
+        "draftCreatedAt": "2026-10-17T03:02:23.482Z",
+        "histories": 2,
+        "status": "finished"
+      }
+    },
+    {
+      "id": "cfd464d9c28a24deba0688c631ae1a71",
+      "operation": "liveFinalizeRoundTie",
+      "note": "נסגר לאחר בדיקה חוזרת והודעת הבעלים שסיום המשחק עובד כעת. באותו מחזור נשמרו 1 תוצאות משחק לאחר השגיאה האחרונה, והמחזור הסתיים. תיקוני הקוד הקיימים כוללים תמונת משחק מלאה ועקבית במנוי, קריאה מחייבת מהשרת, המתנה לקבלת השמירה ושמירה אטומית של הכרעה חלופית אחרי פנדלים. קוד הלקוח הרלוונטי תואם למקור 1.1.56/289; גוף commitRoundStats וכל 65 מודולי המקור הנלווים תואמים לשרת הפעיל שנפרס ב־2026-10-18T03:01:39.570246185Z. בדיקות תחרות, מטמון ישן, עצירת שעון וניסיון חוזר עברו. לא נמצאה פעולה נוספת נדרשת; ההגנות מפני שינוי אמיתי נשארו. אין טענה שנשחזר כל אירוע היסטורי בדיוק, ולא שונו נתוני משחק.",
+      "evidence": {
+        "gameId": "FQ4T7izEbuYfprKFS75n",
+        "status": "finished",
+        "lastSeen": "2026-10-17T23:03:40.084Z",
+        "histories": 3,
+        "laterResults": [
+          {
+            "roundId": "r_mvcz8fms_pkqs6wti",
+            "at": "2026-10-17T23:11:36.216Z",
+            "scoreA": 0,
+            "scoreB": 0,
+            "winnerSide": "B"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e33f74f42af2eede1e5cc0a66fc24583",
+      "operation": "liveFinalizeRoundTie",
+      "note": "נסגר לאחר בדיקה חוזרת והודעת הבעלים שסיום המשחק עובד כעת. באותו מחזור נשמרו 3 תוצאות משחק לאחר השגיאה האחרונה, והמחזור הסתיים. תיקוני הקוד הקיימים כוללים תמונת משחק מלאה ועקבית במנוי, קריאה מחייבת מהשרת, המתנה לקבלת השמירה ושמירה אטומית של הכרעה חלופית אחרי פנדלים. קוד הלקוח הרלוונטי תואם למקור 1.1.56/289; גוף commitRoundStats וכל 65 מודולי המקור הנלווים תואמים לשרת הפעיל שנפרס ב־2026-10-18T03:01:39.570246185Z. בדיקות תחרות, מטמון ישן, עצירת שעון וניסיון חוזר עברו. לא נמצאה פעולה נוספת נדרשת; ההגנות מפני שינוי אמיתי נשארו. אין טענה שנשחזר כל אירוע היסטורי בדיוק, ולא שונו נתוני משחק.",
+      "evidence": {
+        "gameId": "s9uysJuX9YkVTvkdLNPd",
+        "status": "finished",
+        "lastSeen": "2026-10-17T17:52:58.397Z",
+        "histories": 3,
+        "laterResults": [
+          {
+            "roundId": "r_mvcobbp0_i8dcbg2e",
+            "at": "2026-10-17T19:59:43.219Z",
+            "scoreA": 2,
+            "scoreB": 1,
+            "winnerSide": "A"
+          },
+          {
+            "roundId": "r_mvctluci_6xcs6v6d",
+            "at": "2026-10-17T20:03:47.838Z",
+            "scoreA": 2,
+            "scoreB": 2,
+            "winnerSide": "B"
+          },
+          {
+            "roundId": "r_mvctrzbu_ailq3pu0",
+            "at": "2026-10-17T20:06:58.542Z",
+            "scoreA": 0,
+            "scoreB": 2,
+            "winnerSide": "B"
+          }
+        ]
+      }
+    }
+  ]
+}

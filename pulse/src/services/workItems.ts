@@ -82,6 +82,7 @@ export interface WorkItem {
   /** Occurrences, for errors. 1 everywhere else. */
   count: number;
   chatMessageId?: string;
+  sourceReportId?: string;
   /**
    * May Claude act on this item without asking first?
    *
@@ -122,7 +123,7 @@ export const KIND_LABEL: Record<WorkKind, string> = {
   ui: 'עיצוב',
   feature: 'פיצ׳ר',
   error: 'שגיאה',
-  report: 'דיווח',
+  report: 'דיווח QA',
   idea: 'רעיון',
   chat: 'צ׳אט',
 };
@@ -201,7 +202,7 @@ export const DONE_LIMIT = 20;
  * (`images`, `image`, `claudeImages`). See the note at the top of the file.
  */
 const LIST_FIELDS: Record<Exclude<WorkStream, 'chat'>, readonly string[]> = {
-  task: ['title', 'notes', 'category', 'status', 'priority', 'source', 'screen',
+  task: ['title', 'notes', 'category', 'status', 'priority', 'source', 'sourceId', 'screen',
     'reporterId', 'reporterName', 'createdAt', 'doneAt',
     'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
   error: ['title', 'operation', 'status', 'count', 'firstSeen', 'lastSeen',
@@ -218,7 +219,7 @@ const LIST_FIELDS: Record<Exclude<WorkStream, 'chat'>, readonly string[]> = {
 
 const IDEA_HINT: Record<IdeaStatus, string> = {
   idea: 'רעיון — לאפיון מצידכם לפני שנוגעים',
-  spec: 'לאיפיון — קלוד כותב אפיון',
+  spec: 'לאיפיון — רובנס כותב אפיון',
   build: 'לביצוע — אפיון אושר',
   done: 'בוצע',
 };
@@ -290,6 +291,7 @@ function fromTask(t: Task): WorkItem {
   return {
     key: `task:${t.id}`,
     stream: 'task',
+    sourceReportId: t.source === 'teamder' && t.sourceId && !t.sourceId.includes('/') ? t.sourceId : undefined,
     // A task's own category IS its kind — bug / design / feature are three
     // different jobs that happen to share a collection.
     kind: t.category === 'ui' ? 'ui' : t.category === 'feature' ? 'feature' : 'bug',
@@ -469,34 +471,60 @@ function sortWork(items: WorkItem[]): WorkItem[] {
   );
 }
 
-/**
- * Every stream, merged. A stream that fails to load is skipped rather than
- * failing the screen — a dead `errors` read must not hide the tasks.
- */
-const lean = (stream: WorkStream, force: boolean) =>
-  cached(`work:${stream}`, () => listAll(COLL[stream], 5000, LIST_FIELDS[stream as Exclude<WorkStream, 'chat'>]), {
-    force,
-  }).catch(() => [] as FsDoc[]);
+export interface WorkSnapshot {
+  items: WorkItem[];
+  failedStreams: WorkStream[];
+}
 
-export async function listWork(force = false, onProgress?: (items: WorkItem[]) => void): Promise<WorkItem[]> {
-  // The fixture covers every state the screen can show, including the ones
-  // production has not produced yet. See ./workItemsMock.
-  if (MOCK_WORK || !has.firebase()) return sortWork(mockWork(Date.now()));
+const snapshotListeners = new Set<(snapshot: WorkSnapshot) => void>();
+export function onWorkSnapshot(listener: (snapshot: WorkSnapshot) => void): () => void {
+  snapshotListeners.add(listener);
+  return () => { snapshotListeners.delete(listener); };
+}
+function publishSnapshot(snapshot: WorkSnapshot): WorkSnapshot {
+  snapshotListeners.forEach(listener => listener(snapshot));
+  return snapshot;
+}
+
+
+export const STREAM_LABEL: Record<WorkStream, string> = {
+  task: 'משימות', error: 'שגיאות', report: 'דיווחים', feature: 'פיצ׳רים', idea: 'רעיונות', chat: 'שיחות',
+};
+
+/** Keep last-known rows of failed sources, never present a failed read as zero. */
+export function retainFailedWork(previous: WorkItem[], result: WorkSnapshot): WorkItem[] {
+  return trimWork([...result.items, ...previous.filter(item => result.failedStreams.includes(item.stream))]);
+}
+
+const lean = (stream: WorkStream, force: boolean) =>
+  cached(`work:${stream}`, () => listAll(COLL[stream], 5000, LIST_FIELDS[stream as Exclude<WorkStream, 'chat'>]), { force });
+
+export async function listWorkSnapshot(force = false, onProgress?: (items: WorkItem[]) => void): Promise<WorkSnapshot> {
+  if (MOCK_WORK) return publishSnapshot({ items: sortWork(mockWork(Date.now())), failedStreams: [] });
+  if (!has.firebase()) return publishSnapshot({ items: [], failedStreams: ['task', 'error', 'report', 'feature', 'idea', 'chat'] });
   const streams: WorkItem[][] = Array.from({ length: 6 }, () => []);
+  const failedStreams: WorkStream[] = [];
   const collect = () => trimWork(streams.flat());
-  const receive = <T,>(index: number, pending: Promise<T[]>, map: (item: T) => WorkItem) => pending.then(rows => {
+  const receive = <T,>(index: number, stream: WorkStream, pending: Promise<T[]>, map: (item: T) => WorkItem) => pending.then(rows => {
     streams[index] = rows.map(map);
     if (streams.some(items => items.length)) onProgress?.(collect());
-  });
+  }).catch(() => { failedStreams.push(stream); });
   await Promise.all([
-    receive(0, lean('task', force), d => ({ ...fromTask(taskFromDoc(d)), unresolved: readUnresolvedWork(d) })),
-    receive(1, lean('error', force), d => ({ ...fromError(d), unresolved: readUnresolvedWork(d) })),
-    receive(2, lean('report', force), d => ({ ...fromReport(d), unresolved: readUnresolvedWork(d) })),
-    receive(3, lean('feature', force), d => fromFeature(featureFromDoc(d))),
-    receive(4, lean('idea', force), d => fromIdea(ideaFromDoc(d))),
-    receive(5, listAwaitingReply(force).catch(() => [] as ThreadSummary[]), fromThread),
+    receive(0, 'task', lean('task', force), d => ({ ...fromTask(taskFromDoc(d)), unresolved: readUnresolvedWork(d) })),
+    receive(1, 'error', lean('error', force), d => ({ ...fromError(d), unresolved: readUnresolvedWork(d) })),
+    receive(2, 'report', lean('report', force), d => ({ ...fromReport(d), unresolved: readUnresolvedWork(d) })),
+    receive(3, 'feature', lean('feature', force), d => fromFeature(featureFromDoc(d))),
+    receive(4, 'idea', lean('idea', force), d => fromIdea(ideaFromDoc(d))),
+    receive(5, 'chat', listAwaitingReply(force), fromThread),
   ]);
-  return collect();
+  return publishSnapshot({ items: collect(), failedStreams });
+}
+
+/** Callers without a partial-data UI must not treat an incomplete list as complete. */
+export async function listWork(force = false, onProgress?: (items: WorkItem[]) => void): Promise<WorkItem[]> {
+  const result = await listWorkSnapshot(force, onProgress);
+  if (result.failedStreams.length) throw new Error('PULSE_WORK_INCOMPLETE');
+  return result.items;
 }
 
 function trimWork(items: WorkItem[]): WorkItem[] {
@@ -524,24 +552,15 @@ export async function loadItemImages(
   if (MOCK_WORK || !has.firebase()) {
     return { images: item.images, claudeImages: item.claude?.images ?? [] };
   }
-  try {
-    const d = await getDoc(item.docPath);
-    if (!d) return { images: [], claudeImages: [] };
-    const list = (v: unknown): string[] =>
-      typeof v === 'string' && v
-        ? [v]
-        : Array.isArray(v)
-          ? (v.filter((x) => typeof x === 'string' && x) as string[])
-          : [];
-    return {
-      // `feedback` keeps its single screenshot in `image`; the rest use an
-      // `images` array.
-      images: [...list(d.images), ...list(d.image)],
-      claudeImages: list(d.claudeImages),
-    };
-  } catch {
-    return { images: [], claudeImages: [] };
-  }
+  const d = await getDoc(item.docPath);
+  if (!d) throw new Error('WORK_ITEM_MISSING');
+  const list = (v: unknown): string[] => typeof v === 'string' && v ? [v] : Array.isArray(v) ? v.filter((x):x is string => typeof x === 'string' && !!x) : [];
+  // A task imported from QA still needs the original report's screenshot.
+  const source = item.sourceReportId ? await getDoc(`feedback/${item.sourceReportId}`) : null;
+  return {
+    images: [...new Set([...list(d.images), ...list(d.image), ...list(source?.images), ...list(source?.image)])],
+    claudeImages: list(d.claudeImages),
+  };
 }
 
 /** Grouped the way the screen shows it: one section per KIND. */
@@ -570,20 +589,22 @@ export function claudeQueue(items: WorkItem[]): WorkItem[] {
 /** Accept / close an item, in whatever word its own collection speaks. */
 export async function closeItem(item: WorkItem): Promise<boolean> {
   if (item.stream === 'chat') return resolveSupportThread(item.id, item.chatMessageId ?? '', item.createdAt);
-  invalidateStream(item.stream);
   const fields: Record<string, unknown> = { status: CLOSED_STATUS[item.stream] };
   // Tasks carry their own completion timestamp that the tasks list sorts by.
   if (item.stream === 'task') fields.doneAt = Date.now();
-  return patchDoc(`${COLL[item.stream]}/${item.id}`, fields);
+  const ok = await patchDoc(`${COLL[item.stream]}/${item.id}`, fields);
+  if (ok) invalidateStream(item.stream);
+  return ok;
 }
 
 /** Re-open an accepted item. */
 export async function reopenItem(item: WorkItem): Promise<boolean> {
   if (item.stream === 'chat') return reopenSupportThread(item.id);
-  invalidateStream(item.stream);
   const fields: Record<string, unknown> = { status: 'new' };
   if (item.stream === 'task') fields.doneAt = 0;
-  return patchDoc(`${COLL[item.stream]}/${item.id}`, fields);
+  const ok = await patchDoc(`${COLL[item.stream]}/${item.id}`, fields);
+  if (ok) invalidateStream(item.stream);
+  return ok;
 }
 
 /** Drop the cached lists for one stream — call after writing the handover. */

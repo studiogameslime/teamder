@@ -18,13 +18,15 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, type ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute, useIsFocused } from '@react-navigation/native';
+import { readConsistentSeasonSnapshot, seasonReadStamp, withSeasonReadTimeout } from '@/utils/seasonReadConsistency';
 
 import { ClubStatusOverview } from '@/components/community/ClubStatusCard';
 import { CommunityStatsWelcome } from '@/components/community/CommunityStatsWelcome';
 import { ClubStatsHero, ClubStatsAwards, ClubStatsSummary } from '@/components/community/ClubStatsDashboard';
 import { useUserStore } from '@/store/userStore';
 import { Button } from '@/components/Button';
+import { SeasonSummaryButton } from '@/components/summary/SeasonSummaryButton';
 import { Card } from '@/components/Card';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { CommunityChampionship } from '@/components/community/CommunityChampionship';
@@ -55,6 +57,7 @@ import { ClubRecords } from '@/components/club/ClubRecords';
 import { ResultsBreakdown } from '@/components/club/ResultsBreakdown';
 import { buildClubRecords } from '@/utils/clubRecords';
 import { he } from '@/i18n/he';
+import { computeTopWinner } from '@/utils/seasonAwards';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 import { mergeAllTime, type TableSlice } from '@/utils/allTimeTable';
 import { completeSeasonHistory } from '@/utils/completeSeasonHistory';
@@ -158,6 +161,8 @@ export interface CommunityStatsScreenProps {
   /** The shell's hero + tab bar. Sticks to the top of the scroll. */
   header?: React.ReactElement | null;
   active?: boolean;
+  seasonRevision?: string;
+  seasonBusy?: boolean;
 }
 
 export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
@@ -167,6 +172,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
   // the CommunityStats route cannot be reached without it.
   const groupId: string = props.groupId ?? routeParams!.groupId;
   const embedded = !!props.groupId;
+  const focused = useIsFocused();
+  const visible = focused && props.active !== false;
   const viewerId = useUserStore((s) => s.currentUser?.id);
   const [adminIds, setAdminIds] = useState<string[]>([]);
   // Which season these numbers belong to, when the club runs them.
@@ -239,6 +246,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
   const loadedGroup = useRef(groupId);
 
   useEffect(() => {
+    if (!visible) return;
     let alive = true;
     if (loadedGroup.current !== groupId) {
       loadedGroup.current = groupId;
@@ -250,6 +258,10 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     setLoadFailed(false);
     setPastLoaded(false);
     setPastFailed(false);
+    if (props.seasonBusy) {
+      setChamp(null); setAllTime(null); setArchive(null); setPastSeasons([]);
+      return () => { alive = false; };
+    }
     (async () => {
       // The club FIRST, because the evening scan has to know which season it
       // is counting. Everything else on this screen is already season-scoped
@@ -258,20 +270,17 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
       // lifetime count of evenings, a lifetime organisation rate and a
       // lifetime streak. One extra document read is the price of the four
       // tiles agreeing with each other.
-      const g = await groupService.get(groupId);
-      if (!g) throw new Error('Community statistics group unavailable');
+      const { group: g, data: [c, s, d] } = await readConsistentSeasonSnapshot(
+        () => groupService.get(groupId),
+        current => Promise.all([
+          gameService.getCommunityChampionship(groupId, undefined, true),
+          gameService.getCommunityStats(groupId, current.seasons?.enabled && current.seasons.currentId
+            ? { currentId: current.seasons.currentId, currentNo: current.seasons.currentNo ?? 1 } : undefined, true),
+          gameService.getCommunityDeadlyDuo(groupId).catch(() => null),
+        ]),
+      );
       if (!alive) return;
-      setAdminIds(g?.adminIds ?? []);
-      const scope =
-        g?.seasons?.enabled && g.seasons.currentId
-          ? { currentId: g.seasons.currentId, currentNo: g.seasons.currentNo ?? 1 }
-          : undefined;
-      const [c, s, d] = await Promise.all([
-        gameService.getCommunityChampionship(groupId, undefined, true),
-        gameService.getCommunityStats(groupId, scope, true),
-        gameService.getCommunityDeadlyDuo(groupId).catch(() => null),
-      ]);
-      if (!alive) return;
+      setAdminIds(g.adminIds ?? []);
       if (s) setAttended(s.attendedByUser ?? {});
       if (g) {
         setSubtitle(g.name);
@@ -300,8 +309,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           // One read of the cards feeds the season picker. (It used to also
           // answer the badges' lifetime goal total; the badges now live on
           // CommunityDetails and read their own copy.)
-          seasonHistoryService
-            .list(groupId, true)
+          withSeasonReadTimeout(seasonHistoryService.list(groupId, true))
             .then((list) => {
               if (!alive) return;
               // 'error' is NOT an empty archive — leave the list alone and let
@@ -390,7 +398,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     return () => {
       alive = false;
     };
-  }, [groupId, reloadTick]);
+  }, [groupId, reloadTick, visible, props.seasonRevision, props.seasonBusy]);
 
   // Fetch a past season's archive the first time it is picked, and keep the
   // live numbers untouched underneath — switching back is free.
@@ -467,7 +475,15 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           })
         : seasonHistoryService.table(groupId, scope.id);
 
-    void load
+    void withSeasonReadTimeout(load.then(async (t) => {
+        if (!alive) return;
+        const latest = await groupService.get(groupId);
+        if (!alive) return;
+        if (!latest || latest.seasons?.operation || seasonReadStamp(latest.seasons) !== seasonReadStamp(seasons)) {
+          throw new Error('Community season changed during archive read');
+        }
+        return t;
+      }))
       .then((t) => {
         if (!alive) return;
         setArchiveBusy(false);
@@ -904,6 +920,18 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
   // still shows the attendance/evenings tiles + achievements, just not leaders.
   const hasScoring = derived.totalGoals > 0 && derived.players.length > 0;
 
+  const currentWinAward = scope.k === 'current' && seasons?.enabled
+    ? computeTopWinner(derived.players, seasons.playedRounds ?? 0) : null;
+  const sealedWinAward = scopedCard?.winners.find(w => w.key === 'topWinner');
+  const rateScope = scope.k === 'current' && seasons?.enabled || !!scopedCard && (scopedCard.awardsVersion ?? 0) >= 2;
+  const winIds = scopedCard && rateScope
+    ? sealedWinAward?.winnerIds ?? []
+    : currentWinAward?.winners ?? [];
+  const winValue = scopedCard ? sealedWinAward?.value : currentWinAward?.value;
+  const winLeader = rateScope
+    ? winIds.length && winValue != null ? { uid: winIds[0], tiedIds: winIds.slice(1), value: winValue, unit: 'אחוז ניצחונות', suffix: '%' } : null
+    : derived.topWinner ? { uid: derived.topWinner.uid, tiedIds: [] as string[], value: derived.topWinner.wins, unit: 'נצחונות', suffix: undefined } : null;
+
   const leaderItems = ([
                 derived.topScorer && {
                   title: he.communityStatsTopScorer,
@@ -919,11 +947,9 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                   unit: 'בישולים',
                   tint: clubAccent.blue,
                 },
-                derived.topWinner && {
+                winLeader && {
                   title: he.communityStatsTopWinner,
-                  uid: derived.topWinner.uid,
-                  value: derived.topWinner.wins,
-                  unit: 'נצחונות',
+                  ...winLeader,
                   tint: clubAccent.blue,
                 },
                 derived.cleanSheetKing && {
@@ -971,6 +997,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               ].filter(Boolean) as {
                 title: string;
                 uid: string;
+                tiedIds?: string[];
                 value: number;
                 unit: string;
                 tint: string;
@@ -1141,19 +1168,13 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                     at the owner's request, 22.09. */}
                 </View>
               ) : null}
-              {/* The club's table for a finished season is right here, and the
-                  reader's own season is one tap away — but only for a season
-                  that ENDED. There is nothing to summarise about the one being
-                  played, and the scope chip already says which is on screen. */}
-              {scopedCard ? (
-                <Button
-                  title={he.seasonsMySummaryOfCta(scopedCard.no)}
-                  variant="outline"
-                  fullWidth
+              {/* The scope above owns selection of active and closed seasons. */}
+              {scopedCard || (scope.k === 'current' && seasons?.enabled) ? (
+                <SeasonSummaryButton
                   onPress={() =>
                     nav.navigate('SeasonSummary', {
                       groupId,
-                      seasonId: scopedCard.seasonId,
+                      seasonId: scopedCard?.seasonId ?? seasons?.currentId,
                     })
                   }
                 />
@@ -1175,12 +1196,12 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               <ClubStatusOverview compact clubName={subtitle}
                 scope={seasons?.enabled || hasArchivedStats(seasons) ? scopeTitle : he.communityStatsScopeAllTime}
                 goals={derived.totalGoals} assists={derived.totalAssists} games={derived.totalRounds} evenings={eveningsInScope ?? 0}
-                leaders={hasScoring ? leaderItems.map(r => ({ ...r, user: resolved(r.uid) })) : []} />
+                leaders={hasScoring ? leaderItems.map(r => ({ ...r, user: resolved(r.uid), tiedUsers: r.tiedIds?.map(resolved) })) : []} />
             </View>
             <ClubStatsSummary goals={derived.totalGoals} assists={derived.totalAssists} games={derived.totalRounds} evenings={eveningsInScope ?? 0} animate={props.active !== false} />
             {hasScoring ? <>
               <SectionTitle icon="trophy-outline" text="תארי המועדון" />
-              <ClubStatsAwards leaders={leaderItems.map(r => ({ ...r, user: resolved(r.uid) }))}
+              <ClubStatsAwards leaders={leaderItems.map(r => ({ ...r, user: resolved(r.uid), tiedUsers: r.tiedIds?.map(resolved) }))}
  />
             </> : null}
           </>

@@ -1,4 +1,4 @@
-// "בוצע על ידי קלוד" — the handover record Claude leaves on a finished item.
+// "בוצע ע״י רובנס" — the handover record Claude leaves on a finished item.
 //
 // The workflow this exists for: Claude finishes something, writes down what it
 // actually changed, attaches proof, and marks the item as done BY CLAUDE. The
@@ -79,3 +79,6 @@ export function clearDoneByClaude(docPath: string): Promise<boolean> {
     claudeAt: 0,
   });
 }
+
+/** Display name changed; existing persisted handovers and older clients stay compatible. */
+export const markDoneByRubens = markDoneByClaude;

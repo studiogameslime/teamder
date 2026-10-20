@@ -690,6 +690,19 @@ export const userService = {
   /** Manager-scoped server matching. The server derives time/location and
    * excludes existing members/roster, blocks and hidden players. Only identity
    * and display city return; pagination continues until 50 matches or EOF. */
+  async findAvailablePlayersPage(gameId: string, cursor: string | null = null): Promise<{players: User[]; cursor: string | null}> {
+    if (USE_MOCK_DATA) return {players: [], cursor: null};
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const page = await Promise.race([
+        playerReadCall<{players: User[]; cursor: string | null}>('findAvailableSocialPlayers', {gameId, cursor}),
+        new Promise<never>((_,reject) => {timer=setTimeout(()=>reject(new Error('AVAILABLE_PLAYERS_TIMEOUT')),15000);}),
+      ]);
+      if (cursor && page.cursor === cursor) throw new Error('AVAILABLE_PLAYERS_CURSOR_STALLED');
+      return page;
+    } finally {clearTimeout(timer);}
+  },
+
   async findAvailablePlayers(opts: {
     gameId: string;
     /** ISO weekday 0..6 of the game. */

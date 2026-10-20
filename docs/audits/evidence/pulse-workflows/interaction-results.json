@@ -1,0 +1,9 @@
+{
+  "passed": [
+    "campaign draft survives list and create; no send on audience",
+    "logout isolated in account",
+    "report detail navigation preserves exact collection and id",
+    "games search matches community",
+    "composer in viewport and draft survives tool toggle"
+  ]
+}

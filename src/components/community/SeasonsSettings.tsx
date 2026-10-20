@@ -1,1329 +1,184 @@
-// Seasons, in the club's settings, where a setting belongs.
-//
-// This started as a chain of alert dialogs, which was the quick path and not
-// the right one: it asked a question, replaced it with another question, and
-// gave the admin nowhere to look at their own choices together. A toggle that
-// opens its options — and closes them again — is the shape people already know
-// from every other switch on this screen.
-//
-// The reason it was NOT a plain form field still holds, and it is why there is
-// a separate confirm button rather than a save that rides along with the rest
-// of the club's settings: none of these are document writes. Switching seasons
-// on can seal the club's whole history as season 1, and ending one archives and
-// zeroes every stat row in the club. Those belong to the server and deserve
-// their own deliberate press.
-
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
-import { SeasonConfirmSheet } from '@/components/community/SeasonConfirmSheet';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 import { appAlert } from '@/components/AppDialog';
 import { toast } from '@/components/Toast';
+import { SeasonConfirmSheet } from './SeasonConfirmSheet';
+import { Chip, Stepper } from './SeasonTargetControls';
+export { Chip, Stepper } from './SeasonTargetControls';
+import { seasonService, seasonExpected, SeasonRefusedError, seasonRefusalText, type SeasonPreview } from '@/services/seasonService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import {
-  seasonService,
-  seasonRefusalText,
-  SeasonRefusedError,
-} from '@/services/seasonService';
-import { gameService } from '@/services/gameService';
-import {
-  seasonHistoryService,
-  type FinishedSeason,
-} from '@/services/seasonHistoryService';
-import {
-  todayIn,
-  seasonEndDate,
-  nextSeasonStart,
-  formatCalendarDate,
-  isCalendarDate,
-  isValidSeasonMonths,
-  MIN_SEASON_MONTHS,
-  MAX_SEASON_MONTHS,
-  type CalendarDate,
-} from '@/utils/seasonDates';
-import {
-  planActivation,
-  isSeasonReactivation,
-  isValidSeasonRounds,
-  MIN_SEASON_ROUNDS,
-  type ActivationPlan,
-} from '@/utils/seasonActivation';
-import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
+import { makeSeasonTarget, validateSeasonTarget, maxSeasonTarget, MIN_SEASON_ROUNDS, type SeasonHistoryChoice } from '@/utils/seasonPolicy';
+import { planActivation } from '@/utils/seasonActivation';
+import { formatCalendarDate, todayIn } from '@/utils/seasonDates';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { Ionicons } from '@expo/vector-icons';
-
-import { InfoTip } from '@/components/InfoTip';
 import type { GroupSeasons } from '@/types';
 
-type Cadence = 'date' | 'rounds';
+const histories: { key: SeasonHistoryChoice; title: string; body: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'fresh', title: 'להתחיל עונה חדשה מהיום', body: 'הפעילות הקודמת נשארת בכל הזמנים, בלי עונה ובלי תארים.', icon: 'sparkles-outline' },
+  { key: 'sealNow', title: 'לסכם את התקופה הקודמת כעונה', body: 'מעניקים עליה תארים ופותחים עונה חדשה מהיום. נדרשים לפחות חמישה מחזורים תקינים.', icon: 'trophy-outline' },
+  { key: 'continue', title: 'להמשיך עם הפעילות הקודמת', body: 'המחזורים והנתונים הקודמים נכנסים לעונה הפעילה. היעד נמדד מתחילת התקופה שנכללת.', icon: 'layers-outline' },
+];
 
-/** Deliberately few. A club picking a season length should not be designing one. */
-const MONTH_CHOICES = [3, 6, 12] as const;
-/** Shortcuts for how long season 1 runs when it is carrying a club's whole
- *  history. Shorter than MONTH_CHOICES on purpose: this season already
- *  holds everything played so far, so its remaining stretch is usually the
- *  short one. Anything else is the custom stepper beside them. */
-const SEASON1_MONTH_CHOICES = [1, 2, 3, 6] as const;
-const ROUND_CHOICES = [24, 48, 96] as const;
-/** The step for the custom pickers. One at a time, for both.
- *
- *  Rounds used to move in fours, on the reasoning that a club setting 37 is
- *  really setting "about three dozen". The trouble is that a step of four from
- *  a chip divisible by four, against a floor of 2, is a lattice and not a
- *  range: 5, 7, 9 and 11 could not be reached at all, 37 could not be reached
- *  from 24, and 6 and 10 could only be reached by walking all the way down to
- *  2 and back up. A picker that cannot reach a number is worse than one that
- *  takes an extra tap to get there, and the long journeys are what the 24 / 48
- *  / 96 chips beside it are for. */
-const ROUND_STEP = 1;
-
-function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString('he-IL', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
-
-/**
- * A count, chosen by tapping rather than typing.
- *
- * The ranges here are small and the value is always a whole number, so a
- * keyboard over a settings sheet would be a heavier gesture than the choice
- * deserves. Bounds are enforced here rather than announced: a button that
- * cannot take you out of range never has to tell you that you went.
- */
-/** Exported for the same reason as `Chip` above. */
-export function Stepper({
-  label,
-  value,
-  unit,
-  min,
-  max,
-  step = 1,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  unit: string;
-  min: number;
-  max?: number;
-  step?: number;
-  onChange: (n: number) => void;
-}) {
-  const clamp = (n: number) =>
-    Math.max(min, Math.min(typeof max === 'number' ? max : n, n));
-  const canDown = value > min;
-  const canUp = typeof max !== 'number' || value < max;
-  return (
-    <View style={styles.stepper}>
-      <Text style={styles.stepperLabel}>{label}</Text>
-      {/* Minus first in source order → RIGHTMOST under forceRTL, which is
-          where the thumb rests and where "less" belongs in a right-to-left
-          row. */}
-      <View style={styles.stepperControls}>
-        <Pressable
-          onPress={() => canDown && onChange(clamp(value - step))}
-          disabled={!canDown}
-          style={[styles.stepperBtn, !canDown && styles.stepperBtnOff]}
-          accessibilityRole="button"
-          accessibilityLabel="-"
-        >
-          <Text style={styles.stepperBtnText}>−</Text>
-        </Pressable>
-        <Text style={styles.stepperValue}>{unit}</Text>
-        <Pressable
-          onPress={() => canUp && onChange(clamp(value + step))}
-          disabled={!canUp}
-          style={[styles.stepperBtn, !canUp && styles.stepperBtnOff]}
-          accessibilityRole="button"
-          accessibilityLabel="+"
-        >
-          <Text style={styles.stepperBtnText}>+</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-/** One "label / value" line. Used for the dates under the chips and for every
- *  row of the confirmation, so the two read as the same object. */
-function DateLine({
-  label,
-  value,
-  muted,
-}: {
-  label: string;
-  value: string;
-  muted?: boolean;
-}) {
-  return (
-    <View style={styles.dateLine}>
-      <Text style={styles.dateLineLabel}>{label}</Text>
-      <Text style={[styles.dateLineValue, muted && styles.dateLineValueMuted]}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-/** The refusal, in the admin's own numbers. Every message names the figure
- *  that caused it, because "not allowed" is not something anyone can act on.
- *
- *  And the season it is really about. Every one of these was written against
- *  "עונה 1", while numbering continues across the feature being switched off
- *  and on — so the line that blocks a re-enable on season 4 told the admin to
- *  pick an end date for season 1, a season the club archived months ago. */
-function planErrorText(
-  plan: ActivationPlan,
-  target: number,
-  no: number,
-): string {
-  switch (plan.error) {
-    case 'historyExceedsTarget':
-      return he.seasonsErrHistoryExceedsOf(plan.playedHistory, target, no);
-    case 'historyFillsTarget':
-      return he.seasonsErrHistoryFillsOf(plan.playedHistory, no, no + 1);
-    case 'monthsInvalid':
-      return he.seasonsErrMonths;
-    case 'roundsInvalid':
-      return he.seasonsErrRounds;
-    case 'season1EndRequired':
-      return he.seasonsErrSeasonEndOf(no);
-    case 'season1EndNotFuture':
-      return he.seasonsErrSeasonPastOf(no);
-    case 'sealTooFewRounds':
-      return he.seasonsErrSealTooFew(plan.playedHistory, MIN_SEASON_ROUNDS);
-    default:
-      return he.error;
-  }
-}
-
-/** Exported so the creation-time block draws the SAME chip. Two chips that
- *  drift apart on two screens asking one question is how a setting starts
- *  looking like two settings. */
-export function Chip({
-  label,
-  active,
-  onPress,
-  disabled = false,
-}: {
-  disabled?: boolean;
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={[styles.chip, active && styles.chipActive, disabled && { opacity: 0.4 }]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active, disabled }}
-    >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-    </Pressable>
-  );
-}
-
-export function SeasonsSettings({
-  groupId,
-  seasons,
-  onChanged,
-}: {
-  groupId: string;
-  seasons?: GroupSeasons;
-  onChanged?: () => void;
-}) {
+export function SeasonsSettings({ groupId, seasons, onChanged }: { groupId: string; seasons?: GroupSeasons; onChanged?: () => void }) {
   const live = seasons?.enabled === true;
-  const [busy, setBusy] = useState(false);
-  // What the toggle SHOWS, which is not the same as what the club has: a club
-  // with seasons off shows the options the moment the switch flips, and nothing
-  // is written until the admin presses the button below them.
   const [open, setOpen] = useState(live);
-  // Seeded from the club's REAL target, not from a default.
-  //
-  // These chips are the only place an admin sees what the season is set to, and
-  // they double as the editor. Starting them at 6 months / 24 rounds told a
-  // club running a twelve-month season that it was running a six-month one —
-  // and then "עדכן את יעד העונה" wrote that fiction back, silently moving the
-  // finish line the admin never touched.
-  const [cadence, setCadence] = useState<Cadence>(
-    seasons?.cadence?.type === 'rounds' ? 'rounds' : 'date',
-  );
-  // Seeded from the club's target whenever it is VALID, not only when it
-  // happens to be one of the chips.
-  //
-  // These fell back to 6 / 24 for anything else, so a club on a custom length
-  // opened the screen showing a preset it had never chosen — and "עדכן את יעד
-  // העונה" then wrote that preset back, moving a finish line the admin came
-  // only to look at. Reported as settings that do not keep what was set.
-  const [months, setMonths] = useState<number>(() =>
-    isValidSeasonMonths(seasons?.cadence?.months)
-      ? (seasons?.cadence?.months as number)
-      : 6,
-  );
-  const [rounds, setRounds] = useState<number>(() =>
-    isValidSeasonRounds(seasons?.cadence?.targetRounds)
-      ? (seasons?.cadence?.targetRounds as number)
-      : 24,
-  );
-  /** Only asked on the FIRST enable — after that there is no loose history. */
-  const [sealHistory, setSealHistory] = useState(false);
-  /** Custom lengths sit beside the presets rather than replacing them. */
-  // …and the custom stepper opens already open when the stored value is one.
-  // Otherwise a custom target rendered with no chip selected and no stepper,
-  // which looks like a screen that failed to load its own setting.
-  const [customMonths, setCustomMonths] = useState(
-    () =>
-      seasons?.cadence?.type === 'date' &&
-      isValidSeasonMonths(seasons.cadence.months) &&
-      !MONTH_CHOICES.includes(seasons.cadence.months as never),
-  );
-  const [customRounds, setCustomRounds] = useState(
-    () =>
-      seasons?.cadence?.type === 'rounds' &&
-      isValidSeasonRounds(seasons.cadence.targetRounds) &&
-      !ROUND_CHOICES.includes(seasons.cadence.targetRounds as never),
-  );
-  /** The last day of season 1, when carrying it on under a date cadence.
-   *  There is no honest start date to compute for it — the history reaches
-   *  back as far as the club does — so the admin names its end instead. */
-  const [season1EndsOn, setSeason1EndsOn] = useState<CalendarDate | null>(null);
-  /** The same presets-plus-custom shape as the season length above, because it
-   *  is the same question asked about a different season — "1, 2, 3 or 6
-   *  months" are shortcuts, not the whole range an admin may want. */
-  const [season1Custom, setSeason1Custom] = useState(false);
-  const [season1Months, setSeason1Months] = useState(3);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  /** Evenings the club has already played. Asked for once, when the options
-   *  open, because every validation and every line of the confirmation is
-   *  measured against it. `null` means "not answered yet", never "none". */
-  const [history, setHistory] = useState<number | null>(null);
-  /**
-   * The read failed, as opposed to answering zero.
-   *
-   * A failed or denied read used to be recorded as "0 evenings played", and
-   * zero is a CLAIM: it tells the confirmation sheet the club has never played,
-   * so every line about its history disappears from the last page the admin
-   * approves — while the server goes on to count the real 22 and seal all of
-   * them. The two states have to be different things.
-   */
-  const [historyFailed, setHistoryFailed] = useState(false);
-  /** Bumped by the retry button, to ask again. */
-  const [historyAttempt, setHistoryAttempt] = useState(0);
-
-
-  // Reconcile authoritative target changes (including a newly rolled season).
-  // Typing/chip changes do not alter these dependencies, so an unsaved draft
-  // is preserved while only participation counters refresh.
+  const [scope, setScope] = useState<'current' | 'next'>('current');
+  const stored = scope === 'next' ? seasons?.nextCadence ?? seasons?.cadence : seasons?.cadence;
+  const [cadence, setCadence] = useState<'date' | 'rounds'>(stored?.type ?? 'rounds');
+  const [months, setMonths] = useState(stored?.months ?? 3);
+  const [rounds, setRounds] = useState(stored?.targetRounds ?? 24);
+  const [choice, setChoice] = useState<SeasonHistoryChoice>('fresh');
+  const [history, setHistory] = useState<SeasonPreview | null>(null);
+  const [readError, setReadError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [busy, setBusy] = useState<string | null>(null);
+  const busyRef = useRef(false);
+  const [confirm, setConfirm] = useState<'enable' | 'close' | 'disable' | null>(null);
+  const [operationClock, setOperationClock] = useState(Date.now());
   useEffect(() => {
-    const nextMonths = isValidSeasonMonths(seasons?.cadence?.months) ? seasons!.cadence.months! : 6;
-    const nextRounds = isValidSeasonRounds(seasons?.cadence?.targetRounds) ? seasons!.cadence.targetRounds! : 24;
-    setCadence(seasons?.cadence?.type === 'rounds' ? 'rounds' : 'date');
-    setMonths(nextMonths);
-    setRounds(nextRounds);
-    setCustomMonths(!MONTH_CHOICES.includes(nextMonths as never));
-    setCustomRounds(!ROUND_CHOICES.includes(nextRounds as never));
-  }, [groupId, seasons?.currentId, seasons?.cadence?.type, seasons?.cadence?.months, seasons?.cadence?.targetRounds]);
-
-  const reactivation = !live && isSeasonReactivation(seasons);
-  const firstTime = !live && !reactivation;
-  /** The season this action is about. Numbering CONTINUES across the feature
-   *  being switched off and on, so it is never simply 1 — and every label on
-   *  this screen used to say so. */
-  const thisSeasonNo = live
-    ? (seasons?.currentNo ?? 1)
-    : (seasons?.count ?? 0) + 1;
+    if (!seasons?.operation) return;
+    const timer = setInterval(() => setOperationClock(Date.now()), 10000);
+    return () => clearInterval(timer);
+  }, [seasons?.operation?.until]);
+  const canResume = !!seasons?.operation && (seasons.operation.failed || seasons.operation.until <= operationClock);
 
   useEffect(() => {
-    if (!open) return;
-    setHistoryFailed(false);
-    // A club that has closed a season before carries NO loose history: those
-    // evenings are sealed inside an archive, and the season about to open
-    // starts at zero. Asking the server for the figure would get the same
-    // answer it now gives itself — see the playedHistory comment in
-    // enableClubSeasons — and a non-null value here is what lets the plan be
-    // computed and its refusal explained at all.
-    //
-    // A LIVE club is the other half of that sentence, and it was getting the
-    // same zero. Its running season holds evenings, and the target being
-    // edited on this screen is measured against exactly them — by the server,
-    // which refuses a target at or under the count. Pinning zero made
-    // historyExceedsTarget and historyFillsTarget dead code on the whole
-    // target-change path, so a club 22 evenings into a season could pick 12,
-    // press the button, and learn the rule only as a refusal. This is the same
-    // figure the card shows and the same one the server measures against.
-    if (!firstTime) {
-      setHistory(live ? Math.max(0, seasons?.playedRounds ?? 0) : 0);
-      return;
-    }
-    let alive = true;
-    void gameService
-      .getCommunityStats(groupId)
-      .then((st) => {
-        if (!alive) return;
-        const played = st?.totalFinished;
-        if (typeof played === 'number' && Number.isFinite(played)) {
-          setHistory(Math.max(0, played));
-          return;
-        }
-        setHistory(null);
-        setHistoryFailed(true);
-      })
-      .catch(() => {
-        // NOT zero. See historyFailed: zero would tell the sheet this club has
-        // no history, one press before the server seals the history it has.
-        if (!alive) return;
-        setHistory(null);
-        setHistoryFailed(true);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [open, groupId, firstTime, live, seasons?.playedRounds, historyAttempt]);
-  /** Does the club's current target correspond to one of the chips below? */
-  const offeredTarget =
-    seasons?.cadence?.type === 'rounds'
-      ? ROUND_CHOICES.includes(seasons.cadence.targetRounds as never)
-      : MONTH_CHOICES.includes(seasons?.cadence?.months as never);
+    setCadence(stored?.type ?? 'rounds'); setMonths(stored?.months ?? 3); setRounds(stored?.targetRounds ?? 24);
+  }, [groupId, seasons?.currentId, stored?.type, stored?.months, stored?.targetRounds, scope]);
+  useEffect(() => { setOpen(live); }, [live]);
+  useEffect(() => {
+    if (!open || live) return;
+    let alive = true; setHistory(null); setReadError(false);
+    void seasonService.preview(groupId).then(result => { if (alive) setHistory(result); }).catch(() => { if (alive) setReadError(true); });
+    return () => { alive = false; };
+  }, [groupId, open, live, attempt]);
 
-  const run = useCallback(
-    async (action: () => Promise<void>) => {
-      setBusy(true);
-      try {
-        await action();
-        onChanged?.();
-      } catch (err) {
-        // A refusal is an answer the admin can act on ("finish tonight's game
-        // first"), not a failure. Only a real one gets the generic line.
-        //
-        // The season number and the numbers the plan refusals are written
-        // about travel with it: the server throws `season-plan:historyFills`
-        // and nothing else, and "עונה 1" is wrong for every club that has
-        // closed one.
-        appAlert(
-          he.error,
-          err instanceof SeasonRefusedError
-            ? seasonRefusalText(err.reason, {
-                seasonNo: thisSeasonNo,
-                played: err.played ?? history ?? undefined,
-                target: rounds,
-              })
-            : he.seasonActionFailed,
-        );
-      } finally {
-        setBusy(false);
-      }
-    },
-    [onChanged, thisSeasonNo, history, rounds],
-  );
+  const included = !live && choice === 'continue' ? history?.played ?? 0 : live && scope === 'current' ? seasons?.includedHistory ?? 0 : 0;
+  const played = live && scope === 'current' ? seasons?.playedRounds ?? 0 : !live && choice === 'continue' ? history?.played ?? 0 : 0;
+  const start = !live && choice === 'continue' && (history?.played ?? 0) > 0 ? history!.startsAt : live && scope === 'current' ? seasons?.startedAt || Date.now() : Date.now();
+  const target = makeSeasonTarget(cadence, cadence === 'date' ? months : rounds, todayIn(undefined, start));
+  const validation = validateSeasonTarget({ target, played, includedHistory: included, now: Date.now(),
+    previousType: live && scope === 'current' ? seasons?.cadence.type : undefined, activation: !live });
+  const changed = !live || cadence !== stored?.type || (cadence === 'rounds' ? rounds !== stored?.targetRounds : months !== stored?.months);
+  const plan = planActivation({ cadence, months, targetRounds: rounds, choice, playedHistory: history?.played ?? 0,
+    today: todayIn(), historyStartsOn: todayIn(undefined, history?.startsAt || Date.now()) });
+  const pending = seasons?.pendingClose;
+  const no = live ? seasons?.currentNo ?? 1 : (seasons?.count ?? 0) + 1;
+  const disabled = !!busy || !!seasons?.manualClose || !!seasons?.operation;
+  const error = !validation.ok ? validation.error === 'roundsInvalid' ? `יש לבחור בין חמישה ל־${maxSeasonTarget(included)} מחזורים.`
+    : validation.error === 'monthsInvalid' ? 'יש לבחור בין חודש אחד ל־24 חודשים.'
+    : validation.error === 'targetBehind' ? `כבר הושלמו ${played} מחזורים. היעד לא יכול להיות קטן מכך.`
+    : 'בהפעלה או בהחלפת סוג יעד, היעד החדש צריך להיות בעתיד. אפשר לבחור יעד רחוק יותר.' : null;
 
-  /** Has the admin actually moved the target away from the club's own? */
-  const targetChanged = useMemo(() => {
-    if (!live) return true;
-    const c = seasons?.cadence;
-    if (cadence === 'rounds') {
-      return c?.type !== 'rounds' || c.targetRounds !== rounds;
-    }
-    return c?.type !== 'date' || c.months !== months;
-  }, [live, seasons?.cadence, cadence, months, rounds]);
+  async function run(label: string, action: () => Promise<unknown>) {
+    if (busyRef.current) return;
+    busyRef.current = true; setBusy(label);
+    try {
+      await action(); setConfirm(null); toast.success('השינוי בהגדרות העונה נשמר'); onChanged?.();
+    } catch (err) {
+      const stale = err instanceof SeasonRefusedError && err.reason === 'operationStale';
+      appAlert('השינוי לא נשמר', err instanceof SeasonRefusedError ? seasonRefusalText(err.reason, { seasonNo: no, played, target: rounds }) : 'לא ניתן להשלים כעת. הבחירה נשמרה במסך ואפשר לנסות שוב.');
+      if (stale) { setConfirm(null); onChanged?.(); setAttempt(n => n + 1); }
+    } finally { busyRef.current = false; setBusy(null); }
+  }
+  const submit = () => {
+    if (confirm === 'enable') void run('מפעילים עונות ושומרים את ההיסטוריה…', async () => {
+      await seasonService.enable({ groupId, cadenceType: cadence, months, targetRounds: rounds, historyChoice: choice, expected: history?.expected, ...(history ? { historySnapshot: { played: history.played, startsAt: history.startsAt, unverified: history.unverified } } : {}) });
+      logEvent(AnalyticsEvent.SeasonsEnabled, { groupId });
+    });
+    if (confirm === 'close') void run('מסיימים את העונה…', async () => {
+      await seasonService.endNow(groupId, seasonExpected(seasons)); logEvent(AnalyticsEvent.SeasonEndedEarly, { groupId });
+    });
+    if (confirm === 'disable') void run('מסיימים את העונה ומכבים עונות…', async () => {
+      await seasonService.disable(groupId, seasonExpected(seasons)); logEvent(AnalyticsEvent.SeasonsDisabled, { groupId });
+    });
+  };
+  const short = (seasons?.playedRounds ?? 0) < MIN_SEASON_ROUNDS;
+  const closeBody = [
+    `בעונה הושלמו ${he.seasonsRoundsUnit(seasons?.playedRounds ?? 0)}.`,
+    short
+      ? 'העונה תבוטל ללא תארים וללא קידום מספר העונה, והמועדון יחזור לפעילות ללא עונות. המחזורים והנתונים יישמרו בכל הזמנים, ללא שיוך לעונה, ויהיו זמינים לבחירה בהפעלה הבאה.'
+      : `העונה תיסגר והתארים יפורסמו. ${confirm === 'disable' ? 'לאחר מכן העונות יכובו.' : 'לאחר מכן תיפתח העונה הבאה.'}`,
+    'אם יש מחזור פעיל או מחזור שממתין לאימות, הסיום ימתין להם וייקבע לפי מספר המחזורים המעודכן.',
+    short ? 'אין חלון תיקונים של 24 שעות.' : 'הסגירה סופית: אין חלון תיקונים של 24 שעות ואין פתיחה מחדש.',
+  ].join('\n\n');
 
-  /**
-   * What pressing the button will do — recomputed on every keystroke.
-   *
-   * ONE plan drives the dates under the chips, the red validation line, whether
-   * the button is enabled, and every figure in the confirmation. They cannot
-   * drift apart, because there is nothing to drift: the sheet an admin approves
-   * is this object, and the server recomputes the same one before acting.
-   */
-  const today = useMemo(() => todayIn(), []);
-  const plan = useMemo(
-    () =>
-      planActivation({
-        cadence,
-        months,
-        targetRounds: rounds,
-        choice: sealHistory ? 'sealNow' : 'continue',
-        playedHistory: history ?? 0,
-        today,
-        season1EndsOn: season1EndsOn ?? undefined,
-        // No season 1 to date when the club has already run one — and no
-        // control on screen that could pick a date for it.
-        hasHistory: !firstTime,
-        // A running season has no "לסגור ולהתחיל חדשה" chip to point at, so a
-        // target equal to what it has played is the admin saying it ends here
-        // — allowed, and announced below rather than refused. On a first
-        // activation that chip is right there, so the refusal stays.
-        equalTargetCloses: live,
-      }),
-    [
-      cadence,
-      months,
-      rounds,
-      sealHistory,
-      history,
-      today,
-      season1EndsOn,
-      firstTime,
-      live,
-    ],
-  );
-
-  /** The dates shown under the length chips, for a club with no history to
-   *  argue about — a plain "this season runs from here to here". */
-  const previewDates = useMemo(() => {
-    if (cadence !== 'date' || !isValidSeasonMonths(months)) return null;
-    const endsOn = seasonEndDate(today, months);
-    return { startsOn: today, endsOn, nextStartsOn: nextSeasonStart(endsOn) };
-  }, [cadence, months, today]);
-
-  const targetArgs = useMemo(
-    () =>
-      cadence === 'rounds'
-        ? { cadenceType: 'rounds' as const, targetRounds: rounds }
-        : { cadenceType: 'date' as const, months },
-    [cadence, months, rounds],
-  );
-
-  const onToggle = useCallback(
-    (next: boolean) => {
-      if (next) {
-        setOpen(true);
-        return;
-      }
-      if (!live) {
-        // Nothing was ever written — just fold the options away.
-        setOpen(false);
-        return;
-      }
-      // Named season + evening count, same as the end-now dialog. Since §9
-      // this button closes the season, so it is the last thing an admin reads
-      // before nine titles are handed out for good.
-      const playedNow = Math.max(0, seasons?.playedRounds ?? 0);
-      appAlert(
-        he.seasonsDisableTitle,
-        he.seasonsDisableBodyOf(thisSeasonNo, playedNow),
-        [
-        {
-          text: he.seasonsDisableConfirm,
-          style: 'destructive',
-          onPress: () =>
-            run(async () => {
-              await seasonService.disable(groupId);
-              logEvent(AnalyticsEvent.SeasonsDisabled, { groupId });
-              setOpen(false);
-              toast.success(he.seasonsDisabledToast);
-            }),
-        },
-        { text: he.cancel, style: 'cancel' },
-        ],
-      );
-    },
-    [live, groupId, run, seasons?.playedRounds, thisSeasonNo],
-  );
-
-  const enable = useCallback(() => {
-    const go = () =>
-      run(async () => {
-        await seasonService.enable({
-          groupId,
-          ...targetArgs,
-          historyChoice: sealHistory ? 'sealNow' : 'continue',
-          ...(sealHistory ? { closeFirstNow: true } : {}),
-          ...(season1EndsOn ? { season1EndsOn } : {}),
-        });
-        // `sealedHistory` is the question the feature actually turns on: how
-        // many clubs were willing to close two years to start clean.
-        logEvent(AnalyticsEvent.SeasonsEnabled, {
-          groupId,
-          cadence,
-          target: cadence === 'rounds' ? rounds : months,
-          sealedHistory: sealHistory,
-        });
-        toast.success(he.seasonsEnabledToast);
-      });
-    go();
-  }, [groupId, targetArgs, sealHistory, season1EndsOn, run]);
-
-  const saveTarget = useCallback(() => {
-    const go = () =>
-      run(async () => {
-        await seasonService.updateTarget({ groupId, ...targetArgs });
-        logEvent(AnalyticsEvent.SeasonTargetChanged, {
-          groupId,
-          cadence,
-          target: cadence === 'rounds' ? rounds : months,
-          // Whether this press moved a finish line or crossed it. The server
-          // records the same thing as `endsTheSeason`; this is the only place
-          // the product can see how often an admin ends a season THIS way
-          // rather than through the button that says so.
-          endsSeason: plan.closesSeasonNow === true,
-        });
-        toast.success(he.seasonsTargetSavedToast);
-      });
-    // A target equal to what the club has already played is not a smaller edit
-    // than "סיים עונה עכשיו" — it is the same outcome reached through a number.
-    // The table is archived and zeroed and nine titles are handed out for good,
-    // so it gets the same question that button asks, with this season's own
-    // figures in it.
-    if (plan.closesSeasonNow) {
-      appAlert(
-        he.seasonsTargetClosesTitle,
-        he.seasonsTargetClosesBody(thisSeasonNo, plan.playedHistory),
-        [
-          {
-            text: he.seasonsTargetClosesCta,
-            style: 'destructive',
-            onPress: go,
-          },
-          { text: he.cancel, style: 'cancel' },
-        ],
-      );
-      return;
-    }
-    go();
-  }, [groupId, targetArgs, run, plan, thisSeasonNo, cadence, rounds, months]);
-
-  // ⚠️ The `reopenLast` handler lived here and is gone with its button (§12).
-  //
-  // It read the season's own card first so the confirmation could say whether
-  // the season would simply close again, then ran the reopen through
-  // `seasonService.reopenLast`. All of that was correct; none of it is
-  // reachable, because a club admin may no longer reopen a closed season —
-  // the callable refuses anyone but the project owner. Dead UI code that still
-  // compiles is how a removed feature comes back by accident.
-  //
-  // `seasonService.reopenLast` is kept as the client-side wrapper for the
-  // maintenance hook; nothing in the app calls it.
-
-  /** Season 1 keeps the club's history and gets its own end date, so the
-   *  months chips govern season 2 onward rather than the season on screen.
-   *  Only ever true on a FIRST activation — a club already running seasons
-   *  has no season 1 to carry and no date control for one. */
-  const carriesSeason1 = live === false && cadence === 'date' && !sealHistory;
-
-  /**
-   * Evenings this season has actually played, as the screen has them.
-   *
-   * The same mirror the card and the target picker read. It can lag the
-   * server's own counter by one evening; that is why the server enforces the
-   * floor as well, and this only decides whether to offer the button.
-   */
-  const playedThisSeason = Math.max(0, seasons?.playedRounds ?? 0);
-  const canEndSeason = playedThisSeason >= MIN_SEASON_ROUNDS;
-
-  /**
-   * The season is too short to end — say so, and offer the way out.
-   *
-   * The button used to be disabled with a sentence beside it. That is correct
-   * about the rule and useless about what to do next: an admin who has just
-   * switched seasons on, played nothing, and wants to start the season over is
-   * not asking to seal anything — they are asking to change how the season is
-   * set up, and a grey button does not tell them that is the thing to do.
-   *
-   * So the press is allowed and answered. The dialog names the count, states
-   * the floor, and its primary action opens the season settings, which is
-   * where both real remedies live: move the finish line, or switch seasons off
-   * — the server DISCARDS an empty season rather than archiving it, so
-   * switching off really does leave the club clean rather than stamping a
-   * season of nothing into permanent history.
-   */
-  const offerSeasonSettings = useCallback(() => {
-    appAlert(
-      he.seasonsEndTooEarlyTitle,
-      he.seasonBlockedTooFewRoundsAt(playedThisSeason, MIN_SEASON_ROUNDS),
-      [
-        {
-          text: he.seasonsEditSettingsCta,
-          // Expands the section when it is collapsed. When it is already open
-          // — which is the usual case, because this button only renders for a
-          // live club — the settings the dialog is pointing at are the chips
-          // and stepper directly above it.
-          onPress: () => setOpen(true),
-        },
-        { text: he.cancel, style: 'cancel' },
-      ],
-      { tone: 'warning' },
-    );
-  }, [playedThisSeason]);
-
-  const endNow = useCallback(() => {
-    // The floor, answered before the destructive confirmation rather than
-    // after it. The server refuses this too (`season-close:tooFewRounds`), but
-    // an admin should not have to read "are you sure you want to archive the
-    // table and award nine titles" and press it to be told the season is
-    // empty.
-    if (!canEndSeason) {
-      offerSeasonSettings();
-      return;
-    }
-    // Which season, and how much of it there is.
-    //
-    // The paragraph on its own reads identically for a season holding nothing
-    // and one holding thirty evenings, and names neither. It is the last thing
-    // an admin reads before the club's table is archived and zeroed and nine
-    // titles are handed out for good — and the server's own comment on
-    // endSeasonNow says this client "shows the admin exactly which titles are
-    // about to be awarded before they confirm", which it does not. The titles
-    // are not computed anywhere this component can reach; the season and its
-    // evening count are, so those at least are said out loud.
-    const played = Math.max(0, seasons?.playedRounds ?? 0);
-    const body = `${he.seasonNumberLabel(thisSeasonNo)} · ${he.seasonsConfirmSealedNow(
-      played,
-    )}\n\n${he.seasonsEndConfirmBody}`;
-    appAlert(he.seasonsEndConfirmTitle, body, [
-      {
-        text: he.seasonsEndCta,
-        style: 'destructive',
-        onPress: () =>
-          run(async () => {
-            const res = await seasonService.endNow(groupId);
-            logEvent(AnalyticsEvent.SeasonEndedEarly, {
-              groupId,
-              seasonNo: res.closedNo,
-            });
-            toast.success(he.seasonsEndedToast(res.closedNo));
-          }),
-      },
-      { text: he.cancel, style: 'cancel' },
-    ]);
-  }, [canEndSeason, offerSeasonSettings, groupId, run, seasons?.playedRounds, thisSeasonNo]);
-
-  const currentTargetLine =
-    seasons?.cadence?.type === 'rounds' &&
-    typeof seasons.cadence.targetRounds === 'number'
-      ? he.seasonsTargetRounds(seasons.cadence.targetRounds)
-      : isCalendarDate(seasons?.cadence?.endsOn)
-        ? he.seasonsTargetDate(
-            formatCalendarDate(seasons!.cadence!.endsOn as string),
-          )
-        : typeof seasons?.cadence?.endsAt === 'number'
-        ? he.seasonsTargetDate(formatDate(seasons.cadence.endsAt))
-        : '';
-
-  return (
-    <View style={styles.section}>
-      <Pressable
-        accessible={false}
-        style={styles.toggleRow}
-        onPress={() => onToggle(!open)}
-      >
-        <View style={styles.toggleText}>
-          <View style={styles.toggleTitleRow}>
-            <Text style={styles.toggleLabel}>{he.seasonsToggleLabel}</Text>
-            {/* Every other switch on this screen carries one — מועדון פתוח,
-                דירוג פנימי, להסתיר דירוג, כרטיסים — and this was the only one
-                without, while being by far the hardest thing on it. The owner
-                wrote the spec for this feature and still said "I do not
-                understand what is going on there". */}
-            <InfoTip title={he.seasonsToggleLabel} text={he.seasonsToggleInfo} />
-          </View>
-          <Text style={styles.toggleHint}>{he.seasonsToggleHint}</Text>
-        </View>
-        <BallSwitch
-          accessibilityLabel={he.seasonsToggleLabel}
-          value={open}
-          onValueChange={onToggle}
-          trackColor={{ false: colors.border, true: colors.primary }}
-          thumbColor="#fff"
-        />
-      </Pressable>
-
-      {!open ? null : (
-        <View style={styles.body}>
-          {live ? (
-            <Text style={styles.running}>
-              {he.seasonNumberLabel(seasons?.currentNo ?? 1)}
-              {currentTargetLine ? ` · ${currentTargetLine}` : ''}
-            </Text>
-          ) : (
-            // The one paragraph that says plainly what a season does to a club
-            // — the table resets, titles are handed out, the season is
-            // archived — was written and rendered nowhere. An admin met the
-            // feature as a nine-word toggle hint and a list of durations.
-            <Text style={styles.fieldHint}>{he.seasonsOffBody}</Text>
-          )}
-
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionHeadText}>{he.seasonsCadenceQuestion}</Text>
-            <Ionicons name="flag-outline" size={16} color={colors.primary} />
-          </View>
-          <View style={styles.chipRow}>
-            <Chip
-              label={he.seasonsCadenceDate}
-              active={cadence === 'date'}
-              disabled={live && playedThisSeason > 0 && seasons?.cadence.type !== 'date'}
-              onPress={() => setCadence('date')}
-            />
-            <Chip
-              label={he.seasonsCadenceRounds}
-              active={cadence === 'rounds'}
-              disabled={live && playedThisSeason > 0 && seasons?.cadence.type !== 'rounds'}
-              onPress={() => setCadence('rounds')}
-            />
-          </View>
-
-          {live && playedThisSeason > 0 ? <Text style={styles.fieldHint}>{he.seasonsCadenceLocked}</Text> : null}
-
-          <Text style={styles.fieldLabel}>
-            {cadence === 'rounds'
-              ? he.seasonsHowMany
-              : /* Carrying the club's history into season 1? Then these chips
-                   do not end season 1 — the date chips further down do — and
-                   they only begin to apply from season 2. Under the old label
-                   this block answered a question it does not answer, next to
-                   the control that does. */
-                carriesSeason1
-                ? he.seasonsHowLongFromSeason2
-                : he.seasonsHowLong}
-          </Text>
-          {/* A club can hold a target that is not one of the chips — an older
-              season, or one set before these choices existed. Say so rather
-              than showing an unselected row that looks broken. */}
-          {live && !offeredTarget ? (
-            <Text style={styles.fieldHint}>{he.seasonsTargetCustom}</Text>
-          ) : null}
-          <View style={styles.chipRow}>
-            {cadence === 'date' ? (
-              <>
-                {MONTH_CHOICES.map((m) => (
-                  <Chip
-                    key={m}
-                    label={he.seasonsMonthsLabel(m)}
-                    active={!customMonths && months === m}
-                    onPress={() => {
-                      setCustomMonths(false);
-                      setMonths(m);
-                    }}
-                  />
-                ))}
-                <Chip
-                  label={he.seasonsCustom}
-                  active={customMonths}
-                  onPress={() => setCustomMonths(true)}
-                />
-              </>
-            ) : (
-              <>
-                {ROUND_CHOICES.map((r) => (
-                  <Chip
-                    key={r}
-                    label={he.seasonsRoundsLabel(r)}
-                    active={!customRounds && rounds === r}
-                    onPress={() => {
-                      setCustomRounds(false);
-                      setRounds(r);
-                    }}
-                  />
-                ))}
-                <Chip
-                  label={he.seasonsCustom}
-                  active={customRounds}
-                  onPress={() => setCustomRounds(true)}
-                />
-              </>
-            )}
-          </View>
-
-          {/* The custom pickers. A stepper rather than a text field: the range
-              is small, the value is a count, and a keyboard over a settings
-              sheet is a heavier gesture than this deserves. */}
-          {cadence === 'date' && customMonths ? (
-            <Stepper
-              label={he.seasonsCustomMonths}
-              value={months}
-              unit={he.seasonsMonthsUnit(months)}
-              min={MIN_SEASON_MONTHS}
-              max={MAX_SEASON_MONTHS}
-              onChange={setMonths}
-            />
-          ) : null}
-          {cadence === 'rounds' && customRounds ? (
-            <Stepper
-              label={he.seasonsCustomRounds}
-              value={rounds}
-              unit={he.seasonsRoundsUnit(rounds)}
-              min={MIN_SEASON_ROUNDS}
-              step={ROUND_STEP}
-              onChange={setRounds}
-            />
-          ) : null}
-
-          {/* Where the season actually stands, measured against the number in
-              the picker directly above — and recomputed with it, so a chip or a
-              stepper tap answers itself while the admin is still deciding.
-              Everything it needs is already on screen: `history` is the same
-              `playedRounds` the season card shows, and `plan.roundsRemaining`
-              is what the chosen target leaves.
-
-              Only for a RUNNING season. Before one exists there is no "העונה
-              הנוכחית" to count, and the club's loose history becomes either the
-              opening season's progress or an archive depending on a chip below
-              — a question the confirmation sheet answers properly and a one-line
-              hint cannot. */}
-          {live && cadence === 'rounds' && history !== null && plan.ok ? (
-            <Text
-              style={[
-                styles.progressHint,
-                plan.closesSeasonNow && styles.progressHintClosing,
-              ]}
-            >
-              {!plan.closesSeasonNow
-                ? he.seasonsRoundsPlayedLeft(history, plan.roundsRemaining ?? 0)
-                : targetChanged
-                  ? he.seasonsTargetMeetsPlayed(history)
-                  : // Nothing has been touched and the club is already sitting
-                    // on its own target: the season is not about to be ended by
-                    // a press, it is waiting for the sweep. Saying "שמירה
-                    // תסיים את העונה" beside a button that cannot be pressed
-                    // would blame the admin for something already in motion —
-                    // so this is the card's own sentence about the same state.
-                    he.seasonsCardRemaining(0)}
-            </Text>
-          ) : null}
-
-          {/* The dates, live. They answer "what am I actually choosing?" while
-              the admin is still choosing, which is the whole point of showing
-              them here rather than in the confirmation alone.
-              NOT on a first activation: the plan-based box below knows about
-              the history choice and this one does not, and on the seal path
-              both used to render together — two identical-looking boxes, the
-              second labelling a different season's end with the first's name. */}
-          {previewDates && !firstTime ? (
-            <View style={styles.dateBox}>
-              <DateLine
-                label={he.seasonsStartsOnLabel}
-                value={formatCalendarDate(previewDates.startsOn)}
-              />
-              <DateLine
-                label={he.seasonsEndsOnLabel}
-                value={formatCalendarDate(previewDates.endsOn)}
-              />
-              <DateLine
-                label={he.seasonsNextStartsLabel}
-                value={formatCalendarDate(previewDates.nextStartsOn)}
-                muted
-              />
-            </View>
-          ) : null}
-
-          {firstTime ? (
-            <>
-              <View style={styles.sectionHead}>
-                <Text style={styles.sectionHeadText}>{he.seasonsCloseFirstTitle}</Text>
-                <Ionicons name="archive-outline" size={16} color={colors.primary} />
-              </View>
-              <Text style={styles.fieldHint}>{he.seasonsCloseFirstBody}</Text>
-              <View style={styles.chipRow}>
-                <Chip
-                  label={he.seasonsCloseFirstKeep}
-                  active={!sealHistory}
-                  onPress={() => setSealHistory(false)}
-                />
-                <Chip
-                  label={he.seasonsCloseFirstSeal}
-                  active={sealHistory}
-                  onPress={() => setSealHistory(true)}
-                />
-              </View>
-
-              {/* Carrying season 1 on under a date cadence: it holds the whole
-                  history, so there is no start date to compute — only an end
-                  the admin names. */}
-              {cadence === 'date' && !sealHistory ? (
-                <>
-                  {/* Named, not "עונה 1". This block only renders on a first
-                      activation today, but the season it describes is the one
-                      the club is opening, and that is the number every other
-                      line on this screen already carries. */}
-                  <Text style={styles.fieldLabel}>
-                    {he.seasonsSeasonEndLabelOf(thisSeasonNo)}
-                  </Text>
-                  <Text style={styles.fieldHint}>
-                    {he.seasonsSeasonEndHintOf(thisSeasonNo)}
-                  </Text>
-                  <View style={styles.chipRow}>
-                    {SEASON1_MONTH_CHOICES.map((m) => {
-                      const d = seasonEndDate(today, m);
-                      return (
-                        <Chip
-                          key={m}
-                          label={formatCalendarDate(d)}
-                          active={!season1Custom && season1EndsOn === d}
-                          onPress={() => {
-                            setSeason1Custom(false);
-                            setSeason1Months(m);
-                            setSeason1EndsOn(d);
-                          }}
-                        />
-                      );
-                    })}
-                    <Chip
-                      label={he.seasonsCustom}
-                      active={season1Custom}
-                      onPress={() => {
-                        setSeason1Custom(true);
-                        setSeason1EndsOn(seasonEndDate(today, season1Months));
-                      }}
-                    />
-                  </View>
-                  {season1Custom ? (
-                    <Stepper
-                      label={he.seasonsCustomMonths}
-                      value={season1Months}
-                      unit={he.seasonsMonthsUnit(season1Months)}
-                      min={MIN_SEASON_MONTHS}
-                      max={MAX_SEASON_MONTHS}
-                      onChange={(m) => {
-                        setSeason1Months(m);
-                        // The chips ARE dates, so the stepper has to be one
-                        // too — otherwise the admin moves a number and the
-                        // date they are actually choosing never changes.
-                        setSeason1EndsOn(seasonEndDate(today, m));
-                      }}
-                    />
-                  ) : null}
-                </>
-              ) : null}
-
-              {/* What the plan says will happen, in the admin's own numbers.
-                  NOT before the admin has changed anything on a LIVE club: the
-                  box renders the PLAN, and on an untouched live club the plan
-                  is a season the club is not in. One was reported showing
-                  "סיום העונה 25.03.2027" three lines under the club's own
-                  "העונה מסתיימת ב־25.09.2028" — the preview of a six-month
-                  default beside the twenty-four months actually running. */}
-              {plan.ok && plan.nextStartsOn && (!live || targetChanged) ? (
-                <View style={styles.dateBox}>
-                  {plan.endsOn ? (
-                    <DateLine
-                      label={he.seasonsEndsLabel(thisSeasonNo)}
-                      value={formatCalendarDate(plan.endsOn)}
-                    />
-                  ) : null}
-                  <DateLine
-                    label={he.seasonsStartsLabel(thisSeasonNo + 1)}
-                    value={formatCalendarDate(plan.nextStartsOn)}
-                    muted
-                  />
-                </View>
-              ) : null}
-            </>
-          ) : null}
-
-          {/* The refusal, in red, beside the thing that caused it. */}
-          {/* The reason, to EVERYONE. It used to be shown only on a club's
-              first activation, so a club re-enabling seasons got a refusal
-              from the server and a generic "משהו השתבש" — while the sentence
-              that explains it was sitting right here, unrendered. */}
-          {/* And not before the admin has touched anything: a live club whose
-              season is sitting exactly on its target is not making a mistake,
-              it is waiting for the sweep. The validation is about the EDIT. */}
-          {!plan.ok && history !== null && !(live && !targetChanged) ? (
-            <Text style={styles.errorLine}>
-              {planErrorText(plan, rounds, thisSeasonNo)}
-            </Text>
-          ) : null}
-
-          {/* A read that FAILED, said as one. The alternative was to call it
-              zero, which reads as "this club has never played" and quietly
-              empties the confirmation sheet of every line about the history it
-              is about to seal. Nothing below can be pressed until it answers. */}
-          {historyFailed ? (
-            <>
-              <Text style={styles.errorLine}>{he.seasonActionFailed}</Text>
-              <Button
-                title={he.retry}
-                variant="outline"
-                fullWidth
-                disabled={busy}
-                onPress={() => setHistoryAttempt((n) => n + 1)}
-              />
-            </>
-          ) : null}
-
-          {/* An inactive button that says nothing reads as broken. This one is
-              off on entry by design — the chips already show the club's own
-              target — so it says so rather than sitting dead. */}
-          {live && !targetChanged ? (
-            <Text style={styles.fieldHint}>{he.seasonsTargetUnchanged}</Text>
-          ) : null}
-
-          {/* Its own press, not the screen's Save: none of this is a document
-              write, and enabling can seal the club's whole history. */}
-          <Button
-            title={live ? he.seasonsSaveTargetCta : he.seasonsEnableCta}
-            variant="outline"
-            fullWidth
-            // Nothing to save when the chips still show what the club holds.
-            // A live "update" button on an unchanged target invites an admin
-            // to move a finish line they only came to look at.
-            //
-            // And never while the plan is refused: the red line above says why,
-            // and a button that submits anyway would make it decorative.
-            disabled={
-              busy ||
-              (live && !targetChanged) ||
-              // Same rule for the same reason: a button that cannot succeed
-              // must not be pressable, whether or not this is the first time.
-              (history === null || !plan.ok)
-            }
-            // Only while WE are the reason it is disabled. The other two
-            // conditions are permanent states of the form, and a spinner on
-            // those would promise work that is not happening.
-            loading={busy}
-            // Enabling never acts on the press. It opens a sheet that spells
-            // out, in this club's own numbers, exactly what is about to happen
-            // to its history — and only the button in there does anything.
-            onPress={live ? saveTarget : () => setConfirmOpen(true)}
-          />
-
-          {/* This block is not saved by the screen's שמור, and it sits among
-              six toggles that are. Said out loud, because an admin who flips
-              the switch, presses Save and walks away would otherwise believe
-              they had turned seasons on. */}
-          <Text style={styles.fieldHint}>{he.seasonsNotPartOfSave}</Text>
-
-          {/* Why the season cannot be ended yet, said BEFORE the press.
-              A disabled red button with no sentence beside it is the thing
-              this screen has already been reported for once. */}
-          {live && !canEndSeason ? (
-            <Text style={styles.fieldHint}>
-              {he.seasonBlockedTooFewRoundsAt(playedThisSeason, MIN_SEASON_ROUNDS)}
-            </Text>
-          ) : null}
-          {live ? (
-            <Button
-              title={he.seasonsEndCta}
-              variant="danger"
-              fullWidth
-              // `loading`, not just `disabled`. Closing a season is the
-              // slowest thing on this screen — it computes nine titles,
-              // archives the table, zeroes every player row and stamps the
-              // trophy cabinets — and `disabled` alone greys the button and
-              // says nothing else. An admin pressed it, saw a dead grey
-              // button, and reported the screen as frozen. It was working.
-              // A season with nothing in it cannot be sealed — the server
-              // refuses it (`season-close:tooFewRounds`) and an archive is
-              // written once, so a season of zero evenings would be permanent
-              // history. Reported on a club created minutes earlier: seasons
-              // on, no evening ever played, "סיים עונה עכשיו" sealed it.
-              //
-              // Not disabled, though. Pressing it when the season is too short
-              // opens `offerSeasonSettings`, which explains the floor and
-              // points at the settings — a dead grey button answers the first
-              // half of that and none of the second.
-              disabled={busy}
-              loading={busy}
-              onPress={endNow}
-            />
-          ) : null}
-          {/* ⚠️ The reopen button was here and is deliberately gone (§12).
-
-              A closed season is final. It is locked to corrections on the
-              server — `assertSeasonOpenForGame` refuses a retro goal, an
-              attendance change or a late round commit against an archived
-              season — and offering a club admin a button that undoes the
-              archive contradicted the lock the rest of the feature enforces.
-
-              The reason it is not merely hidden is that reopening destroys
-              things it cannot put back. Guest pair chemistry is minted per
-              season and the mint is gone; `chemistry.since` does not return;
-              the season-summary pushes sent at close point at an archive that
-              will no longer exist. An admin pressing "undo" has no way to know
-              any of that.
-
-              `reopenLastSeason` still exists as an OPERATOR maintenance hook —
-              a season that closed on bad data has to be repairable — and the
-              callable now refuses anyone but the project owner and writes an
-              audit row to /seasonReopens. It is reached from
-              `firebase functions:shell`, not from this screen.
-
-              The copy it used (seasonsReopenCta, seasonsReopenConfirm*) is
-              left in he.ts: the strings are correct, and if the product ever
-              wants a supervised reopen back they should not be rewritten from
-              memory. */}
-        </View>
-      )}
-
-      {/* What is about to happen, in this club's own numbers.
-          Built from the SAME plan the screen above validated and the server
-          recomputes — so the summary a person approves is not a description of
-          the action, it IS the action. */}
-      <SeasonConfirmSheet
-        visible={confirmOpen}
-        plan={plan}
-        cadence={cadence}
-        months={months}
-        rounds={rounds}
-        seasonNo={thisSeasonNo}
-        reactivation={reactivation}
-        busy={busy}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={() => {
-          setConfirmOpen(false);
-          enable();
-        }}
-      />
+  return <View style={styles.section}>
+    <View style={styles.header}>
+      <View style={styles.heading}><Text style={styles.title}>עונות במועדון</Text><Text style={styles.hint}>תחרות לאורך זמן, עם יעד ברור ותארים בסיום</Text></View>
+      <BallSwitch value={open} accessibilityLabel="הגדרות עונות" disabled={disabled} onValueChange={value => live && !value ? setConfirm('disable') : setOpen(value)} />
     </View>
-  );
+    {live ? <View style={styles.status}><Ionicons name="trophy-outline" size={20} color={colors.primary} /><Text style={styles.statusText}>{`עונה ${no} · הושלמו ${he.seasonsRoundsUnit(seasons?.playedRounds ?? 0)}`}</Text></View> : null}
+    {seasons?.manualClose ? <Notice title="בקשת הסיום נשמרה" text="ממתינים לסיום מחזור פעיל ולאימות הערבים שנותרו. לאחר מכן הסגירה תתבצע בלי חלון תיקונים נוסף." /> : null}
+    {pending?.pausedAt != null ? <Notice title="חלון התיקונים מושהה" text={`הטיימר נעצר: ${pending.awaitingVerification ?? 1} מחזורים ממתינים לאימות בפרטי המועדון. לאחר האימות הספירה תמשיך מהזמן שנותר.`} /> : null}
+    {seasons?.operation ? <Notice title={seasons.operation.failed ? 'הפעולה נקטעה ונשמרה להמשך' : 'מתבצע שינוי בעונה'} text="הנתונים מוגנים מפני פעולה כפולה. אפשר לרענן כדי לבדוק את ההתקדמות." /> : null}
+    {canResume ? <Button title="המשך את הפעולה שנקטעה" variant="outline" loading={!!busy} onPress={() => void run('ממשיכים את הפעולה שנשמרה…', () => seasonService.resume(groupId))} fullWidth /> : null}
+    {open ? <View style={styles.body}>
+      {!live ? <>
+        <Text style={styles.subtitle}>איך להתחיל?</Text>
+        <Text style={styles.hint}>הבחירה כוללת את כל המחזורים שלא שויכו לעונה תחרותית, גם מניסיונות שבוטלו לפני חמישה מחזורים. עונות שכבר נסגרו נשארות סגורות.</Text>
+        {!history && !readError ? <View style={styles.loading}><ActivityIndicator color={colors.primary} /><Text style={styles.hint}>בודקים את הפעילות הקודמת…</Text></View> : null}
+        {readError ? <><Notice title="לא הצלחנו לטעון את ההיסטוריה" text="אין אפשרות להפעיל עונות עד שהנתונים נטענים. שום נתון לא השתנה." /><Button title="נסה שוב" variant="outline" onPress={() => setAttempt(n => n + 1)} /></> : null}
+        {histories.map(h => {
+          const unavailable = h.key === 'sealNow' && (history?.played ?? 0) < MIN_SEASON_ROUNDS;
+          return <Pressable key={h.key} accessibilityRole="radio" accessibilityLabel={h.title} accessibilityState={{ checked: choice === h.key, disabled: unavailable || disabled }} disabled={unavailable || disabled} onPress={() => { setChoice(h.key); if (h.key === 'continue' && rounds <= (history?.played ?? 0)) setRounds((history?.played ?? 0) + 24); else if (h.key !== 'continue' && rounds > 200) setRounds(24); }} style={[styles.option, choice === h.key && styles.optionChosen, unavailable && styles.unavailable]}>
+            <Ionicons name={h.icon} size={23} color={choice === h.key ? colors.primary : colors.textMuted} />
+            <View style={styles.optionBody}><Text style={styles.optionTitle}>{h.title}</Text><Text style={styles.hint}>{h.body}</Text></View>
+            <Ionicons name={choice === h.key ? 'radio-button-on' : 'radio-button-off'} size={22} color={choice === h.key ? colors.primary : colors.textMuted} />
+          </Pressable>;
+        })}
+        {history ? <Text style={styles.hint}>{`${history.played} מחזורים תקינים ללא עונה${history.unverified ? ` · ${history.unverified} ממתינים לאימות` : ''}`}</Text> : null}
+      </> : <>
+        <Text style={styles.subtitle}>איזו עונה מעדכנים?</Text>
+        <View style={styles.row}><Chip label="העונה הנוכחית" active={scope === 'current'} disabled={disabled} onPress={() => setScope('current')} /><Chip label="העונות הבאות" active={scope === 'next'} disabled={disabled} onPress={() => setScope('next')} /></View>
+        <Text style={styles.hint}>{scope === 'current' ? 'השינוי חל על העונה הפעילה בלבד. הגדרות העונות הבאות נשארות כפי שהן.' : 'ברירת המחדל שתשמש החל מהעונה הבאה. העונה הפעילה לא משתנה.'}</Text>
+      </>}
+      <Text style={styles.subtitle}>מהו יעד העונה?</Text>
+      <View style={styles.row}><Chip label="לפי מחזורים" active={cadence === 'rounds'} disabled={disabled} onPress={() => setCadence('rounds')} /><Chip label="לפי חודשים" active={cadence === 'date'} disabled={disabled} onPress={() => setCadence('date')} /></View>
+      <View style={styles.row}>{(cadence === 'rounds' ? [12, 24, 48] : [3, 6, 12]).map(n => <Chip key={n} label={cadence === 'rounds' ? he.seasonsRoundsUnit(n) : he.seasonsMonthsUnit(n)} active={(cadence === 'rounds' ? rounds : months) === n} disabled={disabled} onPress={() => cadence === 'rounds' ? setRounds(n) : setMonths(n)} />)}</View>
+      <Stepper label={cadence === 'rounds' ? `בחירה מדויקת · 5 עד ${maxSeasonTarget(included)} מחזורים` : 'בחירה מדויקת · חודש אחד עד 24 חודשים'} value={cadence === 'rounds' ? rounds : months} unit={cadence === 'rounds' ? he.seasonsRoundsUnit(rounds) : he.seasonsMonthsUnit(months)} min={cadence === 'rounds' ? MIN_SEASON_ROUNDS : 1} max={cadence === 'rounds' ? maxSeasonTarget(included) : 24} disabled={disabled} onChange={cadence === 'rounds' ? setRounds : setMonths} />
+      <View style={styles.preview}>
+        <Text style={styles.optionTitle}>{scope === 'next' && live ? 'כך תיראה העונה הבאה' : `כך תיראה עונה ${no + (!live && choice === 'sealNow' ? 1 : 0)}`}</Text>
+        {cadence === 'rounds' ? <Text style={styles.previewValue}>{`${played} מתוך ${rounds} מחזורים · נותרו ${Math.max(0, rounds - played)}`}</Text> : <><Text style={styles.hint}>{`תחילת התקופה: ${formatCalendarDate(todayIn(undefined, start))}`}</Text><Text style={styles.previewValue}>{scope === 'next' && live ? `${months} חודשים ממועד תחילת העונה הבאה` : `יום הפעילות האחרון: ${formatCalendarDate(target.endsOn!)}`}</Text></>}
+        <Text style={styles.hint}>בהשגת היעד נפתח חלון תיקונים של 24 שעות. התארים מתפרסמים רק בסגירת העונה. נדרשים לפחות חמישה מחזורים תקינים.</Text>
+      </View>
+      {changed && validation.due && validation.ok ? <Notice title="היעד שנבחר כבר הושג" text="זהו שינוי שטרם נשמר. השמירה תפתח חלון תיקונים של 24 שעות; אם יש מחזור פעיל, נמתין לסיומו. הארכה ליעד שטרם הושג תבטל חלון סגירה ממתין." /> : null}
+      {!live && choice === 'continue' && rounds > 200 && cadence === 'rounds' ? <Text style={styles.hint}>היעד הזה כולל פעילות קודמת. ברירת המחדל לעונות הבאות תהיה 200 מחזורים, וניתן לערוך אותה בנפרד לאחר ההפעלה.</Text> : null}
+      {changed && error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+      {busy ? <View accessibilityLiveRegion="polite" style={styles.loading}><ActivityIndicator color={colors.primary} /><Text style={styles.statusText}>{busy}</Text></View> : null}
+      <Button title={live ? 'שמור הגדרות עונה' : 'הפעל עונות'} loading={!!busy} disabled={disabled || !changed || !!error || (!live && (!history || !!history.unverified))} style={styles.primaryAction} iconLeft="checkmark-outline" onPress={() => live ? void run('שומרים הגדרות עונה…', async () => { await seasonService.updateTarget({ groupId, cadenceType: cadence, months, targetRounds: rounds, scope, expected: seasonExpected(seasons) }); logEvent(AnalyticsEvent.SeasonTargetChanged, { groupId }); }) : setConfirm('enable')} fullWidth />
+      <Text style={styles.hint}>הפעולה הזו נפרדת משמירת פרטי המועדון. שינוי יעד בזמן מחזור פעיל נבחן רק בסיום המחזור.</Text>
+      {live ? <View style={styles.actions}><Button title="סיים את העונה" variant="secondary" style={styles.secondaryAction} disabled={disabled} onPress={() => setConfirm('close')} fullWidth /></View> : null}
+    </View> : null}
+    <SeasonConfirmSheet visible={confirm != null} plan={plan} cadence={cadence} months={months} rounds={rounds} seasonNo={no} busy={!!busy} title={confirm === 'close' ? 'סיום העונה' : confirm === 'disable' ? 'כיבוי העונות' : undefined} message={confirm && confirm !== 'enable' ? closeBody : undefined} onCancel={() => { if (!busyRef.current) setConfirm(null); }} onConfirm={submit} />
+  </View>;
 }
-
+function Notice({ title, text }: { title: string; text: string }) {
+  return <View style={styles.notice}><Text style={styles.noticeTitle}>{title}</Text><Text style={styles.hint}>{text}</Text></View>;
+}
 const styles = StyleSheet.create({
-  section: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
-  },
-  // Label first in source order: under forceRTL the first child renders
-  // rightmost, which puts the text on the right and the switch on the left,
-  // matching every other toggle on this screen.
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  toggleText: { flex: 1, gap: 2 },
-  toggleTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  toggleLabel: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '600',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  toggleHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  body: {
-    gap: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  running: {
-    ...typography.caption,
-    color: colors.primary,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  // A HEADING, not another caption.
-  //
-  // The whole body was one flat 8px column of ~20 elements, nearly all at the
-  // same 13px caption size — labels, hints, warnings, previews and buttons all
-  // carrying identical weight, with nothing for the eye to anchor on. This is
-  // the one element that is allowed to be bigger, and it gets real space above
-  // it so the things under it read as belonging to it.
-  fieldLabel: {
-    ...typography.label,
-    color: colors.text,
-    fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
-    marginTop: spacing.md,
-  },
-  sectionHead: {
-    // TEXT FIRST, then the icon — the JSX order is what places them, not this
-    // style. `row` lays children out right-to-left under RTL, so a leading
-    // icon lands on the RIGHT of its label. Both heads that use this style put
-    // the label first so the icon sits to its LEFT (owner, 22.09); keep them
-    // in step, or one head grows a mirror image of the other.
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.md,
-  },
-  sectionHeadText: {
-    ...typography.label,
-    color: colors.text,
-    fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  fieldHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  // The season's own progress, under the picker it is measured against. Reads
-  // as an answer rather than a warning — it is the usual state of this screen —
-  // and turns amber only on the one target that ends the season.
-  progressHint: {
-    ...typography.caption,
-    color: colors.text,
-    fontWeight: '600',
-    textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
-    lineHeight: 18,
-  },
-  progressHintClosing: { color: colors.warning, fontWeight: '700' },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  stepper: { gap: spacing.xs, paddingVertical: spacing.xs },
-  stepperLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  stepperControls: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  stepperBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  stepperBtnOff: { opacity: 0.35 },
-  stepperBtnText: { ...typography.h3, color: colors.text },
-  stepperValue: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '800',
-    minWidth: 96,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
-  dateBox: {
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  // Label first → rightmost under forceRTL, value trailing to its left.
-  dateLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
-  dateLineLabel: { ...typography.caption, color: colors.textMuted, flex: 1, textAlign: RTL_LABEL_ALIGN },
-  dateLineValue: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
-  },
-  dateLineValueMuted: { ...typography.caption, color: colors.textMuted, fontWeight: '600' },
-  errorLine: {
-    ...typography.caption,
-    color: colors.danger,
-    textAlign: RTL_LABEL_ALIGN,
-    lineHeight: 18,
-  },
-  chip: {
-    paddingHorizontal: spacing.md,
-    // A settings control has to be a thumb's worth of target.
-    minHeight: 44,
-    justifyContent: 'center',
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { ...typography.caption, color: colors.text },
-  chipTextActive: { color: colors.surface, fontWeight: '700' },
+  section: { borderRadius: 20, padding: spacing.md, gap: spacing.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md }, heading: { flex: 1, gap: 4 },
+  title: { ...typography.h3, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  subtitle: { ...typography.body, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN, marginTop: spacing.sm },
+  hint: { ...typography.caption, color: colors.textMuted, lineHeight: 20, textAlign: RTL_LABEL_ALIGN },
+  body: { gap: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  status: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surfaceMuted, padding: spacing.md, borderRadius: radius.md },
+  statusText: { ...typography.caption, color: colors.primary, fontWeight: '700', textAlign: RTL_LABEL_ALIGN, flexShrink: 1 },
+  option: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderColor: colors.border, padding: spacing.md, borderRadius: radius.lg },
+  optionChosen: { borderColor: colors.primary, backgroundColor: colors.surfaceMuted }, optionBody: { flex: 1, gap: spacing.xs },
+  optionTitle: { ...typography.body, fontWeight: '700', color: colors.text, textAlign: RTL_LABEL_ALIGN }, unavailable: { opacity: 0.45 },
+  preview: { borderRadius: radius.lg, backgroundColor: colors.surfaceMuted, padding: spacing.md, gap: spacing.sm },
+  previewValue: { ...typography.body, fontWeight: '800', color: colors.primary, textAlign: RTL_LABEL_ALIGN },
+  notice: { borderRadius: radius.md, borderWidth: 1, borderColor: colors.warning, padding: spacing.md, gap: spacing.xs },
+  noticeTitle: { ...typography.body, color: colors.warning, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  loading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, actions: { gap: spacing.sm, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
+  primaryAction: { minHeight: 48, borderRadius: 12, paddingVertical: 12, backgroundColor: '#1479FF', borderColor: '#1479FF' },
+  secondaryAction: { minHeight: 48, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 8, backgroundColor: '#EDF5FF', borderColor: '#DDEAFB' },
+  error: { ...typography.caption, color: colors.danger, textAlign: RTL_LABEL_ALIGN, lineHeight: 20 },
 });

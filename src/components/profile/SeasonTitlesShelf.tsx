@@ -1,161 +1,48 @@
-// The titles a player has won, across every club and every season.
-//
-// An achievement is something the app grants you for a milestone. A season
-// title is something you beat other people to, once, in a competition with an
-// end — so it belongs beside the achievements but not among them, and it is
-// listed newest first rather than scored or tiered.
-//
-// Read from users/{uid}/seasonTitles, written only by closeSeason. Each doc
-// carries the club's name FROZEN at the moment it was won: the title survives
-// the player leaving that club and the club being renamed, and a live lookup
-// would render both as a dash.
-
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { collection, getDocs } from 'firebase/firestore';
-
-import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
-import { logError } from '@/services/errorLog';
-import { SEASON_TITLE_KEYS, type SeasonTitleKey } from '@/utils/seasonAwards';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { SeasonTitleEmblem } from '@/components/SeasonTitleEmblem';
+import { groupHeldSeasonTitles, type HeldSeasonTitle } from '@/services/seasonTitlesService';
+import { colors, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { seasonTitleIcon, seasonTitleTint } from '@/utils/seasonTitleIcon';
-import type { UserId } from '@/types';
 
-interface Held {
-  id: string;
-  groupName: string;
-  seasonNo: number;
-  titleKey: SeasonTitleKey;
-  at: number;
-}
-
-const KEYS = new Set<string>(SEASON_TITLE_KEYS);
-
-async function loadTitles(uid: UserId): Promise<Held[]> {
-  if (USE_MOCK_DATA) {
-    return [
-      { id: 'm1', groupName: 'חמישי כדורגל', seasonNo: 1, titleKey: 'topAssister', at: 2 },
-      { id: 'm2', groupName: 'חמישי כדורגל', seasonNo: 1, titleKey: 'mostLoyal', at: 1 },
-    ];
-  }
-  try {
-    const { db } = getFirebase();
-    const snap = await getDocs(collection(db, 'users', uid, 'seasonTitles'));
-    const out: Held[] = [];
-    snap.forEach((d) => {
-      const x = d.data() as Record<string, unknown>;
-      const titleKey = typeof x.titleKey === 'string' ? x.titleKey : '';
-      // A key this build does not know about is skipped rather than rendered
-      // as a blank row — a future title should not leave a hole here.
-      if (!KEYS.has(titleKey)) return;
-      out.push({
-        id: d.id,
-        groupName: typeof x.groupName === 'string' ? x.groupName : '',
-        seasonNo: typeof x.seasonNo === 'number' ? x.seasonNo : 0,
-        titleKey: titleKey as SeasonTitleKey,
-        at: typeof x.at === 'number' ? x.at : 0,
-      });
-    });
-    // Newest first, and stable when two titles were sealed in the same
-    // millisecond — which every title from one season is.
-    return out.sort((a, b) => b.at - a.at || a.id.localeCompare(b.id));
-  } catch (err) {
-    logError('seasonTitlesLoad', err, { userId: uid });
-    return [];
-  }
-}
-
-export function SeasonTitlesShelf({ userId }: { userId: UserId }) {
-  const [titles, setTitles] = useState<Held[] | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    loadTitles(userId).then((t) => {
-      if (alive) setTitles(t);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [userId]);
-
-  // Nothing at all while loading, and nothing when a player holds none: an
-  // empty trophy shelf on a screen that already has its own empty state reads
-  // as something broken rather than as something not yet won.
-  if (!titles || titles.length === 0) return null;
-
-  return (
-    <View style={styles.section}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>{he.seasonTitlesShelfTitle}</Text>
-        <Text style={styles.count}>{he.seasonTitlesShelfCount(titles.length)}</Text>
+/** The cabinet owns loading/counts; this shelf only groups frozen awards. */
+export function SeasonTitlesShelf({ titles }: { titles: HeldSeasonTitle[] }) {
+  const [older, setOlder] = useState(false);
+  const groups = groupHeldSeasonTitles(titles);
+  if (!groups.length) return <View style={styles.card}><Text style={styles.note}>כאן יופיעו תארי העונה שתזכה בהם במועדונים שלך.</Text></View>;
+  const latestAt = groups[0].at;
+  const latest = groups.filter(group => group.at === latestAt || group.key === groups[0].key);
+  const previous = groups.filter(group => !latest.includes(group));
+  const card = (group: typeof groups[number]) => <View key={group.key} style={styles.card}>
+    <Text style={styles.club}>{group.groupName || 'מועדון ללא שם שמור'}</Text>
+    <Text style={styles.note}>{he.seasonNumberLabel(group.seasonNo)} · העונה הסתיימה</Text>
+    {group.titles.map(title => <View key={title.id} style={styles.row}>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={styles.title}>{he.seasonTitleNames[title.titleKey]}</Text>
+        {title.value !== undefined ? <Text style={styles.value}>{he.seasonTitleValue(title.titleKey, title.value, title.valueUnit)}</Text> : null}
       </View>
-      {titles.map((t) => (
-        <View key={t.id} style={styles.row}>
-          {/* Its own mark, the same one the hall of fame and the summary
-              draw for this title. Nine titles shared one 🏆 across four
-              surfaces. */}
-          <View
-            style={[
-              styles.medalDisc,
-              { backgroundColor: seasonTitleTint(t.titleKey) + '1A' },
-            ]}
-          >
-            <Ionicons
-              name={seasonTitleIcon(t.titleKey)}
-              size={16}
-              color={seasonTitleTint(t.titleKey)}
-            />
-          </View>
-          <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>{he.seasonTitleNames[t.titleKey]}</Text>
-            <Text style={styles.rowWhere}>
-              {he.seasonTitleWhere(t.groupName, t.seasonNo)}
-            </Text>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
+      <SeasonTitleEmblem titleKey={title.titleKey} size={38} />
+    </View>)}
+  </View>;
+  return <View style={{ gap: 10 }}>
+    {latest.map(card)}
+    <Text style={styles.note}>כל זכייה נשמרת לפי המועדון והעונה</Text>
+    {previous.length ? <>
+      <Pressable style={styles.history} onPress={() => setOlder(value => !value)} accessibilityRole="button" accessibilityState={{ expanded: older }}>
+        <Text style={styles.title}>עונות קודמות · {previous.length}</Text>
+        <Ionicons name={older ? 'chevron-up' : 'chevron-back'} size={19} color="#1479FF" />
+      </Pressable>
+      {older ? previous.map(card) : null}
+    </> : null}
+  </View>;
 }
-
 const styles = StyleSheet.create({
-  section: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  // Title first in source order → rightmost under forceRTL, count to its left,
-  // matching the achievements header directly above it.
-  headerRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
-  title: {
-    ...typography.h3,
-    color: colors.text,
-    flex: 1,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  count: { ...typography.caption, color: colors.textMuted },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  medalDisc: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowText: { flex: 1, gap: 1 },
-  rowTitle: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  rowWhere: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
+  card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: '#E1ECFB', borderRadius: 14, padding: 12, gap: 4 },
+  club: { fontSize: 16, lineHeight: 22, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  note: { fontSize: 11, lineHeight: 16, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 61, paddingVertical: 8, borderTopWidth: 1, borderColor: '#ECF2FC', marginTop: 3 },
+  title: { fontSize: 14, lineHeight: 19, fontWeight: '700', color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  value: { fontSize: 12, lineHeight: 17, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  history: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderWidth: 1, borderColor: '#E1ECFB', borderRadius: 12, minHeight: 48, padding: 12 },
 });

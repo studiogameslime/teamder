@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, font, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import { Card, Empty, Screen } from '../components/ui';
 import {
   listChatReports,
@@ -239,7 +239,7 @@ function Stat({ n, label, color }: { n: number; label: string; color: string }) 
 }
 
 const s = StyleSheet.create({
-  statsRow: { flexDirection: 'row-reverse', gap: 8, marginBottom: 10 },
+  statsRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 8, marginBottom: 10 },
   stat: {
     flex: 1,
     alignItems: 'center',
@@ -251,7 +251,7 @@ const s = StyleSheet.create({
   },
   statN: { fontSize: 20, fontWeight: '800' },
   statLbl: { ...font.small, color: colors.textMuted, marginTop: 1 },
-  filterRow: { flexDirection: 'row-reverse', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
+  filterRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 8, marginBottom: 12, flexWrap: 'wrap' },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -262,15 +262,15 @@ const s = StyleSheet.create({
   },
   filterChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterTxt: { ...font.small, color: colors.textSoft, fontWeight: '700' },
-  filterTxtOn: { color: '#fff' },
+  filterTxtOn: { color: colors.onPrimary },
   group: { marginBottom: 16, gap: 8 },
-  reporter: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, paddingHorizontal: 2 },
-  reporterName: { ...font.body, color: colors.text, fontWeight: '800', textAlign: 'right', maxWidth: '55%' },
+  reporter: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 7, paddingHorizontal: 2 },
+  reporterName: {  ...font.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, maxWidth: '55%' },
   reporterCount: { ...font.small, color: colors.textSoft, fontWeight: '700' },
   item: { gap: 8, marginBottom: 8 },
-  head: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  head: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 6 },
   kindTag: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 9,
@@ -280,7 +280,7 @@ const s = StyleSheet.create({
   },
   kindTxt: { ...font.small, fontWeight: '800' },
   statusPill: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 10,
@@ -291,7 +291,7 @@ const s = StyleSheet.create({
   statusDot: { width: 7, height: 7, borderRadius: 4 },
   statusTxt: { ...font.small, fontWeight: '700' },
   del: { padding: 4 },
-  meta: { ...font.small, color: colors.textMuted, textAlign: 'right' },
-  message: { ...font.body, color: colors.text, textAlign: 'right', lineHeight: 21 },
-  messageEmpty: { ...font.body, color: colors.textMuted, textAlign: 'right', fontStyle: 'italic' },
+  meta: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  message: {  ...font.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, lineHeight: 21 },
+  messageEmpty: {  ...font.body, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, fontStyle: 'italic' },
 });

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, font, radius } from '../theme';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { RtlTextInput as TextInput } from './RtlTextInput';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import { Card } from './ui';
 import { getOutreachJobs, getOutreachSettings, saveOutreachSettings, type OutreachSettings, type OutreachJob } from '../services/supportOutreachService';
 
@@ -47,7 +48,7 @@ export function SupportOutreachPanel({ onOpenThread }: { onOpenThread: (userId: 
 }
 const s = StyleSheet.create({
   hint: { ...font.small, lineHeight: 19 }, error: { ...font.body, color: colors.amber },
-  input: { color: colors.text, backgroundColor: colors.surfaceAlt, borderColor: colors.border, borderWidth: 1, borderRadius: radius.sm, padding: 12, marginTop: 6, textAlign: 'right' },
+  input: { direction: 'rtl' as const, color: colors.text, backgroundColor: colors.surfaceAlt, borderColor: colors.border, borderWidth: 1, borderRadius: radius.sm, padding: 12, marginTop: 6, textAlign: RTL_LABEL_ALIGN },
   toggle: { borderWidth: 1, borderRadius: radius.sm, padding: 12 }, save: { backgroundColor: colors.primary, borderRadius: radius.sm, padding: 14 }, saveText: { color: '#fff', textAlign: 'center', fontWeight: '700' },
-  line: { flexDirection: 'row', direction: 'rtl', alignItems: 'center', justifyContent: 'space-between' }, job: { borderTopWidth: 1, borderColor: colors.border, paddingVertical: 10, gap: 5 },
+  line: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', justifyContent: 'space-between' }, job: { borderTopWidth: 1, borderColor: colors.border, paddingVertical: 10, gap: 5 },
 });

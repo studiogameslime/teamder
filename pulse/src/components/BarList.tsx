@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, font } from '../theme';
+import { RTL_VALUE_ALIGN, colors, font  } from '../theme';
 import type { NameCount } from '../types';
 
 // Ranked horizontal bars for any name→value breakdown.
@@ -53,6 +53,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   fill: { height: 8, borderRadius: 4 },
-  value: { ...font.small, color: colors.textSoft, width: 52, textAlign: 'left' },
+  value: {  ...font.small, color: colors.textSoft, width: 52, textAlign: RTL_VALUE_ALIGN },
   empty: { ...font.small, color: colors.textMuted },
 });

@@ -39,7 +39,7 @@ claudeImages: [ base64 JPEG, no `data:` prefix ]   // proof, downscaled
 claudeAt:     Date.now()
 ```
 
-The item then appears under **בוצע ע״י קלוד**, keeps counting as open
+The item then appears under **בוצע ע״י רובנס**, keeps counting as open
 everywhere else (it is waiting for review), and the owner accepts it with
 "אישור וסגירה" — which is what finally writes the closed status, in the word
 that collection speaks (`errors` → `'resolved'`, everything else → `'done'`).
@@ -62,3 +62,11 @@ owner reviews it; a false claim costs more than no claim.
 
 Bump `versionCode` in `android/app/build.gradle` on every APK, or Android
 refuses to install over the previous one.
+
+## הנחיית הבעלים — סיום משימה בפולס (18.10.2026)
+
+״לעבור על הפולס״ פירושו לעבוד רק מתוך לוח המשימות המאוחד ומקורותיו. אין תור עבודה נפרד לדיווחים, שגיאות או רעיונות. רעיונות שמורים אינם לביצוע עד שהבעלים מקדם אותם לאפיון או לביצוע.
+
+בסיום טיפול חובה להעביר את הפריט ל״בוצע ע״י רובנס״, ולהוסיף בעברית פשוטה 2–3 משפטים שמסבירים מה תוקן ומה השתנה למשתמש. לציין בקצרה מגבלה מהותית כגון תיקון מקומי שטרם הופץ. לא לסגור את הפריט סופית; הבעלים מאשר וסוגר.
+
+טכנית ממשיכים לשמור `claudeStatus: 'done'`, `claudeNote`, `claudeImages`, `claudeAt` לתאימות. אפשר להשתמש ב־`markDoneByRubens`. אסור לדרוס את צילום הדיווח או המשימה; צילום התיקון נשמר בנפרד. חובה לקרוא חזרה ולאמת את השמירה לפני שטוענים שהסטטוס עודכן. כשאין חיבור מאומת או מזהה פריט, לשמור מסירה מקומית ולציין במפורש שהעדכון בפולס טרם בוצע.

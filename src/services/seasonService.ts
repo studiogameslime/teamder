@@ -1,3 +1,5 @@
+import type { GroupSeasons } from '@/types';
+import { SEASON_POLICY_VERSION } from '@/utils/seasonPolicy';
 // seasonService — the three admin actions on a club's seasons.
 //
 // All three are callables and none of them is a plain document write, which is
@@ -42,6 +44,8 @@ export type SeasonRefusal =
   | 'operationBusy'
   | 'operationStale'
   | 'cadenceLocked'
+  | 'updateRequired'
+  | 'unverified'
   | 'unknown';
 
 export class SeasonRefusedError extends Error {
@@ -87,6 +91,8 @@ export function seasonRefusalText(
   const played = ctx?.played;
   const target = ctx?.target;
   switch (reason) {
+    case 'updateRequired': return 'יש לעדכן את האפליקציה לפני שינוי העונות.';
+    case 'unverified': return 'יש לאמת תחילה את המחזורים שממתינים להחלטה בפרטי המועדון.';
     case 'operationBusy': return 'פעולת עונות קודמת עדיין בטיפול. אם התקבלה שגיאה, נסו שוב את אותה פעולה כדי להשלים אותה.';
     case 'operationStale': return 'נתוני העונה השתנו. רעננו את המסך לפני שמירה נוספת.';
     case 'cadenceLocked': return 'לאחר שהתקיים מחזור בעונה ניתן לשנות את היעד, אך לא את סוג העונה.';
@@ -141,6 +147,9 @@ function refusalOf(err: unknown): SeasonRefusal | null {
   const e = err as { code?: string; message?: string };
   const code = String(e?.code ?? '');
   const msg = String(e?.message ?? '');
+  if (msg.includes('season-policy:updateRequired')) return 'updateRequired';
+  if (msg.includes('season-policy:unverified')) return 'unverified';
+  if (msg.includes('season-plan:targetBehind') || msg.includes('season-plan:switchTargetReached')) return 'targetBehind';
   if (code === 'functions/permission-denied') return 'notAdmin';
   // `not-found` never reached the substring test at all — it bailed on the
   // code. So the one refusal reopenLastSeason throws about the thing the
@@ -219,10 +228,10 @@ export function playedFromError(err: unknown): number | undefined {
 
 async function call<T>(name: string, payload: Record<string, unknown>): Promise<T> {
   const { functions } = getFirebase();
-  const fn = httpsCallable(functions, name);
+  const fn = httpsCallable(functions, name, { timeout: 310000 });
   try {
     // Same cold-start auth race every other callable here guards against.
-    const res = await withAuthRaceRetry(() => fn(payload));
+    const res = await withAuthRaceRetry(() => fn({ ...payload, policyVersion: SEASON_POLICY_VERSION }));
     return res.data as T;
   } catch (err) {
     const refusal = refusalOf(err);
@@ -238,7 +247,9 @@ export interface EnableSeasonsArgs {
   cadenceType: 'date' | 'rounds';
   /** What to do with the club's existing history: carry season 1 on, or seal
    *  it now and open season 2. Only meaningful on the first enable. */
-  historyChoice?: 'continue' | 'sealNow';
+  historyChoice?: 'fresh' | 'continue' | 'sealNow';
+  expected?: SeasonExpected;
+  historySnapshot?: { played: number; startsAt: number; unverified: number };
   /** The last day of season 1, when carrying it on under a date cadence — it
    *  holds the whole history, so there is no start date to compute. */
   season1EndsOn?: string;
@@ -256,46 +267,39 @@ export interface EnableSeasonsArgs {
   closeFirstNow?: boolean;
 }
 
+export interface SeasonExpected { currentId: string; revision: number; playedRounds: number; enabled: boolean }
+export function seasonExpected(s?: GroupSeasons): SeasonExpected {
+  return { currentId: s?.currentId ?? '', revision: s?.revision ?? 0, playedRounds: s?.playedRounds ?? 0, enabled: s?.enabled === true };
+}
+export interface SeasonPreview { played: number; startsAt: number; unverified: number; expected: SeasonExpected }
 export const seasonService = {
+  async preview(groupId: string): Promise<SeasonPreview> {
+    if (USE_MOCK_DATA) return { played: 12, startsAt: Date.now() - 60 * 86400000, unverified: 0, expected: seasonExpected() };
+    return call('previewClubSeasons', { groupId });
+  },
+  async resume(groupId: string): Promise<void> {
+    if (USE_MOCK_DATA) return;
+    await call('resumeClubSeason', { groupId });
+  },
+  async sync(groupId: string): Promise<void> {
+    if (USE_MOCK_DATA) return;
+    await call('syncClubSeason', { groupId });
+  },
   async enable(args: EnableSeasonsArgs): Promise<void> {
     if (USE_MOCK_DATA) return;
-    await call('enableClubSeasons', { ...args });
+    await call('enableClubSeasons', { ...args, historyChoice: args.historyChoice ?? 'fresh' });
   },
-
-  /**
-   * Switch seasons off. A season with at least two evenings is archived; a
-   * shorter period stays in lifetime totals without awards. Numbering survives.
-   */
-  async disable(groupId: string): Promise<void> {
+  async disable(groupId: string, expected?: SeasonExpected): Promise<void> {
     if (USE_MOCK_DATA) return;
-    await call('disableClubSeasons', { groupId });
+    await call('disableClubSeasons', { groupId, ...(expected ? { expected } : {}) });
   },
-
-  /** Move the finish line. The server refuses a target already behind the club
-   *  — that would close the season on save, which is "end it now" in disguise. */
-  async updateTarget(args: {
-    groupId: string;
-    cadenceType: 'date' | 'rounds';
-    months?: number;
-    targetRounds?: number;
-  }): Promise<void> {
+  async updateTarget(args: { groupId: string; cadenceType: 'date' | 'rounds'; months?: number; targetRounds?: number;
+    scope?: 'current' | 'next'; expected?: SeasonExpected }): Promise<void> {
     if (USE_MOCK_DATA) return;
     await call('updateSeasonTarget', { ...args });
   },
-
-  /**
-   * Undo the last close. Restores the table, takes the titles back off the
-   * winners, and deletes the archive — only for the most recent season, and
-   * only while the club is quiet.
-   */
-  async reopenLast(groupId: string): Promise<{ reopenedNo: number }> {
-    if (USE_MOCK_DATA) return { reopenedNo: 1 };
-    return call<{ reopenedNo: number }>('reopenLastSeason', { groupId });
-  },
-
-  /** End it now. Archives, awards, zeroes — and pushes every player their card. */
-  async endNow(groupId: string): Promise<{ closedNo: number }> {
+  async endNow(groupId: string, expected?: SeasonExpected): Promise<{ closedNo: number; waiting?: boolean }> {
     if (USE_MOCK_DATA) return { closedNo: 1 };
-    return call<{ closedNo: number }>('endSeasonNow', { groupId });
+    return call('endSeasonNow', { groupId, ...(expected ? { expected } : {}) });
   },
 };

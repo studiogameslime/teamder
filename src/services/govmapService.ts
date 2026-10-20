@@ -174,13 +174,15 @@ export async function searchPlaces(
           await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
           continue;
         }
-      } else if (!isExpectedDenial(err)) {
+      } else if (!isExpectedDenial(err) && (err as Error)?.message !== 'govmap autocomplete 403') {
         logError('govmapSearch', err, { query: q });
       }
       // Respect upstream rejection: do not spoof browser headers or hammer it.
       // A short circuit avoids repeating the same 403 on each keystroke.
       primaryUnavailableUntil=Date.now()+60000;
-      try{return remember(await searchBackup(q,maxResults));}catch{/* both providers unavailable */}
+      try{return remember(await searchBackup(q,maxResults));}catch{
+        if ((err as Error)?.message === 'govmap autocomplete 403') logError('govmapSearch',err,{query:q});
+      }
       // Graceful either way: the field still works as free text.
       return { places: [], unavailable: true };
     }

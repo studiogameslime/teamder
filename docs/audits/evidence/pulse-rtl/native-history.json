@@ -1,0 +1,506 @@
+{
+  "nonce": 23,
+  "nativeVersion": {
+    "minor": 85,
+    "prerelease": null,
+    "patch": 3,
+    "major": 0
+  },
+  "isRTL": true,
+  "errors": [],
+  "records": [
+    {
+      "text": "פרטי שחקן",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 16,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "center",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 113.52381134033203,
+          "width": 78,
+          "text": "פרטי שחקן"
+        }
+      ],
+      "width": 306.28570556640625,
+      "registered": true
+    },
+    {
+      "text": "מל",
+      "style": {
+        "color": "#14251A",
+        "fontSize": 22,
+        "fontWeight": "700"
+      },
+      "lines": [
+        {
+          "x": 12.190476417541504,
+          "width": 16,
+          "text": "מ"
+        },
+        {
+          "x": 15.2380952835083,
+          "width": 12.952381134033203,
+          "text": "ל"
+        }
+      ],
+      "width": 28.952362060546875,
+      "registered": true
+    },
+    {
+      "text": "⁨מתן לדוגמה⁩",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 20,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 115.80952453613281,
+          "width": 109.71428680419922,
+          "text": "⁨מתן לדוגמה⁩"
+        }
+      ],
+      "width": 225.5238037109375,
+      "registered": true
+    },
+    {
+      "text": "קריית עקרון · פעיל לפני 34 דקות",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 12,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 64.76190185546875,
+          "width": 160.76190185546875,
+          "text": "קריית עקרון · פעיל לפני 34 דקות"
+        }
+      ],
+      "width": 225.5238037109375,
+      "registered": true
+    },
+    {
+      "text": "שיחה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#81C99A",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 8.380952835083008,
+          "width": 24.380952835083008,
+          "text": "שיח"
+        },
+        {
+          "x": 23.619047164916992,
+          "width": 9.142857551574707,
+          "text": "ה"
+        }
+      ],
+      "width": 33.523807525634766,
+      "registered": true
+    },
+    {
+      "text": "סקירה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 9.904762268066406,
+          "width": 34.28571319580078,
+          "text": "סקיר"
+        },
+        {
+          "x": 33.52381134033203,
+          "width": 10.666666984558105,
+          "text": "ה"
+        }
+      ],
+      "width": 44.952362060546875,
+      "registered": true
+    },
+    {
+      "text": "מידע",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0.3035714328289032,
+          "width": 33.98214340209961,
+          "text": "מידע"
+        }
+      ],
+      "width": 34.28572082519531,
+      "registered": true
+    },
+    {
+      "text": "היסטוריה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#81C99A",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0.3035714328289032,
+          "width": 65.2202377319336,
+          "text": "היסטוריה"
+        }
+      ],
+      "width": 65.52381134033203,
+      "registered": true
+    },
+    {
+      "text": "התראות למשתמש",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 205.05059814453125,
+          "width": 111.13987731933594,
+          "text": "התראות למשתמש"
+        }
+      ],
+      "width": 316.9523620605469,
+      "registered": true
+    },
+    {
+      "text": "מסלול ההצטרפות",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 209.1904754638672,
+          "width": 107,
+          "text": "מסלול ההצטרפות"
+        }
+      ],
+      "width": 316.9523620605469,
+      "registered": true
+    },
+    {
+      "text": "משימות משויכות",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 214.85714721679688,
+          "width": 101.33333587646484,
+          "text": "משימות משויכות"
+        }
+      ],
+      "width": 316.9523620605469,
+      "registered": true
+    },
+    {
+      "text": "כל הפעילות",
+      "style": {
+        "direction": "rtl",
+        "flex": 1,
+        "color": "#F3F1EC",
+        "fontSize": 14,
+        "fontWeight": "600",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 64.28868865966797,
+          "width": 76.66368865966797,
+          "text": "כל הפעילות"
+        }
+      ],
+      "width": 140.95237731933594,
+      "registered": true
+    },
+    {
+      "text": "כל התקופות",
+      "style": {
+        "direction": "rtl",
+        "flex": 1,
+        "color": "#F3F1EC",
+        "fontSize": 14,
+        "fontWeight": "600",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 62.00297546386719,
+          "width": 78.94940185546875,
+          "text": "כל התקופות"
+        }
+      ],
+      "width": 140.95237731933594,
+      "registered": true
+    },
+    {
+      "text": "היום",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 16,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "paddingTop": 16,
+        "paddingBottom": 12,
+        "borderBottomWidth": 1,
+        "borderBottomColor": "#3B3E40",
+        "marginBottom": 16
+      },
+      "lines": [
+        {
+          "x": 347.75,
+          "width": 30.91666603088379,
+          "text": "היום"
+        }
+      ],
+      "width": 379.4285583496094,
+      "registered": true
+    },
+    {
+      "text": "נרשם למחזור",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 217.59524536132812,
+          "width": 91.73809814453125,
+          "text": "נרשם למחזור"
+        }
+      ],
+      "width": 310.09521484375,
+      "registered": true
+    },
+    {
+      "text": "20:39",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0,
+          "width": 34.28571319580078,
+          "text": "20:39"
+        }
+      ],
+      "width": 34.28571319580078,
+      "registered": true
+    },
+    {
+      "text": "מועדון שחקני הערב",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 244.84524536132812,
+          "width": 110.20237731933594,
+          "text": "מועדון שחקני הערב"
+        }
+      ],
+      "width": 355.80950927734375,
+      "registered": true
+    },
+    {
+      "text": "אתמול",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 16,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "paddingTop": 16,
+        "paddingBottom": 12,
+        "borderBottomWidth": 1,
+        "borderBottomColor": "#3B3E40",
+        "marginBottom": 16
+      },
+      "lines": [
+        {
+          "x": 331.4285583496094,
+          "width": 47.238094329833984,
+          "text": "אתמול"
+        }
+      ],
+      "width": 379.4285583496094,
+      "registered": true
+    },
+    {
+      "text": "דיווח על תקלה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 211.34524536132812,
+          "width": 97.98809814453125,
+          "text": "דיווח על תקלה"
+        }
+      ],
+      "width": 310.09521484375,
+      "registered": true
+    },
+    {
+      "text": "20:59",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0,
+          "width": 34.28571319580078,
+          "text": "20:59"
+        }
+      ],
+      "width": 34.28571319580078,
+      "registered": true
+    },
+    {
+      "text": "טקסט עברי ארוך לבדיקת היישור והגלישה לשורה הבאה במסך היסטוריית השחקן",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 7.297618865966797,
+          "width": 350.797607421875,
+          "text": "טקסט עברי ארוך לבדיקת היישור והגלישה לשורה הבאה במסך "
+        },
+        {
+          "x": 253.98809814453125,
+          "width": 101.05952453613281,
+          "text": "היסטוריית השחקן"
+        }
+      ],
+      "width": 355.80950927734375,
+      "registered": true
+    },
+    {
+      "text": "דיווח על תקלה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 211.34524536132812,
+          "width": 97.98809814453125,
+          "text": "דיווח על תקלה"
+        }
+      ],
+      "width": 310.09521484375,
+      "registered": true
+    },
+    {
+      "text": "20:49",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0,
+          "width": 34.28571319580078,
+          "text": "20:49"
+        }
+      ],
+      "width": 34.28571319580078,
+      "registered": true
+    },
+    {
+      "text": "בדיקת שילוב שם באנגלית Teamder בתוך משפט בעברית",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 30.821428298950195,
+          "width": 324.2261962890625,
+          "text": "בדיקת שילוב שם באנגלית Teamder בתוך משפט בעברית"
+        }
+      ],
+      "width": 355.80950927734375,
+      "registered": true
+    }
+  ]
+}

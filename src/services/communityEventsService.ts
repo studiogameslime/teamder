@@ -22,6 +22,11 @@ import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { activeUntil, cardState, isActiveRedCard } from '@/utils/cardState';
 import { logError } from './errorLog';
 
+export class InvalidTimelineScopeError extends Error {
+  readonly name = 'InvalidTimelineScopeError';
+  constructor() { super('Player timeline requires groupId and userId'); }
+}
+
 const COL = 'communityPlayerEvents';
 // Real writes use Firestore auto-ids (collision-proof); this mock-only id keeps
 // the demo store readable. genId is NEVER used for a real setDoc.
@@ -176,7 +181,7 @@ export const communityEventsService = {
 
   /** Full timeline for one player in one community, newest first. */
   async getPlayerTimeline(groupId: GroupId, userId: UserId): Promise<CommunityPlayerEvent[]> {
-    if (!groupId || !userId) return [];
+    if (!groupId || !userId) throw new InvalidTimelineScopeError();
     if (USE_MOCK_DATA) {
       return mockEvents
         .filter((e) => e.groupId === groupId && e.userId === userId)
@@ -195,7 +200,7 @@ export const communityEventsService = {
       return snap.docs.map((d) => d.data() as CommunityPlayerEvent);
     } catch (err) {
       logError('getPlayerTimeline', err, { groupId, userId });
-      return [];
+      throw err;
     }
   },
 

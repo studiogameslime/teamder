@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
 } from 'react-native';
 import { SafeModal as Modal } from '@/components/SafeModal';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +28,7 @@ interface Props {
   /** Async callback. Modal closes itself on success; errors propagate. */
   onConfirm: () => Promise<void> | void;
   onClose: () => void;
+  football?: boolean;
 }
 
 export function ConfirmDestructiveModal({
@@ -36,6 +38,7 @@ export function ConfirmDestructiveModal({
   confirmLabel,
   onConfirm,
   onClose,
+  football = false,
 }: Props) {
   const [acked, setAcked] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -76,19 +79,19 @@ export function ConfirmDestructiveModal({
         panelStyle={{ paddingHorizontal: spacing.lg, alignSelf: 'stretch' }}
       >
         <Pressable
-          style={styles.card}
+          style={[styles.card, football && {borderWidth:1,borderColor:'#DCE7F8'}]}
           onPress={(e) => e.stopPropagation()}
         >
-          <View style={styles.iconWrap}>
-            <Ionicons
+          <View style={[styles.iconWrap, football && {alignSelf:'center',width:68,height:68,borderRadius:24}]}>
+            {football ? <Image source={require('@/assets/images/match-football.png')} style={{width:48,height:48}} resizeMode="contain" accessible={false}/> : <Ionicons
               name="warning-outline"
               size={28}
               color={colors.danger}
-            />
+            />}
           </View>
 
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.body}>{body}</Text>
+          <Text style={[styles.title, football && {textAlign:'center',fontSize:25}]}>{title}</Text>
+          <Text style={[styles.body, football && {textAlign:'center',lineHeight:25}]}>{body}</Text>
 
           <Pressable
             onPress={() => setAcked((v) => !v)}
@@ -111,18 +114,20 @@ export function ConfirmDestructiveModal({
             <Text style={styles.ackText}>{he.confirmDeleteAck}</Text>
           </Pressable>
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, football && {flexDirection:'column'}]}>
             <Button
               title={he.cancel}
-              variant="outline"
-              size="sm"
+              variant={football ? 'secondary' : 'outline'}
+              fullWidth={football}
+              size={football ? 'lg' : 'sm'}
               onPress={onClose}
               disabled={busy}
             />
             <Button
               title={confirmLabel ?? he.confirmDeleteSubmit}
               variant="danger"
-              size="sm"
+              fullWidth={football}
+              size={football ? 'lg' : 'sm'}
               disabled={!acked || busy}
               loading={busy}
               onPress={handleConfirm}

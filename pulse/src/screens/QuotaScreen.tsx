@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors, font, radius } from '../theme';
-import { Card, Screen, SectionHeader } from '../components/ui';
+import { RTL_LABEL_ALIGN, RTL_VALUE_ALIGN, colors, font, radius  } from '../theme';
+import { SectionTabs, Panel, Card, Screen, SectionHeader } from '../components/ui';
 import {
   fetchQuota,
   notifyQuotaAlerts,
@@ -94,6 +94,7 @@ function QuotaBar({ item }: { item: QuotaItem }) {
 }
 
 export function QuotaScreen() {
+  const [section, setSection] = useState('attention');
   const nav = useNavigation<any>();
   const [data, setData] = useState<QuotaReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -145,13 +146,15 @@ export function QuotaScreen() {
               ? 'טוען נתוני שימוש…'
               : anyDanger
                 ? 'יש מכסה שמתקרבת לגבול — שווה לבדוק'
-                : 'הכל בתוך החינמי בנוחות ✓'}
+                : data.groups.some(g => g.items.some(i => i.used == null)) ? 'חלק מנתוני השימוש אינם זמינים' : 'לא נמצאה מכסה מתחדשת מעל 80%'}
         </Text>
       </Card>
 
       {err ? <Text style={styles.err}>{err}</Text> : null}
 
-      {data?.groups.map((g) => (
+      <SectionTabs value={section} onChange={setSection} items={[{key:'attention',label:'לתשומת לב'}, {key:'all',label:'כל המכסות'}]} />
+      {data && section === 'attention' && !data.groups.some(g => g.items.some(i => i.used == null || (i.limit > 0 && i.used / i.limit >= 0.5))) ? <Text style={styles.statusText}>אין מכסות מעל 50% ואין נתונים חסרים. כל הפרטים בלשונית כל המכסות.</Text> : null}
+      {data?.groups.map(g => ({...g, items: g.items.filter(i => section === 'all' || i.used == null || (i.limit > 0 && i.used / i.limit >= 0.5))})).filter(g => g.items.length).map((g) => (
         <View key={g.title} style={{ gap: 10 }}>
           <SectionHeader>{g.title}</SectionHeader>
           <Card style={{ gap: 18 }}>
@@ -178,7 +181,7 @@ export function QuotaScreen() {
 }
 
 const styles = StyleSheet.create({
-  statusText: { ...font.body, color: colors.text, flex: 1, textAlign: 'right' },
+  statusText: {  ...font.body, color: colors.text, flex: 1, textAlign: RTL_LABEL_ALIGN },
   err: { ...font.small, color: colors.red, textAlign: 'center' },
   row: { gap: 6 },
   rowTop: { flexDirection: 'row', alignItems: 'center' },
@@ -199,16 +202,16 @@ const styles = StyleSheet.create({
   },
   fill: { height: '100%', borderRadius: 5 },
   rowMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  rowNums: { ...font.small, color: colors.textSoft, textAlign: 'right' },
-  rowReset: { ...font.small, color: colors.textMuted, textAlign: 'left' },
-  rowDetail: { ...font.small, color: colors.textMuted, textAlign: 'right', marginTop: 2 },
-  rowNote: { ...font.small, color: colors.textMuted, textAlign: 'right', marginTop: 6, lineHeight: 17 },
+  rowNums: {  ...font.small, color: colors.textSoft, textAlign: RTL_LABEL_ALIGN },
+  rowReset: {  ...font.small, color: colors.textMuted, textAlign: RTL_VALUE_ALIGN },
+  rowDetail: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
+  rowNote: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: 6, lineHeight: 17 },
   breakdown: { marginTop: 8, gap: 5 },
-  bdRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  bdLabel: { ...font.small, color: colors.textSoft, flex: 1, textAlign: 'right' },
-  bdVal: { ...font.small, color: colors.text, fontWeight: '800', minWidth: 54, textAlign: 'left' },
+  bdRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8 },
+  bdLabel: {  ...font.small, color: colors.textSoft, flex: 1, textAlign: RTL_LABEL_ALIGN },
+  bdVal: {  ...font.small, color: colors.text, fontWeight: '800', minWidth: 54, textAlign: RTL_VALUE_ALIGN },
   bdBarTrack: { width: 70, height: 6, borderRadius: 3, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
   bdBarFill: { height: '100%', borderRadius: 3, backgroundColor: colors.primary },
-  reset: { ...font.small, color: colors.textMuted, textAlign: 'right', marginTop: 2 },
+  reset: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
   foot: { ...font.small, color: colors.textMuted, textAlign: 'center', marginTop: 4 },
 });

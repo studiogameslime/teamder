@@ -62,7 +62,7 @@ describe('the target the form can produce', () => {
   it('cannot go below the floor a season may be sealed at', () => {
     // The stepper's `min`. If these ever diverge a club could be created with
     // a target it is not allowed to reach.
-    expect(MIN_SEASON_ROUNDS).toBe(2);
+    expect(MIN_SEASON_ROUNDS).toBe(5);
     expect(isValidSeasonRounds(MIN_SEASON_ROUNDS)).toBe(true);
     expect(isValidSeasonRounds(MIN_SEASON_ROUNDS - 1)).toBe(false);
   });

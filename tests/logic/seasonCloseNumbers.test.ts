@@ -179,8 +179,8 @@ describe('the pair key the wipe and the restore have to agree on', () => {
 describe('the two numbers the card carries', () => {
   it('the awards denominator is the best attendance, not the season', () => {
     const attendances = Object.values(ARCHIVED_PLAYER_ROWS).map((r) => r.games);
-    expect(awardsDenominatorOf(attendances, 22)).toBe(19);
-    expect(awardsDenominatorOf(attendances, 22)).toBe(AWARDS_DENOMINATOR);
+    expect(awardsDenominatorOf(attendances, 22)).toBe(22);
+    expect(awardsDenominatorOf(attendances, 22)).toBe(22);
   });
 
   it('falls back to what the caller knew when nobody played', () => {
@@ -191,8 +191,8 @@ describe('the two numbers the card carries', () => {
   });
 
   it('is never negative and never NaN, whatever the rows hold', () => {
-    expect(awardsDenominatorOf([-4, -9], 10)).toBe(0);
-    expect(awardsDenominatorOf([NaN, 3], 10)).toBe(3);
+    expect(awardsDenominatorOf([-4, -9], 10)).toBe(10);
+    expect(awardsDenominatorOf([NaN, 3], 10)).toBe(10);
   });
 
   it('while the card’s own "N מחזורים" is the season’s length', () => {

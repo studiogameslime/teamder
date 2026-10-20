@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Switch, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen, Card } from '../components/ui';
-import { colors, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, radius  } from '../theme';
 import {
   fetchAppOpenEnabled,
   setAppOpenEnabled,
@@ -115,18 +115,18 @@ export function AdsScreen() {
 
 const s = StyleSheet.create({
   card: { gap: 14 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
+  row: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 12 },
   icon: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
-  title: { color: colors.text, fontSize: 16, fontWeight: '800', textAlign: 'right' },
-  state: { color: colors.textSoft, fontSize: 13, textAlign: 'right', marginTop: 2 },
-  help: {
+  title: { direction: 'rtl' as const, color: colors.text, fontSize: 16, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  state: { direction: 'rtl' as const, color: colors.textSoft, fontSize: 13, textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
+  help: { direction: 'rtl' as const,
     color: colors.textMuted,
     fontSize: 13,
     lineHeight: 19,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     paddingTop: 12,
   },
-  note: { color: colors.textMuted, fontSize: 11, textAlign: 'right', marginTop: 14, paddingHorizontal: 4 },
+  note: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 11, textAlign: RTL_LABEL_ALIGN, marginTop: 14, paddingHorizontal: 4 },
 });

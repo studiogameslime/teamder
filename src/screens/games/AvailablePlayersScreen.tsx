@@ -63,6 +63,11 @@ export function AvailablePlayersScreen() {
   const [sameCity, setSameCity] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
+  const pageEpoch = useRef(0);
+  const pageLock = useRef(false);
   const inviteLock = useRef(false);
   const pulseLock = useRef(false);
   const group = myCommunities.find(c => c.id === game?.groupId);
@@ -91,6 +96,11 @@ export function AvailablePlayersScreen() {
   useEffect(() => {
     if (!gameId || !me) return;
     let alive = true;
+    ++pageEpoch.current;
+    pageLock.current = false;
+    setCursor(null);
+    setLoadingMore(false);
+    setMoreFailed(false);
     (async () => {
       setLoading(true);
       setLoadFailed(false);
@@ -108,41 +118,12 @@ export function AvailablePlayersScreen() {
         // remounted, so a player already invited looked invitable again on
         // return (user report).
         setInvitedIds(new Set(g.invitedUserIds ?? []));
-        const day = new Date(g.startsAt).getDay();
-        const hour = formatHour(g.startsAt);
-        // Prefer the game's actual field coords for the radius match; fall
-        // back to the community's coords, then the city name.
         const grp = myCommunities.find((c) => c.id === g.groupId);
-        const exclude = [
-          // Never offer to invite yourself — the CF rejects it with
-          // invalid-argument ("cannot invite yourself"), which surfaced
-          // as a logged error from real users.
-          me.id,
-          ...(g.players ?? []),
-          ...(g.waitlist ?? []),
-          ...(g.pending ?? []),
-          // The club's own members and coaches. This screen exists to reach
-          // people OUTSIDE the club — a member already sees the game in their
-          // feed and gets its pushes, so offering to "invite" them is noise on
-          // a list whose whole value is that everyone on it is a stranger
-          // worth asking (user report, with a screenshot).
-          ...(grp?.playerIds ?? []),
-          ...(grp?.adminIds ?? []),
-        ];
-        const gameLat = g.fieldLat ?? grp?.lat;
-        const gameLng = g.fieldLng ?? grp?.lng;
-        // Resolve the filter city from the just-loaded game's community.
-        const cityResolved = grp?.city || undefined;
-        const list = await userService.findAvailablePlayers({
-          gameId,
-          day,
-          hour,
-          city: cityResolved,
-          gameLat,
-          gameLng,
-          excludeIds: exclude,
-        });
+        // Time, location, membership and privacy are derived on the server.
+        const page = await userService.findAvailablePlayersPage(gameId);
+        const list = page.players;
         if (alive) {
+          setCursor(page.cursor);
           if (preview) {
             // Local render fixture, only through the explicit QA route. No accounts
             // or documents are created, and invitation actions stay local below.
@@ -169,12 +150,32 @@ export function AvailablePlayersScreen() {
     })();
     return () => {
       alive = false;
+      ++pageEpoch.current;
     };
     // Keyed on stable primitives — NOT the raw `me`/`myCommunities` objects —
     // so a store-reference churn (e.g. after sending an invite) can't re-trigger
     // a full reload. `me`/`myCommunities` are read fresh inside when it runs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, me?.id, communitiesKey, retry, preview]);
+
+  const loadMore = async () => {
+    if (!cursor || pageLock.current || loading) return;
+    const request = pageEpoch.current;
+    pageLock.current = true;
+    setLoadingMore(true);
+    setMoreFailed(false);
+    try {
+      const page = await userService.findAvailablePlayersPage(gameId, cursor);
+      if (request !== pageEpoch.current) return;
+      setCandidates(old => [...new Map([...old,...page.players].map(p => [p.id,p])).values()]);
+      setCursor(page.cursor);
+    } catch (err) {
+      if (request === pageEpoch.current) setMoreFailed(true);
+      logError('findAvailablePlayersPage', err, {gameId});
+    } finally {
+      if (request === pageEpoch.current) {pageLock.current=false;setLoadingMore(false);}
+    }
+  };
 
   const invite = async (target: User) => {
     if (!game || !me || inviteLock.current || invitedIds.has(target.id)) return;
@@ -287,8 +288,9 @@ export function AvailablePlayersScreen() {
     <ScreenHeader title="שחקנים זמינים למחזור"/>
     {loading ? <SoccerBallLoader size={40} style={{marginTop: spacing.lg}}/> : loadFailed || !game ? <View style={styles.empty}><Text style={styles.emptyText}>{he.gameLoadError}</Text><Button title="נסה שוב" onPress={() => setRetry(v => v + 1)}/></View> : <FlatList
       data={visible} keyExtractor={u => u.id} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
-      ListHeaderComponent={header} ListFooterComponent={footer}
-      ListEmptyComponent={<View style={styles.empty}><Ionicons name="people-outline" size={36} color="#8DA6CA"/><Text style={styles.emptyText}>{candidates.length ? 'אין שחקנים שמתאימים לסינון הזה' : he.availablePlayersEmpty}</Text></View>}
+      ListHeaderComponent={header} ListFooterComponent={<>{cursor ? <View style={styles.empty}><Text style={styles.emptyText}>{moreFailed ? 'לא ניתן לטעון שחקנים נוספים כרגע' : 'יש עוד שחקנים לבדיקה'}</Text><Button title={moreFailed ? 'נסה שוב' : 'הצג שחקנים נוספים'} loading={loadingMore} onPress={loadMore}/></View> : null}{footer}</>}
+      onEndReached={() => {if (visible.length && !moreFailed) void loadMore();}} onEndReachedThreshold={0.3}
+      ListEmptyComponent={<View style={styles.empty}><Ionicons name="people-outline" size={36} color="#8DA6CA"/><Text style={styles.emptyText}>{cursor ? 'החיפוש עדיין לא הושלם' : candidates.length ? 'אין שחקנים שמתאימים לסינון הזה' : he.availablePlayersEmpty}</Text></View>}
       renderItem={({item}) => {
         const sent = invitedIds.has(item.id);
         const playerCity = item.availability?.homeCity || item.availability?.preferredCity;
@@ -304,10 +306,6 @@ export function AvailablePlayersScreen() {
   </SafeAreaView>;
 }
 
-function formatHour(ms: number): string {
-  const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-}
 
 const styles = StyleSheet.create({
   root: {flex:1,backgroundColor:'#F3F8FF'},

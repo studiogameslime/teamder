@@ -104,7 +104,9 @@ export function medalTier(
   key: SeasonTitleKey,
   value: number,
   completedRounds: number,
+  valueUnit?: 'percent',
 ): MedalTier {
+  if (key === 'topWinner' && valueUnit === 'percent') return step(value / 100, RATE_STEPS);
   const scale = SCALE[key];
   switch (scale.kind) {
     case 'count':

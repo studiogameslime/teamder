@@ -53,7 +53,7 @@ import { MapScreen, type MapScreenParams } from '@/screens/map/MapScreen';
 
 export type CommunitiesStackParamList = {
   CommunitiesFeed: undefined;
-  Requests: undefined;
+  Requests: { groupId?: string } | undefined;
   /** Full-screen map of open public communities (mode: 'communities'). */
   CommunitiesMap: MapScreenParams;
   /**
@@ -114,7 +114,7 @@ export type CommunitiesStackParamList = {
   // Admin approvals are reachable from CommunityDetails' overflow
   // menu. Registering here (rather than crossing into ProfileTab)
   // keeps "back" returning to the community page that triggered it.
-  AdminApproval: undefined;
+  AdminApproval: { groupId?: string } | undefined;
   // Reachable from MatchDetails' overflow menu inside this stack.
   History: undefined;
   // Reachable from CommunityDetails' "צור מחזור שבועי" — opens the

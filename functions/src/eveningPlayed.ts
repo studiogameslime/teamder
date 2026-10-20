@@ -1,16 +1,4 @@
-// eveningPlayed — server-side mirror of `src/utils/eveningPlayed.ts`.
-//
-// Cloud Functions live in their own tsconfig rootDir (`functions/src`), so the
-// app source cannot be imported from here. Same arrangement as seasonAwards and
-// notificationDedup: the two files are kept byte-identical below this header,
-// and tests/logic/eveningPlayedMirror.test.ts fails if they ever drift.
-//
-// Why it must exist on BOTH sides: the server decides what an evening is
-// credited for, and the app decides what it shows a player about the same
-// evening. When those two answers came from different code they disagreed in
-// production — a night the server refused to count still appeared in a
-// player's totals. One rule, copied, pinned by a test.
-//
+// Server mirror.
 // ---- everything below this line is a copy of the client file ----
 
 // "Did this evening actually take place?" — the one place that answers it.
@@ -99,6 +87,7 @@ export type PlayEvidenceSource =
 /** The subset of a game this module reads. Deliberately structural so both the
  *  app's `Game` and the server's raw document satisfy it without a cast. */
 export interface PlayableEvening {
+  startsAt?: number;
   status?: string;
   endedBy?: string;
   /** Set ONLY by an admin deciding an unverified evening. */
@@ -260,4 +249,12 @@ export function needsPlayVerification(
   game: PlayableEvening | null | undefined,
 ): boolean {
   return eveningPlayState(game) === 'unverified';
+}
+
+/** A past organised evening without any evidence of play can be decided by
+ * its administrator too. Entering the live screen is not required. A future
+ * evening or one with committed play is never finished by this shortcut. */
+export function isOrganizedEveningAwaitingDecision(game: PlayableEvening, now: number): boolean {
+  return ['open', 'locked'].includes(game.status ?? '') &&
+    typeof game.startsAt === 'number' && game.startsAt > 0 && game.startsAt <= now && !playEvidence(game);
 }

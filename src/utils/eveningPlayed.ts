@@ -84,6 +84,7 @@ export type PlayEvidenceSource =
 /** The subset of a game this module reads. Deliberately structural so both the
  *  app's `Game` and the server's raw document satisfy it without a cast. */
 export interface PlayableEvening {
+  startsAt?: number;
   status?: string;
   endedBy?: string;
   /** Set ONLY by an admin deciding an unverified evening. */
@@ -245,4 +246,12 @@ export function needsPlayVerification(
   game: PlayableEvening | null | undefined,
 ): boolean {
   return eveningPlayState(game) === 'unverified';
+}
+
+/** A past organised evening without any evidence of play can be decided by
+ * its administrator too. Entering the live screen is not required. A future
+ * evening or one with committed play is never finished by this shortcut. */
+export function isOrganizedEveningAwaitingDecision(game: PlayableEvening, now: number): boolean {
+  return ['open', 'locked'].includes(game.status ?? '') &&
+    typeof game.startsAt === 'number' && game.startsAt > 0 && game.startsAt <= now && !playEvidence(game);
 }

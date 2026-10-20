@@ -1,0 +1,524 @@
+[
+  {
+    "screen": "Versions",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-Versions-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Versions",
+    "state": "tab0",
+    "width": 390,
+    "file": "pulse-workflows-Versions-tab0-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Versions",
+    "state": "tab1",
+    "width": 390,
+    "file": "pulse-workflows-Versions-tab1-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Campaigns",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-Campaigns-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Campaigns",
+    "state": "audience",
+    "width": 390,
+    "file": "pulse-workflows-Campaigns-audience-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Campaigns",
+    "state": "content",
+    "width": 390,
+    "file": "pulse-workflows-Campaigns-content-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Campaigns",
+    "state": "review",
+    "width": 390,
+    "file": "pulse-workflows-Campaigns-review-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Segment",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-Segment-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Segment",
+    "state": "tab0",
+    "width": 390,
+    "file": "pulse-workflows-Segment-tab0-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Settings",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-Settings-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Settings",
+    "state": "tab0",
+    "width": 390,
+    "file": "pulse-workflows-Settings-tab0-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Settings",
+    "state": "tab1",
+    "width": 390,
+    "file": "pulse-workflows-Settings-tab1-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Overview",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-Overview-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Analytics",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-Analytics-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Analytics",
+    "state": "tab0",
+    "width": 390,
+    "file": "pulse-workflows-Analytics-tab0-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Analytics",
+    "state": "tab1",
+    "width": 390,
+    "file": "pulse-workflows-Analytics-tab1-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Quota",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-Quota-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Quota",
+    "state": "tab0",
+    "width": 390,
+    "file": "pulse-workflows-Quota-tab0-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Availability",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-Availability-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Games",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-Games-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "OnboardingActivity",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-OnboardingActivity-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Messages",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-Messages-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Messages",
+    "state": "conversation",
+    "width": 390,
+    "file": "pulse-workflows-Messages-conversation-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Messages",
+    "state": "tools",
+    "width": 390,
+    "file": "pulse-workflows-Messages-tools-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "ErrorDetail",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-ErrorDetail-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "ErrorDetail",
+    "state": "tab0",
+    "width": 390,
+    "file": "pulse-workflows-ErrorDetail-tab0-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "ErrorDetail",
+    "state": "tab1",
+    "width": 390,
+    "file": "pulse-workflows-ErrorDetail-tab1-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "DevInbox",
+    "state": "main",
+    "width": 390,
+    "file": "pulse-workflows-DevInbox-main-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "DevInbox",
+    "state": "reports",
+    "width": 390,
+    "file": "pulse-workflows-DevInbox-reports-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Versions",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-Versions-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Versions",
+    "state": "tab0",
+    "width": 320,
+    "file": "pulse-workflows-Versions-tab0-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Versions",
+    "state": "tab1",
+    "width": 320,
+    "file": "pulse-workflows-Versions-tab1-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Campaigns",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-Campaigns-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Campaigns",
+    "state": "audience",
+    "width": 320,
+    "file": "pulse-workflows-Campaigns-audience-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Campaigns",
+    "state": "content",
+    "width": 320,
+    "file": "pulse-workflows-Campaigns-content-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Campaigns",
+    "state": "review",
+    "width": 320,
+    "file": "pulse-workflows-Campaigns-review-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Segment",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-Segment-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Segment",
+    "state": "tab0",
+    "width": 320,
+    "file": "pulse-workflows-Segment-tab0-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Settings",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-Settings-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Settings",
+    "state": "tab0",
+    "width": 320,
+    "file": "pulse-workflows-Settings-tab0-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Settings",
+    "state": "tab1",
+    "width": 320,
+    "file": "pulse-workflows-Settings-tab1-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Overview",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-Overview-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Analytics",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-Analytics-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Analytics",
+    "state": "tab0",
+    "width": 320,
+    "file": "pulse-workflows-Analytics-tab0-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Analytics",
+    "state": "tab1",
+    "width": 320,
+    "file": "pulse-workflows-Analytics-tab1-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Quota",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-Quota-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Quota",
+    "state": "tab0",
+    "width": 320,
+    "file": "pulse-workflows-Quota-tab0-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Availability",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-Availability-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Games",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-Games-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "OnboardingActivity",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-OnboardingActivity-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Messages",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-Messages-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Messages",
+    "state": "conversation",
+    "width": 320,
+    "file": "pulse-workflows-Messages-conversation-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Messages",
+    "state": "tools",
+    "width": 320,
+    "file": "pulse-workflows-Messages-tools-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "ErrorDetail",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-ErrorDetail-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "ErrorDetail",
+    "state": "tab0",
+    "width": 320,
+    "file": "pulse-workflows-ErrorDetail-tab0-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "ErrorDetail",
+    "state": "tab1",
+    "width": 320,
+    "file": "pulse-workflows-ErrorDetail-tab1-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "DevInbox",
+    "state": "main",
+    "width": 320,
+    "file": "pulse-workflows-DevInbox-main-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "DevInbox",
+    "state": "reports",
+    "width": 320,
+    "file": "pulse-workflows-DevInbox-reports-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  }
+]

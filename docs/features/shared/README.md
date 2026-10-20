@@ -24,3 +24,5 @@
 | שיחה עם צוות התמיכה | [הסבר פשוט](support-chat.simple.md) | [הסבר מעמיק](support-chat.md) |
 
 | תיבת משימות ובאגים שלא נפתרו בפולס | [הסבר פשוט](pulse-work-inbox.simple.md) | [מסמך טכני](pulse-work-inbox.md) |
+
+| ארגון וניהול בפולס | [הסבר פשוט](pulse-management.simple.md) | [מסמך טכני](pulse-management.md) |

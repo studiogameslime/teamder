@@ -988,6 +988,11 @@ export interface Group {
 export type SeasonCadenceType = 'date' | 'rounds';
 
 export interface GroupSeasons {
+  policyVersion?: number;
+  revision?: number;
+  includedHistory?: number;
+  nextCadence?: import('@/utils/seasonPolicy').SeasonTarget;
+  manualClose?: { action: 'close' | 'disable'; by: string; byName: string; at: number };
   disabledAt?: number;
   /** Non-competitive archived periods exist even before the first title season. */
   hasArchivedPeriods?: boolean;
@@ -1021,6 +1026,10 @@ export interface GroupSeasons {
    */
   pendingClose?: {
     seasonId: string;
+    dueAt?: number;
+    pausedAt?: number;
+    remainingMs?: number;
+    awaitingVerification?: number;
     /** ms epoch — the window shuts, the season closes. */
     closeAt: number;
     reason?: string;
@@ -1084,6 +1093,7 @@ export interface SeasonTitle {
   /** The number it was won on: 31 goals, 8.37 average, 62% saved. */
   value: number;
   at: number;
+  valueUnit?: 'percent';
 }
 
 /**

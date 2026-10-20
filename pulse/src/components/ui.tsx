@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -10,8 +10,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, font, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import type { StoreSource } from '../types';
+
+export const EmbeddedScreen = createContext(false);
+
+export function Disclosure({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [visited, setVisited] = useState(false);
+  return <View style={{ gap: 12 }}><Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => { setVisited(true); setOpen(v => !v); }} style={{ minHeight: 48, flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', justifyContent: 'space-between' }}><Text style={font.title}>{title}</Text><Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} /></Pressable>{visited ? <View style={{ display: open ? 'flex' : 'none', gap: 12 }}>{children}</View> : null}</View>;
+}
 
 export function Screen({
   title,
@@ -30,6 +38,7 @@ export function Screen({
   scroll?: boolean;
   refreshControl?: React.ReactElement<any>;
 }) {
+  const embedded = useContext(EmbeddedScreen);
   const Header = (
     <View style={styles.header}>
       {onBack ? (
@@ -38,14 +47,14 @@ export function Screen({
         </Pressable>
       ) : null}
       <View style={{ flex: 1 }}>
-        <Text style={font.h1}>{title}</Text>
+        {!embedded ? <Text style={font.h1}>{title}</Text> : null}
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
       {right}
     </View>
   );
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={embedded ? [] : ['top']}>
       {scroll ? (
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -143,23 +152,23 @@ export function Empty({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  scroll: { padding: 14, paddingBottom: 36, gap: 10 },
+  scroll: { padding: 18, paddingBottom: 36, gap: 14 },
   header: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     marginBottom: 2,
     gap: 12,
   },
-  backBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', marginRight: -6 },
-  subtitle: { ...font.small, marginTop: 2, textAlign: 'right' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -6 },
+  subtitle: {  ...font.small, marginTop: 2, textAlign: RTL_LABEL_ALIGN },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 12,
+    padding: 16,
   },
-  section: { ...font.h2, marginTop: 12, marginBottom: 2, textAlign: 'right' },
+  section: {  ...font.h2, marginTop: 12, marginBottom: 2, textAlign: RTL_LABEL_ALIGN },
   tile: { flex: 1, gap: 4, minWidth: 0 },
   tileLabel: { ...font.small },
   tileValue: { fontSize: 24, fontWeight: '800' },
@@ -167,3 +176,21 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 });
+
+
+/** Local sections do not initiate reads; panels mount once on first visit. */
+export function SectionTabs<T extends string>({ value, onChange, items }: {
+  value: T; onChange: (value: T) => void; items: readonly { key: T; label: string }[];
+}) {
+  return <View accessibilityRole="tablist" style={{ flexDirection: 'row', direction: 'rtl' as const, gap: 6, flexWrap: 'wrap' }}>
+    {items.map(item => <Pressable key={item.key} accessibilityRole="tab" accessibilityState={{ selected: value === item.key }}
+      onPress={() => onChange(item.key)} style={{ flexGrow: 1, minHeight: 48, paddingHorizontal: 12, paddingVertical: 13, alignItems: 'center', borderRadius: radius.sm, backgroundColor: value === item.key ? colors.primarySoft : colors.surface, borderWidth: 1, borderColor: value === item.key ? colors.primary : colors.border }}>
+      <Text style={{ ...font.small, color: value === item.key ? colors.primary : colors.textSoft, fontWeight: '700' }}>{item.label}</Text>
+    </Pressable>)}
+  </View>;
+}
+export function Panel({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const [visited, setVisited] = useState(active);
+  React.useEffect(() => { if (active) setVisited(true); }, [active]);
+  return active || visited ? <View style={{ display: active ? 'flex' : 'none', gap: 14 }}>{children}</View> : null;
+}

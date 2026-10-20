@@ -16,7 +16,9 @@ function render(compile:(file:string)=>string) {
   const react:any={...React,useState:(value:any)=>[value,()=>{}],useRef:(value:any)=>({current:value}),useCallback:(fn:any)=>fn,useEffect:()=>{}};
   delete react.default;delete react.__esModule;
   const theme={exports:{}};
-  vm.runInNewContext(compile('pulse/src/theme.ts'),{module:theme,exports:theme.exports});
+  vm.runInNewContext(compile('pulse/src/theme.ts'),{module:theme,exports:theme.exports,require:(name:string)=>{
+    if(name==='react-native')return {Platform:{OS:'android'}};throw Error(name);
+  }});
   const native:any={StyleSheet:{create:(value:any)=>value},Platform:{OS:'android'},Keyboard:{dismiss:jest.fn()},Alert:{alert:jest.fn()}};
   for(const name of ['ActivityIndicator','AppState','Image','KeyboardAvoidingView','Modal','Pressable','ScrollView','Text','TextInput','View'])native[name]=name;
   const result:any={exports:{}};
@@ -25,6 +27,8 @@ function render(compile:(file:string)=>string) {
     if(name==='react-native')return native;
     if(name==='react-native-safe-area-context')return {useSafeAreaInsets:()=>({top:0,bottom:0,left:0,right:0})};
     if(name==='@expo/vector-icons')return {Ionicons:'Icon'};
+    if(name==='./ui')return {Disclosure:'Disclosure'};
+    if(name==='./RtlTextInput')return {RtlTextInput:'TextInput'};
     if(name==='../theme')return theme.exports;
     if(name==='../services/teamderChatService')return {MAX_TEXT:1000,THREAD_WINDOW:100,REPORTS_LIMIT:40};
     throw Error(name);
@@ -42,5 +46,6 @@ test('the actual preview compiler renders the real Pulse sheet with Metro Common
   expect(tree.type).toBe('Modal');expect(tree.props.visible).toBe(true);
   const text=(n:any):string=>typeof n==='string'?n:Array.isArray(n)?n.map(text).join(' '):n&&typeof n==='object'?text(n.props?.children):'';
   expect(text(tree)).toContain('משתמש הדגמה');
-  expect(text(tree)).toContain('נשלח בשם');
+  expect(text(tree)).toContain('תמיכת');
+  expect(text(tree)).toContain('Teamder');
 });

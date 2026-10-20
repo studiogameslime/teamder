@@ -1,3 +1,5 @@
+import { seasonScheduleBoundary } from '@/utils/seasonPolicy';
+import { httpsCallable } from 'firebase/functions';
 import { waitForJoinResult } from '@/utils/joinRequestResult';
 import { creationPayload } from '@/services/creationAttempt';
 import { validateDraftRoster } from '@/utils/draftIntegrity';
@@ -692,6 +694,15 @@ export type JoinSource =
  * morning after a season closed, because the only streak anyone computed was
  * the season-scoped one.
  */
+async function ensureSeasonSchedule(groupId: string, startsAt: number): Promise<void> {
+  if (!groupId || USE_MOCK_DATA) return;
+  const club = await getDoc(docs.group(groupId));
+  const seasons = club.data()?.seasons;
+  const boundary = seasonScheduleBoundary(seasons, Date.now());
+  if (boundary === Infinity) throw new Error('מתבצע שינוי בעונה. המתינו להשלמתו לפני יצירת מחזור.');
+  if (boundary != null && startsAt <= boundary) throw new Error(`העונה בתהליך סגירה. אפשר לתזמן מחזור לאחר ${new Date(boundary).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}. אם ממתינים לאימות, המועד עשוי להידחות עד להשלמתו.`);
+}
+
 function lifetimeStreak(
   nights: Array<{ startsAt: number; attended: Set<UserId> }>,
 ): {
@@ -998,6 +1009,7 @@ export const gameService = {
     if (!auth.currentUser) throw new Error('createGame: not signed in');
 
     try {
+      await ensureSeasonSchedule(groupId, nextThursdayAt(20, 0));
       const ref = await addDoc(col.games(), {
         id: '', // converter ignores; Firestore generates the real id
         groupId,
@@ -3208,6 +3220,7 @@ export const gameService = {
         if (snapshot.exists()) return ensureCreationSeries(assertSameAttempt(snapshot.data() as Game));
       }
     }
+    await ensureSeasonSchedule(input.groupId, input.startsAt);
     await enforceRateLimit(input.createdBy, 'createGame');
 
     // Invariant: when both fields are set, registration must open
@@ -3770,6 +3783,7 @@ export const gameService = {
         throw err;
       }
     }
+    if (typeof patch.startsAt === 'number' && patch.startsAt !== existing.startsAt) await ensureSeasonSchedule(existing.groupId, patch.startsAt);
     const updates: Record<string, unknown> = {
       ...patch,
       updatedAt: Date.now(),
@@ -8072,30 +8086,11 @@ export const gameService = {
       const data = snap.data();
       if (data.status === 'finished' || data.status === 'cancelled') return;
 
-      // §4 — the season's 24-hour correction window blocks the START of an
-      // evening, club-wide.
-      //
-      // The enforcement is in firestore.rules and stays there; this check
-      // exists so the admin gets a sentence instead of nothing at all. The
-      // three callers of this function all swallow their errors into the log,
-      // so without it the timer's play button would simply do nothing, twice,
-      // and then the admin would put the phone down.
-      //
-      // One extra read, on a tap that happens once per evening.
       const gid = typeof data.groupId === 'string' ? data.groupId : '';
       if (gid) {
-        try {
-          const grp = await getDoc(docs.group(gid));
-          const seasons = grp.data()?.seasons as
-            | { pendingClose?: { closeAt?: number } | null }
-            | undefined;
-          if (seasons?.pendingClose) throw new Error('SEASON_CLOSING');
-        } catch (err) {
-          // Only OUR signal propagates. A failed club read must not stop an
-          // evening starting — the rules are the enforcement, and a network
-          // blip here would otherwise block a game the server would allow.
-          if ((err as Error)?.message === 'SEASON_CLOSING') throw err;
-        }
+        try { await withAuthRaceRetry(() => httpsCallable(getFirebase().functions, 'startSeasonEvening', { timeout: 310000 })({ gameId })); }
+        catch (err) { if (String((err as Error)?.message).includes('SEASON_CLOSING')) throw new Error('SEASON_CLOSING'); throw err; }
+        return;
       }
       // The first goal may now precede the first timer start. Re-read under
       // the transaction so a concurrent goal cannot be replaced by 0:0.

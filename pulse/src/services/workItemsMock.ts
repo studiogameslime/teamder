@@ -71,7 +71,7 @@ export function mockWork(now: number): WorkItem[] {
       images: [SHOT],
       state: 'claude',
       claude: {
-        note: 'הוספתי ריפוד לפי ה-safe area האמיתי, כך שהשורה האחרונה לא יושבת מתחת לפס הניווט.',
+        note: 'תיקנתי את הכפתור שנחתך בתחתית המסך. עכשיו אפשר לראות אותו וללחוץ עליו גם במכשירים עם פס ניווט תחתון.',
         images: [SHOT],
         at: ago(5),
       },

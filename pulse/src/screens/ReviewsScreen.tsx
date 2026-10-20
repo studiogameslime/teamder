@@ -18,7 +18,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 ];
 
 export function ReviewsScreen() {
-  const { snapshot, refreshing, refresh } = useDashboard();
+  const { snapshot, refreshing, refresh } = useDashboard(true);
   const nav = useNavigation<any>();
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -90,5 +90,5 @@ const styles = StyleSheet.create({
   },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { ...font.small, color: colors.textSoft },
-  chipTextActive: { color: '#fff', fontWeight: '700' },
+  chipTextActive: { color: colors.onPrimary, fontWeight: '700' },
 });

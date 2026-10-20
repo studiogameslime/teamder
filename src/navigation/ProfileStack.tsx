@@ -68,7 +68,7 @@ export type ProfileStackParamList = {
    */
   PersonalInvite: { invitedBy?: string; source?: string } | undefined;
   Profile: undefined;
-  Requests: undefined;
+  Requests: { groupId?: string } | undefined;
   ProfileEdit: undefined;
   AvailabilityEdit: undefined;
   AvailabilityWeek: undefined;
@@ -83,7 +83,7 @@ export type ProfileStackParamList = {
   /** Admin-only per-community player timeline — reachable from
    *  CommunityPlayers (opened via a MatchDetails community-link). */
   PlayerTimeline: { userId: string; groupId: string; name?: string };
-  AdminApproval: undefined;
+  AdminApproval: { groupId?: string } | undefined;
   History: undefined;
   Achievements: undefined;
   SeasonTitles: undefined;

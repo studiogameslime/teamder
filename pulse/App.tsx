@@ -58,9 +58,9 @@ function AuthenticatedApp() {
   }, []);
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ flex: 1, direction: 'rtl' }}>
       <DashboardProvider>
-        <NavigationContainer theme={navTheme} ref={navRef} onReady={() => { void openInitialOnboardingNotification(); }}>
+        <NavigationContainer direction="rtl" theme={navTheme} ref={navRef} onReady={() => { void openInitialOnboardingNotification(); }}>
           <StatusBar style="light" />
           <RootTabs />
         </NavigationContainer>
@@ -77,5 +77,5 @@ export default function App() {
     return unsubscribe;
   }, []);
   return !ready ? <View style={{flex:1,backgroundColor:colors.bg,justifyContent:'center'}}><ActivityIndicator color={colors.primary}/></View>
-    : signedIn ? <AuthenticatedApp/> : <SafeAreaProvider><AdminLoginScreen/></SafeAreaProvider>;
+    : signedIn ? <AuthenticatedApp/> : <SafeAreaProvider style={{ flex: 1, direction: 'rtl' }}><AdminLoginScreen/></SafeAreaProvider>;
 }

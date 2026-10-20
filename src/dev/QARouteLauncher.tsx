@@ -162,7 +162,7 @@ const ROUTES: Array<
   ['SeasonSummary', 'SeasonSummary', 'ProfileTab', { groupId: 'g1' }],
   ['PlayerCard', 'PlayerCard', 'ProfileTab', { userId: 'p1' }],
   ['PlayerCompare', 'PlayerCompare', 'ProfileTab', { groupId: 'g1', otherUid: 'p1' }],
-  ['PlayerTimeline', 'PlayerTimeline', 'ProfileTab', { userId: 'p1' }],
+  ['PlayerTimeline', 'PlayerTimeline', 'ProfileTab', { userId: 'p5', groupId: 'g1', name: 'אורי' }],
   ['AvailabilityEdit', 'AvailabilityEdit', 'ProfileTab'],
   ['AvailabilityWeek', 'AvailabilityWeek', 'ProfileTab'],
   ['— CHAT —', '', ''],

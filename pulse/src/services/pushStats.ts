@@ -6,7 +6,7 @@
 // prefs. "opened" (read===true) is surfaced honestly — ~0 until the app records
 // taps in the next build.
 
-import { listAll } from './firestoreRest';
+import { fetchNotificationData } from './notificationData';
 
 // Hebrew labels for every Teamder NotificationType.
 export const PUSH_LABELS: Record<string, string> = {
@@ -49,6 +49,7 @@ export interface PushTypeRow {
 
 export interface PushStats {
   totalSent: number;
+  totalAttempts: number;
   totalOpened: number;
   totalOk: number;
   totalFailed: number;
@@ -59,8 +60,8 @@ export interface PushStats {
 
 const numField = (v: unknown): number => (typeof v === 'number' ? v : 0);
 
-export async function fetchPushStats(): Promise<PushStats> {
-  const notifs = await listAll('notifications', 4000).catch(() => []);
+export async function fetchPushStats(force = false): Promise<PushStats> {
+  const notifs = await fetchNotificationData(force);
   const byType = new Map<string, Omit<PushTypeRow, 'type' | 'label'>>();
   let totalPrefOff = 0;
 
@@ -83,6 +84,7 @@ export async function fetchPushStats(): Promise<PushStats> {
     .sort((a, b) => b.sent - a.sent);
 
   return {
+    totalAttempts: rows.reduce((s, r) => s + r.ok + r.failed, 0),
     totalSent: rows.reduce((s, r) => s + r.sent, 0),
     totalOpened: rows.reduce((s, r) => s + r.opened, 0),
     totalOk: rows.reduce((s, r) => s + r.ok, 0),

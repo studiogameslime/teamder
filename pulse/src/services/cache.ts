@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // screens/bodies that fire the same fetch at once (e.g. the Dev-Inbox mounts
 // four bodies together) share ONE request instead of each scanning the
 // collection — no thundering herd on a cold cache.
-const store = new Map<string, { at: number; p: Promise<unknown> }>();
+const store = new Map<string, { at: number; pending: boolean; p: Promise<unknown> }>();
 
 const DISK_PREFIX = 'pulse.cache.';
 
@@ -24,11 +24,13 @@ export function cached<T>(
 ): Promise<T> {
   const ttl = opts.ttl ?? CACHE_TTL;
   const hit = store.get(key);
-  if (!opts.force && hit && Date.now() - hit.at < ttl) {
+  if (hit && (hit.pending || (!opts.force && Date.now() - hit.at < ttl))) {
     return hit.p as Promise<T>;
   }
-  const p = fn();
-  store.set(key, { at: Date.now(), p });
+  const p = Promise.resolve().then(fn);
+  const entry = { at: 0, pending: true, p };
+  store.set(key, entry);
+  void p.then(() => { entry.pending = false; entry.at = Date.now(); }, () => {});
   // Never cache a failure — drop it so the next call retries.
   p.catch(() => {
     if (store.get(key)?.p === p) store.delete(key);

@@ -18,8 +18,8 @@ test('tied scores do not give a smaller sample the largest shared coverage',()=>
 test('equal partial samples still support an honest shared note',()=>{
   const award=writer([3,3]);expect(readSeasonCoverage(award)).toEqual({rated:3,of:10});
 });
-test('full coverage omits the personal caveat and unknown/invalid rows claim nothing',()=>{
-  const award=writer([3,10]);expect(readSeasonCoverage(award,'1')).toBeUndefined();
+test('full coverage states the real sample and unknown/invalid rows claim nothing',()=>{
+  const award=writer([3,10]);expect(readSeasonCoverage(award,'1')).toEqual({rated:10,of:10});
   expect(readSeasonCoverage({...award,coverage:{rated:8,of:10}},'missing')).toBeUndefined();
   expect(readSeasonCoverage(writer([0,NaN]),'0')).toBeUndefined();
   expect(readSeasonCoverage({coverage:{rated:8,of:10},coverageByWinner:'invalid'},'0')).toBeUndefined();

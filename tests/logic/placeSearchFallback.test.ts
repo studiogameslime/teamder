@@ -18,6 +18,7 @@ test('a primary rejection uses a legitimate backup, preserves coordinates and ca
   expect(fetch).toHaveBeenCalledTimes(2);
   expect(fetch.mock.calls[1][0]).toContain('https://photon.komoot.io/api/');
   expect(fetch.mock.calls[1][1].headers).toBeUndefined();
+  expect(require('@/services/errorLog').logError).not.toHaveBeenCalled();
 });
 
 test('different queries during the rejection cooldown skip the rejected primary', async () => {
@@ -34,6 +35,7 @@ test('failed providers remain unavailable, and a later successful retry is not p
   fetch.mockResolvedValueOnce(reply({}, 403)).mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(reply({ features: [feature()] }));
   const { searchPlaces } = require('@/services/govmapService');
   expect(await searchPlaces('מגרש')).toEqual({ places: [], unavailable: true });
+  expect(require('@/services/errorLog').logError).toHaveBeenCalledWith('govmapSearch',expect.any(Error),{query:'מגרש'});
   expect((await searchPlaces('מגרש')).places).toHaveLength(1);
 });
 

@@ -26,6 +26,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { AppDateField } from '@/components/DateTimeFields';
+import { appAlert } from '@/components/AppDialog';
 import { Card } from '@/components/Card';
 import {
   eveningVerifyService,
@@ -70,6 +72,7 @@ export function UnverifiedEveningsCard({
   onResolved?: () => void;
 }) {
   const [items, setItems] = useState<UnverifiedEvening[] | null>(null);
+  const [chosenDates, setChosenDates] = useState<Record<string, number>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
@@ -94,10 +97,13 @@ export function UnverifiedEveningsCard({
   useEffect(() => load(), [load]);
 
   const answer = async (id: string, played: boolean) => {
+    if (busyId) return;
+    const item = items?.find(x => x.id === id);
+    if (played && !item?.startsAt && !chosenDates[id]) { appAlert('חסר מועד למחזור', 'בחרו מתי המחזור התקיים כדי לשייך אותו לעונה המתאימה.'); return; }
     setBusyId(id);
-    const ok = await eveningVerifyService.setPlayed(id, played);
+    const ok = await eveningVerifyService.setPlayed(id, played, chosenDates[id]);
     setBusyId(null);
-    if (!ok) return; // the row stays; the service already logged it
+    if (!ok) { appAlert('האימות לא נשמר', 'ייתכן שהעונה או המחזור השתנו. אפשר לרענן ולנסות שוב.'); return; } // the row stays; the service already logged it
     // Drop the row locally rather than re-reading: the answer is final, and a
     // list that flickers back before settling reads as a failed tap.
     setItems((prev) => (prev ?? []).filter((x) => x.id !== id));
@@ -115,12 +121,14 @@ export function UnverifiedEveningsCard({
         <Ionicons name="help-circle-outline" size={18} color={colors.warning} />
         <Text style={styles.title}>{he.unverifiedEveningsTitle}</Text>
       </View>
-      <Text style={styles.body}>{he.unverifiedEveningsBody}</Text>
+      <Text style={styles.body}>{he.unverifiedEveningsBody} אם המחזור עדיין מתקיים, השאירו אותו ללא הכרעה עד שיסתיים.</Text>
 
+      <Text style={styles.body}>אם חלון התיקונים של העונה נעצר, אימות כל המחזורים יאפשר לו להמשיך מהזמן שנותר.</Text>
+      {(items ?? []).filter(it => !it.startsAt).map(it => <AppDateField key={it.id} label={it.title ? `מועד המחזור: ${it.title}` : 'מתי המחזור התקיים?'} value={chosenDates[it.id] ?? Date.now()} onChange={at => setChosenDates(prev => ({ ...prev, [it.id]: at }))} required />)}
       {(items ?? []).map((it) => (
         <View key={it.id} style={styles.row}>
           <Text style={styles.when} numberOfLines={1}>
-            {rowLabel(it.startsAt, it.title, groupName)}
+            {it.startsAt ? rowLabel(it.startsAt, it.title, groupName) : 'מחזור ללא מועד שמור'}
           </Text>
           {busyId === it.id ? (
             <ActivityIndicator size="small" color={colors.primary} />
@@ -129,6 +137,7 @@ export function UnverifiedEveningsCard({
               {/* "כן" first in source order → rightmost under forceRTL, where
                   the thumb lands and where the expected answer belongs. */}
               <Pressable
+                disabled={!!busyId}
                 style={[styles.btn, styles.yes]}
                 onPress={() => answer(it.id, true)}
                 accessibilityRole="button"
@@ -137,6 +146,7 @@ export function UnverifiedEveningsCard({
                 <Text style={styles.yesText}>{he.unverifiedEveningYes}</Text>
               </Pressable>
               <Pressable
+                disabled={!!busyId}
                 style={[styles.btn, styles.no]}
                 onPress={() => answer(it.id, false)}
                 accessibilityRole="button"

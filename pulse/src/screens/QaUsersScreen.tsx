@@ -14,7 +14,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, font, radius } from '../theme';
+import { isolateText, RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import { Card, Empty } from '../components/ui';
 import { listQaUsers, type QaUser } from '../services/qaService';
 import type { ErrorsStackParams } from '../navigation/ErrorsStack';
@@ -68,7 +68,7 @@ export function QaUsersBody() {
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : users.length === 0 ? (
-        <Empty text="אין עדיין משתמשי QA (מי ששלח דיווח יופיע כאן)" />
+        <Empty text="אין עדיין מדווחים — משתמש ששלח דיווח יופיע כאן" />
       ) : (
         users.map((u) => (
           <Pressable
@@ -112,7 +112,7 @@ export function QaUsersBody() {
 
 const s = StyleSheet.create({
   scroll: { padding: 14, paddingBottom: 36, gap: 10 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
+  row: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 12 },
   avatar: {
     width: 44,
     height: 44,
@@ -121,11 +121,11 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  name: { ...font.title, textAlign: 'right' },
-  sub: { ...font.small, color: colors.textMuted, textAlign: 'right', marginTop: 1 },
-  tags: { flexDirection: 'row-reverse', gap: 6, marginTop: 7, flexWrap: 'wrap' },
+  name: {  ...font.title, textAlign: RTL_LABEL_ALIGN },
+  sub: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
+  tags: { flexDirection: 'row', direction: 'rtl' as const, gap: 6, marginTop: 7, flexWrap: 'wrap' },
   tag: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 8,

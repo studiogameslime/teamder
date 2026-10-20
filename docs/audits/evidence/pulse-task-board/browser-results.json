@@ -1,0 +1,86 @@
+[
+  {
+    "state": "open",
+    "width": 390,
+    "file": "pulse-board-open-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "review",
+    "width": 390,
+    "file": "pulse-board-review-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "detail",
+    "width": 390,
+    "file": "pulse-board-detail-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "handover",
+    "width": 390,
+    "file": "pulse-board-handover-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "ideas",
+    "width": 390,
+    "file": "pulse-board-ideas-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "closed",
+    "width": 390,
+    "file": "pulse-board-closed-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "open",
+    "width": 320,
+    "file": "pulse-board-open-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "review",
+    "width": 320,
+    "file": "pulse-board-review-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "detail",
+    "width": 320,
+    "file": "pulse-board-detail-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "handover",
+    "width": 320,
+    "file": "pulse-board-handover-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "ideas",
+    "width": 320,
+    "file": "pulse-board-ideas-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "closed",
+    "width": 320,
+    "file": "pulse-board-closed-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  }
+]

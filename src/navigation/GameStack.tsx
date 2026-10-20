@@ -52,7 +52,7 @@ import { MapScreen, type MapScreenParams } from '@/screens/map/MapScreen';
 export type GameStackParamList = {
   /** `openCreate` (from the home quick-action) pops the create-game chooser. */
   GamesList: undefined | { openCreate?: boolean };
-  Requests: undefined;
+  Requests: { groupId?: string } | undefined;
   /** Full-screen map of open public games (mode: 'games'). */
   GamesMap: MapScreenParams;
   GameCreate:
@@ -164,7 +164,7 @@ export type GameStackParamList = {
    * per stack, exactly like MatchDetails and CommunityDetails above.
    */
   EmailAuth: undefined;
-  AdminApproval: undefined;
+  AdminApproval: { groupId?: string } | undefined;
   /** Reachable from MatchDetails' overflow menu. Pushed in-stack so
    *  back returns to the match. */
   History: undefined;

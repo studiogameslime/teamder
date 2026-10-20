@@ -555,18 +555,6 @@ export function RootNavigator() {
     }
   }, [hydrateUser, hydrateEntry]);
 
-  // Show the app-open ad once we land on MainTabs, but never while a match
-  // is locked/in-progress (the live screen shouldn't be obstructed by an ad).
-  const gameStatus = useGameStore((s) => s.game.status);
-  useEffect(() => {
-    if (membership === 'member' && gameStatus !== 'locked') {
-      // accountCreatedAt drives the new-user ad-free grace inside the service.
-      adsService.showAppOpenAdIfAvailable({
-        accountCreatedAt: currentUser?.createdAt,
-      });
-    }
-  }, [membership, gameStatus, currentUser]);
-
   // After we know who the user is, hydrate their group state and tell
   // gameStore who "self" is (so registerSelf/cancelSelf use the auth uid in
   // Firebase mode rather than the mock-seed uid).

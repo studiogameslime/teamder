@@ -1,0 +1,58 @@
+[
+  {
+    "state": "profile",
+    "width": 390,
+    "file": "pulse-no-cards-profile-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "stats",
+    "width": 390,
+    "file": "pulse-no-cards-stats-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "activity",
+    "width": 390,
+    "file": "pulse-no-cards-activity-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "manage",
+    "width": 390,
+    "file": "pulse-no-cards-manage-390-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "profile",
+    "width": 320,
+    "file": "pulse-no-cards-profile-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "stats",
+    "width": 320,
+    "file": "pulse-no-cards-stats-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "activity",
+    "width": 320,
+    "file": "pulse-no-cards-activity-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "state": "manage",
+    "width": 320,
+    "file": "pulse-no-cards-manage-320-2026-10-18.png",
+    "errors": [],
+    "overflow": false
+  }
+]

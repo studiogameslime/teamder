@@ -1,4 +1,7 @@
-import { groupWorkSections } from '../services/unresolvedWork';
+import { Dropdown } from '../components/Dropdown';
+import { boardBuckets, boardSections, type BoardTab } from '../services/workBoard';
+import { timeAgo } from '../format';
+import { navRef } from '../navigation/navRef';
 import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
 // TasksScreen — the app's home, and the ONE place all work lives.
 //
@@ -12,7 +15,7 @@ import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
 //
 // THREE TABS, and the middle one is the reason for the change:
 //   פתוחות        — nobody has finished it.
-//   בוצע ע״י קלוד — Claude finished it, wrote down what changed and attached
+//   בוצע ע״י רובנס — Claude finished it, wrote down what changed and attached
 //                   proof. Still open everywhere else; it is waiting for the
 //                   owner to read it and accept. THIS is the review queue.
 //   בוצע          — the owner accepted it.
@@ -23,25 +26,14 @@ import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
 // read that wasn't already being paid.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RtlTextInput as TextInput } from '../components/RtlTextInput';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
-import { colors, font, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import { Empty } from '../components/ui';
 import { TeamderChatSheet } from '../components/TeamderChatSheet';
 import { listAwaitingReply } from '../services/teamderChatService';
@@ -55,13 +47,16 @@ import {
   type TaskCategory,
   type TaskPriority,
 } from '../services/tasksService';
-import { createIdea } from '../services/ideasService';
+import { createIdea, setIdeaStatus, deleteIdea } from '../services/ideasService';
 import {
   KIND_ICON,
   KIND_LABEL,
   KIND_ORDER,
   closeItem,
-  listWork,
+  listWorkSnapshot,
+  retainFailedWork,
+  STREAM_LABEL,
+  type WorkStream,
   reopenItem,
   invalidateStream,
   loadItemImages,
@@ -80,10 +75,10 @@ const PRIORITY_COLOR: Record<TaskPriority, string> = {
   low: colors.textMuted,
 };
 
-type Tab = 'open' | 'claude' | 'done';
+type Tab = BoardTab;
 const TAB_LABEL: Record<Tab, string> = {
   open: 'פתוחות',
-  claude: 'בוצע ע״י קלוד',
+  claude: 'בוצע ע״י רובנס',
   // "סגורות", not "בוצע" — the tab holds anything that left the list, and it
   // gets emptied periodically rather than kept as a permanent archive.
   done: 'סגורות',
@@ -92,12 +87,16 @@ const TAB_LABEL: Record<Tab, string> = {
 /** Tag filter — `all` plus one chip per kind. */
 type Filter = 'all' | WorkKind;
 
-export function TasksScreen() {
+export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?:BoardTab;initialFilter?:Filter} = {}) {
   const [items, setItems] = useState<WorkItem[]>([]);
+  const [failedStreams, setFailedStreams] = useState<WorkStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<Tab>('open');
-  const [filter, setFilter] = useState<Filter>('all');
+  const [rowLimit, setRowLimit] = useState(40);
+  const [newest, setNewest] = useState(false);
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [filter, setFilter] = useState<Filter>(initialFilter);
+  const [search, setSearch] = useState('');
   const [composing, setComposing] = useState(false);
   const [editing, setEditing] = useState<WorkItem | null>(null);
   const [replyTo, setReplyTo] = useState<WorkItem | null>(null);
@@ -118,6 +117,7 @@ export function TasksScreen() {
           cachedTasks.map((t) => ({
             key: `task:${t.id}`,
             stream: 'task' as const,
+            sourceReportId: t.source === 'teamder' && t.sourceId && !t.sourceId.includes('/') ? t.sourceId : undefined,
             kind: (t.category === 'ui'
               ? 'ui'
               : t.category === 'feature'
@@ -143,12 +143,12 @@ export function TasksScreen() {
         setLoading(false);
       }
       try {
-        const fresh = await listWork(false, partial => {
-          if (alive) setItems(partial);
+        const fresh = await listWorkSnapshot(false, partial => {
+          if (alive) setItems(previous => [...partial, ...previous.filter(item => !partial.some(row => row.key === item.key))]);
         });
-        if (alive) setItems(fresh);
+        if (alive) { setItems(previous => retainFailedWork(previous, fresh)); setFailedStreams(fresh.failedStreams); }
       } catch {
-        /* keep whatever the snapshot gave us */
+        if (alive) setFailedStreams(['task', 'error', 'report', 'feature', 'idea', 'chat']);
       } finally {
         if (alive) setLoading(false);
       }
@@ -161,29 +161,26 @@ export function TasksScreen() {
   const reload = useCallback(async (force = true) => {
     setRefreshing(true);
     try {
-      setItems(await listWork(force));
+      const result = await listWorkSnapshot(force);
+      setItems(previous => retainFailedWork(previous, result));
+      setFailedStreams(result.failedStreams);
     } catch {
-      /* offline — the list on screen stays */
+      setFailedStreams(['task', 'error', 'report', 'feature', 'idea', 'chat']);
     } finally {
       setRefreshing(false);
     }
   }, []);
 
-  const byState = useMemo(
-    () => ({
-      open: items.filter((i) => i.state === 'open'),
-      claude: items.filter((i) => i.state === 'claude'),
-      done: items.filter((i) => i.state === 'done'),
-    }),
-    [items],
-  );
+  useEffect(()=>setRowLimit(40),[tab,filter,search,newest]);
+
+  const byState = useMemo(() => boardBuckets(items), [items]);
 
   const visible = useMemo(() => {
-    const list = byState[tab];
-    return filter === 'all' ? list : list.filter((i) => i.kind === filter);
-  }, [byState, tab, filter]);
+    const query = search.trim().toLowerCase();
+    return byState[tab].filter(item => (filter === 'all' || item.kind === filter) && (!query || [item.title, item.body, item.reporterName, item.screen].some(value => value.toLowerCase().includes(query))));
+  }, [byState, tab, filter, search]);
 
-  const groups = useMemo(() => groupWorkSections(visible, KIND_ORDER), [visible]);
+  const groups = useMemo(() => boardSections(visible, newest), [visible, newest]);
 
   /** Counts per KIND inside the CURRENT tab — drives the filter chips. */
   const kindCounts = useMemo(() => {
@@ -208,11 +205,11 @@ export function TasksScreen() {
 
   /** Withdraw Claude's handover — the item goes back to plain open. */
   const withdraw = async (item: WorkItem) => {
-    setItems((prev) =>
-      prev.map((i) => (i.key === item.key ? { ...i, state: 'open', claude: null } : i)),
-    );
-    await clearDoneByClaude(item.docPath).catch(() => {});
-    invalidateStream(item.stream);
+    try {
+      if (!await clearDoneByClaude(item.docPath)) throw Error('SAVE_FAILED');
+      setItems(prev=>prev.map(i=>i.key===item.key?{...i,state:'open',claude:null}:i));
+      invalidateStream(item.stream);
+    } catch { Alert.alert('השינוי לא נשמר','המשימה עדיין ממתינה לאישור. נסו שוב.'); }
   };
 
   const setPriority = async (item: WorkItem, p: TaskPriority) => {
@@ -229,7 +226,7 @@ export function TasksScreen() {
         style: 'destructive',
         onPress: async () => {
           setItems((prev) => prev.filter((i) => i.key !== item.key));
-          await removeTask(item.id).catch(() => {});
+          try {if(!await (item.stream==='idea'?deleteIdea(item.id):removeTask(item.id)))throw Error();await reload(true);}catch{Alert.alert('המחיקה נכשלה','הרשימה תרוענן כדי להציג את המצב שנשמר.');await reload(true);}
         },
       },
     ]);
@@ -239,72 +236,51 @@ export function TasksScreen() {
     tab === 'open'
       ? 'אין שום דבר פתוח 🎉'
       : tab === 'claude'
-        ? 'קלוד עוד לא סיים כלום שממתין לאישור'
+        ? 'רובנס עוד לא סיים כלום שממתין לאישור'
         : 'עוד לא אושר כלום';
 
   return (
     <SafeAreaView style={st.safe} edges={['top']}>
       <View style={st.header}>
         <View style={st.headerRow}>
-          <Text style={font.h1}>משימות</Text>
+          <View><Text style={{ ...font.h1,textAlign: RTL_LABEL_ALIGN}}>משימות</Text><Text style={{ ...font.small,textAlign: RTL_LABEL_ALIGN}}>כל העבודה במקום אחד</Text></View>
           <Pressable
             onPress={() => setComposing(true)}
             style={({ pressed }) => [st.addBtn, pressed && { opacity: 0.85 }]}
           >
-            <Ionicons name="add" size={20} color="#fff" />
-            <Text style={st.addBtnTxt}>משימה</Text>
+            <Ionicons name="add" size={20} color={colors.onPrimary} />
+            <Text style={st.addBtnTxt}>חדש</Text>
           </Pressable>
         </View>
 
+        <View style={{flexDirection:'row',direction:'rtl',alignItems:'center',gap:8,marginTop:16,backgroundColor:colors.surface,borderRadius:12,borderWidth:1,borderColor:colors.border,paddingHorizontal:12}}><Ionicons name="search-outline" size={20} color={colors.textMuted}/><TextInput value={search} onChangeText={setSearch} placeholder="חיפוש משימה, משתמש או מסך" placeholderTextColor={colors.textMuted} accessibilityLabel="חיפוש בתור העבודה" style={{ ...font.body,textAlign: RTL_LABEL_ALIGN,flex:1,minWidth:0,minHeight:46}} /></View>
         <View style={st.tabs}>
           {(['open', 'claude', 'done'] as Tab[]).map((k) => {
             const on = tab === k;
             const n = byState[k].length;
             return (
-              <Pressable key={k} onPress={() => setTab(k)} style={[st.tab, on && st.tabOn]}>
+              <Pressable accessibilityRole="tab" accessibilityState={{selected:on}} key={k} onPress={() => {setTab(k);setFilter('all')}} style={[st.tab, k==='claude' && {flex:1.8}, on && st.tabOn]}>
                 <Text style={[st.tabTxt, on && st.tabTxtOn]} numberOfLines={1}>
-                  {TAB_LABEL[k]} {n > 0 ? `(${n})` : ''}
+                  {TAB_LABEL[k]}
                 </Text>
+                <Text style={[st.tabTxt,on && st.tabTxtOn]}>{n}</Text>
               </Pressable>
             );
           })}
         </View>
 
-        {/* Tag filter. `all` is the default and the point — everything sits
-            together — but a chip per tag makes it possible to work through one
-            kind at a time. A chip only appears when the current tab has
-            something of that kind, so the row never fills with zeroes. */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={st.filterRow}
-        >
-          {(['all', ...KIND_ORDER] as Filter[]).map((f) => {
-            const on = filter === f;
-            const n = f === 'all' ? byState[tab].length : (kindCounts[f] ?? 0);
-            if (f !== 'all' && n === 0) return null;
-            return (
-              <Pressable
-                key={f}
-                onPress={() => setFilter(f)}
-                style={[st.filterChip, on && st.chipOn]}
-              >
-                {f !== 'all' ? (
-                  <Ionicons
-                    name={KIND_ICON[f] as never}
-                    size={12}
-                    color={on ? '#fff' : colors.textSoft}
-                  />
-                ) : null}
-                <Text style={[st.chipTxt, on && st.chipTxtOn]}>
-                  {f === 'all' ? 'הכל' : KIND_LABEL[f]} {n}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <View style={{flexDirection:'row',direction:'rtl',gap:8,paddingVertical:12}}>
+          <Dropdown flex={1} title="סוג משימה" value={filter} options={[{value:'all',label:'כל הסוגים'},...KIND_ORDER.filter(k=>(kindCounts[k] ?? 0)>0).map(k=>({value:k,label:KIND_LABEL[k]}))]} onSelect={v=>setFilter(v as Filter)}/>
+          <Dropdown flex={1.25} title="מיון משימות" value={newest?'newest':'priority'} options={[{value:'priority',label:'דחיפות ועדכניות'},{value:'newest',label:'עדכניות'}]} onSelect={v=>setNewest(v==='newest')}/>
+        </View>
+        {tab==='claude'?<Text style={{ ...font.small,color:colors.primary,textAlign: RTL_LABEL_ALIGN,paddingBottom:10}}>בוצע ע״י רובנס · ממתין לאישור שלך</Text>:null}
       </View>
 
+      {failedStreams.length > 0 ? (
+        <Pressable onPress={() => void reload(true)} accessibilityRole="button" style={{ padding: 14 }}>
+          <Text style={{ direction: 'rtl' as const, color: colors.amber, textAlign: RTL_LABEL_ALIGN }}>המידע חלקי — לא עודכנו: {failedStreams.map(stream => STREAM_LABEL[stream]).join('، ')}. נתונים קודמים נשמרו אם היו. לחצו לניסיון חוזר.</Text>
+        </Pressable>
+      ) : null}
       {loading && items.length === 0 ? (
         <View style={st.center}>
           <ActivityIndicator color={colors.primary} />
@@ -327,33 +303,30 @@ export function TasksScreen() {
               vanished the moment you touched a filter. */}
 
           {visible.length === 0 ? (
-            <Empty text={emptyText} />
+            <Empty text={failedStreams.length ? 'אין פריטים להצגה מהמקורות שנטענו. הספירה אינה מלאה.' : search.trim() || filter !== 'all' ? 'אין פריטים התואמים לחיפוש ולסינון' : emptyText} />
           ) : (
             groups.map((g) => (
-              <View key={g.kind} style={st.group}>
+              <View key={g.key} style={st.group}>
                 <View style={st.groupHead}>
-                  <Ionicons
-                    name={(g.kind === 'unresolved' ? 'construct-outline' : KIND_ICON[g.kind]) as never}
-                    size={16}
-                    color={colors.primary}
-                  />
-                  <Text style={st.groupTitle}>{g.kind === 'unresolved' ? 'באגים שלא נפתרו' : KIND_LABEL[g.kind]}</Text>
-                  <Text style={st.groupCount}>{g.items.length}</Text>
+                  <Text style={st.groupTitle}>{g.title}</Text>
+                  <Text style={[st.groupCount,{backgroundColor:colors.surfaceAlt,borderRadius:8,paddingHorizontal:8,paddingVertical:3}]}>{g.items.length}</Text>
                 </View>
-                {g.items.map((item) => (
+                {g.items.slice(0,rowLimit).map((item) => (
                   <WorkRow
                     key={item.key}
                     item={item}
                     onZoom={lightbox.open}
+                    onPromote={item.stream==='idea' ? async (status)=>{try{if(!await setIdeaStatus(item.id,status))throw Error();invalidateStream('idea');await reload(true);}catch{Alert.alert('השינוי לא נשמר','הרעיון נשאר במצבו הקודם.');}} : undefined}
                     onAccept={() => accept(item)}
                     onReopen={() => reopen(item)}
                     onWithdraw={() => withdraw(item)}
                     onPriority={(p) => setPriority(item, p)}
                     onEdit={item.stream === 'task' ? () => setEditing(item) : undefined}
-                    onDelete={item.stream === 'task' ? () => destroy(item) : undefined}
+                    onDelete={item.stream === 'task' || item.stream === 'idea' ? () => destroy(item) : undefined}
                     onReply={item.reporterId ? () => setReplyTo(item) : undefined}
                   />
                 ))}
+                {g.items.length>rowLimit?<Pressable onPress={()=>setRowLimit(n=>n+40)} style={{padding:14}}><Text style={{ ...font.body,color:colors.primary,textAlign: RTL_LABEL_ALIGN}}>הצגת פריטים נוספים ({g.items.length-rowLimit})</Text></Pressable>:null}
               </View>
             ))
           )}
@@ -407,8 +380,10 @@ function WorkRow({
   onDelete,
   onReply,
   onZoom,
+  onPromote,
 }: {
   item: WorkItem;
+  onPromote?: (status:'spec'|'build')=>Promise<void>;
   onAccept: () => void;
   onReopen: () => void;
   onWithdraw: () => void;
@@ -428,6 +403,8 @@ function WorkRow({
   const [shots, setShots] = useState<{ images: string[]; claudeImages: string[] } | null>(
     null,
   );
+  const [shotsFailed, setShotsFailed] = useState(false);
+  const [shotsRetry, setShotsRetry] = useState(0);
   const [loadingShots, setLoadingShots] = useState(false);
   const isDone = item.state === 'done';
   const byClaude = item.state === 'claude';
@@ -440,13 +417,13 @@ function WorkRow({
   useEffect(() => {
     if (!expanded) return;
     let alive = true;
-    setLoadingShots(true);
+    setLoadingShots(true); setShotsFailed(false);
     loadItemImages(item)
       .then((r) => {
         if (alive) setShots(r);
       })
       .catch(() => {
-        if (alive) setShots({ images: [], claudeImages: [] });
+        if (alive) setShotsFailed(true);
       })
       .finally(() => {
         if (alive) setLoadingShots(false);
@@ -455,7 +432,7 @@ function WorkRow({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded, item.docPath]);
+  }, [expanded, item.docPath, shotsRetry, item.claude?.at]);
 
   const ownShots = shots?.images ?? [];
   const proofShots = shots?.claudeImages ?? [];
@@ -463,82 +440,74 @@ function WorkRow({
   return (
     <View style={[st.row, isDone && st.rowDone, byClaude && st.rowClaude]}>
       <Pressable
+        accessibilityRole="button" accessibilityLabel={item.title}
         style={st.rowMain}
         // A conversation has no body to expand — tapping it opens the thread,
         // while the separate check button resolves it without sending.
         onPress={() => (item.stream === 'chat' ? onReply?.() : setExpanded((v) => !v))}
       >
-        <Pressable
-          hitSlop={10}
-          onPress={async event => { event.stopPropagation(); if (savingStatus) return; setSavingStatus(true); try { await (isDone ? onReopen : onAccept)(); } finally { setSavingStatus(false); } }}
-          disabled={savingStatus}
-          accessibilityState={{disabled:savingStatus,busy:savingStatus}}
-          accessibilityRole="button"
-          accessibilityLabel={isDone ? 'פתיחה מחדש' : item.stream === 'chat' ? 'סמן שיחה כפתורה ללא תשובה' : 'סגירת המשימה'}
-          style={[
-            st.check,
-            isDone && st.checkOn,
-            byClaude && st.checkClaude,
-            item.stream === 'chat' && st.checkChat,
-          ]}
-        >
-          {savingStatus ? <ActivityIndicator size="small" color={colors.primary}/> : item.stream === 'chat' && !isDone ? <Ionicons name="checkmark" size={16} color={colors.primary} /> : null}
-          {isDone ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
-          {byClaude ? <Ionicons name="sparkles" size={12} color={colors.primary} /> : null}
-        </Pressable>
+        <View style={{width:32,height:32,borderRadius:16,backgroundColor:item.kind==='error'?colors.amber+'18':colors.primarySoft,alignItems:'center',justifyContent:'center'}}><Ionicons name={KIND_ICON[item.kind] as never} size={17} color={item.kind==='error'?colors.amber:colors.primary}/></View>
 
         <View style={st.rowText}>
+            <View style={[st.kindPill, item.kind === 'chat' && st.kindPillChat]}>
+              <Ionicons
+                name={KIND_ICON[item.kind] as never}
+                size={10}
+                color={item.kind === 'chat' ? colors.onPrimary : colors.textSoft}
+              />
+              <Text style={[st.kindTxt, item.kind === 'chat' && { color: '#fff' }]}>
+                {KIND_LABEL[item.kind]}
+              </Text>
+            </View>
           <Text style={[st.rowTitle, isDone && st.strike]} numberOfLines={expanded ? 0 : 2}>
             {item.title}
           </Text>
           <View style={st.metaRow}>
             {/* The tag. Every row carries one, so the kind of work is legible
                 without reading the title. */}
-            <View style={[st.kindPill, item.kind === 'chat' && st.kindPillChat]}>
-              <Ionicons
-                name={KIND_ICON[item.kind] as never}
-                size={10}
-                color={item.kind === 'chat' ? '#fff' : colors.textSoft}
-              />
-              <Text style={[st.kindTxt, item.kind === 'chat' && { color: '#fff' }]}>
-                {KIND_LABEL[item.kind]}
-              </Text>
-            </View>
             {/* The idea gate, stated on the row rather than left to memory:
                 a parked idea is the owner's to characterise before anyone
                 builds from it. */}
-            {!item.claudeMayAct ? (
+            {!item.claudeMayAct && item.stream === 'idea' ? (
               <View style={st.lockPill}>
                 <Ionicons name="lock-closed" size={10} color={colors.amber} />
-                <Text style={st.lockTxt}>לא לקלוד — לאפיון מצידכם</Text>
+                <Text style={st.lockTxt}>ממתין להחלטה שלך</Text>
               </View>
             ) : null}
-            {byClaude ? <Text style={st.metaClaude}>בוצע ע״י קלוד · ממתין לאישורך</Text> : null}
+            {byClaude ? <Text style={st.metaClaude}>בוצע ע״י רובנס · ממתין לאישורך</Text> : null}
             {item.priority === 'high' && !isDone ? (
               <Text style={[st.meta, { color: PRIORITY_COLOR.high }]}>
                 {PRIORITY_LABEL.high}
               </Text>
             ) : null}
-            {item.count > 1 ? <Text style={st.meta}>×{item.count}</Text> : null}
-            {item.screen ? <Text style={st.meta}>{item.screen}</Text> : null}
+            {item.count > 1 ? <Text style={st.meta}>{item.count} מופעים</Text> : null}
+            {expanded && item.screen ? <Text style={st.meta}>{item.screen}</Text> : null}
             {item.reporterName ? <Text style={st.meta}>{item.reporterName}</Text> : null}
-            {item.hint && item.claudeMayAct ? <Text style={st.meta}>{item.hint}</Text> : null}
+            {expanded && item.hint && (item.claudeMayAct || item.stream === 'chat') ? <Text style={st.meta}>{item.hint}</Text> : null}
+            <Text style={st.meta}>{item.createdAt?timeAgo(item.createdAt):'מועד לא תועד'}</Text>
             {/* No image indicator here on purpose: the list does not download
                 image fields any more (they were 96% of the payload), so
                 whether an item has one is only known once it is opened. */}
           </View>
         </View>
+        <Ionicons name="chevron-back" size={16} color={colors.textMuted}/>
       </Pressable>
 
       {expanded ? (
-        <View style={st.expand}>
-          {(item.stream==='error'||item.stream==='report')?<DiagnosticTimeline docPath={item.docPath}/>:null}
+        <Modal visible animationType="slide" onRequestClose={()=>setExpanded(false)}>
+        <SafeAreaView style={st.safe} edges={['top','bottom']}>
+        <View style={[st.headerRow,{padding:16}]}><Pressable accessibilityRole="button" onPress={()=>setExpanded(false)} style={{minHeight:44,justifyContent:'center'}}><Text style={{...font.title,color:colors.primary}}>חזרה למשימות</Text></Pressable><Text style={font.small}>{KIND_LABEL[item.kind]}</Text></View>
+        <ScrollView contentContainerStyle={[st.expand,{padding:20,gap:18}]}>
+          <Text style={{ ...font.h1,textAlign: RTL_LABEL_ALIGN}}>{item.title}</Text>
+          <Text style={st.meta}>{byClaude?'בוצע ע״י רובנס · ממתין לאישורך':isDone?'סגורה':'פתוחה'}</Text>
           {item.unresolved && item.state === 'open' ? <View style={{padding:12,borderRadius:12,backgroundColor:'#F59E0B18',gap:8}}><Text style={[st.notes,{color:colors.text}]}>מה כבר נבדק: {item.unresolved.reason}</Text><Text style={st.notes}>מה חסר לפתרון: {item.unresolved.nextStep}</Text></View> : null}
           {item.body ? <Text style={st.notes}>{item.body}</Text> : null}
           {loadingShots ? (
             <ActivityIndicator color={colors.primary} style={{ alignSelf: 'flex-end' }} />
           ) : null}
-          {ownShots.length > 0 ? (
+          {shotsFailed?<Pressable accessibilityRole="button" onPress={()=>setShotsRetry(n=>n+1)}><Text style={{...st.notes,color:colors.amber}}>טעינת הצילומים נכשלה. לחצו לניסיון חוזר.</Text></Pressable>:null}
+          {!loadingShots && !shotsFailed && !ownShots.length?<Text style={st.meta}>לא צורף צילום לדיווח או למשימה.</Text>:null}
+          {ownShots.length > 0 ? (<View style={{gap:8}}><Text style={st.groupTitle}>הצילום שצורף לדיווח או למשימה</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={st.shots}>
               {ownShots.map((b64, i) => (
                 <Pressable key={i} onPress={() => onZoom(ownShots, i)}>
@@ -548,7 +517,7 @@ function WorkRow({
                   </View>
                 </Pressable>
               ))}
-            </ScrollView>
+            </ScrollView></View>
           ) : null}
 
           {/* Claude's handover: what changed, and the proof. This is the block
@@ -557,7 +526,7 @@ function WorkRow({
             <View style={st.claudeBox}>
               <View style={st.claudeHead}>
                 <Ionicons name="sparkles" size={14} color={colors.primary} />
-                <Text style={st.claudeTitle}>מה קלוד עשה</Text>
+                <Text style={st.claudeTitle}>מה תוקן</Text>
               </View>
               <Text style={st.claudeNote}>{item.claude.note || '—'}</Text>
               {proofShots.length > 0 ? (
@@ -578,6 +547,7 @@ function WorkRow({
             </View>
           ) : null}
 
+          {(item.stream==='error'||item.stream==='report')?<DiagnosticTimeline docPath={item.docPath}/>:null}
           {item.stream === 'task' && !isDone ? (
             <View style={st.actions}>
               {PRIORITIES.map((p) => (
@@ -595,11 +565,22 @@ function WorkRow({
           ) : null}
 
           <View style={st.actions}>
+            {onPromote && !isDone && !byClaude ? <><Pressable style={st.chip} onPress={()=>void onPromote('spec')}><Text style={st.chipTxt}>העברה לאפיון</Text></Pressable><Pressable style={st.chip} onPress={()=>void onPromote('build')}><Text style={st.chipTxt}>מוכן לביצוע</Text></Pressable></>:null}
+            {!byClaude?<Pressable disabled={savingStatus} style={st.chip} onPress={async()=>{if(savingStatus)return;setSavingStatus(true);try{await (isDone?onReopen:onAccept)();}finally{setSavingStatus(false)}}}><Text style={st.chipTxt}>{isDone?'פתיחה מחדש':'סגירת המשימה'}</Text></Pressable>:null}
+            {item.reporterId ? <Pressable style={st.chip} onPress={() => {setExpanded(false); (navRef as any).navigate('Users', { screen: 'UserDetail', params: { userId: item.reporterId } });}}>
+              <Text style={st.chipTxt}>כרטיס המשתמש</Text>
+            </Pressable> : null}
+            {item.sourceReportId ? <Pressable style={st.chip} onPress={() => {setExpanded(false); (navRef as any).navigate('DevInbox', { screen: 'ErrorDetail', params: { id: item.sourceReportId, collection: 'feedback' } });}}>
+              <Text style={st.chipTxt}>משימה מקושרת — פתיחת דיווח המקור</Text>
+            </Pressable> : null}
+            {item.stream === 'error' || item.stream === 'report' ? <Pressable style={st.chip} onPress={() => {setExpanded(false); (navRef as any).navigate('DevInbox', { screen: 'ErrorDetail', params: { id: item.id, collection: item.stream === 'error' ? 'errors' : 'feedback' } });}}>
+              <Text style={st.chipTxt}>פרטי האבחון</Text>
+            </Pressable> : null}
             {byClaude ? (
               <>
                 <Pressable onPress={onAccept} style={[st.chip, st.chipAccent]}>
-                  <Ionicons name="checkmark" size={13} color="#fff" />
-                  <Text style={[st.chipTxt, { color: '#fff' }]}>אישור וסגירה</Text>
+                  <Ionicons name="checkmark" size={13} color={colors.onPrimary} />
+                  <Text style={[st.chipTxt, { color: colors.onPrimary }]}>אישור וסגירה</Text>
                 </Pressable>
                 <Pressable onPress={onWithdraw} style={st.chip}>
                   <Text style={st.chipTxt}>לא תוקן — החזר לפתוח</Text>
@@ -607,13 +588,13 @@ function WorkRow({
               </>
             ) : null}
             {onReply ? (
-              <Pressable onPress={onReply} style={[st.chip, st.chipAccent]}>
-                <Ionicons name="chatbubble-ellipses-outline" size={13} color="#fff" />
-                <Text style={[st.chipTxt, { color: '#fff' }]}>השב למדווח</Text>
+              <Pressable onPress={()=>{setExpanded(false);onReply?.();}} style={[st.chip, st.chipAccent]}>
+                <Ionicons name="chatbubble-ellipses-outline" size={13} color={colors.onPrimary} />
+                <Text style={[st.chipTxt, { color: colors.onPrimary }]}>פתיחת שיחה</Text>
               </Pressable>
             ) : null}
             {onEdit ? (
-              <Pressable onPress={onEdit} style={st.chip}>
+              <Pressable onPress={()=>{setExpanded(false);onEdit?.();}} style={st.chip}>
                 <Text style={st.chipTxt}>עריכה</Text>
               </Pressable>
             ) : null}
@@ -623,7 +604,7 @@ function WorkRow({
               </Pressable>
             ) : null}
           </View>
-        </View>
+        </ScrollView></SafeAreaView></Modal>
       ) : null}
     </View>
   );
@@ -797,7 +778,7 @@ function TaskComposer({
                     <Ionicons
                       name={KIND_ICON[k] as never}
                       size={15}
-                      color={kind === k ? '#fff' : colors.textSoft}
+                      color={kind === k ? colors.onPrimary : colors.textSoft}
                     />
                     <Text style={[st.chipTxt, kind === k && st.chipTxtOn]}>
                       {KIND_LABEL[k]}
@@ -866,7 +847,7 @@ function TaskComposer({
             ]}
           >
             {busy ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.onPrimary} />
             ) : (
               <Text style={st.saveTxt}>
               {task ? 'שמור' : kind === 'idea' ? 'הוסף רעיון' : 'הוסף משימה'}
@@ -881,39 +862,29 @@ function TaskComposer({
 
 const st = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: 14, paddingTop: 8 },
+  header: { paddingHorizontal: 18, paddingTop: 12 },
   headerRow: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   addBtn: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 4,
     backgroundColor: colors.primary,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 12,
     borderRadius: radius.md,
   },
-  addBtnTxt: { ...font.small, color: '#fff', fontWeight: '800' },
-  tabs: {
-    flexDirection: 'row-reverse',
-    gap: 6,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: 4,
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: radius.sm },
-  tabOn: { backgroundColor: colors.primary },
+  addBtnTxt: { ...font.small, color: colors.onPrimary, fontWeight: '800' },
+  tabs: {flexDirection:'row',direction:'rtl',borderBottomWidth:1,borderBottomColor:colors.border,marginTop:10,marginBottom:8},
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 14, minHeight:48, borderBottomWidth:2, borderBottomColor:'transparent' },
+  tabOn: { borderBottomColor: colors.primary },
   tabTxt: { ...font.small, color: colors.textSoft, fontWeight: '700' },
-  tabTxtOn: { color: '#fff' },
+  tabTxtOn: { color: colors.primary },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  body: { padding: 14, paddingTop: 4, paddingBottom: 28, gap: 14 },
+  body: { padding: 18, paddingTop: 4, paddingBottom: 28, gap: 14 },
 
   waitBox: {
     backgroundColor: colors.surface,
@@ -923,18 +894,18 @@ const st = StyleSheet.create({
     padding: 10,
     gap: 6,
   },
-  waitTitle: {
+  waitTitle: { 
     ...font.small,
     color: colors.primary,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
-  waitRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  waitName: { ...font.small, color: colors.text, fontWeight: '700', textAlign: 'right' },
-  waitText: { ...font.small, color: colors.textMuted, textAlign: 'right' },
+  waitRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8 },
+  waitName: {  ...font.small, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  waitText: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
 
   group: { gap: 6 },
-  groupHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, marginBottom: 2 },
+  groupHead: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 6, marginBottom: 2 },
   groupTitle: { ...font.body, fontWeight: '800', color: colors.text },
   groupCount: { ...font.small, color: colors.textMuted },
 
@@ -946,7 +917,7 @@ const st = StyleSheet.create({
     overflow: 'hidden',
   },
   rowDone: { opacity: 0.6 },
-  rowMain: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 10, padding: 12 },
+  rowMain: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'flex-start', gap: 12, padding: 16 },
   check: {
     width: 22,
     height: 22,
@@ -958,16 +929,15 @@ const st = StyleSheet.create({
     marginTop: 1,
   },
   checkOn: { backgroundColor: colors.green, borderColor: colors.green },
-  rowText: { flex: 1, gap: 3 },
-  rowTitle: {
-    ...font.body,
+  rowText: { flex: 1, gap: 5 },
+  rowTitle: { 
+    ...font.title,
     color: colors.text,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
   },
   strike: { textDecorationLine: 'line-through', color: colors.textMuted },
-  metaRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  meta: { ...font.small, color: colors.textMuted, textAlign: 'right' },
+  metaRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  meta: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   metaDoing: { ...font.small, color: colors.primary, fontWeight: '800' },
 
   expand: {
@@ -977,14 +947,13 @@ const st = StyleSheet.create({
     gap: 8,
     backgroundColor: colors.bg,
   },
-  notes: {
+  notes: { 
     ...font.small,
     color: colors.textSoft,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
   },
   shots: { flexGrow: 0 },
-  shot: { width: 92, height: 92, borderRadius: radius.sm, marginLeft: 8 },
+  shot: { width: 240, height: 320, resizeMode: 'contain', borderRadius: radius.sm, marginLeft: 8 },
   // Claude's proof is a wide table, not a phone screenshot — a square crop of
   // it shows one corner and nothing legible. Wider and letterboxed so the
   // shape of the table is recognisable before you open it.
@@ -1007,7 +976,7 @@ const st = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
-  actions: { flexDirection: 'row-reverse', gap: 6, flexWrap: 'wrap' },
+  actions: { flexDirection: 'row', direction: 'rtl' as const, gap: 6, flexWrap: 'wrap' },
   chip: {
     paddingHorizontal: 11,
     paddingVertical: 6,
@@ -1017,7 +986,7 @@ const st = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   bigChip: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
@@ -1030,17 +999,18 @@ const st = StyleSheet.create({
   },
   chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipAccent: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 5,
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   chipTxt: { ...font.small, color: colors.textSoft, fontWeight: '700' },
-  chipTxtOn: { color: '#fff' },
+  chipTxtOn: { color: colors.onPrimary },
 
   kindPill: {
-    flexDirection: 'row-reverse',
+    alignSelf: 'flex-start',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 3,
     paddingHorizontal: 6,
@@ -1056,9 +1026,9 @@ const st = StyleSheet.create({
   kindTxt: { ...font.small, color: colors.textSoft, fontWeight: '800', fontSize: 10 },
   checkChat: { borderColor: colors.primary },
 
-  filterRow: { flexDirection: 'row-reverse', gap: 6, paddingBottom: 8 },
+  filterRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 6, paddingBottom: 8 },
   filterChip: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 10,
@@ -1075,7 +1045,7 @@ const st = StyleSheet.create({
   checkClaude: { borderColor: colors.primary },
   metaClaude: { ...font.small, color: colors.primary, fontWeight: '800' },
   lockPill: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 3,
     paddingHorizontal: 6,
@@ -1093,18 +1063,17 @@ const st = StyleSheet.create({
     gap: 6,
     backgroundColor: colors.surface,
   },
-  claudeHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
-  claudeTitle: {
+  claudeHead: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 5 },
+  claudeTitle: { 
     ...font.small,
     color: colors.primary,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
-  claudeNote: {
+  claudeNote: { 
     ...font.small,
     color: colors.text,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   modalWrap: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
@@ -1116,7 +1085,7 @@ const st = StyleSheet.create({
     maxHeight: '90%',
   },
   modalHead: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
@@ -1130,19 +1099,18 @@ const st = StyleSheet.create({
     paddingVertical: 11,
     color: colors.text,
     marginBottom: 10,
-    writingDirection: 'rtl',
   },
   modalScroll: { flexShrink: 1 },
   inputMulti: { minHeight: 80, textAlignVertical: 'top' },
-  label: {
+  label: { 
     ...font.small,
     color: colors.textSoft,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     marginBottom: 6,
   },
-  chipRow: { flexDirection: 'row-reverse', gap: 6, marginBottom: 12 },
-  imgRow: { flexDirection: 'row-reverse', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
+  chipRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 6, marginBottom: 12 },
+  imgRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 8, marginBottom: 14, flexWrap: 'wrap' },
   thumb: { width: 64, height: 64, borderRadius: radius.sm },
   addImg: {
     width: 64,
@@ -1161,5 +1129,5 @@ const st = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  saveTxt: { ...font.body, color: '#fff', fontWeight: '800' },
+  saveTxt: { ...font.body, color: colors.onPrimary, fontWeight: '800' },
 });

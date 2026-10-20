@@ -1,3 +1,4 @@
+import { Disclosure } from './ui';
 // The "reply as Teamder" sheet.
 //
 // Opened from a task built out of a report, and from a user's card. Shows the
@@ -5,26 +6,12 @@
 // and sends as the brand rather than as a personal profile.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  AppState,
-  Alert,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, AppState, Alert, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RtlTextInput as TextInput } from './RtlTextInput';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, font, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import {
   listUserReports,
   loadThread,
@@ -186,7 +173,7 @@ export function TeamderChatSheet({
           <View style={st.head}>
             <View style={st.headText}>
               <Text style={font.h2}>{userName || 'שיחה'}</Text>
-              <Text style={st.sub}>נשלח בשם ⁦Teamder⁩ · תשובות מתעדכנות אוטומטית</Text>
+              <Text style={st.sub}>תמיכת ⁦Teamder⁩</Text>
             </View>
             <Pressable accessibilityLabel="סגירת השיחה" onPress={() => { Keyboard.dismiss(); onClose(); }} hitSlop={10}>
               <Ionicons name="close" size={22} color={colors.textSoft} />
@@ -226,6 +213,7 @@ export function TeamderChatSheet({
             {thread && thread.messages.length >= THREAD_WINDOW ? <Text style={st.empty}>מוצגות {THREAD_WINDOW} ההודעות האחרונות</Text> : null}
           </ScrollView>
 
+          <Disclosure title="תבניות תשובה וציטוט דיווח">
           {pickingQuote ? (
             <View style={st.quotePane}>
               <Text style={st.paneTitle}>
@@ -271,8 +259,8 @@ export function TeamderChatSheet({
                   the first chip ended up off-screen past the right edge. The
                   primary action can't depend on the user scrolling to find it. */}
               <Pressable disabled={sending || resolving} onPress={() => setPickingQuote(true)} style={[st.chip, st.chipAccent]}>
-                <Ionicons name="chatbox-ellipses-outline" size={14} color="#fff" />
-                <Text style={[st.chipTxt, { color: '#fff' }]}>צטט דיווח</Text>
+                <Ionicons name="chatbox-ellipses-outline" size={14} color={colors.onPrimary} />
+                <Text style={[st.chipTxt, { color: colors.onPrimary }]}>צטט דיווח</Text>
               </Pressable>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={st.chips}>
                 {TEMPLATES.map((t) => (
@@ -291,6 +279,7 @@ export function TeamderChatSheet({
             </View>
           )}
 
+          </Disclosure>
           <View style={st.composer}>
             <TextInput
               value={text}
@@ -311,9 +300,9 @@ export function TeamderChatSheet({
               style={[st.send, (!text.trim() || sending) && { opacity: 0.4 }]}
             >
               {sending ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={colors.onPrimary} size="small" />
               ) : (
-                <Ionicons name="send" size={18} color="#fff" />
+                <Ionicons name="send" size={18} color={colors.onPrimary} />
               )}
             </Pressable>
           </View>
@@ -334,34 +323,33 @@ const st = StyleSheet.create({
     height: '90%',
   },
   head: {
-    flexDirection: 'row', direction: 'rtl',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 10,
   },
   headText: { flex: 1 },
-  sub: { ...font.small, color: colors.textMuted, textAlign: 'right' },
+  sub: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   thread: { flex: 1 },
   threadBody: { gap: 8, paddingBottom: 8, direction: 'rtl' },
   bubble: { maxWidth: '85%', padding: 10, borderRadius: radius.md },
   mine: { alignSelf: 'flex-start', backgroundColor: colors.primarySoft },
   theirs: { alignSelf: 'flex-end', backgroundColor: colors.surfaceAlt },
-  bubbleText: {
+  bubbleText: { 
     ...font.body,
     color: colors.text,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
   },
   empty: { ...font.small, color: colors.textMuted, textAlign: 'center', marginTop: 16 },
   chipRow: {
-    flexDirection: 'row', direction: 'rtl',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 6,
     marginVertical: 8,
   },
   chips: { flexGrow: 0, flexShrink: 1 },
   chip: {
-    flexDirection: 'row', direction: 'rtl',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 11,
@@ -384,23 +372,22 @@ const st = StyleSheet.create({
     marginVertical: 8,
     maxHeight: 240,
   },
-  paneTitle: { ...font.small, color: colors.text, fontWeight: '800', textAlign: 'right' },
+  paneTitle: {  ...font.small, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   quoteList: { marginTop: 6 },
   quoteRow: {
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  quoteText: {
+  quoteText: { 
     ...font.small,
     color: colors.text,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
   },
-  quoteMeta: { flexDirection: 'row', direction: 'rtl', alignItems: 'center', gap: 6, marginTop: 3 },
-  quoteMetaTxt: { ...font.small, color: colors.textMuted, textAlign: 'right' },
+  quoteMeta: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 6, marginTop: 3 },
+  quoteMetaTxt: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   paneClose: { alignItems: 'center', paddingTop: 8 },
-  composer: { flexDirection: 'row', direction: 'rtl', alignItems: 'flex-end', gap: 8 },
+  composer: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'flex-end', gap: 8 },
   input: {
     flex: 1,
     backgroundColor: colors.surface,
@@ -413,7 +400,6 @@ const st = StyleSheet.create({
     minHeight: 64,
     maxHeight: 140,
     textAlignVertical: 'top',
-    writingDirection: 'rtl',
   },
   send: {
     width: 44,
@@ -424,7 +410,7 @@ const st = StyleSheet.create({
     justifyContent: 'center',
   },
   source: {paddingBottom:8,marginBottom:8,borderBottomWidth:1,borderBottomColor:colors.border},
-  sourceText: {...font.small,color:colors.textMuted,textAlign:'right'},
+  sourceText: { ...font.small,color:colors.textMuted,textAlign: RTL_LABEL_ALIGN},
   photo: {width:190,height:240,borderRadius:10,marginBottom:8},
   time: {...font.small,color:colors.textMuted,fontSize:10,marginTop:6},
   error: { ...font.small, color: colors.amber, padding: 10 },

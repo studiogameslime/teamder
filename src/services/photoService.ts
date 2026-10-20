@@ -274,6 +274,8 @@ export async function deleteUserPhoto(uid: string): Promise<void> {
     const { storage } = getFirebase();
     await deleteObject(storageRef(storage, AVATAR_PATH(uid)));
   } catch (err) {
+    // Deleting an absent avatar has already achieved the requested state.
+    if ((err as { code?: string })?.code === 'storage/object-not-found') return;
     logError('deleteUserPhoto', err, { uid });
     // 404 / permission-denied / network — all acceptable.
   }

@@ -43,6 +43,7 @@ export const socialPlayersService = {
       ...(serverDay !== undefined ? { day: serverDay } : {}),
       ...(serverTime ? { time: serverTime } : {}),
     });
+    if (opts.cursor && page.cursor === opts.cursor) throw new Error('SOCIAL_SEARCH_CURSOR_STALLED');
     return { ...page, players: page.players.filter(player => playerDiscoveryMatches(player, opts)) };
   },
   async profile(userId: string): Promise<SocialProfile> {

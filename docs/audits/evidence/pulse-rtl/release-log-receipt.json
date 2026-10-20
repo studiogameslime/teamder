@@ -1,0 +1,14 @@
+{
+  "verifiedAt": "2026-10-18T21:18:49.006Z",
+  "ids": [
+    "pulse-native-rtl-20261019-v106",
+    "pulse-native-input-rtl-20261019-v106",
+    "pulse-native-rawtext-20261019-v106"
+  ],
+  "readbackVerified": true,
+  "previousItems": 786,
+  "currentItems": 789,
+  "distributed": false,
+  "pulseTaskUpdated": false,
+  "reason": "בקשה בשיחה ללא מזהה משימת פולס"
+}

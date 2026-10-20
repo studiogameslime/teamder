@@ -66,6 +66,16 @@ export function NextGameCard({
   onCoverError,
 }: Props) {
   const hasGame = typeof startsAt === 'number';
+  if (!hasGame) return <View style={preview.card}>
+    <View style={preview.top}>
+      <View style={preview.details}>
+        <View style={preview.row}><Ionicons name="calendar-outline" size={22} color="#0B1942"/><Text style={preview.heading}>{he.communityNextGameEyebrow}</Text></View>
+        <Text style={preview.location}>{he.communityNextGameNone}</Text>
+      </View>
+      <View style={[preview.photo,{minHeight:90}]}><Image source={require('@/assets/images/match-football.png')} style={{width:'100%',height:90}} resizeMode="contain" accessible={false}/></View>
+    </View>
+    {onCreateRecurring ? <Pressable style={preview.cta} accessibilityRole="button" accessibilityLabel={he.communityNextGameCreateRecurring} onPress={onCreateRecurring}><Text style={preview.ctaText}>{he.communityNextGameCreateRecurring}</Text><Ionicons name="repeat" size={18} color="#FFFFFF"/></Pressable> : null}
+  </View>;
   const isDeferred =
     typeof registrationOpensAt === 'number' &&
     registrationOpensAt > Date.now();

@@ -98,7 +98,7 @@ export const EMPTY_GROUP_FORM_VALUES: GroupFormValues = {
   seasons: NEW_CLUB_SEASONS_DEFAULT,
   name: '',
   description: '',
-  isOpen: false,
+  isOpen: true,
   internalRating: false,
   hideInternalRating: false,
   cardsEnabled: false,
@@ -323,6 +323,7 @@ export function GroupWizardForm({
                   label={he.createGroupDescription}
                   value={values.description}
                   onChangeText={(v) => set('description', v)}
+                  placeholder="ספרו על המועדון ועל הכדורגל שלכם"
                   multiline
                   maxLength={500}
                 />

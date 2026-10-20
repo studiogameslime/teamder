@@ -1,14 +1,15 @@
 // ErrorsBody — the "שגיאות" segment of the unified Dev Inbox (DevInboxScreen).
 // Self-scrolling content (no Screen header) so it can sit under a shared
-// segmented control. Reads errors + user feedback (merged) via fetchIssues.
+// segmented control. Reads technical errors only; user feedback has its own detail view.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RtlTextInput as TextInput } from '../components/RtlTextInput';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, font, radius } from '../theme';
-import { Card, Empty, StatTile } from '../components/ui';
-import { fetchIssues } from '../services/errorsService';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
+import { SectionTabs, Card, Empty, StatTile } from '../components/ui';
+import { fetchErrors } from '../services/errorsService';
 import { describeError } from '../services/errorCatalog';
 import { timeAgo } from '../format';
 import type { ErrorRecord, ErrorStatus } from '../types';
@@ -78,6 +79,7 @@ export function ErrorItem({ e }: { e: ErrorRecord }) {
 export function ErrorsBody() {
   const nav =
     useNavigation<NativeStackNavigationProp<ErrorsStackParams, 'DevInbox'>>();
+  const [search, setSearch] = useState('');
   const [errors, setErrors] = useState<ErrorRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -85,7 +87,7 @@ export function ErrorsBody() {
 
   const load = useCallback(async (force = false) => {
     try {
-      setErrors(await fetchIssues(force));
+      setErrors(await fetchErrors(force));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -101,10 +103,12 @@ export function ErrorsBody() {
   useEffect(() => nav.addListener('focus', () => load()), [nav, load]);
 
   const shown = useMemo(() => {
-    if (filter === 'all') return errors;
-    if (filter === 'resolved') return errors.filter((e) => e.status === 'resolved');
-    return errors.filter((e) => e.status !== 'resolved');
-  }, [errors, filter]);
+    const needle = search.trim().toLocaleLowerCase();
+    const matches = errors.filter(e => !needle || `${describeError(e).title} ${e.message} ${e.screen ?? ''} ${e.userId ?? ''}`.toLocaleLowerCase().includes(needle));
+    if (filter === 'all') return matches;
+    if (filter === 'resolved') return matches.filter((e) => e.status === 'resolved');
+    return matches.filter((e) => e.status !== 'resolved');
+  }, [errors, filter, search]);
 
   const openCount = errors.filter((e) => e.status !== 'resolved').length;
   const totalOccur = errors.reduce((s, e) => s + e.count, 0);
@@ -125,34 +129,15 @@ export function ErrorsBody() {
         />
       }
     >
-      <View style={styles.row}>
-        <StatTile label="פתוחות" value={String(openCount)} tone={openCount ? 'red' : 'green'} />
-        <StatTile label="סוגי שגיאות" value={String(errors.length)} />
-        <StatTile label="סה״כ מקרים" value={String(totalOccur)} />
-      </View>
-
-      <View style={styles.chips}>
-        {FILTERS.map((f) => {
-          const active = filter === f.key;
-          return (
-            <Pressable
-              key={f.key}
-              onPress={() => setFilter(f.key)}
-              style={[styles.chip, active && styles.chipActive]}
-            >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {f.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Card><Text style={font.title}>{loading ? 'טוען…' : `${openCount} שגיאות פתוחות`}</Text><Text style={font.small}>{errors.length} סוגי שגיאות · {totalOccur} מקרים</Text></Card>
+      <TextInput accessibilityLabel="חיפוש שגיאה" value={search} onChangeText={setSearch} placeholder="חיפוש שגיאה, מסך או משתמש" placeholderTextColor={colors.textMuted} style={{ direction: 'rtl' as const,padding:14,color:colors.text,textAlign: RTL_LABEL_ALIGN,backgroundColor:colors.surface,borderRadius:12}} />
+      <SectionTabs value={filter} onChange={setFilter} items={FILTERS} />
 
       {loading ? null : shown.length ? (
         shown.map((e) => (
           <Pressable
-            key={e.id}
-            onPress={() => nav.navigate('ErrorDetail', { id: e.id })}
+            key={`${e.coll ?? 'errors'}:${e.id}`}
+            onPress={() => nav.navigate('ErrorDetail', { id: e.id, collection: e.coll ?? 'errors' })}
           >
             <ErrorItem e={e} />
           </Pressable>
@@ -178,7 +163,7 @@ const styles = StyleSheet.create({
   },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { ...font.small, color: colors.textSoft },
-  chipTextActive: { color: '#fff', fontWeight: '700' },
+  chipTextActive: { color: colors.onPrimary, fontWeight: '700' },
   card: { gap: 6 },
   top: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 9, height: 9, borderRadius: 5 },

@@ -1,47 +1,29 @@
-import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
-// AchievementsScreen — dedicated view for the user's achievements.
-//
-// Reachable from the Profile-tab hamburger. Replaces the previous
-// "open my full player card" route which exposed a lot more than the
-// user wanted. This screen renders ONLY the achievements grid +
-// detail popover, nothing else.
-//
-// Read model: pulls the latest /users/{uid} on mount so the unlocked
-// list is fresh (the local store can lag a few seconds behind a
-// just-fired achievement bump).
-
+// One cabinet for frozen season awards and tiered personal milestones.
 import React, { useEffect, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeModal as Modal } from '@/components/SafeModal';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import { Button } from '@/components/Button';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { AchievementBadge } from '@/components/AchievementBadge';
+import { UserAvatar } from '@/components/UserAvatar';
 import { SeasonTitlesShelf } from '@/components/profile/SeasonTitlesShelf';
+import { AchievementTile, AchievementDetail } from '@/components/profile/AchievementCabinetCards';
 import { AchievementCelebration } from '@/components/AchievementCelebration';
-import { AppearItem } from '@/components/anim/AppearItem';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
-import {
-  achievementsService,
-  type NewlyUnlocked,
-} from '@/services/achievementsService';
-import { TIER_META } from '@/data/achievements';
+import { achievementsService, type NewlyUnlocked } from '@/services/achievementsService';
+import { seasonTitlesService, type HeldSeasonTitle } from '@/services/seasonTitlesService';
 import { userService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { logError } from '@/services/errorLog';
+import { colors, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import type { User, UserAchievementState } from '@/types';
 
 export function AchievementsScreen() {
+  const [tab, setTab] = useState<'season' | 'personal'>('season');
+  const [titleAttempt, setTitleAttempt] = useState(0);
+  const [titleState, setTitleState] = useState<{ owner: string; items: HeldSeasonTitle[] | null; failed: boolean } | null>(null);
   const localUser = useUserStore((s) => s.currentUser);
   const groups = useGroupStore((s) => s.groups);
   const [user, setUser] = useState<User | null>(localUser);
@@ -59,6 +41,20 @@ export function AchievementsScreen() {
   // Newly-reached tiers to celebrate (filled from persistDerivedUnlocks).
   const [celebrate, setCelebrate] = useState<NewlyUnlocked[]>([]);
 
+  useEffect(() => {
+    if (!localUser?.id) return;
+    let alive = true;
+    const owner = localUser.id;
+    setTitleState(null);
+    seasonTitlesService.list(owner).then(items => {
+      if (alive) setTitleState({ owner, items, failed: false });
+    }).catch(error => {
+      logError('seasonTitlesLoad', error, { userId: owner });
+      if (alive) setTitleState({ owner, items: null, failed: true });
+    });
+    return () => { alive = false; };
+  }, [localUser?.id, titleAttempt]);
+
   // Screen-level mount log so we can chart how often the achievements
   // page is opened (separate from the generic ScreenView signal).
   useEffect(() => {
@@ -68,6 +64,10 @@ export function AchievementsScreen() {
   useEffect(() => {
     if (!localUser) return;
     let alive = true;
+    setUser(localUser);
+    setCounters(null);
+    setActiveId(null);
+    setCelebrate([]);
     setLoading(true);
     userService
       .getUserById(localUser.id)
@@ -121,348 +121,65 @@ export function AchievementsScreen() {
     // teams* metrics on the next render.
   }, [localUser?.id, groups, reloadTick, localUser?.friends?.length, localUser?.stats?.goals, localUser?.stats?.assists, localUser?.stats?.cleanSheets]);
 
-  // Show the loader until the user is loaded AND the derived counters have
-  // resolved (or failed). Rendering the STORED counters first and then swapping
-  // to the derived ones made the screen flash a wrong set of badges for a frame
-  // before settling (user report). On a derivation failure we proceed with the
-  // stored counters as a fallback.
-  if (!user || (!counters && !deriveFailed)) {
-    return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title={he.profileSectionMyAchievements} />
-        <View style={styles.center}>
-          <SoccerBallLoader size={40} />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const titles = titleState?.owner === localUser?.id ? titleState : null;
+  const ready = !!counters || deriveFailed;
+  const items = user && user.id === localUser?.id && ready
+    ? counters ? achievementsService.listFromCounters(user, counters) : achievementsService.list(user)
+    : [];
+  // Stable positions follow the approved sketch, including locked categories.
+  // Unlocks, tiers and progress still come only from the existing service.
+  const order = ['goals', 'assists', 'games', 'cleanSheets', 'partner', 'duo', 'distinctPlayers', 'friends', 'communities', 'invites', 'coaching', 'founder'];
+  const ordered = [...items].sort((a, b) => order.indexOf(a.def.id) - order.indexOf(b.def.id));
+  const unlockedCount = items.filter(item => item.unlocked).length;
+  const goldCount = items.filter(item => item.currentTier?.tier === 'gold').length;
+  const active = items.find(item => item.def.id === activeId) ?? null;
 
-  // Prefer the derived counters; fall back to the stored ones only if the
-  // derivation failed. Never lose the persisted unlocked list.
-  const items = counters
-    ? achievementsService.listFromCounters(user, counters)
-    : achievementsService.list(user);
-  // Unlocked first, then by tier (gold → silver → bronze), so the strongest
-  // badges lead; locked ones keep their definition order at the end.
-  const tierRank = (t?: string | null) =>
-    t === 'gold' ? 0 : t === 'silver' ? 1 : t === 'bronze' ? 2 : 3;
-  const ordered = [...items].sort((a, b) => {
-    if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
-    if (a.unlocked && b.unlocked)
-      return tierRank(a.currentTier?.tier) - tierRank(b.currentTier?.tier);
-    return 0;
-  });
-  const unlockedCount = items.filter((i) => i.unlocked).length;
-  const active = activeId ? items.find((i) => i.def.id === activeId) : null;
-
-  return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader title={he.profileSectionMyAchievements} />
-      <ScrollView contentContainerStyle={styles.content}>
-        {deriveFailed ? <View style={{ gap: spacing.sm }}>
-          <Text style={{ color: colors.textMuted, textAlign: RTL_LABEL_ALIGN }}>העדכון לא הצליח. ההישגים השמורים שלך מוצגים כאן.</Text>
-          <Button title={he.retry} variant="outline" onPress={() => setReloadTick((t) => t + 1)} />
-        </View> : null}
-        {/* Titles above the achievements grid, and only when there are any.
-            An achievement is granted for a milestone; a title was won off
-            other people, once, in a competition with an end — so it leads. */}
-        {localUser?.id ? <SeasonTitlesShelf userId={localUser.id} /> : null}
-
-        <View style={styles.headerRow}>
-          <Text style={styles.title}>{he.achievementsTitle}</Text>
-          <Text style={styles.count}>
-            {he.achievementsCount(unlockedCount, items.length)}
-          </Text>
-        </View>
-
-        {items.length === 0 ? (
-          <Text style={styles.empty}>{he.achievementsEmpty}</Text>
-        ) : (
-          <>
-            <View style={styles.grid}>
-              {ordered.map((item, idx) => (
-                <AppearItem key={item.def.id} index={idx} style={styles.cell}>
-                  <AchievementBadge
-                    def={item.def}
-                    tier={item.currentTier?.tier ?? null}
-                    size={72}
-                    showTierLabel
-                    onPress={() => setActiveId(item.def.id)}
-                  />
-                </AppearItem>
-              ))}
-            </View>
-
-          </>
-        )}
-        {loading ? (
-          <View style={styles.loadingFooter}>
-            <SoccerBallLoader size={20} />
-          </View>
-        ) : null}
-      </ScrollView>
-
-      {/* Tap-to-detail tooltip — a centered popover so the explanation is
-          always visible (the old inline card sat below the fold and was
-          easy to miss). Tap anywhere to dismiss. */}
-      <Modal
-        visible={!!active}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setActiveId(null)}
-      >
-        <Pressable style={styles.tooltipBackdrop} onPress={() => setActiveId(null)}>
-          {active ? (
-            <Pressable style={styles.tooltipCard} onPress={(e) => e.stopPropagation()}>
-              <AchievementBadge
-                def={active.def}
-                tier={active.currentTier?.tier ?? null}
-                size={72}
-                hideTitle
-              />
-              <Text style={styles.detailTitle}>{active.def.titleHe}</Text>
-              {/* What the player has actually DONE for this badge (feat-63l30):
-                  e.g. "כבר 10 שערים". Counted metrics only — a one-off badge
-                  is binary (earned / not) and has no running tally. */}
-              {!deriveFailed && !active.def.oneOff && active.value > 0 ? (
-                <Text style={styles.detailTally}>
-                  {he.achievementYourTally(active.value, active.def.nounHe)}
-                </Text>
-              ) : null}
-              {/* How to earn — the action + the concrete tier targets, so
-                  the user knows exactly what unlocks each medal. */}
-              <View style={styles.howBox}>
-                <Text style={styles.howTitle}>{he.achievementHowTitle}</Text>
-                <Text style={styles.howText}>{active.def.howHe}</Text>
-                {!active.def.oneOff ? (
-                  <Text style={styles.howTiers}>
-                    {he.achievementTiersLine(
-                      active.def.tiers[0].threshold,
-                      active.def.tiers[1].threshold,
-                      active.def.tiers[2].threshold,
-                    )}
-                  </Text>
-                ) : null}
-              </View>
-              {active.currentTier ? (
-                <Text
-                  style={[
-                    styles.detailTier,
-                    { color: TIER_META[active.currentTier.tier].color },
-                  ]}
-                >
-                  {he.achievementTierReached(
-                    TIER_META[active.currentTier.tier].he,
-                  )}
-                </Text>
-              ) : null}
-              {/* Progress bar toward the NEXT tier (or "maxed" when gold). */}
-              {deriveFailed ? (
-                <Text style={styles.detailDesc}>ההתקדמות העדכנית אינה זמינה כרגע.</Text>
-              ) : active.next ? (
-                <View style={styles.progressWrap}>
-                  <View style={styles.progressTrack}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        {
-                          width: `${Math.min(1, active.value / active.next.threshold) * 100}%`,
-                          backgroundColor: active.currentTier
-                            ? TIER_META[active.currentTier.tier].color
-                            : '#94A3B8',
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.progressText}>
-                    {he.achievementProgressToNext(
-                      Math.min(active.value, active.next.threshold),
-                      active.next.threshold,
-                      TIER_META[active.next.tier].he,
-                    )}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.detailDesc}>{he.achievementMaxed}</Text>
-              )}
-              {active.unlocked && active.unlockedAt ? (
-                <Text style={styles.detailMeta}>
-                  {he.achievementUnlockedAt(formatHebrewDate(active.unlockedAt))}
-                </Text>
-              ) : !active.unlocked ? (
-                <Text style={styles.detailMeta}>{he.achievementsLockedHint}</Text>
-              ) : null}
-            </Pressable>
-          ) : null}
-        </Pressable>
-      </Modal>
-
-      {celebrate.length > 0 ? (
-        <AchievementCelebration
-          items={celebrate}
-          onDone={() => setCelebrate([])}
-        />
-      ) : null}
-    </SafeAreaView>
-  );
+  if (!localUser) return <SafeAreaView style={styles.root} edges={['top']}><ScreenHeader title="ארון התארים שלי" /><Text style={styles.note}>יש להתחבר כדי לראות את התארים שלך.</Text></SafeAreaView>;
+  return <SafeAreaView style={styles.root} edges={['top']}>
+    <ScreenHeader title="ארון התארים שלי" />
+    <ScrollView key={tab} contentContainerStyle={styles.content}>
+      <View style={styles.identity}>
+        <UserAvatar user={localUser} size={43} />
+        <View style={{ flex: 1, gap: 2 }}><Text style={styles.name}>{localUser.name}</Text><Text style={styles.tagline}>ההישגים שלך, לאורך הדרך</Text></View>
+        <View style={styles.counter}><Text style={styles.total}>{titles?.items ? titles.items.length : '—'}</Text><Text style={styles.counterLabel}>תארי עונה</Text></View>
+        <View style={styles.counter}><Text style={styles.total}>{ready ? unlockedCount : '—'}</Text><Text style={styles.counterLabel}>הישגים שנפתחו</Text></View>
+      </View>
+      <View style={styles.tabs} accessibilityRole="tablist">
+        {([['season', 'תארי עונה'], ['personal', 'הישגים אישיים']] as const).map(([key, label]) => <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} style={[styles.tab, tab === key && styles.selectedTab]} onPress={() => setTab(key)}>
+          <Text style={[styles.tabText, tab === key && styles.selectedText]}>{label}</Text>
+        </Pressable>)}
+      </View>
+      {tab === 'season' ? <>
+        {titles?.failed ? <View style={styles.notice}><Text style={styles.note}>טעינת תארי העונה לא הצליחה.</Text><Button title={he.retry} variant="outline" onPress={() => setTitleAttempt(value => value + 1)} /></View>
+          : titles?.items ? <SeasonTitlesShelf key={localUser.id} titles={titles.items} /> : <View style={styles.wait}><SoccerBallLoader size={30} /></View>}
+      </> : <>
+        <View style={{ gap: 2 }}><Text style={styles.sectionTitle}>ההישגים האישיים</Text><Text style={styles.note}>{ready ? `${unlockedCount} מתוך ${items.length} סוגים נפתחו · ${goldCount} בדרגת זהב` : 'טוענים את ההישגים שלך…'}</Text></View>
+        {deriveFailed ? <View style={styles.notice}><Text style={styles.note}>העדכון לא הצליח. ההישגים השמורים שלך מוצגים כאן.</Text><Button title={he.retry} variant="outline" onPress={() => setReloadTick(value => value + 1)} /></View> : null}
+        {ready ? <View style={styles.grid}>{ordered.map(item => <AchievementTile key={item.def.id} item={item} unavailable={deriveFailed} onPress={() => setActiveId(item.def.id)} />)}</View> : <View style={styles.wait}><SoccerBallLoader size={30} /></View>}
+        {loading ? <SoccerBallLoader size={18} /> : null}
+      </>}
+    </ScrollView>
+    <AchievementDetail item={active} unavailable={deriveFailed} onClose={() => setActiveId(null)} />
+    {celebrate.length ? <AchievementCelebration items={celebrate} onDone={() => setCelebrate([])} /> : null}
+  </SafeAreaView>;
 }
-
-function formatHebrewDate(ms: number): string {
-  const d = new Date(ms);
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yy = String(d.getFullYear()).slice(2);
-  return `${dd}/${mm}/${yy}`;
-}
-
-// Three per row. Kept under a third so the two inter-column gaps that
-// `space-between` inserts fit inside 100% — at exactly 33.333% the row
-// overflows and silently drops to two columns (orphaning the left half).
-const CELL_BASIS = '30%';
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    padding: spacing.lg,
-    gap: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  title: {
-    ...typography.h3,
-    color: colors.text,
-    fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  count: {
-    ...typography.body,
-    color: colors.textMuted,
-    fontWeight: '700',
-  },
-  empty: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xl,
-  },
-  // space-between distributes the cells evenly across each row,
-  // so a lone tile in the bottom row sits flush to the start (the
-  // right side under RTL) instead of getting visually orphaned in
-  // the centre. The unlocked badge stays on the right where the
-  // user's eye lands first.
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    rowGap: spacing.lg,
-    justifyContent: 'space-between',
-  },
-  cell: {
-    width: CELL_BASIS,
-    alignItems: 'center',
-  },
-  tooltipBackdrop: { backgroundColor: overlayTheme.backdrop,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  tooltipCard: { ...overlaySurfaces.dialog,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    maxWidth: 360,
-  },
-  detailTitle: {
-    ...typography.h3,
-    color: colors.text,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  detailTally: {
-    ...typography.body,
-    color: colors.primary,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  detailTier: {
-    ...typography.body,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  detailDesc: {
-    ...typography.body,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  howBox: {
-    width: '100%',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.sm,
-    gap: 2,
-    alignItems: 'center',
-  },
-  howTitle: {
-    ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  howText: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  howTiers: {
-    ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  detailMeta: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  progressWrap: {
-    width: '100%',
-    marginTop: spacing.sm,
-    alignItems: 'center',
-    gap: 4,
-  },
-  progressTrack: {
-    width: '100%',
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E2E8F0',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  progressText: {
-    ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
-  },
-  loadingFooter: {
-    alignItems: 'center',
-    paddingTop: spacing.md,
-  },
+  root: { flex: 1, backgroundColor: '#F2F8FF' },
+  content: { padding: 12, gap: 12, paddingBottom: 28 },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },
+  name: { color: colors.text, fontSize: 16, lineHeight: 21, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  tagline: { color: colors.textMuted, fontSize: 10, lineHeight: 14, textAlign: RTL_LABEL_ALIGN },
+  counter: { alignItems: 'center', gap: 2, maxWidth: 66 },
+  total: { color: colors.text, fontSize: 19, lineHeight: 23, fontWeight: '800' },
+  counterLabel: { color: colors.textMuted, fontSize: 9, lineHeight: 12, textAlign: 'center' },
+  tabs: { flexDirection: 'row', borderWidth: 1, borderColor: '#DDEAFB', borderRadius: 12, backgroundColor: colors.surface, padding: 2 },
+  tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+  selectedTab: { backgroundColor: '#1479FF' },
+  tabText: { color: '#425F8C', fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  selectedText: { color: '#FFF' },
+  sectionTitle: { color: colors.text, fontSize: 17, lineHeight: 23, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  note: { color: colors.textMuted, fontSize: 11, lineHeight: 17, textAlign: RTL_LABEL_ALIGN },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'space-between' },
+  notice: { backgroundColor: colors.surface, padding: 12, gap: 8, borderRadius: 12 },
+  wait: { minHeight: 130, justifyContent: 'center', alignItems: 'center' },
 });

@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-10-18T21:23:24.151Z",
+  "uniqueQueriedRounds": 64,
+  "previousCount": 0,
+  "correctedCount": 60,
+  "missingArrival": 64,
+  "excluded": [
+    {
+      "status": "finished",
+      "registered": true,
+      "eveningHappened": false,
+      "explicitAbsence": false
+    },
+    {
+      "status": "finished",
+      "registered": true,
+      "eveningHappened": false,
+      "explicitAbsence": false
+    },
+    {
+      "status": "finished",
+      "registered": true,
+      "eveningHappened": false,
+      "explicitAbsence": false
+    },
+    {
+      "status": "finished",
+      "registered": false,
+      "eveningHappened": true,
+      "explicitAbsence": false
+    }
+  ],
+  "productionWrites": false
+}

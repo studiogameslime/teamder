@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors, radius } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { RTL_LABEL_ALIGN, colors, radius  } from '../theme';
 
 export interface Opt {
   value: string;
@@ -11,8 +12,9 @@ export interface Opt {
 // centered sheet of options. Reused across the segment / campaign / link
 // builders for the dropdown-driven layout.
 export function Dropdown({
-  value, options, onSelect, placeholder, flex, title,
+  value, options, onSelect, placeholder, flex, title, outlined=false,
 }: {
+  outlined?: boolean;
   value?: string;
   options: Opt[];
   onSelect: (v: string) => void;
@@ -24,11 +26,11 @@ export function Dropdown({
   const cur = options.find((o) => o.value === value);
   return (
     <>
-      <Pressable style={[s.box, flex ? { flex } : null]} onPress={() => setOpen(true)}>
-        <Text style={s.chev}>▾</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={title ?? placeholder ?? cur?.label} style={[s.box, outlined && {backgroundColor:colors.bg}, flex ? { flex } : null]} onPress={() => setOpen(true)}>
+
         <Text style={[s.val, !cur && s.ph]} numberOfLines={1}>
           {cur ? cur.label : placeholder ?? 'בחר'}
-        </Text>
+        </Text><Ionicons name="chevron-down" size={14} color={colors.textMuted}/>
       </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={s.backdrop} onPress={() => setOpen(false)}>
@@ -51,18 +53,18 @@ export function Dropdown({
 
 const s = StyleSheet.create({
   box: {
-    flexDirection: 'row-reverse', alignItems: 'center', gap: 6,
+    flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 6,
     backgroundColor: colors.surfaceAlt, borderRadius: radius.sm,
     borderWidth: 1, borderColor: colors.border, paddingHorizontal: 11, paddingVertical: 10,
   },
   chev: { color: colors.textMuted, fontSize: 12 },
-  val: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600', textAlign: 'right' },
+  val: { direction: 'rtl' as const, flex: 1, color: colors.text, fontSize: 14, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
   ph: { color: colors.textMuted, fontWeight: '400' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', paddingHorizontal: 28 },
   sheet: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingVertical: 6 },
-  title: { color: colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: 'right', paddingHorizontal: 16, paddingVertical: 8 },
-  item: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 13 },
-  itemTxt: { flex: 1, color: colors.textSoft, fontSize: 15, fontWeight: '600', textAlign: 'right' },
+  title: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: RTL_LABEL_ALIGN, paddingHorizontal: 16, paddingVertical: 8 },
+  item: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 13 },
+  itemTxt: { direction: 'rtl' as const, flex: 1, color: colors.textSoft, fontSize: 15, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
   itemOn: { color: colors.text },
   check: { width: 18, color: colors.primary, fontSize: 15, fontWeight: '800', textAlign: 'center' },
 });

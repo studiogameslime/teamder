@@ -5,7 +5,7 @@
 
 import { has } from '../capabilities';
 import type { ErrorRecord, ErrorStatus } from '../types';
-import { listAll, patchDoc, type FsDoc } from './firestoreRest';
+import { listAll, getDoc, patchDoc, type FsDoc } from './firestoreRest';
 import { cached, invalidate } from './cache';
 
 function mapError(d: FsDoc): ErrorRecord {
@@ -42,8 +42,9 @@ function mapFeedback(d: FsDoc): ErrorRecord {
     title: undefined, // catalog derives a friendly title from category
     category: type === 'suggestion' ? 'suggestion' : 'report',
     coll: 'feedback',
+    image: typeof d.image === 'string' ? d.image : undefined,
     count: 1,
-    status: (d.status as ErrorStatus) ?? 'new',
+    status: d.status === 'done' ? 'resolved' : d.status === 'reviewed' ? 'reviewed' : 'new',
     firstSeen: at,
     lastSeen: at,
     message: d.message ?? '', // the user's own words — the main content
@@ -94,8 +95,15 @@ export async function setErrorStatus(
   status: ErrorStatus,
   coll: 'errors' | 'feedback' = 'errors',
 ): Promise<boolean> {
-  const ok = await patchDoc(`${coll}/${id}`, { status });
+  const ok = await patchDoc(`${coll}/${id}`, { status: coll === 'feedback' && status === 'resolved' ? 'done' : status });
+  invalidate(coll === 'errors' ? 'work:error' : 'work:report');
   // Reflect the change without waiting for the TTL.
   invalidate(coll === 'errors' ? 'raw:errors' : 'raw:feedback');
   return ok;
+}
+
+/** Read one exact source rather than scanning two collections by id. */
+export async function fetchIssue(id: string, coll: 'errors' | 'feedback'): Promise<ErrorRecord | null> {
+  const doc = await getDoc(`${coll}/${id}`);
+  return doc ? (coll === 'feedback' ? mapFeedback(doc) : mapError(doc)) : null;
 }

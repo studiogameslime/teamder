@@ -76,7 +76,7 @@ export async function ensureNotificationSetup(): Promise<boolean> {
       name: 'Reviews & ratings',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#3B82F6',
+      lightColor: '#81C99A',
     });
   }
   const current = await Notifications.getPermissionsAsync();

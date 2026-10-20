@@ -132,7 +132,7 @@ describe('the season title values count in Hebrew too', () => {
   it('the averages are not counted things', () => {
     // Named, not bare. A lone "8.4" says nothing about its scale, and it is
     // printed on three separate screens.
-    expect(he.seasonTitleValue('mvp', 8.37)).toBe('ציון 8.4');
+    expect(he.seasonTitleValue('mvp', 8.37)).toBe('ציון 8.37');
   });
 
   it('but the penalty titles are counts now, with their own units', () => {
@@ -199,7 +199,7 @@ describe('the season title values count in Hebrew too', () => {
   // and is not one.
   it('says which evenings the rating is built from', () => {
     expect(he.seasonTitleCoverage(9, 22)).toBe(
-      'מבוסס על 9 מתוך 22 ערבי העונה שבהם נאספו דירוגים',
+      'מבוסס על 9 מתוך 22 מחזורי העונה עם ציון תקף',
     );
   });
 
@@ -215,7 +215,7 @@ describe('the season title values count in Hebrew too', () => {
     // 22 evenings". It says which nights were measured, not how long the
     // season was.
     expect(he.seasonTitleCoverage(9, 22)).toContain('מתוך 22');
-    expect(he.seasonTitleCoverage(9, 22)).toContain('שבהם נאספו דירוגים');
+    expect(he.seasonTitleCoverage(9, 22)).toContain('מחזורי העונה עם ציון תקף');
   });
 
   it('the peer lines too', () => {
@@ -235,4 +235,10 @@ describe('the season title values count in Hebrew too', () => {
     expect(he.seasonPeerVictimDetail(4)).toMatch(/4/);
     expect(he.seasonPeerAssistsDetail(3)).toMatch(/3/);
   });
+});
+
+test('percentage titles never reinterpret a legacy victory count, including one', () => {
+  expect(he.seasonTitleValue('topWinner',66.67,'percent')).toBe('66.67% ניצחונות');
+  expect(he.seasonTitleValue('topWinner',1)).toBe('ניצחון אחד');
+  expect(he.seasonHeroValue('topWinner',1,'percent')).toEqual({big:'1.00%',unit:'ניצחונות'});
 });

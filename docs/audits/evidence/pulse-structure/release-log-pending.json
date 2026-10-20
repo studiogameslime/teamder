@@ -1,0 +1,49 @@
+{
+  "status": "not_uploaded",
+  "target": "appConfig/releaseLog",
+  "instruction": "Read existing document and append these items without overwriting existing entries. Upload referenced JPEG proof to releaseShots before adding shotId. No production access was available in this session.",
+  "items": [
+    {
+      "title": "ארגון ניווט הפולס סביב תמיכה, משתמשים וניהול",
+      "kind": "fix",
+      "version": "next",
+      "area": "פולס",
+      "proofFile": "docs/features/screenshots/pulse-structure-Menu-2026-10-18.png"
+    },
+    {
+      "title": "מידע חלקי בתור העבודה וקישורים למשתמש ולמקור",
+      "kind": "fix",
+      "version": "next",
+      "area": "פולס",
+      "proofFile": "docs/features/screenshots/pulse-structure-TasksExpanded-2026-10-18.png"
+    },
+    {
+      "title": "אבחון לפי מקור ותיקון מצב דיווח סגור",
+      "kind": "fix",
+      "version": "next",
+      "area": "פולס",
+      "proofFile": "docs/features/screenshots/pulse-structure-DevInboxReports-2026-10-18.png"
+    },
+    {
+      "title": "גרסאות שנצפו במכשירים עם כיסוי ורשימת משתמשים",
+      "kind": "feature",
+      "version": "next",
+      "area": "פולס",
+      "proofFile": "docs/features/screenshots/pulse-structure-VersionsExpanded-2026-10-18.png"
+    },
+    {
+      "title": "גרסאות ומכשירים בכרטיס משתמש",
+      "kind": "feature",
+      "version": "next",
+      "area": "פולס",
+      "proofFile": "docs/features/screenshots/pulse-structure-UserDetail-2026-10-18.png"
+    },
+    {
+      "title": "תיקון מכנה מדדי השליחה",
+      "kind": "fix",
+      "version": "next",
+      "area": "פולס",
+      "proofFile": "docs/features/screenshots/pulse-structure-Push-2026-10-18.png"
+    }
+  ]
+}

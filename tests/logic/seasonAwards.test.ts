@@ -299,7 +299,7 @@ describe('the deadly duo needs two eligible players', () => {
       [pair('regular', 'dropin', { score: 2, together: 2 })],
       20,
     );
-    expect(a.deadlyDuo).toBeNull();
+    expect(a.deadlyDuo?.value).toBe(2);
   });
 
   it('two regulars do', () => {
@@ -343,22 +343,22 @@ describe('the deadly duo is a partnership, not an accident', () => {
   // Hebrew name and crowning a different pair would simply look wrong.
   const eligible = (uid: string) => player(uid, { games: 12 });
 
-  it('one assist between two regulars is not a duo', () => {
+  it('one recorded assist can lead the season', () => {
     const a = computeSeasonAwards(
       [eligible('x'), eligible('y')],
       [pair('x', 'y', { score: 1, together: 9 })],
       13,
     );
-    expect(a.deadlyDuo).toBeNull();
+    expect(a.deadlyDuo?.value).toBe(1);
   });
 
-  it('two is still not', () => {
+  it('two recorded assists can lead the season', () => {
     const a = computeSeasonAwards(
       [eligible('x'), eligible('y')],
       [pair('x', 'y', { score: 2, together: 9 })],
       13,
     );
-    expect(a.deadlyDuo).toBeNull();
+    expect(a.deadlyDuo?.value).toBe(2);
   });
 
   it('three is', () => {
@@ -411,7 +411,7 @@ describe('the MVP scale floor', () => {
   // The evening score is clamped to [6, 10] and returns exactly 6.0 for a
   // player who played no mini-games — which is every player of every
   // timer-only club. With the old floor of 0 that sentinel won.
-  const flat = (uid: string) => player(uid, { games: 18, mvpAvg: 6 });
+  const flat = (uid: string) => player(uid, { games: 18, mvpAvg: 6, ratedRounds: 0 });
 
   it('nobody is player of the season on the bottom of the scale', () => {
     const rows = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(flat);
@@ -431,4 +431,34 @@ describe('the MVP scale floor', () => {
     expect(mvp?.winners).toEqual(['c']);
     expect(mvp?.value).toBeCloseTo(6.4);
   });
+});
+
+
+describe('win percentage with attendance measured in whole evenings', () => {
+  const win = (rows: SeasonPlayerLine[], n = 13) => computeSeasonAwards(rows, [], n).topWinner;
+  it('higher rate beats a larger win count and draws remain in the denominator', () => {
+    expect(win([player('busy', {games:13,rounds:100,wins:60}), player('efficient', {games:7,rounds:20,wins:14})]))
+      .toEqual({winners:['efficient'], value:70, valueUnit:'percent'});
+  });
+  it('requires seven of thirteen evenings, regardless of mini-game count', () => {
+    expect(win([player('visitor',{games:6,rounds:100,wins:100}),player('regular',{games:7,rounds:10,wins:6})])?.winners).toEqual(['regular']);
+    expect(win([player('visitor',{games:6,rounds:100,wins:100})])).toBeNull();
+  });
+  it('shares the displayed two-decimal percentage across different sample sizes', () => {
+    expect(win([player('a',{rounds:3,wins:2}),player('b',{rounds:6,wins:4}),player('c',{rounds:10000,wins:6667})]))
+      .toEqual({winners:['a','b','c'], value:66.67, valueUnit:'percent'});
+  });
+  it('does not crown zero wins, an unknown denominator, an impossible count or a guest', () => {
+    for (const p of [player('a',{wins:0}),player('a',{rounds:0,wins:1}),player('a',{rounds:1,wins:2}),player('a',{rounds:NaN,wins:1}),player('guest:x',{rounds:1,wins:1})]) expect(win([p])).toBeNull();
+    expect(win([player('a',{rounds:1,wins:1})],0)).toBeNull();
+  });
+  it('needs no rating and leaves cumulative titles ungated', () => {
+    const a = computeSeasonAwards([player('regular',{games:7,rounds:5,wins:3,ratedRounds:0}),player('visitor',{games:1,goals:20})],[],13);
+    expect(a.topWinner?.winners).toEqual(['regular']);expect(a.topScorer?.winners).toEqual(['visitor']);
+  });
+});
+
+test('a positive winning rate rounded to zero is distinct from no wins', () => {
+  const a=computeSeasonAwards([player('a',{games:7,rounds:100000,wins:1})],[],13);
+  expect(a.topWinner).toEqual({winners:['a'],value:0,valueUnit:'percent'});
 });

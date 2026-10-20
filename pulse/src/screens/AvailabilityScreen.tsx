@@ -1,8 +1,9 @@
+import { Disclosure } from '../components/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, RefreshControl, ScrollView, StyleSheet, Switch, Text, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, font, radius, space } from '../theme';
+import { RTL_LABEL_ALIGN, colors, font, radius, space  } from '../theme';
 import { Screen, Card } from '../components/ui';
 import { fetchAvailabilityCardEnabled, setAvailabilityCardEnabled } from '../services/homeConfig';
 import {
@@ -76,8 +77,29 @@ export function AvailabilityScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.primary} />}
       >
         {/* Master switch — show/hide the "פנויים לשחק לידך" card on Teamder's home. */}
+        {/* city filter */}
+        {data && data.byCity.length > 1 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space(3) }}>
+            <Pressable onPress={() => setCity(undefined)} style={[s.chip, !city && s.chipOn]}>
+              <Text style={[s.chipTxt, !city && s.chipTxtOn]}>הכל · {data.totalAll}</Text>
+            </Pressable>
+            {data.byCity
+              .filter((c) => c.city !== '—')
+              .slice(0, 12)
+              .map((c) => (
+                <Pressable
+                  key={c.city}
+                  onPress={() => setCity(city === c.city ? undefined : c.city)}
+                  style={[s.chip, city === c.city && s.chipOn]}
+                >
+                  <Text style={[s.chipTxt, city === c.city && s.chipTxtOn]}>
+                    {c.city} · {c.count}
+                  </Text>
+                </Pressable>
+              ))}
+            <Disclosure title="הגדרות תצוגת הזמינות באפליקציה">
         <Card style={{ marginBottom: space(3), gap: space(3) }}>
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: space(3) }}>
+          <View style={{ flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: space(3) }}>
             <View style={[cs.icon, { backgroundColor: (cardOn ? colors.green : colors.red) + '22' }]}>
               <Ionicons name="calendar" size={22} color={cardOn ? colors.green : colors.red} />
             </View>
@@ -106,27 +128,8 @@ export function AvailabilityScreen() {
           </Text>
         </Card>
 
-        {/* city filter */}
-        {data && data.byCity.length > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space(3) }}>
-            <Pressable onPress={() => setCity(undefined)} style={[s.chip, !city && s.chipOn]}>
-              <Text style={[s.chipTxt, !city && s.chipTxtOn]}>הכל · {data.totalAll}</Text>
-            </Pressable>
-            {data.byCity
-              .filter((c) => c.city !== '—')
-              .slice(0, 12)
-              .map((c) => (
-                <Pressable
-                  key={c.city}
-                  onPress={() => setCity(city === c.city ? undefined : c.city)}
-                  style={[s.chip, city === c.city && s.chipOn]}
-                >
-                  <Text style={[s.chipTxt, city === c.city && s.chipTxtOn]}>
-                    {c.city} · {c.count}
-                  </Text>
-                </Pressable>
-              ))}
-          </ScrollView>
+        </Disclosure>
+      </ScrollView>
         ) : null}
 
         <Card>
@@ -173,7 +176,7 @@ export function AvailabilityScreen() {
           </Text>
         ) : null}
         <Text style={s.note}>
-          קריאה מסוננת בצד-שרת — נספרים רק מי שסימן זמינות, לא כל המשתמשים.
+          הספירה כוללת משתמשים שסימנו זמינות, לפי העיר שנבחרה.
         </Text>
         <Text style={[s.note, { color: colors.textMuted }]}>הקש על תא כדי לראות מי זמין.</Text>
       </ScrollView>
@@ -234,7 +237,7 @@ const s = StyleSheet.create({
   chip: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 14, marginEnd: 8 },
   chipOn: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
   chipTxt: { ...font.small, color: colors.textSoft },
-  chipTxtOn: { color: '#FFFFFF', fontWeight: '700' },
+  chipTxtOn: { color: colors.onPrimary, fontWeight: '700' },
   note: { ...font.small, marginTop: space(3), lineHeight: 18 },
   cellPressed: { opacity: 0.6 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
@@ -251,13 +254,13 @@ const s = StyleSheet.create({
 });
 const cs = StyleSheet.create({
   icon: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
-  title: { color: colors.text, fontSize: 16, fontWeight: '800', textAlign: 'right' },
-  state: { color: colors.textSoft, fontSize: 13, textAlign: 'right', marginTop: 2 },
-  help: {
+  title: { direction: 'rtl' as const, color: colors.text, fontSize: 16, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  state: { direction: 'rtl' as const, color: colors.textSoft, fontSize: 13, textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
+  help: { direction: 'rtl' as const,
     color: colors.textMuted,
     fontSize: 13,
     lineHeight: 19,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     paddingTop: 12,

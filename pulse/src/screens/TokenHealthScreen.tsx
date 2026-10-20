@@ -4,7 +4,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../theme';
+import { RTL_LABEL_ALIGN, colors  } from '../theme';
 import { Card, Empty, Screen, StatTile } from '../components/ui';
 import { fetchTokenHealth, type TokenHealth, type UnreachableUser } from '../services/tokenHealth';
 
@@ -36,8 +36,8 @@ export function TokenHealthScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-    setData(await fetchTokenHealth().catch(() => null));
+  const load = useCallback(async (force = false) => {
+    setData(await fetchTokenHealth(force).catch(() => null));
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -50,14 +50,14 @@ export function TokenHealthScreen() {
 
   return (
     <Screen
-      title="בריאות טוקנים"
-      subtitle="מי יכול לקבל פוש — ומי לא"
+      title="יכולת קבלת התראות"
+      subtitle="תוצאות שליחה ב־1,000 ההתראות האחרונות"
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={() => {
             setRefreshing(true);
-            load();
+            load(true);
           }}
         />
       }
@@ -76,16 +76,16 @@ export function TokenHealthScreen() {
 
           <Card style={st.note}>
             <Text style={st.noteTxt}>
-              מבוסס על תוצאות מסירה אמיתיות. "נגיש" = לפחות פוש אחד נמסר אליו בהצלחה (גם אם חלק
+              מבוסס על עד 1,000 רשומות אחרונות, ולא על בדיקה חיה של המכשירים. "נגיש" = לפחות פוש אחד נמסר אליו בהצלחה (גם אם חלק
               מהטוקנים הישנים שלו נכשלים — זו התיישנות רגילה). "טוקן נכשל" = נשלחו פושים אבל אף אחד
               לא נמסר. "ללא טוקן" = השרת לא מצא לו טוקן.
               {data.neverSent > 0 ? ` (${data.neverSent} משתמשים לא קיבלו אף פוש עדיין.)` : ''}
             </Text>
           </Card>
 
-          <Text style={st.section}>משתמשים לא נגישים ({data.problems.length})</Text>
+          <Text style={st.section}>בעיות קבלה במדגם (מוצגים {data.problems.length})</Text>
           {data.problems.length === 0 ? (
-            <Empty text="כל המשתמשים נגישים 🎉" />
+            <Empty text="לא נמצאו בעיות קבלה במדגם שנבדק" />
           ) : (
             <Card style={st.listCard}>
               {data.problems.map((u) => (
@@ -102,12 +102,12 @@ export function TokenHealthScreen() {
 const st = StyleSheet.create({
   tiles: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   note: { marginBottom: 14 },
-  noteTxt: { color: colors.textSoft, fontSize: 12.5, lineHeight: 18, textAlign: 'right' },
-  section: { color: colors.text, fontSize: 15, fontWeight: '800', textAlign: 'right', marginBottom: 8 },
+  noteTxt: { direction: 'rtl' as const, color: colors.textSoft, fontSize: 12.5, lineHeight: 18, textAlign: RTL_LABEL_ALIGN },
+  section: { direction: 'rtl' as const, color: colors.text, fontSize: 15, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, marginBottom: 8 },
   listCard: { gap: 12 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  row: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 10 },
   tag: { paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999 },
   tagTxt: { fontSize: 11, fontWeight: '800' },
-  name: { color: colors.text, fontSize: 14, fontWeight: '700', textAlign: 'right' },
-  sub: { color: colors.textMuted, fontSize: 12, textAlign: 'right', marginTop: 1 },
+  name: { direction: 'rtl' as const, color: colors.text, fontSize: 14, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  sub: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
 });

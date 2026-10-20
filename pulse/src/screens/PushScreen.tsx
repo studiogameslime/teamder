@@ -6,8 +6,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme';
-import { Card, Empty, Screen, StatTile } from '../components/ui';
+import { RTL_LABEL_ALIGN, RTL_VALUE_ALIGN, colors  } from '../theme';
+import { Card, Empty, Screen, StatTile, Disclosure } from '../components/ui';
 import { fetchPushStats, type PushStats } from '../services/pushStats';
 
 function pct(n: number, d: number): number {
@@ -80,8 +80,8 @@ export function PushScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-    const d = await fetchPushStats().catch(() => null);
+  const load = useCallback(async (force = false) => {
+    const d = await fetchPushStats(force).catch(() => null);
     setData(d);
     setLoading(false);
     setRefreshing(false);
@@ -92,19 +92,19 @@ export function PushScreen() {
   }, [load]);
 
   const max = data?.rows[0]?.sent ?? 0;
-  const deliveryRate = data ? pct(data.totalOk, data.totalSent) : 0;
-  const issues = data ? data.totalFailed + data.totalNoToken : 0;
+  const deliveryRate = data ? pct(data.totalOk, data.totalAttempts) : 0;
+  const issues = data ? data.totalFailed : 0;
 
   return (
     <Screen
-      title="פושים"
-      subtitle="נשלח לפי סוג + תקינות שליחה אמיתית"
+      title="תקינות שליחה"
+      subtitle="סיכום עד 1,000 ההתראות האחרונות"
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={() => {
             setRefreshing(true);
-            load();
+            load(true);
           }}
         />
       }
@@ -116,15 +116,15 @@ export function PushScreen() {
       ) : (
         <>
           <View style={st.tiles}>
-            <StatTile label="נשלחו" value={data.totalSent.toLocaleString()} />
+            <StatTile label="רשומות התראה" value={data.totalSent.toLocaleString()} />
             <StatTile
-              label="נמסרו"
+              label="ניסיונות שהתקבלו"
               value={data.totalOk.toLocaleString()}
               sub={`${deliveryRate}% הצלחה`}
               tone="green"
             />
             <StatTile
-              label="בעיות טוקן"
+              label="ניסיונות שנכשלו"
               value={issues.toLocaleString()}
               tone={issues > 0 ? 'amber' : 'default'}
             />
@@ -133,11 +133,11 @@ export function PushScreen() {
           {/* Delivery health breakdown */}
           <Text style={st.section}>תקינות שליחה</Text>
           <Card style={st.healthCard}>
-            <HealthLine label="נמסרו ל-FCM" value={data.totalOk} total={data.totalSent} tint={colors.green} />
+            <HealthLine label="התקבלו בשירות השליחה" value={data.totalOk} total={data.totalAttempts} tint={colors.green} />
             <HealthLine
-              label="נכשלו (טוקן לא תקין)"
+              label="ניסיונות שנכשלו"
               value={data.totalFailed}
-              total={data.totalSent}
+              total={data.totalAttempts}
               tint={colors.red}
             />
             <HealthLine
@@ -155,14 +155,14 @@ export function PushScreen() {
           </Card>
 
           {/* Honest note about opens */}
-          <Card style={st.note}>
+          <Disclosure title="איך מחושבים נתוני השליחה?"><Card style={st.note}>
             <Ionicons name="information-circle" size={18} color={colors.primary} />
             <Text style={st.noteTxt}>
-              "נמסרו" = ה-FCM קיבל את ההודעה לשליחה. "נפתחו" (תקתוק) עדיין לא מתועד — ייכנס
-              בגרסת האפליקציה הבאה ואז יופיע שיעור פתיחה אמיתי לכל סוג.
+              אחוז ההצלחה מחושב מתוך ניסיונות שליחה למכשירים, ולא מתוך מספר רשומות ההתראה. קבלת שירות השליחה אינה הוכחה להצגה במכשיר. נתוני פתיחה נספרים לפי סימון קריאה. הסיכום מבוסס על עד 1,000 הרשומות האחרונות לפי מועד יצירה, ואינו בהכרח כל ההיסטוריה.
             </Text>
           </Card>
 
+          </Disclosure>
           <Text style={st.section}>נשלח לפי סוג ({data.rows.length})</Text>
           {data.rows.length === 0 ? (
             <Empty text="לא נשלחו פושים" />
@@ -190,19 +190,19 @@ export function PushScreen() {
 
 const st = StyleSheet.create({
   tiles: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  section: { color: colors.text, fontSize: 15, fontWeight: '800', textAlign: 'right', marginBottom: 8 },
+  section: { direction: 'rtl' as const, color: colors.text, fontSize: 15, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, marginBottom: 8 },
   healthCard: { gap: 10, marginBottom: 14 },
   hRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   hDot: { width: 9, height: 9, borderRadius: 999 },
-  hLabel: { flex: 1, color: colors.text, fontSize: 13.5, fontWeight: '700', textAlign: 'right' },
-  hPct: { color: colors.textMuted, fontSize: 12, fontWeight: '700', minWidth: 36, textAlign: 'left' },
-  hVal: { color: colors.text, fontSize: 16, fontWeight: '900', minWidth: 50, textAlign: 'left', fontVariant: ['tabular-nums'] },
+  hLabel: { direction: 'rtl' as const, flex: 1, color: colors.text, fontSize: 13.5, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  hPct: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, fontWeight: '700', minWidth: 36, textAlign: RTL_VALUE_ALIGN },
+  hVal: { direction: 'rtl' as const, color: colors.text, fontSize: 16, fontWeight: '900', minWidth: 50, textAlign: RTL_VALUE_ALIGN, fontVariant: ['tabular-nums'] },
   note: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginBottom: 14 },
-  noteTxt: { flex: 1, color: colors.textSoft, fontSize: 12.5, lineHeight: 18, textAlign: 'right' },
+  noteTxt: { direction: 'rtl' as const, flex: 1, color: colors.textSoft, fontSize: 12.5, lineHeight: 18, textAlign: RTL_LABEL_ALIGN },
   listCard: { gap: 14 },
   row: { gap: 6 },
   rowHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  rowLabel: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '700', textAlign: 'right' },
+  rowLabel: { direction: 'rtl' as const, flex: 1, color: colors.text, fontSize: 14, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   rowSent: { color: colors.text, fontSize: 17, fontWeight: '900', marginInlineStart: 10, fontVariant: ['tabular-nums'] },
   barTrack: { height: 8, borderRadius: 999, backgroundColor: colors.border, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 999, backgroundColor: colors.primary },

@@ -1,0 +1,14 @@
+{
+  "status": "not_uploaded",
+  "target": "appConfig/releaseLog",
+  "reason": "אין חיבור ניהול ייצור מאומת בסביבה",
+  "items": [
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "פולס",
+      "title": "לוח משימות מאוחד, צילום מקור וסיכום תיקון בעברית בסטטוס בוצע ע״י רובנס",
+      "proofFile": "docs/features/screenshots/pulse-board-detail-390-2026-10-18.png"
+    }
+  ]
+}

@@ -174,7 +174,7 @@ export function CommunityEditScreen() {
   return (
     <GroupWizardForm
       headerTitle={he.communityEditTitle}
-      submitLabel={he.save}
+      submitLabel="שמור פרטי מועדון"
       initial={initial}
       onSubmit={submit}
       enableUnsavedGuard

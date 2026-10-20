@@ -1,3 +1,5 @@
+import { cached } from './cache';
+import { collectionData } from './collectionData';
 import { pulseFetch as fetch } from './adminTransport';
 // Rich analytics for the Analytics screen — combines GA4 (users, time,
 // devices, channels, events) with Firestore (app-specific engagement
@@ -159,16 +161,10 @@ function rangeSpec(key: RangeKey): RangeSpec {
 // and back) within a few minutes reuses the result instead of re-reading
 // Firestore. Pull-to-refresh passes { force: true } to bypass it.
 const CACHE_TTL_MS = 3 * 60_000;
-const fullCache = new Map<RangeKey, { at: number; data: AnalyticsFull }>();
-
-export async function fetchAnalyticsFull(
-  rangeKey: RangeKey,
-  opts: { force?: boolean } = {},
-): Promise<AnalyticsFull> {
-  if (!opts.force) {
-    const hit = fullCache.get(rangeKey);
-    if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data;
-  }
+export function fetchAnalyticsFull(rangeKey: RangeKey, opts: { force?: boolean } = {}): Promise<AnalyticsFull> {
+  return cached(`analyticsFull:${rangeKey}`, () => fetchAnalyticsFullUncached(rangeKey, opts), { force: opts.force, ttl: CACHE_TTL_MS });
+}
+async function fetchAnalyticsFullUncached(rangeKey: RangeKey, opts: { force?: boolean }): Promise<AnalyticsFull> {
   const spec = rangeSpec(rangeKey);
   const empty: AnalyticsFull = {
     activeUsers: 0, activeUsersDelta: null,
@@ -276,10 +272,10 @@ export async function fetchAnalyticsFull(
       // are small collections so the cost is minor.
       const allTime = spec.startMs <= 0;
       const [users, groups, games, notifs, friendReqs] = await Promise.all([
-        listAll('users'),
-        listAll('groups'),
+        collectionData('users', opts.force),
+        collectionData('groups', opts.force),
         allTime
-          ? listAll('games')
+          ? collectionData('games', opts.force)
           : queryByCreatedAt('games', spec.startMs, spec.endMs, 'integer').catch(() => []),
         allTime
           ? listAll('notifications', 4000).catch(() => [])
@@ -339,6 +335,6 @@ export async function fetchAnalyticsFull(
     }
   }
 
-  fullCache.set(rangeKey, { at: Date.now(), data: empty });
+
   return empty;
 }

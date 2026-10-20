@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, Text as SvgText } from 'react-native-svg';
 import { Screen, Card, SectionHeader, Empty } from '../components/ui';
-import { colors } from '../theme';
+import { RTL_LABEL_ALIGN, colors  } from '../theme';
 import {
   fetchCommunityPoints, fetchGamePoints,
   type CommunityPoint, type GamePoint,
@@ -141,12 +141,12 @@ export function MapScreen() {
     BORDER.map(([la, ln]) => proj(la, ln).map((n) => n.toFixed(1)).join(',')).join(' L') +
     ' Z';
 
-  const GREEN = colors.green ?? '#22C55E';
-  const AMBER = colors.amber ?? '#F59E0B';
+  const GREEN = colors.green ?? colors.green;
+  const AMBER = colors.amber ?? colors.amber;
 
   return (
     <Screen
-      title="מפה"
+      title="מפת פעילות"
       subtitle={`${commPlaced.length} מועדונים · ${gamePlaced.length} משחקים על המפה`}
     >
       {commPlaced.length === 0 && gamePlaced.length === 0 ? (
@@ -227,14 +227,14 @@ export function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  legend: { flexDirection: 'row-reverse', gap: 16, justifyContent: 'center', marginTop: 8 },
-  legendItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  legend: { flexDirection: 'row', direction: 'rtl' as const, gap: 16, justifyContent: 'center', marginTop: 8 },
+  legendItem: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 6 },
   dot: { width: 11, height: 11, borderRadius: 6 },
   legendTxt: { color: colors.textMuted, fontSize: 12 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingVertical: 7 },
+  row: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 10, paddingVertical: 7 },
   headRow: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, paddingBottom: 8, marginBottom: 2 },
   colLabel: { fontSize: 11, fontWeight: '800', minWidth: 56, textAlign: 'center' },
   count: { color: colors.primary, fontWeight: '800', fontSize: 15, minWidth: 56, textAlign: 'center' },
-  city: { color: colors.text, fontSize: 14, flex: 1, textAlign: 'right' },
-  note: { color: colors.textMuted, fontSize: 12, marginTop: 8, textAlign: 'right' },
+  city: { direction: 'rtl' as const, color: colors.text, fontSize: 14, flex: 1, textAlign: RTL_LABEL_ALIGN },
+  note: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, marginTop: 8, textAlign: RTL_LABEL_ALIGN },
 });

@@ -9,7 +9,7 @@ import { BarList } from '../components/BarList';
 import { compact, money } from '../format';
 
 export function RevenueScreen() {
-  const { snapshot, refreshing, refresh } = useDashboard();
+  const { snapshot, refreshing, refresh } = useDashboard(true);
   const nav = useNavigation<any>();
   const rev = snapshot.revenue;
   const best = rev?.adUnits?.[0];

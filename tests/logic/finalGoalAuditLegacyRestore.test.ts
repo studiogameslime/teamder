@@ -78,6 +78,7 @@ describe.each([false, true])('legacy permanent restore (mock=%s)', mock => {
     const before = structuredClone(x.state); await confirm();
     expect(scope.toast.error).toHaveBeenCalledWith(expect.stringContaining('חילופים'));
     expect(scope.toast.error).toHaveBeenCalledWith(expect.stringContaining('נסו שוב'));
+    expect(scope.logError).not.toHaveBeenCalled();
     expect(scope.logEvent).not.toHaveBeenCalled(); expect(scope.homeActionRef.current).toBe(false);
     expect(x.state).toEqual(before); expect(x.update).not.toHaveBeenCalled();
   });

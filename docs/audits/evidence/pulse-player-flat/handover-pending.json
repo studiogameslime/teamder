@@ -1,0 +1,16 @@
+{
+  "state": "pending_authenticated_target",
+  "productionUpdated": false,
+  "reason": "אין מזהה משימה או חיבור כתיבה מאומת",
+  "claudeStatus": "done",
+  "claudeNote": "סידרתי מחדש את שלוש לשוניות כרטיס השחקן לפי הסקיצה: בסקירה יש מדדים ושורת הרשמה קצרה, ובמידע נמצאים המועדונים וההרשמות המלאים ללא כפילות בסקירה. ההיסטוריה מחולקת לימים וכוללת סינון פעילות ותקלות, וכל הפירוט הקיים נשאר נגיש. השינוי מקומי ונבדק בדפדפן; הוא טרם הופץ או אומת במכשיר.",
+  "proofFiles": [
+    "docs/features/screenshots/pulse-player-flat-history-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-player-flat-today-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-player-flat-club-anchor-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-player-flat-info-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-player-flat-club-detail-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-player-flat-errors-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-player-flat-overview-390-2026-10-18.png"
+  ]
+}

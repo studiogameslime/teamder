@@ -1,0 +1,56 @@
+{
+  "status": "not_uploaded",
+  "target": "appConfig/releaseLog",
+  "reason": "No authenticated production administration connection is available in this environment. Append only after reading the existing log; upload proof JPEGs and reference their shotIds.",
+  "items": [
+    {
+      "kind": "fix",
+      "area": "פולס",
+      "version": "next",
+      "title": "עיצוב פחם וירוק אחיד למסכי הניהול",
+      "proofFile": "docs/features/screenshots/pulse-redesign-Users-2026-10-18.png"
+    },
+    {
+      "kind": "fix",
+      "area": "פולס",
+      "version": "next",
+      "title": "איחוד פעילות, גיוס והתראות עם טעינה לפי צורך",
+      "proofFile": "docs/features/screenshots/pulse-redesign-NotificationsWorkspace-2026-10-18.png"
+    },
+    {
+      "kind": "fix",
+      "area": "פולס",
+      "version": "next",
+      "title": "חיפוש משתמשים ורשימה מדורגת במקום גרפים בראש",
+      "proofFile": "docs/features/screenshots/pulse-redesign-Users-2026-10-18.png"
+    },
+    {
+      "kind": "fix",
+      "area": "פולס",
+      "version": "next",
+      "title": "לשוניות בכרטיס משתמש וטעינת מכשירים לפי צורך",
+      "proofFile": "docs/features/screenshots/pulse-redesign-UserDevices-2026-10-18.png"
+    },
+    {
+      "kind": "fix",
+      "area": "פולס",
+      "version": "next",
+      "title": "מטמון משותף ורענונים מאוחדים לשליפה חסכונית",
+      "proofFile": "docs/features/screenshots/pulse-redesign-NotificationsWorkspace-2026-10-18.png"
+    },
+    {
+      "kind": "fix",
+      "area": "פולס",
+      "version": "next",
+      "title": "מונה עבודה ללא סריקות עצמאיות וחיפוש בתור",
+      "proofFile": "docs/features/screenshots/pulse-redesign-Tasks-2026-10-18.png"
+    },
+    {
+      "kind": "fix",
+      "area": "פולס",
+      "version": "next",
+      "title": "עימוד מדויק וכשל מפורש בנתוני ההתראות",
+      "proofFile": "docs/features/screenshots/pulse-redesign-NotificationsWorkspace-2026-10-18.png"
+    }
+  ]
+}

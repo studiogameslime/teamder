@@ -1,0 +1,11 @@
+{
+  "productionUpdated": false,
+  "state": "pending_authenticated_target",
+  "reason": "אין מזהה משימה או חיבור כתיבה מאומת",
+  "claudeStatus": "done",
+  "claudeNote": "שיניתי את הכותרת ל״מחזורים ששיחק״ והוספתי לסקירה את מספר החברים שצירף ואת הלחיצות על הקישור האישי. המונים משתמשים בנתונים הקיימים, ללא קריאות נוספות למסד הנתונים, והפירוט נשמר בלשונית המידע. השינוי מקומי וטרם הופץ.",
+  "proofFiles": [
+    "docs/features/screenshots/pulse-player-invites-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-player-invites-320-2026-10-18.png"
+  ]
+}

@@ -4,21 +4,13 @@
 //   • מקומי — the local on-device log of what Pulse itself was alerted about.
 
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  RefreshControl,
-  Alert,
-  TextInput,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, Pressable, StyleSheet, RefreshControl, Alert, ActivityIndicator } from 'react-native';
+import { RtlTextInput as TextInput } from '../components/RtlTextInput';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { navRef } from '../navigation/navRef';
 import { Screen, Card, Empty } from '../components/ui';
-import { colors, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, radius  } from '../theme';
 import { timeAgo } from '../format';
 import { getNotificationLog, clearNotificationLog, type NotifLogEntry } from '../services/notifLog';
 import { fetchServerNotifs, type ServerNotif } from '../services/serverNotifs';
@@ -30,13 +22,13 @@ function iconFor(kind?: string): { icon: keyof typeof Ionicons.glyphMap; color: 
   switch (kind) {
     case 'teamderReply': return { icon: 'chatbubble-ellipses', color: colors.amber };
     case 'onboardingActivity': return { icon: 'footsteps', color: colors.primary };
-    case 'gameCreate': return { icon: 'football', color: '#22C55E' };
-    case 'gameJoin': return { icon: 'person-add', color: '#3B82F6' };
-    case 'communityCreate': return { icon: 'people-circle', color: '#8B5CF6' };
-    case 'communityJoin': return { icon: 'people', color: '#14B8A6' };
+    case 'gameCreate': return { icon: 'football', color: colors.green };
+    case 'gameJoin': return { icon: 'person-add', color: colors.blue };
+    case 'communityCreate': return { icon: 'people-circle', color: colors.purple };
+    case 'communityJoin': return { icon: 'people', color: colors.teal };
     case 'review': return { icon: 'star', color: colors.star };
-    case 'newUser': return { icon: 'person', color: '#3B82F6' };
-    case 'quota': return { icon: 'speedometer', color: '#F59E0B' };
+    case 'newUser': return { icon: 'person', color: colors.blue };
+    case 'quota': return { icon: 'speedometer', color: colors.amber };
     default: return { icon: 'notifications', color: colors.textSoft };
   }
 }
@@ -80,13 +72,15 @@ export function NotificationsLogScreen() {
   // server
   const [server, setServer] = useState<ServerNotif[] | null>(null);
   const [loadingSrv, setLoadingSrv] = useState(false);
+  const [failed, setFailed] = useState(false);
   // local
   const [items, setItems] = useState<NotifLogEntry[]>([]);
   const [loadedLocal, setLoadedLocal] = useState(false);
 
-  const loadServer = useCallback(async () => {
+  const loadServer = useCallback(async (force = false) => {
     setLoadingSrv(true);
-    setServer(await fetchServerNotifs().catch(() => []));
+    try { setServer(await fetchServerNotifs(250, force)); setFailed(false); }
+    catch { setFailed(true); }
     setLoadingSrv(false);
   }, []);
   const loadLocal = useCallback(async () => {
@@ -115,8 +109,8 @@ export function NotificationsLogScreen() {
 
   return (
     <Screen
-      title="התראות אחרונות"
-      subtitle={seg === 'server' ? 'כל הפושים שנשלחו (שרת)' : 'הלוג המקומי של Pulse'}
+      title="יומן התראות"
+      subtitle={seg === 'server' ? 'עד 250 התראות מתוך 1,000 הרשומות האחרונות' : 'הלוג המקומי של Pulse'}
       right={
         seg === 'local' && items.length ? (
           <Pressable onPress={onClear} hitSlop={8}><Text style={s.clear}>נקה</Text></Pressable>
@@ -125,11 +119,12 @@ export function NotificationsLogScreen() {
       refreshControl={
         <RefreshControl
           refreshing={false}
-          onRefresh={seg === 'server' ? loadServer : loadLocal}
+          onRefresh={seg === 'server' ? () => loadServer(true) : loadLocal}
           tintColor={colors.primary}
         />
       }
     >
+      {failed && seg === 'server' ? <Pressable onPress={() => loadServer(true)}><Text style={{ direction: 'rtl' as const, color: colors.amber, textAlign: RTL_LABEL_ALIGN }}>היומן לא עודכן. לחצו לניסיון חוזר.</Text></Pressable> : null}
       {/* segmented control */}
       <View style={s.segs}>
         {(['server', 'local'] as Seg[]).map((k) => (
@@ -154,7 +149,7 @@ export function NotificationsLogScreen() {
           {loadingSrv && !server ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: 30 }} />
           ) : filtered.length === 0 ? (
-            <Empty text={server ? 'אין התראות תואמות' : 'טוען…'} />
+            <Empty text={failed ? 'המידע אינו זמין כרגע' : server ? 'אין התראות תואמות' : 'טוען…'} />
           ) : (
             <>
               <Text style={s.count}>{filtered.length} התראות</Text>
@@ -218,29 +213,29 @@ const s = StyleSheet.create({
   },
   segOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   segTxt: { color: colors.textMuted, fontSize: 13, fontWeight: '800' },
-  segTxtOn: { color: '#fff' },
+  segTxtOn: { color: colors.onPrimary },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12,
     backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1,
     borderColor: colors.border, marginBottom: 10,
   },
-  searchInput: { flex: 1, color: colors.text, fontSize: 14, textAlign: 'right', paddingVertical: 10 },
-  count: { color: colors.textMuted, fontSize: 12, textAlign: 'right', marginBottom: 6 },
+  searchInput: { direction: 'rtl' as const, flex: 1, color: colors.text, fontSize: 14, textAlign: RTL_LABEL_ALIGN, paddingVertical: 10 },
+  count: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, textAlign: RTL_LABEL_ALIGN, marginBottom: 6 },
   emptyWrap: { alignItems: 'center', gap: 10, paddingVertical: 24 },
   empty: { color: colors.textMuted, fontSize: 14 },
-  dayHeader: { color: colors.textMuted, fontSize: 12, fontWeight: '800', textAlign: 'right', marginTop: 14, marginBottom: 6 },
-  srvRow: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
+  dayHeader: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, marginTop: 14, marginBottom: 6 },
+  srvRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'flex-start', gap: 10, marginBottom: 8 },
   statusDot: { width: 10, height: 10, borderRadius: 999, marginTop: 5 },
-  recipient: { color: colors.textSoft, fontSize: 12.5, textAlign: 'right', marginTop: 1 },
-  metaRow: { flexDirection: 'row-reverse', gap: 12, flexWrap: 'wrap', marginTop: 3 },
+  recipient: { direction: 'rtl' as const, color: colors.textSoft, fontSize: 12.5, textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
+  metaRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 12, flexWrap: 'wrap', marginTop: 3 },
   ok: { color: colors.green, fontSize: 11.5, fontWeight: '700' },
   bad: { color: colors.red, fontSize: 11.5, fontWeight: '700' },
   warn: { color: colors.amber, fontSize: 11.5, fontWeight: '700' },
   muted: { color: colors.textMuted, fontSize: 11.5, fontWeight: '700' },
-  row: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 12, marginBottom: 8 },
+  row: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'flex-start', gap: 12, marginBottom: 8 },
   iconWrap: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
-  titleRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  title: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '700', textAlign: 'right' },
+  titleRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  title: { direction: 'rtl' as const, flex: 1, color: colors.text, fontSize: 15, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   time: { color: colors.textMuted, fontSize: 11, flexShrink: 0 },
-  body: { color: colors.textSoft, fontSize: 13, textAlign: 'right', lineHeight: 19, marginTop: 2 },
+  body: { direction: 'rtl' as const, color: colors.textSoft, fontSize: 13, textAlign: RTL_LABEL_ALIGN, lineHeight: 19, marginTop: 2 },
 });

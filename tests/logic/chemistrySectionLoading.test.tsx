@@ -8,6 +8,7 @@ jest.mock('react', () => ({ ...jest.requireActual('react'), useCallback: (fn: un
 jest.mock('react-native', () => ({ Text:'Text',View:'View',Pressable:'Pressable',StyleSheet:{create:(x:unknown)=>x} }));
 jest.mock('@expo/vector-icons', () => ({ Ionicons:'Icon' }));
 jest.mock('@/components/UserAvatar', () => ({ UserAvatar:'Avatar' }));
+jest.mock('@/components/summary/SeasonSummaryIcon', () => ({ SeasonSummaryIcon:'SummaryIcon' }));
 jest.mock('@/components/chemistry/PairChemistryIcon', () => ({ PairChemistryIcon:'PairIcon' }));
 jest.mock('@/components/chemistry/PairCard', () => ({ PairCard:'PairCard',CHEMISTRY_EMOJI:{},CHEMISTRY_LABEL:{} }));
 jest.mock('@/services/clubChemistryService', () => ({ clubChemistryService:{get:jest.fn()} }));
@@ -46,4 +47,18 @@ test('pending historical scope never fetches live or claims empty',async()=>{
 test('a supplied archive stays local and a genuine empty archive is empty',async()=>{
   const archive={};render('one',archive);mockEffects.pop()!();await flush();
   expect(get).not.toHaveBeenCalled();expect(render('one',archive).props.children).toContain('עוד קצת משחקים');
+});
+
+test('archived identities stay frozen without hydrating current player names', async () => {
+  const { groupService } = require('@/services/groupService');
+  const { EMPTY_PAIR } = require('@/utils/clubChemistry');
+  const hydrate = groupService.hydrateUsers as jest.Mock;
+  hydrate.mockClear();
+  const pairs = { a__b: { ...EMPTY_PAIR, sameTeam: 12, winsTogether: 9 } };
+  const identities = { a: { id: 'a', name: 'שם היסטורי' }, b: { id: 'b', name: 'שם קפוא' } };
+  mockIndex = 0;
+  ChemistrySection({ groupId: 'one', pairs, identities, appearance: 'summary' });
+  mockEffects.pop()!(); await flush();
+  expect(get).not.toHaveBeenCalled(); expect(hydrate).not.toHaveBeenCalled();
+  expect(mockStates[2]).toEqual(identities);
 });

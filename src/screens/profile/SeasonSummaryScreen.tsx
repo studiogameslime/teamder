@@ -25,6 +25,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { captureRef } from 'react-native-view-shot';
 
+import { SeasonSummaryIcon, type SeasonSummaryIconName } from '@/components/summary/SeasonSummaryIcon';
+import { InfoTip } from '@/components/InfoTip';
+import Svg, { Rect, Line, Circle } from 'react-native-svg';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { UserAvatar } from '@/components/UserAvatar';
 import { SeasonShareCard, SHARE_CARD_WIDTH } from '@/components/summary/SeasonShareCard';
@@ -35,17 +38,14 @@ import {
   type SeasonSummaryModel,
 } from '@/services/seasonSummaryService';
 import type { SeasonPeer } from '@/utils/seasonPersonal';
-import type {
-  SeasonTitleAwarded,
-  SeasonTitleWon,
-} from '@/services/seasonSummaryService';
 import { useUserStore } from '@/store/userStore';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
-import { colors, radius, shadows, spacing, typography } from '@/theme';
+import { colors, spacing } from '@/theme';
 import { RTL_LABEL_ALIGN } from '@/theme/rtl';
 import { he } from '@/i18n/he';
-import { SeasonTitlesCabinet } from '@/components/community/SeasonTitlesCabinet';
+import { SeasonAwardRows, SeasonClubSummary, seasonSummaryStyles } from '@/components/summary/SeasonClubSummary';
+import { SeasonClubShareCard } from '@/components/summary/SeasonClubShareCard';
 import type { ProfileStackParamList } from '@/navigation/ProfileStack';
 
 type Params = RouteProp<ProfileStackParamList, 'SeasonSummary'>;
@@ -81,48 +81,35 @@ function Stat({
   label,
   value,
   icon,
-  tint = colors.primary,
+  artwork,
+  rank = false,
 }: {
+  artwork?: SeasonSummaryIconName;
+  rank?: boolean;
   label: string;
   value: string;
   icon?: keyof typeof Ionicons.glyphMap;
   tint?: string;
 }) {
   return (
-    <View style={styles.stat}>
-      {icon ? (
-        <View style={[styles.statIcon, { backgroundColor: tint + '1A' }]}>
-          <Ionicons name={icon} size={14} color={tint} />
-        </View>
-      ) : null}
-      {/* The VALUE stays ink. The tint belongs to the icon disc above it,
-          where it sits on its own 10%-opacity wash and is a decoration; used
-          as text colour on the tile's #F3F4F6 it measured 1.6:1 for gold and
-          1.9:1 for amber — nine of the thirteen accents on this screen fell
-          under 3:1, and the number a player came here to read was the least
-          legible thing on it. */}
-      {/* One line, always. "1 מתוך 12" does not fit 68pt at this size, and a
-          rank that wraps onto a second line pushed its own label out of the
-          tile. */}
-      <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-        {value}
-      </Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={[styles.stat, artwork === 'goldTrophy' && { backgroundColor: '#FFFBEE' }]}>
+      <View style={{ flex: 1, gap: 2 }}>
+        {rank ? <Text style={[styles.statLabel, { fontWeight: '700' }]}>{label}</Text> : null}
+        <Text style={rank ? styles.rankValue : styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{value}</Text>
+        {!rank ? <Text style={styles.statLabel}>{label}</Text> : null}
+      </View>
+      {icon ? <SeasonSummaryIcon name={artwork ?? icon} size={24} /> : null}
     </View>
   );
 }
 
 /** A section heading with an icon, matching the club stats screen so the two
  *  read as the same app rather than two different ones. */
-/** Gold, silver and bronze for the top three; the muted podium otherwise.
- *  A rank of null (did not play) gets no medal at all — an empty season is
- *  not a fourth place. */
-const MEDAL_TINTS = ['#F4B73E', '#9AA4B2', '#CD7F32'];
-function rankTint(rank: number | null): string {
-  return rank && rank <= 3 ? MEDAL_TINTS[rank - 1] : colors.textMuted;
+function rankTint(_rank: number | null): string {
+  return colors.primary;
 }
-function rankIcon(rank: number | null): keyof typeof Ionicons.glyphMap {
-  return rank && rank <= 3 ? 'medal' : 'podium-outline';
+function rankIcon(_rank: number | null): keyof typeof Ionicons.glyphMap {
+  return 'trophy-outline';
 }
 
 /** The three numbers a player came for, one step above the other ten.
@@ -143,14 +130,12 @@ function LeadStat({
   tint: string;
 }) {
   return (
-    <View style={[styles.leadStat, { borderColor: tint + '33', backgroundColor: tint + '0F' }]}>
-      <View style={styles.leadHead}>
-        <Ionicons name={icon} size={14} color={tint} />
+    <View style={[styles.leadStat, { backgroundColor: tint + '0C' }]}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.leadValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{value}</Text>
         <Text style={styles.leadLabel}>{label}</Text>
       </View>
-      <Text style={styles.leadValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-        {value}
-      </Text>
+      <SeasonSummaryIcon name={icon === 'football' ? 'goldGoal' : icon === 'flash-outline' ? 'contribution' : 'boot'} size={27} />
     </View>
   );
 }
@@ -164,9 +149,9 @@ function CardTitle({
 }) {
   return (
     <View style={styles.cardTitleRow}>
-      {/* Icon first → rightmost under forceRTL, beside the words. */}
-      <Ionicons name={icon} size={18} color={colors.primary} />
+      {/* Label first under forceRTL, placing its icon on the left. */}
       <Text style={styles.cardTitle}>{text}</Text>
+      <SeasonSummaryIcon name={icon} size={19} />
     </View>
   );
 }
@@ -178,7 +163,6 @@ function PeerRow({
   names,
   avatars,
   detail,
-  tint = colors.primary,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -209,72 +193,34 @@ function PeerRow({
           name: names[peer.userId] ?? '',
           ...avatars[peer.userId],
         }}
-        size={38}
+        size={29}
       />
-      <View style={[styles.peerIcon, { backgroundColor: tint + '1A' }]}>
-        <Ionicons name={icon} size={16} color={tint} />
-      </View>
+      <Text style={styles.peerLabel}>{label}</Text>
       <View style={styles.peerText}>
-        <Text style={styles.peerLabel}>{label}</Text>
         <Text style={styles.peerName}>{names[peer.userId] ?? '—'}</Text>
         <Text style={styles.peerDetail}>{detail(peer)}</Text>
       </View>
-    </View>
-  );
-}
-
-function TitleRow({ title }: { title: SeasonTitleWon }) {
-  return (
-    <View style={styles.titleRow}>
-      {/* A gold disc rather than a 22px emoji. This is the loudest thing the
-          screen can say about a season, and it was the quietest element on it. */}
-      <View style={styles.titleMedalDisc}>
-        <Ionicons name="trophy" size={18} color="#fff" />
-      </View>
-      <View style={styles.titleText}>
-        <Text style={styles.titleName}>
-          {he.seasonTitleNames[title.key]} · {he.seasonTitleValue(title.key, title.value)}
-        </Text>
-        {title.sharedWith > 0 ? (
-          <Text style={styles.titleShared}>
-            {he.seasonTitleSharedWith(title.sharedWith)}
-          </Text>
-        ) : null}
-        {/* What the rating covers, on the reader's own title. The number is
-            the loudest claim this row makes and it is an average; on this
-            club's only closed season it is an average of nine evenings out of
-            twenty-two. Absent on every title that carries no coverage. */}
-        {title.coverage ? (
-          <Text style={styles.titleShared}>
-            {he.seasonTitleCoverage(title.coverage.rated, title.coverage.of)}
-          </Text>
-        ) : null}
+      <View style={styles.peerIcon}>
+        <SeasonSummaryIcon name={icon === 'football-outline' ? 'boot' : icon === 'trophy-outline' ? 'goldTrophy' : icon} size={23} />
       </View>
     </View>
   );
 }
-
-// ChampionRow is gone with the plain list it drew (23.09). The champions
-// section is the medal cabinet now — see SeasonTitlesCabinet, which was the
-// grid on the "עונות קודמות ותארים" screen that this replaced.
 
 export function SeasonSummaryScreen() {
   const params = useRoute<Params>().params;
   const groupId = params?.groupId ?? '';
   const currentUser = useUserStore((s) => s.currentUser);
-  // Which season is on screen. Starts at whatever opened the screen — the club
-  // card sends none (meaning "the one running"), the end-of-season push sends
-  // the one that just closed — and the picker moves it from there.
-  const [seasonId, setSeasonId] = useState<string | undefined>(params?.seasonId);
+  // The entry point owns season selection; switching tabs never changes it.
+  const seasonId = params?.seasonId;
+  const [tab, setTab] = useState<'personal' | 'club'>('personal');
 
   const [model, setModel] = useState<SeasonSummaryModel | null>(null);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Only the newest load may write. Tapping through three season chips quickly
-  // starts three loads, and without this the slowest one wins — which on the
-  // picker means the screen settles on a season you already moved off.
+  // A late response must not replace a newer route or refresh.
   const loadSeq = useRef(0);
 
   const load = useCallback(async () => {
@@ -340,6 +286,7 @@ export function SeasonSummaryScreen() {
           groupId,
           seasonNo: model?.seasonNo ?? 0,
           titles: model?.myTitles.length ?? 0,
+          tab,
         });
       } else {
         toast.error(he.summaryShareUnavailable);
@@ -350,7 +297,7 @@ export function SeasonSummaryScreen() {
     } finally {
       setSharing(false);
     }
-  }, [groupId, model, sharing]);
+  }, [groupId, model, sharing, tab]);
 
   if (loading) {
     return (
@@ -394,20 +341,22 @@ export function SeasonSummaryScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader title={he.seasonSummaryTitle} />
       <ScrollView
+        key={tab}
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         <View style={styles.hero}>
-          <Text style={styles.heroSeason}>
-            {he.seasonNumberLabel(model.seasonNo)} · {model.groupName}
-          </Text>
+          <View pointerEvents="none" style={styles.pitchDecoration}>
+            <Svg width="95" height="64" viewBox="0 0 95 64"><Rect x="2" y="2" width="91" height="60" stroke="#B6D6FF" fill="none" /><Line x1="47" x2="47" y1="2" y2="62" stroke="#B6D6FF" /><Circle cx="47" cy="32" r="10" stroke="#B6D6FF" fill="none" /><Rect x="2" y="17" width="15" height="30" stroke="#B6D6FF" fill="none" /><Rect x="78" y="17" width="15" height="30" stroke="#B6D6FF" fill="none" /></Svg>
+          </View>
+          <Text style={styles.heroSeason}>{model.groupName}</Text>
           {/* A season counted in evenings says where it has got to; one
               counted in months says when it runs. Printing a date over a
               rounds season answered a question nobody asked. */}
           <Text style={styles.heroRange}>
-            {model.roundsCadence
+            {he.seasonNumberLabel(model.seasonNo)} · {model.roundsCadence
               ? he.seasonsProgressRounds(
                   model.roundsCadence.played,
                   model.roundsCadence.target,
@@ -419,37 +368,25 @@ export function SeasonSummaryScreen() {
           ) : null}
         </View>
 
-        {/* Seasons never mix: each closed one is its own sealed record and
-            nothing is ever summed across them. This is where that becomes
-            visible — one club has had more than one season, and switching
-            between them replaces every number on the screen. */}
-        {model.available.length > 1 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
-          >
-            {model.available.map((c) => {
-              const active = c.id === model.seasonId;
-              return (
-                <Pressable
-                  key={c.id}
-                  onPress={() => setSeasonId(c.closed ? c.id : undefined)}
-                  style={[styles.chip, active && styles.chipActive]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                >
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                    {c.closed
-                      ? he.seasonNumberLabel(c.no)
-                      : he.seasonChipCurrent(c.no)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        ) : null}
-
+        <View style={styles.tabs} accessibilityRole="tablist">
+          {([['personal', 'העונה שלי'], ['club', 'עונת המועדון']] as const).map(([key, label]) => <Pressable key={key}
+            accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)}
+            style={[styles.tab, tab === key && styles.activeTab]}>
+            <Text style={[styles.tabText, tab === key && styles.activeTabText]}>{label}</Text>
+          </Pressable>)}
+        </View>
+        {tab === 'club' ? <SeasonClubSummary model={model} /> : <>
+          {me.hasData && currentUser ? <View style={styles.card}>
+            <View style={styles.identity}>
+              <UserAvatar user={currentUser} size={56} />
+              <View style={{ flex: 1, gap: 2 }}><Text style={styles.identityName}>{currentUser.name}</Text><Text style={styles.identityCaption}>העונה שלי במספרים</Text></View>
+            </View>
+            <View style={styles.leadRow}>
+              <LeadStat label={he.statGoals} value={String(me.goals)} icon="football" tint="#F5AC0B" />
+              <LeadStat label={he.statAssists} value={String(me.assists)} icon="footsteps-outline" tint="#1479FF" />
+              <LeadStat label={he.seasonStatContributions} value={String(me.contributions)} icon="flash-outline" tint="#0D9488" />
+            </View>
+          </View> : null}
         {/* MY half and the CLUB's half are two different questions, and one
             ternary on `me.hasData` used to answer both with "no".
 
@@ -465,13 +402,15 @@ export function SeasonSummaryScreen() {
             design — they are decided when the numbers stop. */}
         {me.hasData && model.closed ? (
           <View style={styles.card}>
-            <CardTitle icon="medal" text={he.seasonSectionTitles} />
+            <CardTitle icon="sparkles-outline" text={he.seasonSectionTitles} />
             {model.myTitles.length === 0 ? (
               <Text style={styles.cardNote}>{he.seasonTitlesNone}</Text>
             ) : null}
-            {model.myTitles.map((t) => (
-              <TitleRow key={t.key} title={t} />
-            ))}
+            <SeasonAwardRows personal awards={model.myTitles.map(t => ({
+              ...(model.seasonTitles.find(a => a.key === t.key) ?? { key: t.key, names: [currentUser?.name ?? 'אני'], value: t.value, mine: true }),
+              coverage: t.coverage,
+              valueUnit: t.valueUnit,
+            }))} />
           </View>
         ) : null}
 
@@ -488,114 +427,34 @@ export function SeasonSummaryScreen() {
           </View>
         ) : null}
 
-        {/* Every title the season decided, and who took it. The push sends
-            every player who played to this screen, so it is where the club
-            gathers the day a season ends — nine champions were being crowned
-            in private, each told only about their own.
-            
-            THE CABINET, not a list of rows. It used to be nine text lines
-            here and a medal grid on a separate "עונות קודמות ותארים" screen,
-            so the club's trophies lived one tap away from the only screen
-            everybody opens. That screen is gone (23.09) and its grid is this:
-            nine fixed slots in the canonical order, tiers, empty sockets for
-            titles nobody won.
-            
-            No streak badges. They need the club's other seasons to compare
-            against, and this screen shows one — "×3" with nothing on screen
-            to count is a number the reader cannot check. The history that
-            carried them was the screen that has just been removed. */}
-        {model.closed && model.seasonTitles.length > 0 ? (
-          <View style={styles.card}>
-            <CardTitle icon="trophy" text={he.seasonSectionChampions} />
-            <SeasonTitlesCabinet
-              winners={model.seasonTitles}
-              completedRounds={model.completedRounds}
-            />
-          </View>
-        ) : null}
-
         {me.hasData ? (
           <>
             <View style={styles.card}>
               <CardTitle icon="stats-chart" text={he.seasonSectionNumbers} />
-              <View style={styles.leadRow}>
-                <LeadStat label={he.statGoals} value={String(me.goals)} icon="football" tint={colors.primary} />
-                <LeadStat label={he.statAssists} value={String(me.assists)} icon="footsteps-outline" tint="#7C3AED" />
-                <LeadStat label={he.seasonStatContributions} value={String(me.contributions)} icon="flash-outline" tint="#F59E0B" />
-              </View>
               <View style={styles.statGrid}>
-                <Stat label={he.seasonStatEvenings} value={String(me.evenings)} icon="calendar-outline" tint={colors.success} />
-                <Stat label={he.seasonStatRounds} value={String(me.rounds)} icon="grid-outline" tint="#0EA5E9" />
-                <Stat label={he.seasonStatWins} value={String(me.wins)} icon="trophy-outline" tint={colors.success} />
-                <Stat label={he.seasonStatLosses} value={String(me.losses)} icon="close-circle-outline" tint={colors.danger} />
-                <Stat label={he.seasonStatTies} value={String(me.ties)} icon="remove-circle-outline" tint={colors.textMuted} />
-                <Stat label={he.seasonStatWinPct} value={pct(me.winPct)} icon="stats-chart-outline" tint={colors.success} />
-                <Stat label={he.seasonStatCleanSheets} value={String(me.cleanSheets)} icon="shield-checkmark-outline" tint={colors.info} />
-                <Stat label={he.seasonStatCleanSheetPct} value={pct(me.cleanSheetPct)} icon="shield-outline" tint={colors.info} />
-                <Stat label={he.seasonStatGoalsPerRound} value={per(me.goalsPerRound)} icon="speedometer-outline" tint={colors.primary} />
-                <Stat label={he.seasonStatAssistsPerRound} value={per(me.assistsPerRound)} icon="git-network-outline" tint="#7C3AED" />
+                <Stat label={he.seasonStatWins} value={String(me.wins)} icon="trophy-outline" />
+                <Stat label={he.seasonStatRounds} value={String(me.rounds)} icon="grid-outline" />
+                <Stat label={he.seasonStatEvenings} value={String(me.evenings)} icon="calendar-outline" />
+                <Stat label={he.seasonStatWinPct} value={pct(me.winPct)} icon="stats-chart-outline" />
+                <Stat label={he.seasonStatTies} value={String(me.ties)} icon="remove-circle-outline" />
+                <Stat label={he.seasonStatLosses} value={String(me.losses)} icon="close-circle-outline" />
+                <Stat label={he.seasonStatGoalsPerRound} value={per(me.goalsPerRound)} icon="speedometer-outline" />
+                <Stat label={he.seasonStatCleanSheetPct} value={pct(me.cleanSheetPct)} icon="shield-outline" />
+                <Stat label={he.seasonStatCleanSheets} value={String(me.cleanSheets)} icon="shield-checkmark-outline" />
+                {me.ownGoals > 0 ? <Stat label={he.seasonStatOwnGoals} value={String(me.ownGoals)} icon="return-down-back-outline" /> : null}
+                {me.penTaken > 0 ? <Stat label={he.seasonStatPenalties} icon="locate-outline" value={`${me.penScored}/${me.penTaken}`} /> : null}
+                <Stat label={he.seasonStatAssistsPerRound} value={per(me.assistsPerRound)} icon="git-network-outline" />
+                {me.penFaced > 0 ? <Stat label={he.seasonStatPenSaves} icon="hand-left-outline" value={`${me.penSaved}/${me.penFaced}`} /> : null}
               </View>
-              {me.penTaken > 0 || me.penFaced > 0 || me.ownGoals > 0 ? (
-                <View style={styles.statGrid}>
-                  {me.penTaken > 0 ? (
-                    <Stat
-                      label={he.seasonStatPenalties}
-                      value={`${me.penScored}/${me.penTaken}`}
-                    />
-                  ) : null}
-                  {me.penFaced > 0 ? (
-                    <Stat
-                      label={he.seasonStatPenSaves}
-                      value={`${me.penSaved}/${me.penFaced}`}
-                    />
-                  ) : null}
-                  {me.ownGoals > 0 ? (
-                    <Stat label={he.seasonStatOwnGoals} value={String(me.ownGoals)} />
-                  ) : null}
-                </View>
-              ) : null}
-              {/* Why the tiles above do not divide into each other.
-                  Clean sheets have only been recorded since 17.08 and assists
-                  since 21.06, both later than the club — so for a veteran both
-                  rates are measured over a shorter window than the "משחקונים"
-                  tile two along. Four clean sheets in twenty-two is 18%, and
-                  the tile beside it says 24%, because 24% is the honest answer
-                  over the seventeen that were measured. The club's efficiency
-                  table already prints this note under the same numbers; this
-                  grid was the one place a reader could watch the arithmetic
-                  fail with nothing to explain it. */}
-              {me.partialCoverage ? (
-                <Text style={styles.cardNote}>{he.seasonPartialCoverageNote}</Text>
-              ) : null}
+
             </View>
 
             <View style={styles.card}>
-              <CardTitle icon="podium" text={he.seasonSectionStanding} />
+              <CardTitle icon="trending-up-outline" text={he.seasonSectionStanding} />
               <View style={styles.statGrid}>
-                {/* Goals and assists carry their OWN icon, the same ball and
-                    footsteps "המספרים שלך בעונה" uses a card above — a tile
-                    labelled שערים should look like the goals tile everywhere
-                    else, not like a podium. The celebration for a podium
-                    finish is still there, in the TINT. Wins keeps the medal,
-                    which is the one the owner asked to leave alone. */}
-                <Stat
-                  label={he.statGoals}
-                  value={me.ranks.goals ? he.seasonRankOf(me.ranks.goals, me.ranks.of) : '—'}
-                  icon="football"
-                  tint={rankTint(me.ranks.goals)}
-                />
-                <Stat
-                  label={he.statAssists}
-                  value={me.ranks.assists ? he.seasonRankOf(me.ranks.assists, me.ranks.of) : '—'}
-                  icon="footsteps-outline"
-                  tint={rankTint(me.ranks.assists)}
-                />
-                <Stat
-                  label={he.seasonStatWins}
-                  value={me.ranks.wins ? he.seasonRankOf(me.ranks.wins, me.ranks.of) : '—'}
-                  icon={rankIcon(me.ranks.wins)}
-                  tint={rankTint(me.ranks.wins)}
-                />
+                <Stat rank label={he.seasonStatWins} value={me.ranks.wins ? he.seasonRankOf(me.ranks.wins, me.ranks.of) : '—'} icon={rankIcon(me.ranks.wins)} tint={rankTint(me.ranks.wins)} artwork="goldTrophy" />
+                <Stat rank label={he.statAssists} value={me.ranks.assists ? he.seasonRankOf(me.ranks.assists, me.ranks.of) : '—'} icon="footsteps-outline" tint={rankTint(me.ranks.assists)} artwork="purpleBoot" />
+                <Stat rank label={he.statGoals} value={me.ranks.goals ? he.seasonRankOf(me.ranks.goals, me.ranks.of) : '—'} icon="football" tint={rankTint(me.ranks.goals)} />
               </View>
               <Text style={styles.cardNote}>
                 {he.seasonClubRounds(model.completedRounds)}
@@ -669,17 +528,19 @@ export function SeasonSummaryScreen() {
           </>
         ) : null}
 
-        {me.hasData ? (
+        </>}
+
+        {tab === 'club' || me.hasData ? (
           <Pressable
             onPress={onShare}
             disabled={sharing}
             style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.9 }]}
             accessibilityRole="button"
-            accessibilityLabel={he.seasonShareCta}
+            accessibilityLabel={tab === 'club' ? 'שיתוף סיכום המועדון' : 'שיתוף הסיכום האישי'}
           >
             {/* Label first → rightmost under forceRTL, so the icon lands to
                 its LEFT, which is the side it reads on in an RTL row. */}
-            <Text style={styles.shareText}>{he.seasonShareCta}</Text>
+            <Text style={styles.shareText}>{tab === 'club' ? 'שיתוף סיכום המועדון' : 'שיתוף הסיכום האישי'}</Text>
             <Ionicons
               name={sharing ? 'hourglass-outline' : 'share-social'}
               size={18}
@@ -688,7 +549,7 @@ export function SeasonSummaryScreen() {
           </Pressable>
         ) : null}
 
-        <Text style={styles.footnote}>{he.seasonSummaryFootnote}</Text>
+        <View style={styles.infoRow}><Text style={styles.footnote}>נתוני העונה שנבחרה בלבד</Text><InfoTip text={he.seasonSummaryFootnote} size={13} /></View>
       </ScrollView>
 
       {/* Off-screen, at a fixed width, so the captured image is the same from
@@ -698,7 +559,7 @@ export function SeasonSummaryScreen() {
         <View ref={shareCardRef} collapsable={false}>
           {/* The name belongs on a card that leaves the app — without it the
               image is a set of numbers nobody can place. */}
-          <SeasonShareCard model={model} playerName={currentUser?.name} />
+          {tab === 'club' ? <SeasonClubShareCard model={model} /> : <SeasonShareCard model={model} playerName={currentUser?.name} />}
         </View>
       </View>
     </SafeAreaView>
@@ -706,226 +567,46 @@ export function SeasonSummaryScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: '#F2F8FF' },
+  tabs: { flexDirection: 'row', backgroundColor: colors.surface, borderWidth: 1, borderColor: '#DFEAF8', borderRadius: 11, padding: 2 },
+  tab: { flex: 1, minHeight: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 9 },
+  activeTab: { backgroundColor: '#1479FF' },
+  tabText: { fontSize: 13, lineHeight: 18, fontWeight: '700', color: colors.text },
+  activeTabText: { color: '#fff' },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  identityName: { fontSize: 19, lineHeight: 24, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  identityCaption: { fontSize: 11, lineHeight: 15, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   centerScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
-  content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xl },
-  hero: { gap: spacing.xs },
-  // First child renders rightmost under forceRTL, so the running season — the
-  // first entry — sits on the right where reading starts.
-  chipRow: { gap: spacing.sm, paddingVertical: spacing.xs },
-  chip: {
-    paddingHorizontal: spacing.md,
-    // 44pt of touch target, not 26. The season picker is the one control on
-    // this screen and it was smaller than a thumb.
-    minHeight: 44,
-    justifyContent: 'center',
-    borderRadius: 999,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { ...typography.caption, color: colors.text },
-  chipTextActive: { color: colors.surface, fontWeight: '700' },
-  heroSeason: {
-    ...typography.h2,
-    color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  heroRange: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  heroClosed: {
-    ...typography.caption,
-    color: colors.primary,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    // The app's own token and the app's own shadow, like every other card in
-    // the app. #FFFFFF on #F9FAFB is 1.05:1 and #11161D on #0B0F14 is 1.06:1 —
-    // with no border and no elevation nothing on this screen had an edge, and
-    // the tiles inside were worse in the direction that matters.
-    borderRadius: radius.xl,
-    ...shadows.card,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  cardTitle: {
-    // A heading, one step above its contents. It was typography.h3 and so was
-    // statValue — the card's title and its data competed at the same size and
-    // the same weight, so nothing on the screen led.
-    ...typography.label,
-    color: colors.textMuted,
-    fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  cardNote: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  leadRow: { flexDirection: 'row', gap: spacing.sm },
-  leadStat: {
-    flexGrow: 0,
-    flexBasis: '31%',
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    gap: 2,
-  },
-  // Icon first in source order → rightmost under forceRTL, beside its word.
-  leadHead: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  leadLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '700',
-    flex: 1,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  leadValue: {
-    // Pushed to the bottom of the tile. The three tiles stretch to the tallest,
-    // and "שערים + בישולים" is a two-line label — so without this its number
-    // sat a line lower than the two beside it and the row had no baseline.
-    marginTop: 'auto',
-    ...typography.h1,
-    fontWeight: '900',
-    color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-    fontVariant: ['tabular-nums'],
-  },
-  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  statIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-  },
-  stat: {
-    // No minWidth. On a 360dp phone the card's inner width is 296, so 31% is
-    // 91.8 — under the 96 this used to set. flexShrink defaults to 0, so the
-    // basis lost and three tiles could not fit: the grid dropped to two
-    // columns and every row ended in a tile-wide hole.
-    //
-    // NOT flexGrow either. Thirteen tiles in rows of three leave one on the
-    // last row, and letting it grow stretched a single number across the whole
-    // width — the screen ended on a slab. A fixed basis leaves the last row
-    // short, which is what a grid is supposed to look like.
-    flexGrow: 0,
-    flexBasis: '31%',
-    // Sits ON a card, so it needs the muted surface — the page background
-    // would be invisible against white in light mode.
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 12,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    gap: 2,
-  },
-  statValue: {
-    // Bigger than the heading above it, not equal to it — this is the number
-    // the screen exists for.
-    ...typography.h2,
-    fontWeight: '900',
-    color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-    fontVariant: ['tabular-nums'],
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  // Medal first in source order → rightmost under forceRTL, where the eye
-  // starts.
-  titleRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
-  titleMedal: { fontSize: 22 },
-  titleText: { flex: 1, gap: 1 },
-  titleName: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  // Label first in source order → rightmost under forceRTL, name beside it.
-  // The coverage note beside a champion's number. Quieter than the value, and
-  // allowed to wrap — it is a sentence, not a figure.
-  titleShared: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  // Icon first in source order: under forceRTL the first child renders
-  // rightmost, which puts the icon on the right of the Hebrew text.
-  peerRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
-  peerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  peerText: { flex: 1, gap: 1 },
-  peerLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  peerName: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  peerDetail: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  empty: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-  titleMedalDisc: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F4B73E',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shareBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: spacing.md,
-    // A row now, because the label has an icon beside it.
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
-  shareText: { ...typography.body, color: colors.surface, fontWeight: '700' },
-  // Parked ABOVE the screen rather than beside it.
-  //
-  // Either works — the captured PNG was verified complete both ways. Vertical
-  // is preferred only because a negative `left` is flipped by forceRTL, so the
-  // offset it produces depends on the app's language rather than on this file.
-  shareStage: {
-    position: 'absolute',
-    top: -10000,
-    width: SHARE_CARD_WIDTH,
-  },
-  footnote: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
+  content: { padding: 10, gap: 8, paddingBottom: spacing.xl },
+  hero: { ...seasonSummaryStyles.card, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 74, overflow: 'hidden' },
+  pitchDecoration: { position: 'absolute', left: 12, opacity: 0.45 },
+  heroSeason: { fontSize: 18, lineHeight: 23, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  heroRange: { fontSize: 11, lineHeight: 15, color: colors.textMuted, textAlign: 'center' },
+  heroClosed: { fontSize: 10, lineHeight: 14, fontWeight: '700', color: '#29466C', textAlign: 'center', backgroundColor: '#E3F0FF', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 2 },
+  card: { ...seasonSummaryStyles.card },
+  cardTitle: { flex: 1, fontSize: 15, lineHeight: 20, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  cardNote: { fontSize: 10, lineHeight: 14, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  leadRow: { flexDirection: 'row', gap: 6 },
+  leadStat: { flex: 1, flexDirection: 'row', alignItems: 'center', minHeight: 47, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 7, gap: 3 },
+  leadLabel: { fontSize: 10, lineHeight: 13, color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  leadValue: { fontSize: 24, lineHeight: 27, fontWeight: '900', color: colors.text, textAlign: RTL_LABEL_ALIGN, fontVariant: ['tabular-nums'] },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  stat: { flexDirection: 'row', alignItems: 'center', width: '32%', backgroundColor: '#F4F8FE', borderWidth: 1, borderColor: '#EAF1FC', borderRadius: 8, minHeight: 45, paddingVertical: 4, paddingHorizontal: 6, gap: 3 },
+  statValue: { fontSize: 18, lineHeight: 22, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN, fontVariant: ['tabular-nums'] },
+  statLabel: { fontSize: 10, lineHeight: 13, color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  rankValue: { fontSize: 11, lineHeight: 15, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  peerRow: { flexDirection: 'row', gap: 7, alignItems: 'center', minHeight: 44, paddingVertical: 4, borderTopWidth: 1, borderColor: '#EAF1FC' },
+  peerIcon: { width: 25, alignItems: 'center', justifyContent: 'center' },
+  peerText: { flex: 1.2, gap: 1 },
+  peerLabel: { flex: 1, fontSize: 10, lineHeight: 14, color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  peerName: { fontSize: 12, lineHeight: 15, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  peerDetail: { fontSize: 10, lineHeight: 13, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  empty: { fontSize: 14, lineHeight: 20, color: colors.textMuted, textAlign: 'center' },
+  shareBtn: { backgroundColor: '#1479FF', borderRadius: 10, minHeight: 42, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  shareText: { fontSize: 14, lineHeight: 20, color: '#fff', fontWeight: '700' },
+  shareStage: { position: 'absolute', top: -10000, width: SHARE_CARD_WIDTH },
+  footnote: { fontSize: 10, lineHeight: 14, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  infoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
 });

@@ -1,0 +1,18 @@
+{
+  "windowStart": "2026-10-18T18:05:00Z",
+  "windowEnd": "2026-10-18T21:22:00Z",
+  "logEntries": 286,
+  "remainingPages": false,
+  "requests": 118,
+  "statuses": {
+    "200": 118
+  },
+  "applicationErrorQueryEntries": 0,
+  "limitation": "אין מזהה בקשה משותף ליומן המכשיר; הצלחה אינה הוכחת פתרון",
+  "services": [
+    "availabilitycounts",
+    "getfriendsinclubs",
+    "getmyplayerreferrals",
+    "getplayeridentities"
+  ]
+}

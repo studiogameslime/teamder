@@ -1,0 +1,152 @@
+[
+  {
+    "screen": "Menu",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Tasks",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Versions",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "UserDetail",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "ErrorDetail",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "DevInbox",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Users",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Messages",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Chats",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Games",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "QaUserDetail",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Overview",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Campaigns",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Stickers",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Availability",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Ads",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Quota",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Settings",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Reviews",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Revenue",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Ideas",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "AdminLogin",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "ActivityWorkspace",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "GrowthWorkspace",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "NotificationsWorkspace",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  }
+]

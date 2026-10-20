@@ -137,3 +137,5 @@
 | שיחה עם צוות התמיכה | [הסבר פשוט](shared/support-chat.simple.md) | [הסבר מעמיק](shared/support-chat.md) |
 
 | תיבת משימות ובאגים שלא נפתרו בפולס | [הסבר פשוט](shared/pulse-work-inbox.simple.md) | [מסמך טכני](shared/pulse-work-inbox.md) |
+
+| ארגון וניהול בפולס | [הסבר פשוט](shared/pulse-management.simple.md) | [מסמך טכני](shared/pulse-management.md) |

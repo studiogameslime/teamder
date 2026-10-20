@@ -43,6 +43,7 @@ function setup() {
     requireString: (_: string, value: string) => value.trim(), optionalString: (_: string, value: string) => value?.trim(),
     requireInt: (_: string, value: number) => value,
     failValidation: (_: string, text: string) => { throw Object.assign(Error(text), { code: 'VALIDATION_ERROR' }); },
+    ensureSeasonSchedule: async () => {}, // Receipt fixtures have no season window; policy is exercised separately.
     enforceRateLimit: charges, findOverlappingGameInGroup: overlap, USE_MOCK_DATA: false, __DEV__: false,
     getDocFromServer: getServer, docs: { game: (id: string) => id }, getFirebase: () => ({ db: {} }), runTransaction,
     notificationsService: { dispatch }, logError: () => {}, logUnexpected: () => {}, logEvent: () => {},

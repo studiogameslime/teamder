@@ -59,6 +59,7 @@ export function msUntilSeasonCloses(
   ) {
     return null;
   }
+  if (seasons?.pendingClose?.pausedAt != null) return Math.max(0, seasons.pendingClose.remainingMs ?? 0);
   return Math.max(0, at - now);
 }
 

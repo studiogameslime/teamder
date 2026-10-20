@@ -9,6 +9,7 @@ export async function acquireSeasonOperation(
   expected: unknown,
   kind: string,
   intent?: unknown,
+  guard?: (seasons: Record<string, any>) => void,
 ): Promise<{ token: string; markMutating: () => Promise<void>; finish: (succeeded: boolean) => Promise<void> }> {
   const token = randomUUID();
   const canonical = (value: unknown): string => JSON.stringify(value, (_key, v) =>
@@ -17,6 +18,7 @@ export async function acquireSeasonOperation(
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const sea = snap.get('seasons') ?? {};
+    guard?.(sea);
     if (sea.operation?.until > Date.now() || (sea.operation?.failed && sea.operation.kind !== kind)) throw new HttpsError('failed-precondition', 'season-operation:busy');
     if (sea.operation?.phase && sea.operation.kind !== kind) throw new HttpsError('failed-precondition', 'season-operation:busy');
     if (sea.operation?.phase && sea.operation.intent !== intentKey) throw new HttpsError('failed-precondition', 'season-operation:stale');
@@ -25,8 +27,9 @@ export async function acquireSeasonOperation(
     if (clean(sea) !== clean(expected)) throw new HttpsError('failed-precondition', 'season-operation:stale');
     const at = Date.now();
     tx.set(ref, { seasons: {
-      operation: { token, kind, until: at + 20 * 60 * 1000, phase: sea.operation?.phase === true, failed: false, intent: intentKey },
-      pendingClose: sea.pendingClose ?? { seasonId: sea.currentId ?? 'activation', dueAt: at, closeAt: at, reason: 'rounds' },
+      operation: { token, kind, until: at + 6 * 60 * 1000, phase: sea.operation?.phase === true, failed: false, intent: intentKey,
+        ...(sea.operation?.context ? { context: sea.operation.context } : {}) },
+      pendingClose: sea.pendingClose ?? { seasonId: sea.currentId ?? 'activation', dueAt: at, closeAt: at, reason: 'rounds', temporary: true },
     } }, { merge: true });
   });
   return { token, markMutating: async () => {
@@ -50,7 +53,7 @@ export async function acquireSeasonOperation(
       }
       // If the action did not replace/delete the temporary window, restore it.
       const p = snap.get('seasons.pendingClose');
-      if (p && p.dueAt === p.closeAt) patch.pendingClose = admin.firestore.FieldValue.delete();
+      if (p?.temporary === true) patch.pendingClose = admin.firestore.FieldValue.delete();
       tx.set(ref, { seasons: patch }, { merge: true });
     });
   } };

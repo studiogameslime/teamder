@@ -84,7 +84,7 @@ const count = (n: number, one: string, many: string) =>
 const TITLE = {
   topScorer: 'מלך השערים',
   topAssister: 'מלך הבישולים',
-  mvp: 'מלך העונה',
+  mvp: 'השחקן המצטיין',
   topWinner: 'מלך הניצחונות',
   mostLoyal: 'מלך ההתמדה',
   cleanSheetKing: 'מלך השער הנקי',
@@ -2535,7 +2535,7 @@ export const he = {
   // because there is one.
   seasonClosingBlockTitle: 'העונה בדרך להיסגר',
   seasonClosingBlockBody:
-    'העונה הגיעה ליעד שלה ונמצאת בחלון של 24 שעות לתיקונים. אפשר לתקן תוצאות, שערים והשתתפות של מחזורים קיימים — אבל אי אפשר להתחיל מחזור חדש עד שהעונה תיסגר.\n\nרוצים להתחיל כבר עכשיו? סגרו את העונה מיד ממסך הגדרות העונות, ואז אפשר להתחיל את המחזור הבא.\n\nאם העונה עוד לא נגמרה מבחינתכם — האריכו אותה מאותו מסך, והחסימה תוסר.',
+    'העונה בתהליך סיום, ולכן אי אפשר להתחיל מחזור חדש. בהגדרות העונות מוצגים המצב והזמן שנותר. אם ממתינים לאימות מחזורים, הטיימר נעצר עד להכרעה בפרטי המועדון.\n\nבחלון תיקונים רגיל אפשר להאריך את היעד כדי להמשיך בעונה, או לסגור ידנית. סגירה ידנית ממתינה למחזור פעיל ולאימות שנותר, ומושלמת ללא חלון תיקונים נוסף.',
   /**
    * Said BEFORE the press, on the game screen itself.
    *
@@ -2547,11 +2547,11 @@ export const he = {
    * drawn from `pendingClose`, which the close deletes.
    */
   seasonClosingGameBanner:
-    'העונה בחלון סגירה — אי אפשר להתחיל את המחזור עד שהיא תיסגר',
+    'ממתינים לסגירת העונה לפני התחלת המחזור. מצב הסגירה והאימות מופיעים בהגדרות העונות.',
   seasonsDisableTitle: 'לכבות עונות?',
-  seasonsCadenceLocked: 'לאחר תחילת העונה אפשר לשנות את היעד, אך סוג העונה נשאר קבוע.',
-  seasonsDisableBodyOf: (no: number, played: number) => played < 2
-    ? 'טרם התקיימו שני מחזורים בעונה. העונות יכובו בלי ארכיון ובלי חלוקת תארים. הנתונים שכבר נצברו יישמרו בנתוני כל הזמנים, וכך גם העונות הקודמות והתארים שלהן.'
+  seasonsCadenceLocked: 'אפשר לשנות גם את סוג היעד, בתנאי שהיעד החדש עדיין לא הושג.',
+  seasonsDisableBodyOf: (no: number, played: number) => played < 5
+    ? 'טרם התקיימו חמישה מחזורים בעונה. העונות יכובו בלי ארכיון ובלי חלוקת תארים. הנתונים שכבר נצברו יישמרו בנתוני כל הזמנים, וכך גם העונות הקודמות והתארים שלהן.'
     :
     `${count(played, 'מחזור אחד', 'מחזורים')} בעונה ${no}.\n\n` +
     'כיבוי העונות מסיים את העונה הפעילה עכשיו:\n' +
@@ -2610,7 +2610,7 @@ export const he = {
   // Named, because the season it opens is the one that ENDED — the club is
   // already playing the next. "סיכום העונה שלי" beside a running season 5
   // reads as season 5.
-  seasonsMySummaryOfCta: (no: number) => `סיכום עונה ${no} שלי`,
+  seasonsMySummaryOfCta: 'סיכום העונה שלי',
   seasonsTargetDate: (when: string) => `העונה מסתיימת ב־${when}`,
   seasonsTargetRounds: (target: number) =>
     `העונה תסתיים אחרי ${target} מחזורים`,
@@ -2639,7 +2639,7 @@ export const he = {
   // season the club is actually on, which after a disable/enable is 4, not 1.
   // Whoever revives this dialog should title it with seasonNumberLabel(no).
   seasonsSealConfirmBody:
-    'כל מה שהמועדון שיחק עד היום ייסגר כעונה שהסתיימה: יחולקו עליה תארים, והטבלה תתחיל מאפס.\n\nהעונה תישמר בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nאם טעיתם אפשר לבטל את הסגירה מאותו מסך, כל עוד לא נסגרה עונה נוספת אחריה.',
+    'כל מה שהמועדון שיחק עד היום ייסגר כעונה שהסתיימה: יחולקו עליה תארים, והטבלה תתחיל מאפס.\n\nהעונה תישמר בארכיון ותמיד אפשר לחזור אליה, והסטטיסטיקה המצטברת בפרופיל לא משתנה.\n\nהסגירה סופית, ללא חלון תיקונים וללא פתיחה מחדש.',
   seasonsSealConfirmCta: 'סגור והתחל מאפס',
   seasonsEndConfirmTitle: 'לסיים את העונה?',
   // ⚠️ The last paragraph used to promise "אם טעיתם אפשר לבטל את הסגירה מאותו
@@ -2783,7 +2783,7 @@ export const he = {
    *  from here. */
   seasonTitleNames: TITLE,
   seasonsRestartTitle: 'פותחים עונה חדשה ונקייה',
-  seasonsRestartBody: 'העונה החדשה מתחילה מאפס כדי שהנתונים מהתקופה הקודמת לא ייכנסו לתחרות החדשה. הנתונים הקודמים נשמרים בהיסטוריה ובנתוני כל הזמנים. תקופה של פחות משני מחזורים נשמרת ללא חלוקת תארים.',
+  seasonsRestartBody: 'העונה החדשה מתחילה מאפס כדי שהנתונים מהתקופה הקודמת לא ייכנסו לתחרות החדשה. הנתונים הקודמים נשמרים בהיסטוריה ובנתוני כל הזמנים. ניסיון עונה של פחות מחמישה מחזורים מבוטל ללא תארים, והפעילות נשמרת בכל הזמנים.',
   communityStatsAllTimeWithPeriods: 'הנתונים כוללים את העונה הנוכחית, עונות קודמות ותקופות שנשמרו ללא תארים.',
   communityStatsSeasonFresh: (no: number) =>
     `עונה ${no} רק התחילה, אז הטבלה עוד ריקה. שום דבר לא נמחק — כל מה ששיחקתם שמור בעונה הקודמת, והסטטיסטיקה המצטברת בפרופיל לא השתנתה.`,
@@ -2887,7 +2887,7 @@ export const he = {
     // season unchanged — so the club that ran 24-evening seasons quietly
     // becomes a club that runs 20-evening ones, for ever, on a press whose
     // dialog only talked about titles and the table.
-    `שימו לב: היעד החדש נשמר למועדון, אז גם עונה ${no + 1} תסתיים אחרי ${count(played, 'מחזור אחד', 'מחזורים')}. אפשר לשנות את היעד כאן אחרי שהעונה תיסגר.`,
+    'השינוי חל על העונה הנוכחית בלבד. הגדרות העונות הבאות נשמרות בנפרד.',
   seasonsTargetClosesCta: 'שמור וסיים את העונה',
   seasonsLengthLabel: 'משך עונה',
   seasonsCustom: 'מותאם אישית',
@@ -2923,7 +2923,7 @@ export const he = {
   seasonsErrHistoryFillsOf: (played: number, endingNo: number, startingNo: number) =>
     `במועדון כבר התקיימו ${count(played, 'מחזור אחד', 'מחזורים')} — בדיוק מכסת העונה. עונה ${endingNo} חייבת להסתיים, ועונה ${startingNo} תתחיל במקומה.`,
   seasonsErrMonths: `בחרו בין ${1} ל-24 חודשים.`,
-  seasonsErrRounds: 'עונה חייבת להכיל לפחות 2 מחזורים.',
+  seasonsErrRounds: 'יעד עונה חייב להכיל לפחות חמישה מחזורים, ועד 200 מחזורים מעבר לפעילות שנכללת.',
   seasonsErrSeason1End: 'בחרו תאריך סיום לעונה 1.',
   seasonsErrSeason1Past: 'תאריך הסיום של עונה 1 חייב להיות בעתיד.',
   // The pair above blocks the save while naming a season that is not the one
@@ -3046,9 +3046,9 @@ export const he = {
   // complete; only the rating is short, so only the rating says so, and it
   // says so right next to itself.
   seasonTitleCoverage: (rated: number, of: number) =>
-    `מבוסס על ${rated} מתוך ${of} ערבי העונה שבהם נאספו דירוגים`,
+    `מבוסס על ${rated} מתוך ${of} מחזורי העונה עם ציון תקף`,
 
-  seasonTitleValue: (key: string, value: number) => {
+  seasonTitleValue: (key: string, value: number, valueUnit?: 'percent') => {
     const c = (one: string, many: string) => count(value, one, many);
     switch (key) {
       // ⚠️ COUNTS since 20.09.2026, not rates (§16). These two were decided
@@ -3064,13 +3064,14 @@ export const he = {
         // With its unit. A bare "7.3" appears on three screens and names no
         // scale — nobody can tell whether it is out of 10, out of 100, or a
         // count of something. It is the mean of the player's evening scores.
-        return `ציון ${value.toFixed(1)}`;
+        return `ציון ${value.toFixed(2)}`;
       case 'topScorer':
         return c('שער אחד', 'שערים');
       case 'topAssister':
       case 'deadlyDuo':
         return c('בישול אחד', 'בישולים');
       case 'topWinner':
+        if (valueUnit === 'percent') return `${value.toFixed(2)}% ניצחונות`;
         return c('ניצחון אחד', 'ניצחונות');
       case 'mostLoyal':
         return c('מחזור אחד', 'מחזורים');
@@ -3084,7 +3085,7 @@ export const he = {
   // beside it. `seasonTitleValue` glues the two together, which is right in a
   // row and wrong at 45pt — the unit must not be set in the same size as the
   // number it qualifies.
-  seasonHeroValue: (key: string, value: number): { big: string; unit: string } => {
+  seasonHeroValue: (key: string, value: number, valueUnit?: 'percent'): { big: string; unit: string } => {
     switch (key) {
       // Not 'מהפנדלים שבעט' / 'שעצר': the poster's subject is whoever won the
       // title, and on the one closed season that is a woman. The rate says the
@@ -3095,13 +3096,14 @@ export const he = {
       case 'penaltyKeeper':
         return { big: String(value), unit: value === 1 ? 'עצירה' : 'עצירות' };
       case 'mvp':
-        return { big: value.toFixed(1), unit: 'ציון העונה' };
+        return { big: value.toFixed(2), unit: 'ציון העונה' };
       case 'topScorer':
         return { big: String(value), unit: value === 1 ? 'שער' : 'שערים' };
       case 'topAssister':
       case 'deadlyDuo':
         return { big: String(value), unit: value === 1 ? 'בישול' : 'בישולים' };
       case 'topWinner':
+        if (valueUnit === 'percent') return { big: `${value.toFixed(2)}%`, unit: 'ניצחונות' };
         return { big: String(value), unit: value === 1 ? 'ניצחון' : 'ניצחונות' };
       case 'mostLoyal':
         return { big: String(value), unit: value === 1 ? 'מחזור' : 'מחזורים' };
@@ -3266,17 +3268,16 @@ export const he = {
         ? 'משחק אחד באותה קבוצה, וניצחתם בו'
         : 'משחק אחד באותה קבוצה'
       : `${together} משחקים באותה קבוצה${
-          wins === 0 ? '' : `, ${wins === 1 ? 'אחד מהם' : `${wins} מהם`} בניצחון`
+          wins === 0 ? '' : `, ${wins === 1 ? 'אחד מהם' : `${wins} מהם`} ניצחתם`
         }`,
   seasonPeerNemesis: 'מול מי שיחקת הכי הרבה',
-  seasonPeerNemesisDetail: (faced: number, mine: number, theirs: number) =>
-    faced === 1
-      ? mine === 1
-        ? 'משחק אחד זה מול זה, וניצחתם'
-        : 'משחק אחד זה מול זה, והפסדתם'
-      : `${faced} משחקים זה מול זה — ${
-          mine === 1 ? 'ניצחון אחד' : `${mine} ניצחונות`
-        } מול ${theirs}`,
+  seasonPeerNemesisDetail: (faced: number, mine: number, theirs: number) => {
+    const ties = Math.max(0, faced - mine - theirs);
+    if (faced === 1) return mine === 1
+      ? 'משחק אחד זה מול זה · ניצחת'
+      : theirs === 1 ? 'משחק אחד זה מול זה · הפסדת' : 'משחק אחד זה מול זה · תיקו';
+    return `${faced} משחקים זה מול זה · ניצחת ב־${mine}, הפסדת ב־${theirs}${ties > 0 ? `, ${ties} בתיקו` : ''}`;
+  },
   seasonPeerVictim: 'את מי ניצחת הכי הרבה',
   // No "מולו". It sits directly under the other player's name and avatar, and
   // on the only closed season that player is a woman; the rows around it say

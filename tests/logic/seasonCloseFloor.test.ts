@@ -41,7 +41,7 @@ describe('ending a season on purpose', () => {
   it('the floor is the same number the target picker already enforced', () => {
     // One rule, both ends of a season. If these ever diverge, a club can set a
     // target it may not then seal, or seal one it could not have set.
-    expect(MIN_SEASON_ROUNDS).toBe(2);
+    expect(MIN_SEASON_ROUNDS).toBe(5);
   });
 });
 
@@ -69,7 +69,7 @@ describe('what the admin is told', () => {
   it('names the club\'s own figure and what it takes', () => {
     const t = seasonRefusalText('tooFewRounds', { seasonNo: 1, played: 1 });
     expect(t).toContain('מחזור אחד');
-    expect(t).toContain('2');
+    expect(t).toContain('5');
     // And the way out, so the refusal is not a dead end.
     expect(t).toContain('כבו את העונות');
   });

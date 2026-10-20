@@ -37,7 +37,6 @@ const SEASON = 's1';
 
 let db;
 let closeSeason;
-let reopenSeason;
 
 before(async () => {
   admin.initializeApp({ projectId: 'seasons-rollover' });
@@ -53,7 +52,7 @@ before(async () => {
     lib && lib.mtimeMs >= src.mtimeMs,
     'lib/seasonRollover.js is older than its source — run `npx tsc -p tsconfig.json` first',
   );
-  ({ closeSeason, reopenSeason } = await import('./lib/seasonRollover.js'));
+  ({ closeSeason } = await import('./lib/seasonRollover.js'));
 });
 
 after(async () => {
@@ -162,33 +161,20 @@ describe('the archive is taken before the wipe', () => {
       winsTogether: 12, lossesTogether: 8, cleanSheetsTogether: 5,
       against: 18, winsA: 10, winsB: 8, assistsAToB: 3, assistsBToA: 4,
     });
-    // NOT the 16 the caller passed. The season's length is derived from the
-    // same counter the eligibility gate compares against — per-player `games`
-    // — because the caller's number comes from a counter that only started
-    // being written two months later, and comparing the two opened the gate to
-    // almost everybody. u1 attended 16, u2 15, u3 3.
+    // Full season length comes from the authoritative caller, independently of maximum attendance.
     assert.equal(s.completedRounds, 16);
   });
 
-  test('archive length follows the supplied complete history; award eligibility stays separate', async () => {
-    // Same club, but the caller reports a much smaller number — which is what
-    // production actually looks like, because clubRecords.eveningsSealed only
-    // began in August while per-player `games` began in June. The gate must
-    // not be measured against it.
-    await wipe();
-    await seed();
-    await closeSeason(args({ completedRounds: 3 }));
+  test('archive and MVP eligibility use the full season, not maximum player attendance', async () => {
+    await wipe(); await seed();
+    await closeSeason(args({ completedRounds: 33 }));
     const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
-    assert.equal(s.completedRounds, 3, 'the caller supplies the season length');
-    // Threshold is ceil(16/2) = 8. u3 attended 3 and must not be eligible for
-    // anything; on the caller's number the threshold would have been 2.
-    assert.ok(!s.awards.mvp?.winners.includes('u3'), 'attendance eligibility applies to MVP');
+    assert.equal(s.completedRounds, 33);
+    assert.equal(s.awards.mvp, null, 'ceil(33/2)=17; maximum attendance is only 16');
     assert.deepEqual(s.awards.mostLoyal.winners, ['u1']);
-    assert.equal(s.awards.mostLoyal.value, 16);
-    // And the card quotes the same number, so the hall of fame cannot print
-    // "3 מחזורים" over a title won on 16.
+    assert.equal(s.awards.mostLoyal.value, 16, 'cumulative titles have no attendance gate');
     const c = (await db.collection('seasonCards').doc(`${GID}__${SEASON}`).get()).data();
-    assert.equal(c.completedRounds, 3);
+    assert.equal(c.completedRounds, 33);
   });
 
   test('a coverage denominator that was never measured stays absent', async () => {
@@ -396,12 +382,28 @@ describe('a mini-game committed DURING the close is not erased', () => {
   before(async () => {
     await wipe();
     await seed();
-    // The archive is built from these numbers…
-    const closing = closeSeason(args());
-    // …and this lands while the close is in flight.
-    await db.collection('communityPlayerStats').doc(`${GID}__u1`).set(
-      { goals: admin.firestore.FieldValue.increment(2) }, { merge: true });
-    await closing;
+    // Inject after archive commit and before subtraction, not a timing race
+    // which could instead land before the initial read and belong in the archive.
+    let injected = false;
+    const duringClose = new Proxy(db, { get(target, key) {
+      if (key === 'batch') return () => {
+        const batch = target.batch();
+        return new Proxy(batch, { get(b, k) {
+          if (k === 'commit') return async () => {
+            const result = await b.commit();
+            if (!injected) {
+              injected = true;
+              await db.collection('communityPlayerStats').doc(`${GID}__u1`).set(
+                { goals: admin.firestore.FieldValue.increment(2) }, { merge: true });
+            }
+            return result;
+          };
+          const v = b[k]; return typeof v === 'function' ? v.bind(b) : v;
+        } });
+      };
+      const value = target[key]; return typeof value === 'function' ? value.bind(target) : value;
+    } });
+    await closeSeason({ ...args(), db: duringClose });
   });
 
   test('the evening survives as the new season\'s opening balance', async () => {
@@ -520,98 +522,17 @@ describe('the next season is a clean slate', () => {
   });
 });
 
-// ── Undoing a close ──────────────────────────────────────────────────────
-//
-// The close deliberately has no path back, which is exactly why it needs one:
-// past the seven-day PITR window a wrong close is permanent, and an admin who
-// ends a season a week early has no way to say so.
-describe('a season closed by mistake can be reopened', () => {
-  before(async () => {
-    await wipe();
-    await seed();
+// Closed seasons are immutable under policy 2. Recovery only completes the same close.
+describe('a closed season stays sealed', () => {
+  test('no reopen writer is exported and repeated close preserves archive and titles', async () => {
+    await wipe(); await seed(); await closeSeason(args());
+    const archive = db.collection('seasonSummary').doc(`${GID}__${SEASON}`);
+    const before = (await archive.get()).data();
+    const titles = (await db.collection('users').doc('u1').collection('seasonTitles').get()).size;
+    assert.equal((await import('./lib/seasonRollover.js')).reopenSeason, undefined);
     await closeSeason(args());
-  });
-
-  test('the table gets its season back', async () => {
-    const before = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
-    assert.equal(before.goals, 0, 'wound back by the close');
-
-    const res = await reopenSeason({ db, groupId: GID, seasonId: SEASON });
-    assert.equal(res.reopened, true);
-
-    const after = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
-    assert.equal(after.goals, 31);
-    assert.equal(after.cleanSheets, 18);
-    // And the row can be wound back again when the season is properly closed.
-    assert.equal(after.seasonWoundBack, undefined);
-  });
-
-  test('and every pair gets its chemistry back', async () => {
-    // The close zeroes communityPairStats — who played beside whom, who beat
-    // whom, who set up whom. Restoring the player rows and leaving these at
-    // zero destroyed a club's whole chemistry history with no way back: the
-    // archive that held it is deleted at the end of this very operation.
-    const p = (await db.collection('communityPairStats').doc(`${GID}__u1__u2`).get()).data();
-    assert.equal(p.sameTeam, 20);
-    assert.equal(p.against, 18);
-    assert.equal(p.winsA, 10);
-    assert.equal(p.assistsAToB, 3);
-  });
-
-  test('the titles come off the winners', async () => {
-    const t = await db.collection('users').doc('u1').collection('seasonTitles').get();
-    assert.equal(t.size, 0, 'a title for a season that no longer exists is worse than none');
-  });
-
-  test('a crash mid-reopen cannot give the club the season twice', async () => {
-    // The restore ADDS, and the only step that makes the operation
-    // non-repeatable — deleting the archive — is the last one. Without a latch
-    // a retry after a crash hands the club a second copy of the whole season.
-    await wipe();
-    await seed();
-    await closeSeason(args());
-    await reopenSeason({ db, groupId: GID, seasonId: SEASON });
-    const once = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
-    assert.equal(once.goals, 31);
-
-    // Put the archive back and run it again — a faithful "the delete never
-    // landed" retry.
-    await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).set({
-      groupId: GID, seasonId: SEASON, no: 1,
-      players: { u1: { goals: 31, rounds: 34, games: 16 } },
-      totals: { goals: 40, rounds: 78 },
-      awards: {},
-    });
-    await reopenSeason({ db, groupId: GID, seasonId: SEASON });
-    const twice = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
-    assert.equal(twice.goals, 31, 'still 31, not 62');
-    const club = (await db.collection('communityStats').doc(GID).get()).data();
-    assert.equal(club.goals, 40, 'the club totals did not double either');
-  });
-
-  test('and the archive is gone, so it cannot be reopened twice', async () => {
-    const s = await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get();
-    assert.equal(s.exists, false);
-    // The card goes with it — one without the other is a season that shows in
-    // the hall of fame and cannot be opened.
-    const c = await db.collection('seasonCards').doc(`${GID}__${SEASON}`).get();
-    assert.equal(c.exists, false);
-    const again = await reopenSeason({ db, groupId: GID, seasonId: SEASON });
-    assert.equal(again.reopened, false);
-  });
-
-  test('a round played AFTER the close survives the reopen', async () => {
-    await wipe();
-    await seed();
-    await closeSeason(args());
-    // The new season starts, somebody scores twice…
-    await db.collection('communityPlayerStats').doc(`${GID}__u1`).set(
-      { goals: admin.firestore.FieldValue.increment(2) }, { merge: true });
-    // …and only then does the admin realise the close was a mistake.
-    await reopenSeason({ db, groupId: GID, seasonId: SEASON });
-    const after = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
-    // 31 restored PLUS the 2 that were scored since — added back, not overwritten.
-    assert.equal(after.goals, 33);
+    assert.deepEqual((await archive.get()).data(), before);
+    assert.equal((await db.collection('users').doc('u1').collection('seasonTitles').get()).size, titles);
   });
 });
 
@@ -683,7 +604,7 @@ describe('archive fidelity under interrupted and concurrent writes', () => {
     assert.equal((await db.collection('communityStats').doc(GID).get()).get('goals'), 2);
   });
 
-  test('all 1770 pairs of a 60-player club survive archive paging and reopening', async () => {
+  test('all 1770 pairs of a 60-player club survive archive paging and repeated close', async () => {
     await wipe(); await seed();
     let batch = db.batch(), ops = 0;
     for (let a = 0; a < 60; a++) for (let b = a + 1; b < 60; b++) {
@@ -699,9 +620,11 @@ describe('archive fidelity under interrupted and concurrent writes', () => {
     const full = await readArchiveData(db, root);
     assert.equal(Object.keys(full.pairs).length, 1771); // plus the original u1/u2 pair
     assert.equal((await db.collection('communityPairStats').doc(`${GID}__p58__p59`).get()).get('sameTeam'), 0);
-    await reopenSeason({ db, groupId: GID, seasonId: SEASON });
-    assert.equal((await db.collection('communityPairStats').doc(`${GID}__p58__p59`).get()).get('sameTeam'), 1);
-    for (const id of root.pairPages) assert.equal((await db.collection('seasonSummary').doc(id).get()).exists, false);
+    await closeSeason(args());
+    const retained = await readArchiveData(db, (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data());
+    assert.equal(Object.keys(retained.pairs).length, 1771);
+    assert.equal((await db.collection('communityPairStats').doc(`${GID}__p58__p59`).get()).get('sameTeam'), 0);
+    for (const id of root.pairPages) assert.equal((await db.collection('seasonSummary').doc(id).get()).exists, true);
   });
 
   test('a missing pair page refuses the read instead of silently understating lifetime', async () => {
@@ -717,4 +640,28 @@ describe('archive fidelity under interrupted and concurrent writes', () => {
     assert.equal((await db.collection('communityPairStats').doc(`${GID}__u1__u2`).get()).get('sameTeam'), 0);
     assert.equal((await db.collection('communityStats').doc(GID).get()).get('goals'), 0);
   });
+});
+
+
+test('percentage victory title freezes its unit in archive, card and profiles, including resumed publication', async () => {
+  await seed();
+  await db.doc(`${'communityPlayerStats'}/${GID}__u1`).update({rounds:100,wins:60,games:16});
+  await db.doc(`${'communityPlayerStats'}/${GID}__u2`).update({rounds:30,wins:20,games:8});
+  await db.doc(`${'communityPlayerStats'}/${GID}__u3`).update({rounds:10,wins:10,games:7});
+  await closeSeason(args());
+  const id=`${GID}__${SEASON}`;
+  const award=(await db.doc(`seasonSummary/${id}`).get()).get('awards.topWinner');
+  assert.deepEqual(award,{winners:['u2'],value:66.67,valueUnit:'percent'});
+  const card=(await db.doc(`seasonCards/${id}`).get()).data();
+  assert.equal(card.awardsVersion,2);
+  assert.deepEqual(card.winners.find(w=>w.key==='topWinner').winnerIds,['u2']);
+  assert.equal(card.winners.find(w=>w.key==='topWinner').valueUnit,'percent');
+  assert.equal((await db.doc(`users/u2/seasonTitles/${id}__topWinner`).get()).get('valueUnit'),'percent');
+  // Publication retries must copy the frozen result, even after live rows were reset.
+  await db.doc(`groups/${GID}`).set({seasons:{currentId:'next',count:1}});
+  const {publishSeason}=await import('./lib/seasonPublication.js');
+  await publishSeason(db,GID,SEASON);
+  await publishSeason(db,GID,SEASON);
+  assert.equal((await db.doc(`users/u2/seasonTitles/${id}__topWinner`).get()).get('value'),66.67);
+  assert.equal((await db.doc(`users/u2/seasonTitles/${id}__topWinner`).get()).get('valueUnit'),'percent');
 });

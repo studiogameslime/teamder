@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, font } from '../theme';
+import { RTL_VALUE_ALIGN, colors, font  } from '../theme';
 import type { RatingSummary } from '../types';
 import { Card, StarRow } from './ui';
 
@@ -51,5 +51,5 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   fill: { height: 10, borderRadius: 5 },
-  count: { ...font.small, width: 34, textAlign: 'left' },
+  count: {  ...font.small, width: 34, textAlign: RTL_VALUE_ALIGN },
 });

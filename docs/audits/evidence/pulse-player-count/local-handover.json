@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-18T21:27:09.753Z",
+  "pulseTaskUpdated": false,
+  "reason": "לא אותר מזהה פריט בלוח המאוחד; צילום המקור נמצא בשיחה",
+  "note": "תוקנה ספירת מחזורים ששיחק בכרטיס המשתמש: היעדר סימון הגעה מפורש אינו מאפס עוד את ההיסטוריה. בחשבון המדווח נמצאו 60 מחזורים זכאים; התיקון מקומי וטרם הופץ.",
+  "proof": "docs/features/screenshots/pulse-player-played-count-native-2026-10-19.png",
+  "productionRoundWrites": false
+}

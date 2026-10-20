@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator,
-} from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { RtlTextInput as TextInput } from './RtlTextInput';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, radius  } from '../theme';
 import { fetchUsers } from '../services/firebase';
 import type { AppUser } from '../types';
 
@@ -78,13 +77,13 @@ export function UserPicker({
 const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 16, paddingTop: 10 },
-  head: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
+  head: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
   title: { color: colors.text, fontSize: 18, fontWeight: '800' },
-  search: { color: colors.text, fontSize: 15, textAlign: 'right', backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 11, marginBottom: 8 },
+  search: { direction: 'rtl' as const, color: colors.text, fontSize: 15, textAlign: RTL_LABEL_ALIGN, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 11, marginBottom: 8 },
   empty: { color: colors.textMuted, textAlign: 'center', paddingVertical: 24 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  row: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   av: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   avTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  name: { color: colors.text, fontSize: 15, fontWeight: '600', textAlign: 'right' },
-  email: { color: colors.textMuted, fontSize: 12, textAlign: 'right', marginTop: 1 },
+  name: { direction: 'rtl' as const, color: colors.text, fontSize: 15, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
+  email: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
 });

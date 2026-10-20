@@ -1,17 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PlayerHistory } from '../components/PlayerHistory';
+import { PlayerDisclosure as Disclosure } from '../components/PlayerDisclosure';
+import { PlayerOverview, PlayerClubs, PlayerRounds } from '../components/PlayerOverview';
+import { playerSummary } from '../services/playerSummary';
+import { UserProfileInformation, UserRelationships, UserRelatedRecords, PublicInformation, RecordFields } from '../components/UserInformation';
+import { UserDevicesCard } from '../components/DeviceVersions';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, RefreshControl, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TeamderChatSheet } from '../components/TeamderChatSheet';
-import { colors, font, radius } from '../theme';
-import { Card, SectionHeader } from '../components/ui';
+import { isolateText, RTL_LABEL_ALIGN, RTL_VALUE_ALIGN, colors, font, radius  } from '../theme';
+import { Card, SectionHeader, Panel } from '../components/ui';
 import { useDashboard } from '../state/DashboardContext';
 import { fetchUserActivity, setUserQa } from '../services/firebase';
-import { getDoc } from '../services/firestoreRest';
 import { timeAgo } from '../format';
-import type { TimelineEvent, UserActivity } from '../types';
+import type { UserActivity } from '../types';
 import type { UsersStackParams } from '../navigation/UsersStack';
 
 // Bug-status pill on the user card — resolved/in-review bugs stay visible
@@ -22,48 +27,6 @@ const BUG_STATUS: Record<'new' | 'reviewed' | 'resolved', { label: string; color
   resolved: { label: 'תוקן ✓', color: colors.green },
 };
 
-const KIND_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
-  joined: 'person-add',
-  game: 'football',
-  community: 'people',
-  achievement: 'trophy',
-  card: 'albums',
-  invited: 'share-social',
-  feedback: 'chatbox-ellipses',
-};
-
-function toneColor(t?: string) {
-  return t === 'green'
-    ? colors.green
-    : t === 'amber'
-      ? colors.amber
-      : t === 'red'
-        ? colors.red
-        : colors.primary;
-}
-
-function TimelineRow({ e, last }: { e: TimelineEvent; last: boolean }) {
-  const c = toneColor(e.tone);
-  return (
-    <View style={styles.tlRow}>
-      <View style={styles.tlGutter}>
-        <View style={[styles.tlDot, { backgroundColor: c }]}>
-          <Ionicons name={KIND_ICON[e.kind] ?? 'ellipse'} size={13} color="#fff" />
-        </View>
-        {!last ? <View style={styles.tlLine} /> : null}
-      </View>
-      <View style={styles.tlBody}>
-        {e.action ? (
-          <Text style={[styles.tlAction, { color: c }]}>{e.action}</Text>
-        ) : null}
-        <Text style={styles.tlTitle}>{e.title}</Text>
-        {e.subtitle ? <Text style={styles.tlSub}>{e.subtitle}</Text> : null}
-        <Text style={styles.tlTime}>{timeAgo(e.at)}</Text>
-      </View>
-    </View>
-  );
-}
-
 export function UserDetailScreen() {
   const route = useRoute<RouteProp<UsersStackParams, 'UserDetail'>>();
   const nav = useNavigation();
@@ -71,10 +34,25 @@ export function UserDetailScreen() {
   const { userId } = route.params;
   const [data, setData] = useState<UserActivity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [qa, setQa] = useState(false);
   const [qaSaving, setQaSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [messaging, setMessaging] = useState(false);
+  const [section, setSection] = useState('overview');
+  const scrollRef=useRef<ScrollView>(null);
+  const clubsRef=useRef<View>(null);
+  const [focusClubs,setFocusClubs]=useState(false);
+  useEffect(()=>{
+    if(section!=='info' || !focusClubs) return;
+    const frame=requestAnimationFrame(()=>{
+      const container=scrollRef.current?.getInnerViewNode();
+      if(!container || !clubsRef.current) return;
+      clubsRef.current.measureLayout(container,(_x,y)=>{scrollRef.current?.scrollTo({y,animated:true});setFocusClubs(false)},()=>setFocusClubs(false));
+    });
+    return ()=>cancelAnimationFrame(frame);
+  },[section,focusClubs]);
 
   // The user's personal invite link — registrations + clicks through it are
   // attributed to them (matches deepLinkService.buildAppInviteUrl on the app).
@@ -89,8 +67,11 @@ export function UserDetailScreen() {
     let alive = true;
     (async () => {
       try {
-        const a = await fetchUserActivity(userId);
+        setLoading(true); setLoadFailed(false); setData(null);
+        const a = await fetchUserActivity(userId, retry > 0);
         if (alive) setData(a);
+      } catch {
+        if (alive) setLoadFailed(true);
       } finally {
         if (alive) setLoading(false);
       }
@@ -98,7 +79,8 @@ export function UserDetailScreen() {
     return () => {
       alive = false;
     };
-  }, [userId]);
+  }, [userId, retry]);
+
 
   const u = data?.user ?? snapshot.users.find((x) => x.id === userId);
 
@@ -106,21 +88,6 @@ export function UserDetailScreen() {
   useEffect(() => {
     if (u) setQa(u.qa === true);
   }, [u?.id, u?.qa]);
-
-  // ...then override with the LIVE value straight from Firestore. The cached
-  // users snapshot has a TTL and won't reflect a qa change made outside Pulse
-  // (e.g. an earlier session), which made the toggle show the wrong state.
-  useEffect(() => {
-    let alive = true;
-    getDoc(`users/${userId}`)
-      .then((d) => {
-        if (alive && d) setQa(d.qa === true);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [userId]);
 
   // Always return to the users LIST, never to whatever tab happens to be
   // "first" in the tab navigator's back-behavior. goBack() from a hidden
@@ -148,13 +115,9 @@ export function UserDetailScreen() {
           <Ionicons name="chevron-forward" size={26} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {u?.name ?? 'משתמש'}
+          פרטי שחקן
         </Text>
-        {/* Talk to this person as Teamder — the same sheet the tasks screen
-            uses, so a conversation started here shows the same thread. */}
-        <Pressable onPress={() => setMessaging(true)} hitSlop={10}>
-          <Ionicons name="chatbubble-ellipses-outline" size={22} color={colors.primary} />
-        </Pressable>
+        <View style={{width:26}}/>
       </View>
 
       <TeamderChatSheet
@@ -165,21 +128,48 @@ export function UserDetailScreen() {
       />
 
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => setRetry(n=>n+1)} tintColor={colors.primary}/>}
       >
         {u ? (
-          <Card style={styles.profile}>
-            <Text style={styles.pName}>{u.name}</Text>
-            <Text style={styles.pSub}>
-              {[u.city, u.email].filter(Boolean).join(' · ') || '—'}
-            </Text>
-            <View style={styles.pStats}>
-              <Stat label="משחקים" value={`${u.attended}/${u.totalGames}`} />
-              <Stat label="הישגים" value={String(u.achievements)} />
-              <Stat label="חברים" value={String(u.friends)} />
-              <Stat label="כרטיסים" value={`${u.yellowCards}🟨 ${u.redCards}🟥`} />
+          <View style={{flexDirection:'row',direction:'rtl',alignItems:'center',gap:10,paddingVertical:8}}>
+            <View style={{width:48,height:48,borderRadius:24,backgroundColor:colors.primary,alignItems:'center',justifyContent:'center'}}><Text style={{color:colors.onPrimary,fontSize:22,fontWeight:'700'}}>{u.name.split(/\s+/).slice(0,2).map(part=>part[0]).join('')}</Text></View>
+            <View style={{flex:1,minWidth:0,gap:4}}><Text style={{ ...font.h2,fontSize:20,textAlign: RTL_LABEL_ALIGN}}>{isolateText(u.name)}</Text><Text style={{ ...font.small,fontSize:12,textAlign: RTL_LABEL_ALIGN}}>{u.city || 'עיר לא תועדה'} · {typeof data?.record?.lastSeenAt==='number'?`פעיל ${timeAgo(data.record.lastSeenAt)}`:'פעילות אחרונה לא תועדה'}</Text></View>
+            <Pressable accessibilityRole="button" onPress={()=>setMessaging(true)} style={{backgroundColor:'transparent',borderWidth:1,borderColor:colors.primary,borderRadius:10,paddingHorizontal:12,minHeight:40,flexDirection:'row',direction:'rtl',alignItems:'center',justifyContent:'center',gap:6}}><Ionicons name="chatbubble-outline" size={20} color={colors.primary}/><Text style={{...font.body,color:colors.primary}}>שיחה</Text></Pressable>
+          </View>
+        ) : null}
+
+        <View accessibilityRole="tablist" style={styles.tabs}>{[{key:'overview',label:'סקירה'},{key:'info',label:'מידע'},{key:'history',label:'היסטוריה'}].map(tab=><Pressable key={tab.key} accessibilityRole="tab" accessibilityState={{selected:section===tab.key}} onPress={()=>setSection(tab.key)} style={[styles.tab,section===tab.key && {borderBottomColor:colors.primary}]}><Text style={{...font.title,color:section===tab.key?colors.primary:colors.textMuted}}>{tab.label}</Text></Pressable>)}</View>
+        {loading ? <ActivityIndicator color={colors.primary}/> : null}
+        {loadFailed ? <Pressable onPress={()=>setRetry(n=>n+1)}><Text style={{...font.body,color:colors.amber}}>טעינת המשתמש נכשלה. לחצו לניסיון חוזר.</Text></Pressable> : null}
+        {data?.failedSources?.length ? <Card><Text style={{...font.body,color:colors.amber}}>מידע חלקי — לא נטענו: {data.failedSources.join(' · ')}. אין להסיק שהרשימות האלה ריקות.</Text></Card> : null}
+        {data?.limitedSources?.length ? <Text style={{...font.small,color:colors.amber}}>הגעת לתקרת הקריאה: {data.limitedSources.join(' · ')}. הספירות חלקיות.</Text> : null}
+        {data ? <>
+          <Panel key={`overview:${userId}`} active={section==='overview'}><PlayerOverview data={data} onClubs={()=>{setSection('info');setFocusClubs(true)}} onInfo={()=>setSection('info')} onHistory={()=>setSection('history')} onReport={id=>(nav as any).getParent()?.navigate('DevInbox',{screen:'ErrorDetail',params:{id,collection:'feedback'}})}/></Panel>
+          <Panel key={`info:${userId}`} active={section==='info'}>
+            <SectionHeader>פרטי חשבון</SectionHeader>
+            {[
+              ['mail-outline','דוא״ל',data.user.email || 'לא תועד'],
+              ['location-outline','עיר',data.user.city || 'לא תועדה'],
+              ['calendar-outline','הצטרף בתאריך',data.user.joinedAt?new Date(data.user.joinedAt).toLocaleDateString('he-IL'):'לא תועד'],
+            ].map(([icon,label,value])=><View key={label} style={{flexDirection:'row',direction:'rtl',alignItems:'center',gap:10,minHeight:48,borderBottomWidth:1,borderBottomColor:colors.border}}><Ionicons name={icon as never} size={21} color={colors.textSoft}/><Text style={font.small}>{label}</Text><Text selectable style={{ ...font.body,flex:1,textAlign: RTL_VALUE_ALIGN}}>{value}</Text></View>)}
+            <SectionHeader>הרשמות ומועדונים</SectionHeader>
+            <PlayerRounds rows={playerSummary(data).future}/>
+            <View ref={clubsRef} collapsable={false}><PlayerClubs data={data} heading={false}/></View>
+            <SectionHeader>מכשירים וגרסאות</SectionHeader>
+            <UserDevicesCard userId={userId} flat/>
+            <UserProfileInformation data={data} compact/>
+            <Disclosure title="מחזורים ששיחק"><PlayerRounds rows={playerSummary(data).attended}/></Disclosure>
+            <Disclosure title="מחזורים שיצר"><PlayerRounds rows={playerSummary(data).managed}/></Disclosure>
+            <Disclosure title="פרטי רישום והתראות למכשירים"><PublicInformation userId={userId} source="push"/></Disclosure>
+            <Disclosure title="חברים, הזמנות ובקשות"><UserRelationships data={data} onUser={id=>(nav as any).push('UserDetail',{userId:id})}/></Disclosure>
+            <Disclosure title="קישור הזמנה ומקור הגעה"><><View style={styles.pStats}>
+              <Stat label="מחזורים" value={`${data.user.attended}/${data.user.totalGames}`} />
+              <Stat label="הישגים" value={String(data.user.achievements)} />
+              <Stat label="חברים" value={String(data.user.friends)} />
             </View>
             {/* Personal-invite-link performance: how many tapped the link vs
                 how many actually registered through it (conversion). */}
@@ -203,29 +193,41 @@ export function UserDetailScreen() {
               <Ionicons
                 name={copied ? 'checkmark' : 'copy-outline'}
                 size={16}
-                color={copied ? '#fff' : colors.primary}
+                color={copied ? colors.onPrimary : colors.primary}
               />
-              <Text style={[styles.copyTxt, copied && { color: '#fff' }]}>
+              <Text style={[styles.copyTxt, copied && { color: colors.onPrimary }]}>
                 {copied ? 'הועתק ✓' : 'העתק לינק הזמנה אישי'}
               </Text>
             </Pressable>
             {data?.invitedByName ? (
               <Text style={styles.pRef}>📩 הוזמן ע״י {data.invitedByName}</Text>
-            ) : u.acquisition?.source ? (
-              <Text style={styles.pRef}>🔗 נרשם דרך קישור: {u.acquisition.source}{u.acquisition.campaign ? ` · ${u.acquisition.campaign}` : ''}</Text>
             ) : (
-              <Text style={styles.pRef}>🌱 נרשם ישירות (אורגני)</Text>
+              <Text style={styles.pRef}>📩 לא תועד מזמין אישי</Text>
             )}
+            <Card style={styles.attributionCard}>
+              <Text style={styles.pRefTitle}>מקור הכניסה שנשמר</Text>
+              {data.entryAttribution || data.user.acquisition ? <>
+                <Text style={styles.pRef}>סוג כניסה: {data.entryAttribution?.entrySource || 'לא תועד'}</Text>
+                <Text style={styles.pRef}>ערוץ: {data.entryAttribution?.channel || data.user.acquisition?.source || 'לא תועד'}</Text>
+                <Text style={styles.pRef}>קמפיין: {data.entryAttribution?.campaign || data.user.acquisition?.campaign || 'לא תועד'}</Text>
+                <Text selectable style={styles.pRef}>מזהה קישור: {data.entryAttribution?.linkId || data.user.acquisition?.linkId || 'לא תועד'}</Text>
+                <Text style={styles.pRef}>דרך: {data.entryAttribution?.resolvedBy || 'לא תועד'}</Text>
+                <Text style={styles.pRef}>יעד: {[data.entryAttribution?.targetType, data.entryAttribution?.targetId].filter(Boolean).join(' · ') || 'לא תועד'}</Text>
+                <Text style={styles.pRef}>מועד: {data.entryAttribution?.at || data.user.acquisition?.at ? new Date((data.entryAttribution?.at || data.user.acquisition?.at) as number).toLocaleString('he-IL') : 'לא תועד'}</Text>
+                {data.entryAttribution?.sessionId ? <Text selectable style={styles.pRef}>מזהה ביקור: {data.entryAttribution.sessionId}</Text> : null}
+              </> : <Text style={styles.pRef}>לא תועד מקור כניסה או קמפיין</Text>}
+            </Card>
             {data && data.referredNames.length ? (
               <Text style={styles.pRef}>
                 הזמין {data.referredNames.length}: {data.referredNames.slice(0, 4).join(', ')}
                 {data.referredNames.length > 4 ? '…' : ''}
               </Text>
             ) : null}
-          </Card>
-        ) : null}
-
-        {u ? (
+</></Disclosure>
+          </Panel>
+        </> : null}
+        {u && section === 'info' ? (
+          <Disclosure title="כלי בדיקה">
           <Pressable onPress={toggleQa} disabled={qaSaving}>
             <Card style={[styles.qaCard, qa && styles.qaCardOn]}>
               <View style={styles.qaIcon}>
@@ -251,24 +253,18 @@ export function UserDetailScreen() {
                 </View>
               )}
             </Card>
-          </Pressable>
+          </Pressable></Disclosure>
         ) : null}
 
-        <SectionHeader>פעילות</SectionHeader>
-        {loading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: 20 }} />
-        ) : data && data.timeline.length ? (
-          <Card>
-            {data.timeline.map((e, i) => (
-              <TimelineRow key={i} e={e} last={i === data.timeline.length - 1} />
-            ))}
-          </Card>
-        ) : (
-          <Text style={styles.empty}>אין פעילות מתועדת</Text>
-        )}
 
+        <Panel key={`activity:${userId}`} active={section === 'history'}>
+        {loading?<ActivityIndicator color={colors.primary}/>:loadFailed?<Pressable onPress={()=>setRetry(n=>n+1)}><Text style={styles.empty}>טעינת הפעילות נכשלה. לחצו לניסיון חוזר.</Text></Pressable>:data?<PlayerHistory data={data} onError={id=>(nav as any).getParent()?.navigate('DevInbox',{screen:'ErrorDetail',params:{id,collection:'errors'}})}/>:null}
+        {qa || data?.related?.reports.length ? <Disclosure title="דיווחים ששלח המשתמש">{data?.related?.reports.length ? data.related.reports.map(report=><Pressable key={report.id} onPress={()=>(nav as any).getParent()?.navigate('DevInbox',{screen:'ErrorDetail',params:{id:report.id,collection:'feedback'}})}><Card><Text style={font.body}>{report.message || 'דיווח ללא טקסט'}</Text><Text style={font.small}>{report.status} · {report.screen} · {timeAgo(report.at)}</Text><Text style={{...font.body,color:colors.primary}}>פתיחת הדיווח והצילום</Text></Card></Pressable>) : <Text style={font.small}>לא נטענו דיווחים להצגה</Text>}</Disclosure> : null}
+        <Disclosure title="התראות למשתמש"><UserRelatedRecords userId={userId} source="notifications"/></Disclosure>
+        <Disclosure title="מסלול ההצטרפות"><UserRelatedRecords userId={userId} source="onboarding" onOpen={sessionId=>(nav as any).getParent()?.navigate('OnboardingActivity',{sessionId})}/></Disclosure>
+        <Disclosure title="משימות משויכות"><UserRelatedRecords userId={userId} source="tasks"/></Disclosure>
         {data && data.errors.length ? (
-          <>
+          <Disclosure title="פירוט תקלות ומצב הטיפול">
             <SectionHeader>תקלות שהמשתמש חווה</SectionHeader>
             <Card style={{ gap: 2 }}>
               {data.errors.map((er) => {
@@ -280,7 +276,7 @@ export function UserDetailScreen() {
                     onPress={() =>
                       (nav as any).getParent()?.navigate('DevInbox', {
                         screen: 'ErrorDetail',
-                        params: { id: er.id },
+                        params: { id: er.id, collection: 'errors' },
                       })
                     }
                     style={styles.errRow}
@@ -304,10 +300,11 @@ export function UserDetailScreen() {
               })}
             </Card>
             <Text style={styles.errHint}>
-              תקלות שקרו אצל המשתמש — לא מוצגות בציר הזמן.
+              השיוך מבוסס על המשתמש האחרון בתקלה. מספר המקרים הוא מצטבר לתקלה, ולא בהכרח למשתמש הזה.
             </Text>
-          </>
+          </Disclosure>
         ) : null}
+        </Panel>
       </ScrollView>
     </SafeAreaView>
   );
@@ -325,7 +322,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: {
-    flexDirection: 'row',
+    flexDirection: 'row', direction:'rtl',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -334,14 +331,18 @@ const styles = StyleSheet.create({
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { ...font.h2, flex: 1, textAlign: 'center' },
   scroll: { padding: 16, gap: 12, paddingBottom: 40 },
-  profile: { gap: 4 },
-  pName: { ...font.h1, fontSize: 22 },
-  pSub: { ...font.body },
-  pStats: { flexDirection: 'row', gap: 16, marginTop: 10 },
+  tabs: {flexDirection:'row',direction:'rtl',borderBottomWidth:1,borderBottomColor:colors.border},
+  tab: {flex:1,minHeight:48,alignItems:'center',justifyContent:'center',borderBottomWidth:2,borderBottomColor:'transparent'},
+  profile: { gap: 6, backgroundColor:colors.bg, borderWidth:0, padding:0, paddingVertical:8 },
+  pName: {  ...font.h1, fontSize: 24, textAlign: RTL_LABEL_ALIGN },
+  pSub: {  ...font.body, textAlign: RTL_LABEL_ALIGN },
+  pStats: { flexWrap: 'wrap', flexDirection: 'row', gap: 16, marginTop: 10 },
   stat: { alignItems: 'center' },
   statValue: { ...font.title, fontSize: 15 },
   statLabel: { ...font.small },
   pRef: { ...font.small, color: colors.textSoft, marginTop: 6 },
+  pRefTitle: { ...font.title, color: colors.text },
+  attributionCard: { marginTop: 10, gap: 2 },
   inviteBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -371,8 +372,8 @@ const styles = StyleSheet.create({
   qaCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   qaCardOn: { borderColor: colors.green, borderWidth: 1 },
   qaIcon: { width: 28, alignItems: 'center' },
-  qaTitle: { ...font.title, fontSize: 15, textAlign: 'right' },
-  qaSub: { ...font.small, color: colors.textMuted, marginTop: 1, textAlign: 'right' },
+  qaTitle: {  ...font.title, fontSize: 15, textAlign: RTL_LABEL_ALIGN },
+  qaSub: {  ...font.small, color: colors.textMuted, marginTop: 1, textAlign: RTL_LABEL_ALIGN },
   qaSwitch: {
     width: 46,
     height: 28,
@@ -411,9 +412,9 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 8,
   },
-  errTitle: { ...font.title, fontSize: 13.5, textAlign: 'right' },
-  errMeta: { ...font.small, color: colors.textMuted, marginTop: 1, textAlign: 'right' },
+  errTitle: {  ...font.title, fontSize: 13.5, textAlign: RTL_LABEL_ALIGN },
+  errMeta: {  ...font.small, color: colors.textMuted, marginTop: 1, textAlign: RTL_LABEL_ALIGN },
   errBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm },
   errBadgeTxt: { fontSize: 11, fontWeight: '800' },
-  errHint: { ...font.small, color: colors.textMuted, marginTop: 6, textAlign: 'right' },
+  errHint: {  ...font.small, color: colors.textMuted, marginTop: 6, textAlign: RTL_LABEL_ALIGN },
 });

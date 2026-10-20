@@ -4,7 +4,8 @@
 // carries the per-send delivery stats so each row shows who got it and whether
 // it landed.
 
-import { listAll } from './firestoreRest';
+import { fetchNotificationData } from './notificationData';
+import { fetchUsers } from './firebase';
 import { PUSH_LABELS } from './pushStats';
 
 export interface ServerNotif {
@@ -21,10 +22,10 @@ export interface ServerNotif {
 
 const num = (v: unknown): number => (typeof v === 'number' ? v : 0);
 
-export async function fetchServerNotifs(limit = 250): Promise<ServerNotif[]> {
+export async function fetchServerNotifs(limit = 250, force = false): Promise<ServerNotif[]> {
   const [notifs, users] = await Promise.all([
-    listAll('notifications', 4000).catch(() => []),
-    listAll('users').catch(() => []),
+    fetchNotificationData(force),
+    fetchUsers({ force }),
   ]);
   const nameById = new Map<string, string>();
   for (const u of users) if (typeof u.name === 'string') nameById.set(u.id, u.name);

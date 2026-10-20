@@ -144,6 +144,7 @@ export interface DownloadsSummary {
 export type ErrorStatus = 'new' | 'reviewed' | 'resolved';
 
 export interface ErrorRecord {
+  image?: string;
   id: string; // fingerprint
   operation: string;
   title?: string; // friendly Hebrew, written by the app
@@ -193,7 +194,28 @@ export interface UserErrorItem {
 }
 
 export interface UserActivity {
+  record?: Record<string, unknown>;
+  fetchedAt?: number;
+  failedSources?: string[];
+  limitedSources?: string[];
+  related?: {
+    games: { id: string; title: string; role: string; status: string; at: number; detail: Record<string, unknown> }[];
+    groups: { id: string; title: string; role: string; status: string; detail: Record<string, unknown> }[];
+    reports: { id: string; message: string; status: string; at: number; screen: string }[];
+    referred: { id: string; name: string; joinedAt: number }[];
+  };
   user: AppUser;
+  entryAttribution?: {
+    entrySource?: string;
+    resolvedBy?: string;
+    targetType?: string;
+    targetId?: string;
+    channel?: string;
+    campaign?: string;
+    linkId?: string;
+    at?: number;
+    sessionId?: string;
+  };
   invitedByName?: string;
   referredNames: string[]; // users this person invited
   referralCount: number; // how many registered through this user's link

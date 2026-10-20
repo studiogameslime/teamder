@@ -3,13 +3,13 @@
 // ErrorDetailScreen + ErrorsBody import it from here.)
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { DevInboxScreen } from '../screens/DevInboxScreen';
+import { TasksScreen } from '../screens/TasksScreen';
 import { ErrorDetailScreen } from '../screens/ErrorDetailScreen';
 import { QaUserDetailScreen } from '../screens/QaUserDetailScreen';
 
 export type ErrorsStackParams = {
   DevInbox: undefined;
-  ErrorDetail: { id: string };
+  ErrorDetail: { id: string; collection: 'errors' | 'feedback' };
   QaUser: { userId: string; userName: string };
 };
 
@@ -18,7 +18,7 @@ const Stack = createNativeStackNavigator<ErrorsStackParams>();
 export function DevInboxStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="DevInbox" component={DevInboxScreen} />
+      <Stack.Screen name="DevInbox" component={TasksScreen} />
       <Stack.Screen name="ErrorDetail" component={ErrorDetailScreen} />
       <Stack.Screen name="QaUser" component={QaUserDetailScreen} />
     </Stack.Navigator>

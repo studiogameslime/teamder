@@ -1,0 +1,14 @@
+{
+  "status": "not_uploaded",
+  "target": "appConfig/releaseLog",
+  "reason": "אין חיבור ניהול ייצור מאומת",
+  "items": [
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "פולס",
+      "title": "הסרת הכרטיסים הצהובים והאדומים מתצוגת המשתמש",
+      "proofFile": "docs/features/screenshots/pulse-no-cards-profile-390-2026-10-18.png"
+    }
+  ]
+}

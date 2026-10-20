@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors } from '../theme';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { RtlTextInput as TextInput } from '../components/RtlTextInput';
+import { RTL_LABEL_ALIGN, colors  } from '../theme';
 import { signInPulseEmail, signInPulseGoogle } from '../services/adminSession';
 
 export function AdminLoginScreen() {
@@ -19,7 +20,7 @@ export function AdminLoginScreen() {
     <TextInput accessibilityLabel="כתובת דואר אלקטרוני" style={styles.input} placeholder="דואר אלקטרוני" placeholderTextColor={colors.textMuted} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" editable={!busy} />
     <TextInput accessibilityLabel="סיסמה" style={styles.input} placeholder="סיסמה" placeholderTextColor={colors.textMuted} value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" editable={!busy} />
     {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-    <Pressable disabled={busy || !email || !password} onPress={() => void login(false)} style={[styles.button, (busy || !email || !password) && { opacity: 0.5 }]}><Text style={styles.buttonText}>כניסה</Text></Pressable>
+    <Pressable disabled={busy || !email || !password} onPress={() => void login(false)} style={[styles.button, (busy || !email || !password) && { opacity: 0.5 }]}><Text style={[styles.buttonText, { color: colors.onPrimary }]}>כניסה</Text></Pressable>
     <Pressable disabled={busy} onPress={() => void login(true)} style={styles.google}><Text style={styles.buttonText}>כניסה עם גוגל</Text></Pressable>
     {busy && <ActivityIndicator color={colors.primary} />}
     <Text style={styles.help}>הגישה מיועדת לחשבונות שאושרו מראש בלבד</Text>
@@ -29,9 +30,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1, justifyContent: 'center', padding: 28, gap: 14, backgroundColor: colors.bg },
   title: { color: colors.text, fontSize: 34, fontWeight: '800', textAlign: 'center' },
   help: { color: colors.textSoft, fontSize: 14, textAlign: 'center' },
-  input: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 14, padding: 16, color: colors.text, textAlign: 'right' },
+  input: { direction: 'rtl' as const, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 14, padding: 16, color: colors.text, textAlign: RTL_LABEL_ALIGN },
   button: { backgroundColor: colors.primary, borderRadius: 14, padding: 16 },
   google: { borderColor: colors.border, borderWidth: 1, borderRadius: 14, padding: 16 },
   buttonText: { color: colors.text, textAlign: 'center', fontWeight: '700' },
-  error: { color: colors.red, textAlign: 'right' },
+  error: { direction: 'rtl' as const, color: colors.red, textAlign: RTL_LABEL_ALIGN },
 });

@@ -1,0 +1,13 @@
+{
+  "status": "not_uploaded",
+  "reason": "אין בסביבה חיבור ניהול ייצור מאומת או מזהה פריט למשימת השיחה",
+  "handover": {
+    "claudeStatus": "done",
+    "claudeNote": "עדכנתי את המשימות לשלוש הלשוניות שביקשת: פתוחות, בוצע ע״י רובנס וסגורות. הטמעתי את עיצוב הגרסאות עם מצב החנויות, שינויים לגרסה הבאה וחיפוש משתמשים לפי הגרסה שנצפתה אצלם. השינויים מקומיים וטרם הותקנו במכשיר.",
+    "proofFiles": [
+      "docs/features/screenshots/pulse-versions-task-tabs-390-2026-10-18.png",
+      "docs/features/screenshots/pulse-versions-overview-390-2026-10-18.png",
+      "docs/features/screenshots/pulse-versions-users-390-2026-10-18.png"
+    ]
+  }
+}

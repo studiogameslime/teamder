@@ -51,6 +51,11 @@ export function PlayerDiscovery({ preview }: { preview?: SocialPlayer[] }) {
     finally{if(epoch.current===request){paging.current=false;setBusy(false);}}
   };
   const list=(preview??players).filter(player=>playerDiscoveryMatches(player,opts));
+  // The server cursor is over examined accounts, not matching accounts. An
+  // empty filtered page is not the end of a name search.
+  useEffect(()=>{
+    if (!preview && cursor && !busy && !failed && list.length === 0) void more();
+  },[preview,cursor,busy,failed,list.length]);
   const searching=!!text.trim()||!!city.trim()||friendsOnly||days.length>0||times.length>0;
   // Unique rows; a player belongs to only one discovery section.
   const sections=searching?[{title:'תוצאות החיפוש',items:list}]:[
@@ -63,7 +68,7 @@ export function PlayerDiscovery({ preview }: { preview?: SocialPlayer[] }) {
   const rows:Row[]=sections.flatMap(section=>section.items.length?[{key:section.title,title:section.title},...section.items.map((player,i)=>({key:player.id,player,first:i===0,last:i===section.items.length-1}))]:[]);
   return <View style={{flex:1}}>
     <View style={{paddingHorizontal:16,paddingTop:12,gap:10}}>
-      <View style={[s.row,s.chip,{backgroundColor:'white',paddingVertical:4}]}><TextInput value={text} onChangeText={setText} placeholder="חיפוש לפי שם" accessibilityLabel="חיפוש שחקנים לפי שם" maxLength={60} style={{flex:1,textAlign:'right',writingDirection:'rtl',minHeight:42,fontSize:16,color:'#0C1744'}} autoCorrect={false}/><Ionicons name="search-outline" size={23} color="#7F90AF" /></View>
+      <View style={[s.row,s.chip,{backgroundColor:'white',paddingVertical:4}]}><TextInput value={text} onChangeText={setText} placeholder="חיפוש לפי שם" placeholderTextColor="#687797" accessibilityLabel="חיפוש שחקנים לפי שם" maxLength={60} style={{flex:1,textAlign:'right',writingDirection:'rtl',minHeight:42,fontSize:16,color:'#0C1744'}} autoCorrect={false}/><Ionicons name="search-outline" size={23} color="#7F90AF" /></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingBottom:2}}>
         {[{label:'הכל',selected:!searching,onPress:()=>{setText('');setCity('');setFriendsOnly(false);setDays([]);setTimes([]);}}, {label:'החברים שלי',selected:friendsOnly,onPress:()=>setFriendsOnly(v=>!v)}, {label:city||days.length||times.length?'סינון פעיל':'סינון',selected:!!city||days.length>0||times.length>0,onPress:openFilters}].map(c=><Pressable key={c.label} accessibilityRole="button" accessibilityState={{selected:c.selected}} onPress={c.onPress} style={[s.chip,c.selected&&{backgroundColor:'#2563EB',borderColor:'#2563EB'}]}><Text style={[s.chipText,c.selected&&{color:'white'}]}>{c.label}</Text></Pressable>)}
       </ScrollView>

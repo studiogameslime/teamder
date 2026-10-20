@@ -106,23 +106,20 @@ export function groupByScreen(items: ReportItem[]): ReportGroup[] {
   );
 }
 
-export async function setReportStatus(
-  id: string,
-  status: ReportStatus,
-): Promise<boolean> {
-  invalidate('raw:feedback'); // feeds reports, the unified issues list, and QA
-  return patchDoc(`feedback/${id}`, { status });
+async function saveReport(write: () => Promise<boolean>): Promise<boolean> {
+  const ok = await write();
+  if (ok) { invalidate('work:report'); invalidate('raw:feedback'); }
+  return ok;
 }
 
-export async function setReportFixRequested(
-  id: string,
-  fixRequested: boolean,
-): Promise<boolean> {
-  invalidate('raw:feedback');
-  return patchDoc(`feedback/${id}`, { fixRequested });
+export function setReportStatus(id: string, status: ReportStatus): Promise<boolean> {
+  return saveReport(() => patchDoc(`feedback/${id}`, { status }));
 }
 
-export async function deleteReport(id: string): Promise<boolean> {
-  invalidate('raw:feedback');
-  return deleteDoc(`feedback/${id}`);
+export function setReportFixRequested(id: string, fixRequested: boolean): Promise<boolean> {
+  return saveReport(() => patchDoc(`feedback/${id}`, { fixRequested }));
+}
+
+export function deleteReport(id: string): Promise<boolean> {
+  return saveReport(() => deleteDoc(`feedback/${id}`));
 }

@@ -81,7 +81,7 @@ export function ClubStatusOverview(data: ClubStatusData & { compact?: boolean })
         <ScrollView contentContainerStyle={s.previewContent} showsVerticalScrollIndicator={false}>
           <View style={s.previewCard}><ClubStatusCard ref={cardRef} {...data} /></View>
         </ScrollView>
-        <View style={s.previewActions}><Button title="שיתוף תמונה" iconRight="share-outline" fullWidth loading={sharing} disabled={sharing} onPress={share} /></View>
+        <View style={s.previewActions}><Button title="שיתוף תמונה" iconLeft="share-outline" fullWidth loading={sharing} disabled={sharing} onPress={share} /></View>
       </View>
     </SafeModal>
   </>;

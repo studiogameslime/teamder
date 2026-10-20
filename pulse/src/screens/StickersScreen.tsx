@@ -4,15 +4,8 @@
 // sticker was stuck. Tap a pin to remove it.
 
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  Alert,
-  ActivityIndicator,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, Pressable, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { RtlTextInput as TextInput } from '../components/RtlTextInput';
 
 import { Screen, Card } from '../components/ui';
 import { MapWebView, type MapMarker } from '../components/MapWebView';
@@ -137,7 +130,7 @@ export function StickersScreen() {
           style={[styles.addBtn, (busy || !input.trim()) && { opacity: 0.5 }]}
         >
           {busy ? (
-            <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color={colors.onPrimary} size="small" />
           ) : (
             <Text style={styles.addText}>הוסף מדבקה 📍</Text>
           )}
@@ -177,7 +170,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: space(3),
     paddingVertical: space(2),
-    writingDirection: 'rtl',
   },
   addBtn: {
     backgroundColor: colors.primary,
@@ -186,7 +178,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  addText: { color: colors.onPrimary, fontSize: 15, fontWeight: '800' },
   mapWrap: {
     flex: 1,
     marginTop: space(3),

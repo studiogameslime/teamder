@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert, Share, Modal, RefreshControl, ScrollView,
-} from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert, Share, Modal, RefreshControl, ScrollView } from 'react-native';
+import { RtlTextInput as TextInput } from '../components/RtlTextInput';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen, Card } from '../components/ui';
 import { Dropdown } from '../components/Dropdown';
-import { colors, radius } from '../theme';
+import { RTL_LABEL_ALIGN, RTL_VALUE_ALIGN, colors, radius  } from '../theme';
 import {
   createAdLink, listAdLinks, fetchAcquisitionReport, buildAdLink, fetchLinkStats,
   deleteAdLink, SOURCE_PRESETS, type AcquisitionReport, type LinkStats,
@@ -25,7 +24,7 @@ function sourceIcon(src: string): { name: keyof typeof Ionicons.glyphMap; tint: 
   if (k.includes('face')) return { name: 'logo-facebook', tint: '#1877F2' };
   if (k.includes('insta')) return { name: 'logo-instagram', tint: '#E1306C' };
   if (k.includes('tele')) return { name: 'paper-plane', tint: '#229ED9' };
-  if (k.includes('sms')) return { name: 'chatbubble-ellipses', tint: '#F59E0B' };
+  if (k.includes('sms')) return { name: 'chatbubble-ellipses', tint: colors.amber };
   if (k.includes('אורגני')) return { name: 'leaf', tint: colors.textMuted };
   return { name: 'link', tint: colors.primary };
 }
@@ -120,7 +119,7 @@ export function SourcesScreen() {
 
   return (
     <Screen
-      title="קישורים"
+      title="קישורים ומקורות"
       subtitle="צור קישורים ובדוק מאיפה הגיעו החשבונות"
       right={<Ionicons name="add" size={26} color={colors.primary} />}
       refreshControl={
@@ -150,7 +149,7 @@ export function SourcesScreen() {
         ) : null}
 
         <Pressable style={[s.btn, busy && { opacity: 0.6 }]} onPress={onCreate} disabled={busy}>
-          {busy ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="share-social" size={18} color="#fff" /><Text style={s.btnTxt}>צור קישור</Text></>)}
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : (<><Ionicons name="share-social" size={18} color={colors.onPrimary} /><Text style={s.btnTxt}>צור קישור</Text></>)}
         </Pressable>
       </Card>
 
@@ -235,7 +234,7 @@ export function SourcesScreen() {
               <ActivityIndicator color={colors.primary} style={{ paddingVertical: 30 }} />
             ) : (
               <>
-                <FunnelRow icon="hand-left" tint="#3B82F6" label="פתיחות של הקישור" value={stats.clicks} />
+                <FunnelRow icon="hand-left" tint={colors.blue} label="פתיחות של הקישור" value={stats.clicks} />
                 <FunnelRow icon="people" tint="#22C55E" label="חשבונות שיוחסו לקישור" value={stats.attributedAccounts} />
                 <Text style={s.dNote}>פתיחות עשויות לחזור על עצמן; הן אינן אנשים ייחודיים או הורדות מהחנות. הנתונים הבאים הם מצבם הנוכחי של החשבונות שיוחסו לקישור.</Text>
                 <FunnelRow icon="person-add" tint="#06B6D4" label="השלימו הרשמה" value={stats.signups} of={stats.attributedAccounts} />
@@ -270,46 +269,46 @@ function FunnelRow({ icon, tint, label, value, of }: { icon: keyof typeof Ionico
   );
 }
 const fr = StyleSheet.create({
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  row: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   icon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  label: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '600', textAlign: 'right' },
+  label: { direction: 'rtl' as const, flex: 1, color: colors.text, fontSize: 15, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
   pct: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
-  val: { color: colors.text, fontSize: 20, fontWeight: '900', minWidth: 44, textAlign: 'left' },
+  val: { direction: 'rtl' as const, color: colors.text, fontSize: 20, fontWeight: '900', minWidth: 44, textAlign: RTL_VALUE_ALIGN },
 });
 
 const s = StyleSheet.create({
-  section: { color: colors.text, fontSize: 15, fontWeight: '800', textAlign: 'right', marginTop: 12, marginBottom: 6 },
-  input: { color: colors.text, fontSize: 14, textAlign: 'right', backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10 },
-  miniLbl: { color: colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: 'right', marginTop: 2 },
-  urlBox: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 11 },
-  urlTxt: { flex: 1, color: colors.primary, fontSize: 12, textAlign: 'left', writingDirection: 'ltr' },
-  btn: { flexDirection: 'row-reverse', gap: 8, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
-  btnTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  section: { direction: 'rtl' as const, color: colors.text, fontSize: 15, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, marginTop: 12, marginBottom: 6 },
+  input: { direction: 'rtl' as const, color: colors.text, fontSize: 14, textAlign: RTL_LABEL_ALIGN, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10 },
+  miniLbl: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
+  urlBox: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 11 },
+  urlTxt: { flex: 1, color: colors.primary, fontSize: 12, textAlign: 'left', direction:'ltr' as const,writingDirection: 'ltr' },
+  btn: { flexDirection: 'row', direction: 'rtl' as const, gap: 8, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  btnTxt: { color: colors.onPrimary, fontSize: 15, fontWeight: '800' },
   empty: { color: colors.textMuted, textAlign: 'center', paddingVertical: 12 },
   dBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
   dSheet: { maxHeight: '85%', backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 30 },
-  dHead: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, marginBottom: 4 },
-  dTitle: { flex: 1, color: colors.text, fontSize: 18, fontWeight: '800', textAlign: 'right', marginRight: 12 },
-  dNote: { color: colors.textMuted, fontSize: 12, textAlign: 'right', marginTop: 12, lineHeight: 18 },
-  provRow: { flexDirection: 'row-reverse', gap: 10, paddingVertical: 8, paddingRight: 48 },
-  provCell: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 5 },
+  dHead: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, marginBottom: 4 },
+  dTitle: { direction: 'rtl' as const, flex: 1, color: colors.text, fontSize: 18, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, marginRight: 12 },
+  dNote: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, textAlign: RTL_LABEL_ALIGN, marginTop: 12, lineHeight: 18 },
+  provRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 10, paddingVertical: 8, paddingRight: 48 },
+  provCell: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 5, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 5 },
   provTxt: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
-  trow: { flexDirection: 'row-reverse', alignItems: 'center', paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  trow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   thead: { borderBottomWidth: 1 },
   th: { flex: 1, color: colors.textSoft, fontSize: 11, fontWeight: '700', textAlign: 'center' },
   td: { flex: 1, color: colors.text, fontSize: 13, fontWeight: '600', textAlign: 'center' },
   tdNum: { fontWeight: '800' },
-  cSrc: { flex: 1.4, textAlign: 'right' },
+  cSrc: { direction: 'rtl' as const, flex: 1.4, textAlign: RTL_LABEL_ALIGN },
   cConv: { flex: 0.9 },
-  srcCell: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  srcName: { color: colors.text, fontSize: 13, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
+  srcCell: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 6 },
+  srcName: { direction: 'rtl' as const, color: colors.text, fontSize: 13, fontWeight: '600', textAlign: RTL_LABEL_ALIGN, flexShrink: 1 },
   note: { color: colors.textMuted, fontSize: 12, textAlign: 'center', marginTop: 10 },
-  linksHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 6 },
+  linksHead: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 6 },
   linksCount: { color: colors.textMuted, fontSize: 12, fontWeight: '800', backgroundColor: colors.surfaceAlt, borderRadius: 999, minWidth: 22, textAlign: 'center', paddingHorizontal: 7, paddingVertical: 1, overflow: 'hidden' },
-  linkRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  linkRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 10 },
   linkBody: { flex: 1 },
   linkAct: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
   linkIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  linkName: { color: colors.text, fontSize: 14, fontWeight: '700', textAlign: 'right' },
-  linkSub: { color: colors.textMuted, fontSize: 12, textAlign: 'right', marginTop: 1 },
+  linkName: { direction: 'rtl' as const, color: colors.text, fontSize: 14, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  linkSub: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
 });

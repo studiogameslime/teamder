@@ -70,32 +70,37 @@ export async function listAll(
   maxDocs = 5000,
   fields?: readonly string[],
 ): Promise<FsDoc[]> {
+  if (maxDocs <= 0) return [];
   const token = await googleAccessToken(SCOPE);
   const out: FsDoc[] = [];
-  const mask = (fields ?? [])
-    .map((f) => `&mask.fieldPaths=${encodeURIComponent(f)}`)
-    .join('');
-  let pageToken: string | undefined;
-  do {
-    const url =
-      `${base()}/${collection}?pageSize=300${mask}` +
-      (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+  let after: string | undefined;
+  while (out.length < maxDocs) {
+    const size = Math.min(300, maxDocs - out.length);
+    const res = await fetch(`${base()}:runQuery`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ structuredQuery: {
+        from: [{ collectionId: collection }],
+        orderBy: [{ field: { fieldPath: '__name__' }, direction: 'ASCENDING' }],
+        ...(fields?.length ? { select: { fields: fields.map(fieldPath => ({ fieldPath })) } } : {}),
+        ...(after ? { startAt: { values: [{ referenceValue: after }], before: false } } : {}),
+        limit: size,
+      } }),
     });
-    if (!res.ok) {
-      throw new Error(`Firestore ${collection} ${res.status}: ${await res.text()}`);
-    }
-    const json = await res.json();
-    (json.documents ?? []).forEach((d: any) => out.push(parseDoc(d)));
-    pageToken = json.nextPageToken;
-  } while (pageToken && out.length < maxDocs);
-  recordRead(collection, Math.max(1, out.length));
+    if (!res.ok) throw new Error(`Firestore ${collection} ${res.status}: ${await res.text()}`);
+    const documents = (await res.json() as any[]).filter(row => row.document).map(row => row.document);
+    recordRead(collection, Math.max(1, documents.length));
+    out.push(...documents.map(parseDoc));
+    if (documents.length < size) break;
+    const next = documents[documents.length - 1]?.name;
+    if (!next || next === after) throw new Error('PULSE_INVALID_PAGE_CURSOR');
+    after = next;
+  }
   return out;
 }
 
 /** Latest window from a known subcollection; avoids stale LIST responses. */
-export async function queryCollectionRecent(collection: string, limit = 100): Promise<FsDoc[]> {
+export async function queryCollectionRecent(collection: string, limit = 100, fields?: readonly string[]): Promise<FsDoc[]> {
   const segments = collection.split('/');
   const collectionId = segments.pop();
   const parent = segments.length ? `/${segments.join('/')}` : '';
@@ -105,6 +110,7 @@ export async function queryCollectionRecent(collection: string, limit = 100): Pr
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ structuredQuery: {
       from: [{ collectionId }],
+      ...(fields?.length ? { select: { fields: fields.map(fieldPath => ({ fieldPath })) } } : {}),
       orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
       limit,
     } }),
@@ -116,9 +122,9 @@ export async function queryCollectionRecent(collection: string, limit = 100): Pr
 }
 
 // Read a single document by path (e.g. "users/abc123").
-export async function getDoc(path: string): Promise<FsDoc | null> {
+export async function getDoc(path: string, fields?: readonly string[]): Promise<FsDoc | null> {
   const token = await googleAccessToken(SCOPE);
-  const res = await fetch(`${base()}/${path}`, {
+  const res = await fetch(`${base()}/${path}${fields?.length?'?'+fields.map(field=>'mask.fieldPaths='+encodeURIComponent(field)).join('&'):''}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   recordRead(collOf(path), 1);
@@ -133,6 +139,7 @@ export async function queryArrayContains(
   field: string,
   value: string,
   limit = 200,
+  fields?: readonly string[],
 ): Promise<FsDoc[]> {
   const token = await googleAccessToken(SCOPE);
   const res = await fetch(`${base()}:runQuery`, {
@@ -140,6 +147,7 @@ export async function queryArrayContains(
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       structuredQuery: {
+        ...(fields ? { select: { fields: fields.map(fieldPath => ({fieldPath})) } } : {}),
         from: [{ collectionId: collection }],
         where: {
           fieldFilter: {
@@ -167,6 +175,7 @@ export async function queryEquals(
   field: string,
   value: string,
   limit = 500,
+  fields?: readonly string[],
 ): Promise<FsDoc[]> {
   const token = await googleAccessToken(SCOPE);
   const res = await fetch(`${base()}:runQuery`, {
@@ -174,6 +183,7 @@ export async function queryEquals(
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       structuredQuery: {
+        ...(fields ? { select: { fields: fields.map(fieldPath => ({fieldPath})) } } : {}),
         from: [{ collectionId: collection }],
         where: {
           fieldFilter: {
@@ -433,4 +443,35 @@ export async function countWhereEquals(
   recordRead(`${collection} (ספירה)`, 1);
   const v = json?.[0]?.result?.aggregateFields?.c;
   return v ? Number(v.integerValue ?? 0) : 0;
+}
+
+export interface DocumentPageCursor { values: unknown[] }
+/** A bounded server page. The cursor includes the document name for stable ties. */
+export async function queryDocumentPage(collection:string, options:{orderField:string;direction?:'ASCENDING'|'DESCENDING';cursor?:DocumentPageCursor;limit?:number;fields?:readonly string[];where?:unknown}):Promise<{rows:FsDoc[];next?:DocumentPageCursor}> {
+  const limit=Math.max(1,Math.min(options.limit ?? 20,100));
+  const token=await googleAccessToken(SCOPE);
+  const direction=options.direction ?? 'DESCENDING';
+  const orderBy=[{field:{fieldPath:options.orderField},direction},...(options.orderField==='__name__'?[]:[{field:{fieldPath:'__name__'},direction}])];
+  const response=await fetch(`${base()}:runQuery`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({structuredQuery:{from:[{collectionId:collection}],orderBy,limit,...(options.fields?{select:{fields:options.fields.map(fieldPath=>({fieldPath}))}}:{}),...(options.where?{where:options.where}:{}),...(options.cursor?{startAt:{values:options.cursor.values,before:false}}:{})}})});
+  if(!response.ok)throw new Error(`PULSE_PAGE_${response.status}`);
+  const documents=(await response.json() as any[]).filter(row=>row.document).map(row=>row.document);
+  recordRead(collection,Math.max(1,documents.length));
+  const last=documents[documents.length-1];
+  const value=last && (options.orderField==='__name__'?undefined:last.fields?.[options.orderField]);
+  if(last && options.orderField!=='__name__' && !value)throw new Error('PULSE_INVALID_PAGE_CURSOR');
+  return {rows:documents.map(parseDoc),...(documents.length===limit?{next:{values:options.orderField==='__name__'?[{referenceValue:last.name}]:[value,{referenceValue:last.name}]}}:{})};
+}
+
+/** Read one named child collection through the permitted root runQuery endpoint.
+ * Name bounds keep the collection-group query within this parent's path; no LIST cache.
+ * Round-history ids are generated ASCII commit keys. */
+export async function queryChildDocuments(parentDocument:string,collectionId:string,limit=500):Promise<FsDoc[]> {
+  const parent=`projects/${config.firebase.projectId}/databases/(default)/documents/${parentDocument}`;
+  const prefix=`${parent}/${collectionId}/`;
+  const token=await googleAccessToken(SCOPE);
+  const response=await fetch(`${base()}:runQuery`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({structuredQuery:{from:[{collectionId,allDescendants:true}],where:{compositeFilter:{op:'AND',filters:[{fieldFilter:{field:{fieldPath:'__name__'},op:'GREATER_THAN',value:{referenceValue:parent}}},{fieldFilter:{field:{fieldPath:'__name__'},op:'LESS_THAN',value:{referenceValue:prefix+'\u{10ffff}'}}}]}},orderBy:[{field:{fieldPath:'__name__'},direction:'ASCENDING'}],limit}})});
+  if(!response.ok)throw new Error(`PULSE_CHILD_QUERY_${response.status}`);
+  const documents=(await response.json() as any[]).filter(row=>row.document).map(row=>row.document);
+  recordRead(collectionId,Math.max(1,documents.length));
+  return documents.filter(d=>typeof d.name==='string' && d.name.startsWith(prefix) && !d.name.slice(prefix.length).includes('/')).map(parseDoc);
 }

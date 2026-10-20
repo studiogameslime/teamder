@@ -1,16 +1,14 @@
-import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
+import { useNavigation } from '@react-navigation/native';
 // ReportsBody — "דיווחים ממשתמשים" segment of the unified Dev Inbox. Every
 // user-submitted bug report / suggestion (the `feedback` collection) with text,
 // context, and the attached SCREENSHOT (tap to zoom). Grouped by reporter/screen.
 // Each report can be FLAGGED "fix this" for Claude to process. Self-scrolling
 // (no Screen header) so it sits under the shared segmented control.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
-  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -19,8 +17,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, font, radius } from '../theme';
-import { Card, Empty } from '../components/ui';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
+import { Disclosure, Card, Empty } from '../components/ui';
 import {
   listReports,
   groupByReporter,
@@ -35,7 +33,6 @@ import { screenHe } from '../services/screenNames';
 
 type GroupMode = 'reporter' | 'screen';
 
-const dataUri = (b64: string) => `data:image/jpeg;base64,${b64}`;
 
 const STATUS_META: Record<ReportStatus, { label: string; color: string }> = {
   new: { label: 'חדש', color: colors.primary },
@@ -60,12 +57,13 @@ function timeHe(ms: number): string {
 }
 
 export function ReportsBody() {
+  const nav = useNavigation<any>();
   const [items, setItems] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [zoom, setZoom] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [groupMode, setGroupMode] = useState<GroupMode>('reporter');
+  const saving = useRef(new Set<string>());
 
   const load = useCallback(async () => {
     const rows = await listReports().catch(() => [] as ReportItem[]);
@@ -81,33 +79,27 @@ export function ReportsBody() {
   const patch = (id: string, p: Partial<ReportItem>) =>
     setItems((prev) => prev.map((r) => (r.id === id ? { ...r, ...p } : r)));
 
+  const saveChange = async (id: string, write: () => Promise<boolean>, apply: () => void) => {
+    if (saving.current.has(id)) return;
+    saving.current.add(id);
+    try {
+      if (!await write()) throw new Error('not saved');
+      apply();
+    } catch { Alert.alert('השינוי לא נשמר', 'הדיווח נשאר במצבו הקודם. נסו שוב.'); }
+    finally { saving.current.delete(id); }
+  };
   const cycleStatus = async (it: ReportItem) => {
     const next = STATUS_ORDER[(STATUS_ORDER.indexOf(it.status) + 1) % STATUS_ORDER.length];
-    patch(it.id, { status: next });
-    await setReportStatus(it.id, next).catch(() => {});
+    await saveChange(it.id, () => setReportStatus(it.id, next), () => patch(it.id, { status: next }));
   };
   const toggleFix = async (it: ReportItem) => {
-    patch(it.id, { fixRequested: !it.fixRequested });
-    await setReportFixRequested(it.id, !it.fixRequested).catch(() => {});
+    await saveChange(it.id, () => setReportFixRequested(it.id, !it.fixRequested), () => patch(it.id, { fixRequested: !it.fixRequested }));
   };
-  const remove = (it: ReportItem) => {
-    // Confirm first — deletion is permanent and was previously a single tap.
-    Alert.alert(
-      'למחוק דיווח?',
-      `הדיווח של ${it.userName || 'משתמש'} יימחק לצמיתות ולא ניתן לשחזר.`,
-      [
-        { text: 'ביטול', style: 'cancel' },
-        {
-          text: 'מחק',
-          style: 'destructive',
-          onPress: async () => {
-            setItems((prev) => prev.filter((r) => r.id !== it.id));
-            await deleteReport(it.id).catch(() => {});
-          },
-        },
-      ],
-    );
-  };
+  const remove = (it: ReportItem) => Alert.alert('למחוק דיווח?', it.userName || 'משתמש', [
+    { text: 'ביטול', style: 'cancel' },
+    { text: 'מחק', style: 'destructive', onPress: () => void saveChange(it.id,
+      () => deleteReport(it.id), () => setItems(previous => previous.filter(row => row.id !== it.id))) },
+  ]);
 
   // Stats over ALL items (not the filtered view).
   const stats = useMemo(() => {
@@ -151,32 +143,27 @@ export function ReportsBody() {
         />
       }
     >
-      {/* Stats row */}
-      <View style={s.statsRow}>
-        <Stat n={stats.total} label="סה״כ" color={colors.textSoft} />
-        <Stat n={stats.open} label="פתוחים" color={colors.amber} />
-        <Stat n={stats.done} label="טופלו" color={colors.green} />
-        <Stat n={stats.flagged} label="לתיקון" color={colors.red} />
-      </View>
-
+      <Text style={{ ...font.title,textAlign: RTL_LABEL_ALIGN,marginBottom:12}}>{stats.open} דיווחים פתוחים · {stats.flagged} מסומנים לתיקון</Text>
+      <Disclosure title="קיבוץ הדיווחים">
       {/* Group-by toggle */}
       <View style={s.filterRow}>
         <Pressable
           onPress={() => setGroupMode('reporter')}
           style={[s.segChip, groupMode === 'reporter' && s.segChipOn]}
         >
-          <Ionicons name="person" size={13} color={groupMode === 'reporter' ? '#fff' : colors.textSoft} />
+          <Ionicons name="person" size={13} color={groupMode === 'reporter' ? colors.onPrimary : colors.textSoft} />
           <Text style={[s.filterTxt, groupMode === 'reporter' && s.filterTxtOn]}>לפי מדווח</Text>
         </Pressable>
         <Pressable
           onPress={() => setGroupMode('screen')}
           style={[s.segChip, groupMode === 'screen' && s.segChipOn]}
         >
-          <Ionicons name="phone-portrait" size={13} color={groupMode === 'screen' ? '#fff' : colors.textSoft} />
+          <Ionicons name="phone-portrait" size={13} color={groupMode === 'screen' ? colors.onPrimary : colors.textSoft} />
           <Text style={[s.filterTxt, groupMode === 'screen' && s.filterTxtOn]}>לפי מסך</Text>
         </Pressable>
       </View>
 
+      </Disclosure>
       {/* Filters */}
       <View style={s.filterRow}>
         {FILTERS.map((f) => (
@@ -226,6 +213,9 @@ export function ReportsBody() {
               const isBug = it.type === 'bug';
               return (
                 <Card key={it.id} style={s.item}>
+                  {it.message ? <Text style={s.message} numberOfLines={3}>{it.message}</Text> : null}
+                  <Pressable accessibilityRole="button" onPress={() => nav.navigate('ErrorDetail', {id:it.id,collection:'feedback'})} style={{paddingVertical:14}}><Text style={{ direction: 'rtl' as const,color:colors.primary,fontWeight:'700',textAlign: RTL_LABEL_ALIGN}}>פתיחת אבחון, צילום ורצף פעולות</Text></Pressable>
+                  <Disclosure title="פעולות ופרטי הדיווח">
                   <View style={s.head}>
                     <View
                       style={[s.kindTag, { backgroundColor: (isBug ? colors.red : colors.primary) + '22' }]}
@@ -264,17 +254,9 @@ export function ReportsBody() {
                       .filter(Boolean)
                       .join('  ·  ')}
                   </Text>
-                  <DiagnosticTimeline docPath={`feedback/${it.id}`} />
+
                   {it.message ? <Text style={s.message}>{it.message}</Text> : null}
-                  {it.image ? (
-                    <Pressable style={s.shotWrap} onPress={() => setZoom(it.image!)}>
-                      <Image source={{ uri: dataUri(it.image) }} style={s.shot} resizeMode="cover" />
-                      <View style={s.zoomHint}>
-                        <Ionicons name="expand-outline" size={13} color="#fff" />
-                        <Text style={s.zoomHintTxt}>הגדל</Text>
-                      </View>
-                    </Pressable>
-                  ) : null}
+                  </Disclosure>
                 </Card>
               );
             })}
@@ -282,14 +264,7 @@ export function ReportsBody() {
         ))
       )}
 
-      <Modal visible={!!zoom} transparent animationType="fade" onRequestClose={() => setZoom(null)}>
-        <Pressable style={s.zoomBackdrop} onPress={() => setZoom(null)}>
-          {zoom ? <Image source={{ uri: dataUri(zoom) }} style={s.zoomImg} resizeMode="contain" /> : null}
-          <View style={s.zoomClose}>
-            <Ionicons name="close" size={26} color="#fff" />
-          </View>
-        </Pressable>
-      </Modal>
+
     </ScrollView>
   );
 }
@@ -305,7 +280,7 @@ function Stat({ n, label, color }: { n: number; label: string; color: string }) 
 
 const s = StyleSheet.create({
   scroll: { padding: 14, paddingBottom: 36, gap: 10 },
-  statsRow: { flexDirection: 'row-reverse', gap: 8, marginBottom: 10 },
+  statsRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 8, marginBottom: 10 },
   stat: {
     flex: 1,
     alignItems: 'center',
@@ -317,7 +292,7 @@ const s = StyleSheet.create({
   },
   statN: { fontSize: 20, fontWeight: '800' },
   statLbl: { ...font.small, color: colors.textMuted, marginTop: 1 },
-  filterRow: { flexDirection: 'row-reverse', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
+  filterRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 8, marginBottom: 12, flexWrap: 'wrap' },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -328,9 +303,9 @@ const s = StyleSheet.create({
   },
   filterChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterTxt: { ...font.small, color: colors.textSoft, fontWeight: '700' },
-  filterTxtOn: { color: '#fff' },
+  filterTxtOn: { color: colors.onPrimary },
   segChip: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 14,
@@ -342,11 +317,11 @@ const s = StyleSheet.create({
   },
   segChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   group: { marginBottom: 16, gap: 8 },
-  reporter: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, paddingHorizontal: 2 },
-  reporterName: { ...font.body, color: colors.text, fontWeight: '800', textAlign: 'right', maxWidth: '55%' },
+  reporter: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 7, paddingHorizontal: 2 },
+  reporterName: {  ...font.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, maxWidth: '55%' },
   reporterCount: { ...font.small, color: colors.textSoft, fontWeight: '700' },
   flagBadge: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 3,
     backgroundColor: colors.red + '1A',
@@ -356,11 +331,11 @@ const s = StyleSheet.create({
   },
   flagBadgeTxt: { ...font.small, color: colors.red, fontWeight: '800' },
   item: { gap: 8, marginBottom: 8 },
-  head: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  kindTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.sm },
+  head: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 6 },
+  kindTag: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.sm },
   kindTxt: { ...font.small, fontWeight: '800' },
   fixBtn: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 9,
@@ -371,15 +346,15 @@ const s = StyleSheet.create({
   },
   fixBtnOn: { backgroundColor: colors.red, borderColor: colors.red },
   fixTxt: { ...font.small, color: colors.textMuted, fontWeight: '700' },
-  statusPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
+  statusPill: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
   statusTxt: { ...font.small, fontWeight: '700' },
   del: { padding: 4 },
-  meta: { ...font.small, color: colors.textMuted, textAlign: 'right' },
-  message: { ...font.body, color: colors.text, textAlign: 'right', lineHeight: 21 },
+  meta: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  message: {  ...font.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, lineHeight: 21 },
   shotWrap: { borderRadius: radius.md, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surfaceAlt },
   shot: { width: '100%', height: 200 },
-  zoomHint: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row-reverse', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm },
+  zoomHint: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm },
   zoomHintTxt: { color: '#fff', fontSize: 11, fontWeight: '700' },
   zoomBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' },
   zoomImg: { width: '94%', height: '82%' },

@@ -77,7 +77,7 @@ function Chalk() {
 
 export function SeasonPoster({ season, hero, celebrate = false }: Props) {
   const tint = hero ? seasonTitleTint(hero.key) : '#1E40AF';
-  const value = hero ? he.seasonHeroValue(hero.key, hero.value) : null;
+  const value = hero ? he.seasonHeroValue(hero.key, hero.value, hero.valueUnit) : null;
   // A share only means something for a counting title measured against the
   // club's own goals — "100% מכל שערי המועדון" for a clean-sheet king is
   // nonsense, and so is a share of zero.

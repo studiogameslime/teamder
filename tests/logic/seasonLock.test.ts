@@ -111,7 +111,7 @@ describe('and an OPEN season still accepts corrections', () => {
         enabled: true,
         currentId: 's2',
         currentNo: 2,
-        pendingClose: { seasonId: 's2', dueAt: 1, closeAt: 2, reason: 'rounds' },
+        pendingClose: { seasonId: 's2', dueAt: Date.now(), closeAt: Date.now() + 86400000, reason: 'rounds' },
       },
     };
     expect(threw(() => assertSeasonOpenForGame(waiting, { seasonId: 's2' }))).toBeNull();

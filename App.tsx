@@ -457,8 +457,8 @@ export default function App() {
   const entryEventLoggedRef = useRef(false);
   const [entryEvent, setEntryEvent] = useState<Record<string, string | boolean | undefined> | null>(null);
   const reportEntrySource = (
-    how: 'deep_link' | 'stash' | 'deferred' | 'organic',
-    pending: { type: 'session' | 'team' | 'app'; id?: string; invitedBy?: string; source?: string; campaign?: string } | null,
+    how: 'deep_link' | 'deferred' | 'organic',
+    pending: { type: 'session' | 'team' | 'app'; id?: string; invitedBy?: string; source?: string; campaign?: string; linkId?: string } | null,
   ) => {
     if (entryReportedRef.current) return;
     entryReportedRef.current = true;
@@ -486,6 +486,7 @@ export default function App() {
       has_inviter: !!pending?.invitedBy,
       entry_channel: pending?.source,
       entry_campaign: pending?.campaign,
+      entry_link_id: pending?.linkId,
     };
     // Pulse resolves the inviter's display name server-side. Keep this
     // identifier out of the generic analytics event below.
@@ -608,7 +609,11 @@ export default function App() {
       const existing = await storage.getPendingInvite();
       if (__DEV__) console.info('[invite] existing pending →', existing);
       if (existing) {
-        reportEntrySource(initialUrl ? 'deep_link' : 'stash', existing);
+        // A pending invite is still needed for later navigation/attribution,
+        // but it is not evidence that THIS launch came from a link. A stale
+        // valid invite can survive on the device for signup, so reporting it
+        // here made a plain icon tap look like the old campaign every time.
+        reportEntrySource(initialUrl ? 'deep_link' : 'organic', initialUrl ? existing : null);
         return;
       }
 

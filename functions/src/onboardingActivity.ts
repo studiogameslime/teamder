@@ -69,7 +69,7 @@ export const recordOnboardingActivity = onCall({ maxInstances: 5 }, async reques
       // Preserve launch attribution for older clients that omit it on later actions.
       if (row.action === 'entry_source_resolved') state.entryContext = row.params;
       const entryContext = Object.fromEntries(Object.entries(state.entryContext ?? {}).filter(([key]) =>
-        ['entry_source', 'entry_channel', 'entry_campaign', 'resolved_by', 'target_type', 'target_id', 'has_inviter', 'inviter_uid'].includes(key)));
+        ['entry_source', 'entry_channel', 'entry_campaign', 'entry_link_id', 'resolved_by', 'target_type', 'target_id', 'has_inviter', 'inviter_uid'].includes(key)));
       tx.create(refs[i], { ...row, params: { ...entryContext, ...row.params }, uid, actorName, anonymous,
         ...(guestNumber ? { guestNumber } : {}),
         ...(previousIntent && !repeatedIntent ? { previousIntent } : {}),

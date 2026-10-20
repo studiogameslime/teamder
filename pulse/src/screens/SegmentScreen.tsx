@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert,
-} from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { RtlTextInput as TextInput } from '../components/RtlTextInput';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, Card } from '../components/ui';
+import { SectionTabs, Panel, Screen, Card } from '../components/ui';
 import { Dropdown, type Opt } from '../components/Dropdown';
-import { colors, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, radius  } from '../theme';
 import { fetchGroupMemberSet, fetchUsers, fetchUsersWithAuth } from '../services/firebase';
 import {
   matchUser, segmentNeedsAuth, FIELDS, OPS, OPS_FOR_TYPE, fieldDef,
@@ -28,6 +27,8 @@ function valueOpts(key: FieldKey): Opt[] {
 }
 
 export function SegmentScreen() {
+  const [section, setSection] = useState('saved');
+  const [error, setError] = useState('');
   const [name, setName] = useState('');
   const [combinator, setCombinator] = useState<'all' | 'any'>('all');
   const [rules, setRules] = useState<SegmentRule[]>([{ field: 'attended', op: 'gt', value: '' }]);
@@ -54,7 +55,7 @@ export function SegmentScreen() {
   const reset = () => { setName(''); setRules([{ field: 'attended', op: 'gt', value: '' }]); setCount(null); };
 
   const calc = async (): Promise<number | null> => {
-    setBusy(true);
+    setBusy(true); setError('');
     try {
       const needGroup = rules.some((r) => r.field === 'inGroup');
       const [users, members] = await Promise.all([
@@ -66,7 +67,7 @@ export function SegmentScreen() {
       const n = real.filter((u) => matchUser(u, def, members, now)).length;
       setCount(n); setTotal(real.length);
       return n;
-    } finally {
+    } catch { setError('חישוב הקהל נכשל. נסו שוב.'); return null; } finally {
       setBusy(false);
     }
   };
@@ -77,9 +78,10 @@ export function SegmentScreen() {
     if (valid.length === 0) { Alert.alert('חסר', 'הוסף לפחות תנאי אחד'); return; }
     setSaving(true);
     try {
-      const audience = count ?? (await calc()) ?? undefined;
+      const audience = count ?? (await calc());
+      if (audience === null) return;
       const ok = await createSegment(name.trim(), { combinator, rules: valid }, audience);
-      if (ok) { Alert.alert('נשמר', `הסגמנט "${name.trim()}" נשמר ✓`); reset(); await reloadSaved(); }
+      if (ok) { Alert.alert('נשמר', `הסגמנט "${name.trim()}" נשמר ✓`); reset(); setSection('saved'); await reloadSaved(); }
       else Alert.alert('שגיאה', 'שמירת הסגמנט נכשלה');
     } finally { setSaving(false); }
   };
@@ -95,17 +97,20 @@ export function SegmentScreen() {
 
   return (
     <Screen
-      title="סגמנטים"
+      title="קהלים"
       subtitle="בנה קהל של משתמשים לפי תנאים"
       right={(
         <View style={s.headIcons}>
-          <Ionicons name="search" size={22} color={colors.textSoft} />
-          <Pressable onPress={reset} hitSlop={8}><Ionicons name="add" size={26} color={colors.primary} /></Pressable>
+
+          <Pressable accessibilityLabel="קהל חדש" onPress={() => { reset(); setSection('build'); }} hitSlop={8}><Ionicons name="add" size={26} color={colors.primary} /></Pressable>
         </View>
       )}
     >
+      <SectionTabs value={section} onChange={setSection} items={[{key:'saved',label:'קהלים שמורים'}, {key:'build',label:'בניית קהל'}]} />
+      {error ? <Text style={{ direction: 'rtl' as const,color:colors.red,textAlign: RTL_LABEL_ALIGN}}>{error}</Text> : null}
+      <Panel active={section === 'build'}>
       {/* builder */}
-      <Text style={s.section}>בניית סגמנט</Text>
+      <Text style={s.section}>בניית קהל</Text>
       <Card style={{ gap: 10 }}>
         {rules.map((r, i) => {
           const fd = fieldDef(r.field);
@@ -154,7 +159,7 @@ export function SegmentScreen() {
         </Pressable>
 
         <Pressable style={[s.calcBtn, busy && { opacity: 0.6 }]} onPress={() => calc()} disabled={busy}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.calcTxt}>חשב קהל</Text>}
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={s.calcTxt}>חשב קהל</Text>}
         </Pressable>
       </Card>
 
@@ -166,16 +171,18 @@ export function SegmentScreen() {
         </View>
         <Text style={s.bigLbl}>משתמשים מתאימים</Text>
         {pctOfAll !== null ? <Text style={s.audSub}>{pctOfAll}% מכלל המשתמשים</Text> : null}
-        <TextInput style={s.name} placeholder="שם הסגמנט" placeholderTextColor={colors.textMuted} value={name} onChangeText={setName} />
+        <TextInput style={s.name} placeholder="שם הקהל" placeholderTextColor={colors.textMuted} value={name} onChangeText={setName} />
         <Pressable style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={save} disabled={saving}>
-          {saving ? <ActivityIndicator color={colors.primary} /> : <Text style={s.saveTxt}>שמור כסגמנט</Text>}
+          {saving ? <ActivityIndicator color={colors.primary} /> : <Text style={s.saveTxt}>שמור קהל</Text>}
         </Pressable>
       </Card>
 
+      </Panel>
+      <Panel active={section === 'saved'}>
       {/* saved */}
-      <Text style={s.section}>הסגמנטים השמורים</Text>
+      <Text style={s.section}>הקהלים השמורים</Text>
       {saved.length === 0 ? (
-        <Card><Text style={s.empty}>אין עדיין — בנה ושמור סגמנט</Text></Card>
+        <Card><Text style={s.empty}>אין עדיין — בחרו בבניית קהל כדי להתחיל</Text></Card>
       ) : saved.map((seg) => (
         <Card key={seg.id} style={s.savedRow}>
           <View style={s.savedIcon}><Ionicons name="people" size={18} color={colors.primary} /></View>
@@ -184,37 +191,38 @@ export function SegmentScreen() {
             <Text style={s.savedSub} numberOfLines={1}>{seg.audience != null ? `${seg.audience.toLocaleString()} משתמשים` : '—'}</Text>
           </View>
           <Pressable onPress={() => onDelete(seg)} hitSlop={6}><Ionicons name="trash-outline" size={18} color={colors.red} /></Pressable>
-          <Pressable onPress={() => onDelete(seg)} hitSlop={6}><Ionicons name="ellipsis-vertical" size={18} color={colors.textMuted} /></Pressable>
+
         </Card>
       ))}
+      </Panel>
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  headIcons: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
-  section: { color: colors.text, fontSize: 16, fontWeight: '800', textAlign: 'right', marginTop: 12, marginBottom: 6 },
+  headIcons: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 14 },
+  section: { direction: 'rtl' as const, color: colors.text, fontSize: 16, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, marginTop: 12, marginBottom: 6 },
   connector: { alignSelf: 'center', paddingVertical: 4, paddingHorizontal: 14, marginVertical: 2 },
   connTxt: { color: colors.primary, fontSize: 12, fontWeight: '800' },
   block: { gap: 8 },
-  rowA: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  rowB: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  rowA: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8 },
+  rowB: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8 },
   trash: { padding: 4 },
-  valInput: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600', textAlign: 'right', backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 11, paddingVertical: 10 },
-  addRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' },
+  valInput: { direction: 'rtl' as const, flex: 1, color: colors.text, fontSize: 14, fontWeight: '600', textAlign: RTL_LABEL_ALIGN, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 11, paddingVertical: 10 },
+  addRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' },
   addTxt: { color: colors.primary, fontSize: 14, fontWeight: '800' },
   calcBtn: { backgroundColor: colors.primary, borderRadius: radius.sm, paddingVertical: 12, alignItems: 'center' },
-  calcTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
-  audRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  calcTxt: { color: colors.onPrimary, fontSize: 15, fontWeight: '800' },
+  audRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 10 },
   bigNum: { color: colors.text, fontSize: 34, fontWeight: '900' },
   bigLbl: { color: colors.textSoft, fontSize: 14, fontWeight: '600' },
   audSub: { color: colors.textMuted, fontSize: 12 },
-  name: { alignSelf: 'stretch', color: colors.text, fontSize: 15, fontWeight: '600', textAlign: 'right', backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10, marginTop: 6 },
+  name: { direction: 'rtl' as const, alignSelf: 'stretch', color: colors.text, fontSize: 15, fontWeight: '600', textAlign: RTL_LABEL_ALIGN, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10, marginTop: 6 },
   saveBtn: { alignSelf: 'stretch', backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary, borderRadius: radius.sm, paddingVertical: 12, alignItems: 'center' },
   saveTxt: { color: colors.primary, fontSize: 15, fontWeight: '800' },
   empty: { color: colors.textMuted, textAlign: 'center', paddingVertical: 14 },
-  savedRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
+  savedRow: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 12 },
   savedIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.primarySoft + '44', alignItems: 'center', justifyContent: 'center' },
-  savedName: { color: colors.text, fontSize: 15, fontWeight: '700', textAlign: 'right' },
-  savedSub: { color: colors.textMuted, fontSize: 12, textAlign: 'right', marginTop: 1 },
+  savedName: { direction: 'rtl' as const, color: colors.text, fontSize: 15, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  savedSub: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
 });

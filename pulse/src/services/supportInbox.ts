@@ -5,7 +5,7 @@ export function filterSupportThreads(threads: ThreadSummary[], search: string, f
   return threads.filter(thread =>
     (filter === 'all' || (filter === 'resolved' ? !!thread.resolved : filter === 'waiting' ? thread.awaitingReply : !thread.awaitingReply && !thread.resolved)) &&
     (!needle || `${thread.userName} ${thread.lastText}`.toLocaleLowerCase().includes(needle)),
-  ).sort((a, b) => Number(b.awaitingReply) - Number(a.awaitingReply) || b.lastMessageAt - a.lastMessageAt);
+  ).sort((a, b) => Number(b.awaitingReply) - Number(a.awaitingReply) || (a.awaitingReply && b.awaitingReply ? a.lastMessageAt - b.lastMessageAt : b.lastMessageAt - a.lastMessageAt));
 }
 export function supportNotificationTarget(data: Record<string, unknown>): { userId: string; messageId?: string } | null {
   if (data.type !== 'teamderReply' || typeof data.parentId !== 'string') return null;

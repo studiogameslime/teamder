@@ -1,0 +1,80 @@
+{
+  "checkedAt": "2026-10-18T19:02:03.005Z",
+  "releaseSource": "96e94cf3066c5bcafa80fc304f654f025ea90872",
+  "releaseHasAbsentObjectGuard": false,
+  "localHasAbsentObjectGuard": true,
+  "items": [
+    {
+      "id": "58b527241421850da03aa71d3c57cbf1",
+      "status": "resolved",
+      "code": "storage/object-not-found",
+      "version": "1.1.56",
+      "count": "1",
+      "lastSeen": "2026-10-18T09:14:17.054Z",
+      "completionEvents": [
+        {
+          "seq": 62,
+          "ms": 71051,
+          "name": "profile_created"
+        },
+        {
+          "seq": 63,
+          "ms": 71051,
+          "name": "onboarding_completed"
+        },
+        {
+          "seq": 64,
+          "ms": 71078,
+          "name": "profile_confirmed"
+        },
+        {
+          "seq": 65,
+          "ms": 71605,
+          "name": "deleteUserPhoto"
+        }
+      ],
+      "profile": {
+        "exists": true,
+        "hasPhotoUrl": false,
+        "hasAvatarId": true,
+        "onboardingCompleted": true
+      }
+    },
+    {
+      "id": "a25a533848e8b8c7abe3c1efaf7628e2",
+      "status": "new",
+      "code": "storage/object-not-found",
+      "version": "1.1.56",
+      "count": "1",
+      "lastSeen": "2026-10-18T18:59:22.010Z",
+      "completionEvents": [
+        {
+          "seq": 62,
+          "ms": 73990,
+          "name": "profile_created"
+        },
+        {
+          "seq": 63,
+          "ms": 73990,
+          "name": "onboarding_completed"
+        },
+        {
+          "seq": 64,
+          "ms": 74024,
+          "name": "profile_confirmed"
+        },
+        {
+          "seq": 65,
+          "ms": 74600,
+          "name": "deleteUserPhoto"
+        }
+      ],
+      "profile": {
+        "exists": true,
+        "hasPhotoUrl": false,
+        "hasAvatarId": true,
+        "onboardingCompleted": true
+      }
+    }
+  ]
+}

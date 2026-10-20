@@ -27,6 +27,20 @@ const serverBlock = () => ({
 });
 
 describe('the season block a club reads', () => {
+  it('retains every new policy field, pause state and next-season defaults', () => {
+    const s = readGroupSeasons({ ...serverBlock(), policyVersion: 2, revision: 7, includedHistory: 12,
+      nextCadence: { type: 'rounds', targetRounds: 24, startsOn: null },
+      pendingClose: { seasonId: 's4', dueAt: 100, closeAt: 1000, pausedAt: 700, remainingMs: 300, awaitingVerification: 2 },
+      manualClose: { action: 'disable', by: 'u1', byName: 'מנהל', at: 50 } });
+    expect(s).toMatchObject({ policyVersion: 2, revision: 7, includedHistory: 12,
+      nextCadence: { type: 'rounds', targetRounds: 24 },
+      pendingClose: { dueAt: 100, pausedAt: 700, remainingMs: 300, awaitingVerification: 2 },
+      manualClose: { action: 'disable', by: 'u1' } });
+  });
+  it('retains a failed first activation even before a season ID exists', () => {
+    const s = readGroupSeasons({ operation: { kind: 'enableClubSeasons', failed: true, until: 0 } });
+    expect(s?.enabled).toBe(false); expect(s?.operation?.failed).toBe(true);
+  });
   it('carries every field the server writes', () => {
     const s = readGroupSeasons(serverBlock());
     expect(s).toEqual({

@@ -1,0 +1,114 @@
+[
+  {
+    "screen": "Menu",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Tasks",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Versions",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "UserDetail",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "ErrorDetail",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Push",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "DevInbox",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Users",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Messages",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Chats",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "NotificationsLog",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Analytics",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Map",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Segment",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Sources",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "TokenHealth",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "Games",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "screen": "QaUserDetail",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "scenario": "version to user, linked task to exact report, diagnostics tabs, 320px width",
+    "passed": true
+  }
+]

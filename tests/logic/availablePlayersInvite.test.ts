@@ -48,3 +48,22 @@ test('QA preview invitation never calls the notification service or analytics',a
   expect(c.notificationsService.inviteToGame).not.toHaveBeenCalled();expect(c.logEvent).not.toHaveBeenCalled();
   expect(c.setInvitedIds).toHaveBeenCalledTimes(1);
 });
+
+test('additional candidates remain locked during a page read and cannot overwrite another round',async()=>{
+ let resolve!:(value:any)=>void;
+ const c={cursor:'next',pageLock:{current:false},loading:false,pageEpoch:{current:1},gameId:'round',
+  setLoadingMore:jest.fn(),setMoreFailed:jest.fn(),setCandidates:jest.fn(),setCursor:jest.fn(),logError:jest.fn(),
+  userService:{findAvailablePlayersPage:jest.fn(()=>new Promise(r=>{resolve=r;}))}};
+ const load=handler(file,'loadMore',c),pending=load();await load();
+ expect(c.userService.findAvailablePlayersPage).toHaveBeenCalledTimes(1);
+ c.pageEpoch.current=2;resolve({players:[{id:'old'}],cursor:null});await pending;
+ expect(c.setCandidates).not.toHaveBeenCalled();expect(c.setCursor).not.toHaveBeenCalled();
+});
+
+test('failed pagination retains current candidates and cursor for an explicit retry',async()=>{
+ const c={cursor:'next',pageLock:{current:false},loading:false,pageEpoch:{current:1},gameId:'round',
+  setLoadingMore:jest.fn(),setMoreFailed:jest.fn(),setCandidates:jest.fn(),setCursor:jest.fn(),logError:jest.fn(),
+  userService:{findAvailablePlayersPage:jest.fn().mockRejectedValue(new Error('offline'))}};
+ await handler(file,'loadMore',c)();expect(c.setMoreFailed).toHaveBeenLastCalledWith(true);
+ expect(c.setCandidates).not.toHaveBeenCalled();expect(c.setCursor).not.toHaveBeenCalled();expect(c.pageLock.current).toBe(false);
+});

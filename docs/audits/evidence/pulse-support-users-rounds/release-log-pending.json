@@ -1,0 +1,17 @@
+{
+  "state": "pending_authenticated_target",
+  "productionUpdated": false,
+  "reason": "אין מזהה משימה או חיבור כתיבה מאומת",
+  "claudeStatus": "done",
+  "claudeNote": "עיצבתי את מסכי התמיכה, המשתמשים והמחזורים לפי הסקיצה, והמשתמשים נטענים מהשרת בעמודים של עשרים לפי פעילות מתועדת במקום הורדת כל חשבונות ההתחברות. לחיצה על מחזור מציגה את הרשומים, ההגדרות, הדירוגים, המשחק המורחב, התוצאות, ההיסטוריה והכרטיסים הקיימים, עם סימון מידע חסר. התיקון מקומי ונבדק בבדיקות ובדפדפן; הוא טרם הופץ או אומת במכשיר.",
+  "proofFiles": [
+    "docs/features/screenshots/pulse-lists-support-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-lists-users-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-lists-rounds-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-lists-round-overview-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-lists-round-players-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-lists-round-cards-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-lists-round-history-390-2026-10-18.png"
+  ],
+  "originalImagesPreserved": true
+}

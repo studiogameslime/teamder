@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, radius  } from '../theme';
 import { go, navRef } from '../navigation/navRef';
 import { listAwaitingReply } from '../services/teamderChatService';
 
@@ -28,56 +28,35 @@ interface Item {
 }
 
 // Grouped destinations — everything the app can reach lives here.
-const GROUPS: { title: string; items: Item[] }[] = [
-  {
-    title: 'ראשי',
-    items: [
-      { route: 'Overview', label: 'סקירה', icon: 'home', tint: colors.primary },
-      { route: 'Users', label: 'משתמשים', icon: 'people', tint: '#22C55E', screen: 'UsersList' },
-      { route: 'Games', label: 'משחקים', icon: 'football', tint: '#F97316' },
-      { route: 'Availability', label: 'זמינות', icon: 'calendar', tint: '#3B82F6' },
-      { route: 'Analytics', label: 'אנליטיקה', icon: 'stats-chart', tint: '#06B6D4' },
-      { route: 'OnboardingActivity', label: 'מסלול ההצטרפות', icon: 'footsteps', tint: '#3B82F6' },
-      { route: 'Map', label: 'מפה', icon: 'map', tint: '#8B5CF6' },
-    ],
-  },
-  {
-    title: 'שיווק',
-    items: [
-      { route: 'Campaigns', label: 'קמפיינים', icon: 'megaphone', tint: '#F59E0B' },
-      { route: 'Stickers', label: 'מדבקות', icon: 'location', tint: '#EF4444' },
-      { route: 'Segment', label: 'סגמנטים', icon: 'people-circle', tint: '#3B82F6' },
-      { route: 'Sources', label: 'מקורות', icon: 'link', tint: '#14B8A6' },
-    ],
-  },
-  {
-    title: 'חנות',
-    items: [
-      { route: 'Reviews', label: 'ביקורות', icon: 'star', tint: colors.star },
-      { route: 'Revenue', label: 'הכנסות', icon: 'cash', tint: '#22C55E' },
-    ],
-  },
-  {
-    title: 'פיתוח',
-    items: [
-      { route: 'Messages', label: 'שיחות עם משתמשים', icon: 'chatbubble-ellipses', tint: '#0EA5E9' },
-      { route: 'DevInbox', label: 'תיבת פיתוח', icon: 'construct', tint: '#A855F7' },
-      { route: 'Ideas', label: 'רעיונות', icon: 'bulb', tint: '#FACC15' },
-      { route: 'Chats', label: "צ'אטים", icon: 'chatbubbles', tint: '#06B6D4' },
-    ],
-  },
-  {
-    title: 'מערכת',
-    items: [
-      { route: 'Versions', label: 'גרסאות', icon: 'rocket', tint: '#22C55E' },
-      { route: 'Push', label: 'פושים', icon: 'paper-plane', tint: '#3B82F6' },
-      { route: 'TokenHealth', label: 'בריאות טוקנים', icon: 'wifi', tint: '#EF4444' },
-      { route: 'NotificationsLog', label: 'התראות אחרונות', icon: 'notifications', tint: '#F59E0B' },
-      { route: 'Ads', label: 'מודעות', icon: 'megaphone', tint: '#EC4899' },
-      { route: 'Quota', label: 'מכסות', icon: 'speedometer', tint: '#F59E0B' },
-      { route: 'Settings', label: 'הגדרות', icon: 'settings', tint: colors.textSoft },
-    ],
-  },
+export const GROUPS: { title: string; items: Item[] }[] = [
+  { title: 'תמיכה ועבודה', items: [
+    { route: 'Tasks', label: 'משימות', icon: 'checkbox' },
+    { route: 'Users', label: 'משתמשים', icon: 'people', screen: 'UsersList' },
+    { route: 'Messages', label: 'שיחות תמיכה', icon: 'chatbubble-ellipses' },
+    { route: 'Chats', label: 'פיקוח על שיחות', icon: 'shield-checkmark' },
+  ] },
+  { title: 'פעילות ומדדים', items: [
+    { route: 'Overview', label: 'סקירה, מדדים ומפה', icon: 'home' },
+    { route: 'Games', label: 'מחזורים', icon: 'football', screen: 'GamesList' },
+    { route: 'Availability', label: 'זמינות שחקנים', icon: 'calendar' },
+    { route: 'OnboardingActivity', label: 'מסלול ההצטרפות', icon: 'footsteps' },
+  ] },
+  { title: 'גיוס וקשר עם משתמשים', items: [
+    { route: 'Campaigns', label: 'קמפיינים, קהלים וקישורים', icon: 'megaphone' },
+  ] },
+  { title: 'התראות', items: [
+    { route: 'Push', label: 'מרכז ההתראות', icon: 'paper-plane' },
+  ] },
+  { title: 'גרסאות וחנויות', items: [
+    { route: 'Versions', label: 'גרסאות', icon: 'rocket' },
+    { route: 'Reviews', label: 'ביקורות בחנויות', icon: 'star' },
+    { route: 'Revenue', label: 'הכנסות', icon: 'cash' },
+  ] },
+  { title: 'מערכת', items: [
+    { route: 'Ads', label: 'מודעות', icon: 'megaphone' },
+    { route: 'Quota', label: 'מכסות', icon: 'speedometer' },
+    { route: 'Settings', label: 'הגדרות', icon: 'settings' },
+  ] },
 ];
 
 export function AppMenu({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -104,10 +83,10 @@ export function AppMenu({ visible, onClose }: { visible: boolean; onClose: () =>
         <Pressable style={s.panel} onPress={(e) => e.stopPropagation()}>
           <SafeAreaView edges={['top']} style={{ flex: 1 }}>
             <View style={s.head}>
-              <Pressable onPress={onClose} hitSlop={10}>
-                <Ionicons name="close" size={26} color={colors.textSoft} />
-              </Pressable>
               <Text style={s.title}>תפריט</Text>
+              <Pressable accessibilityLabel="סגירת התפריט" onPress={onClose} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="close" size={24} color={colors.textSoft} />
+              </Pressable>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
               {GROUPS.map((g) => (
@@ -119,18 +98,12 @@ export function AppMenu({ visible, onClose }: { visible: boolean; onClose: () =>
                     return (
                       <Pressable key={it.route} style={[s.row, on && s.rowOn]} onPress={() => open(it)}>
                         {on ? <View style={[s.bar, { backgroundColor: tint }]} /> : null}
-                        {on
-                          ? <Text style={[s.activeTag, { color: tint }]}>פעיל</Text>
-                          : <Ionicons name="chevron-back" size={18} color={colors.textMuted} />}
-                        <Text style={[s.label, on && { color: tint }]}>{it.label}</Text>
-                        {it.route === 'Messages' && waiting > 0 ? (
-                          <View style={s.count}>
-                            <Text style={s.countTxt}>{waiting}</Text>
-                          </View>
-                        ) : null}
-                        <View style={[s.icon, { backgroundColor: tint + (on ? '33' : '22') }]}>
-                          <Ionicons name={it.icon} size={20} color={tint} />
+                        <View style={[s.icon, { backgroundColor: on ? colors.primarySoft : colors.surfaceAlt }]}>
+                          <Ionicons name={it.icon} size={20} color={on ? tint : colors.textSoft} />
                         </View>
+                        <Text style={[s.label, on && { color: tint }]}>{it.label}</Text>
+                        {it.route === 'Messages' && waiting > 0 ? <View style={s.count}><Text style={s.countTxt}>{waiting}</Text></View> : null}
+                        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
                       </Pressable>
                     );
                   })}
@@ -147,7 +120,7 @@ export function AppMenu({ visible, onClose }: { visible: boolean; onClose: () =>
 const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', flexDirection: 'row' },
   panel: { width: '82%', maxWidth: 360, marginLeft: 'auto', backgroundColor: colors.surface, borderLeftWidth: 1, borderLeftColor: colors.border },
-  head: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 },
+  head: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 },
   title: { color: colors.text, fontSize: 22, fontWeight: '800' },
   count: {
     minWidth: 20,
@@ -159,11 +132,11 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   countTxt: { color: '#fff', fontSize: 12, fontWeight: '800' },
-  group: { color: colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: 'right', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 12 },
+  group: { direction: 'rtl' as const, color: colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: RTL_LABEL_ALIGN, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6 },
+  row: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 12 },
   rowOn: { backgroundColor: colors.surfaceAlt },
   bar: { position: 'absolute', right: 0, top: 8, bottom: 8, width: 3, borderTopLeftRadius: 3, borderBottomLeftRadius: 3 },
   activeTag: { fontSize: 12, fontWeight: '800' },
   icon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  label: { flex: 1, color: colors.text, fontSize: 16, fontWeight: '600', textAlign: 'right' },
+  label: { direction: 'rtl' as const, flex: 1, color: colors.text, fontSize: 16, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
 });

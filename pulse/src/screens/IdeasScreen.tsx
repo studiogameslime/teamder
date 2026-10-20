@@ -5,23 +5,13 @@
 // Reads/writes `pulseIdeas`.
 
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RtlTextInput as TextInput } from '../components/RtlTextInput';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
-import { colors, font, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import { Card, Empty, Screen } from '../components/ui';
 import {
   listIdeas,
@@ -250,9 +240,9 @@ export function IdeasScreen() {
                   <Ionicons
                     name={sm.icon}
                     size={14}
-                    color={it.status === 'build' ? '#fff' : sm.color}
+                    color={it.status === 'build' ? colors.onPrimary : sm.color}
                   />
-                  <Text style={[s.statusTxt, { color: it.status === 'build' ? '#fff' : sm.color }]}>
+                  <Text style={[s.statusTxt, { color: it.status === 'build' ? colors.onPrimary : sm.color }]}>
                     {sm.label}
                   </Text>
                 </Pressable>
@@ -309,7 +299,6 @@ const s = StyleSheet.create({
     padding: 12,
     minHeight: 84,
     textAlignVertical: 'top',
-    writingDirection: 'rtl',
   },
   thumbs: { flexGrow: 0 },
   thumbWrap: { marginEnd: 8, position: 'relative' },
@@ -325,9 +314,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  actions: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 10 },
   addImg: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 14,
@@ -345,13 +334,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  saveTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  saveTxt: { color: colors.onPrimary, fontWeight: '800', fontSize: 15 },
 
   item: { gap: 10, marginBottom: 10, overflow: 'hidden' },
   accent: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 3 },
-  itemHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  itemHead: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8 },
   statusPill: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
@@ -361,7 +350,7 @@ const s = StyleSheet.create({
   },
   statusTxt: { fontSize: 12, fontWeight: '800' },
   del: { padding: 4 },
-  itemText: { ...font.body, color: colors.text, lineHeight: 21, textAlign: 'right' },
+  itemText: {  ...font.body, color: colors.text, lineHeight: 21, textAlign: RTL_LABEL_ALIGN },
   itemImg: {
     width: 120,
     height: 120,
@@ -375,13 +364,13 @@ const s = StyleSheet.create({
     paddingTop: 8,
     gap: 8,
   },
-  specHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  specHead: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 6 },
   specHeadTxt: { ...font.small, color: colors.primary, fontWeight: '800' },
-  specText: {
+  specText: { 
     ...font.small,
     color: colors.textSoft,
     lineHeight: 20,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     backgroundColor: colors.bg,
     borderRadius: radius.sm,
     padding: 10,

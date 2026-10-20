@@ -137,13 +137,15 @@ async function main() {
   const guestState=v.check({players:['p'],guests:[{id:'w',waitlisted:true}],liveMatch:{assignments:{'guest:w':'teamA'}}});
   assert.equal(guestState.state,'invalid');
   note('B09',{onlyAssignedGuestIsWaitlisted:true,result:guestState.state});
+  // 19.10.2026: verification listing moved to the unbounded server endpoint.
   const verify=load('src/services/eveningVerifyService.ts',{
+    'firebase/functions':{httpsCallable:()=>fail},
     'firebase/firestore':{collection:()=>{},query:()=>{},where:()=>{},orderBy:()=>{},limit:()=>{},getDocs:fail},
     '@/firebase/config':{USE_MOCK_DATA:false,getFirebase:()=>({db:{}})},
     '@/services/errorLog':{logError:()=>{}},'@/utils/eveningPlayed':{eveningPlayState:()=>{}},'@/data/mockData':{mockGamesV2:[]},
   });
   await assert.rejects(verify.eveningVerifyService.listUnverified('g'), /offline/);
-  note('B10',{primaryAndFallbackFailuresPropagated:true});
+  note('B10',{verificationEndpointFailurePropagated:true});
   const blockedMethod=node('src/services/chatService.ts',n=>ts.isMethodDeclaration(n)&&n.name.getText()==='subscribeBlocked');
   const blockedMod=loadString('exports.service={'+blockedMethod+'};',{
     onSnapshot:(q,success,error)=>{error(new Error('permission-denied'));return()=>{};},

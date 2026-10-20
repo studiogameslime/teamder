@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, font, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import { Card, Empty, Screen } from '../components/ui';
 import {
   listRecentChatMessages,
@@ -98,7 +98,7 @@ export function ChatsScreen() {
 
   return (
     <Screen
-      title="צ'אטים"
+      title="פיקוח על שיחות"
       subtitle="הודעות, דיווחים וחסימות — כל מה שקורה בצ׳אטים של Teamder"
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
@@ -114,7 +114,7 @@ export function ChatsScreen() {
               onPress={() => setSeg(sg.key)}
               style={[s.seg, on && s.segOn]}
             >
-              <Ionicons name={sg.icon} size={15} color={on ? '#fff' : colors.textSoft} />
+              <Ionicons name={sg.icon} size={15} color={on ? colors.onPrimary : colors.textSoft} />
               <Text style={[s.segTxt, on && s.segTxtOn]}>{sg.label}</Text>
             </Pressable>
           );
@@ -200,10 +200,10 @@ export function ChatsScreen() {
 }
 
 const s = StyleSheet.create({
-  segRow: { flexDirection: 'row-reverse', gap: 8, marginBottom: 12 },
+  segRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 8, marginBottom: 12 },
   seg: {
     flex: 1,
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
@@ -215,18 +215,18 @@ const s = StyleSheet.create({
   },
   segOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   segTxt: { ...font.small, color: colors.textSoft, fontWeight: '800' },
-  segTxtOn: { color: '#fff' },
+  segTxtOn: { color: colors.onPrimary },
   item: { gap: 6, marginBottom: 8 },
-  head: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  sender: { ...font.body, color: colors.text, fontWeight: '800', textAlign: 'right', maxWidth: '40%' },
+  head: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 6 },
+  sender: {  ...font.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, maxWidth: '40%' },
   blockArrow: { ...font.small, color: colors.textSoft, fontWeight: '700' },
   scope: { ...font.small, color: colors.textSoft, fontWeight: '700' },
-  message: { ...font.body, color: colors.text, textAlign: 'right', lineHeight: 21 },
-  meta: { ...font.small, color: colors.textMuted, textAlign: 'right' },
-  kindTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4 },
+  message: {  ...font.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, lineHeight: 21 },
+  meta: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  kindTag: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 4 },
   kindTxt: { ...font.small, fontWeight: '800' },
   statusPill: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 10,

@@ -502,5 +502,11 @@
     "domain": "shared",
     "simple": "shared/pulse-work-inbox.simple.md",
     "technical": "shared/pulse-work-inbox.md"
+  },
+  {
+    "title": "ארגון וניהול בפולס",
+    "domain": "shared",
+    "simple": "shared/pulse-management.simple.md",
+    "technical": "shared/pulse-management.md"
   }
 ]

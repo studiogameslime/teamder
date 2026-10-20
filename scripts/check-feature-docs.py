@@ -73,6 +73,9 @@ def main():
         if not (BASE / source['review']).is_file():
             failures.append(f'additional source review missing: {source["review"]}')
     failures = list(dict.fromkeys(failures))
+    # A current fingerprint means unchanged documented inputs, never verified behavior.
+    from feature_status import check_status
+    failures.extend(check_status())
     result = dict(documents=len(docs), featurePairs=len(pairs), screenFiles=len(list((ROOT / 'src/screens').rglob('*.tsx'))), screenshots=len(shots), historicalSources=len(sources), additionalSources=len(extras), failures=failures)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 1 if failures else 0

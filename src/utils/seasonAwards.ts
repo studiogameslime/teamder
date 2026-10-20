@@ -7,11 +7,10 @@
 //
 //   1. ELIGIBILITY IS A GATE, NOT A RANKING. A player must have turned up for
 //      at least half the season's finished rounds. Below that they are not
-//      compared at all — they cannot win a title on two lucky evenings, and
-//      they are not "beaten" either.
+//      compared for MVP or win percentage — cumulative titles have no attendance gate.
 //
 //   2. "NOT AWARDED" IS A RESULT. If nobody is eligible, or the leader's
-//      number is zero, or no keeper faced enough penalties, the title simply
+//      number is zero, the title simply
 //      is not given. An empty crown is better than a silly one, and the
 //      season document stores `null` so a past season stays auditable.
 //
@@ -45,6 +44,8 @@ export interface SeasonPlayerLine {
   cleanSheets: number;
   /** Mean of the round scores they actually received this season. */
   mvpAvg: number;
+  /** Number of genuine round ratings, when known. */
+  ratedRounds?: number;
   penTaken: number;
   penScored: number;
   penFaced: number;
@@ -76,14 +77,16 @@ export type SeasonTitleKey =
 export interface SeasonAward {
   winners: string[];
   value: number;
+  /** Absent on legacy count awards. Percent values are in 0–100. */
+  valueUnit?: 'percent';
 }
 
 export type SeasonAwards = Record<SeasonTitleKey, SeasonAward | null>;
 
 export const SEASON_TITLE_KEYS: readonly SeasonTitleKey[] = [
+  'mvp',
   'topScorer',
   'topAssister',
-  'mvp',
   'topWinner',
   'mostLoyal',
   'cleanSheetKing',
@@ -106,11 +109,7 @@ export function eligibilityThreshold(completedRounds: number): number {
 /**
  * Did this player turn up enough to be considered for שחקן העונה?
  *
- * ⚠️ This gate belongs to the MVP title and to nothing else. It used to be
- * applied to all nine, which meant a player who turned up to a third of the
- * season could not win מלך השערים however many he scored — and the product
- * decision (20.09.2026) is that only the MVP has an attendance condition:
- * every other title goes to whoever leads it, however few evenings he played.
+ * Applied to MVP and win percentage. Cumulative titles remain ungated.
  *
  * Evenings against evenings. Both sides of this comparison must be the same
  * unit or the gate means nothing — see the note on `games`.
@@ -144,19 +143,6 @@ export function minPenaltyAttempts(completedRounds: number): number {
   return Math.min(5, Math.max(2, Math.ceil(Math.max(0, completedRounds) / 10)));
 }
 
-/**
- * Assists a pair must have exchanged before "deadly duo" means anything.
- *
- * Mirrors CHEMISTRY_MIN.deadlyDuo in src/utils/clubChemistry.ts — the club's
- * chemistry card shows a הצמד הקטלני under that name all year, and a season
- * title that crowned a different pair would simply look wrong.
- */
-const MIN_DUO_ASSISTS = 3;
-
-/** The bottom of the evening-score scale. A season in which nobody rose above
- *  it has no player of the season — see the note at the `mvp` call. */
-const MVP_SCALE_FLOOR = 6;
-
 /** Everyone holding the maximum, or null when the max is not worth a title. */
 function leaders<T>(
   rows: readonly T[],
@@ -171,19 +157,30 @@ function leaders<T>(
     if (v > best) best = v;
   }
   if (!Number.isFinite(best) || best <= floor) return null;
-  // Compared on the exact value; only the DISPLAY is ever rounded, so two
-  // averages of 8.3746 and 8.3751 are two different numbers here.
   const winners = rows.filter((r) => value(r) === best).map(id);
   return winners.length ? { winners, value: best } : null;
+}
+
+/** Percent of all played mini-games, including draws in the denominator.
+ * Attendance is checked separately in completed evenings. A displayed tie is shared.
+ */
+export function computeTopWinner(
+  players: readonly Pick<SeasonPlayerLine, 'uid' | 'games' | 'rounds' | 'wins'>[],
+  completedRounds: number,
+): SeasonAward | null {
+  if (!Number.isFinite(completedRounds) || completedRounds <= 0) return null;
+  const eligible = players.filter(p => !!p.uid && !p.uid.startsWith('guest:') &&
+    Number.isFinite(p.games) && isEligible(p, completedRounds) &&
+    Number.isFinite(p.rounds) && p.rounds > 0 && Number.isFinite(p.wins) && p.wins > 0 && p.wins <= p.rounds);
+  const award = leaders(eligible, p => Math.round((p.wins / p.rounds + Number.EPSILON) * 10000) / 100, p => p.uid, -1);
+  return award ? { ...award, valueUnit: 'percent' } : null;
 }
 
 /**
  * Decide every title for a closed season.
  *
  * `completedRounds` is the season's finished-round count — the denominator for
- * both gates. It comes from the sealed-evening counter, never from a query
- * over games: deleting a game does not decrement anything, so a live count
- * drifts below the rounds that were actually credited.
+ * the MVP and win-percentage gates. The caller supplies the full season count, never maximum attendance.
  */
 export function computeSeasonAwards(
   players: readonly SeasonPlayerLine[],
@@ -204,42 +201,20 @@ export function computeSeasonAwards(
       {} as SeasonAwards,
     );
   }
-  // ⚠️ The attendance gate applies to ONE title. Everything else is decided
-  // over the whole roster — `players`, not `eligible`.
-  //
-  // Eight of the nine titles used to be filtered through this list as well,
-  // and the effect was the opposite of a fairness rule: a player who came to
-  // four evenings of a fourteen-evening season and scored more than anybody
-  // simply did not appear in the reckoning for מלך השערים. The product rule
-  // (20.09.2026) is that leading a count wins the count. Turning up is the
-  // condition for שחקן העונה alone, because that title is an AVERAGE and an
-  // average over one good night is not a season.
-  const eligibleForMvp = players.filter((p) => isEligible(p, completedRounds));
+  // Rate and rating titles require half the season; counts use the full roster.
+  const realPlayers = players.filter(p => !!p.uid && !p.uid.startsWith('guest:'));
+  const eligibleForMvp = realPlayers.filter((p) => isEligible(p, completedRounds) &&
+    (p.ratedRounds == null || p.ratedRounds > 0) && Number.isFinite(p.mvpAvg) && p.mvpAvg >= 6);
 
   return {
-    topScorer: leaders(players, (p) => p.goals, (p) => p.uid),
-    topAssister: leaders(players, (p) => p.assists, (p) => p.uid),
-    // Average, not sum: the spec's call. The half-season gate is what stops
-    // it rewarding someone who only shows up on the easy nights.
-    //
-    // Floored at the SCALE's own bottom, not at zero.
-    //
-    // The evening score is clamped to [6, 10], and 6.0 is also what it returns
-    // for a player who took the field for no mini-games — which is every
-    // player of every club that runs the plain timer, because mini-games only
-    // exist in advanced mode. With a floor of 0 the sentinel cleared it, so
-    // the title that is supposed to name the season was awarded to the entire
-    // eligible roster at the value that means "nothing was recorded".
-    //
-    // On the one club that has ever closed a season, all seven members hold
-    // שחקן העונה at exactly 6.0, and seven title documents sit on seven
-    // profiles. Nobody beat anybody.
-    mvp: leaders(eligibleForMvp, (p) => p.mvpAvg, (p) => p.uid, MVP_SCALE_FLOOR),
-    topWinner: leaders(players, (p) => p.wins, (p) => p.uid),
+    topScorer: leaders(realPlayers, (p) => p.goals, (p) => p.uid),
+    topAssister: leaders(realPlayers, (p) => p.assists, (p) => p.uid),
+    mvp: leaders(eligibleForMvp, (p) => Math.round((p.mvpAvg + Number.EPSILON) * 100) / 100, (p) => p.uid),
+    topWinner: computeTopWinner(realPlayers, completedRounds),
     // Loyalty is turning up, so it counts EVENINGS. On mini-games it would
     // reward whoever happened to play in the longest rotations instead.
-    mostLoyal: leaders(players, (p) => p.games, (p) => p.uid),
-    cleanSheetKing: leaders(players, (p) => p.cleanSheets, (p) => p.uid),
+    mostLoyal: leaders(realPlayers, (p) => p.games, (p) => p.uid),
+    cleanSheetKing: leaders(realPlayers, (p) => p.cleanSheets, (p) => p.uid),
     // COUNTS, not rates, and no minimum-attempts gate on either.
     //
     // The rate form crowned a player who took one kick and scored it at 100%
@@ -247,22 +222,8 @@ export function computeSeasonAwards(
     // needed `minPenaltyAttempts` to be defensible at all. A count needs no
     // such prop: most scored is most scored. The gate is gone with the rate it
     // existed to protect.
-    penaltyKing: leaders(players, (p) => p.penScored, (p) => p.uid),
-    penaltyKeeper: leaders(players, (p) => p.penSaved, (p) => p.uid),
-    // A floor, like every other title has. With the default of 0 a single
-    // assist between two regulars took the crown, which is not a partnership —
-    // and the club's chemistry card uses the same threshold for the same name.
-    // The floor STAYS (a product decision, 20.09.2026): the club's chemistry
-    // card carries a הצמד הקטלני under the same name and the same threshold
-    // all year, and a season title naming a different pair would read as a
-    // mistake. But the attendance gate is gone here too — a pair that played
-    // six evenings between them and combined for more goals than anybody wins
-    // it, which is what the title says it measures.
-    deadlyDuo: leaders(
-      pairs,
-      (p) => p.score,
-      (p) => `${p.a}__${p.b}`,
-      MIN_DUO_ASSISTS - 1,
-    ),
+    penaltyKing: leaders(realPlayers, (p) => p.penScored, (p) => p.uid),
+    penaltyKeeper: leaders(realPlayers, (p) => p.penSaved, (p) => p.uid),
+    deadlyDuo: leaders(pairs.filter(p => !p.a.startsWith('guest:') && !p.b.startsWith('guest:')), (p) => p.score, (p) => `${p.a}__${p.b}`),
   };
 }

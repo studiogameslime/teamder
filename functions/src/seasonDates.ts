@@ -1,8 +1,4 @@
-// seasonDates — server-side mirror of `src/utils/seasonDates.ts`.
-//
-// Cloud Functions cannot import the app source. The import path is the only
-// difference; tests/logic/eveningPlayedMirror.test.ts pins the rest.
-//
+// Server mirror.
 // ---- everything below this line is a copy of the client file ----
 
 // Season boundaries, as CALENDAR DATES rather than instants.
@@ -102,7 +98,10 @@ export function seasonEndDate(
   start: CalendarDate,
   months: number,
 ): CalendarDate {
-  return previousDay(addMonths(start, months));
+  const anniversary = addMonths(start, months);
+  // When there is no matching day in the destination month, its final day
+  // is inclusive (31 January + one month ends on 28/29 February).
+  return parts(anniversary).day < parts(start).day ? anniversary : previousDay(anniversary);
 }
 
 /** When the season after one ending on `end` begins — the very next day. */

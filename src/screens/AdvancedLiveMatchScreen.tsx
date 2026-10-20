@@ -1738,8 +1738,11 @@ export function AdvancedLiveMatchScreen() {
                 midRound: timerRunning,
               });
             } catch (err) {
-              logError('restorePlayer', err, { gameId, playerId: player.id });
-              if ((err as {code?: string})?.code === 'RESTORE_REQUIRES_SPACE') toast.error((err as Error).message);
+              if ((err as {code?: string})?.code === 'RESTORE_REQUIRES_SPACE') {
+                toast.error((err as Error).message);
+              } else {
+                logError('restorePlayer', err, { gameId, playerId: player.id });
+              }
             } finally {
               homeActionRef.current = false;
             }

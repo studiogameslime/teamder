@@ -12,7 +12,7 @@ test('a short disabled first season is reactivation, not a first activation',()=
   expect(isSeasonReactivation(undefined)).toBe(false);
   expect(isSeasonReactivation({count:0})).toBe(false);
   expect(isSeasonReactivation({count:0,disabledAt:123})).toBe(true);
-  expect(planActivation({cadence:'rounds',choice:'continue',playedHistory:0,targetRounds:2,today:'2026-10-13',hasHistory:true})).toMatchObject({ok:true,startsAtRounds:0,roundsRemaining:2});
+  expect(planActivation({cadence:'rounds',choice:'continue',playedHistory:0,targetRounds:5,today:'2026-10-13',hasHistory:true})).toMatchObject({ok:true,startsAtRounds:0,roundsRemaining:5});
 });
 
 test('the actual Firestore converter preserves noncompetitive history before season one closes',()=>{

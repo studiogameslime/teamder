@@ -26,7 +26,7 @@ import { BallSwitch } from '@/components/anim/BallSwitch';
 // The SAME chip and stepper the edit screen draws — exported from it rather
 // than copied, so the two screens asking one question cannot drift into
 // looking like two different settings.
-import { Chip, Stepper } from '@/components/community/SeasonsSettings';
+import { Chip, Stepper } from '@/components/community/SeasonTargetControls';
 import { MIN_SEASON_ROUNDS } from '@/utils/seasonActivation';
 import {
   CLUB_TZ,
@@ -186,14 +186,14 @@ export function NewClubSeasons({
               />
               <DateRow
                 label={he.seasonsNextStartsLabel}
-                value={formatCalendarDate(dates.nextStartsOn)}
+                value="לאחר חלון התיקונים וסגירת העונה"
               />
             </View>
           ) : null}
 
           {/* What happens at the end, said once. There is no "close the season"
               control here and there must not be — the season has not started. */}
-          <Text style={styles.hint}>{he.newClubSeasonsWhatHappens}</Text>
+          <Text style={styles.hint}>{'בהשגת היעד נפתח חלון תיקונים של 24 שעות. אחרי לפחות חמישה מחזורים תקינים, העונה נסגרת והתארים מתפרסמים. אם חסרים מחזורים, אפשר להמשיך לשחק עד למינימום.'}</Text>
         </>
       ) : null}
     </View>

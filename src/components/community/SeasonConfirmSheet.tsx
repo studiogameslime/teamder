@@ -13,6 +13,7 @@ import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // that is because those are the numbers that will be written.
 
 import React from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   Pressable,
   ScrollView,
@@ -40,6 +41,8 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export function SeasonConfirmSheet({
   visible,
+  title,
+  message,
   plan,
   cadence,
   months,
@@ -51,6 +54,8 @@ export function SeasonConfirmSheet({
   onConfirm,
 }: {
   visible: boolean;
+  title?: string;
+  message?: string;
   plan: ActivationPlan;
   cadence: Cadence;
   months: number;
@@ -70,181 +75,34 @@ export function SeasonConfirmSheet({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const hasHistory = plan.playedHistory > 0;
-  // The season being sealed or carried on, and the one that follows it. Both
-  // read off the same number so they can never name different pairs.
-  const no = seasonNo;
-  const nextNo = seasonNo + 1;
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onCancel}
-    >
-      <Pressable style={styles.backdrop} onPress={onCancel}>
-        <Pressable style={styles.sheet} onPress={() => undefined}>
-          <Text style={styles.title}>{he.seasonsConfirmTitle}</Text>
-          <ScrollView
-            style={styles.body}
-            contentContainerStyle={styles.bodyInner}
-          >
-            {reactivation ? <View style={styles.restartNotice}>
-              <Text style={styles.restartTitle}>{he.seasonsRestartTitle}</Text>
-              <Text style={styles.note}>{he.seasonsRestartBody}</Text>
-            </View> : null}
-            <Row
-              label={he.seasonsConfirmMethod}
-              value={
-                cadence === 'date'
-                  ? he.seasonsConfirmMethodDate
-                  : he.seasonsConfirmMethodRounds
-              }
-            />
-            {/* "משך עונה" is a lie when season 1 is being carried: its end is
-                the date two rows down, and this number only starts applying at
-                season 2. Reported with the row circled — "6 חודשים" printed
-                directly above "עונה 1 תסתיים 25.09.2028". */}
-            <Row
-              label={
-                cadence === 'date' && !plan.sealsSeason1 && hasHistory
-                  ? he.seasonsConfirmFromSeason2
-                  : he.seasonsLengthLabel
-              }
-              value={
-                cadence === 'date'
-                  ? he.seasonsMonthsUnit(months)
-                  : he.seasonsRoundsUnit(rounds)
-              }
-            />
-
-            {hasHistory ? (
-              <>
-                <Row
-                  label={he.seasonsConfirmExisting}
-                  value={String(plan.playedHistory)}
-                />
-                <Row
-                  label={he.seasonsConfirmHistory}
-                  value={he.seasonsConfirmHistoryValueOf(no)}
-                />
-                <Row
-                  label={he.seasonsConfirmChoice}
-                  value={
-                    plan.sealsSeason1
-                      ? he.seasonsConfirmChoiceSealOf(no)
-                      : he.seasonsConfirmChoiceContinueOf(no)
-                  }
-                />
-              </>
-            ) : null}
-
-            {/* ── rounds ── */}
-            {cadence === 'rounds' && !plan.sealsSeason1 ? (
-              <>
-                <Row
-                  label={he.seasonsConfirmSeasonStateLabelOf(no)}
-                  value={he.seasonsConfirmSeason1State(
-                    plan.startsAtRounds ?? 0,
-                    plan.targetRounds ?? rounds,
-                  )}
-                />
-                <Row
-                  label={he.seasonsConfirmRemaining}
-                  value={he.seasonsConfirmRemainingValue(
-                    plan.roundsRemaining ?? 0,
-                  )}
-                />
-                <Text style={styles.note}>
-                  {he.seasonsConfirmAfterTargetOf(
-                    plan.targetRounds ?? rounds,
-                    no,
-                    nextNo,
-                  )}
-                </Text>
-              </>
-            ) : null}
-
-            {cadence === 'rounds' && plan.sealsSeason1 ? (
-              <>
-                {hasHistory ? (
-                  <Row
-                    label={he.seasonNumberLabel(no)}
-                    value={he.seasonsConfirmSealedNow(plan.playedHistory)}
-                  />
-                ) : null}
-                <Row
-                  label={he.seasonNumberLabel(nextNo)}
-                  value={he.seasonsConfirmSeason1State(
-                    0,
-                    plan.targetRounds ?? rounds,
-                  )}
-                />
-                <Row
-                  label={he.seasonsConfirmNextRound}
-                  value={he.seasonsConfirmNextRoundValueOf(
-                    plan.targetRounds ?? rounds,
-                    nextNo,
-                  )}
-                />
-              </>
-            ) : null}
-
-            {/* ── dates ── */}
-            {cadence === 'date' && plan.startsOn ? (
-              <Row
-                label={he.seasonsStartsOnLabel}
-                value={formatCalendarDate(plan.startsOn)}
-              />
-            ) : null}
-            {cadence === 'date' && plan.endsOn ? (
-              <Row
-                label={
-                  plan.sealsSeason1
-                    ? he.seasonsEndsOnLabel
-                    : he.seasonsEndsLabel(no)
-                }
-                value={formatCalendarDate(plan.endsOn)}
-              />
-            ) : null}
-            {cadence === 'date' && plan.nextStartsOn ? (
-              <Row
-                label={
-                  plan.sealsSeason1
-                    ? he.seasonsNextStartsLabel
-                    : he.seasonsStartsLabel(nextNo)
-                }
-                value={formatCalendarDate(plan.nextStartsOn)}
-              />
-            ) : null}
-            {cadence === 'date' && !plan.sealsSeason1 && hasHistory ? (
-              <Row
-                label={he.seasonsConfirmFromSeasonOn(nextNo)}
-                value={he.seasonsMonthsUnit(months)}
-              />
-            ) : null}
-          </ScrollView>
-
-          <View style={styles.actions}>
-            <Button
-              title={he.seasonsConfirmCta}
-              fullWidth
-              disabled={busy || !plan.ok}
-              onPress={onConfirm}
-            />
-            <Button
-              title={he.cancel}
-              variant="outline"
-              fullWidth
-              disabled={busy}
-              onPress={onCancel}
-            />
-          </View>
-        </Pressable>
+  const selected = plan.historyChoice ?? (plan.sealsSeason1 ? 'sealNow' : 'continue');
+  const explanation = selected === 'fresh' ? 'העונה תתחיל מהיום. הפעילות הקודמת תישמר בכל הזמנים, ללא תארי עונה.'
+    : selected === 'sealNow' ? `התקופה הקודמת תיסגר כעונה ${seasonNo} עם ${plan.playedHistory} מחזורים ותארים. עונה ${seasonNo + 1} תתחיל מהיום. אין חלון תיקונים לתקופה שנסגרת כעת ואין פתיחה מחדש.`
+    : `העונה תכלול ${plan.playedHistory} מחזורים מהתקופה הקודמת. היעד כולל את ההתקדמות שכבר נצברה.`;
+  return <Modal visible={visible} transparent animationType="fade" onRequestClose={() => { if (!busy) onCancel(); }}>
+    <Pressable accessible={false} style={styles.backdrop} onPress={() => { if (!busy) onCancel(); }}>
+      <Pressable accessible={false} accessibilityViewIsModal style={styles.sheet} onPress={() => undefined}>
+        <View style={styles.heading}>
+          <View style={styles.icon}><Ionicons name="trophy-outline" size={23} color="#1479FF" /></View>
+          <View style={styles.headingText}><Text style={styles.eyebrow}>עונות במועדון</Text><Text style={styles.title}>{title ?? 'לפני שמפעילים עונות'}</Text></View>
+          <Pressable accessibilityRole="button" accessibilityLabel="סגירה" disabled={busy} onPress={onCancel} hitSlop={8} style={styles.close}><Ionicons name="close" size={20} color={colors.textMuted} /></Pressable>
+        </View>
+        <ScrollView style={styles.body} contentContainerStyle={styles.bodyInner}>
+          {message ? message.split('\n\n').map((paragraph, index) => <View key={index} style={index === 0 ? styles.summary : undefined}><Text style={index === 0 ? styles.summaryText : styles.note}>{paragraph}</Text></View>) : <Text style={styles.note}>{explanation}</Text>}
+          {!message ? <>
+            <Row label="יעד העונה" value={cadence === 'date' ? `${months} חודשים` : `${rounds} מחזורים`} />
+            {cadence === 'date' && plan.endsOn ? <Row label="יום הפעילות האחרון" value={formatCalendarDate(plan.endsOn)} /> : null}
+            <Text style={styles.note}>בהשגת היעד, לאחר לפחות חמישה מחזורים תקינים, ייפתח חלון תיקונים של 24 שעות. התארים יפורסמו רק כשהעונה תיסגר.</Text>
+          </> : null}
+          {busy ? <Text accessibilityLiveRegion="polite" style={styles.note}>הפעולה מתבצעת… הנתונים נשמרים. אין צורך ללחוץ שוב.</Text> : null}
+        </ScrollView>
+        <View style={[styles.actions, !!message && styles.actionRow]}>
+          <View style={message ? styles.actionCell : undefined}><Button title={message ? 'אישור וסיום' : 'אישור והפעלת עונות'} style={styles.primaryButton} fullWidth loading={busy} disabled={busy || (!message && !plan.ok)} onPress={onConfirm} /></View>
+          <View style={message ? styles.actionCell : undefined}><Button title="חזרה לעריכה" variant="secondary" style={styles.secondaryButton} fullWidth disabled={busy} onPress={onCancel} /></View>
+        </View>
       </Pressable>
-    </Modal>
-  );
+    </Pressable>
+  </Modal>;
 }
 
 const styles = StyleSheet.create({
@@ -258,11 +116,18 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     maxHeight: '85%',
-    padding: spacing.lg,
-    gap: spacing.md,
+    padding: 20,
+    gap: 16,
   },
   title: { ...typography.h3, color: colors.text, textAlign: RTL_LABEL_ALIGN },
-  body: { flexGrow: 0 },
+  heading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headingText: { flex: 1, gap: 2 },
+  eyebrow: { fontSize: 11, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  icon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#EDF5FF', alignItems: 'center', justifyContent: 'center' },
+  close: { width: 30, height: 30, borderRadius: 10, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
+  summary: { padding: 12, backgroundColor: '#F3F8FF', borderRadius: 12, borderWidth: 1, borderColor: '#E3EDFB' },
+  summaryText: { fontSize: 13, lineHeight: 19, fontWeight: '700', color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  body: { flexGrow: 0, flexShrink: 1 },
   bodyInner: { gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   label: {
@@ -292,7 +157,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     paddingTop: spacing.xs,
   },
-  actions: { gap: spacing.sm },
+  actions: { gap: 8, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border },
+  actionRow: { flexDirection: 'row' },
+  actionCell: { flexGrow: 1, flexBasis: 0 },
+  primaryButton: { minHeight: 48, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 8, backgroundColor: '#1479FF', borderColor: '#1479FF' },
+  secondaryButton: { minHeight: 48, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 8, backgroundColor: colors.surfaceMuted, borderColor: colors.border },
   restartNotice: {padding:spacing.md,borderRadius:radius.md,backgroundColor:'#EFF6FF',gap:spacing.xs},
   restartTitle: {...typography.bodyBold,color:colors.primary,textAlign:RTL_LABEL_ALIGN},
 });

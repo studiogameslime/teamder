@@ -1,3 +1,4 @@
+import { Disclosure } from '../components/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -8,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors, font, radius } from '../theme';
+import { RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import { useDashboard } from '../state/DashboardContext';
 import { Screen } from '../components/ui';
 import { fetchErrors } from '../services/errorsService';
@@ -47,7 +48,7 @@ function Badge({
 }
 
 export function OverviewScreen() {
-  const { snapshot, refreshing, refresh } = useDashboard();
+  const { snapshot, refreshing, refresh } = useDashboard(true);
   const nav = useNavigation<any>();
   const [errors, setErrors] = useState<ErrorRecord[]>([]);
   const [lifetime, setLifetime] = useState<LifetimeStats | null>(null);
@@ -211,6 +212,28 @@ export function OverviewScreen() {
         </View>
       </Pressable>
 
+      {/* 4 — Users today */}
+      <Pressable onPress={() => nav.navigate('Users')}>
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <Badge icon="people" color={colors.primary} />
+            <Text style={styles.cardTitle}>משתמשים</Text>
+            <Text style={[styles.bigNum, { color: colors.primary }]}>
+              {realUsers.toLocaleString()}
+            </Text>
+          </View>
+          <View style={styles.twoStat}>
+            <Stat value={an ? String(an.activeToday) : '—'} label="התחברו היום" />
+            <View style={styles.vline} />
+            <Stat value={String(newUsersToday)} label="חדשים היום" tone={colors.green} />
+          </View>
+        </View>
+      </Pressable>
+
+      <View style={{gap:8}}>
+        {[{route:'Tasks',label:'פתיחת תיבת המשימות'}, {route:'Messages',label:'מעבר לשיחות תמיכה'}, {route:'Versions',label:'בדיקת גרסאות והפצה'}].map(item => <Pressable key={item.route} accessibilityRole="button" onPress={() => nav.navigate(item.route as never)} style={{padding:16,borderRadius:14,backgroundColor:colors.surface,borderColor:colors.border,borderWidth:1}}><Text style={{ direction: 'rtl' as const,color:colors.primary,textAlign: RTL_LABEL_ALIGN,fontWeight:'700'}}>{item.label}</Text></Pressable>)}
+      </View>
+      <Disclosure title="כניסות לקישורים ונתוני מודעות">
       {/* 2 — Link clicks (all sources) */}
       <Pressable onPress={() => nav.navigate('Sources')}>
         <View style={styles.card}>
@@ -266,24 +289,7 @@ export function OverviewScreen() {
         </View>
       </Pressable>
 
-      {/* 4 — Users today */}
-      <Pressable onPress={() => nav.navigate('Users')}>
-        <View style={styles.card}>
-          <View style={styles.cardHead}>
-            <Badge icon="people" color={colors.primary} />
-            <Text style={styles.cardTitle}>משתמשים</Text>
-            <Text style={[styles.bigNum, { color: colors.primary }]}>
-              {realUsers.toLocaleString()}
-            </Text>
-          </View>
-          <View style={styles.twoStat}>
-            <Stat value={an ? String(an.activeToday) : '—'} label="התחברו היום" />
-            <View style={styles.vline} />
-            <Stat value={String(newUsersToday)} label="חדשים היום" tone={colors.green} />
-          </View>
-        </View>
-      </Pressable>
-
+      </Disclosure>
     </Screen>
   );
 }
@@ -388,7 +394,7 @@ const styles = StyleSheet.create({
   cardTitle: { ...font.h2, fontSize: 17, flex: 1 },
   bigNum: { fontSize: 34, fontWeight: '900', flexShrink: 0 },
   revNum: { fontSize: 24 }, // currency strings are wider — keep them from crowding the title
-  sourceNote: { ...font.small, color: colors.textMuted, fontSize: 11, textAlign: 'right', marginTop: 6, paddingHorizontal: 4 },
+  sourceNote: {  ...font.small, color: colors.textMuted, fontSize: 11, textAlign: RTL_LABEL_ALIGN, marginTop: 6, paddingHorizontal: 4 },
   badge: {
     width: 44,
     height: 44,
@@ -404,15 +410,15 @@ const styles = StyleSheet.create({
   link: { ...font.small, color: colors.primary, fontWeight: '700', marginTop: 2 },
   subtle: { ...font.small, color: colors.textSoft },
   topLinkRow: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 6,
     marginTop: 8,
     marginBottom: 2,
   },
   topLinkFire: { fontSize: 13 },
-  topLinkText: { ...font.small, color: colors.text, flex: 1, textAlign: 'right' },
-  topLinkName: { fontWeight: '800', color: '#8B5CF6' },
+  topLinkText: {  ...font.small, color: colors.text, flex: 1, textAlign: RTL_LABEL_ALIGN },
+  topLinkName: { fontWeight: '800', color: colors.purple },
   allTimeRow: {
     flexDirection: 'row',
     alignItems: 'center',

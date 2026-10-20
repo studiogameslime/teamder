@@ -16,7 +16,7 @@ import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firesto
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { seasonChoices, type SeasonChoice } from '@/utils/seasonChoices';
 import { logError } from '@/services/errorLog';
-import { userService } from '@/services/userService';
+import { groupService } from '@/services/groupService';
 import {
   buildPersonalSeason,
   type PersonalSeason,
@@ -24,7 +24,10 @@ import {
   type SeasonPlayerRow,
 } from '@/utils/seasonPersonal';
 import type { GroupSeasons, SeasonTitleKey, UserId } from '@/types';
-import { SEASON_TITLE_KEYS } from '@/utils/seasonAwards';
+import { computeSeasonAwards, SEASON_TITLE_KEYS } from '@/utils/seasonAwards';
+import { buildSeasonClubNumbers, distinctSeasonWinners, seasonChemistryPairs, type SeasonClubNumbers } from '@/utils/seasonClubSummary';
+import type { EveningRecord } from '@/utils/eveningRecords';
+import type { PairTotals } from '@/utils/clubChemistry';
 import { readSeasonCoverage } from '@/utils/seasonCoverage';
 
 /** A title this player holds in the season being shown. */
@@ -33,6 +36,7 @@ export interface SeasonTitleWon {
   /** The number it was won on: 31 goals, 8.37 average, 5 penalties saved.
    *  (Not "62% saved" — the penalty titles became counts on 20.09.2026.) */
   value: number;
+  valueUnit?: 'percent';
   /** Other holders — ties are shared, never broken. */
   sharedWith: number;
   /** See SeasonTitleAwarded.coverage. Optional for the same reason. */
@@ -43,7 +47,10 @@ export interface SeasonTitleWon {
 export interface SeasonTitleAwarded {
   key: SeasonTitleKey;
   names: string[];
+  /** Distinct identities, including both members of every winning duo. */
+  winners?: { id: string; name: string; coverage?: { rated: number; of: number } }[];
   value: number;
+  valueUnit?: 'percent';
   /** Whether the reader is one of the holders — the row is highlighted. */
   mine: boolean;
   /**
@@ -105,7 +112,9 @@ export interface SeasonSummaryModel {
    * the same mirror the card's progress comes from.
    */
   completedRounds: number;
+  awardNotes?: Record<string, string>;
   me: PersonalSeason;
+  club?: { numbers: SeasonClubNumbers; pairs: Record<string, PairTotals>; pairsComplete?: boolean; mostGoalsEvening?: EveningRecord | null; leaders: SeasonTitleAwarded[] };
   /** Display names for the handful of people the summary actually names. */
   names: Record<string, string>;
   /**
@@ -213,14 +222,16 @@ function titlesFor(
   if (!awards) return [];
   const out: SeasonTitleWon[] = [];
   for (const key of SEASON_TITLE_KEYS) {
-    const a = awards[key] as { winners?: unknown; value?: unknown } | null | undefined;
+    const a = awards[key] as { winners?: unknown; value?: unknown; valueUnit?: unknown } | null | undefined;
     if (!a || !Array.isArray(a.winners)) continue;
-    const holders = a.winners.filter((w): w is string => typeof w === 'string');
+    const holders = a.winners.filter((w): w is string => typeof w === 'string' && !!w);
+    if (!holders.length) continue;
     const mine = holders.some((w) => w === me || w.split('__').includes(me));
     if (!mine) continue;
     out.push({
       key,
       value: num(a.value),
+      ...(a.valueUnit === 'percent' ? { valueUnit: 'percent' as const } : {}),
       sharedWith: Math.max(0, holders.length - 1),
       ...(readSeasonCoverage(a, me) ? { coverage: readSeasonCoverage(a, me) } : {}),
     });
@@ -243,9 +254,10 @@ function allTitlesOf(
   if (!awards) return [];
   const out: SeasonTitleAwarded[] = [];
   for (const key of SEASON_TITLE_KEYS) {
-    const a = awards[key] as { winners?: unknown; value?: unknown } | null | undefined;
+    const a = awards[key] as { winners?: unknown; value?: unknown; valueUnit?: unknown } | null | undefined;
     if (!a || !Array.isArray(a.winners) || a.winners.length === 0) continue;
-    const holders = a.winners.filter((w): w is string => typeof w === 'string');
+    const holders = a.winners.filter((w): w is string => typeof w === 'string' && !!w);
+    if (!holders.length) continue;
     out.push({
       key,
       names: holders.map((w) =>
@@ -254,28 +266,14 @@ function allTitlesOf(
           .map((uid) => str(players[uid]?.displayName) || '—')
           .join(' + '),
       ),
+      winners: distinctSeasonWinners(holders).map(id => ({ id, name: str(players[id]?.displayName) || '—', ...(key === 'mvp' && readSeasonCoverage(a, id) ? { coverage: readSeasonCoverage(a, id) } : {}) })),
       value: num(a.value),
+      ...(a.valueUnit === 'percent' ? { valueUnit: 'percent' as const } : {}),
       mine: holders.some((w) => w === me || w.split('__').includes(me)),
       ...(readSeasonCoverage(a) ? { coverage: readSeasonCoverage(a) } : {}),
     });
   }
   return out;
-}
-
-/** Every uid the finished summary actually names — nothing more is fetched. */
-function namedUids(me: PersonalSeason): string[] {
-  const out = new Set<string>();
-  for (const peer of [
-    me.partner,
-    me.nemesis,
-    me.victim,
-    me.tormentor,
-    me.assistedMost,
-    me.assistedBy,
-  ]) {
-    if (peer) out.add(peer.userId);
-  }
-  return [...out];
 }
 
 /** What a peer row needs to render: a name and, when there is one, a face. */
@@ -306,25 +304,15 @@ async function resolvePeers(
     if (f) names[uid] = f;
     else missing.push(uid);
   }
-  await Promise.all(
-    missing.map(async (uid) => {
-      try {
-        const u = await userService.getUserById(uid);
-        if (u?.name) names[uid] = u.name;
-        // Only what the avatar actually uses, and only when it is there — an
-        // empty string is a photo URL as far as <UserAvatar> is concerned.
-        if (u?.avatarId || u?.photoUrl) {
-          avatars[uid] = {
-            ...(u.avatarId ? { avatarId: u.avatarId } : {}),
-            ...(u.photoUrl ? { photoUrl: u.photoUrl } : {}),
-          };
-        }
-      } catch {
-        // A name we cannot resolve renders as a dash; it must not take the
-        // whole summary down with it.
-      }
-    }),
-  );
+  // Same public identity batch as the statistics screen; no private player reads.
+  const users = await groupService.hydrateUsers(missing).catch(() => []);
+  for (const u of users) {
+    if (u.name) names[u.id] = u.name;
+    if (u.avatarId || u.photoUrl) avatars[u.id] = {
+      ...(u.avatarId ? { avatarId: u.avatarId } : {}),
+      ...(u.photoUrl ? { photoUrl: u.photoUrl } : {}),
+    };
+  }
   return { names, avatars };
 }
 
@@ -336,22 +324,6 @@ export interface LoadSeasonArgs {
   userId: UserId;
   /** Omit for the season currently running. */
   seasonId?: string;
-}
-
-/** The club's season block, or undefined when we may not read the club. */
-async function readSeasons(
-  db: ReturnType<typeof getFirebase>['db'],
-  groupId: string,
-): Promise<GroupSeasons | undefined> {
-  try {
-    const snap = await getDoc(doc(db, 'groups', groupId));
-    const g = snap.exists() ? (snap.data() as { seasons?: GroupSeasons }) : undefined;
-    return g?.seasons;
-  } catch {
-    // A player who left the club cannot read it. That is not an error here —
-    // it only means they get this one season rather than a picker.
-    return undefined;
-  }
 }
 
 /**
@@ -401,6 +373,13 @@ function fromArchive(
     // since the archive existed and read by nothing until now.
     completedRounds: num(d.completedRounds),
     me,
+    club: {
+      numbers: buildSeasonClubNumbers((d.totals ?? {}) as Record<string, unknown>, Object.values(playersMap), num(d.completedRounds)),
+      pairs: seasonChemistryPairs(pairs),
+      pairsComplete: Object.values(pairsMap).every(p => typeof p === 'object' && p !== null && !!pairRow(p)),
+      leaders: [],
+    },
+    awardNotes: d.awardNotes as Record<string, string> | undefined,
     myTitles: titlesFor(d.awards as Record<string, unknown> | undefined, ctx.userId),
     seasonTitles: allTitlesOf(
       d.awards as Record<string, unknown> | undefined,
@@ -412,11 +391,7 @@ function fromArchive(
     // Only real names go in. An empty string is not nullish, so `names[uid] ??
     // '—'` at the render site accepted it and drew a blank where a name should
     // be; leaving the key out lets the dash do its job.
-    names: Object.fromEntries(
-      namedUids(me)
-        .map((uid) => [uid, frozen.get(uid) ?? ''] as const)
-        .filter(([, n]) => !!n),
-    ),
+    names: Object.fromEntries(frozen),
     // The frozen roster keeps a name and nothing else, so these rows show the
     // deterministic disc. Going to /users for six faces would undo the one
     // property that makes this path work — it makes no club read at all, which
@@ -442,30 +417,31 @@ export const seasonSummaryService = {
     if (USE_MOCK_DATA) return mockSeasonSummary(groupId, userId, seasonId);
     try {
       const { db } = getFirebase();
-      // The ARCHIVE is tried first when a specific season was asked for.
-      //
-      // A player who has since left the club can still be pushed the summary
-      // of a season they played, and they cannot read /groups any more. Going
-      // to the club document first would deny them their own season — so a
-      // closed season is served from its own sealed record, which carries the
-      // club's name and everything else it needs.
+      // A missing archive is denied by the real rules. A known current season
+      // must go straight to live counters. Club access is optional here so a
+      // former member can still read their frozen archive independently.
+      let groupSnap: Awaited<ReturnType<typeof getDoc>> | undefined;
       if (seasonId) {
+        try { groupSnap = await getDoc(doc(db, 'groups', groupId)); } catch { /* archive access is independent */ }
+        const known = (groupSnap?.data() as { seasons?: GroupSeasons } | undefined)?.seasons;
+        if (!(known?.enabled && known.currentId === seasonId)) {
         const archived = await getDoc(
           doc(db, 'seasonSummary', `${groupId}__${seasonId}`),
         );
-        if (archived.exists()) {
+        if (archived.exists() && !archived.data()?.publicationPending) {
           return fromArchive(await readSeasonArchiveData(db, archived.data() as Record<string, unknown>), {
             groupId,
             userId,
             seasonId,
             // Only a member can be offered the picker; for anyone else this
             // one season is the whole of what they may read.
-            seasons: await readSeasons(db, groupId),
+            seasons: known,
           });
+        }
         }
       }
 
-      const groupSnap = await getDoc(doc(db, 'groups', groupId));
+      groupSnap ??= await getDoc(doc(db, 'groups', groupId));
       if (!groupSnap.exists()) return null;
       const g = groupSnap.data() as { name?: string; seasons?: GroupSeasons };
       const seasons = g.seasons;
@@ -482,38 +458,33 @@ export const seasonSummaryService = {
       // archive-first path landed, and a second implementation of "read a
       // sealed season" is exactly how the two drift.
 
-      const [statRows, asA, asB] = await Promise.all([
+      const [statRows, pairRows, clubRows] = await Promise.all([
         getDocs(query(collection(db, 'communityPlayerStats'), where('groupId', '==', groupId))),
-        getDocs(
-          query(
-            collection(db, 'communityPairStats'),
-            where('groupId', '==', groupId),
-            where('a', '==', userId),
-          ),
-        ),
-        getDocs(
-          query(
-            collection(db, 'communityPairStats'),
-            where('groupId', '==', groupId),
-            where('b', '==', userId),
-          ),
-        ),
+        getDocs(query(collection(db, 'communityPairStats'), where('groupId', '==', groupId))),
+        getDocs(query(collection(db, 'communityStats'), where('groupId', '==', groupId))),
       ]);
+      const rawPlayers: Record<string, Record<string, unknown>> = {};
       const players: SeasonPlayerRow[] = [];
       statRows.forEach((d) => {
         const x = d.data() as Record<string, unknown>;
         const uid = str(x.userId);
-        if (uid) players.push(playerRow(x, uid));
+        if (uid) { players.push(playerRow(x, uid)); rawPlayers[uid] = x; }
       });
       const pairs: SeasonPairRow[] = [];
-      for (const snap of [asA, asB]) {
-        snap.forEach((d) => {
-          const row = pairRow(d.data() as Record<string, unknown>);
-          if (row) pairs.push(row);
-        });
-      }
+      pairRows.forEach((d) => {
+        const row = pairRow(d.data() as Record<string, unknown>);
+        if (row) pairs.push(row);
+      });
       const me = buildPersonalSeason({ me: userId, players, pairs });
-      const peers = await resolvePeers(namedUids(me), new Map());
+      const peers = await resolvePeers(Object.keys(rawPlayers), new Map());
+      for (const [id, name] of Object.entries(peers.names)) rawPlayers[id].displayName = name;
+      const awards = computeSeasonAwards(Object.entries(rawPlayers).map(([uid, x]) => ({
+        ...playerRow(x, uid), uid, games: num(x.games), rounds: num(x.rounds), goals: num(x.goals),
+        assists: num(x.assists), wins: num(x.wins), cleanSheets: num(x.cleanSheets),
+        penTaken: num(x.penTaken), penScored: num(x.penScored), penFaced: num(x.penFaced), penSaved: num(x.penSaved),
+        ratedRounds: num(x.eveningScoreCount),
+        mvpAvg: num(x.eveningScoreCount) > 0 ? num(x.eveningScoreSum) / num(x.eveningScoreCount) : 0,
+      })), pairs.map(p => ({ a: p.a, b: p.b, score: num(p.assistsAToB) + num(p.assistsBToA), together: num(p.sameTeam) })), num(seasons.playedRounds));
       return {
         groupId,
         groupName,
@@ -542,10 +513,15 @@ export const seasonSummaryService = {
             }
           : {}),
         me,
+        club: {
+          numbers: buildSeasonClubNumbers(clubRows.docs[0]?.data() ?? {}, Object.values(rawPlayers), num(seasons.playedRounds)),
+          pairs: seasonChemistryPairs(pairs),
+          leaders: allTitlesOf({ ...awards, mvp: null }, rawPlayers, userId),
+        },
         // A running season has no titles yet, by design.
         myTitles: [],
         seasonTitles: [],
-        names: peers.names,
+        names: { ...Object.fromEntries(Object.entries(rawPlayers).filter(([, p]) => str(p.displayName)).map(([id, p]) => [id, str(p.displayName)])), ...peers.names },
         peerAvatars: peers.avatars,
         available: seasonChoices(seasons),
       };
@@ -579,7 +555,7 @@ function mockSeasonSummary(
         // is the shape of every real veteran and the one that makes
         // cleanSheets/rounds disagree with the percentage beside it. Without
         // it the coverage note under the grid is unreachable in mock.
-        { userId, games: 9, goals: 6, assists: 3, rounds: 22, wins: 9, losses: 11, ties: 2, cleanSheets: 4, csRounds: 17, asRounds: 19, ownGoals: 0, penTaken: 1, penScored: 0 },
+        { userId, games: 9, goals: 6, assists: 9, rounds: 22, wins: 9, losses: 11, ties: 2, cleanSheets: 4, csRounds: 17, asRounds: 19, ownGoals: 0, penTaken: 1, penScored: 0 },
         { userId: 'u_dani', games: 8, goals: 8, assists: 2, rounds: 24, wins: 13, losses: 9, ties: 2, cleanSheets: 6, csRounds: 24 },
         { userId: 'u_roi', games: 6, goals: 2, assists: 9, rounds: 20, wins: 11, losses: 7, ties: 2, cleanSheets: 5, csRounds: 20 },
         { userId: 'u_omer', games: 4, goals: 4, assists: 1, rounds: 12, wins: 5, losses: 6, ties: 1, cleanSheets: 2, csRounds: 12 },
@@ -592,7 +568,7 @@ function mockSeasonSummary(
       ];
   const pairs: SeasonPairRow[] = past
     ? [
-        { a: userId, b: 'u_dani', sameTeam: 15, against: 7, winsTogether: 7, lossesTogether: 6, cleanSheetsTogether: 3, winsA: 2, winsB: 5, assistsAToB: 2, assistsBToA: 1 },
+        { a: userId, b: 'u_dani', sameTeam: 15, against: 7, winsTogether: 9, lossesTogether: 4, cleanSheetsTogether: 3, winsA: 2, winsB: 5, assistsAToB: 2, assistsBToA: 1 },
         { a: userId, b: 'u_roi', sameTeam: 4, against: 16, winsTogether: 2, lossesTogether: 2, cleanSheetsTogether: 1, winsA: 6, winsB: 9, assistsAToB: 1, assistsBToA: 3 },
         { a: userId, b: 'u_omer', sameTeam: 6, against: 5, winsTogether: 3, lossesTogether: 2, cleanSheetsTogether: 1, winsA: 3, winsB: 2, assistsAToB: 0, assistsBToA: 1 },
       ]
@@ -622,25 +598,39 @@ function mockSeasonSummary(
     // its members attended is not a season anyone can have.
     completedRounds: past ? 11 : 15,
     me,
+    club: {
+      numbers: buildSeasonClubNumbers({ rounds: past ? 32 : 58, goals: past ? 24 : 50, ownGoals: past ? 0 : 1 }, players.map(p => ({ ...p })), past ? 11 : 15),
+      pairs: seasonChemistryPairs(pairs),
+      mostGoalsEvening: { key: 'goals', value: past ? 7 : 11, gameId: 'mock-season-evening', at: Date.now() - 86400000 * (past ? 200 : 20), holders: ['mock-season-evening'] },
+      leaders: past ? [] : [
+        { key: 'topScorer', names: ['דני'], winners: [{id: 'u_dani', name: 'דני'}], value: 19, mine: false },
+        { key: 'topAssister', names: ['רועי'], winners: [{id: 'u_roi', name: 'רועי'}], value: 12, mine: false },
+        { key: 'topWinner', names: ['דני'], winners: [{id: 'u_dani', name: 'דני'}], value: 59.09, valueUnit: 'percent', mine: false },
+        { key: 'mostLoyal', names: ['דני'], winners: [{id: 'u_dani', name: 'דני'}], value: 13, mine: false },
+        { key: 'cleanSheetKing', names: ['רועי'], winners: [{id: 'u_roi', name: 'רועי'}], value: 12, mine: false },
+      ],
+    },
     myTitles: past
       ? [
-          { key: 'topAssister', value: 3, sharedWith: 1 },
+          { key: 'topAssister', value: 9, sharedWith: 1 },
           // The number a title was won on must be the number the rest of the
           // card shows. A mock that contradicts itself teaches the next person
           // to read past exactly the contradiction it exists to catch.
           { key: 'mostLoyal', value: 9, sharedWith: 0 },
+          { key: 'deadlyDuo', value: 4, sharedWith: 0 },
         ]
       : [],
     seasonTitles: past
       ? [
-          { key: 'topScorer', names: ['דני'], value: 8, mine: false },
-          { key: 'topAssister', names: ['רועי', 'אני'], value: 3, mine: true },
-          { key: 'mostLoyal', names: ['אני'], value: 9, mine: true },
-          { key: 'cleanSheetKing', names: ['עומר'], value: 6, mine: false },
-          { key: 'deadlyDuo', names: ['דני + רועי'], value: 5, mine: false },
+          { key: 'topScorer', names: ['דני'], winners: [{id: 'u_dani', name: 'דני'}], value: 8, mine: false },
+          { key: 'topAssister', names: ['רועי', 'אני'], winners: [{id: 'u_roi', name: 'רועי'}, {id: userId, name: 'אני'}], value: 9, mine: true },
+          { key: 'mostLoyal', names: ['אני'], winners: [{id: userId, name: 'אני'}], value: 9, mine: true },
+          { key: 'topWinner', names: ['דני'], winners: [{id: 'u_dani', name: 'דני'}], value: 13, mine: false },
+          { key: 'cleanSheetKing', names: ['דני'], winners: [{id: 'u_dani', name: 'דני'}], value: 6, mine: false },
+          { key: 'deadlyDuo', names: ['אני + רועי'], winners: [{id: userId, name: 'אני'}, {id: 'u_roi', name: 'רועי'}], value: 4, mine: true },
         ]
       : [],
-    names: { u_dani: 'דני', u_roi: 'רועי', u_omer: 'עומר' },
+    names: { [userId]: 'אני', u_dani: 'דני', u_roi: 'רועי', u_omer: 'עומר' },
     // A face on every peer row, because the fallback disc is what the bug
     // looked like — a mock that hands back no avatar cannot tell the two
     // apart. Empty for the closed season, which is what the frozen archive

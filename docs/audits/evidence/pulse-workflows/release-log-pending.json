@@ -1,0 +1,42 @@
+{
+  "status": "not_uploaded",
+  "target": "appConfig/releaseLog",
+  "reason": "אין חיבור ניהול ייצור מאומת בסביבה. יש לקרוא את היומן הקיים, להעלות הוכחות ולצרף ללא דריסה.",
+  "items": [
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "פולס",
+      "title": "שלבי יצירה לקמפיינים ושימור טיוטה",
+      "proofFile": "docs/features/screenshots/pulse-workflows-Campaigns-review-390-2026-10-18.png"
+    },
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "פולס",
+      "title": "אבחון משותף עם צילום ורצף פעולות",
+      "proofFile": "docs/features/screenshots/pulse-workflows-ErrorDetail-tab0-390-2026-10-18.png"
+    },
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "פולס",
+      "title": "תעדוף שיחות ממתינות וכלי תשובה מתקפלים",
+      "proofFile": "docs/features/screenshots/pulse-workflows-Messages-tools-320-2026-10-18.png"
+    },
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "פולס",
+      "title": "הפרדת גרסאות חנות, משתמשים ויומן",
+      "proofFile": "docs/features/screenshots/pulse-workflows-Versions-main-390-2026-10-18.png"
+    },
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "פולס",
+      "title": "סידור מדדים ומסכי משנה",
+      "proofFile": "docs/features/screenshots/pulse-workflows-Overview-main-390-2026-10-18.png"
+    }
+  ]
+}

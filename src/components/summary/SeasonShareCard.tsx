@@ -22,7 +22,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { SeasonSummaryModel } from '@/services/seasonSummaryService';
-import { seasonTitleIcon, seasonTitleTint } from '@/utils/seasonTitleIcon';
+import { SeasonTitleEmblem } from '@/components/SeasonTitleEmblem';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -182,18 +182,6 @@ export function SeasonShareCard({
               {/* Its own mark, the same one every in-app surface draws for this
                   title — and an icon rather than an emoji, because this image
                   lands on strangers' phones where 🏆 is a different shape. */}
-              <View
-                style={[
-                  styles.titleDisc,
-                  { backgroundColor: seasonTitleTint(t.key) + '22' },
-                ]}
-              >
-                <Ionicons
-                  name={seasonTitleIcon(t.key)}
-                  size={12}
-                  color={seasonTitleTint(t.key)}
-                />
-              </View>
               {/* Ties are shared and never broken, and `sharedWith` has been
                   computed all along and thrown away here — so all seven holders
                   of one מלך העונה sent the same exclusive-looking claim into
@@ -205,11 +193,12 @@ export function SeasonShareCard({
                 allowFontScaling={false}
               >
                 {he.seasonTitleNames[t.key]} ·{' '}
-                {he.seasonTitleValue(t.key, t.value)}
+                {he.seasonTitleValue(t.key, t.value, t.valueUnit)}
                 {t.sharedWith > 0
                   ? ` · ${he.seasonTitleSharedWith(t.sharedWith)}`
                   : ''}
               </Text>
+              <SeasonTitleEmblem titleKey={t.key} size={30} />
             </View>
           ))}
         </View>
@@ -285,13 +274,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  titleDisc: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   club: {
     ...typography.h3,

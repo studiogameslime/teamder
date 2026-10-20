@@ -55,3 +55,8 @@ test('legacy server pages keep their cursor when existing friends are excluded l
  f.remote.mockResolvedValueOnce({data:{players:[friend],cursor:null}} as any);
  expect(await f.service.search({friendsOnly:true})).toEqual({players:[friend],cursor:null});
 });
+
+test('a server cursor which does not advance fails instead of looping forever',async()=>{
+ const f=fixture();f.remote.mockResolvedValueOnce({data:{players:[],cursor:'same'}} as any);
+ await expect(f.service.search({text:'ישראל',cursor:'same'})).rejects.toThrow('SOCIAL_SEARCH_CURSOR_STALLED');
+});

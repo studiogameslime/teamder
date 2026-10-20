@@ -1,0 +1,799 @@
+{
+  "nonce": 24,
+  "nativeVersion": {
+    "minor": 85,
+    "prerelease": null,
+    "patch": 3,
+    "major": 0
+  },
+  "isRTL": true,
+  "errors": [],
+  "records": [
+    {
+      "text": "משתמשים",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 26,
+        "fontWeight": "800",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 190.2470245361328,
+          "width": 126.70536041259766,
+          "text": "משתמשים"
+        }
+      ],
+      "width": 316.952392578125,
+      "registered": true
+    },
+    {
+      "text": "חיפוש וניהול שחקנים",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left",
+        "marginTop": 2
+      },
+      "lines": [
+        {
+          "x": 197.88095092773438,
+          "width": 119.07142639160156,
+          "text": "חיפוש וניהול שחקנים"
+        }
+      ],
+      "width": 316.952392578125,
+      "registered": true
+    },
+    {
+      "text": "20 משתמשים בכל עמוד · לפי הפעילות האחרונה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 106.50595092773438,
+          "width": 269.875,
+          "text": "20 משתמשים בכל עמוד · לפי הפעילות האחרונה"
+        }
+      ],
+      "width": 376.3809509277344,
+      "registered": true
+    },
+    {
+      "text": "כל המשתמשים",
+      "style": {
+        "direction": "rtl",
+        "flex": 1,
+        "color": "#F3F1EC",
+        "fontSize": 14,
+        "fontWeight": "600",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 38.6726188659668,
+          "width": 99.99404907226562,
+          "text": "כל המשתמשים"
+        }
+      ],
+      "width": 138.6666717529297,
+      "registered": true
+    },
+    {
+      "text": "כל התקופות",
+      "style": {
+        "direction": "rtl",
+        "flex": 1,
+        "color": "#F3F1EC",
+        "fontSize": 14,
+        "fontWeight": "600",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 58.95535659790039,
+          "width": 78.94940185546875,
+          "text": "כל התקופות"
+        }
+      ],
+      "width": 138.66665649414062,
+      "registered": true
+    },
+    {
+      "text": "רשימת משתמשים",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0.2738095223903656,
+          "width": 102.58333587646484,
+          "text": "רשימת משתמשים"
+        }
+      ],
+      "width": 102.85714721679688,
+      "registered": true
+    },
+    {
+      "text": "פעילות אחרונה ↓",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0.4077380895614624,
+          "width": 95.5922622680664,
+          "text": "פעילות אחרונה ↓"
+        }
+      ],
+      "width": 96,
+      "registered": true
+    },
+    {
+      "text": "אין משתמשים להצגה בעמוד הזה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "paddingVertical": 20
+      },
+      "lines": [
+        {
+          "x": 179.0029754638672,
+          "width": 197.3779754638672,
+          "text": "אין משתמשים להצגה בעמוד הזה"
+        }
+      ],
+      "width": 376.3809509277344,
+      "registered": true
+    },
+    {
+      "text": "הקודם",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#81C99A",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0,
+          "width": 39.619049072265625,
+          "text": "הקודם"
+        }
+      ],
+      "width": 39.619049072265625,
+      "registered": true
+    },
+    {
+      "text": "עמוד 1",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0.1339285671710968,
+          "width": 38.72321319580078,
+          "text": "עמוד 1"
+        }
+      ],
+      "width": 38.857147216796875,
+      "registered": true
+    },
+    {
+      "text": "הבא",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#81C99A",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0,
+          "width": 26.66666603088379,
+          "text": "הבא"
+        }
+      ],
+      "width": 26.666667938232422,
+      "registered": true
+    },
+    {
+      "text": "עיון בכל החשבונות, כולל ללא פעילות מתועדת",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#81C99A",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 119.94642639160156,
+          "width": 256.43450927734375,
+          "text": "עיון בכל החשבונות, כולל ללא פעילות מתועדת"
+        }
+      ],
+      "width": 376.3809509277344,
+      "registered": true
+    },
+    {
+      "text": "המיון לפי זמן הפעילות שנשמר באפליקציה. חשבונות בדיקה ומחוקים מוסתרים; ייתכנו פחות מ־20 שורות בעמוד.",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 11,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 7.607142925262451,
+          "width": 371.8214416503906,
+          "text": "המיון לפי זמן הפעילות שנשמר באפליקציה. חשבונות בדיקה ומחוקים מוסתרים; "
+        },
+        {
+          "x": 224.11012268066406,
+          "width": 152.2708282470703,
+          "text": "ייתכנו פחות מ־20 שורות בעמוד."
+        }
+      ],
+      "width": 376.3809509277344,
+      "registered": true
+    },
+    {
+      "text": "מל",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0.3035714328289032,
+          "width": 19.505952835083008,
+          "text": "מל"
+        }
+      ],
+      "width": 19.809539794921875,
+      "registered": true
+    },
+    {
+      "text": "⁨מתן לדוגמה⁩",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 120.38095092773438,
+          "width": 82.28571319580078,
+          "text": "⁨מתן לדוגמה⁩"
+        }
+      ],
+      "width": 202.66665649414062,
+      "registered": true
+    },
+    {
+      "text": "קריית עקרון",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 135.61904907226562,
+          "width": 67.04762268066406,
+          "text": "קריית עקרון"
+        }
+      ],
+      "width": 202.66665649414062,
+      "registered": true
+    },
+    {
+      "text": "● פעיל עכשיו",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0.2738095223903656,
+          "width": 73.63095092773438,
+          "text": "● פעיל עכשיו"
+        }
+      ],
+      "width": 73.9047622680664,
+      "registered": true
+    },
+    {
+      "text": "LM",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0,
+          "width": 22.095237731933594,
+          "text": "LM"
+        }
+      ],
+      "width": 22.095245361328125,
+      "registered": true
+    },
+    {
+      "text": "⁨Lioz Madar⁩",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 93.07142639160156,
+          "width": 76.83333587646484,
+          "text": "⁨Lioz Madar⁩"
+        }
+      ],
+      "width": 170.66665649414062,
+      "registered": true
+    },
+    {
+      "text": "פתח תקווה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 106.66666412353516,
+          "width": 63.238094329833984,
+          "text": "פתח תקווה"
+        }
+      ],
+      "width": 170.66665649414062,
+      "registered": true
+    },
+    {
+      "text": "פעיל לפני 34 דקות",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 31.238094329833984,
+          "width": 76.95237731933594,
+          "text": "פעיל לפני 34 "
+        },
+        {
+          "x": 76.19047546386719,
+          "width": 28.952381134033203,
+          "text": "דקות"
+        }
+      ],
+      "width": 105.90475463867188,
+      "registered": true
+    },
+    {
+      "text": "אT",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0,
+          "width": 19.809524536132812,
+          "text": "אT"
+        }
+      ],
+      "width": 19.809539794921875,
+      "registered": true
+    },
+    {
+      "text": "⁨אלירן Teamder⁩",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 68.49404907226562,
+          "width": 101.41071319580078,
+          "text": "⁨אלירן Teamder⁩"
+        }
+      ],
+      "width": 170.66665649414062,
+      "registered": true
+    },
+    {
+      "text": "קריית עקרון",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 102.85713958740234,
+          "width": 67.04762268066406,
+          "text": "קריית עקרון"
+        }
+      ],
+      "width": 170.66665649414062,
+      "registered": true
+    },
+    {
+      "text": "פעיל לפני 34 דקות",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 31.238094329833984,
+          "width": 76.95237731933594,
+          "text": "פעיל לפני 34 "
+        },
+        {
+          "x": 76.19047546386719,
+          "width": 28.952381134033203,
+          "text": "דקות"
+        }
+      ],
+      "width": 105.90475463867188,
+      "registered": true
+    },
+    {
+      "text": "שא",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0,
+          "width": 22.85714340209961,
+          "text": "שא"
+        }
+      ],
+      "width": 22.857147216796875,
+      "registered": true
+    },
+    {
+      "text": "⁨שם ארוך מאוד לבדיקת תצוגה⁩",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 14.773809432983398,
+          "width": 158.9404754638672,
+          "text": "⁨שם ארוך מאוד לבדיקת "
+        },
+        {
+          "x": 127.23809814453125,
+          "width": 42.66666793823242,
+          "text": "תצוגה⁩"
+        }
+      ],
+      "width": 170.66665649414062,
+      "registered": true
+    },
+    {
+      "text": "פתח תקווה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 106.66666412353516,
+          "width": 63.238094329833984,
+          "text": "פתח תקווה"
+        }
+      ],
+      "width": 170.66665649414062,
+      "registered": true
+    },
+    {
+      "text": "פעיל לפני 34 דקות",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 31.238094329833984,
+          "width": 76.95237731933594,
+          "text": "פעיל לפני 34 "
+        },
+        {
+          "x": 76.19047546386719,
+          "width": 28.952381134033203,
+          "text": "דקות"
+        }
+      ],
+      "width": 105.90475463867188,
+      "registered": true
+    },
+    {
+      "text": "שי",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 3.809523820877075,
+          "width": 12.190476417541504,
+          "text": "ש"
+        },
+        {
+          "x": 11.428571701049805,
+          "width": 4.5714287757873535,
+          "text": "י"
+        }
+      ],
+      "width": 16.76190185546875,
+      "registered": true
+    },
+    {
+      "text": "⁨שני ישראלי⁩",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 92.95237731933594,
+          "width": 76.95237731933594,
+          "text": "⁨שני ישראלי⁩"
+        }
+      ],
+      "width": 170.66665649414062,
+      "registered": true
+    },
+    {
+      "text": "קריית עקרון",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 102.85713958740234,
+          "width": 67.04762268066406,
+          "text": "קריית עקרון"
+        }
+      ],
+      "width": 170.66665649414062,
+      "registered": true
+    },
+    {
+      "text": "פעיל לפני 34 דקות",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 31.238094329833984,
+          "width": 76.95237731933594,
+          "text": "פעיל לפני 34 "
+        },
+        {
+          "x": 76.19047546386719,
+          "width": 28.952381134033203,
+          "text": "דקות"
+        }
+      ],
+      "width": 105.90475463867188,
+      "registered": true
+    },
+    {
+      "text": "סינון משתמשים",
+      "style": {
+        "direction": "rtl",
+        "color": "#9DA6A1",
+        "fontSize": 12,
+        "fontWeight": "700",
+        "textAlign": "left",
+        "paddingHorizontal": 16,
+        "paddingVertical": 8
+      },
+      "lines": [
+        {
+          "x": 234.9107208251953,
+          "width": 87.375,
+          "text": "סינון משתמשים"
+        }
+      ],
+      "width": 354.2857360839844,
+      "registered": true
+    },
+    {
+      "text": "✓",
+      "style": {
+        "width": 18,
+        "color": "#81C99A",
+        "fontSize": 15,
+        "fontWeight": "800",
+        "textAlign": "center"
+      },
+      "lines": [
+        {
+          "x": 3.047619104385376,
+          "width": 12.952381134033203,
+          "text": "✓"
+        }
+      ],
+      "width": 19.047637939453125,
+      "registered": true
+    },
+    {
+      "text": "כל המשתמשים",
+      "style": {
+        "direction": "rtl",
+        "flex": 1,
+        "color": "#F3F1EC",
+        "fontSize": 15,
+        "fontWeight": "600",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 190.32142639160156,
+          "width": 103.77381134033203,
+          "text": "כל המשתמשים"
+        }
+      ],
+      "width": 294.0952453613281,
+      "registered": true
+    },
+    {
+      "text": "פעילים עכשיו",
+      "style": {
+        "direction": "rtl",
+        "flex": 1,
+        "color": "#BEC3C0",
+        "fontSize": 15,
+        "fontWeight": "600",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 204.49404907226562,
+          "width": 89.60118865966797,
+          "text": "פעילים עכשיו"
+        }
+      ],
+      "width": 294.0952453613281,
+      "registered": true
+    },
+    {
+      "text": "לא פעילים 7 ימים",
+      "style": {
+        "direction": "rtl",
+        "flex": 1,
+        "color": "#BEC3C0",
+        "fontSize": 15,
+        "fontWeight": "600",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 177.0654754638672,
+          "width": 117.0297622680664,
+          "text": "לא פעילים 7 ימים"
+        }
+      ],
+      "width": 294.0952453613281,
+      "registered": true
+    },
+    {
+      "text": "לא פעילים 30 ימים",
+      "style": {
+        "direction": "rtl",
+        "flex": 1,
+        "color": "#BEC3C0",
+        "fontSize": 15,
+        "fontWeight": "600",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 168.6845245361328,
+          "width": 125.41071319580078,
+          "text": "לא פעילים 30 ימים"
+        }
+      ],
+      "width": 294.0952453613281,
+      "registered": true
+    }
+  ]
+}

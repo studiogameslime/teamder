@@ -15,7 +15,7 @@ import {
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, font, radius } from '../theme';
+import { isolateText, RTL_LABEL_ALIGN, colors, font, radius  } from '../theme';
 import { Card, Empty, Screen, SectionHeader } from '../components/ui';
 import { ErrorItem } from './ErrorsScreen';
 import { userActivity, type QaUserActivity } from '../services/qaService';
@@ -94,7 +94,7 @@ export function QaUserDetailScreen() {
 
   return (
     <Screen
-      title={userName || 'משתמש QA'}
+      title={userName || 'מדווח'}
       subtitle="כל הדיווחים והשגיאות של המשתמש"
       onBack={() => (nav.canGoBack() ? nav.goBack() : nav.navigate('DevInbox'))}
       refreshControl={
@@ -128,7 +128,7 @@ export function QaUserDetailScreen() {
             <Empty text="אין שגיאות" />
           ) : (
             data.errors.map((e) => (
-              <Pressable key={e.id} onPress={() => nav.navigate('ErrorDetail', { id: e.id })}>
+              <Pressable key={`${e.coll ?? 'errors'}:${e.id}`} onPress={() => nav.navigate('ErrorDetail', { id: e.id, collection: e.coll ?? 'errors' })}>
                 <ErrorItem e={e} />
               </Pressable>
             ))
@@ -150,14 +150,14 @@ export function QaUserDetailScreen() {
 
 const s = StyleSheet.create({
   item: { gap: 8, marginBottom: 8 },
-  head: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  kindTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.sm },
+  head: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 6 },
+  kindTag: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.sm },
   kindTxt: { ...font.small, fontWeight: '800' },
-  statusPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
+  statusPill: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
   statusTxt: { ...font.small, fontWeight: '700' },
-  meta: { ...font.small, color: colors.textMuted, textAlign: 'right' },
-  message: { ...font.body, color: colors.text, textAlign: 'right', lineHeight: 21 },
+  meta: {  ...font.small, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  message: {  ...font.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, lineHeight: 21 },
   shotWrap: { borderRadius: radius.md, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surfaceAlt },
   shot: { width: '100%', height: 200 },
   zoomBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' },

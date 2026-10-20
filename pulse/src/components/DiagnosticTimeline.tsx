@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useState}from'react';
 import{ActivityIndicator,Pressable,StyleSheet,Text,View}from'react-native';
 import{Ionicons}from'@expo/vector-icons';
 import*as Clipboard from'expo-clipboard';
-import{colors}from'../theme';
+import { RTL_LABEL_ALIGN,colors } from '../theme';
 import{getDoc}from'../services/firestoreRest';
 import{parseJournal,stepLabel,stepTime,copyJournal,kindLabels,type Journal}from'../services/diagnosticTimeline';
 import{screenHe}from'../services/screenNames';
@@ -50,11 +50,11 @@ export function DiagnosticTimeline({docPath}:{docPath:string}){
 }
 const s=StyleSheet.create({
  card:{backgroundColor:colors.surfaceAlt,borderColor:colors.border,borderWidth:1,borderRadius:16,padding:14,gap:14},
- head:{flexDirection:'row',alignItems:'center',gap:10},title:{color:colors.text,fontSize:16,fontWeight:'800',textAlign:'right'},sub:{color:colors.textSoft,fontSize:12,textAlign:'right'},
- text:{color:colors.text,fontSize:12,textAlign:'right'},label:{flex:1,color:colors.text,fontSize:13,fontWeight:'700',textAlign:'right'},
- clock:{color:colors.textMuted,fontSize:11,writingDirection:'ltr'},actions:{flexDirection:'row',flexWrap:'wrap',gap:7},
+ head:{flexDirection:'row',alignItems:'center',gap:10},title:{ direction: 'rtl' as const,color:colors.text,fontSize:16,fontWeight:'800',textAlign: RTL_LABEL_ALIGN},sub:{ direction: 'rtl' as const,color:colors.textSoft,fontSize:12,textAlign: RTL_LABEL_ALIGN},
+ text:{ direction: 'rtl' as const,color:colors.text,fontSize:12,textAlign: RTL_LABEL_ALIGN},label:{ direction: 'rtl' as const,flex:1,color:colors.text,fontSize:13,fontWeight:'700',textAlign: RTL_LABEL_ALIGN},
+ clock:{color:colors.textMuted,fontSize:11,direction:'ltr' as const,writingDirection:'ltr'},actions:{flexDirection:'row',flexWrap:'wrap',gap:7},
  chip:{borderRadius:8,paddingVertical:7,paddingHorizontal:10,backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border},selected:{borderColor:colors.primary,backgroundColor:colors.primarySoft},
- warning:{color:colors.amber,fontSize:12,textAlign:'right'},copy:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,padding:10,borderRadius:10,borderWidth:1,borderColor:colors.primary},
+ warning:{ direction: 'rtl' as const,color:colors.amber,fontSize:12,textAlign: RTL_LABEL_ALIGN},copy:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,padding:10,borderRadius:10,borderWidth:1,borderColor:colors.primary},
  step:{backgroundColor:colors.surface,borderRadius:10,padding:12,gap:5,borderRightWidth:3,borderRightColor:colors.primary},error:{borderRightColor:colors.red},
- code:{fontSize:11,color:colors.textSoft,writingDirection:'ltr',textAlign:'left',fontFamily:'monospace'},
+ code:{fontSize:11,color:colors.textSoft,direction:'ltr' as const,writingDirection:'ltr',textAlign:'left',fontFamily:'monospace'},
 });

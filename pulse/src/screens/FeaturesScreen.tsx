@@ -4,18 +4,8 @@
 // Self-scrolling (no Screen header) so it sits under the shared segmented control.
 
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RtlTextInput as TextInput } from '../components/RtlTextInput';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -297,9 +287,9 @@ export function FeaturesBody() {
 const s = StyleSheet.create({
   scroll: { padding: 14, paddingBottom: 36, gap: 10 },
   compose: { gap: 12, marginBottom: 6 },
-  kindRow: { flexDirection: 'row-reverse', gap: 8 },
+  kindRow: { flexDirection: 'row', direction: 'rtl' as const, gap: 8 },
   kindPill: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 14,
@@ -320,7 +310,6 @@ const s = StyleSheet.create({
     padding: 12,
     minHeight: 84,
     textAlignVertical: 'top',
-    writingDirection: 'rtl',
   },
   thumbs: { flexGrow: 0 },
   thumbWrap: { marginEnd: 8, position: 'relative' },
@@ -336,9 +325,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  actions: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 10 },
   addImg: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 14,
@@ -356,12 +345,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  saveTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  saveTxt: { color: colors.onPrimary, fontWeight: '800', fontSize: 15 },
 
   item: { gap: 10, marginBottom: 10 },
-  itemHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  itemHead: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'center', gap: 8 },
   kindTag: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 8,
@@ -370,7 +359,7 @@ const s = StyleSheet.create({
   },
   kindTagTxt: { fontSize: 12, fontWeight: '800' },
   statusPill: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 10,

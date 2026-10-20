@@ -1,0 +1,24 @@
+{
+  "state": "pending_authenticated_target",
+  "productionUpdated": false,
+  "reason": "אין מזהה פריט או חיבור כתיבה מאומת במשימה זו",
+  "claudeStatus": "done",
+  "claudeNote": "סידרתי מחדש את מסכי המשימות, הגרסאות וכרטיס השחקן לפי הסקיצות, כולל ריווח, אייקונים, תגיות ותפריטי סינון. נשמרו צילום הדיווח, פירוט הנתונים ושלוש לשוניות המשימות. התיקון מקומי ונבדק בדפדפן; הוא טרם הופץ ולא אומת במכשיר.",
+  "proofFiles": [
+    "docs/features/screenshots/pulse-match-closed-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-club-details-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-player-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-player-history-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-player-info-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-review-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-task-detail-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-task-filter-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-tasks-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-version-changes-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-version-missing-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-version-search-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-version-users-390-2026-10-18.png",
+    "docs/features/screenshots/pulse-match-versions-390-2026-10-18.png"
+  ],
+  "originalImagesPreserved": true
+}

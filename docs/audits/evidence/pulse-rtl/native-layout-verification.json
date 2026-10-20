@@ -1,0 +1,102 @@
+{
+  "verifiedAt": "2026-10-18T21:16:53.131Z",
+  "nativeVersion": {
+    "minor": 85,
+    "prerelease": null,
+    "patch": 3,
+    "major": 0
+  },
+  "device": "emulator-5556",
+  "fixtureOnly": true,
+  "systemRtlModes": [
+    false,
+    true
+  ],
+  "errorCounts": {
+    "users": 0,
+    "overview": 0,
+    "info": 0,
+    "history": 0
+  },
+  "checks": [
+    {
+      "case": "users",
+      "label": "משתמשים",
+      "edge": "right",
+      "gapDp": 0.00000762939453125
+    },
+    {
+      "case": "users",
+      "label": "Lioz Madar",
+      "edge": "right",
+      "gapDp": 0.7618942260742188
+    },
+    {
+      "case": "users",
+      "label": "מתן לדוגמה",
+      "edge": "right",
+      "gapDp": -0.00000762939453125
+    },
+    {
+      "case": "overview",
+      "label": "חברים והזמנות",
+      "edge": "right",
+      "gapDp": 0.7619094848632812
+    },
+    {
+      "case": "overview",
+      "label": "פעילות אחרונה",
+      "edge": "right",
+      "gapDp": 0.7618865966796875
+    },
+    {
+      "case": "info",
+      "label": "פרטי חשבון",
+      "edge": "right",
+      "gapDp": 0.76190185546875
+    },
+    {
+      "case": "info",
+      "label": "הרשמות ומועדונים",
+      "edge": "right",
+      "gapDp": 0.7618865966796875
+    },
+    {
+      "case": "history",
+      "label": "היום",
+      "edge": "right",
+      "gapDp": 0.7618923187255859
+    },
+    {
+      "case": "history",
+      "label": "אתמול",
+      "edge": "right",
+      "gapDp": 0.7619056701660156
+    },
+    {
+      "case": "history",
+      "label": "נרשם למחזור",
+      "edge": "right",
+      "gapDp": 0.761871337890625
+    },
+    {
+      "case": "info",
+      "label": "10.7.2026",
+      "edge": "left",
+      "gapDp": 0
+    },
+    {
+      "case": "english",
+      "label": "משתמשים",
+      "edge": "right",
+      "gapDp": 0.00000762939453125
+    },
+    {
+      "case": "english",
+      "label": "Lioz Madar",
+      "edge": "right",
+      "gapDp": 0.7618942260742188
+    }
+  ],
+  "maxGapDp": 0.7619094848632812
+}

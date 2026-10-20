@@ -1,0 +1,226 @@
+[
+  {
+    "state": "profile",
+    "width": 390,
+    "file": "pulse-user-complete-profile-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "account",
+    "width": 390,
+    "file": "pulse-user-complete-account-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "availability",
+    "width": 390,
+    "file": "pulse-user-complete-availability-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "activity",
+    "width": 390,
+    "file": "pulse-user-complete-activity-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "reports",
+    "width": 390,
+    "file": "pulse-user-complete-reports-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "notifications",
+    "width": 390,
+    "file": "pulse-user-complete-notifications-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "groups",
+    "width": 390,
+    "file": "pulse-user-complete-groups-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "rounds",
+    "width": 390,
+    "file": "pulse-user-complete-rounds-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "friend-requests",
+    "width": 390,
+    "file": "pulse-user-complete-friend-requests-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "devices",
+    "width": 390,
+    "file": "pulse-user-complete-devices-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "device-record",
+    "width": 390,
+    "file": "pulse-user-complete-device-record-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "manage",
+    "width": 390,
+    "file": "pulse-user-complete-manage-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "partial",
+    "width": 390,
+    "file": "pulse-user-complete-partial-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "source-error",
+    "width": 390,
+    "file": "pulse-user-complete-source-error-390-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "profile",
+    "width": 320,
+    "file": "pulse-user-complete-profile-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "account",
+    "width": 320,
+    "file": "pulse-user-complete-account-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "availability",
+    "width": 320,
+    "file": "pulse-user-complete-availability-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "activity",
+    "width": 320,
+    "file": "pulse-user-complete-activity-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "reports",
+    "width": 320,
+    "file": "pulse-user-complete-reports-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "notifications",
+    "width": 320,
+    "file": "pulse-user-complete-notifications-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "groups",
+    "width": 320,
+    "file": "pulse-user-complete-groups-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "rounds",
+    "width": 320,
+    "file": "pulse-user-complete-rounds-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "friend-requests",
+    "width": 320,
+    "file": "pulse-user-complete-friend-requests-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "devices",
+    "width": 320,
+    "file": "pulse-user-complete-devices-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "device-record",
+    "width": 320,
+    "file": "pulse-user-complete-device-record-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "manage",
+    "width": 320,
+    "file": "pulse-user-complete-manage-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "partial",
+    "width": 320,
+    "file": "pulse-user-complete-partial-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  },
+  {
+    "state": "source-error",
+    "width": 320,
+    "file": "pulse-user-complete-source-error-320-2026-10-18.png",
+    "errors": [],
+    "failure": null,
+    "overflow": false
+  }
+]

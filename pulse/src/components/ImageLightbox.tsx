@@ -165,7 +165,7 @@ const st = StyleSheet.create({
     bottom: 54,
     left: 0,
     right: 0,
-    flexDirection: 'row-reverse',
+    flexDirection: 'row', direction: 'rtl' as const,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 18,

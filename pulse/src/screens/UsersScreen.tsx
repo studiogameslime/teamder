@@ -1,392 +1,44 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
+import { RtlTextInput as TextInput } from '../components/RtlTextInput';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, font, radius } from '../theme';
-import { Card, Screen } from '../components/ui';
-import { Donut } from '../components/Donut';
-import { fetchUsersWithAuth } from '../services/firebase';
+import { Screen } from '../components/ui';
+import { Dropdown } from '../components/Dropdown';
+import { isolateText, RTL_LABEL_ALIGN, colors, font  } from '../theme';
 import { timeAgo } from '../format';
+import { fetchUserPage, type UserPageFilter } from '../services/userPages';
+import type { DocumentPageCursor } from '../services/firestoreRest';
 import type { AppUser } from '../types';
-import type { UsersStackParams } from '../navigation/UsersStack';
 
-const DAY = 86_400_000;
-const ONLINE_MS = 5 * 60 * 1000;
-
-type Range = 'today' | '7d' | '30d' | 'all';
-const RANGES: { key: Range; label: string }[] = [
-  { key: 'today', label: 'היום' },
-  { key: '7d', label: '7 ימים' },
-  { key: '30d', label: '30 ימים' },
-  { key: 'all', label: 'הכל' },
-];
-
-type Filter =
-  | 'all' | 'google' | 'apple' | 'online' | 'new' | 'deleted'
-  | 'inactive7' | 'inactive30' | 'testers';
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'all', label: 'הכל' },
-  { key: 'google', label: 'Google' },
-  { key: 'apple', label: 'Apple' },
-  { key: 'online', label: 'מחוברים עכשיו' },
-  { key: 'new', label: 'חדשים' },
-  { key: 'deleted', label: 'מחקו חשבון' },
-  { key: 'testers', label: '🧪 בודקים' },
-];
-
-const AV = ['#3B82F6', '#22C55E', '#F59E0B', '#EF4444', '#A855F7', '#06B6D4', '#EC4899'];
-const avatarColor = (id: string) => {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return AV[Math.abs(h) % AV.length];
-};
-const isOnline = (u: AppUser) => !!u.lastActiveAt && Date.now() - u.lastActiveAt < ONLINE_MS;
-// "Last seen" = real app activity. Firebase's lastLoginAt only updates on an
-// actual SIGN-IN; a user with a persisted session (the norm — esp. Apple)
-// opens the app daily without ever re-authenticating, so lastLoginAt freezes
-// at their first sign-in. lastActiveAt (last ID-token refresh) reflects each
-// app open, so it's the meaningful signal. Fall back to lastLoginAt only when
-// no refresh timestamp is available.
-const lastSeenAt = (u: AppUser): number | undefined => u.lastActiveAt ?? u.lastLoginAt;
-
-function Kpi({
-  label, value, sub, icon, color,
-}: {
-  label: string; value: string; sub: string;
-  icon: keyof typeof Ionicons.glyphMap; color: string;
-}) {
-  return (
-    <Card style={styles.kpi}>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={styles.kpiLabel}>{label}</Text>
-        <Text style={styles.kpiValue}>{value}</Text>
-        <Text style={styles.kpiSub}>{sub}</Text>
-      </View>
-      <View style={[styles.kpiBadge, { backgroundColor: color + '22' }]}>
-        <Ionicons name={icon} size={20} color={color} />
-      </View>
-    </Card>
-  );
+export function UsersScreen(){
+ const nav=useNavigation<any>();
+ const [pages,setPages]=useState<Awaited<ReturnType<typeof fetchUserPage>>[]>([]);
+ const [page,setPage]=useState(0);const [loading,setLoading]=useState(false);const [failed,setFailed]=useState(false);
+ const [search,setSearch]=useState('');const [query,setQuery]=useState('');const [filter,setFilter]=useState<UserPageFilter>('all');const [range,setRange]=useState('all');const [legacy,setLegacy]=useState(false);
+ const generation=useRef(0);
+ const lastRequest=useRef<{cursor?:DocumentPageCursor;index:number}>({index:0});
+ useEffect(()=>{const t=setTimeout(()=>setQuery(search.trim()),350);return()=>clearTimeout(t)},[search]);
+ const asOf=useMemo(()=>Date.now(),[query,filter,range,legacy]);
+ const since=range==='today'?new Date(new Date(asOf).setHours(0,0,0,0)).getTime():range==='7d'?asOf-7*86400000:range==='30d'?asOf-30*86400000:undefined;
+ const load=async(cursor?:DocumentPageCursor,index=0,force=false)=>{
+  const request=++generation.current;lastRequest.current={cursor,index};setLoading(true);setFailed(false);
+  try{const result=await fetchUserPage({cursor,search:query,filter,since,legacy,now:asOf,force});if(request===generation.current){setPages(old=>index===0?[result]:[...old.slice(0,index),result]);setPage(index)}}catch{if(request===generation.current)setFailed(true)}finally{if(request===generation.current)setLoading(false)}
+ };
+ useEffect(()=>{setPages([]);setPage(0);void load();return()=>{generation.current++}},[query,filter,range,legacy]);
+ const current=pages[page];
+ return <Screen title="משתמשים" subtitle="חיפוש וניהול שחקנים" scroll={false} right={<Pressable accessibilityLabel="רענון משתמשים" onPress={()=>void load(undefined,0,true)} style={{padding:12}}><Ionicons name="refresh-outline" size={23} color={colors.textSoft}/></Pressable>}>
+  <FlatList style={{flex:1,minHeight:0}} data={current?.rows ?? []} keyExtractor={u=>u.id} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={loading && !!current} onRefresh={()=>void load(undefined,0,true)} tintColor={colors.primary}/>}
+   ListHeaderComponent={<View style={{gap:14,paddingBottom:10}}>
+    <Text style={{ ...font.small,textAlign: RTL_LABEL_ALIGN}}>20 משתמשים בכל עמוד · {query?'חיפוש לפי תחילת שם או דוא״ל':legacy?'עיון לפי מזהה':'לפי הפעילות האחרונה'}</Text>
+    <View style={{flexDirection:'row',direction:'rtl',gap:10,alignItems:'center',borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface,borderRadius:12,paddingHorizontal:12}}><Ionicons name="search-outline" size={21} color={colors.textSoft}/><TextInput accessibilityLabel="חיפוש משתמשים" value={search} onChangeText={setSearch} placeholder="תחילת שם או דוא״ל" placeholderTextColor={colors.textMuted} style={{ ...font.body,flex:1,minHeight:48,textAlign: RTL_LABEL_ALIGN,minWidth:0}}/></View>
+    <View style={{flexDirection:'row',direction:'rtl',gap:10}}><Dropdown outlined flex={1} title="סינון משתמשים" value={filter} onSelect={v=>setFilter(v as UserPageFilter)} options={[{value:'all',label:'כל המשתמשים'},{value:'online',label:'פעילים עכשיו'},{value:'inactive7',label:'לא פעילים 7 ימים'},{value:'inactive30',label:'לא פעילים 30 ימים'}]}/><Dropdown outlined flex={1} title="תקופת המשתמשים" value={range} onSelect={setRange} options={[{value:'all',label:'כל התקופות'},{value:'today',label:'היום'},{value:'7d',label:'7 ימים'},{value:'30d',label:'30 ימים'}]}/></View>
+    <View style={{flexDirection:'row',direction:'rtl',justifyContent:'space-between',paddingVertical:10,borderBottomWidth:1,borderBottomColor:colors.border}}><Text style={font.small}>רשימת משתמשים</Text><Text style={font.small}>{query?'לפי שם ↓':legacy?'לפי מזהה ↓':'פעילות אחרונה ↓'}</Text></View>
+    {failed?<Pressable onPress={()=>void load(lastRequest.current.cursor,lastRequest.current.index,true)}><Text style={{...font.body,color:colors.amber}}>הטעינה נכשלה. לחצו לניסיון חוזר.</Text></Pressable>:null}
+    {(query || legacy) && (filter!=='all' || range!=='all')?<Text style={font.small}>בחיפוש ובעיון לפי מזהה מוצגים חשבונות מכל התקופות, ללא סינון פעילות.</Text>:null}
+   </View>}
+   renderItem={({item:u})=><Pressable accessibilityRole="button" accessibilityLabel={`פרטי ${u.name}`} onPress={()=>nav.navigate('UserDetail',{userId:u.id})} style={{flexDirection:'row',direction:'rtl',alignItems:'center',gap:12,paddingVertical:18,borderBottomWidth:1,borderBottomColor:colors.border}}><View style={{width:45,height:45,borderRadius:23,backgroundColor:colors.surfaceAlt,alignItems:'center',justifyContent:'center'}}><Text style={font.title}>{u.name.split(/\s+/).slice(0,2).map(n=>n[0]).join('')}</Text></View><View style={{flex:1,minWidth:0,gap:5}}><Text numberOfLines={2} style={{ ...font.title,textAlign: RTL_LABEL_ALIGN}}>{isolateText(u.name)}</Text><Text style={{ ...font.small,textAlign: RTL_LABEL_ALIGN}}>{u.city || 'עיר לא תועדה'}</Text></View><View style={{gap:7,alignItems:'center',maxWidth:'34%'}}><Text style={{ ...font.small,textAlign: RTL_LABEL_ALIGN}}>{u.lastActiveAt?Date.now()-u.lastActiveAt<5*60000?'● פעיל עכשיו':`פעיל ${timeAgo(u.lastActiveAt)}`:'פעילות לא תועדה'}</Text>{u.isTest || u.deleted?<Text style={{...font.small,color:colors.textSoft}}>{u.deleted?'חשבון מחוק':'חשבון בדיקה'}</Text>:null}{u.qa?<Text style={{...font.small,color:colors.textSoft,borderWidth:1,borderColor:colors.border,borderRadius:8,paddingHorizontal:7}}>בודק</Text>:null}</View><Ionicons name="chevron-back" size={18} color={colors.textMuted}/></Pressable>}
+   ListEmptyComponent={loading?<ActivityIndicator color={colors.primary}/>:!failed?<Text style={{ ...font.body,textAlign: RTL_LABEL_ALIGN,paddingVertical:20}}>אין משתמשים להצגה בעמוד הזה</Text>:null}
+   ListFooterComponent={<View style={{gap:18,paddingVertical:20}}><View style={{flexDirection:'row',direction:'rtl',alignItems:'center',justifyContent:'space-between'}}><Pressable accessibilityRole="button" disabled={page===0 || loading} onPress={()=>setPage(p=>p-1)} style={{opacity:page===0?.35:1,padding:8}}><Text style={{...font.body,color:colors.primary}}>הקודם</Text></Pressable><Text style={font.small}>עמוד {page+1}</Text><Pressable accessibilityRole="button" disabled={!current?.next || loading} onPress={()=>pages[page+1]?setPage(p=>p+1):void load(current?.next,page+1)} style={{opacity:current?.next?1:.35,padding:8}}><Text style={{...font.body,color:colors.primary}}>הבא</Text></Pressable></View>{loading && current?<ActivityIndicator color={colors.primary}/>:null}<Pressable onPress={()=>setLegacy(v=>!v)}><Text style={{ ...font.small,color:colors.primary,textAlign: RTL_LABEL_ALIGN}}>{legacy?'חזרה למיון לפי פעילות':'עיון בכל החשבונות, כולל ללא פעילות מתועדת'}</Text></Pressable><Text style={{ ...font.small,fontSize:11,textAlign: RTL_LABEL_ALIGN}}>{legacy?'בעיון לפי מזהה נכללים גם חשבונות בדיקה ומחוקים.':'המיון לפי זמן הפעילות שנשמר באפליקציה. חשבונות בדיקה ומחוקים מוסתרים; ייתכנו פחות מ־20 שורות בעמוד.'}</Text></View>}/>
+ </Screen>;
 }
-
-function UserRow({ u, onPress }: { u: AppUser; onPress: () => void }) {
-  const online = isOnline(u);
-  return (
-    <Pressable onPress={onPress} style={styles.row}>
-      <View style={[styles.avatar, { backgroundColor: avatarColor(u.id) }]}>
-        <Text style={styles.avatarText}>{(u.name || '?').trim()[0]}</Text>
-      </View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={styles.rowName} numberOfLines={1}>{u.name}</Text>
-        <Text style={styles.rowCity} numberOfLines={1}>{u.city ?? '—'}</Text>
-      </View>
-      <View style={styles.rowRight}>
-        <View style={styles.lastSeen}>
-          {online ? <View style={styles.onlineDot} /> : null}
-          <Text style={styles.rowTime}>
-            {lastSeenAt(u) ? timeAgo(lastSeenAt(u)!) : '—'}
-          </Text>
-        </View>
-        {u.provider === 'google' ? (
-          <Ionicons name="logo-google" size={15} color="#EA4335" />
-        ) : u.provider === 'apple' ? (
-          <Ionicons name="logo-apple" size={16} color={colors.textSoft} />
-        ) : null}
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-    </Pressable>
-  );
-}
-
-export function UsersScreen() {
-  const nav =
-    useNavigation<NativeStackNavigationProp<UsersStackParams, 'UsersList'>>();
-  const [all, setAll] = useState<AppUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [range, setRange] = useState<Range>('30d');
-  const [filter, setFilter] = useState<Filter>('all');
-  const [query, setQuery] = useState('');
-  const [showAllCities, setShowAllCities] = useState(false);
-
-  const load = useCallback(async (force = false) => {
-    try {
-      setAll(await fetchUsersWithAuth(force));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-  useEffect(() => { load(); }, [load]);
-  // Focus hits the cache (no force) → no re-scan of the users collection.
-  useEffect(() => nav.addListener('focus', () => load()), [nav, load]);
-
-  const now = Date.now();
-  const rangeStart =
-    range === 'today'
-      ? new Date(new Date().setHours(0, 0, 0, 0)).getTime()
-      : range === '7d' ? now - 7 * DAY
-      : range === '30d' ? now - 30 * DAY
-      : 0;
-
-  const real = useMemo(() => all.filter((u) => !u.isTest), [all]);
-  const live = useMemo(() => real.filter((u) => !u.deleted), [real]);
-
-  // KPIs
-  const total = live.length;
-  const active = live.filter((u) => {
-    const t = lastSeenAt(u);
-    return !!t && t >= rangeStart;
-  }).length;
-  const created = live.filter((u) => u.joinedAt >= rangeStart).length;
-  const deleted = real.filter((u) => u.deleted && (u.updatedAt ?? 0) >= rangeStart).length;
-
-  // return-to-usage (fixed windows) — based on real activity, not sign-in
-  const notReturned7 = live.filter((u) => {
-    const t = lastSeenAt(u);
-    return !!t && t < now - 7 * DAY;
-  }).length;
-  const notReturned30 = live.filter((u) => {
-    const t = lastSeenAt(u);
-    return !!t && t < now - 30 * DAY;
-  }).length;
-
-  // login method
-  const google = live.filter((u) => u.provider === 'google').length;
-  const apple = live.filter((u) => u.provider === 'apple').length;
-  const provTotal = google + apple || 1;
-
-  // by city
-  const cities = useMemo(() => {
-    const m = new Map<string, number>();
-    live.forEach((u) => { if (u.city) m.set(u.city, (m.get(u.city) ?? 0) + 1); });
-    return [...m.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [live]);
-  const cityMax = cities[0]?.value ?? 1;
-
-  // list
-  const listed = useMemo(() => {
-    let base: AppUser[];
-    switch (filter) {
-      case 'google': base = live.filter((u) => u.provider === 'google'); break;
-      case 'apple': base = live.filter((u) => u.provider === 'apple'); break;
-      case 'online': base = live.filter(isOnline); break;
-      case 'new': base = live.filter((u) => u.joinedAt >= rangeStart); break;
-      case 'deleted': base = real.filter((u) => u.deleted); break;
-      case 'inactive7': base = live.filter((u) => { const t = lastSeenAt(u); return !!t && t < now - 7 * DAY; }); break;
-      case 'inactive30': base = live.filter((u) => { const t = lastSeenAt(u); return !!t && t < now - 30 * DAY; }); break;
-      // Test/QA accounts — normally hidden everywhere; this filter surfaces
-      // them so you can watch what the testers are doing in the app.
-      case 'testers': base = all.filter((u) => u.isTest && !u.deleted); break;
-      default: base = live;
-    }
-    const q = query.trim();
-    if (q) base = base.filter((u) => u.name.includes(q) || (u.city ?? '').includes(q));
-    return [...base].sort((a, b) => (b.lastActiveAt ?? b.lastLoginAt ?? 0) - (a.lastActiveAt ?? a.lastLoginAt ?? 0));
-  }, [live, real, all, filter, query, rangeStart, now]);
-
-  const periodSub =
-    range === 'today' ? 'היום' : range === '7d' ? '7 ימים' : range === '30d' ? '30 ימים' : 'כל הזמנים';
-
-  return (
-    <Screen
-      title="משתמשים"
-      subtitle={`${total.toLocaleString()} רשומים`}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={colors.primary} />
-      }
-    >
-      {/* date range */}
-      <View style={styles.segment}>
-        {RANGES.map((r) => {
-          const a = range === r.key;
-          return (
-            <Pressable key={r.key} onPress={() => setRange(r.key)} style={[styles.seg, a && styles.segActive]}>
-              <Text style={[styles.segText, a && styles.segTextActive]}>{r.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* 4 KPIs */}
-      <View style={styles.kpiRow}>
-        <Kpi label="סה״כ משתמשים" value={total.toLocaleString()} sub="כל הזמנים" icon="people" color={colors.primary} />
-        <Kpi label="פעילים בתקופה" value={active.toLocaleString()} sub={periodSub} icon="pulse" color={colors.green} />
-      </View>
-      <View style={styles.kpiRow}>
-        <Kpi label="חדשים בתקופה" value={created.toLocaleString()} sub={periodSub} icon="person-add" color="#0A84FF" />
-        <Kpi label="מחקו חשבון" value={deleted.toLocaleString()} sub={periodSub} icon="trash" color={colors.red} />
-      </View>
-
-      {/* return to usage */}
-      <Card style={{ gap: 12 }}>
-        <Text style={styles.section}>חזרה לשימוש</Text>
-        <View style={styles.kpiRow}>
-          <Pressable style={{ flex: 1 }} onPress={() => setFilter('inactive30')}>
-            <View style={styles.retCard}>
-              <Text style={styles.retLabel}>לא חזרו 30 יום</Text>
-              <Text style={[styles.retNum, { color: colors.red }]}>{notReturned30.toLocaleString()}</Text>
-              <Text style={styles.retSub}>משתמשים</Text>
-            </View>
-          </Pressable>
-          <Pressable style={{ flex: 1 }} onPress={() => setFilter('inactive7')}>
-            <View style={styles.retCard}>
-              <Text style={styles.retLabel}>לא חזרו 7 ימים</Text>
-              <Text style={[styles.retNum, { color: colors.amber }]}>{notReturned7.toLocaleString()}</Text>
-              <Text style={styles.retSub}>משתמשים</Text>
-            </View>
-          </Pressable>
-        </View>
-      </Card>
-
-      {/* login method + by city */}
-      <View style={styles.kpiRow}>
-        <Card style={{ flex: 1, gap: 12 }}>
-          <Text style={styles.section}>שיטת התחברות</Text>
-          <View style={{ alignItems: 'center', paddingVertical: 2 }}>
-            <Donut
-              segments={[
-                { value: google, color: colors.primary },
-                { value: apple, color: '#A855F7' },
-              ]}
-              size={88}
-              thickness={14}
-            />
-          </View>
-          <View style={{ gap: 9 }}>
-            <Legend color={colors.primary} label="Google" value={google} pct={Math.round((google / provTotal) * 100)} />
-            <Legend color="#A855F7" label="Apple" value={apple} pct={Math.round((apple / provTotal) * 100)} />
-          </View>
-        </Card>
-        <Card style={{ flex: 1, gap: 8 }}>
-          <Text style={styles.section}>לפי עיר</Text>
-          {(showAllCities ? cities : cities.slice(0, 5)).map((c) => (
-            <View key={c.name} style={styles.cityRow}>
-              <Text style={styles.cityName} numberOfLines={1}>{c.name}</Text>
-              <View style={styles.cityTrack}>
-                <View style={[styles.cityFill, { width: `${(c.value / cityMax) * 100}%` }]} />
-              </View>
-              <Text style={styles.cityVal}>{c.value}</Text>
-            </View>
-          ))}
-          {cities.length > 5 ? (
-            <Pressable onPress={() => setShowAllCities((v) => !v)}>
-              <Text style={styles.more}>{showAllCities ? 'הצג פחות' : 'הצג עוד'}</Text>
-            </Pressable>
-          ) : null}
-        </Card>
-      </View>
-
-      {/* filters */}
-      <View style={styles.chips}>
-        {FILTERS.map((f) => {
-          const a = filter === f.key;
-          return (
-            <Pressable key={f.key} onPress={() => setFilter(f.key)} style={[styles.chip, a && styles.chipActive]}>
-              <Text style={[styles.chipText, a && styles.chipTextActive]}>{f.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* search */}
-      <View style={styles.searchPill}>
-        <Ionicons name="search" size={18} color={colors.textMuted} />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="חיפוש משתמש"
-          placeholderTextColor={colors.textMuted}
-          style={styles.searchInput}
-        />
-      </View>
-
-      {/* list */}
-      {loading ? null : listed.length ? (
-        listed.map((u) => (
-          <UserRow key={u.id} u={u} onPress={() => nav.navigate('UserDetail', { userId: u.id })} />
-        ))
-      ) : (
-        <Text style={styles.empty}>אין משתמשים בקטגוריה זו</Text>
-      )}
-    </Screen>
-  );
-}
-
-function Legend({
-  color, label, value, pct,
-}: {
-  color: string; label: string; value: number; pct: number;
-}) {
-  return (
-    <View style={styles.legend}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Text style={styles.legendLabel}>{label}</Text>
-      <View style={{ flex: 1 }} />
-      <Text style={styles.legendVal}>
-        {value} · {pct}%
-      </Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  segment: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: 4, gap: 4 },
-  seg: { flex: 1, paddingVertical: 9, borderRadius: radius.sm, alignItems: 'center' },
-  segActive: { backgroundColor: colors.primary },
-  segText: { ...font.body, color: colors.textSoft, fontWeight: '600' },
-  segTextActive: { color: '#fff', fontWeight: '800' },
-
-  kpiRow: { flexDirection: 'row', gap: 12 },
-  kpi: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 8, minHeight: 96 },
-  kpiLabel: { ...font.small, color: colors.textMuted },
-  kpiValue: { fontSize: 30, fontWeight: '900', color: colors.text },
-  kpiSub: { ...font.small, color: colors.textMuted },
-  kpiBadge: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-
-  section: { ...font.h2, fontSize: 16 },
-  retCard: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: 14, alignItems: 'center', gap: 2 },
-  retLabel: { ...font.small, color: colors.textSoft },
-  retNum: { fontSize: 26, fontWeight: '900' },
-  retSub: { ...font.small, color: colors.textMuted },
-
-  legend: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendLabel: { ...font.body, color: colors.text, fontWeight: '600' },
-  legendVal: { ...font.small, color: colors.textSoft, fontWeight: '700' },
-
-  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cityName: { ...font.small, color: colors.text, width: 64 },
-  cityTrack: { flex: 1, height: 7, borderRadius: 4, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
-  cityFill: { height: 7, borderRadius: 4, backgroundColor: colors.primary },
-  cityVal: { ...font.small, color: colors.textSoft, width: 34, textAlign: 'left' },
-  more: { ...font.small, color: colors.primary, fontWeight: '700', textAlign: 'center', marginTop: 2 },
-
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { ...font.small, color: colors.textSoft },
-  chipTextActive: { color: '#fff', fontWeight: '700' },
-
-  searchPill: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14 },
-  searchInput: { flex: 1, color: colors.text, fontSize: 15, paddingVertical: 11, textAlign: 'right' },
-
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 11 },
-  avatar: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontSize: 17, fontWeight: '800' },
-  rowName: { ...font.title, fontSize: 16 },
-  rowCity: { ...font.small, color: colors.textMuted, marginTop: 1 },
-  rowRight: { alignItems: 'flex-end', gap: 4 },
-  lastSeen: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.green },
-  rowTime: { ...font.small, color: colors.textSoft },
-  empty: { ...font.body, color: colors.textMuted, textAlign: 'center', marginTop: 20 },
-});

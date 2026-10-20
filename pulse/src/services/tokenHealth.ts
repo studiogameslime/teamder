@@ -9,8 +9,8 @@
 // A high `failed` next to a positive `ok` is normal token churn (a stale token
 // among several) — NOT unreachable.
 
-import { listAll } from './firestoreRest';
-import { isTestAccount } from './firebase';
+import { fetchNotificationData } from './notificationData';
+import { fetchUsers } from './firebase';
 
 export interface UnreachableUser {
   id: string;
@@ -34,13 +34,13 @@ export interface TokenHealth {
 const num = (v: unknown): number => (typeof v === 'number' ? v : 0);
 const PROBLEM_CAP = 150;
 
-export async function fetchTokenHealth(): Promise<TokenHealth> {
+export async function fetchTokenHealth(force = false): Promise<TokenHealth> {
   const [users, notifs] = await Promise.all([
-    listAll('users').catch(() => []),
-    listAll('notifications', 4000).catch(() => []),
+    fetchUsers({ force }),
+    fetchNotificationData(force),
   ]);
   const real = users.filter(
-    (u) => !isTestAccount(u.email, u.name) && u.name !== 'משתמש שהוסר',
+    (u) => !u.isTest && !u.deleted,
   );
   const realIds = new Set(real.map((u) => u.id));
   const nameById = new Map<string, string>();

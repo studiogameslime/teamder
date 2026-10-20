@@ -54,6 +54,5 @@ export function readSeasonCoverage(raw: unknown, userId?: string): SeasonCoverag
   const rated = typeof c.rated === 'number' && Number.isFinite(c.rated) ? c.rated : 0;
   const of = typeof c.of === 'number' && Number.isFinite(c.of) ? c.of : 0;
   if (of <= 0 || rated <= 0 || rated > of) return undefined;
-  if (userId && map !== undefined && rated === of) return undefined;
   return { rated, of };
 }

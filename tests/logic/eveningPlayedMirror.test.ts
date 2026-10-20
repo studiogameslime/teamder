@@ -66,6 +66,7 @@ describe.each([
       .replace(/^\n+/, '')
       // Cloud Functions have no `@/` alias, so that one line is allowed to
       // differ — and ONLY that one.
+      .replace(/from '\.\/seasonPolicy'/g, "from '@/utils/seasonPolicy'")
       .replace(/from '\.\/seasonDates'/g, "from '@/utils/seasonDates'");
     expect(copied).toBe(client);
   });

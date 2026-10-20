@@ -1,3 +1,7 @@
+import { PLAYER_ROUND_FIELDS, playerRoundFacts } from './playerSummary';
+import { fetchAuthRecords } from './userAuth';
+import { userRecord } from './userDetails';
+import { collectionData } from './collectionData';
 import { pulseFetch as fetch } from './adminTransport';
 // Firebase service — reads the app's users/games/groups and derives a rich
 // set of aggregate stats for the dashboard. Falls back to mock until the
@@ -24,7 +28,7 @@ import {
   type FsDoc,
 } from './firestoreRest';
 import { googleAccessToken } from './auth';
-import { cached } from './cache';
+import { cached, invalidate } from './cache';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -61,7 +65,7 @@ function emptyUser(id: string): AppUser {
   };
 }
 
-function mapUser(d: FsDoc): AppUser {
+export function mapUser(d: FsDoc): AppUser {
   const stats = d.stats ?? {};
   const discipline = d.discipline ?? {};
   const achievements = d.achievements ?? {};
@@ -109,17 +113,12 @@ function mapUser(d: FsDoc): AppUser {
 // only on demand by the Users / Campaigns / Segment screens. The TTL still
 // dedupes the few places that call it within one interaction.
 const USERS_TTL_MS = 3 * 60_000;
-let usersCache: { at: number; data: AppUser[] } | null = null;
-
 export async function fetchUsers(opts: { force?: boolean } = {}): Promise<AppUser[]> {
-  if (!has.firebase()) return [];
-  if (!opts.force && usersCache && Date.now() - usersCache.at < USERS_TTL_MS) {
-    return usersCache.data;
-  }
-  const docs = await listAll('users');
-  const mapped = docs.map(mapUser).sort((a, b) => b.joinedAt - a.joinedAt);
-  usersCache = { at: Date.now(), data: mapped };
-  return mapped;
+  if (!has.firebase()) throw new Error('PULSE_FIREBASE_UNAVAILABLE');
+  return cached('users', async () => {
+    const docs = await collectionData('users', opts.force);
+    return docs.map(mapUser).sort((a, b) => b.joinedAt - a.joinedAt);
+  }, { ttl: USERS_TTL_MS, force: opts.force });
 }
 
 // A single user by id — one doc read. For screens that need just one user's
@@ -154,11 +153,7 @@ export async function fetchUserCounts(): Promise<UserCounts> {
 // the in-memory cache too so the dashboard reflects it without a refetch.
 export async function setUserQa(userId: string, qa: boolean): Promise<boolean> {
   const ok = await patchDoc(`users/${userId}`, { qa });
-  if (ok && usersCache) {
-    usersCache.data = usersCache.data.map((u) =>
-      u.id === userId ? { ...u, qa } : u,
-    );
-  }
+  if (ok) { invalidate(`user-activity:${userId}`); invalidate('users'); invalidate('usersAuth'); invalidate('collection:users'); }
   return ok;
 }
 
@@ -166,53 +161,22 @@ export async function setUserQa(userId: string, qa: boolean): Promise<boolean> {
 // login, last activity) — merged by uid. Auth has no entry for deleted
 // accounts, so those keep only their (anonymized) Firestore fields.
 export async function fetchUsersWithAuth(force = false): Promise<AppUser[]> {
-  return cached('usersAuth', fetchUsersWithAuthUncached, { force });
+  return cached('usersAuth', () => fetchUsersWithAuthUncached(force), { force });
 }
 
-async function fetchUsersWithAuthUncached(): Promise<AppUser[]> {
-  const users = await fetchUsers();
+async function fetchUsersWithAuthUncached(force = false): Promise<AppUser[]> {
+  const users = await fetchUsers({ force });
   if (!has.firebase()) return users;
   const auth = new Map<
     string,
     { provider: AppUser['provider']; lastLoginAt?: number; lastActiveAt?: number }
   >();
   try {
-    const token = await googleAccessToken(
-      'https://www.googleapis.com/auth/cloud-platform',
-    );
-    const project = config.firebase.projectId;
-    let pageToken = '';
-    do {
-      const res = await fetch(
-        `https://identitytoolkit.googleapis.com/v1/projects/${project}/accounts:batchGet` +
-          `?maxResults=500${pageToken ? `&nextPageToken=${pageToken}` : ''}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (!res.ok) break;
-      const data = await res.json();
-      for (const u of data.users ?? []) {
-        const provs: string[] = (u.providerUserInfo ?? []).map(
-          (p: any) => p.providerId,
-        );
-        const primary =
-          provs.find((p) => ['google.com', 'apple.com', 'password'].includes(p)) ??
-          provs[0];
-        const provider: AppUser['provider'] =
-          primary === 'google.com'
-            ? 'google'
-            : primary === 'apple.com'
-              ? 'apple'
-              : primary === 'password'
-                ? 'password'
-                : 'other';
-        auth.set(u.localId, {
-          provider,
-          lastLoginAt: u.lastLoginAt ? Number(u.lastLoginAt) : undefined,
-          lastActiveAt: u.lastRefreshAt ? Date.parse(u.lastRefreshAt) : undefined,
-        });
-      }
-      pageToken = data.nextPageToken ?? '';
-    } while (pageToken);
+    for (const u of await fetchAuthRecords(force)) {
+      const providers=(u.providers as {providerId:string}[] ?? []).map(p=>p.providerId);
+      const primary=providers.find(p=>['google.com','apple.com','password'].includes(p)) ?? providers[0];
+      auth.set(String(u.id), {provider:primary==='google.com'?'google':primary==='apple.com'?'apple':primary==='password'?'password':'other',lastLoginAt:u.lastLoginAt as number|undefined,lastActiveAt:u.lastActiveAt as number|undefined});
+    }
   } catch {
     /* auth unavailable — return Firestore-only users */
   }
@@ -366,12 +330,12 @@ export interface CommunityPoint {
 
 export async function fetchCommunityPoints(force = false): Promise<CommunityPoint[]> {
   if (!has.firebase()) return [];
-  return cached('commPoints', communityPointsUncached, { force });
+  return cached('commPoints', () => communityPointsUncached(force), { force });
 }
 
-async function communityPointsUncached(): Promise<CommunityPoint[]> {
+async function communityPointsUncached(force = false): Promise<CommunityPoint[]> {
   try {
-    const groups = await listAll('groups');
+    const groups = await collectionData('groups', force);
     return groups.map((g) => {
       const ids = new Set<string>([
         ...((g.playerIds as string[] | undefined) ?? []),
@@ -405,12 +369,12 @@ export interface GamePoint {
 // the map. No street addresses — locations & cities only.
 export async function fetchGamePoints(force = false): Promise<GamePoint[]> {
   if (!has.firebase()) return [];
-  return cached('gamePoints', gamePointsUncached, { force });
+  return cached('gamePoints', () => gamePointsUncached(force), { force });
 }
 
-async function gamePointsUncached(): Promise<GamePoint[]> {
+async function gamePointsUncached(force = false): Promise<GamePoint[]> {
   try {
-    const games = await listAll('games');
+    const games = await collectionData('games', force);
     return games.map((g) => {
       const ids = new Set<string>([
         ...((g.participantIds as string[] | undefined) ?? []),
@@ -432,13 +396,13 @@ async function gamePointsUncached(): Promise<GamePoint[]> {
 
 export async function fetchGroupMemberSet(force = false): Promise<Set<string>> {
   if (!has.firebase()) return new Set<string>();
-  return cached('groupMembers', groupMemberSetUncached, { force });
+  return cached('groupMembers', () => groupMemberSetUncached(force), { force });
 }
 
-async function groupMemberSetUncached(): Promise<Set<string>> {
+async function groupMemberSetUncached(force = false): Promise<Set<string>> {
   const set = new Set<string>();
   try {
-    const groups = await listAll('groups');
+    const groups = await collectionData('groups', force);
     for (const g of groups) {
       for (const u of (g.playerIds as string[] | undefined) ?? []) set.add(u);
       for (const u of (g.adminIds as string[] | undefined) ?? []) set.add(u);
@@ -459,42 +423,55 @@ const CARD_REASON: Record<string, string> = {
 // Everything shown on ONE user's screen — fetched on demand, scoped tightly to
 // that user (targeted equality/array-contains queries, never a full-collection
 // scan). This is the only place we read a user's games/groups/feedback/errors.
-export async function fetchUserActivity(userId: string): Promise<UserActivity> {
-  if (!has.firebase()) {
-    return {
-      user: emptyUser(userId),
-      referredNames: [],
-      referralCount: 0,
-      inviteClicks: 0,
-      gamesCount: 0,
-      communitiesCount: 0,
-      timeline: [],
-      errors: [],
-    };
+export function fetchUserActivity(userId: string, force = false): Promise<UserActivity> {
+  return cached(`user-activity:${userId}`, () => fetchUserActivityUncached(userId), {ttl:180_000,force});
+}
+async function fetchUserActivityUncached(userId: string): Promise<UserActivity> {
+  const failedSources: string[] = [];
+  const limitedSources: string[] = [];
+  async function read<T>(label: string, promise: Promise<T>, fallback: T, limit?: number): Promise<T> {
+    try { const value = await promise; if (limit && Array.isArray(value) && value.length >= limit) limitedSources.push(label); return value; }
+    catch { failedSources.push(label); return fallback; }
   }
+  if (!has.firebase()) throw new Error('PULSE_FIREBASE_UNAVAILABLE');
 
-  const [doc, gamesA, gamesB, groupsP, groupsA, feedbackAll, errorsAll, clicksDoc, referredDocs] =
+  const [doc, gamesA, gamesB, groupsP, groupsA, feedbackAll, errorsAll, clicksDoc, referredDocs, gamesCreated, groupsCreated, onboardingEntries] =
     await Promise.all([
       getDoc(`users/${userId}`),
-      queryArrayContains('games', 'participantIds', userId).catch(() => []),
-      queryArrayContains('games', 'players', userId).catch(() => []),
-      queryArrayContains('groups', 'playerIds', userId).catch(() => []),
-      queryArrayContains('groups', 'adminIds', userId).catch(() => []),
-      // Only THIS user's feedback / errors — not the whole collections.
-      queryEquals('feedback', 'userId', userId).catch(() => [] as FsDoc[]),
-      queryEquals('errors', 'lastUserId', userId).catch(() => [] as FsDoc[]),
-      // Per-inviter clicks on the personal invite link (written by the
-      // trackLinkClick CF when someone opens /app?invitedBy=<uid>).
-      getDoc(`inviteClicks/${userId}`).catch(() => null),
-      // Who this user invited — targeted query, not a scan of all users.
-      queryEquals('users', 'invitedBy', userId).catch(() => [] as FsDoc[]),
+      read('מחזורים', queryArrayContains('games', 'participantIds', userId, 200, PLAYER_ROUND_FIELDS), [], 200),
+      read('מחזורים ישנים', queryArrayContains('games', 'players', userId, 200, PLAYER_ROUND_FIELDS), [], 200),
+      read('מועדונים', queryArrayContains('groups', 'playerIds', userId, 200, ['name','creatorId','adminIds','playerIds','joinedAt','adminSince','createdAt','city','hidden','isPersonal']), [], 200),
+      read('מועדונים בניהול', queryArrayContains('groups', 'adminIds', userId, 200, ['name','creatorId','adminIds','playerIds','joinedAt','adminSince','createdAt','city','hidden','isPersonal']), [], 200),
+      read('דיווחים', queryEquals('feedback', 'userId', userId, 500, ['userId','message','status','type','createdAt','screen']), [] as FsDoc[], 500),
+      read('שגיאות', queryEquals('errors', 'lastUserId', userId, 500, ['lastUserId','title','operation','category','count','lastSeen','status']), [] as FsDoc[], 500),
+      read('כניסות לקישור', getDoc(`inviteClicks/${userId}`), null),
+      read('מוזמנים', queryEquals('users', 'invitedBy', userId), [] as FsDoc[], 500),
+      read('מחזורים שנוצרו', queryEquals('games','createdBy',userId,500,PLAYER_ROUND_FIELDS), [] as FsDoc[], 500),
+      read('מועדונים שנוצרו', queryEquals('groups','creatorId',userId,500,['name','creatorId','adminIds','playerIds','joinedAt','adminSince','createdAt','city','hidden','isPersonal']), [] as FsDoc[], 500),
+      read('מקורות כניסה', queryEquals('onboardingActivity','uid',userId,100,['action','params','occurredAt','createdAt','sessionId']), [] as FsDoc[], 100),
     ]);
+  if (!doc) throw new Error('PULSE_USER_NOT_FOUND');
 
   // de-dupe games + groups by id
-  const games = dedupe([...gamesA, ...gamesB]);
-  const groups = dedupe([...groupsP, ...groupsA]);
+  const games = dedupe([...gamesA, ...gamesB, ...gamesCreated]);
+  const groups = dedupe([...groupsP, ...groupsA, ...groupsCreated]);
   const user = doc ? mapUser(doc) : emptyUser(userId);
   const referred = referredDocs.map(mapUser);
+  const entryRow = onboardingEntries
+    .filter(row => row.action === 'entry_source_resolved' && row.params && typeof row.params === 'object')
+    .sort((a, b) => Number(b.occurredAt ?? b.createdAt ?? 0) - Number(a.occurredAt ?? a.createdAt ?? 0))[0];
+  const entryParams = entryRow?.params as Record<string, unknown> | undefined;
+  const entryAttribution = entryRow ? {
+    entrySource: typeof entryParams?.entry_source === 'string' ? entryParams.entry_source : undefined,
+    resolvedBy: typeof entryParams?.resolved_by === 'string' ? entryParams.resolved_by : undefined,
+    targetType: typeof entryParams?.target_type === 'string' ? entryParams.target_type : undefined,
+    targetId: typeof entryParams?.target_id === 'string' ? entryParams.target_id : undefined,
+    channel: typeof entryParams?.entry_channel === 'string' ? entryParams.entry_channel : undefined,
+    campaign: typeof entryParams?.entry_campaign === 'string' ? entryParams.entry_campaign : undefined,
+    linkId: typeof entryParams?.entry_link_id === 'string' ? entryParams.entry_link_id : undefined,
+    at: Number(entryRow.occurredAt ?? entryRow.createdAt ?? 0) || undefined,
+    sessionId: typeof entryRow.sessionId === 'string' ? entryRow.sessionId : undefined,
+  } : undefined;
 
   const timeline: TimelineEvent[] = [];
   timeline.push({ kind: 'joined', title: 'נרשם לאפליקציה', at: user.joinedAt });
@@ -517,11 +494,11 @@ export async function fetchUserActivity(userId: string): Promise<UserActivity> {
       kind: 'game',
       action: isCreator
         ? isOrphan
-          ? 'יצר משחק חד פעמי'
-          : 'יצר משחק'
+          ? 'יצר מחזור חד פעמי'
+          : 'יצר מחזור'
         : isOrphan
-          ? 'נרשם למשחק חד פעמי'
-          : 'נרשם למשחק',
+          ? 'נרשם למחזור חד פעמי'
+          : 'נרשם למחזור',
       title: g.title ?? 'משחק',
       subtitle: [g.city ?? g.fieldAddress, g.fieldName].filter(Boolean).join(' · ') || undefined,
       at,
@@ -623,12 +600,21 @@ export async function fetchUserActivity(userId: string): Promise<UserActivity> {
   // The inviter's name — one targeted doc read, only if this user was invited.
   let invitedByName: string | undefined;
   if (user.invitedBy) {
-    const inv = await getDoc(`users/${user.invitedBy}`).catch(() => null);
+    const inv = await read('פרטי המזמין', getDoc(`users/${user.invitedBy}`), null);
     invitedByName = inv ? mapUser(inv).name : undefined;
   }
 
   return {
+    record: userRecord(doc) as Record<string, unknown>,
+    fetchedAt: Date.now(), failedSources, limitedSources,
+    related: {
+      games: games.map(g => ({id:g.id,title:String(g.title ?? 'מחזור'),role:g.createdBy === userId ? 'יוצר' : 'משתתף',status:String(g.status ?? 'לא ידוע'),at:Number(g.startsAt ?? 0),detail:userRecord({...playerRoundFacts(g,userId),groupId:g.groupId,city:g.city,fieldName:g.fieldName,createdAt:g.createdAt,joinedAt:g.joinedAt?.[userId],arrival:g.arrivals?.[userId],visibility:g.visibility}) as Record<string,unknown>})),
+      groups: groups.map(g => ({id:g.id,title:String(g.name ?? 'מועדון'),role:(g.adminIds ?? []).includes(userId) ? 'מנהל' : (g.playerIds ?? []).includes(userId) ? 'חבר' : 'יוצר',status:g.isPersonal || g.hidden ? 'מועדון אישי / מוסתר' : 'מועדון',detail:userRecord({member:(g.playerIds ?? []).includes(userId),manager:(g.adminIds ?? []).includes(userId),joinedAt:g.joinedAt?.[userId],adminSince:g.adminSince?.[userId],city:g.city,createdAt:g.createdAt,isPersonal:g.isPersonal,hidden:g.hidden}) as Record<string,unknown>})),
+      reports: feedbackAll.map(f => ({id:f.id,message:String(f.message ?? ''),status:String(f.status ?? 'new'),at:Number(f.createdAt ?? 0),screen:String(f.screen ?? '')})),
+      referred: referred.map(u => ({id:u.id,name:u.name,joinedAt:u.joinedAt})),
+    },
     user,
+    entryAttribution,
     invitedByName,
     referredNames: referred.map((u) => u.name),
     referralCount: referred.length,

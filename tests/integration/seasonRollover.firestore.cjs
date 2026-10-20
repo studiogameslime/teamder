@@ -9,7 +9,7 @@ const app=admin.initializeApp({projectId:PROJECT},'season-night-integration');
 const db=admin.firestore(app);
 db.settings({host:HOST,ssl:false});
 if(db.projectId!==PROJECT||!PROJECT.startsWith('demo-'))throw Error('Isolated demo database required');
-const {closeSeason,reopenSeason}=require('../../functions/lib/seasonRollover');
+const {closeSeason}=require('../../functions/lib/seasonRollover');
 const {readArchiveData}=require('../../functions/lib/seasonArchiveData');
 after(async()=>{await db.terminate();await app.delete();});
 let sequence=0;
@@ -92,21 +92,11 @@ test('a resumed close keeps the archived season number, length and dates',{timeo
  await assertClosed(f);
  const card=await f.card.get();assert.equal(card.get('no'),1);assert.equal(card.get('startsAt'),100);assert.equal(card.get('endsAt'),200);
 });
-test('reopen failure and a second close/reopen never restore twice',{timeout:60000},async()=>{
+test('a frozen season cannot be reopened and retries keep the same archive',{timeout:60000},async()=>{
  const f=await fixture();await closeSeason(f.args);
- const extra=db.batch();extra.update(f.ra,{goals:admin.firestore.FieldValue.increment(2)});extra.update(f.club,{goals:admin.firestore.FieldValue.increment(2)});extra.update(f.pair,{sameTeam:admin.firestore.FieldValue.increment(1)});await extra.commit();
- await assert.rejects(reopenSeason({...f.args,db:injected({failTransaction:2})}),/injected transaction failure/);
- assert.equal((await f.archive.get()).exists,true);assert.equal((await f.ra.get()).get('goals'),9);
- await reopenSeason(f.args);
- assert.equal((await f.archive.get()).exists,false);assert.equal((await f.card.get()).exists,false);
- assert.equal((await f.ra.get()).get('goals'),9);assert.equal((await f.rb.get()).get('goals'),3);
- assert.equal((await f.club.get()).get('goals'),12);assert.equal((await f.pair.get()).get('sameTeam'),13);
- assert.equal((await reopenSeason(f.args)).reopened,false);
- await closeSeason(f.args);assert.equal((await f.ra.get()).get('goals'),0);
- await reopenSeason(f.args);
- assert.equal((await f.ra.get()).get('goals'),9);assert.equal((await f.rb.get()).get('goals'),3);
- assert.equal((await f.club.get()).get('goals'),12);assert.equal((await f.pair.get()).get('sameTeam'),13);
- assert.equal((await f.ra.get()).get('seasonWoundBack'),undefined);
+ assert.equal(require('../../functions/lib/seasonRollover').reopenSeason,undefined);
+ const before=(await f.archive.get()).data();await closeSeason(f.args);
+ assert.deepEqual((await f.archive.get()).data(),before);assert.equal((await f.ra.get()).get('goals'),0);
 });
 test('401 pairs archive atomically; missing page prevents a partial resume',{timeout:120000},async()=>{
  const f=await fixture();const batch=db.batch();

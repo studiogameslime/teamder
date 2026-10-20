@@ -32,11 +32,11 @@ export const SEASON_TITLE_ICON: Record<SeasonTitleKey, Glyph> = {
 /** And its colour. Each title reads as itself at a glance, and the tint is used
  *  on a disc — never as text colour, where these fail contrast. */
 export const SEASON_TITLE_TINT: Record<SeasonTitleKey, string> = {
-  topScorer: colors.primary,
+  topScorer: '#2563EB',
   topAssister: '#7C3AED',
   mvp: '#F59E0B',
   topWinner: '#16A34A',
-  mostLoyal: '#EF4444',
+  mostLoyal: '#F26B3A',
   cleanSheetKing: '#0EA5E9',
   penaltyKing: '#DB2777',
   penaltyKeeper: '#0D9488',

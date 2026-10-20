@@ -25,6 +25,7 @@ import { readSeasonCoverage } from '@/utils/seasonCoverage';
 export { parseSeasonTable, type FinishedSeasonTable };
 
 export interface SeasonWinner {
+  winnerIds?: string[];
   key: SeasonTitleKey;
   /**
    * How much of the season a RATING was really built from — present only on
@@ -38,9 +39,11 @@ export interface SeasonWinner {
   /** Every holder — ties are shared, never broken. */
   names: string[];
   value: number;
+  valueUnit?: 'percent';
 }
 
 export interface FinishedSeason {
+  awardsVersion?: number;
   nonSeason?: boolean;
   seasonId: string;
   no: number;
@@ -68,6 +71,7 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
 /** A card is already the shape this screen wants; only validation is left. */
 function fromCard(d: Record<string, unknown>): FinishedSeason | null {
+  if (d.publicationPending === true) return null;
   const seasonId = str(d.seasonId);
   if (!seasonId) return null;
   const totals = (d.totals ?? {}) as Record<string, unknown>;
@@ -89,12 +93,15 @@ function fromCard(d: Record<string, unknown>): FinishedSeason | null {
     winners.push({
       key: key as SeasonTitleKey,
       names,
+      ...(Array.isArray(x.winnerIds) ? { winnerIds: x.winnerIds.filter((id): id is string => typeof id === 'string') } : {}),
       value: num(x.value),
+      ...(x.valueUnit === 'percent' ? { valueUnit: 'percent' as const } : {}),
       ...(coverage ? { coverage } : {}),
     });
   }
   return {
     seasonId,
+    ...(typeof d.awardsVersion === 'number' ? { awardsVersion: d.awardsVersion } : {}),
     nonSeason: d.nonSeason === true,
     no: num(d.no),
     startsAt: num(d.startsAt),

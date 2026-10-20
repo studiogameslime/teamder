@@ -28,6 +28,7 @@ export interface CabinetWinner {
   key: SeasonTitleKey;
   names: readonly string[];
   value: number;
+  valueUnit?: 'percent';
   /** How much of the season a RATING was built from. Optional by design. */
   coverage?: { rated: number; of: number };
 }
@@ -98,7 +99,7 @@ export function SeasonTitlesCabinet({
             // and made silver and gold on this scale unreachable code. The
             // field and the code that wrote it are both gone now.
             const tier: MedalTier = w
-              ? medalTier(key, w.value, completedRounds)
+              ? medalTier(key, w.value, completedRounds, w.valueUnit)
               : 'bronze';
             const names = w ? w.names.slice(0, 2).join(' · ') : '';
             const shared = w && w.names.length > 2 ? w.names.length - 2 : 0;
@@ -111,7 +112,7 @@ export function SeasonTitlesCabinet({
               he.seasonTitleNames[key],
               w ? names : he.seasonTitleNotAwarded,
               shared > 0 ? he.seasonTitleSharedWith(shared) : '',
-              w ? he.seasonTitleValue(key, w.value) : '',
+              w ? he.seasonTitleValue(key, w.value, w.valueUnit) : '',
               w ? TIER_NAME[tier] : '',
               w && streak > 1 ? `×${streak}` : '',
             ]
@@ -150,7 +151,7 @@ export function SeasonTitlesCabinet({
                       </Text>
                     ) : null}
                     <Text style={styles.slotValue} numberOfLines={1}>
-                      {he.seasonTitleValue(key, w.value)}
+                      {he.seasonTitleValue(key, w.value, w.valueUnit)}
                     </Text>
                     {/* What the rating actually covers, directly beneath it.
                         שחקן העונה is an average, and on this club's only

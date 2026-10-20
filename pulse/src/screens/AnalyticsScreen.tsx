@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, font, radius } from '../theme';
-import { Card, Screen } from '../components/ui';
+import { RTL_LABEL_ALIGN, RTL_VALUE_ALIGN, colors, font, radius  } from '../theme';
+import { SectionTabs, Panel, Card, Screen } from '../components/ui';
 import { Donut } from '../components/Donut';
 import { compact } from '../format';
 import {
@@ -19,7 +19,7 @@ const RANGES: { key: Range; label: string }[] = [
   { key: '7d', label: '7 ימים' },
   { key: 'all', label: 'כל הזמנים' },
 ];
-const DONUT = ['#22C55E', '#0A84FF', '#06B6D4', '#A855F7', '#F59E0B', '#94A3B8'];
+const DONUT = [colors.green, colors.blue, colors.teal, colors.purple, colors.amber, '#94A3B8'];
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
@@ -79,6 +79,9 @@ function LegendRow({ color, label, value, total }: { color: string; label: strin
 }
 
 export function AnalyticsScreen() {
+  const request = useRef(0);
+  const [error, setError] = useState(false);
+  const [section, setSection] = useState('summary');
   const [data, setData] = useState<AnalyticsFull | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -86,14 +89,15 @@ export function AnalyticsScreen() {
   const [showAllActions, setShowAllActions] = useState(false);
 
   const load = useCallback(async (r: Range, force = false) => {
+    const current = ++request.current;
+    setError(false); setData(null);
     try {
-      setData(await fetchAnalyticsFull(r, { force }));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+      const next = await fetchAnalyticsFull(r, { force });
+      if (current === request.current) setData(next);
+    } catch { if (current === request.current) setError(true); }
+    finally { if (current === request.current) { setLoading(false); setRefreshing(false); } }
   }, []);
-  useEffect(() => { setLoading(true); load(range); }, [range, load]);
+  useEffect(() => { setLoading(true); void load(range); return () => { ++request.current; }; }, [range, load]);
 
   const d = data;
   const totalU = d?.totalUsers || 1;
@@ -103,7 +107,7 @@ export function AnalyticsScreen() {
 
   return (
     <Screen
-      title="אנליטיקה"
+      title="מדדי שימוש"
       subtitle="Google Analytics + נתוני אפליקציה"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(range, true); }} tintColor={colors.primary} />}
     >
@@ -118,18 +122,22 @@ export function AnalyticsScreen() {
         })}
       </View>
 
+      <SectionTabs value={section} onChange={setSection} items={[{key:'summary',label:'תמונת מצב'}, {key:'engagement',label:'מעורבות'}, {key:'sources',label:'מקורות ומכשירים'}]} />
+      {loading ? <Text style={styles.loadingText}>טוען נתונים לתקופה הנבחרת…</Text> : null}
+      {error ? <Pressable onPress={() => { setLoading(true); void load(range, true); }}><Text style={{ direction: 'rtl' as const,color:colors.red,textAlign: RTL_LABEL_ALIGN}}>הטעינה נכשלה. לחצו לניסיון חוזר.</Text></Pressable> : null}
+      {!loading && !error && !d ? <Text style={styles.loadingText}>אין נתונים זמינים לתקופה הזו</Text> : null}
+      {d ? <>
+      <Panel active={section === 'summary'}>
       {/* 4 KPIs */}
       <View style={styles.row}>
         <Kpi label="משתמשים פעילים" value={compact(d?.activeUsers ?? 0)} delta={d?.activeUsersDelta ?? null} icon="people" color="#A855F7" />
         <Kpi label="משתמשים חדשים" value={compact(d?.newUsers ?? 0)} delta={d?.newUsersDelta ?? null} icon="person-add" color={colors.green} />
       </View>
-      <View style={styles.row}>
-        <Kpi label="שיעור חזרה" value={`${Math.round((d?.returnRate ?? 0) * 100)}%`} delta={d?.returnRateDelta ?? null} icon="refresh" color="#0A84FF" />
-        <Kpi label="זמן ממוצע באפליקציה" value={d ? mmss(d.avgEngagementSec) : '—'} delta={d?.avgEngagementDelta ?? null} icon="time" color={colors.amber} />
-      </View>
-
+      <Card style={{gap:8}}><Text style={font.body}>שיעור חזרה: {Math.round(d.returnRate * 100)}%</Text><Delta d={d.returnRateDelta} /><Text style={font.body}>זמן ממוצע: {mmss(d.avgEngagementSec)}</Text><Delta d={d.avgEngagementDelta} /></Card>
+      </Panel>
+      <Panel active={section === 'engagement'}>
       {/* engagement funnels */}
-      <Text style={styles.section}>מעורבות משתמשים</Text>
+      <Text style={styles.section}>מעורבות משתמשים</Text><Text style={font.small}>נתוני הקהילות והמחזורים מצטברים לכל הזמנים</Text>
       <View style={styles.funnelRow}>
         <Funnel label="בקהילה" pct={(d?.inCommunity ?? 0) / totalU * 100} sub={`${d?.inCommunity ?? 0} מתוך ${totalU}`} icon="people" color="#A855F7" />
         <Funnel label="ללא קהילה" pct={(d?.notInCommunity ?? 0) / totalU * 100} sub={`${d?.notInCommunity ?? 0} מתוך ${totalU}`} icon="people-outline" color={colors.amber} />
@@ -158,6 +166,8 @@ export function AnalyticsScreen() {
         </Card>
       ) : null}
 
+      </Panel>
+      <Panel active={section === 'sources'}>
       {/* acquisition */}
       {d?.acquisition.length ? (
         <Card style={{ gap: 12 }}>
@@ -185,6 +195,8 @@ export function AnalyticsScreen() {
         </View>
       </Card>
 
+      </Panel>
+      <Panel active={section === 'engagement'}>
       {/* friends */}
       <Card style={{ gap: 12 }}>
         <Text style={styles.section}>חברויות</Text>
@@ -201,19 +213,21 @@ export function AnalyticsScreen() {
         </View>
       </Card>
 
+      </Panel>
+      <Panel active={section === 'sources'}>
       {/* devices */}
       {d?.devices.length ? (
         <Card style={{ gap: 12 }}>
           <Text style={styles.section}>מכשירים</Text>
           <View style={styles.donutWrap}>
             <Donut
-              segments={d.devices.map((dv) => ({ value: dv.value, color: /android/i.test(dv.name) ? '#34A853' : /ios|iphone/i.test(dv.name) ? '#A855F7' : '#94A3B8' }))}
+              segments={d.devices.map((dv) => ({ value: dv.value, color: /android/i.test(dv.name) ? '#34A853' : /ios|iphone/i.test(dv.name) ? colors.purple : '#94A3B8' }))}
               size={104}
               thickness={16}
             />
             <View style={{ flex: 1, gap: 8 }}>
               {d.devices.map((dv) => {
-                const c = /android/i.test(dv.name) ? '#34A853' : /ios|iphone/i.test(dv.name) ? '#A855F7' : '#94A3B8';
+                const c = /android/i.test(dv.name) ? '#34A853' : /ios|iphone/i.test(dv.name) ? colors.purple : '#94A3B8';
                 const pct = devTotal ? Math.round((dv.value / devTotal) * 100) : 0;
                 return (
                   <View key={dv.name} style={styles.deviceRow}>
@@ -229,6 +243,7 @@ export function AnalyticsScreen() {
         </Card>
       ) : null}
 
+      </Panel></> : null}
       {loading && !d ? <Text style={styles.loadingText}>טוען…</Text> : null}
     </Screen>
   );
@@ -248,7 +263,7 @@ const styles = StyleSheet.create({
   seg: { flex: 1, paddingVertical: 9, paddingHorizontal: 2, borderRadius: radius.sm, alignItems: 'center' },
   segActive: { backgroundColor: colors.primary },
   segText: { ...font.body, fontSize: 13, color: colors.textSoft, fontWeight: '600' },
-  segTextActive: { color: '#fff', fontWeight: '800' },
+  segTextActive: { color: colors.onPrimary, fontWeight: '800' },
 
   row: { flexDirection: 'row', gap: 12 },
   kpi: { flex: 1, gap: 4, alignItems: 'center', paddingVertical: 16 },
@@ -285,6 +300,6 @@ const styles = StyleSheet.create({
   more: { ...font.small, color: colors.primary, fontWeight: '700', textAlign: 'center', paddingVertical: 4 },
   evRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   evDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  evCount: { ...font.title, fontSize: 16, color: colors.text, minWidth: 40, textAlign: 'left' },
-  evName: { flex: 1, ...font.body, color: colors.text, fontSize: 15, textAlign: 'right' },
+  evCount: {  ...font.title, fontSize: 16, color: colors.text, minWidth: 40, textAlign: RTL_VALUE_ALIGN },
+  evName: {  flex: 1, ...font.body, color: colors.text, fontSize: 15, textAlign: RTL_LABEL_ALIGN },
 });

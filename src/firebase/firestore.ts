@@ -699,13 +699,22 @@ function readFieldType(v: unknown): import('@/types').FieldType | undefined {
 export function readGroupSeasons(v: unknown): GroupSeasons | undefined {
   if (!v || typeof v !== 'object') return undefined;
   const d = v as Record<string, unknown>;
-  const currentId = typeof d.currentId === 'string' ? d.currentId : '';
+  const currentId = typeof d.currentId === 'string' ? d.currentId : d.operation && typeof d.operation === 'object' ? 'activation' : '';
   if (!currentId) return undefined;
   const c = (d.cadence && typeof d.cadence === 'object'
     ? (d.cadence as Record<string, unknown>)
     : {}) as Record<string, unknown>;
   return {
     enabled: d.enabled === true,
+    ...(typeof d.policyVersion === 'number' ? { policyVersion: d.policyVersion } : {}),
+    ...(typeof d.revision === 'number' ? { revision: d.revision } : {}),
+    ...(typeof d.includedHistory === 'number' ? { includedHistory: d.includedHistory } : {}),
+    ...(d.nextCadence && typeof d.nextCadence === 'object' ? { nextCadence: readSeasonTarget(d.nextCadence) } : {}),
+    ...(d.manualClose && typeof d.manualClose === 'object' && ['close', 'disable'].includes(String((d.manualClose as Record<string, unknown>).action)) ? {
+      manualClose: { action: (d.manualClose as {action:'close'|'disable'}).action,
+        by: String((d.manualClose as Record<string, unknown>).by ?? ''), byName: String((d.manualClose as Record<string, unknown>).byName ?? ''),
+        at: Number((d.manualClose as Record<string, unknown>).at) || 0 },
+    } : {}),
     ...(typeof d.disabledAt === 'number' ? { disabledAt: d.disabledAt } : {}),
     ...(d.hasArchivedPeriods === true ? { hasArchivedPeriods: true } : {}),
     ...(d.operation && typeof d.operation === 'object' ? { operation: {
@@ -733,6 +742,10 @@ export function readGroupSeasons(v: unknown): GroupSeasons | undefined {
               (d.pendingClose as { seasonId?: unknown }).seasonId ?? '',
             ),
             closeAt: (d.pendingClose as { closeAt: number }).closeAt,
+            ...Object.fromEntries(['dueAt', 'pausedAt', 'remainingMs', 'awaitingVerification'].flatMap(key => {
+              const value = (d.pendingClose as Record<string, unknown>)[key];
+              return typeof value === 'number' && Number.isFinite(value) ? [[key, value]] : [];
+            })),
             ...(typeof (d.pendingClose as { reason?: unknown }).reason === 'string'
               ? { reason: (d.pendingClose as { reason: string }).reason }
               : {}),
@@ -767,6 +780,17 @@ export function readGroupSeasons(v: unknown): GroupSeasons | undefined {
       ...(isCalendarDate(c.endsOn) ? { endsOn: c.endsOn as string } : {}),
     },
     count: typeof d.count === 'number' ? d.count : 0,
+  };
+}
+
+function readSeasonTarget(value: unknown): import('@/utils/seasonPolicy').SeasonTarget {
+  const v = value as Record<string, unknown>;
+  return { type: v.type === 'rounds' ? 'rounds' : 'date',
+    ...(typeof v.months === 'number' ? { months: v.months } : {}),
+    ...(typeof v.targetRounds === 'number' ? { targetRounds: v.targetRounds } : {}),
+    ...(typeof v.endsAt === 'number' ? { endsAt: v.endsAt } : {}),
+    ...(isCalendarDate(v.startsOn) ? { startsOn: v.startsOn } : {}),
+    ...(isCalendarDate(v.endsOn) ? { endsOn: v.endsOn } : {}),
   };
 }
 

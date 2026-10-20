@@ -1,0 +1,955 @@
+{
+  "nonce": 22,
+  "nativeVersion": {
+    "minor": 85,
+    "prerelease": null,
+    "patch": 3,
+    "major": 0
+  },
+  "isRTL": true,
+  "errors": [],
+  "records": [
+    {
+      "text": "פרטי שחקן",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 16,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "center",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 113.52381134033203,
+          "width": 78,
+          "text": "פרטי שחקן"
+        }
+      ],
+      "width": 306.28570556640625,
+      "registered": true
+    },
+    {
+      "text": "מל",
+      "style": {
+        "color": "#14251A",
+        "fontSize": 22,
+        "fontWeight": "700"
+      },
+      "lines": [
+        {
+          "x": 12.190476417541504,
+          "width": 16,
+          "text": "מ"
+        },
+        {
+          "x": 15.2380952835083,
+          "width": 12.952381134033203,
+          "text": "ל"
+        }
+      ],
+      "width": 28.952362060546875,
+      "registered": true
+    },
+    {
+      "text": "⁨מתן לדוגמה⁩",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 20,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 115.80952453613281,
+          "width": 109.71428680419922,
+          "text": "⁨מתן לדוגמה⁩"
+        }
+      ],
+      "width": 225.5238037109375,
+      "registered": true
+    },
+    {
+      "text": "קריית עקרון · פעיל לפני 34 דקות",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 12,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 64.76190185546875,
+          "width": 160.76190185546875,
+          "text": "קריית עקרון · פעיל לפני 34 דקות"
+        }
+      ],
+      "width": 225.5238037109375,
+      "registered": true
+    },
+    {
+      "text": "שיחה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#81C99A",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 8.380952835083008,
+          "width": 24.380952835083008,
+          "text": "שיח"
+        },
+        {
+          "x": 23.619047164916992,
+          "width": 9.142857551574707,
+          "text": "ה"
+        }
+      ],
+      "width": 33.523807525634766,
+      "registered": true
+    },
+    {
+      "text": "סקירה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 9.904762268066406,
+          "width": 34.28571319580078,
+          "text": "סקיר"
+        },
+        {
+          "x": 33.52381134033203,
+          "width": 10.666666984558105,
+          "text": "ה"
+        }
+      ],
+      "width": 44.952362060546875,
+      "registered": true
+    },
+    {
+      "text": "מידע",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#81C99A",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0.3035714328289032,
+          "width": 33.98214340209961,
+          "text": "מידע"
+        }
+      ],
+      "width": 34.28572082519531,
+      "registered": true
+    },
+    {
+      "text": "היסטוריה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 0.3035714328289032,
+          "width": 65.2202377319336,
+          "text": "היסטוריה"
+        }
+      ],
+      "width": 65.52381134033203,
+      "registered": true
+    },
+    {
+      "text": "כלי בדיקה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 255.9583282470703,
+          "width": 60.23214340209961,
+          "text": "כלי בדיקה"
+        }
+      ],
+      "width": 316.9523620605469,
+      "registered": true
+    },
+    {
+      "text": "פרטי חשבון",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 16,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "marginTop": 12,
+        "marginBottom": 2
+      },
+      "lines": [
+        {
+          "x": 297.1785583496094,
+          "width": 81.48809814453125,
+          "text": "פרטי חשבון"
+        }
+      ],
+      "width": 379.4285583496094,
+      "registered": true
+    },
+    {
+      "text": "דוא״ל",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 6.857142925262451,
+          "width": 28.190475463867188,
+          "text": "דוא״"
+        },
+        {
+          "x": 27.428571701049805,
+          "width": 7.61904764175415,
+          "text": "ל"
+        }
+      ],
+      "width": 35.80950927734375,
+      "registered": true
+    },
+    {
+      "text": "לא תועד",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "right",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 0,
+          "width": 51.0476188659668,
+          "text": "לא תועד"
+        }
+      ],
+      "width": 302.4761962890625,
+      "registered": true
+    },
+    {
+      "text": "עיר",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 6.857142925262451,
+          "width": 11.428571701049805,
+          "text": "עי"
+        },
+        {
+          "x": 10.666666984558105,
+          "width": 7.61904764175415,
+          "text": "ר"
+        }
+      ],
+      "width": 19.047607421875,
+      "registered": true
+    },
+    {
+      "text": "קריית עקרון",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "right",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 0,
+          "width": 69.33333587646484,
+          "text": "קריית עקרון"
+        }
+      ],
+      "width": 319.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "הצטרף בתאריך",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 47.238094329833984,
+          "width": 44.19047546386719,
+          "text": "הצטרף "
+        },
+        {
+          "x": 43.42856979370117,
+          "width": 44.9523811340332,
+          "text": "בתאריך"
+        }
+      ],
+      "width": 89.14285278320312,
+      "registered": true
+    },
+    {
+      "text": "10.7.2026",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "right",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 0,
+          "width": 66.28571319580078,
+          "text": "10.7.2026"
+        }
+      ],
+      "width": 249.14285278320312,
+      "registered": true
+    },
+    {
+      "text": "הרשמות ומועדונים",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 16,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "marginTop": 12,
+        "marginBottom": 2
+      },
+      "lines": [
+        {
+          "x": 248.25,
+          "width": 130.4166717529297,
+          "text": "הרשמות ומועדונים"
+        }
+      ],
+      "width": 379.4285583496094,
+      "registered": true
+    },
+    {
+      "text": "לא נמצאו מחזורים מתאימים במידע שנטען",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "paddingVertical": 12
+      },
+      "lines": [
+        {
+          "x": 126.10713958740234,
+          "width": 252.5595245361328,
+          "text": "לא נמצאו מחזורים מתאימים במידע שנטען"
+        }
+      ],
+      "width": 379.4285583496094,
+      "registered": true
+    },
+    {
+      "text": "כדורגל אנשים טובים",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 151.9166717529297,
+          "width": 139.13095092773438,
+          "text": "כדורגל אנשים טובים"
+        }
+      ],
+      "width": 291.047607421875,
+      "registered": true
+    },
+    {
+      "text": "מנהל",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#81C99A",
+        "textAlign": "left",
+        "borderWidth": 1,
+        "borderColor": "#81C99A",
+        "borderRadius": 12,
+        "paddingHorizontal": 10,
+        "paddingVertical": 3
+      },
+      "lines": [
+        {
+          "x": 0.2738095223903656,
+          "width": 30.202381134033203,
+          "text": "מנהל"
+        }
+      ],
+      "width": 52.57142639160156,
+      "registered": true
+    },
+    {
+      "text": "חבר מאז יולי 2026",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 245.74107360839844,
+          "width": 105.49702453613281,
+          "text": "חבר מאז יולי 2026"
+        }
+      ],
+      "width": 351.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "מועדון שחקני הערב",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 157.25595092773438,
+          "width": 133.7916717529297,
+          "text": "מועדון שחקני הערב"
+        }
+      ],
+      "width": 291.047607421875,
+      "registered": true
+    },
+    {
+      "text": "מנהל",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#81C99A",
+        "textAlign": "left",
+        "borderWidth": 1,
+        "borderColor": "#81C99A",
+        "borderRadius": 12,
+        "paddingHorizontal": 10,
+        "paddingVertical": 3
+      },
+      "lines": [
+        {
+          "x": 0.2738095223903656,
+          "width": 30.202381134033203,
+          "text": "מנהל"
+        }
+      ],
+      "width": 52.57142639160156,
+      "registered": true
+    },
+    {
+      "text": "חבר מאז יולי 2026",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 245.74107360839844,
+          "width": 105.49702453613281,
+          "text": "חבר מאז יולי 2026"
+        }
+      ],
+      "width": 351.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "כדורגל אנשים טובים",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 156.48809814453125,
+          "width": 139.13095092773438,
+          "text": "כדורגל אנשים טובים"
+        }
+      ],
+      "width": 296.38092041015625,
+      "registered": true
+    },
+    {
+      "text": "חבר",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "borderWidth": 1,
+        "borderColor": "#9DA6A1",
+        "borderRadius": 12,
+        "paddingHorizontal": 10,
+        "paddingVertical": 3
+      },
+      "lines": [
+        {
+          "x": 0.4077380895614624,
+          "width": 24.735118865966797,
+          "text": "חבר"
+        }
+      ],
+      "width": 47.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "חבר מאז יולי 2026",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 245.74107360839844,
+          "width": 105.49702453613281,
+          "text": "חבר מאז יולי 2026"
+        }
+      ],
+      "width": 351.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "מועדון שחקני הערב",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 161.82737731933594,
+          "width": 133.7916717529297,
+          "text": "מועדון שחקני הערב"
+        }
+      ],
+      "width": 296.38092041015625,
+      "registered": true
+    },
+    {
+      "text": "חבר",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "borderWidth": 1,
+        "borderColor": "#9DA6A1",
+        "borderRadius": 12,
+        "paddingHorizontal": 10,
+        "paddingVertical": 3
+      },
+      "lines": [
+        {
+          "x": 0.4077380895614624,
+          "width": 24.735118865966797,
+          "text": "חבר"
+        }
+      ],
+      "width": 47.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "חבר מאז יולי 2026",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 245.74107360839844,
+          "width": 105.49702453613281,
+          "text": "חבר מאז יולי 2026"
+        }
+      ],
+      "width": 351.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "כדורגל אנשים טובים",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 156.48809814453125,
+          "width": 139.13095092773438,
+          "text": "כדורגל אנשים טובים"
+        }
+      ],
+      "width": 296.38092041015625,
+      "registered": true
+    },
+    {
+      "text": "חבר",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "borderWidth": 1,
+        "borderColor": "#9DA6A1",
+        "borderRadius": 12,
+        "paddingHorizontal": 10,
+        "paddingVertical": 3
+      },
+      "lines": [
+        {
+          "x": 0.4077380895614624,
+          "width": 24.735118865966797,
+          "text": "חבר"
+        }
+      ],
+      "width": 47.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "חבר מאז יולי 2026",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 245.74107360839844,
+          "width": 105.49702453613281,
+          "text": "חבר מאז יולי 2026"
+        }
+      ],
+      "width": 351.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "מועדון שחקני הערב",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 161.82737731933594,
+          "width": 133.7916717529297,
+          "text": "מועדון שחקני הערב"
+        }
+      ],
+      "width": 296.38092041015625,
+      "registered": true
+    },
+    {
+      "text": "חבר",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "borderWidth": 1,
+        "borderColor": "#9DA6A1",
+        "borderRadius": 12,
+        "paddingHorizontal": 10,
+        "paddingVertical": 3
+      },
+      "lines": [
+        {
+          "x": 0.4077380895614624,
+          "width": 24.735118865966797,
+          "text": "חבר"
+        }
+      ],
+      "width": 47.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "חבר מאז יולי 2026",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 245.74107360839844,
+          "width": 105.49702453613281,
+          "text": "חבר מאז יולי 2026"
+        }
+      ],
+      "width": 351.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "כדורגל אנשים טובים",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 15,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 156.48809814453125,
+          "width": 139.13095092773438,
+          "text": "כדורגל אנשים טובים"
+        }
+      ],
+      "width": 296.38092041015625,
+      "registered": true
+    },
+    {
+      "text": "חבר",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "borderWidth": 1,
+        "borderColor": "#9DA6A1",
+        "borderRadius": 12,
+        "paddingHorizontal": 10,
+        "paddingVertical": 3
+      },
+      "lines": [
+        {
+          "x": 0.4077380895614624,
+          "width": 24.735118865966797,
+          "text": "חבר"
+        }
+      ],
+      "width": 47.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "חבר מאז יולי 2026",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 13,
+        "fontWeight": "500",
+        "color": "#9DA6A1",
+        "textAlign": "left"
+      },
+      "lines": [
+        {
+          "x": 245.74107360839844,
+          "width": 105.49702453613281,
+          "text": "חבר מאז יולי 2026"
+        }
+      ],
+      "width": 351.23809814453125,
+      "registered": true
+    },
+    {
+      "text": "מכשירים וגרסאות",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 16,
+        "fontWeight": "700",
+        "color": "#F3F1EC",
+        "textAlign": "left",
+        "marginTop": 12,
+        "marginBottom": 2
+      },
+      "lines": [
+        {
+          "x": 252.98809814453125,
+          "width": 125.67857360839844,
+          "text": "מכשירים וגרסאות"
+        }
+      ],
+      "width": 379.4285583496094,
+      "registered": true
+    },
+    {
+      "text": "מחזורים ששיחק",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 219.71725463867188,
+          "width": 96.47321319580078,
+          "text": "מחזורים ששיחק"
+        }
+      ],
+      "width": 316.9523620605469,
+      "registered": true
+    },
+    {
+      "text": "מחזורים שיצר",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 233.43154907226562,
+          "width": 82.75892639160156,
+          "text": "מחזורים שיצר"
+        }
+      ],
+      "width": 316.9523620605469,
+      "registered": true
+    },
+    {
+      "text": "פרטי רישום והתראות למכשירים",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 125.95536041259766,
+          "width": 190.23512268066406,
+          "text": "פרטי רישום והתראות למכשירים"
+        }
+      ],
+      "width": 316.9523620605469,
+      "registered": true
+    },
+    {
+      "text": "חברים, הזמנות ובקשות",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 179.00595092773438,
+          "width": 137.1845245361328,
+          "text": "חברים, הזמנות ובקשות"
+        }
+      ],
+      "width": 316.9523620605469,
+      "registered": true
+    },
+    {
+      "text": "קישור הזמנה ומקור הגעה",
+      "style": {
+        "direction": "rtl",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#BEC3C0",
+        "textAlign": "left",
+        "flex": 1
+      },
+      "lines": [
+        {
+          "x": 166.38392639160156,
+          "width": 149.80654907226562,
+          "text": "קישור הזמנה ומקור הגעה"
+        }
+      ],
+      "width": 316.9523620605469,
+      "registered": true
+    }
+  ]
+}

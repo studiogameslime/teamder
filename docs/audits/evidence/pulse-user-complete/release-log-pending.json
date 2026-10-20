@@ -1,0 +1,21 @@
+{
+  "status": "not_uploaded",
+  "target": "appConfig/releaseLog",
+  "reason": "אין חיבור ניהול ייצור מאומת; יש לקרוא יומן קיים ולהוסיף ללא דריסה, ולהעלות צילומי הוכחה לפני קישור shotId.",
+  "items": [
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "פולס",
+      "title": "כרטיס משתמש מאוחד עם פרופיל מלא, קשרים, נתוני תמיכה ומקורות לפי דרישה",
+      "proofFile": "docs/features/screenshots/pulse-user-complete-profile-390-2026-10-18.png"
+    },
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "פולס",
+      "title": "קריאות מסוננות ומוטמנות לכרטיס משתמש ללא הורדת צילומי דיווחים ברשימה",
+      "proofFile": "docs/features/screenshots/pulse-user-complete-reports-390-2026-10-18.png"
+    }
+  ]
+}
