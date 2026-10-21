@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 // PushScreen — per-push-type analytics + delivery health. Real "sent" counts
 // grouped by type, exact delivery breakdown (delivered / failed / no-token /
 // muted) from each notification's stats block, and an honest note that true
@@ -81,7 +82,7 @@ export function PushScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (force = false) => {
-    const d = await fetchPushStats(force).catch(() => null);
+    const d = await fetchPushStats(force).catch((caughtError060ec10ae0: unknown) => { observeCaughtError(caughtError060ec10ae0, {"source":"pulse/src/screens/PushScreen.tsx","handler":"PushScreen","site":"PushScreen:060ec10ae0"}); return null; });
     setData(d);
     setLoading(false);
     setRefreshing(false);

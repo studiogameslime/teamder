@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 // IdeasScreen — a backlog for product ideas. Jot free text (+ optional
 // screenshots) and move each idea through three statuses: רעיון (parked) →
 // לאיפיון (Claude should spec it) → לביצוע (spec approved, ready to build).
@@ -84,7 +85,8 @@ export function IdeasScreen() {
           base64: true,
         });
         if (m.base64) next.push(m.base64);
-      } catch {
+      } catch (caughtError351974ed59) {
+    observeCaughtError(caughtError351974ed59, {"source":"pulse/src/screens/IdeasScreen.tsx","handler":"pickImages","site":"IdeasScreen:351974ed59"});
         /* skip a bad image */
       }
     }

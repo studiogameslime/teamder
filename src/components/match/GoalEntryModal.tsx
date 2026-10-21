@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -97,6 +98,7 @@ export function GoalEntryModal({ gameId, side, teamLabel, teamColor, teamInk, ot
         setStatus('saved');
       }
     } catch (error) {
+    observeCaughtError(error, {"source":"src/components/match/GoalEntryModal.tsx","handler":"save","site":"GoalEntryModal:d466f0647a"});
       if (epoch === generation.current) {
         setReselectAllowed((error as {code?:string})?.code === 'LIVE_ROSTER_CHANGED');
         setStatus('error');

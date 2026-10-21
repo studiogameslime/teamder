@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -94,7 +95,8 @@ export function AnalyticsScreen() {
     try {
       const next = await fetchAnalyticsFull(r, { force });
       if (current === request.current) setData(next);
-    } catch { if (current === request.current) setError(true); }
+    } catch (caughtError8883f46e84) {
+    observeCaughtError(caughtError8883f46e84, {"source":"pulse/src/screens/AnalyticsScreen.tsx","handler":"AnalyticsScreen","site":"AnalyticsScreen:8883f46e84"}); if (current === request.current) setError(true); }
     finally { if (current === request.current) { setLoading(false); setRefreshing(false); } }
   }, []);
   useEffect(() => { setLoading(true); void load(range); return () => { ++request.current; }; }, [range, load]);

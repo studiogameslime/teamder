@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 // MapWebView — zero-cost interactive map (NO API key, NO billing). MapLibre GL
 // JS over the OpenFreeMap "liberty" vector style inside a WebView, locked to
 // Israel, with numbered clusters. Ported from the Teamder app so Pulse's maps
@@ -71,7 +72,8 @@ export function MapWebView({
       ) {
         onClusterPress(msg.ids);
       }
-    } catch {
+    } catch (caughtError18f0b35a2b) {
+    observeCaughtError(caughtError18f0b35a2b, {"source":"pulse/src/components/MapWebView.tsx","handler":"handleMessage","site":"MapWebView:18f0b35a2b"});
       // Ignore malformed bridge messages.
     }
   };

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // communityEventsService — per-community, per-player timeline events.
 //
 // Backs three things: the admin-only player timeline (yellow/red/ball/jerseys),
@@ -94,6 +95,7 @@ export const communityEventsService = {
     try {
       await setDoc(ref!, ev);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/communityEventsService.ts","handler":"logCardEvent","site":"communityEventsService:87cdc10c7e"});
       logError('logCardEvent', err, { groupId, userId, type });
       throw err;
     }
@@ -138,6 +140,7 @@ export const communityEventsService = {
     try {
       await Promise.all(items.map((i) => setDoc(i.ref!, i.ev)));
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/communityEventsService.ts","handler":"logEquipmentEvents","site":"communityEventsService:3fece87928"});
       logError('logEquipmentEvents', err, { groupId, gameId });
     }
   },
@@ -174,6 +177,7 @@ export const communityEventsService = {
     try {
       await setDoc(ref!, ev);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/communityEventsService.ts","handler":"logEquipmentChange","site":"communityEventsService:35545b3dd5"});
       logError('logEquipmentChange', err, { groupId, userId, type });
       throw err;
     }
@@ -199,6 +203,7 @@ export const communityEventsService = {
       );
       return snap.docs.map((d) => d.data() as CommunityPlayerEvent);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/communityEventsService.ts","handler":"getPlayerTimeline","site":"communityEventsService:2cdd184a16"});
       logError('getPlayerTimeline', err, { groupId, userId });
       throw err;
     }
@@ -225,6 +230,7 @@ export const communityEventsService = {
         );
         rows = snap.docs.map((d) => d.data() as CommunityPlayerEvent);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/communityEventsService.ts","handler":"getLastTakenMap","site":"communityEventsService:ec02c90758"});
         logError('getLastTakenMap', err, { groupId });
         return {};
       }
@@ -268,6 +274,7 @@ export const communityEventsService = {
         );
         rows = snap.docs.map((d) => d.data() as CommunityPlayerEvent);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/communityEventsService.ts","handler":"getActiveCardCounts","site":"communityEventsService:bab996007c"});
         logError('getActiveCardCounts', err, { groupId });
         return {};
       }
@@ -303,6 +310,7 @@ export const communityEventsService = {
         revokedAt: Date.now(),
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/communityEventsService.ts","handler":"revokeCard","site":"communityEventsService:47849a583e"});
       logError('revokeCard', err, { id });
       throw err;
     }
@@ -337,6 +345,7 @@ export const communityEventsService = {
         );
         rows = snap.docs.map((d) => d.data() as CommunityPlayerEvent);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/communityEventsService.ts","handler":"hasActiveRedCard","site":"communityEventsService:3b262d20bb"});
         logError('hasActiveRedCard', err, { groupId, userId });
         return false;
       }

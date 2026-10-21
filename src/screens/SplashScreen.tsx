@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // SplashScreen — the app's single launch screen, and the new person's welcome.
 //
 // ─── One screen, two endings ────────────────────────────────────────────
@@ -202,7 +203,7 @@ export function SplashScreen({ ready, awaitStart = false, onFinish }: Props) {
       // matter how fast boot is, so a bar that finished sooner would just sit
       // at the end.
       .then((v) => alive && setExpectedMs(Math.max(MIN_HOLD_MS, v ?? DEFAULT_BOOT_MS)))
-      .catch(() => alive && setExpectedMs(Math.max(MIN_HOLD_MS, DEFAULT_BOOT_MS)));
+      .catch((caughtError679d4907ac: unknown) => { observeCaughtError(caughtError679d4907ac, {"source":"src/screens/SplashScreen.tsx","handler":"SplashScreen","site":"SplashScreen:679d4907ac"}); return alive && setExpectedMs(Math.max(MIN_HOLD_MS, DEFAULT_BOOT_MS)); });
     return () => {
       alive = false;
     };
@@ -219,7 +220,8 @@ export function SplashScreen({ ready, awaitStart = false, onFinish }: Props) {
   }, [ready]);
 
   useEffect(() => {
-    ExpoSplash.hideAsync().catch(() => {});
+    ExpoSplash.hideAsync().catch((caughtError922d448628: unknown) => {
+    observeCaughtError(caughtError922d448628, {"source":"src/screens/SplashScreen.tsx","handler":"SplashScreen","site":"SplashScreen:922d448628"});});
   }, []);
 
   const dismiss = React.useCallback(() => {

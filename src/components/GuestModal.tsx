@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // GuestModal — the coach's "add a guest" form. Opens from Game Details
 // and from Live Match (admins only). Captures a name (required, ≤20)
@@ -169,6 +170,7 @@ export function GuestModal({
       if (onChanged) await onChanged(action, saved);
       onClose();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/GuestModal.tsx","handler":"handleSave","site":"GuestModal:4562859f66"});
       const msg = (err as Error).message ?? '';
       logError(existing ? 'updateGuest' : 'addGuest', err, {
         screen: 'GuestModal',
@@ -220,6 +222,7 @@ export function GuestModal({
               if (onRemoved) await onRemoved(existing);
               onClose();
             } catch (err) {
+    observeCaughtError(err, {"source":"src/components/GuestModal.tsx","handler":"onPress","site":"GuestModal:50deaf1818"});
               const msg = (err as Error).message ?? '';
               logError('removeGuest', err, {
                 screen: 'GuestModal',

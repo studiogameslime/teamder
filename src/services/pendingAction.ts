@@ -1,3 +1,5 @@
+import { observedRejection, observeCaughtError } from '../utils/errorObservation';
+
 // pendingAction — "what were you trying to do before we interrupted you".
 //
 // Supersedes `PendingInvite` (see `src/services/storage.ts`) without replacing
@@ -297,12 +299,14 @@ export async function readPendingAction(
       await AsyncStorage.removeItem(KEY);
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/pendingAction.ts","handler":"readPendingAction","site":"pendingAction:ad3f7e4ce0"});
     if (__DEV__) console.warn('[pendingAction] read failed', err);
   }
   try {
     const legacy = await storage.getPendingInvite();
     return legacy ? fromLegacyInvite(legacy, now) : null;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/pendingAction.ts","handler":"readPendingAction","site":"pendingAction:e47555f1f0"});
     if (__DEV__) console.warn('[pendingAction] legacy read failed', err);
     return null;
   }
@@ -325,6 +329,7 @@ export async function writePendingAction(action: PendingAction): Promise<void> {
     if (legacy) await storage.setPendingInvite(legacy);
     else await storage.clearPendingInvite();
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/pendingAction.ts","handler":"writePendingAction","site":"pendingAction:f9a227a6ff"});
     if (__DEV__) console.warn('[pendingAction] legacy projection failed', err);
   }
   });
@@ -358,8 +363,9 @@ export async function pendingActionMatches(expected: PendingAction): Promise<boo
 
 let pendingQueue: Promise<unknown> = Promise.resolve();
 function serializePending<T>(fn: () => Promise<T>): Promise<T> {
-  const next = pendingQueue.then(fn, fn);
-  pendingQueue = next.catch(() => {});
+  const next = pendingQueue.then(fn, observedRejection(fn, {"source":"src/services/pendingAction.ts","handler":"serializePending","site":"pendingAction:e43030ee3b"}));
+  pendingQueue = next.catch((caughtError55affa2bc7: unknown) => {
+    observeCaughtError(caughtError55affa2bc7, {"source":"src/services/pendingAction.ts","handler":"serializePending","site":"pendingAction:55affa2bc7"});});
   return next;
 }
 
@@ -383,11 +389,13 @@ async function clearPendingKeys(): Promise<void> {
   try {
     await AsyncStorage.removeItem(KEY);
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/pendingAction.ts","handler":"clearPendingKeys","site":"pendingAction:043faa0c1d"});
     if (__DEV__) console.warn('[pendingAction] clear failed', err);
   }
   try {
     await storage.clearPendingInvite();
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/pendingAction.ts","handler":"clearPendingKeys","site":"pendingAction:84b87a09ee"});
     if (__DEV__) console.warn('[pendingAction] legacy clear failed', err);
   }
 }
@@ -412,7 +420,8 @@ export async function consumePendingAction(
 function safeJson(raw: string): unknown {
   try {
     return JSON.parse(raw);
-  } catch {
+  } catch (caughtError9b55487c27) {
+    observeCaughtError(caughtError9b55487c27, {"source":"src/services/pendingAction.ts","handler":"safeJson","site":"pendingAction:9b55487c27"});
     return null;
   }
 }

@@ -1,3 +1,4 @@
+import { observeCaughtError, observeSettledErrors } from '../utils/errorObservation';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getFirebase } from '@/firebase/config';
 import { logError } from './errorLog';
@@ -12,7 +13,8 @@ export async function loadPersonalHighlights(uid: string, rounds: PersonalRound[
   try {
     const snap=await getDocs(query(collection(db,'eveningStandings'),where('userId','==',uid)));
     for(const d of snap.docs) {const v=d.data();if(typeof v.gameId==='string'&&typeof v.score==='number')scores[v.gameId]=v.score;}
-  } catch(error) {incomplete=true;logError('personalStats.scores',error,{userId:uid});}
+  } catch(error) {
+    observeCaughtError(error, {"source":"src/services/personalHighlightsService.ts","handler":"loadPersonalHighlights","site":"personalHighlightsService:3b9dc63eb3"});incomplete=true;logError('personalStats.scores',error,{userId:uid});}
   if (options.isCurrent?.() === false) return personalHighlights(rounds,scores,rows,true);
   options.onProgress?.(personalHighlights(rounds,scores,rows,true));
   // Recent rounds first: the chart and current results become useful while
@@ -21,7 +23,7 @@ export async function loadPersonalHighlights(uid: string, rounds: PersonalRound[
   for(let i=0;i<ordered.length;i+=4) {
     if (options.isCurrent?.() === false) return personalHighlights(rounds,scores,rows,true);
     const batch=ordered.slice(i,i+4);
-    const results=await Promise.allSettled(batch.map(r=>getDocs(query(collection(db,'gamePlayerStats'),where('gameId','==',r.gameId),where('userId','==',uid)))));
+    const results=await Promise.allSettled(batch.map(r=>getDocs(query(collection(db,'gamePlayerStats'),where('gameId','==',r.gameId),where('userId','==',uid))))).then(results => observeSettledErrors(results, {"source":"src/services/personalHighlightsService.ts","handler":"loadPersonalHighlights","site":"personalHighlightsService:5e0a649286"}));
     results.forEach((r,j)=>{if(r.status==='fulfilled'){const row=r.value.docs[0];if(row)rows[batch[j].gameId]=row.data();}else{incomplete=true;logError('personalStats.round',r.reason,{gameId:batch[j].gameId});}});
     if (options.isCurrent?.() !== false && i+4<ordered.length) options.onProgress?.(personalHighlights(rounds,scores,rows,true));
   }

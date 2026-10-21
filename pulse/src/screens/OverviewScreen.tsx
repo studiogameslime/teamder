@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import { Disclosure } from '../components/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -60,7 +61,8 @@ export function OverviewScreen() {
       const v = await fetchErrors(force);
       setErrors(v);
       persist('ov.errors', v);
-    } catch {
+    } catch (caughtErrorab5d22ced0) {
+    observeCaughtError(caughtErrorab5d22ced0, {"source":"pulse/src/screens/OverviewScreen.tsx","handler":"OverviewScreen","site":"OverviewScreen:ab5d22ced0"});
       /* ignore */
     }
   }, []);
@@ -69,7 +71,8 @@ export function OverviewScreen() {
       const v = await fetchLifetimeStats();
       setLifetime(v);
       persist('ov.lifetime', v);
-    } catch {
+    } catch (caughtError10165e525d) {
+    observeCaughtError(caughtError10165e525d, {"source":"pulse/src/screens/OverviewScreen.tsx","handler":"OverviewScreen","site":"OverviewScreen:10165e525d"});
       /* ignore */
     }
   }, []);
@@ -78,7 +81,8 @@ export function OverviewScreen() {
       const v = await fetchLinkClickStats();
       setClicks(v);
       persist('ov.clicks', v);
-    } catch {
+    } catch (caughtError24f536347c) {
+    observeCaughtError(caughtError24f536347c, {"source":"pulse/src/screens/OverviewScreen.tsx","handler":"OverviewScreen","site":"OverviewScreen:24f536347c"});
       /* ignore */
     }
   }, []);
@@ -88,7 +92,8 @@ export function OverviewScreen() {
       const v = await fetchUserCounts();
       setUserCounts(v);
       persist('ov.userCounts', v);
-    } catch {
+    } catch (caughtErrorb8eaa95c99) {
+    observeCaughtError(caughtErrorb8eaa95c99, {"source":"pulse/src/screens/OverviewScreen.tsx","handler":"OverviewScreen","site":"OverviewScreen:b8eaa95c99"});
       /* ignore */
     }
   }, []);

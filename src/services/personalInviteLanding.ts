@@ -1,3 +1,4 @@
+import { observeSettledErrors } from '../utils/errorObservation';
 import { resolveInviteActivity, MAX_CLUBS } from './personalInvite';
 import { socialPlayersService } from './socialPlayersService';
 import { groupService } from './groupService';
@@ -22,13 +23,13 @@ export async function resolveInviteLandingActivity(
   const [activity, profile] = await Promise.allSettled([
     resolveInviteActivity(inviterId, viewerId),
     socialPlayersService.profile(inviterId),
-  ]);
+  ]).then(results => observeSettledErrors(results, {"source":"src/services/personalInviteLanding.ts","handler":"resolveInviteLandingActivity","site":"personalInviteLanding:63efa9b420"}));
   if (activity.status === 'rejected' && profile.status === 'rejected') throw activity.reason;
   const publicActivity = activity.status === 'fulfilled' ? activity.value : null;
   const ids = profile.status === 'fulfilled'
     ? [...new Set(profile.value.clubs.map(c => c.id))].slice(0, MAX_CLUBS)
     : [];
-  const mirrors = await Promise.allSettled(ids.map(id => groupService.getPublic(id)));
+  const mirrors = await Promise.allSettled(ids.map(id => groupService.getPublic(id))).then(results => observeSettledErrors(results, {"source":"src/services/personalInviteLanding.ts","handler":"resolveInviteLandingActivity","site":"personalInviteLanding:70ec8fb93b"}));
   const clubs = new Map<string, GroupPublic>();
   for (const result of mirrors) {
     if (result.status === 'fulfilled' && result.value) clubs.set(result.value.id, result.value);

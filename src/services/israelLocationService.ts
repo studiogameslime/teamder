@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // israelLocationService — autocomplete for Israeli city names, backed by
 // data.gov.il's CKAN-style datastore_search endpoint.
 //
@@ -91,6 +92,7 @@ async function loadAllCities(): Promise<string[]> {
     allCities = names;
     return names;
   })().catch((err) => {
+    observeCaughtError(err, {"source":"src/services/israelLocationService.ts","handler":"loadAllCities","site":"israelLocationService:d3fa211ef0"});
     // Reset so a transient network failure can be retried next keystroke.
     allCitiesPromise = null;
     throw err;
@@ -128,6 +130,7 @@ export async function searchCities(query: string): Promise<string[]> {
     cityCache.set(q, limited);
     return limited;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/israelLocationService.ts","handler":"searchCities","site":"israelLocationService:728c418301"});
     logError('searchCities', err, { query: q });
     if (__DEV__) console.warn('[israelLocation] searchCities failed', err);
     return [];

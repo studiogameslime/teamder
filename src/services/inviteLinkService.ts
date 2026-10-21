@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // inviteLinkService — turns any share into a SHORT link.
 //
 // Instead of `…/session/<20-char id>?invitedBy=<28-char uid>` (~90 chars), we
@@ -60,6 +61,7 @@ export async function createShortInviteUrl(args: {
       ? `${base}?invitedBy=${encodeURIComponent(args.invitedBy)}`
       : base;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/inviteLinkService.ts","handler":"createShortInviteUrl","site":"inviteLinkService:322e4b0ded"});
     logError('createShortInviteUrl', err, { type: args.type });
     return args.fallbackLong;
   }

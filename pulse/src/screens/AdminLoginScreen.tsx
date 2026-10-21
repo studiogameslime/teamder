@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RtlTextInput as TextInput } from '../components/RtlTextInput';
@@ -11,7 +12,8 @@ export function AdminLoginScreen() {
     if (busy) return;
     setBusy(true); setError('');
     try { if (google) await signInPulseGoogle(); else await signInPulseEmail(email, password); setPassword(''); }
-    catch (e) { setError(e instanceof Error ? e.message : 'ההתחברות לא הצליחה'); }
+    catch (e) {
+    observeCaughtError(e, {"source":"pulse/src/screens/AdminLoginScreen.tsx","handler":"login","site":"AdminLoginScreen:4c6a5b2457"}); setError(e instanceof Error ? e.message : 'ההתחברות לא הצליחה'); }
     finally { setBusy(false); }
   };
   return <View style={styles.screen}>

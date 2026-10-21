@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // LEGACY, retained outside the active App.tsx import graph (2026-10-10).
 // Current comparison screens use pairCompareService.ts and communityPairStats.
 // The historical comments below do not describe the current comparison pipeline.
@@ -147,7 +148,7 @@ export const playerCompareService = {
       // scan can simply be given the season, which keeps the authoritative
       // finished-nights count AND puts it in the same scope as the rest.
       // One extra document read is the price of the card agreeing with itself.
-      const group = await groupService.get(groupId).catch(() => null);
+      const group = await groupService.get(groupId).catch((caughtError4c839c78d5: unknown) => { observeCaughtError(caughtError4c839c78d5, {"source":"src/services/playerCompareService.ts","handler":"getComparison","site":"playerCompareService:4c839c78d5"}); return null; });
       const season =
         group?.seasons?.enabled && group.seasons.currentId
           ? {
@@ -159,10 +160,10 @@ export const playerCompareService = {
       // scan) — same source the champions table reads — so the compare card
       // doesn't disagree with it over the drift-prone `games` rollup.
       const [champ, stats, ua, ub] = await Promise.all([
-        gameService.getCommunityChampionship(groupId).catch(() => null),
-        gameService.getCommunityStats(groupId, season).catch(() => null),
-        userService.getUserById(uidA).catch(() => null),
-        userService.getUserById(uidB).catch(() => null),
+        gameService.getCommunityChampionship(groupId).catch((caughtErrore6808ec113: unknown) => { observeCaughtError(caughtErrore6808ec113, {"source":"src/services/playerCompareService.ts","handler":"getComparison","site":"playerCompareService:e6808ec113"}); return null; }),
+        gameService.getCommunityStats(groupId, season).catch((caughtErrordf10160b45: unknown) => { observeCaughtError(caughtErrordf10160b45, {"source":"src/services/playerCompareService.ts","handler":"getComparison","site":"playerCompareService:df10160b45"}); return null; }),
+        userService.getUserById(uidA).catch((caughtErrore593ade743: unknown) => { observeCaughtError(caughtErrore593ade743, {"source":"src/services/playerCompareService.ts","handler":"getComparison","site":"playerCompareService:e593ade743"}); return null; }),
+        userService.getUserById(uidB).catch((caughtError1a61d4f53b: unknown) => { observeCaughtError(caughtError1a61d4f53b, {"source":"src/services/playerCompareService.ts","handler":"getComparison","site":"playerCompareService:1a61d4f53b"}); return null; }),
       ]);
 
       const rows = (champ?.players ?? []) as Row[];
@@ -259,6 +260,7 @@ export const playerCompareService = {
         rankTotal: rows.length,
       };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/playerCompareService.ts","handler":"getComparison","site":"playerCompareService:d7a95ec423"});
       logError('getComparison', err, { groupId, uidA, uidB });
       return null;
     }

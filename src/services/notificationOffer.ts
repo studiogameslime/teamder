@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Whether to offer notifications, and for what reason.
 //
 // ─── Why this is one file ────────────────────────────────────────────────
@@ -84,7 +85,8 @@ async function readAsked(): Promise<Set<string>> {
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
     return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
-  } catch {
+  } catch (caughtError4ad6eb8f2c) {
+    observeCaughtError(caughtError4ad6eb8f2c, {"source":"src/services/notificationOffer.ts","handler":"readAsked","site":"notificationOffer:4ad6eb8f2c"});
     return new Set();
   }
 }
@@ -145,7 +147,8 @@ export async function shouldOffer(
     if (Number.isFinite(at) && at > 0 && now - at < COOLDOWN_MS) {
       return { show: false, reason: 'cooldown', state };
     }
-  } catch {
+  } catch (caughtError2fdc7d9836) {
+    observeCaughtError(caughtError2fdc7d9836, {"source":"src/services/notificationOffer.ts","handler":"shouldOffer","site":"notificationOffer:2fdc7d9836"});
     // An unreadable cooldown is not a reason to nag; treat it as elapsed only
     // because the per-context `asked` mark above is the stronger guard.
   }
@@ -164,7 +167,8 @@ export async function markOffered(
     asked.add(context);
     await AsyncStorage.setItem(ASKED_KEY, JSON.stringify([...asked]));
     await AsyncStorage.setItem(LAST_SHOWN_KEY, String(now));
-  } catch {
+  } catch (caughtError7795454eaf) {
+    observeCaughtError(caughtError7795454eaf, {"source":"src/services/notificationOffer.ts","handler":"markOffered","site":"notificationOffer:7795454eaf"});
     // Worst case the sheet appears once more. Not worth failing anything over.
   }
 }
@@ -174,7 +178,8 @@ export async function markOffered(
 export async function resetOffers(): Promise<void> {
   try {
     await AsyncStorage.multiRemove([ASKED_KEY, LAST_SHOWN_KEY]);
-  } catch {
+  } catch (caughtError0b5396bd38) {
+    observeCaughtError(caughtError0b5396bd38, {"source":"src/services/notificationOffer.ts","handler":"resetOffers","site":"notificationOffer:0b5396bd38"});
     // Ignored on purpose.
   }
 }
@@ -213,7 +218,8 @@ export function setOfferListener(fn: Listener | null): void {
   pending = null;
   try {
     fn(queued.context, queued.opts);
-  } catch {
+  } catch (caughtErrorab129043dd) {
+    observeCaughtError(caughtErrorab129043dd, {"source":"src/services/notificationOffer.ts","handler":"setOfferListener","site":"notificationOffer:ab129043dd"});
     // Same contract as announcing: presentation cannot break anything.
   }
 }
@@ -238,7 +244,8 @@ export function announceCompleted(
     // before the host is ready, the most recent is the one the person is
     // looking at, and queueing both would mean two sheets in a row.
     pending = { context, opts };
-  } catch {
+  } catch (caughtErrorec0f4928b8) {
+    observeCaughtError(caughtErrorec0f4928b8, {"source":"src/services/notificationOffer.ts","handler":"announceCompleted","site":"notificationOffer:ec0f4928b8"});
     // Swallowed deliberately — see above.
   }
 }

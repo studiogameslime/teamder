@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // "האם המחזור התקיים?" — asked once, in one place, only when it has to be.
 //
 // An evening the system closed with no trace of play is the one case it cannot
@@ -88,7 +89,8 @@ export function UnverifiedEveningsCard({
     setLoadFailed(false);
     void eveningVerifyService.listUnverified(groupId).then((r) => {
       if (alive) setItems(r);
-    }).catch(() => { if (alive) setLoadFailed(true); });
+    }).catch((caughtError3d3d0b9802: unknown) => {
+    observeCaughtError(caughtError3d3d0b9802, {"source":"src/components/community/UnverifiedEveningsCard.tsx","handler":"UnverifiedEveningsCard","site":"UnverifiedEveningsCard:3d3d0b9802"}); if (alive) setLoadFailed(true); });
     return () => {
       alive = false;
     };

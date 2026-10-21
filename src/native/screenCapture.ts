@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Native PixelCopy screen capture (Android). Reads the real window surface so
 // maps/GL/video aren't black, unlike react-native-view-shot's Canvas path.
 // Backed by the ScreenCapture native module (plugins/withScreenCapture.js);
@@ -5,8 +6,9 @@
 // caller can fall back.
 
 import { NativeModules } from 'react-native';
+import { drainNativeDiagnostics, type NativeDiagnosticBridge } from './nativeDiagnostics';
 
-interface ScreenCaptureNative {
+interface ScreenCaptureNative extends NativeDiagnosticBridge {
   captureFullScreen(quality: number, maxWidth: number): Promise<string>;
 }
 
@@ -23,7 +25,10 @@ export async function captureFullScreenBase64(
   if (!native?.captureFullScreen) return null;
   try {
     return await native.captureFullScreen(opts.quality ?? 0.4, opts.maxWidth ?? 600);
-  } catch {
+  } catch (caughtError5bb172546e) {
+    observeCaughtError(caughtError5bb172546e, {"source":"src/native/screenCapture.ts","handler":"captureFullScreenBase64","site":"screenCapture:5bb172546e"});
     return null;
+  } finally {
+    await drainNativeDiagnostics(native);
   }
 }

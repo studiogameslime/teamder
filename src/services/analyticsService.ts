@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // analyticsService — thin wrapper over @react-native-firebase/analytics.
 //
 // Public API:
@@ -706,7 +707,8 @@ export function logEvent(
 
   if (__DEV__) console.log('[analytics]', name, cleaned);
   if (USE_MOCK_DATA) return;
-  try { recordOnboardingActivity(name, cleaned); } catch { /* telemetry must never block a tap */ }
+  try { recordOnboardingActivity(name, cleaned); } catch (caughtErrorac7ff111e1) {
+    observeCaughtError(caughtErrorac7ff111e1, {"source":"src/services/analyticsService.ts","handler":"logEvent","site":"analyticsService:ac7ff111e1"}); /* telemetry must never block a tap */ }
 
   // Second sink: the same event, to Joryio. Queued and batched there, so this
   // is a push onto an array — it cannot slow down or break the caller.
@@ -715,6 +717,7 @@ export function logEvent(
   analytics()
     .logEvent(name, cleaned)
     .catch((err) => {
+    observeCaughtError(err, {"source":"src/services/analyticsService.ts","handler":"logEvent","site":"analyticsService:7b0a01aef3"});
       logError('analyticsLogEvent', err, { event: name });
       if (__DEV__) console.warn('[analytics] logEvent failed', err);
     });

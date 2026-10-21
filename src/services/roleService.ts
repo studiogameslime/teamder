@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // roleService — what somebody answered when the app asked why they are here.
 //
 // The answer arrives as a query parameter on a campaign link
@@ -25,6 +26,7 @@ export async function recordRole(role: UserRole): Promise<void> {
     logEvent(AnalyticsEvent.RoleSelected, { role });
     await joryio.setAttributes({ user_type: role });
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/roleService.ts","handler":"recordRole","site":"roleService:32331a43ef"});
     logError('recordRole', err, { role });
   }
 }

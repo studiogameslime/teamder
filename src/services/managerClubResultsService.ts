@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { collection, getDocs, limit, query } from 'firebase/firestore';
 import { docs } from '@/firebase/firestore';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
@@ -27,7 +28,8 @@ export async function loadManagerClubResults(group: Group, games: Game[], viewer
       try {
         const snap=await withAuthRaceRetry(()=>getDocs(query(collection(docs.game(g.id),'roundHistory'),limit(501))));
         results[g.id]={rows:snap.docs.slice(0,500).map(d=>{const r=d.data();return {id:d.id,scoreA:typeof r.scoreA==='number'?r.scoreA:NaN,scoreB:typeof r.scoreB==='number'?r.scoreB:NaN};}),unavailable:false,truncated:snap.docs.length>500};
-      } catch { results[g.id]={rows:[],unavailable:true,truncated:false}; }
+      } catch (caughtErrorb169a244ad) {
+    observeCaughtError(caughtErrorb169a244ad, {"source":"src/services/managerClubResultsService.ts","handler":"loadManagerClubResults","site":"managerClubResultsService:b169a244ad"}); results[g.id]={rows:[],unavailable:true,truncated:false}; }
     }));
   }
   await gate();

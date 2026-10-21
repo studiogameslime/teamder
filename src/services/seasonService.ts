@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import type { GroupSeasons } from '@/types';
 import { SEASON_POLICY_VERSION } from '@/utils/seasonPolicy';
 // seasonService — the three admin actions on a club's seasons.
@@ -234,6 +235,7 @@ async function call<T>(name: string, payload: Record<string, unknown>): Promise<
     const res = await withAuthRaceRetry(() => fn({ ...payload, policyVersion: SEASON_POLICY_VERSION }));
     return res.data as T;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/seasonService.ts","handler":"call","site":"seasonService:0434287270"});
     const refusal = refusalOf(err);
     if (refusal) throw new SeasonRefusedError(refusal, playedFromError(err));
     logError(name, err, { groupId: String(payload.groupId ?? '') });

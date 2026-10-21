@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert, Share, Modal, RefreshControl, ScrollView } from 'react-native';
 import { RtlTextInput as TextInput } from '../components/RtlTextInput';
@@ -54,7 +55,8 @@ export function SourcesScreen() {
     try {
       const result = await fetchLinkStats(l);
       if (request === detailRequest.current) setStats(result);
-    } catch {
+    } catch (caughtErrorbc6a51b4ef) {
+    observeCaughtError(caughtErrorbc6a51b4ef, {"source":"pulse/src/screens/SourcesScreen.tsx","handler":"openDetail","site":"SourcesScreen:bc6a51b4ef"});
       if (request === detailRequest.current) setStatsError(true);
     } finally {
       if (request === detailRequest.current) setLoadingStats(false);
@@ -86,8 +88,8 @@ export function SourcesScreen() {
     setLoadingReport(true);
     try {
       const [l, r] = await Promise.all([
-        listAdLinks(force).catch(() => []),
-        fetchAcquisitionReport().catch(() => null),
+        listAdLinks(force).catch((caughtErrorffc252d2b6: unknown) => { observeCaughtError(caughtErrorffc252d2b6, {"source":"pulse/src/screens/SourcesScreen.tsx","handler":"reload","site":"SourcesScreen:ffc252d2b6"}); return []; }),
+        fetchAcquisitionReport().catch((caughtError8cd2a19c15: unknown) => { observeCaughtError(caughtError8cd2a19c15, {"source":"pulse/src/screens/SourcesScreen.tsx","handler":"reload","site":"SourcesScreen:8cd2a19c15"}); return null; }),
       ]);
       setLinks(l); setReport(r);
     } finally { setLoadingReport(false); }
@@ -101,7 +103,8 @@ export function SourcesScreen() {
   };
 
   const effectiveSource = (source === 'other' ? customSource : source).trim();
-  const share = (url: string) => { Share.share({ message: url }).catch(() => {}); };
+  const share = (url: string) => { Share.share({ message: url }).catch((caughtError6e3e37db93: unknown) => {
+    observeCaughtError(caughtError6e3e37db93, {"source":"pulse/src/screens/SourcesScreen.tsx","handler":"share","site":"SourcesScreen:6e3e37db93"});}); };
   const preview = effectiveSource ? 'https://teamderfc.web.app/play/XXXXXXXX' : '';
 
   const onCreate = async () => {
@@ -114,7 +117,8 @@ export function SourcesScreen() {
         await reload();
         Alert.alert('נוצר קישור', res.url, [{ text: 'סגור', style: 'cancel' }, { text: 'שתף', onPress: () => share(res.url) }]);
       } else Alert.alert('שגיאה', 'יצירת הקישור נכשלה');
-    } catch { Alert.alert('שגיאה', 'יצירת הקישור נכשלה. בדוק חיבור והרשאות ונסה שוב'); } finally { setBusy(false); }
+    } catch (caughtError467571be5e) {
+    observeCaughtError(caughtError467571be5e, {"source":"pulse/src/screens/SourcesScreen.tsx","handler":"onCreate","site":"SourcesScreen:467571be5e"}); Alert.alert('שגיאה', 'יצירת הקישור נכשלה. בדוק חיבור והרשאות ונסה שוב'); } finally { setBusy(false); }
   };
 
   return (

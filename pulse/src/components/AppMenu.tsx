@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +13,8 @@ function currentRoute(): string | undefined {
   try {
     const st: any = navRef.getRootState();
     return st?.routes?.[st.index]?.name as string | undefined;
-  } catch {
+  } catch (caughtErrorc6a28cfe2e) {
+    observeCaughtError(caughtErrorc6a28cfe2e, {"source":"pulse/src/components/AppMenu.tsx","handler":"currentRoute","site":"AppMenu:c6a28cfe2e"});
     return undefined;
   }
 }
@@ -71,7 +73,8 @@ export function AppMenu({ visible, onClose }: { visible: boolean; onClose: () =>
     let alive = true;
     listAwaitingReply()
       .then((w) => alive && setWaiting(w.length))
-      .catch(() => {});
+      .catch((caughtErrore62d6b1f2d: unknown) => {
+    observeCaughtError(caughtErrore62d6b1f2d, {"source":"pulse/src/components/AppMenu.tsx","handler":"AppMenu","site":"AppMenu:e62d6b1f2d"});});
     return () => {
       alive = false;
     };

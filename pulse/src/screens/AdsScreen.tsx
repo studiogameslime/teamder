@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 // "מודעות" — master switch for the app-open ad. Sits at the top, before any
 // finer Remote Config ad settings: off here = no app-open ad for anyone.
 
@@ -20,8 +21,8 @@ export function AdsScreen() {
   const [bannerBusy, setBannerBusy] = useState(false);
 
   const load = useCallback(async () => {
-    setEnabled(await fetchAppOpenEnabled().catch(() => true));
-    setBanner(await fetchBannerEnabled().catch(() => true));
+    setEnabled(await fetchAppOpenEnabled().catch((caughtError4034cdcd75: unknown) => { observeCaughtError(caughtError4034cdcd75, {"source":"pulse/src/screens/AdsScreen.tsx","handler":"AdsScreen","site":"AdsScreen:4034cdcd75"}); return true; }));
+    setBanner(await fetchBannerEnabled().catch((caughtError903e9c112e: unknown) => { observeCaughtError(caughtError903e9c112e, {"source":"pulse/src/screens/AdsScreen.tsx","handler":"AdsScreen","site":"AdsScreen:903e9c112e"}); return true; }));
   }, []);
   useEffect(() => {
     load();
@@ -31,7 +32,7 @@ export function AdsScreen() {
     const prev = enabled;
     setEnabled(next); // optimistic
     setBusy(true);
-    const ok = await setAppOpenEnabled(next).catch(() => false);
+    const ok = await setAppOpenEnabled(next).catch((caughtError36fb7fdf93: unknown) => { observeCaughtError(caughtError36fb7fdf93, {"source":"pulse/src/screens/AdsScreen.tsx","handler":"onToggle","site":"AdsScreen:36fb7fdf93"}); return false; });
     setBusy(false);
     if (!ok) setEnabled(prev ?? true); // revert on failure
   };
@@ -40,7 +41,7 @@ export function AdsScreen() {
     const prev = banner;
     setBanner(next); // optimistic
     setBannerBusy(true);
-    const ok = await setBannerEnabled(next).catch(() => false);
+    const ok = await setBannerEnabled(next).catch((caughtErrorda81b0fb6e: unknown) => { observeCaughtError(caughtErrorda81b0fb6e, {"source":"pulse/src/screens/AdsScreen.tsx","handler":"onToggleBanner","site":"AdsScreen:da81b0fb6e"}); return false; });
     setBannerBusy(false);
     if (!ok) setBanner(prev ?? true); // revert on failure
   };

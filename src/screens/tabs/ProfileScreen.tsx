@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // ProfileScreen — redesigned player card.
 //
 // New structure (replaces the previous identity + nav + settings
@@ -209,7 +210,8 @@ export function ProfileScreen() {
     const ownerId = localUser.id;
     import('@/services/groupService').then(m => m.groupService.getPublic(coverGroupId)).then(cover => {
       if (alive) setPublicRoundCover({ groupId: coverGroupId, ownerId, cover });
-    }).catch(() => { if (alive) setPublicRoundCover({ groupId: coverGroupId, ownerId, cover: null }); });
+    }).catch((caughtErrorb914b463f7: unknown) => {
+    observeCaughtError(caughtErrorb914b463f7, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:b914b463f7"}); if (alive) setPublicRoundCover({ groupId: coverGroupId, ownerId, cover: null }); });
     return () => { alive = false; };
   }, [coverGroupId, memberCoverClub, localUser?.id]);
   const publicRoundCoverResolved = publicRoundCover?.groupId === coverGroupId && publicRoundCover?.ownerId === localUser?.id;
@@ -305,7 +307,7 @@ export function ProfileScreen() {
         setClubInsight(
           await assistantInsightsService
             .getClubInsight(localUser.id, groupId, lastPlayedMs)
-            .catch(() => null),
+            .catch((caughtErroree8b56d939: unknown) => { observeCaughtError(caughtErroree8b56d939, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:ee8b56d939"}); return null; }),
         );
       }
     } finally {
@@ -322,7 +324,8 @@ export function ProfileScreen() {
       .then((u) => {
         if (alive && u) setUser(u);
       })
-      .catch(() => {
+      .catch((caughtError334d31ea4c: unknown) => {
+    observeCaughtError(caughtError334d31ea4c, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:334d31ea4c"});
         // Silent — we keep showing the cached store value.
       });
     return () => {
@@ -353,7 +356,8 @@ export function ProfileScreen() {
           setReferrals(list);
           setReferralCount(list.length);
         })
-        .catch(() => {
+        .catch((caughtError17a81c4d63: unknown) => {
+    observeCaughtError(caughtError17a81c4d63, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:17a81c4d63"});
           // Leave the previous values visible — flicker-back-to-loading
           // on every focus would be worse UX than a slightly stale 0.
         });
@@ -386,7 +390,8 @@ export function ProfileScreen() {
         .then((n) => {
           if (alive) setSeasonClosed(n);
         })
-        .catch(() => {
+        .catch((caughtError69fdf0fe7b: unknown) => {
+    observeCaughtError(caughtError69fdf0fe7b, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:69fdf0fe7b"});
           /* handled inside the service; the card stays hidden */
         });
       return () => {
@@ -427,7 +432,8 @@ export function ProfileScreen() {
           // the "מחזורים שיצרתי" section. createdBy is set by the wizard.
           setCreatedGames(mine.filter((g) => g.createdBy === uid));
         })
-        .catch(() => {
+        .catch((caughtError87a3d02c52: unknown) => {
+    observeCaughtError(caughtError87a3d02c52, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:87a3d02c52"});
           // Leave the previous value — a transient fetch error
           // shouldn't blank an already-shown game.
         });
@@ -438,7 +444,8 @@ export function ProfileScreen() {
         .then((g) => {
           if (alive) setJustPlayed(g);
         })
-        .catch(() => {
+        .catch((caughtErrore203c2e485: unknown) => {
+    observeCaughtError(caughtErrore203c2e485, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:e203c2e485"});
           if (alive) setJustPlayed(null);
         });
       return () => {
@@ -467,7 +474,8 @@ export function ProfileScreen() {
         .then((games) => {
           if (alive) setOpenToJoin(games);
         })
-        .catch(() => {
+        .catch((caughtErrorb502cbc899: unknown) => {
+    observeCaughtError(caughtErrorb502cbc899, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:b502cbc899"});
           /* transient — keep the previous list */
         });
       return () => {
@@ -495,7 +503,8 @@ export function ProfileScreen() {
         .then((games) => {
           if (alive) setScheduledUpcoming(games);
         })
-        .catch(() => {
+        .catch((caughtErrore93897c1a3: unknown) => {
+    observeCaughtError(caughtErrore93897c1a3, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:e93897c1a3"});
           /* transient — keep the previous list */
         });
       return () => {
@@ -538,7 +547,8 @@ export function ProfileScreen() {
         .then((n) => {
           if (alive) setInboxCount(n);
         })
-        .catch(() => {
+        .catch((caughtError825d3507aa: unknown) => {
+    observeCaughtError(caughtError825d3507aa, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:825d3507aa"});
           /* transient — keep the previous count */
         });
       return () => {
@@ -570,7 +580,8 @@ export function ProfileScreen() {
         .then((d) => {
           if (alive) setAvailData(d);
         })
-        .catch(() => {
+        .catch((caughtError73b4d9c799: unknown) => {
+    observeCaughtError(caughtError73b4d9c799, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:73b4d9c799"});
           /* keep previous — never blank the home screen on a transient error */
         });
       return () => {
@@ -602,7 +613,8 @@ export function ProfileScreen() {
           // getPlayedGames is sorted by date desc, so the first is the latest.
           setLastPlayedMs(list.length > 0 ? list[0].date : null);
         })
-        .catch(() => {
+        .catch((caughtError14f5bfee10: unknown) => {
+    observeCaughtError(caughtError14f5bfee10, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:14f5bfee10"});
           /* keep previous count on a transient error */
         });
       return () => {
@@ -628,7 +640,8 @@ export function ProfileScreen() {
         .then((count) => {
           if (alive && count !== null) setPlayedCount(count);
         })
-        .catch(() => {
+        .catch((caughtError0726310e1b: unknown) => {
+    observeCaughtError(caughtError0726310e1b, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:0726310e1b"});
           // Keep the previous count on a transient error.
         });
       return () => {
@@ -654,7 +667,8 @@ export function ProfileScreen() {
         .then((r) => {
           if (alive) setClubInsight(r);
         })
-        .catch(() => {
+        .catch((caughtError59e3044715: unknown) => {
+    observeCaughtError(caughtError59e3044715, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:59e3044715"});
           /* the assistant just skips the rivalry rules */
         });
       return () => {
@@ -691,7 +705,8 @@ export function ProfileScreen() {
         // are not lost — they simply wait for a visit with nothing in the way.
         if (alive && fresh.length && !isUpdateGateOpen()) setCelebrate(fresh);
       })
-      .catch(() => {
+      .catch((caughtError169ecfaaa4: unknown) => {
+    observeCaughtError(caughtError169ecfaaa4, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:169ecfaaa4"});
         // Best-effort — no celebration on a transient failure.
       });
     return () => {
@@ -739,6 +754,7 @@ export function ProfileScreen() {
       await deleteOwnAccount(password);
       setDeleteSheetOpen(false);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"confirmDeleteAccount","site":"ProfileScreen:8a0bf133d9"});
       logEvent(AnalyticsEvent.AccountDeleteFailed, {
         reason: (err as { code?: string } | null)?.code ?? 'unknown',
       });
@@ -978,11 +994,13 @@ export function ProfileScreen() {
               setNextGame(mine[0] ?? null);
               setMyGames(mine);
             })
-            .catch(() => {
+            .catch((caughtError3a75f1f154: unknown) => {
+    observeCaughtError(caughtError3a75f1f154, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"onJoin","site":"ProfileScreen:3a75f1f154"});
               /* the optimistic patch already shows the right thing */
             });
         }, 2500);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"onJoin","site":"ProfileScreen:bf5c2be633"});
         const code =
           typeof (err as { code?: unknown })?.code === 'string'
             ? (err as { code: string }).code
@@ -1199,6 +1217,7 @@ export function ProfileScreen() {
         logEvent(AnalyticsEvent.InviteShared, { source: 'profile' });
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"handleShareInvite","site":"ProfileScreen:6a08668761"});
       if (__DEV__) console.warn('[profile] invite share failed', err);
     }
   };
@@ -1766,7 +1785,8 @@ async function openMailto(subject: string, uid: string): Promise<void> {
   try {
     await Linking.openURL(mailto);
     return;
-  } catch {
+  } catch (caughtError451cde9ca7) {
+    observeCaughtError(caughtError451cde9ca7, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"openMailto","site":"ProfileScreen:451cde9ca7"});
     /* no app handled the mailto intent — fall through to web */
   }
 
@@ -1778,7 +1798,8 @@ async function openMailto(subject: string, uid: string): Promise<void> {
   try {
     await Linking.openURL(gmailWeb);
     return;
-  } catch {
+  } catch (caughtErrord5f3575589) {
+    observeCaughtError(caughtErrord5f3575589, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"openMailto","site":"ProfileScreen:d5f3575589"});
     /* extremely unlikely — fall through to showing the address */
   }
 
@@ -1807,7 +1828,8 @@ async function openStore(): Promise<void> {
     const ok = await Linking.canOpenURL(url);
     if (ok) await Linking.openURL(url);
     else appAlert(he.error, he.settingsRateUnavailable);
-  } catch {
+  } catch (caughtErrorddf4ae2923) {
+    observeCaughtError(caughtErrorddf4ae2923, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"openStore","site":"ProfileScreen:ddf4ae2923"});
     if (__DEV__) appAlert(he.error, he.settingsRateUnavailable);
   }
 }

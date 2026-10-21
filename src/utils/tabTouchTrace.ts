@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 /** Observes a tab gesture without claiming, cancelling or completing it. */
 export type TouchPoint = { x: number; y: number };
 type Geometry = { x: number; y: number; width: number; height: number };
@@ -44,7 +45,8 @@ export function createTabTouchTrace(tab: string, emit: Emit) {
           const inside = !!start && start.x >= rect.x && start.x <= rect.x + rect.width && start.y >= rect.y && start.y <= rect.y + rect.height;
           once('measure', { ...rect, phase: start ? (inside ? 'inside' : 'outside') : 'unknown' });
         });
-      } catch { /* Observation must never break the tab action. */ }
+      } catch (caughtError43b5afdc48) {
+    observeCaughtError(caughtError43b5afdc48, {"source":"src/utils/tabTouchTrace.ts","handler":"pressIn","site":"tabTouchTrace:43b5afdc48"}); /* Observation must never break the tab action. */ }
     },
     move(point?: TouchPoint) {
       if (completed) return;

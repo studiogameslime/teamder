@@ -1,3 +1,5 @@
+import { observedListener, observeCaughtError } from '../utils/errorObservation';
+
 import { create } from 'zustand';
 import { User } from '@/types';
 import { userService } from '@/services';
@@ -120,7 +122,8 @@ async function removeDeviceTokenBeforeAuthTeardown(uid: string): Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
-      notificationsService.unregisterThisDevice(uid).catch(() => {}),
+      notificationsService.unregisterThisDevice(uid).catch((caughtError860ee74de1: unknown) => {
+    observeCaughtError(caughtError860ee74de1, {"source":"src/store/userStore.ts","handler":"removeDeviceTokenBeforeAuthTeardown","site":"userStore:860ee74de1"});}),
       new Promise<void>((resolve) => {
         timer = setTimeout(resolve, TOKEN_UNREGISTER_MAX_WAIT_MS);
       }),
@@ -148,6 +151,7 @@ async function clearSignedOutUserState(): Promise<void> {
     const { availabilityFeedService } = await import('@/services/availabilityFeedService');
     availabilityFeedService.invalidate();
   } catch (err) {
+    observeCaughtError(err, {"source":"src/store/userStore.ts","handler":"clearSignedOutUserState","site":"userStore:da69de1f15"});
     logError('clearSignedOutAvailability', err, {});
   }
   // Imported lazily, not at module scope. A static import here pulls
@@ -205,6 +209,7 @@ async function startSilentGuest(
     guest = await userService.signInAsGuest();
     logEvent(AnalyticsEvent.GuestSessionStarted, { origin });
   } catch (err) {
+    observeCaughtError(err, {"source":"src/store/userStore.ts","handler":"startSilentGuest","site":"userStore:7997c15fcd"});
     // Offline is the realistic case — on first launch, or on the network drop
     // that made somebody sign out in the first place. Report it and let
     // RootNavigator fall back to the sign-in screen, which is where this
@@ -239,6 +244,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
         const { restoreLocalDemoRound } = require('@/dev/localDemoPersistence') as typeof import('@/dev/localDemoPersistence');
         await restoreLocalDemoRound();
       } catch (error) {
+    observeCaughtError(error, {"source":"src/store/userStore.ts","handler":"hydrate","site":"userStore:a4f8679314"});
         console.warn('[demo] local round restore failed', error);
       }
     }
@@ -251,11 +257,13 @@ export const useUserStore = create<UserStore>((set, get) => ({
     let profileReadFailed = false;
     const [onboardingDone, user] = await Promise.all([
       storage.getOnboardingDone().catch((err) => {
+    observeCaughtError(err, {"source":"src/store/userStore.ts","handler":"hydrate","site":"userStore:ef75d4db40"});
         logError('userHydrateGetOnboardingDone', err, {});
         logEvent(AnalyticsEvent.BootHydrateFailed, { source: 'storage' });
         return false;
       }),
       userService.getCurrentUser().catch((err) => {
+    observeCaughtError(err, {"source":"src/store/userStore.ts","handler":"hydrate","site":"userStore:308d8e07a1"});
         logError('userHydrateGetCurrentUser', err, {});
         logEvent(AnalyticsEvent.BootHydrateFailed, { source: 'user_read' });
         if (__DEV__) console.warn('[userStore.hydrate] getCurrentUser', err);
@@ -321,6 +329,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
       }
       set({ currentUser: user, guestInitFailed: false, profileRestoreFailed: false });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/store/userStore.ts","handler":"refreshFromSession","site":"userStore:752a48d487"});
       // Provider authentication succeeded, but profile restore did not. Stop
       // the pending action and let the root retry without manufacturing a guest.
       set({ currentUser: null, guestInitFailed: false, profileRestoreFailed: true });
@@ -435,7 +444,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
         const cur = get().currentUser;
         if (cur && cur.id === uid) set({ currentUser: fresh });
       },
-      err => { if (isActive()) reportError(err); },
+      observedListener(err => { if (isActive()) reportError(err); }, {"source":"src/store/userStore.ts","handler":"subscribeCurrentUser","site":"userStore.ts:snapshot:436"}),
     ), reportError);
   },
 

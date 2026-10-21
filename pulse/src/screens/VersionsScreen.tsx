@@ -1,3 +1,4 @@
+import { observeCaughtError, observeSettledErrors } from '../services/errorObservation';
 import { VersionInventory } from '../components/VersionInventory';
 import { fetchVersionInventory, type UserVersions } from '../services/deviceVersions';
 // "גרסאות" — one place to see which version is live in each store, since
@@ -59,7 +60,8 @@ export function VersionsScreen() {
   const loadInventory = async()=>{
     if(inventoryLock.current)return;inventoryLock.current=true;setInventoryBusy(true);setInventoryFailed(false);
     try {const result=await fetchVersionInventory(inventory!==null);if(alive.current){setInventory(result);setInventoryAt(Date.now())}}
-    catch{if(alive.current)setInventoryFailed(true)}finally{inventoryLock.current=false;if(alive.current)setInventoryBusy(false)}
+    catch (caughtError340b03381e){
+    observeCaughtError(caughtError340b03381e, {"source":"pulse/src/screens/VersionsScreen.tsx","handler":"loadInventory","site":"VersionsScreen:340b03381e"});if(alive.current)setInventoryFailed(true)}finally{inventoryLock.current=false;if(alive.current)setInventoryBusy(false)}
   };
   const [section, setSection] = useState('stores');
   const [loading, setLoading] = useState(true);
@@ -72,7 +74,7 @@ export function VersionsScreen() {
   const load = useCallback(async () => {
     if(storeLock.current)return;storeLock.current=true;
     setRefreshing(true);
-    const results = await Promise.allSettled([fetchAppleVersions(), fetchPlayProductionRelease(), fetchReleaseLog(), fetchWearRelease()]);
+    const results = await Promise.allSettled([fetchAppleVersions(), fetchPlayProductionRelease(), fetchReleaseLog(), fetchWearRelease()]).then(results => observeSettledErrors(results, {"source":"pulse/src/screens/VersionsScreen.tsx","handler":"VersionsScreen","site":"VersionsScreen:47ead45e4c"}));
     storeLock.current=false;
     if(!alive.current)return;
     const [a,p,l,w] = results;
@@ -415,7 +417,8 @@ function ItemRow({ item }: { item: ReleaseItem }) {
     let alive = true;setShotFailed(false);
     fetchReleaseShot(item.shotId)
       .then((v) => {if(alive){setB64(v);setShotFailed(!v)}})
-      .catch(() => {if(alive)setShotFailed(true)});
+      .catch((caughtError4856b00e33: unknown) => {
+    observeCaughtError(caughtError4856b00e33, {"source":"pulse/src/screens/VersionsScreen.tsx","handler":"ItemRow","site":"VersionsScreen:4856b00e33"});if(alive)setShotFailed(true)});
     return () => {
       alive = false;
     };

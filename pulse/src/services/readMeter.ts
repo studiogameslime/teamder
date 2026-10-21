@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Per-source Firestore read meter. Cloud Monitoring tells us the TOTAL reads
 // (and splits them by type: QUERY / LOOKUP / NOT_FOUND) but never by collection
 // or by who issued them. So we tally Pulse's OWN reads here, attributed to the
@@ -34,7 +35,8 @@ async function load(): Promise<Meter> {
         const raw = await AsyncStorage.getItem(KEY);
         const parsed = raw ? (JSON.parse(raw) as Meter) : null;
         mem = parsed && parsed.day === dayKey() ? parsed : { day: dayKey(), counts: {} };
-      } catch {
+      } catch (caughtErrore2dcc87469) {
+    observeCaughtError(caughtErrore2dcc87469, {"source":"pulse/src/services/readMeter.ts","handler":"load","site":"readMeter:e2dcc87469"});
         mem = { day: dayKey(), counts: {} };
       }
       return mem;
@@ -49,7 +51,8 @@ function scheduleFlush() {
     flushTimer = null;
     try {
       if (mem) await AsyncStorage.setItem(KEY, JSON.stringify(mem));
-    } catch {
+    } catch (caughtError3997eaec0b) {
+    observeCaughtError(caughtError3997eaec0b, {"source":"pulse/src/services/readMeter.ts","handler":"scheduleFlush","site":"readMeter:3997eaec0b"});
       /* best-effort */
     }
   }, 1500);

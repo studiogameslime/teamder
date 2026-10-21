@@ -34,7 +34,11 @@ export const recordClientError=onCall({enforceAppCheck: ENFORCE_APP_CHECK},async
   const count=request.data?.count;
   if(!Number.isInteger(count)||count<1||count>1000000)throw new HttpsError('invalid-argument','Invalid count');
   const ref=db.doc(`errors/${fingerprint}`), limit=db.doc(`serverRateLimits/${uid}_diagnostics`);
+  const deliveryId = request.data?.deliveryId;
+  if (deliveryId !== undefined && (typeof deliveryId !== 'string' || !/^[a-z0-9-]{10,100}$/.test(deliveryId))) throw new HttpsError('invalid-argument','Invalid delivery id');
+  const receipt = deliveryId ? db.doc(`serverRateLimits/${uid}_diagnostic_${deliveryId}`) : undefined;
   await db.runTransaction(async tx=>{
+    if (receipt && (await tx.get(receipt)).exists) return;
     const [existing,quota]=await Promise.all([tx.get(ref),tx.get(limit)]);
     const previous=quota.data()??{}, start=typeof previous.start==='number'&&now-previous.start<3600000?previous.start:now;
     const used=start===previous.start&&typeof previous.count==='number'?previous.count:0;
@@ -43,6 +47,7 @@ export const recordClientError=onCall({enforceAppCheck: ENFORCE_APP_CHECK},async
     tx.set(ref,{...fields,fingerprint,lastUserId:uid,lastSeen:FieldValue.serverTimestamp(),count:FieldValue.increment(count),
       ...(!existing.exists?{status:'new',firstSeen:FieldValue.serverTimestamp()}:{}),
     },{merge:true});
+    if (receipt) tx.set(receipt, {fingerprint, expiresAt: Timestamp.fromMillis(now + 30 * 86400000)});
   });
   return {accepted:true};
 });

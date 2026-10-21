@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Cold-start auth-race guard for Firestore reads.
 //
 // On a cold start (e.g. right after an app-update restart) the persisted
@@ -92,6 +93,7 @@ export async function withAuthRaceRetry<T>(run: () => Promise<T>): Promise<T> {
     try {
       return await run();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/firebase/authRace.ts","handler":"withAuthRaceRetry","site":"authRace:35595714d9"});
       lastErr = err;
       const code = (err as { code?: string })?.code;
       if (!code || !RACE_CODES.has(code)) throw err;
@@ -103,7 +105,8 @@ export async function withAuthRaceRetry<T>(run: () => Promise<T>): Promise<T> {
       if (!user) throw err; // genuinely signed out
       try {
         await user.getIdToken();
-      } catch {
+      } catch (caughtErrorb50189ba0f) {
+    observeCaughtError(caughtErrorb50189ba0f, {"source":"src/firebase/authRace.ts","handler":"withAuthRaceRetry","site":"authRace:b50189ba0f"});
         /* ignore — the next attempt surfaces any real failure */
       }
       await sleep(RETRY_DELAYS_MS[attempt]);

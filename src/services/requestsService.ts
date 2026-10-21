@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // requestsService — aggregates the three kinds of incoming ACTIONABLE requests
 // into one "Requests" inbox: friend requests, community-join requests (for
 // communities I admin), and game-join requests (for games I created). Powers
@@ -49,7 +50,7 @@ async function myGamesWithPending(userId: UserId): Promise<Game[]> {
 async function resolveUsers(uids: UserId[]): Promise<User[]> {
   const unique = [...new Set(uids)];
   const users = await Promise.all(
-    unique.map((id) => userService.getUserById(id).catch(() => null)),
+    unique.map((id) => userService.getUserById(id).catch((caughtError1045413675: unknown) => { observeCaughtError(caughtError1045413675, {"source":"src/services/requestsService.ts","handler":"resolveUsers","site":"requestsService:1045413675"}); return null; })),
   );
   return users.map((u, index) => u ?? ({ id: unique[index], name: 'משתמש', stats: {} } as User));
 }
@@ -118,6 +119,7 @@ async function runBulk(
       await fn(id);
       ok += 1;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/requestsService.ts","handler":"runBulk","site":"requestsService:0b215667fb"});
       failed += 1;
       if (!firstError) firstError = (err as Error)?.message ?? String(err);
     }

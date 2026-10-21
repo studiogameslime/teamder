@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // CommunityHistoryScreen — the full list of a community's finished games
 // (evenings). Reachable from the community actions (hamburger) menu. Each row
@@ -45,7 +46,8 @@ export function CommunityHistoryScreen() {
         if (!alive) return;
         setGames(list.filter((h) => h.status === 'finished'));
       })
-      .catch(() => {
+      .catch((caughtError226ccc86d0: unknown) => {
+    observeCaughtError(caughtError226ccc86d0, {"source":"src/screens/communities/CommunityHistoryScreen.tsx","handler":"CommunityHistoryScreen","site":"CommunityHistoryScreen:226ccc86d0"});
         if (alive) { setError(true); setGames([]); }
       });
     return () => {

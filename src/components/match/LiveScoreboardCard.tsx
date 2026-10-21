@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // LiveScoreboardCard — the merged top card for the advanced live match:
 // the timer in the CENTER, flanked by each on-pitch team's live score and an
@@ -179,6 +180,7 @@ export function LiveScoreboardCard(props: Props) {
         minute,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/match/LiveScoreboardCard.tsx","handler":"addGoal","site":"LiveScoreboardCard:35435900fa"});
       toast.error(he.goalSaveFailed);
       throw err;
     } finally {
@@ -203,6 +205,7 @@ export function LiveScoreboardCard(props: Props) {
       await gameService.removeGoal(gameId, goalId);
       logEvent(AnalyticsEvent.TeamScoreChanged, { gameId, delta: -1, kind: 'undo' });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/match/LiveScoreboardCard.tsx","handler":"doUndo","site":"LiveScoreboardCard:5043902620"});
       toast.error(he.goalSaveFailed);
     } finally {
       busyRef.current = false;

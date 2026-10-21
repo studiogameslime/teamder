@@ -2,6 +2,7 @@ import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
 import { readConsistentSeasonSnapshot, withSeasonReadTimeout } from '@/utils/seasonReadConsistency';
+import { observeCaughtError } from '@/utils/errorObservation';
 
 // Execute the real loading effect and its real dependencies in a hook harness.
 // This covers the kept-mounted tab; snapshot consistency is tested separately.
@@ -16,7 +17,7 @@ function screen() {
   const groupService = { get: jest.fn().mockResolvedValue(null) };
   const context: any = { visible: true, props: { seasonRevision: 's1', seasonBusy: false }, groupId: 'club',
     reloadTick: 0, loadedGroup: { current: 'club' }, groupService, readConsistentSeasonSnapshot, withSeasonReadTimeout,
-    logError: jest.fn(), console };
+    logError: jest.fn(), observeCaughtError, console };
   for (const name of source.match(/\bset[A-Z]\w+/g) ?? []) context[name] = jest.fn();
   const code = ts.transpileModule(`globalThis.effect = ${effect.arguments[0].getText(parsed)};`,
     { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;

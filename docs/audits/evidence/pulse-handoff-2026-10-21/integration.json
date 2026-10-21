@@ -1,0 +1,19 @@
+{
+  "counts": {
+    "applied": 496,
+    "merged": 14
+  },
+  "resolution": "resolved; original environment changes preserved; status index regenerated from merged documents",
+  "resolvedFiles": [
+    "docs/features/clubs/seasons.md",
+    "docs/features/clubs/seasons.simple.md",
+    "docs/features/home/round-cards.md",
+    "docs/features/home/round-cards.simple.md",
+    "docs/features/status/clubs.md",
+    "docs/features/status/entry.md",
+    "docs/features/status/home.md",
+    "docs/features/status/state.json",
+    "scripts/pulse_mcp.py",
+    "scripts/tests/test_pulse_mcp.py"
+  ]
+}

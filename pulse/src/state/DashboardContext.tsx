@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, {
   createContext,
   useCallback,
@@ -63,7 +64,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
 export function useDashboard(load = false): DashboardState {
   const v = useContext(Ctx);
-  useEffect(() => { if (load && v) void v.ensureFresh().catch(() => {}); }, [load, v?.ensureFresh]);
+  useEffect(() => { if (load && v) void v.ensureFresh().catch((caughtErrore8b735a90e: unknown) => {
+    observeCaughtError(caughtErrore8b735a90e, {"source":"pulse/src/state/DashboardContext.tsx","handler":"useDashboard","site":"DashboardContext:e8b735a90e"});}); }, [load, v?.ensureFresh]);
   if (!v) throw new Error('useDashboard outside provider');
   return v;
 }

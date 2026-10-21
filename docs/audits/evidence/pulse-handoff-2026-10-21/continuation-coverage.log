@@ -1,0 +1,10 @@
+{
+  'server:recursion-boundary': 7,
+  'pulse:recursion-boundary': 9,
+  'app:observed': 933,
+  'app:recursion-boundary': 16,
+  'tooling-or-third-party:observed': 2,
+  'tooling-or-third-party:uncovered': 66,
+  'server:observed': 194,
+  'pulse:observed': 199
+}

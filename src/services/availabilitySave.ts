@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // availabilitySave — writing somebody's availability onto their user document.
 //
 // Extracted verbatim from `AvailabilityEditScreen` so the resumer can use it.
@@ -102,7 +103,8 @@ function applyLocally(uid: string, saved: UserAvailability): void {
       acceptsFillerPush: String(saved.acceptsFillerPush === true),
       geocoded: !!saved.homeCity,
     });
-  } catch {
+  } catch (caughtError1ad8b35861) {
+    observeCaughtError(caughtError1ad8b35861, {"source":"src/services/availabilitySave.ts","handler":"applyLocally","site":"availabilitySave:1ad8b35861"});
     // Telemetry never fails a save.
   }
   try {
@@ -118,7 +120,8 @@ function applyLocally(uid: string, saved: UserAvailability): void {
     // so "פנויים לשחק לידך" recounts on the next open. Also a screen-side
     // effect until now, and just as absent from the resume path.
     availabilityFeedService.invalidate();
-  } catch {
+  } catch (caughtErrorda0ef39ca4) {
+    observeCaughtError(caughtErrorda0ef39ca4, {"source":"src/services/availabilitySave.ts","handler":"applyLocally","site":"availabilitySave:da0ef39ca4"});
     // Local consistency is best-effort: the write succeeded, and the person's
     // availability IS saved. Throwing here would report a failure that did not
     // happen.
@@ -140,7 +143,8 @@ export async function persistAvailability(
         await storage.setAuthUserJson(
           JSON.stringify({ ...cur, availability: saved, updatedAt: Date.now() }),
         );
-      } catch {
+      } catch (caughtError0ea8286193) {
+    observeCaughtError(caughtError0ea8286193, {"source":"src/services/availabilitySave.ts","handler":"persistAvailability","site":"availabilitySave:0ea8286193"});
         /* corrupt cache — leave alone */
       }
     }
@@ -181,6 +185,7 @@ export async function persistAvailability(
   try {
     await write();
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/availabilitySave.ts","handler":"persistAvailability","site":"availabilitySave:b3c07259e1"});
     // The denial that is not a denial.
     //
     // The four production reports came from ONE account, and that account has

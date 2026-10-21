@@ -1,3 +1,5 @@
+import { observedRejection, observeCaughtError } from '../utils/errorObservation';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /** Stable content encoding; undefined object fields are omitted like JSON. */
@@ -26,8 +28,9 @@ interface Attempt<T, R> {
 
 let queue: Promise<unknown> = Promise.resolve();
 function serialize<T>(work: () => Promise<T>): Promise<T> {
-  const next = queue.then(work, work);
-  queue = next.catch(() => {});
+  const next = queue.then(work, observedRejection(work, {"source":"src/services/creationAttempt.ts","handler":"serialize","site":"creationAttempt:b23d67eb5d"}));
+  queue = next.catch((caughtError9ee15de635: unknown) => {
+    observeCaughtError(caughtError9ee15de635, {"source":"src/services/creationAttempt.ts","handler":"serialize","site":"creationAttempt:9ee15de635"});});
   return next;
 }
 

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // MorphButton — drop-in replacement for the standard Button when the
 // CTA represents a discrete "do a thing once" action (Save, Submit,
 // Send, Join). Idle → loading → success morphs the button shape AND
@@ -116,6 +117,7 @@ export function MorphButton({
       }
       if (status == null) setInternalStatus('success');
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/anim/MorphButton.tsx","handler":"handlePress","site":"MorphButton:1536517686"});
       if (status == null) setInternalStatus('idle');
       throw err;
     }

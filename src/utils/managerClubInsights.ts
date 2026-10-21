@@ -41,6 +41,19 @@ export function managerClubInsights(group: Group, games: Game[], now: number) {
     returned,newcomers, newcomerRegistered:newcomers.filter(n=>n.completed>0||n.next).length,
     rounds:recent.map(g=>({game:g,registered:occupancy(g),accounts:rosterIds(g).length,guests:activeGuestCount(g.guests)})) };
 }
+/** Whole percentages for an exhaustive partition; largest remainders sum to 100. */
+export function balancePercentages(counts: readonly number[]): number[] {
+  const total = counts.reduce((sum, count) => sum + count, 0);
+  if (!total) return counts.map(() => 0);
+  const exact = counts.map(count => count / total * 100);
+  const whole = exact.map(Math.floor);
+  const order = exact.map((value, index) => ({index, remainder: value - whole[index]}))
+    .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+  const deficit = 100 - whole.reduce((sum, value) => sum + value, 0);
+  for (let n = 0; n < deficit; n++) whole[order[n].index]++;
+  return whole;
+}
+
 export function clubBalance(games: Game[], results: ClubResults) {
   let draws=0,oneGoal=0,wide=0,covered=0,unavailable=0,missing=0,invalid=0;
   for (const g of games) {

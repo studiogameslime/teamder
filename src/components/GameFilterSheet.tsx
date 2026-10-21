@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { overlaySurfaces } from '@/theme/overlays';
 // GameFilterSheet — modal sheet for filtering the matches list.
 //
@@ -111,14 +112,16 @@ export function GameFilterSheet({
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         Location = require('expo-location');
-      } catch {
+      } catch (caughtErrorf8b803dc0a) {
+    observeCaughtError(caughtErrorf8b803dc0a, {"source":"src/components/GameFilterSheet.tsx","handler":"GameFilterSheet","site":"GameFilterSheet:f8b803dc0a"});
         Location = null;
       }
       if (!Location) return;
       try {
         const cur = await Location.getForegroundPermissionsAsync();
         if (!cancelled) setLocationGranted(cur.granted);
-      } catch {
+      } catch (caughtErroraa4c7fe8e7) {
+    observeCaughtError(caughtErroraa4c7fe8e7, {"source":"src/components/GameFilterSheet.tsx","handler":"GameFilterSheet","site":"GameFilterSheet:aa4c7fe8e7"});
         // ignore — leave as not-granted, show the permission prompt.
       }
     })();

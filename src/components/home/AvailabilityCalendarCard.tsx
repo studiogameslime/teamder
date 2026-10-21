@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // AvailabilityCalendarCard — home-screen "פנויים לשחק לידך" weekly heatmap.
 //
 // Shows, for today + the next 6 days, how many players are available in each
@@ -82,7 +83,7 @@ export function AvailabilityCalendarCard({
           if (d.error) setFailedFor(viewerId);
           else setSnapshot({ viewerId, data: d });
         })
-        .catch(() => alive && setFailedFor(viewerId));
+        .catch((caughtErrordd12cfbe0a: unknown) => { observeCaughtError(caughtErrordd12cfbe0a, {"source":"src/components/home/AvailabilityCalendarCard.tsx","handler":"AvailabilityCalendarCard","site":"AvailabilityCalendarCard:dd12cfbe0a"}); return alive && setFailedFor(viewerId); });
       return () => {
         alive = false;
       };

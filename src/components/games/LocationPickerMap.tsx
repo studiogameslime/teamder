@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // LocationPickerMap — a clean, readable vector map for the location picker.
 //
 // Why vector (MapLibre GL) and not the raster MapWebView: the owner wants
@@ -78,7 +79,8 @@ export function LocationPickerMap({
       ) {
         onPick(msg.lat, msg.lng);
       }
-    } catch {
+    } catch (caughtError66422b5fb5) {
+    observeCaughtError(caughtError66422b5fb5, {"source":"src/components/games/LocationPickerMap.tsx","handler":"handleMessage","site":"LocationPickerMap:66422b5fb5"});
       /* ignore malformed bridge messages */
     }
   };

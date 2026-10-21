@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces } from '@/theme/overlays';
 // RetroGoalsSheet — admin-only, post-match "complete a missed goal" manager.
 //
@@ -85,7 +86,8 @@ export function RetroGoalsSheet({
   const reload = useCallback(async () => {
     setLoadFailed(false);
     try { setList(await gameService.getRetroGoals(gameId)); }
-    catch (error) { setLoadFailed(true); throw error; }
+    catch (error) {
+    observeCaughtError(error, {"source":"src/components/match/RetroGoalsSheet.tsx","handler":"RetroGoalsSheet","site":"RetroGoalsSheet:1abc0d8752"}); setLoadFailed(true); throw error; }
   }, [gameId]);
 
   useEffect(() => {
@@ -93,7 +95,8 @@ export function RetroGoalsSheet({
       setMode('list');
       setPendingScorer(null);
       setList(null);
-      void reload().catch(() => {});
+      void reload().catch((caughtError528b17038d: unknown) => {
+    observeCaughtError(caughtError528b17038d, {"source":"src/components/match/RetroGoalsSheet.tsx","handler":"RetroGoalsSheet","site":"RetroGoalsSheet:528b17038d"});});
     }
   }, [visible, reload]);
 
@@ -115,8 +118,10 @@ export function RetroGoalsSheet({
       onChanged();
       // A failed read after a successful commit must not look like a failed
       // save: retrying the goal would mint another id and double-credit it.
-      await reload().catch(() => {});
+      await reload().catch((caughtError5b79a21e30: unknown) => {
+    observeCaughtError(caughtError5b79a21e30, {"source":"src/components/match/RetroGoalsSheet.tsx","handler":"saveGoal","site":"RetroGoalsSheet:5b79a21e30"});});
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/match/RetroGoalsSheet.tsx","handler":"saveGoal","site":"RetroGoalsSheet:5490801b95"});
       logError('addRetroGoal', err, { gameId, scorerId });
       toast.error(retroErrorText(err));
     } finally {
@@ -138,8 +143,10 @@ export function RetroGoalsSheet({
       warningHaptic();
       toast.success(he.retroRemoveDone);
       onChanged();
-      await reload().catch(() => {});
+      await reload().catch((caughtError2092d30c28: unknown) => {
+    observeCaughtError(caughtError2092d30c28, {"source":"src/components/match/RetroGoalsSheet.tsx","handler":"removeGoal","site":"RetroGoalsSheet:2092d30c28"});});
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/match/RetroGoalsSheet.tsx","handler":"removeGoal","site":"RetroGoalsSheet:36f3242250"});
       logError('removeRetroGoal', err, { gameId, retroGoalId: id });
       toast.error(retroErrorText(err));
     } finally {
@@ -162,7 +169,8 @@ export function RetroGoalsSheet({
               <Text style={styles.title}>{he.retroTitle}</Text>
               <Text style={styles.note}>{he.retroNote}</Text>
 
-              {loadFailed ? <View><Text style={styles.empty}>לא ניתן לטעון את ההשלמות כרגע</Text><Button title="נסה שוב" onPress={() => void reload().catch(() => {})}/></View> : list === null ? <ActivityIndicator color={colors.primary}/> : list.length === 0 ? (
+              {loadFailed ? <View><Text style={styles.empty}>לא ניתן לטעון את ההשלמות כרגע</Text><Button title="נסה שוב" onPress={() => void reload().catch((caughtError80c60fbdac: unknown) => {
+    observeCaughtError(caughtError80c60fbdac, {"source":"src/components/match/RetroGoalsSheet.tsx","handler":"RetroGoalsSheet","site":"RetroGoalsSheet:80c60fbdac"});})}/></View> : list === null ? <ActivityIndicator color={colors.primary}/> : list.length === 0 ? (
                 <Text style={styles.empty}>{he.retroEmpty}</Text>
               ) : (
                 <ScrollView style={styles.listScroll} nestedScrollEnabled showsVerticalScrollIndicator={true}>

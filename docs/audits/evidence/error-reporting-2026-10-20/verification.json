@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-20",
+  "baseCommit": "f5d74cf39ef202066a03d08043715477c6a5eb70",
+  "scope": "local_partial_implementation",
+  "checks": {
+    "applicationTypes": {"command": "npx tsc --noEmit", "exitCode": 0},
+    "serverTypes": {"command": "node functions/node_modules/typescript/bin/tsc --noEmit -p functions", "exitCode": 0},
+    "pulseTypes": {"command": "node pulse/node_modules/typescript/bin/tsc --noEmit -p pulse", "exitCode": 0},
+    "jest": {"command": "npx jest --runInBand", "exitCode": 0, "suitesPassed": 451, "testsPassed": 5121},
+    "catchCoverage": {"command": "node scripts/error-catch-audit.cjs --check", "exitCode": 0, "applicationObserved": 932, "serverObserved": 194, "pulseObserved": 199, "additionalSitesNotCovered": 235},
+    "featureStatus": {"command": "python3 scripts/feature_status.py check", "exitCode": 0},
+    "featureDocumentation": {"command": "python3 scripts/check-feature-docs.py", "exitCode": 1, "missingEvidenceLinks": 107, "linksAlsoPresentInBaseCommit": 107, "otherFailures": 0},
+    "diffWhitespace": {"command": "git diff --check", "exitCode": 0}
+  },
+  "liveDeliveryVerified": false,
+  "deviceVerified": false,
+  "pulseOpenBoardRead": false,
+  "pulseTasksUpdated": false,
+  "releaseLogUpdated": false,
+  "deployed": false,
+  "remaining": [
+    "Authenticated Pulse connection and live unified-board work",
+    "Platform and website coverage, with vendor boundaries reviewed",
+    "Live end-to-end delivery and cross-layer duplicate handling",
+    "Production release-log update after authenticated access"
+  ]
+}

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // One vocabulary for "can we notify this person".
 //
 // The app had a boolean-ish answer — `{granted, canAskAgain, available}` — and
@@ -48,7 +49,8 @@ export async function getPushPermissionState(): Promise<PushPermissionState> {
     if (s.status === 'undetermined') return 'undetermined';
     if (s.status === 'denied') return s.canAskAgain ? 'denied' : 'blocked';
     return s.canAskAgain ? 'undetermined' : 'blocked';
-  } catch {
+  } catch (caughtErrorb7c42855a5) {
+    observeCaughtError(caughtErrorb7c42855a5, {"source":"src/services/pushPermission.ts","handler":"getPushPermissionState","site":"pushPermission:b7c42855a5"});
     return 'unsupported';
   }
 }
@@ -74,7 +76,8 @@ export async function openAppSettings(): Promise<void> {
   try {
     const { Linking } = await import('react-native');
     await Linking.openSettings();
-  } catch {
+  } catch (caughtError7a0d0aef7b) {
+    observeCaughtError(caughtError7a0d0aef7b, {"source":"src/services/pushPermission.ts","handler":"openAppSettings","site":"pushPermission:7a0d0aef7b"});
     // A device that cannot open its own settings is not worth an error
     // dialog about; the sheet stays open and the person closes it.
   }

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // seriesService — the weekly fixture's settings, independent of any match.
 //
 // A `GameSeries` doc is the template the weekly cron builds each occurrence
@@ -125,6 +126,7 @@ export const seriesService = {
       const snap = await getDoc(doc(db, COL, seriesId));
       return snap.exists() ? toSeries(snap.id, snap.data()) : null;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/seriesService.ts","handler":"get","site":"seriesService:dece592b8a"});
       logError('seriesGet', err, { seriesId });
       return null;
     }
@@ -147,6 +149,7 @@ export const seriesService = {
       );
       return snap.docs.map((d) => toSeries(d.id, d.data()));
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/seriesService.ts","handler":"listForGroup","site":"seriesService:98336f51ec"});
       logError('seriesList', err, { groupId });
       return [];
     }

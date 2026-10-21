@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, Text, View } from 'react-native';
 import { RtlTextInput as TextInput } from '../components/RtlTextInput';
@@ -10,7 +11,8 @@ import { fetchGames, type GamesReport, type GameRow } from '../services/gamesSer
 const activity:Record<GameRow['activity'],string>={live:'חי עכשיו',played:'שוחק',teams:'כוחות חולקו',idle:'לא התחיל'};
 export function GamesScreen(){
  const nav=useNavigation<any>();const [data,setData]=useState<GamesReport|null>(null);const [loading,setLoading]=useState(true);const [failed,setFailed]=useState(false);const [retry,setRetry]=useState(0);const [search,setSearch]=useState('');const [filter,setFilter]=useState('all');const [sort,setSort]=useState('time');
- useEffect(()=>{let alive=true;setLoading(true);setFailed(false);fetchGames(Date.now(),retry>0).then(r=>{if(alive)setData(r)}).catch(()=>{if(alive)setFailed(true)}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false}},[retry]);
+ useEffect(()=>{let alive=true;setLoading(true);setFailed(false);fetchGames(Date.now(),retry>0).then(r=>{if(alive)setData(r)}).catch((caughtErrordff0c4e99b: unknown) =>{
+    observeCaughtError(caughtErrordff0c4e99b, {"source":"pulse/src/screens/GamesScreen.tsx","handler":"GamesScreen","site":"GamesScreen:dff0c4e99b"});if(alive)setFailed(true)}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false}},[retry]);
  const rows=useMemo(()=>[...(data?.rows ?? [])].filter(r=>(filter==='all' || (filter==='live'?r.runningNow:r.locked || r.visibility!=='public')) && `${r.title} ${r.communityName ?? ''} ${r.detail?.city ?? ''} ${r.detail?.fieldName ?? ''}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).sort((a,b)=>sort==='registered'?b.registered-a.registered:a.startsAt-b.startsAt),[data,filter,search,sort]);
  return <Screen title="מחזורים" subtitle="מה קורה עכשיו ומה מתוכנן" right={<Pressable accessibilityLabel="רענון מחזורים" onPress={()=>setRetry(n=>n+1)} style={{padding:12}}><Ionicons name="refresh-outline" size={23} color={colors.textSoft}/></Pressable>} refreshControl={<RefreshControl refreshing={loading && !!data} onRefresh={()=>setRetry(n=>n+1)} tintColor={colors.primary}/>}>
   <View style={{flexDirection:'row',direction:'rtl',paddingVertical:12}}>{[[data?.liveNow,'חיים עכשיו'],[data?.rows.filter(r=>!r.runningNow).length,'מחזורים קרובים'],[data?.totalRegistered,'רשומים']].map(([n,label],index)=><View key={label} style={{flex:1,alignItems:'center',gap:6,borderLeftWidth:index<2?1:0,borderLeftColor:colors.border}}><Text style={font.h1}>{n ?? '—'}</Text><Text style={{...font.small,textAlign:'center'}}>{label}</Text></View>)}</View>

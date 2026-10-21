@@ -1,3 +1,4 @@
+import { observeCaughtError } from './serverErrorLog';
 import type { Firestore, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { planRetroScores, readScoreCalibration, recoverScoreCalibration, scoreNumber, type RetroScoreEntry } from './retroScorePlan';
@@ -29,7 +30,8 @@ export async function prepareRetroScores(tx:Transaction,db:Firestore,gameId:stri
     const retro=await tx.get(db.collection(`games/${gameId}/retroGoals`).limit(1001));
     if(retro.size>1000)throw new HttpsError('failed-precondition','score-corrections:too-large');
     try{calibration=recoverScoreCalibration(entries,community.data()??{},retro.docs.map(d=>d.data()),scoreNumber(stage.get('at')));}
-    catch{throw new HttpsError('failed-precondition','score-calibration:missing');}
+    catch (caughtError269b48c885){
+    observeCaughtError(caughtError269b48c885, {"source":"functions/src/retroScores.ts","handler":"prepareRetroScores","site":"retroScores:269b48c885"});throw new HttpsError('failed-precondition','score-calibration:missing');}
   }
   const changedGuests=new Map<string,Record<string,any>>();
   if(change){

@@ -1,3 +1,5 @@
+import { observeCaughtError } from './serverErrorLog';
+
 // Near-real-time review/rating alerts. Apple & Google don't push review
 // events, so we poll their APIs server-side (from cronEvery15Min) and FCM a
 // "new review" push to the founder's Pulse device(s) — works even with the
@@ -65,7 +67,7 @@ async function fetchAppleReviews(p8: string): Promise<NewReview[]> {
     `https://api.appstoreconnect.apple.com/v1/apps/${APP_STORE_APP_ID}/customerReviews?sort=-createdDate&limit=50`,
     { headers: { Authorization: 'Bearer ' + ascJwt(p8) } },
   );
-  if (!r.ok) return [];
+  if (!r.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + r.status}), {"source":"functions/src/reviewAlerts.ts","handler":"fetchAppleReviews","site":"reviewAlerts.ts:http:69"}); return []; }
   const j = (await r.json()) as { data?: any[] };
   return (j.data ?? []).map((d) => ({
     store: 'appstore' as const,
@@ -83,7 +85,7 @@ async function fetchPlayReviews(saJson: string): Promise<NewReview[]> {
     `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PLAY_PACKAGE}/reviews?maxResults=50`,
     { headers: { Authorization: 'Bearer ' + token } },
   );
-  if (!r.ok) return [];
+  if (!r.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + r.status}), {"source":"functions/src/reviewAlerts.ts","handler":"fetchPlayReviews","site":"reviewAlerts.ts:http:87"}); return []; }
   const j = (await r.json()) as { reviews?: any[] };
   return (j.reviews ?? []).map((d) => {
     const uc = (d.comments ?? []).find((c: any) => c.userComment)?.userComment;
@@ -108,6 +110,7 @@ export async function runReviewAlerts(ascP8: string, playSa: string): Promise<vo
     try {
       all = all.concat(await fetchAppleReviews(ascP8));
     } catch (e) {
+    observeCaughtError(e, {"source":"functions/src/reviewAlerts.ts","handler":"runReviewAlerts","site":"reviewAlerts:4597bbca2c"});
       console.warn('[reviewAlerts] apple failed', e);
     }
   }
@@ -115,6 +118,7 @@ export async function runReviewAlerts(ascP8: string, playSa: string): Promise<vo
     try {
       all = all.concat(await fetchPlayReviews(playSa));
     } catch (e) {
+    observeCaughtError(e, {"source":"functions/src/reviewAlerts.ts","handler":"runReviewAlerts","site":"reviewAlerts:1f00456804"});
       console.warn('[reviewAlerts] play failed', e);
     }
   }

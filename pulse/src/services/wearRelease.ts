@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // wearRelease — the Wear OS (watch) app's release info, kept separate from the
 // phone release log since the watch ships on its own cadence. Stored at
 // appConfig/wearRelease: { version, status, submittedAt?, releasedAt?, items[] }.
@@ -26,7 +27,7 @@ export const WEAR_STATUS_HE: Record<WearStatus, { he: string; live: boolean }> =
 };
 
 export async function fetchWearRelease(): Promise<WearRelease | null> {
-  const doc = await getDoc('appConfig/wearRelease').catch(() => null);
+  const doc = await getDoc('appConfig/wearRelease').catch((caughtError76e42c2b8a: unknown) => { observeCaughtError(caughtError76e42c2b8a, {"source":"pulse/src/services/wearRelease.ts","handler":"fetchWearRelease","site":"wearRelease:76e42c2b8a"}); return null; });
   if (!doc || !doc.version) return null;
   const items = Array.isArray(doc.items)
     ? (doc.items as any[]).map((i) => ({

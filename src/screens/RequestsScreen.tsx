@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -61,6 +62,7 @@ export function RequestsScreen() {
       setData(next);
       setLoadFailed(false);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/RequestsScreen.tsx","handler":"RequestsScreen","site":"RequestsScreen:c031cf55de"});
       if (version !== loadVersion.current) return;
       setLoadFailed(true);
       logError('RequestsScreen.load', err, {
@@ -123,6 +125,7 @@ export function RequestsScreen() {
       successHaptic();
       await load();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/RequestsScreen.tsx","handler":"act","site":"RequestsScreen:fc3d0a4450"});
       logError('RequestsScreen.act', err, {
         key: row.key
       });
@@ -154,6 +157,7 @@ export function RequestsScreen() {
           if (row.kind === 'club') await useGroupStore.getState().hydrate(me.id);
           await load();
         } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/RequestsScreen.tsx","handler":"onPress","site":"RequestsScreen:0e3832676c"});
           logError('RequestsScreen.approveAll', err);
           appAlert(he.error, he.requestsActionFailed);
         } finally {

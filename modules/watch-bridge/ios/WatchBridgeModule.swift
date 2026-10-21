@@ -6,12 +6,40 @@
 // Mirrors the Android WatchBridgeModule.kt (Wear Data Layer) — same "WatchBridge"
 // name + publishState(json) contract, so the RN side is symmetric.
 
+import Foundation
 import ExpoModulesCore
 import WatchConnectivity
 
 public class WatchBridgeModule: Module, WCSessionDelegate {
+  private let diagnosticLock = NSLock()
+  private var diagnosticCodes: [String] = []
+  private var diagnosticOverflow = false
+
+  private func recordDiagnostic(_ code: String) {
+    diagnosticLock.lock()
+    defer { diagnosticLock.unlock() }
+    if diagnosticCodes.count == 31 {
+      diagnosticCodes.removeFirst()
+      diagnosticOverflow = true
+    }
+    diagnosticCodes.append(code)
+  }
+
+  private func takeDiagnostics() -> [String] {
+    diagnosticLock.lock()
+    defer { diagnosticLock.unlock() }
+    let result = diagnosticCodes + (diagnosticOverflow ? ["native.overflow"] : [])
+    diagnosticCodes.removeAll(keepingCapacity: true)
+    diagnosticOverflow = false
+    return result
+  }
+
   public func definition() -> ModuleDefinition {
     Name("WatchBridge")
+
+    AsyncFunction("takeDiagnostics") { () -> [String] in
+      self.takeDiagnostics()
+    }
 
     OnCreate {
       if WCSession.isSupported() {
@@ -34,10 +62,16 @@ public class WatchBridgeModule: Module, WCSessionDelegate {
       let ctx: [String: Any] = ["json": json]
       // Latest-wins snapshot — delivered when the watch next wakes even if it's
       // asleep/unreachable now (the primary channel).
-      try? session.updateApplicationContext(ctx)
+      do {
+        try session.updateApplicationContext(ctx)
+      } catch {
+        self.recordDiagnostic("watch.context")
+      }
       // Instant push when the watch app is foreground + reachable.
       if session.isReachable {
-        session.sendMessage(ctx, replyHandler: nil, errorHandler: nil)
+        session.sendMessage(ctx, replyHandler: nil, errorHandler: { [weak self] _ in
+          self?.recordDiagnostic("watch.message")
+        })
       }
     }
   }
@@ -46,7 +80,9 @@ public class WatchBridgeModule: Module, WCSessionDelegate {
   // so the session keeps working when the user pairs a different watch.
   public func session(_ session: WCSession,
                       activationDidCompleteWith state: WCSessionActivationState,
-                      error: Error?) {}
+                      error: Error?) {
+    if error != nil { recordDiagnostic("watch.activation") }
+  }
   public func sessionDidBecomeInactive(_ session: WCSession) {}
   public func sessionDidDeactivate(_ session: WCSession) {
     WCSession.default.activate()

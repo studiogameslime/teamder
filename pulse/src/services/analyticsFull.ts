@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import { cached } from './cache';
 import { collectionData } from './collectionData';
 import { pulseFetch as fetch } from './adminTransport';
@@ -212,7 +213,7 @@ async function fetchAnalyticsFullUncached(rangeKey: RangeKey, opts: { force?: bo
         dateRanges: [spec.cur],
         dimensions: [{ name: 'newVsReturning' }],
         metrics: [{ name: 'activeUsers' }],
-      }).catch(() => ({ rows: [] }));
+      }).catch((caughtError54ee8857b6: unknown) => { observeCaughtError(caughtError54ee8857b6, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:54ee8857b6"}); return ({ rows: [] }); });
       let returning = 0, allu = 0;
       (ret.rows ?? []).forEach((row: any) => {
         const v = num(row.metricValues?.[0]?.value);
@@ -226,7 +227,7 @@ async function fetchAnalyticsFullUncached(rangeKey: RangeKey, opts: { force?: bo
         dateRanges: [spec.cur],
         dimensions: [{ name: 'operatingSystem' }],
         metrics: [{ name: 'activeUsers' }],
-      }).catch(() => ({ rows: [] }));
+      }).catch((caughtError793f674c06: unknown) => { observeCaughtError(caughtError793f674c06, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:793f674c06"}); return ({ rows: [] }); });
       empty.devices = (os.rows ?? []).map((row: any) => ({
         name: row.dimensionValues?.[0]?.value ?? '—',
         value: num(row.metricValues?.[0]?.value),
@@ -239,7 +240,7 @@ async function fetchAnalyticsFullUncached(rangeKey: RangeKey, opts: { force?: bo
         metrics: [{ name: 'activeUsers' }],
         orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
         limit: 8,
-      }).catch(() => ({ rows: [] }));
+      }).catch((caughtError9a174d5be3: unknown) => { observeCaughtError(caughtError9a174d5be3, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:9a174d5be3"}); return ({ rows: [] }); });
       empty.acquisition = (acq.rows ?? []).map((row: any) => {
         const raw = row.dimensionValues?.[0]?.value ?? '—';
         return { name: CHANNEL_LABEL[raw] ?? raw, value: num(row.metricValues?.[0]?.value) };
@@ -252,12 +253,13 @@ async function fetchAnalyticsFullUncached(rangeKey: RangeKey, opts: { force?: bo
         metrics: [{ name: 'eventCount' }],
         orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
         limit: 100,
-      }).catch(() => ({ rows: [] }));
+      }).catch((caughtError162ab3b9e4: unknown) => { observeCaughtError(caughtError162ab3b9e4, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:162ab3b9e4"}); return ({ rows: [] }); });
       empty.topActions = (ev.rows ?? [])
         .map((row: any) => ({ raw: row.dimensionValues?.[0]?.value ?? '', value: num(row.metricValues?.[0]?.value) }))
         .filter((e: any) => !SKIP_EVENTS.has(e.raw))
         .map((e: any) => ({ name: EVENT_LABEL[e.raw] ?? e.raw, value: e.value }));
-    } catch {
+    } catch (caughtErrora0c965ebb7) {
+    observeCaughtError(caughtErrora0c965ebb7, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:a0c965ebb7"});
       /* GA unavailable — keep zeros */
     }
   }
@@ -276,11 +278,11 @@ async function fetchAnalyticsFullUncached(rangeKey: RangeKey, opts: { force?: bo
         collectionData('groups', opts.force),
         allTime
           ? collectionData('games', opts.force)
-          : queryByCreatedAt('games', spec.startMs, spec.endMs, 'integer').catch(() => []),
+          : queryByCreatedAt('games', spec.startMs, spec.endMs, 'integer').catch((caughtErrore0a0b757bd: unknown) => { observeCaughtError(caughtErrore0a0b757bd, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:e0a0b757bd"}); return []; }),
         allTime
-          ? listAll('notifications', 4000).catch(() => [])
-          : queryByCreatedAt('notifications', spec.startMs, spec.endMs, 'timestamp').catch(() => []),
-        listAll('friendRequests').catch(() => []),
+          ? listAll('notifications', 4000).catch((caughtErrora5aa3edee8: unknown) => { observeCaughtError(caughtErrora5aa3edee8, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:a5aa3edee8"}); return []; })
+          : queryByCreatedAt('notifications', spec.startMs, spec.endMs, 'timestamp').catch((caughtError3809806c5b: unknown) => { observeCaughtError(caughtError3809806c5b, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:3809806c5b"}); return []; }),
+        listAll('friendRequests').catch((caughtError94803d7bf8: unknown) => { observeCaughtError(caughtError94803d7bf8, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:94803d7bf8"}); return []; }),
       ]);
       // Friend requests — sent (all docs) vs accepted (status). Cumulative.
       empty.friendsSent = friendReqs.length;
@@ -330,7 +332,8 @@ async function fetchAnalyticsFullUncached(rangeKey: RangeKey, opts: { force?: bo
       const inPeriod = notifs.filter((n) => inRange(n.createdAt));
       empty.pushSent = inPeriod.length;
       empty.pushOpened = inPeriod.filter((n) => n.read === true).length;
-    } catch {
+    } catch (caughtErrorb842fc511d) {
+    observeCaughtError(caughtErrorb842fc511d, {"source":"pulse/src/services/analyticsFull.ts","handler":"fetchAnalyticsFullUncached","site":"analyticsFull:b842fc511d"});
       /* Firestore unavailable */
     }
   }

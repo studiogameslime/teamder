@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { RtlTextInput as TextInput } from '../components/RtlTextInput';
@@ -39,7 +40,7 @@ export function SegmentScreen() {
   const [saved, setSaved] = useState<SavedSegment[]>([]);
 
   const def: SegmentDef = { combinator, rules };
-  const reloadSaved = async () => setSaved(await listSegments().catch(() => []));
+  const reloadSaved = async () => setSaved(await listSegments().catch((caughtErrora7c2a11689: unknown) => { observeCaughtError(caughtErrora7c2a11689, {"source":"pulse/src/screens/SegmentScreen.tsx","handler":"reloadSaved","site":"SegmentScreen:a7c2a11689"}); return []; }));
   useEffect(() => { reloadSaved(); }, []);
 
   const update = (i: number, patch: Partial<SegmentRule>) => {
@@ -67,7 +68,8 @@ export function SegmentScreen() {
       const n = real.filter((u) => matchUser(u, def, members, now)).length;
       setCount(n); setTotal(real.length);
       return n;
-    } catch { setError('חישוב הקהל נכשל. נסו שוב.'); return null; } finally {
+    } catch (caughtError8edb7cbb46) {
+    observeCaughtError(caughtError8edb7cbb46, {"source":"pulse/src/screens/SegmentScreen.tsx","handler":"calc","site":"SegmentScreen:8edb7cbb46"}); setError('חישוב הקהל נכשל. נסו שוב.'); return null; } finally {
       setBusy(false);
     }
   };

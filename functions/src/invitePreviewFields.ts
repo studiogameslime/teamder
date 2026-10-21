@@ -1,3 +1,4 @@
+import { observeCaughtError } from './serverErrorLog';
 // Public invitation preview only. No roster, admin, rating or free-text fields.
 const AVATAR_URLS: Record<string, string> = {
   "a01": "/avatars/avatar-25.jpg",
@@ -49,7 +50,8 @@ export function publicInviterFields(data: Record<string, unknown> | undefined): 
   const avatar = typeof data.avatarId === 'string' && Object.prototype.hasOwnProperty.call(AVATAR_URLS, data.avatarId) ? AVATAR_URLS[data.avatarId] : undefined;
   let photo: string | undefined;
   if (typeof data.photoUrl === 'string') {
-    try { const u = new URL(data.photoUrl); if (u.protocol === 'https:') photo = u.href; } catch { /* invalid photo omitted */ }
+    try { const u = new URL(data.photoUrl); if (u.protocol === 'https:') photo = u.href; } catch (caughtError3dbd4e0933) {
+    observeCaughtError(caughtError3dbd4e0933, {"source":"functions/src/invitePreviewFields.ts","handler":"publicInviterFields","site":"invitePreviewFields:3dbd4e0933"}); /* invalid photo omitted */ }
   }
   return { ...(name ? { inviterName: name } : {}), ...(photo ? { inviterPhotoUrl: photo } : {}), ...(avatar ? { inviterAvatarUrl: avatar } : {}) };
 }
@@ -90,7 +92,8 @@ const COVER_URLS: Record<string, string> = {
 export function publicCover(data: Record<string, unknown>, groupId: string): string | undefined {
   const uploaded = data.coverPhotoUrl ?? data.coverUrl;
   if (typeof uploaded === 'string') {
-    try { const url = new URL(uploaded); if (url.protocol === 'https:') return url.href; } catch { /* invalid upload */ }
+    try { const url = new URL(uploaded); if (url.protocol === 'https:') return url.href; } catch (caughtErrorc252830382) {
+    observeCaughtError(caughtErrorc252830382, {"source":"functions/src/invitePreviewFields.ts","handler":"publicCover","site":"invitePreviewFields:c252830382"}); /* invalid upload */ }
   }
   if (typeof data.coverImageId === 'string' && Object.prototype.hasOwnProperty.call(COVER_URLS, data.coverImageId)) return COVER_URLS[data.coverImageId];
   let hash = 0;

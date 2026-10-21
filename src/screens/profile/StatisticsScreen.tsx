@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { socialPlayersService } from '@/services/socialPlayersService';
 // StatisticsScreen — a dedicated page that gathers the player's numbers and
 // their "people" superlatives (most played with, winning duo, biggest
@@ -82,7 +83,8 @@ export function StatisticsScreen() {
         setTargetUser({ ...profile.player, createdAt: 0 });
         if (!profile.canSeeStatistics || !profile.statistics) { setRestricted(true); return; }
         setStats(profile.statistics.stats); setPen(profile.statistics.pen); setPeople(profile.statistics.people);
-      }).catch(() => { if (alive) setFailed(true); }).finally(() => { if (alive) {setLoading(false);setHighlightsLoading(false);} });
+      }).catch((caughtErrorc41edd63bc: unknown) => {
+    observeCaughtError(caughtErrorc41edd63bc, {"source":"src/screens/profile/StatisticsScreen.tsx","handler":"StatisticsScreen","site":"StatisticsScreen:c41edd63bc"}); if (alive) setFailed(true); }).finally(() => { if (alive) {setLoading(false);setHighlightsLoading(false);} });
       return () => { alive = false; };
     }
 
@@ -140,7 +142,7 @@ export function StatisticsScreen() {
           ),
         );
         const fetched = await Promise.all(
-          ids.map((id) => userService.getUserById(id).catch(() => null)),
+          ids.map((id) => userService.getUserById(id).catch((caughtError7526f9605c: unknown) => { observeCaughtError(caughtError7526f9605c, {"source":"src/screens/profile/StatisticsScreen.tsx","handler":"StatisticsScreen","site":"StatisticsScreen:7526f9605c"}); return null; })),
         );
         if (!alive) return;
         const map: Record<string, Resolved> = {};
@@ -150,6 +152,7 @@ export function StatisticsScreen() {
         setPeople(map);
       })
       .catch((err) => {
+    observeCaughtError(err, {"source":"src/screens/profile/StatisticsScreen.tsx","handler":"StatisticsScreen","site":"StatisticsScreen:e4da6c2a46"});
         if (alive) { setFailed(true); logError('loadStatistics', err, { userId: uid }); }
       })
       .finally(() => {
@@ -186,6 +189,7 @@ export function StatisticsScreen() {
         await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'הכדורגל שלי' });
       } else toast.error(he.summaryShareUnavailable);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/profile/StatisticsScreen.tsx","handler":"onShare","site":"StatisticsScreen:11ba404ae0"});
       logError('sharePersonalStatistics', err);
       toast.error(he.summaryShareFailed);
     } finally {

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // ReferralsListScreen — the page that opens when the user taps the
 // "שחקנים שהצטרפו דרכי" tile on Profile. Lists every user whose
 // invitedBy field equals the current user's id, sorted newest-first,
@@ -80,6 +81,7 @@ export function ReferralsListScreen() {
         logEvent(AnalyticsEvent.ReferralsScreenOpened, { count: list.length });
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/profile/ReferralsListScreen.tsx","handler":"ReferralsListScreen","site":"ReferralsListScreen:836e7978b3"});
       // Retain the previous successful list; failure is a separate retryable state.
       logError('loadReferrals', err, {
         screen: 'ReferralsListScreen',

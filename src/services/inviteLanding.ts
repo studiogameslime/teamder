@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Has this personal invite already been landed on?
 //
 // ─── Why this is not just "clear the stash" ──────────────────────────────
@@ -46,7 +47,8 @@ export async function wasLandingShown(invitedBy?: string): Promise<boolean> {
   try {
     const seen = await AsyncStorage.getItem(KEY);
     return seen === latchValue(invitedBy);
-  } catch {
+  } catch (caughtErrorfda7f6d3e2) {
+    observeCaughtError(caughtErrorfda7f6d3e2, {"source":"src/services/inviteLanding.ts","handler":"wasLandingShown","site":"inviteLanding:fda7f6d3e2"});
     return false;
   }
 }
@@ -56,7 +58,8 @@ export async function wasLandingShown(invitedBy?: string): Promise<boolean> {
 export async function markLandingShown(invitedBy?: string): Promise<void> {
   try {
     await AsyncStorage.setItem(KEY, latchValue(invitedBy));
-  } catch {
+  } catch (caughtErrorc4e563f9ea) {
+    observeCaughtError(caughtErrorc4e563f9ea, {"source":"src/services/inviteLanding.ts","handler":"markLandingShown","site":"inviteLanding:c4e563f9ea"});
     // Ignored on purpose; see above.
   }
 }
@@ -66,7 +69,8 @@ export async function markLandingShown(invitedBy?: string): Promise<void> {
 export async function resetLanding(): Promise<void> {
   try {
     await AsyncStorage.removeItem(KEY);
-  } catch {
+  } catch (caughtError64c5cb7c19) {
+    observeCaughtError(caughtError64c5cb7c19, {"source":"src/services/inviteLanding.ts","handler":"resetLanding","site":"inviteLanding:64c5cb7c19"});
     // Ignored on purpose.
   }
 }

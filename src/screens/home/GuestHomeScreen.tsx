@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // GuestHomeScreen — the home of a RETURNING guest.
 //
 // ─── It is no longer the onboarding ─────────────────────────────────────
@@ -92,6 +93,7 @@ export function GuestHomeScreen() {
       const games = await gameService.getOpenGames(user.id, ids);
       setDiscovery({ status: 'ready', games: games.slice(0, DISCOVERY_LIMIT) });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/home/GuestHomeScreen.tsx","handler":"GuestHomeScreen","site":"GuestHomeScreen:68c966decb"});
       // Local failure only. The hero and the two actions stay exactly where
       // they are — the reason somebody opened the app does not depend on
       // whether a query answered.
@@ -128,7 +130,8 @@ export function GuestHomeScreen() {
           const game = await draftStore.read('game');
           if (!alive) return;
           setResume(game ? 'game' : null);
-        } catch {
+        } catch (caughtErrord6959b7b0d) {
+    observeCaughtError(caughtErrord6959b7b0d, {"source":"src/screens/home/GuestHomeScreen.tsx","handler":"GuestHomeScreen","site":"GuestHomeScreen:d6959b7b0d"});
           // A draft we cannot read is a draft there is nothing to offer about.
           if (alive) setResume(null);
         }

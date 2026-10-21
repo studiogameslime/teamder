@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // Communities tab — premium card-based feed.
 //
 // Layout (top → bottom, RTL):
@@ -162,6 +163,7 @@ export function PublicGroupsFeedScreen() {
         if (text.trim().length > 0) logEvent(AnalyticsEvent.GroupSearch, { query: text });
         if (alive) setItems(list);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/PublicGroupsFeedScreen.tsx","handler":"PublicGroupsFeedScreen","site":"PublicGroupsFeedScreen:02c3a337de"});
         logError('listPublicGroups', err, {
           screen: 'PublicGroupsFeedScreen',
           query: text.trim() || undefined,
@@ -191,7 +193,8 @@ export function PublicGroupsFeedScreen() {
       .then((l) => {
         if (alive) setMyLatLng(l);
       })
-      .catch(() => {});
+      .catch((caughtError649774c915: unknown) => {
+    observeCaughtError(caughtError649774c915, {"source":"src/screens/communities/PublicGroupsFeedScreen.tsx","handler":"PublicGroupsFeedScreen","site":"PublicGroupsFeedScreen:649774c915"});});
     return () => {
       alive = false;
     };
@@ -251,7 +254,8 @@ export function PublicGroupsFeedScreen() {
       .then((m) => {
         if (alive) setClubFriends(m);
       })
-      .catch(() => {});
+      .catch((caughtErrorc138da3874: unknown) => {
+    observeCaughtError(caughtErrorc138da3874, {"source":"src/screens/communities/PublicGroupsFeedScreen.tsx","handler":"PublicGroupsFeedScreen","site":"PublicGroupsFeedScreen:c138da3874"});});
     return () => {
       alive = false;
     };
@@ -403,6 +407,7 @@ export function PublicGroupsFeedScreen() {
         toast.info(he.groupAlreadyMember);
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/PublicGroupsFeedScreen.tsx","handler":"handleRequest","site":"PublicGroupsFeedScreen:8a83965fdd"});
       if (
         err instanceof GroupJoinRejectedError ||
         (err as Error)?.name === 'GroupJoinRejectedError'

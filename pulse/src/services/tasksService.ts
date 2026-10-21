@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Tasks — the single work list behind the app's home screen.
 //
 // Everything the owner has to DO lives in one Firestore collection: items
@@ -157,7 +158,8 @@ async function listTasksUncached(): Promise<Task[]> {
   void AsyncStorage.setItem(
     DISK_KEY,
     JSON.stringify(tasks.map((t) => ({ ...t, images: [] }))),
-  ).catch(() => {});
+  ).catch((caughtError9ea6b5192e: unknown) => {
+    observeCaughtError(caughtError9ea6b5192e, {"source":"pulse/src/services/tasksService.ts","handler":"listTasksUncached","site":"tasksService:9ea6b5192e"});});
   return tasks;
 }
 
@@ -172,7 +174,8 @@ export async function loadCachedTasks(): Promise<Task[]> {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.map((d) => toTask(d)) : [];
-  } catch {
+  } catch (caughtErrordeae7c7558) {
+    observeCaughtError(caughtErrordeae7c7558, {"source":"pulse/src/services/tasksService.ts","handler":"loadCachedTasks","site":"tasksService:deae7c7558"});
     return [];
   }
 }

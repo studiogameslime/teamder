@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 // ChatsScreen — one home for all chat monitoring across Teamder:
 //   • הודעות  — every chat message (sender + where + text)
 //   • דיווחים — reported messages (cycle status / delete)
@@ -62,11 +63,11 @@ export function ChatsScreen() {
 
   const loadSeg = useCallback(async (which: Seg) => {
     if (which === 'messages') {
-      setMessages(await listRecentChatMessages(80).catch(() => []));
+      setMessages(await listRecentChatMessages(80).catch((caughtError635289b9f4: unknown) => { observeCaughtError(caughtError635289b9f4, {"source":"pulse/src/screens/ChatsScreen.tsx","handler":"ChatsScreen","site":"ChatsScreen:635289b9f4"}); return []; }));
     } else if (which === 'reports') {
-      setReports(await listChatReports().catch(() => []));
+      setReports(await listChatReports().catch((caughtErrorf924fa2813: unknown) => { observeCaughtError(caughtErrorf924fa2813, {"source":"pulse/src/screens/ChatsScreen.tsx","handler":"ChatsScreen","site":"ChatsScreen:f924fa2813"}); return []; }));
     } else {
-      setBlocks(await listRecentBlocks(80).catch(() => []));
+      setBlocks(await listRecentBlocks(80).catch((caughtErrorc4be064a26: unknown) => { observeCaughtError(caughtErrorc4be064a26, {"source":"pulse/src/screens/ChatsScreen.tsx","handler":"ChatsScreen","site":"ChatsScreen:c4be064a26"}); return []; }));
     }
   }, []);
 
@@ -87,11 +88,13 @@ export function ChatsScreen() {
     const next =
       STATUS_ORDER[(STATUS_ORDER.indexOf(it.status) + 1) % STATUS_ORDER.length];
     setReports((rs) => rs?.map((r) => (r.id === it.id ? { ...r, status: next } : r)) ?? rs);
-    await setChatReportStatus(it.id, next).catch(() => {});
+    await setChatReportStatus(it.id, next).catch((caughtError1138fdba59: unknown) => {
+    observeCaughtError(caughtError1138fdba59, {"source":"pulse/src/screens/ChatsScreen.tsx","handler":"cycleStatus","site":"ChatsScreen:1138fdba59"});});
   };
   const removeReport = async (it: ChatReport) => {
     setReports((rs) => rs?.filter((r) => r.id !== it.id) ?? rs);
-    await deleteChatReport(it.id).catch(() => {});
+    await deleteChatReport(it.id).catch((caughtErrorbec501e7e7: unknown) => {
+    observeCaughtError(caughtErrorbec501e7e7, {"source":"pulse/src/screens/ChatsScreen.tsx","handler":"removeReport","site":"ChatsScreen:bec501e7e7"});});
   };
 
   const active = seg === 'messages' ? messages : seg === 'reports' ? reports : blocks;

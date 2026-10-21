@@ -1,3 +1,5 @@
+import { observedRejection, observeCaughtError } from '../utils/errorObservation';
+
 // Persist only supported, unresolved short URLs; never invent a target offline.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
@@ -12,14 +14,16 @@ function isResolvableShort(url: string): boolean {
   try {
     const u = new URL(url);
     return ['teamderfc.web.app', 'teamderfc.firebaseapp.com'].includes(u.hostname) && u.protocol === 'https:' && ['/app', '/go'].includes(u.pathname) && /^[A-Za-z0-9_-]{1,80}$/.test(u.searchParams.get('code') ?? '');
-  } catch { return false; }
+  } catch (caughtErrorebf514760c) {
+    observeCaughtError(caughtErrorebf514760c, {"source":"src/services/incomingInvite.ts","handler":"isResolvableShort","site":"incomingInvite:ebf514760c"}); return false; }
 }
 let revision = 0;
 let resolving = 0;
 const failureListeners = new Set<() => void>();
 let writes: Promise<unknown> = Promise.resolve();
 function serial<T>(fn: () => Promise<T>): Promise<T> {
-  const next = writes.then(fn, fn); writes = next.catch(() => {}); return next;
+  const next = writes.then(fn, observedRejection(fn, {"source":"src/services/incomingInvite.ts","handler":"serial","site":"incomingInvite:0b67865062"})); writes = next.catch((caughtError844b459fa0: unknown) => {
+    observeCaughtError(caughtError844b459fa0, {"source":"src/services/incomingInvite.ts","handler":"serial","site":"incomingInvite:844b459fa0"});}); return next;
 }
 export async function resolveIncomingInvite(
   url: string, origin: 'deep_link' | 'deferred_deep_link' = 'deep_link',
@@ -55,7 +59,8 @@ export async function retryUnresolvedInvite(): Promise<boolean> {
   const raw = await AsyncStorage.getItem(KEY);
   if (!raw) return false;
   let saved: { url: string; origin: 'deep_link' | 'deferred_deep_link' };
-  try { saved = JSON.parse(raw); } catch { return false; }
+  try { saved = JSON.parse(raw); } catch (caughtErrorbbc1f93a74) {
+    observeCaughtError(caughtErrorbbc1f93a74, {"source":"src/services/incomingInvite.ts","handler":"retryUnresolvedInvite","site":"incomingInvite:bbc1f93a74"}); return false; }
   if (!isResolvableShort(saved.url) || !['deep_link', 'deferred_deep_link'].includes(saved.origin)) return false;
   const attempt = revision;
   const invite = await resolveInviteUrl(saved.url);
@@ -80,7 +85,8 @@ export function startInviteRecovery(onRecovered: () => Promise<void> = async () 
     let remaining = 3;
     const step = async () => {
       if (stopped || current !== run) return;
-      try { await retryUnresolvedInvite(); await onRecovered(); } catch { /* next foreground can retry */ }
+      try { await retryUnresolvedInvite(); await onRecovered(); } catch (caughtError83ca7f9cb8) {
+    observeCaughtError(caughtError83ca7f9cb8, {"source":"src/services/incomingInvite.ts","handler":"step","site":"incomingInvite:83ca7f9cb8"}); /* next foreground can retry */ }
       if (!stopped && current === run && --remaining > 0) timer = setTimeout(step, 5000);
     };
     timer = setTimeout(step, 1500);

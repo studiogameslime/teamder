@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Thin wrapper over expo-store-review.
 //
 // Triggers (per spec): the natural emotional peaks for each persona —
@@ -51,6 +52,7 @@ function loadStoreReview(): StoreReviewModule | null {
     }
     return mod;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/storeReviewService.ts","handler":"loadStoreReview","site":"storeReviewService:1933955604"});
     if (__DEV__) {
       console.warn(
         '[storeReview] native module not linked — rebuild the dev client to enable',
@@ -123,6 +125,7 @@ export async function maybeRequestStoreReview(
     });
     return true;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/storeReviewService.ts","handler":"maybeRequestStoreReview","site":"storeReviewService:ab41e79f5b"});
     logError('maybeRequestStoreReview', err, { trigger, contextId });
     if (__DEV__) console.warn('[storeReview] requestReview failed', err);
     return false;

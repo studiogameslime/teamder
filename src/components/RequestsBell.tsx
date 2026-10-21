@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // RequestsBell — a self-contained header button (bell + pending-count badge)
 // that opens the unified Requests inbox. Drop it into any main screen's header;
 // it fetches the cheap count on focus and navigates to the 'Requests' route in
@@ -29,7 +30,8 @@ export function RequestsBell({
 
   useEffect(() => {
     const fetchCount = () => {
-      if (user) getInboxCount(user.id).then(setCount).catch(() => {});
+      if (user) getInboxCount(user.id).then(setCount).catch((caughtError5bb30e388a: unknown) => {
+    observeCaughtError(caughtError5bb30e388a, {"source":"src/components/RequestsBell.tsx","handler":"fetchCount","site":"RequestsBell:5bb30e388a"});});
     };
     fetchCount();
     return nav.addListener('focus', fetchCount);

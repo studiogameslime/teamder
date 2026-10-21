@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Telling somebody what their resumed action actually got them.
 //
 // `actionResumers` has always returned a precise outcome — joined, waitlisted,
@@ -79,7 +80,8 @@ export function reportResumeOutcome(
     // celebrating — a toast on top of that arrival is noise. `save_availability`
     // is followed by the notification offer, which is its own acknowledgement.
     // Their destinations ARE the feedback; only the joins had none.
-  } catch {
+  } catch (caughtErrorc83552a604) {
+    observeCaughtError(caughtErrorc83552a604, {"source":"src/services/resumeFeedback.ts","handler":"reportResumeOutcome","site":"resumeFeedback:c83552a604"});
     // Feedback can never fail an action that already succeeded.
   }
 }

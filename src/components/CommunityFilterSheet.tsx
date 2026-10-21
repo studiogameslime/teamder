@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // CommunityFilterSheet — modal sheet for filtering the Communities feed.
 //
@@ -132,14 +133,16 @@ export function CommunityFilterSheet({
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         Location = require('expo-location');
-      } catch {
+      } catch (caughtErrorbcb6bd1a6a) {
+    observeCaughtError(caughtErrorbcb6bd1a6a, {"source":"src/components/CommunityFilterSheet.tsx","handler":"CommunityFilterSheet","site":"CommunityFilterSheet:bcb6bd1a6a"});
         Location = null;
       }
       if (!Location) return;
       try {
         const cur = await Location.getForegroundPermissionsAsync();
         if (!cancelled) setLocationGranted(cur.granted);
-      } catch {
+      } catch (caughtError53b12efe0c) {
+    observeCaughtError(caughtError53b12efe0c, {"source":"src/components/CommunityFilterSheet.tsx","handler":"CommunityFilterSheet","site":"CommunityFilterSheet:53b12efe0c"});
         // ignore — leave as not-granted, show the permission prompt.
       }
     })();

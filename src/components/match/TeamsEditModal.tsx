@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces } from '@/theme/overlays';
 // TeamsEditModal — tap-to-swap editor for an EXISTING team split (כוחות).
 //
@@ -182,6 +183,7 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
       onSaved?.();
       onClose();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/match/TeamsEditModal.tsx","handler":"onFinish","site":"TeamsEditModal:77e121ed13"});
       logError('teamsEditSave', err, { gameId: game.id });
       toast.error(he.autoBalanceError);
     } finally {

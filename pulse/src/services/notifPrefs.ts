@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Per-type push toggles. Stored in Firestore (adminConfig/prefs) so the
 // server-side Cloud Functions filter BEFORE sending — a toggle works even
 // when Pulse is closed. Default (missing) = on.
@@ -34,7 +35,7 @@ export const NOTIF_TYPES: NotifTypeDef[] = [
 export type NotifPrefs = Record<string, boolean>;
 
 export async function fetchNotifPrefs(): Promise<NotifPrefs> {
-  const doc = await getDoc('adminConfig/prefs').catch(() => null);
+  const doc = await getDoc('adminConfig/prefs').catch((caughtErrorfe682f1468: unknown) => { observeCaughtError(caughtErrorfe682f1468, {"source":"pulse/src/services/notifPrefs.ts","handler":"fetchNotifPrefs","site":"notifPrefs:fe682f1468"}); return null; });
   const prefs: NotifPrefs = {};
   for (const t of NOTIF_TYPES) prefs[t.key] = doc?.[t.key] !== false; // default on
   return prefs;

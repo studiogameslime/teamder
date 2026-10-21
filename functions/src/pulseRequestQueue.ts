@@ -1,3 +1,4 @@
+import { observeCaughtError } from './serverErrorLog';
 /** Coalesce concurrent reservations without weakening the shared quota. */
 export function pulseRequestQueue(reserve: (uid: string, count: number) => Promise<number>) {
   type Waiting = {resolve: () => void; reject: (error: Error) => void};
@@ -15,6 +16,7 @@ export function pulseRequestQueue(reserve: (uid: string, count: number) => Promi
             const allowed = await reserve(uid, batch.length);
             batch.forEach((request, index) => index < allowed ? request.resolve() : request.reject(new Error('PULSE_RATE_LIMIT')));
           } catch (error) {
+    observeCaughtError(error, {"source":"functions/src/pulseRequestQueue.ts","handler":"pulseRequestQueue","site":"pulseRequestQueue:b79ef90890"});
             batch.forEach(request => request.reject(error instanceof Error ? error : new Error('PULSE_REQUEST_FAILED')));
           }
         }

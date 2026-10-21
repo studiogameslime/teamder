@@ -1,6 +1,7 @@
 package com.studiogameslime.soccerapp.watch
 
 import android.content.Context
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -29,6 +30,30 @@ import com.studiogameslime.soccerapp.widget.TeamderWidgetProvider
 class WatchBridgeModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
+    // Fixed operation codes only: never keep screenshots, state JSON or errors.
+    private val diagnosticCodes = java.util.ArrayDeque<String>()
+    private var diagnosticOverflow = false
+
+    @Synchronized
+    private fun recordDiagnostic(code: String) {
+        if (diagnosticCodes.size == 31) {
+            diagnosticCodes.removeFirst()
+            diagnosticOverflow = true
+        }
+        diagnosticCodes.addLast(code)
+    }
+
+    @ReactMethod
+    @Synchronized
+    fun takeDiagnostics(promise: Promise) {
+        val result = Arguments.createArray()
+        diagnosticCodes.forEach { result.pushString(it) }
+        if (diagnosticOverflow) result.pushString("native.overflow")
+        diagnosticCodes.clear()
+        diagnosticOverflow = false
+        promise.resolve(result)
+    }
+
     override fun getName(): String = "WatchBridge"
 
     @ReactMethod
@@ -44,6 +69,7 @@ class WatchBridgeModule(private val reactContext: ReactApplicationContext) :
             TeamderWidgetProvider.requestRefresh(reactContext)
             TeamderPlayersWidgetProvider.requestRefresh(reactContext)
         } catch (_: Exception) {
+            recordDiagnostic("watch.widgets")
             // Widget refresh failing should not affect the watch path —
             // swallow and continue.
         }

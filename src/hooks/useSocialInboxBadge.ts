@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import {useCallback,useState} from 'react';
 import {AppState} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
@@ -19,7 +20,8 @@ export function useSocialInboxBadge() {
       try{
         const [requests,invites]=await Promise.all([friendsService.queryRequests('toUserId',owner),receivedInvitationsService.listInbox(owner)]);
         if(alive&&useUserStore.getState().currentUser?.id===owner)setResult({owner,count:requests.length+invites.filter(i=>!i.read&&!['joined','expired','unavailable'].includes(i.status??'available')).length});
-      }catch{/* Retain the previous count on transport failure; do not invent zero. */}
+      }catch (caughtError1adf01a2e6){
+    observeCaughtError(caughtError1adf01a2e6, {"source":"src/hooks/useSocialInboxBadge.ts","handler":"refresh","site":"useSocialInboxBadge:1adf01a2e6"});/* Retain the previous count on transport failure; do not invent zero. */}
       finally{inFlight=false;}
     };
     void refresh();

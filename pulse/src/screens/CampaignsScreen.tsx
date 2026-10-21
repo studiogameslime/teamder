@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { RtlTextInput as TextInput } from '../components/RtlTextInput';
@@ -64,9 +65,9 @@ export function CampaignsScreen() {
   const [list, setList] = useState<FsDoc[]>([]);
 
   const reload = async () => {
-    setRate(await fetchPushRate().catch(() => null));
-    setList(await fetchCampaigns().catch(() => []));
-    setSegments(await listSegments().catch(() => []));
+    setRate(await fetchPushRate().catch((caughtError7b10c14a17: unknown) => { observeCaughtError(caughtError7b10c14a17, {"source":"pulse/src/screens/CampaignsScreen.tsx","handler":"reload","site":"CampaignsScreen:7b10c14a17"}); return null; }));
+    setList(await fetchCampaigns().catch((caughtError546060be2e: unknown) => { observeCaughtError(caughtError546060be2e, {"source":"pulse/src/screens/CampaignsScreen.tsx","handler":"reload","site":"CampaignsScreen:546060be2e"}); return []; }));
+    setSegments(await listSegments().catch((caughtErrorc5a0319186: unknown) => { observeCaughtError(caughtErrorc5a0319186, {"source":"pulse/src/screens/CampaignsScreen.tsx","handler":"reload","site":"CampaignsScreen:c5a0319186"}); return []; }));
   };
   useEffect(() => { reload(); }, []);
 
@@ -84,7 +85,8 @@ export function CampaignsScreen() {
       const real = users.filter((u) => !u.isTest && !u.deleted);
       setCount(real.filter((u) => matchUser(u, def, members, now)).length);
       setAudTotal(real.length);
-    } catch { Alert.alert('שגיאה', 'לא ניתן לחשב את הקהל כרגע'); } finally { setCalcBusy(false); }
+    } catch (caughtError3b3bad5751) {
+    observeCaughtError(caughtError3b3bad5751, {"source":"pulse/src/screens/CampaignsScreen.tsx","handler":"calc","site":"CampaignsScreen:3b3bad5751"}); Alert.alert('שגיאה', 'לא ניתן לחשב את הקהל כרגע'); } finally { setCalcBusy(false); }
   };
 
   const content = (): CampaignInput => ({

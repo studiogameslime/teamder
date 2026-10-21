@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { RtlTextInput as TextInput } from '../components/RtlTextInput';
@@ -23,7 +24,8 @@ export function UsersScreen(){
  const since=range==='today'?new Date(new Date(asOf).setHours(0,0,0,0)).getTime():range==='7d'?asOf-7*86400000:range==='30d'?asOf-30*86400000:undefined;
  const load=async(cursor?:DocumentPageCursor,index=0,force=false)=>{
   const request=++generation.current;lastRequest.current={cursor,index};setLoading(true);setFailed(false);
-  try{const result=await fetchUserPage({cursor,search:query,filter,since,legacy,now:asOf,force});if(request===generation.current){setPages(old=>index===0?[result]:[...old.slice(0,index),result]);setPage(index)}}catch{if(request===generation.current)setFailed(true)}finally{if(request===generation.current)setLoading(false)}
+  try{const result=await fetchUserPage({cursor,search:query,filter,since,legacy,now:asOf,force});if(request===generation.current){setPages(old=>index===0?[result]:[...old.slice(0,index),result]);setPage(index)}}catch (caughtErrorbd3315a31e){
+    observeCaughtError(caughtErrorbd3315a31e, {"source":"pulse/src/screens/UsersScreen.tsx","handler":"load","site":"UsersScreen:bd3315a31e"});if(request===generation.current)setFailed(true)}finally{if(request===generation.current)setLoading(false)}
  };
  useEffect(()=>{setPages([]);setPage(0);void load();return()=>{generation.current++}},[query,filter,range,legacy]);
  const current=pages[page];

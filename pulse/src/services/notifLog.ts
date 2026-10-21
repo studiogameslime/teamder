@@ -1,3 +1,5 @@
+import { observedRejection, observeCaughtError } from './errorObservation';
+
 // Local history of every notification Pulse shows — so missed pushes are
 // recoverable on a dedicated screen. Persisted to AsyncStorage (capped).
 //
@@ -30,7 +32,7 @@ export interface NotifLogEntry {
 let pendingWrite: Promise<void> = Promise.resolve();
 export function logNotification(title: string, body: string, data?: Record<string, unknown>): Promise<void> {
   const append = () => appendNotification(title, body, data);
-  pendingWrite = pendingWrite.then(append, append);
+  pendingWrite = pendingWrite.then(append, observedRejection(append, {"source":"pulse/src/services/notifLog.ts","handler":"logNotification","site":"notifLog:96cd411bda"}));
   return pendingWrite;
 }
 
@@ -60,7 +62,8 @@ async function appendNotification(
     const messageId = typeof data?.messageId === 'string' ? data.messageId : undefined;
     list.unshift({ id: `n_${now}_${Math.floor(Math.random() * 1000)}`, title, body, at: now, kind, eventId, sessionId, parentId, messageId });
     await AsyncStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)));
-  } catch {
+  } catch (caughtError8bd418cc4d) {
+    observeCaughtError(caughtError8bd418cc4d, {"source":"pulse/src/services/notifLog.ts","handler":"appendNotification","site":"notifLog:8bd418cc4d"});
     /* non-fatal */
   }
 }
@@ -69,7 +72,8 @@ export async function getNotificationLog(): Promise<NotifLogEntry[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
     return raw ? (JSON.parse(raw) as NotifLogEntry[]) : [];
-  } catch {
+  } catch (caughtErrora8065c54d4) {
+    observeCaughtError(caughtErrora8065c54d4, {"source":"pulse/src/services/notifLog.ts","handler":"getNotificationLog","site":"notifLog:a8065c54d4"});
     return [];
   }
 }
@@ -77,7 +81,8 @@ export async function getNotificationLog(): Promise<NotifLogEntry[]> {
 export async function clearNotificationLog(): Promise<void> {
   try {
     await AsyncStorage.removeItem(KEY);
-  } catch {
+  } catch (caughtError1729745865) {
+    observeCaughtError(caughtError1729745865, {"source":"pulse/src/services/notifLog.ts","handler":"clearNotificationLog","site":"notifLog:1729745865"});
     /* non-fatal */
   }
 }

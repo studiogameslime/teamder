@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { overlaySurfaces } from '@/theme/overlays';
 // ScreenshotReportSheet — a global host that watches for the user taking a
 // device screenshot and, the moment they do, slides a "report a bug" sheet up
@@ -77,7 +78,8 @@ export function ScreenshotReportSheet() {
           result: 'base64',
           width: 600,
         });
-      } catch {
+      } catch (caughtErroraf8c424e7c) {
+    observeCaughtError(caughtErroraf8c424e7c, {"source":"src/components/ScreenshotReportSheet.tsx","handler":"ScreenshotReportSheet","site":"ScreenshotReportSheet:af8c424e7c"});
         // Capture can fail (e.g. a secure view) — still offer the report,
         // just without the attached image.
       }
@@ -97,7 +99,8 @@ export function ScreenshotReportSheet() {
       sub = ScreenCapture.addScreenshotListener(() => {
         void onShot();
       });
-    } catch {
+    } catch (caughtErrorc4b2ca787e) {
+    observeCaughtError(caughtErrorc4b2ca787e, {"source":"src/components/ScreenshotReportSheet.tsx","handler":"ScreenshotReportSheet","site":"ScreenshotReportSheet:c4b2ca787e"});
       // Native module not linked (Expo Go / pre-rebuild) — no-op.
     }
     return () => sub?.remove?.();
@@ -122,7 +125,8 @@ export function ScreenshotReportSheet() {
       await submitFeedback('bug', msg, screen, image ?? undefined, category,diagnosticsRef.current);
       toast.success(he.screenshotReportSent);
       close();
-    } catch {
+    } catch (caughtErrorf7293649e0) {
+    observeCaughtError(caughtErrorf7293649e0, {"source":"src/components/ScreenshotReportSheet.tsx","handler":"submit","site":"ScreenshotReportSheet:f7293649e0"});
       toast.error(he.feedbackError);
     } finally {
       setBusy(false);

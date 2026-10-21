@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // LocationSearchSheet — full-screen location picker for the game wizard.
 //
 // Design goal: every chosen location ships with REAL coordinates, so the
@@ -125,7 +126,8 @@ export function LocationSearchSheet({
           setResults(r.places);
           setSearchDown(r.unavailable);
         }
-      } catch {
+      } catch (caughtError273c382242) {
+    observeCaughtError(caughtError273c382242, {"source":"src/components/games/LocationSearchSheet.tsx","handler":"LocationSearchSheet","site":"LocationSearchSheet:273c382242"});
         if (alive) {
           setResults([]);
           setSearchDown(true);
@@ -172,7 +174,8 @@ export function LocationSearchSheet({
         if (revision !== choiceRevision.current) return;
         setPicked({ label: r?.label || he.locationOnMap, lat, lng });
       })
-      .catch(() => {
+      .catch((caughtErrore2a679cbdf: unknown) => {
+    observeCaughtError(caughtErrore2a679cbdf, {"source":"src/components/games/LocationSearchSheet.tsx","handler":"pickFromMap","site":"LocationSearchSheet:e2a679cbdf"});
         if (revision !== choiceRevision.current) return;
         setPicked({ label: he.locationOnMap, lat, lng });
       })
@@ -209,7 +212,8 @@ export function LocationSearchSheet({
       }
       setFly({ lat, lng, zoom: 16 });
       pickFromMap(lat, lng);
-    } catch {
+    } catch (caughtError57ff4fecdc) {
+    observeCaughtError(caughtError57ff4fecdc, {"source":"src/components/games/LocationSearchSheet.tsx","handler":"useCurrentLocation","site":"LocationSearchSheet:57ff4fecdc"});
       if (revision === choiceRevision.current) setLocationError('לא הצלחנו לאתר את המיקום כרגע. נסו שוב או בחרו נקודה במפה.');
     } finally {
       if (timeout) clearTimeout(timeout);

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // DraftSetupScreen — Step 1 of חלוקת כוחות.
 //
 // The manager taps players to mark them captains (selection ORDER sets the
@@ -103,6 +104,7 @@ export function DraftSetupScreen() {
         if (!latest) throw new Error('GAME_NOT_FOUND');
         setGame(latest);setEditSavedTeams(preferSaved);setSplitMode('free');
       } catch(error) {
+    observeCaughtError(error, {"source":"src/screens/games/DraftSetupScreen.tsx","handler":"DraftSetupScreen","site":"DraftSetupScreen:8657bd7994"});
         if(alive && revision===loadRevision.current){setLoadFailed(true);logError('manualEntryLoad',error,{gameId});toast.error('לא הצלחנו לטעון את הכוחות המעודכנים. נסו שוב.');}
       } finally {
         if(alive && revision===loadRevision.current){setLoadingGame(false);setOpeningExisting(false);nav.setParams({resumeManual:undefined,editExisting:undefined});}
@@ -149,6 +151,7 @@ export function DraftSetupScreen() {
         }
         if (g?.players?.length) hydratePlayers(g.players);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/DraftSetupScreen.tsx","handler":"DraftSetupScreen","site":"DraftSetupScreen:2deaee4396"});
         if(alive && revision===loadRevision.current){setLoadFailed(true);logError('draftSetupLoad', err, { gameId });}
       } finally {
         if(alive && revision===loadRevision.current)setLoadingGame(false);
@@ -376,13 +379,14 @@ export function DraftSetupScreen() {
         expectedDraftCreatedAt: result.createdAt,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/DraftSetupScreen.tsx","handler":"DraftSetupScreen","site":"DraftSetupScreen:34c88f44e6"});
       logError('draftGenerate', err, { gameId: game.id, splitMode });
       logEvent(AnalyticsEvent.TeamsGenerateFailed, {
         gameId: game.id,
         method: splitMode ?? 'auto',
       });
       if (err instanceof Error && err.message === 'DRAFT_ROSTER_CHANGED') {
-        const latest = await gameService.getGameById(game.id).catch(() => null);
+        const latest = await gameService.getGameById(game.id).catch((caughtError6a6b76580f: unknown) => { observeCaughtError(caughtError6a6b76580f, {"source":"src/screens/games/DraftSetupScreen.tsx","handler":"DraftSetupScreen","site":"DraftSetupScreen:6a6b76580f"}); return null; });
         if (latest) setGame(latest);
         toast.info('סגל המחזור השתנה בזמן החלוקה. בדקו את הנתונים וצרו כוחות מחדש.');
       } else toast.error(err instanceof Error && err.message === 'ROUND_CLOSED' ? 'לא ניתן ליצור כוחות במחזור שהסתיים או בוטל.' : he.autoBalanceError);
@@ -450,6 +454,7 @@ export function DraftSetupScreen() {
                 setEditSavedTeams(true);
                 setSplitMode('free');
               } catch (error) {
+    observeCaughtError(error, {"source":"src/screens/games/DraftSetupScreen.tsx","handler":"DraftSetupScreen","site":"DraftSetupScreen:9cbb95921b"});
                 logError('openManualEdit', error, {gameId});
                 toast.error('לא הצלחנו לטעון את הכוחות. נסו שוב.');
               } finally { setOpeningExisting(false); }

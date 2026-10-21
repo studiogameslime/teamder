@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import { getDoc, queryEquals, queryChildDocuments, type FsDoc } from './firestoreRest';
 import { cached } from './cache';
 import { toRow, type GameRow } from './gamesService';
@@ -21,7 +22,8 @@ export function fetchRoundDetails(id:string,force=false):Promise<RoundDetails>{
  return cached(`round-details:${id}`,async()=>{
   const game=await getDoc(`games/${id}`);if(!game)throw new Error('PULSE_GAME_NOT_FOUND');
   const failedSources:string[]=[];const limitedSources:string[]=[];
-  const safe=async<T>(name:string,p:Promise<T>,fallback:T)=>{try{return await p}catch{failedSources.push(name);return fallback}};
+  const safe=async<T>(name:string,p:Promise<T>,fallback:T)=>{try{return await p}catch (caughtError8e2b334f4d){
+    observeCaughtError(caughtError8e2b334f4d, {"source":"pulse/src/services/gameDetails.ts","handler":"safe","site":"gameDetails:8e2b334f4d"});failedSources.push(name);return fallback}};
   const [group,matches,events,history,stats,summary,retroGoals]=await Promise.all([
    typeof game.groupId==='string'?safe('פרטי המועדון',getDoc(`groups/${game.groupId}`),null):Promise.resolve(null),
    safe('משחקים במחזור',queryEquals('rounds','gameId',id,500),[] as FsDoc[]),
@@ -35,9 +37,11 @@ export function fetchRoundDetails(id:string,force=false):Promise<RoundDetails>{
   if(matches.length===500)limitedSources.push('משחקים במחזור');if(events.length===500)limitedSources.push('כרטיסי מועדון');
   const players=await concurrentMap(rosterIds(game),async entry=>{
    let failed=false;
-   const doc=await getDoc(`users/${entry.id}`,['name','availability.homeCity','discipline','stats']).catch(()=>{failed=true;return null});
+   const doc=await getDoc(`users/${entry.id}`,['name','availability.homeCity','discipline','stats']).catch((caughtErrora199b2329c: unknown) =>{
+    observeCaughtError(caughtErrora199b2329c, {"source":"pulse/src/services/gameDetails.ts","handler":"fetchRoundDetails","site":"gameDetails:a199b2329c"});failed=true;return null});
    let rating:FsDoc|null=null;let ratingUnknown=!!game.groupId && !group;
-   if(group && group.internalRating!==true)rating=await getDoc(`groups/${group.id}/ratings/${entry.id}`).catch(()=>{ratingUnknown=true;failedSources.push(`דירוג ${entry.id}`);return null});
+   if(group && group.internalRating!==true)rating=await getDoc(`groups/${group.id}/ratings/${entry.id}`).catch((caughtError5b5daf7250: unknown) =>{
+    observeCaughtError(caughtError5b5daf7250, {"source":"pulse/src/services/gameDetails.ts","handler":"fetchRoundDetails","site":"gameDetails:5b5daf7250"});ratingUnknown=true;failedSources.push(`דירוג ${entry.id}`);return null});
    return {...entry,name:typeof doc?.name==='string'?doc.name:entry.id,city:record(doc?.availability).homeCity,guest:false,arrival:record(game.arrivals)[entry.id],joinedAt:record(game.joinedAt)[entry.id],...playerRating(group,entry.id,rating),failed:failed || !doc,ratingUnknown,record:(doc ?? {}) as Record<string,unknown>};
   });
   if(players.some(p=>p.failed))failedSources.push('פרטי שחקנים');

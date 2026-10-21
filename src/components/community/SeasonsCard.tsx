@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // SeasonsCard — where the club's season STANDS. Nothing is managed here.
 //
 // It used to carry the admin controls too, reached through a chain of alert
@@ -86,7 +87,7 @@ export function SeasonsCard({
 
   useEffect(() => {
     if (!isMember || !seasons?.enabled || !windowOpen || (seasons?.pendingClose?.closeAt ?? Infinity) > now || seasons?.pendingClose?.pausedAt != null) return;
-    void seasonService.sync(groupId).catch(() => undefined);
+    void seasonService.sync(groupId).catch((caughtErrorfdc77a8b5f: unknown) => { observeCaughtError(caughtErrorfdc77a8b5f, {"source":"src/components/community/SeasonsCard.tsx","handler":"SeasonsCard","site":"SeasonsCard:fdc77a8b5f"}); return undefined; });
   }, [groupId, isMember, seasons?.enabled, seasons?.pendingClose?.closeAt, seasons?.pendingClose?.pausedAt, Math.floor(now / 60000)]);
 
   if (!isMember) return null;

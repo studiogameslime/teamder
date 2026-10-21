@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // feedbackService — in-app "report a problem / suggest a feature" writes.
 //
 // Each submission creates ONE doc in the `feedback` collection (NOT the
@@ -113,6 +114,7 @@ export async function submitFeedback(
       status: 'new',
     });
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/feedbackService.ts","handler":"submitFeedback","site":"feedbackService:a312c0bc1d"});
     if ((err as { code?: string })?.code === 'already-exists') return;
     logError('submitFeedback', err, { type, screen });
     throw err;

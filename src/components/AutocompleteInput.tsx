@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // AutocompleteInput — TextInput + dropdown of suggestions fetched
 // asynchronously, with debounce and a manual-typing fallback if the source
 // returns nothing.
@@ -106,7 +107,8 @@ export function AutocompleteInput({
         } else {
           setSuggestions(results);
         }
-      } catch {
+      } catch (caughtErroref978b7060) {
+    observeCaughtError(caughtErroref978b7060, {"source":"src/components/AutocompleteInput.tsx","handler":"AutocompleteInput","site":"AutocompleteInput:ef978b7060"});
         if (alive) setSuggestions([]);
       } finally {
         if (alive) setLoading(false);

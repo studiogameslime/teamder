@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // Edit-game screen — same wizard as Create, just bootstrapped from
 // the existing game's saved values and submitting via updateGameV2.
 
@@ -137,6 +138,7 @@ export function GameEditScreen() {
         // GameEdit is admin-only; non-admins can't reach this route.
         setGame(g);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/GameEditScreen.tsx","handler":"GameEditScreen","site":"GameEditScreen:c4b29a4850"});
         const code =
           typeof (err as { code?: unknown })?.code === 'string'
             ? ((err as { code: string }).code)
@@ -276,6 +278,7 @@ export function GameEditScreen() {
       try {
         await gameService.setVisibility(game.id, v.visibility);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/GameEditScreen.tsx","handler":"submit","site":"GameEditScreen:0b1425e1b1"});
         logError('setVisibility', err, {
           screen: 'GameEditScreen',
           gameId: game.id,
@@ -416,6 +419,7 @@ export function GameEditScreen() {
           );
           toast.success(he.editSeriesAppliedToast);
         } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/GameEditScreen.tsx","handler":"submit","site":"GameEditScreen:9309c8d345"});
           logError('updateSeriesSettings', err, {
             gameId: game.id,
             seriesId: game.seriesId,
@@ -423,6 +427,7 @@ export function GameEditScreen() {
         }
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/GameEditScreen.tsx","handler":"submit","site":"GameEditScreen:8c4db70ba1"});
       const e = err as Error & {
         code?: string;
         conflict?: { title: string; startsAt: number };

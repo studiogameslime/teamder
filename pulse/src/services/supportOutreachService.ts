@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import { getDoc, patchDoc, queryCollectionRecent } from './firestoreRest';
 export interface OutreachSettings {
   enabled: boolean; delayHours: number; newUserDays: number;
@@ -11,7 +12,8 @@ export function validateOutreachSettings(settings: OutreachSettings): string | n
   if (!Number.isFinite(settings.delayHours) || settings.delayHours < 0.1 || settings.delayHours > 720) return 'זמן ההמתנה חייב להיות בין 0.1 ל־720 שעות';
   if (!Number.isFinite(settings.newUserDays) || settings.newUserDays < 0 || settings.newUserDays > 365) return 'חלון משתמש חדש חייב להיות בין 0 ל־365 ימים';
   if (!Number.isInteger(settings.startHour) || !Number.isInteger(settings.endHour) || settings.startHour < 0 || settings.endHour > 24 || settings.startHour >= settings.endHour) return 'יש לבחור שעות שליחה תקינות, מתחילה ועד סיום';
-  try { new Intl.DateTimeFormat('en', { timeZone: settings.timeZone }).format(); } catch { return 'אזור הזמן אינו תקין'; }
+  try { new Intl.DateTimeFormat('en', { timeZone: settings.timeZone }).format(); } catch (caughtError793faaadf0) {
+    observeCaughtError(caughtError793faaadf0, {"source":"pulse/src/services/supportOutreachService.ts","handler":"validateOutreachSettings","site":"supportOutreachService:793faaadf0"}); return 'אזור הזמן אינו תקין'; }
   if (!settings.template.trim() || settings.template.length > 700) return 'ההודעה חייבת להכיל בין 1 ל־700 תווים';
   return null;
 }

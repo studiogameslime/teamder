@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import { getDoc } from './firestoreRest';
 import { cached } from './cache';
 import { fetchUsers } from './firebase';
@@ -48,7 +49,8 @@ export async function fetchVersionInventory(force = false): Promise<UserVersions
       const index = cursor++;
       const user = users[index];
       try { result[index] = { userId: user.id, name: user.name, devices: await fetchUserDevices(user.id, force), failed: false }; }
-      catch { result[index] = { userId: user.id, name: user.name, devices: [], failed: true }; }
+      catch (caughtError42db4a97a0) {
+    observeCaughtError(caughtError42db4a97a0, {"source":"pulse/src/services/deviceVersions.ts","handler":"fetchVersionInventory","site":"deviceVersions:42db4a97a0"}); result[index] = { userId: user.id, name: user.name, devices: [], failed: true }; }
     }
   }));
   return result;

@@ -1,6 +1,7 @@
+import { observeCaughtError } from './serverErrorLog';
 import * as admin from 'firebase-admin';
-import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
-import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { onDocumentCreated, onDocumentWritten } from './observedFunctions';
+import { onSchedule } from './observedFunctions';
 import { nextOutreachTime, outreachEligible, outreachText, readOutreachConfig } from './supportOutreachPolicy';
 
 const configPath = 'adminConfig/supportOutreach';
@@ -15,7 +16,8 @@ export async function enrollClubOutreach(clubId: string, createdAt: number): Pro
   if (!user || user.isGuest === true) return;
   let account: admin.auth.UserRecord;
   try { account = await admin.auth().getUser(userId); }
-  catch (error) { if ((error as { code?: string }).code === 'auth/user-not-found') return; throw error; }
+  catch (error) {
+    observeCaughtError(error, {"source":"functions/src/supportOutreach.ts","handler":"enrollClubOutreach","site":"supportOutreach:5b9f57f502"}); if ((error as { code?: string }).code === 'auth/user-not-found') return; throw error; }
   const registeredAt = Date.parse(account.metadata?.creationTime ?? '') || ms(user.createdAt);
   if (account.disabled || !outreachEligible(registeredAt, createdAt, config)) return;
   const clubs = await db.collection('groups').where('creatorId', '==', userId).get();
@@ -36,7 +38,8 @@ export async function sendClubOutreach(userId: string, now = Date.now()): Promis
   const db = admin.firestore(), ref = db.collection(jobs).doc(userId);
   let accountUnavailable = false, registeredAt = 0;
   try { const account = await admin.auth().getUser(userId); accountUnavailable = account.disabled; registeredAt = Date.parse(account.metadata?.creationTime ?? '') || 0; }
-  catch (error) { if ((error as { code?: string }).code === 'auth/user-not-found') accountUnavailable = true; else throw error; }
+  catch (error) {
+    observeCaughtError(error, {"source":"functions/src/supportOutreach.ts","handler":"sendClubOutreach","site":"supportOutreach:855a1aeadb"}); if ((error as { code?: string }).code === 'auth/user-not-found') accountUnavailable = true; else throw error; }
   const convId = [userId, 'teamder'].sort().join('__'), conv = db.doc(`dmConversations/${convId}`);
   return db.runTransaction(async tx => {
     const [jobSnap, configSnap, userSnap, convSnap] = await tx.getAll(ref, db.doc(configPath), db.doc(`users/${userId}`), conv);
@@ -72,6 +75,7 @@ export async function runClubOutreach(now = Date.now()): Promise<void> {
   for (const job of due.docs) {
     try { await sendClubOutreach(job.id, now); }
     catch (error) {
+    observeCaughtError(error, {"source":"functions/src/supportOutreach.ts","handler":"runClubOutreach","site":"supportOutreach:e9333bb5ae"});
       console.error('[supportOutreach] send failed', { userId: job.id }, error);
       await db.runTransaction(async tx => {
         const snap = await tx.get(job.ref), data = snap.data();

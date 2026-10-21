@@ -1,3 +1,5 @@
+import { observedRejection, observeCaughtError } from '../utils/errorObservation';
+
 // draftStore — work in progress that has to survive being interrupted.
 //
 // The interruption we care about is authentication. A guest fills in the club
@@ -206,8 +208,9 @@ export async function writeDraft(
 
 let draftQueue: Promise<unknown> = Promise.resolve();
 function serializeDraft<T>(fn: () => Promise<T>): Promise<T> {
-  const next = draftQueue.then(fn, fn);
-  draftQueue = next.catch(() => {});
+  const next = draftQueue.then(fn, observedRejection(fn, {"source":"src/services/draftStore.ts","handler":"serializeDraft","site":"draftStore:c8788a9746"}));
+  draftQueue = next.catch((caughtError1636da876f: unknown) => {
+    observeCaughtError(caughtError1636da876f, {"source":"src/services/draftStore.ts","handler":"serializeDraft","site":"draftStore:1636da876f"});});
   return next;
 }
 
@@ -254,6 +257,7 @@ export async function discardDraft(kind: DraftKind): Promise<void> {
   try {
     await AsyncStorage.removeItem(keyFor(kind));
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/draftStore.ts","handler":"discardDraft","site":"draftStore:8636c8bd65"});
     if (__DEV__) console.warn('[draftStore] discard failed', kind, err);
   }
 }
@@ -280,7 +284,8 @@ async function readRaw(kind: DraftKind): Promise<Draft | null> {
     let parsed: Draft | null = null;
     try {
       parsed = parseDraft(JSON.parse(raw));
-    } catch {
+    } catch (caughtError359e945cab) {
+    observeCaughtError(caughtError359e945cab, {"source":"src/services/draftStore.ts","handler":"readRaw","site":"draftStore:359e945cab"});
       parsed = null;
     }
     if (!parsed) {
@@ -291,6 +296,7 @@ async function readRaw(kind: DraftKind): Promise<Draft | null> {
     }
     return parsed;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/draftStore.ts","handler":"readRaw","site":"draftStore:173d1c3e8c"});
     if (__DEV__) console.warn('[draftStore] read failed', kind, err);
     return null;
   }

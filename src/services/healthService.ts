@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // healthService — reads a player's OWN session metrics from the wearable data
 // hub on the phone (Health Connect on Android / HealthKit on iOS). The phone is
 // only the "mailbox": the measurement comes from the wrist device, never the
@@ -159,7 +160,8 @@ function nativeHealth(): HealthConnect | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
     hcModule = require('react-native-health-connect') as HealthConnect;
-  } catch {
+  } catch (caughtError22ce070bd2) {
+    observeCaughtError(caughtError22ce070bd2, {"source":"src/services/healthService.ts","handler":"nativeHealth","site":"healthService:22ce070bd2"});
     hcModule = null;
   }
   return hcModule ?? null;
@@ -178,6 +180,7 @@ async function ensureReady(hc: HealthConnect): Promise<boolean> {
     }
     initialized = await hc.initialize();
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/healthService.ts","handler":"ensureReady","site":"healthService:f97df53410"});
     logError('healthService.ensureReady', err);
     initialized = false;
   }
@@ -207,7 +210,8 @@ async function readRawSession(
         timeRangeFilter,
       });
       return res?.records ?? [];
-    } catch {
+    } catch (caughtErrora59aeeb214) {
+    observeCaughtError(caughtErrora59aeeb214, {"source":"src/services/healthService.ts","handler":"read","site":"healthService:a59aeeb214"});
       return [];
     }
   };
@@ -297,7 +301,7 @@ export const healthService = {
 
       if (!forcePrompt) {
         const declined = await AsyncStorage.getItem(DECLINED_KEY).catch(
-          () => null,
+          (caughtErrorf9cb1177ed: unknown) => { observeCaughtError(caughtErrorf9cb1177ed, {"source":"src/services/healthService.ts","handler":"ensurePermissions","site":"healthService:f9cb1177ed"}); return null; },
         );
         if (declined === '1') return false;
       }
@@ -305,15 +309,18 @@ export const healthService = {
       // policy). Declining here counts as a decline and latches off the prompt.
       const consented = await showHealthDisclosure();
       if (!consented) {
-        await AsyncStorage.setItem(DECLINED_KEY, '1').catch(() => {});
+        await AsyncStorage.setItem(DECLINED_KEY, '1').catch((caughtErrordd80ad4ea1: unknown) => {
+    observeCaughtError(caughtErrordd80ad4ea1, {"source":"src/services/healthService.ts","handler":"ensurePermissions","site":"healthService:dd80ad4ea1"});});
         return false;
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const res: any[] = await hc.requestPermission(READ_PERMISSIONS as any);
       const ok = res.some((g) => g?.accessType === 'read');
-      if (!ok) await AsyncStorage.setItem(DECLINED_KEY, '1').catch(() => {});
+      if (!ok) await AsyncStorage.setItem(DECLINED_KEY, '1').catch((caughtErrore8e4c32e7b: unknown) => {
+    observeCaughtError(caughtErrore8e4c32e7b, {"source":"src/services/healthService.ts","handler":"ensurePermissions","site":"healthService:e8e4c32e7b"});});
       return ok;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/healthService.ts","handler":"ensurePermissions","site":"healthService:3910abccfb"});
       logError('healthService.ensurePermissions', err);
       return false;
     }
@@ -344,6 +351,7 @@ export const healthService = {
         source: Platform.OS === 'ios' ? 'healthkit' : 'healthconnect',
       };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/healthService.ts","handler":"readSession","site":"healthService:a2d5450ff5"});
       logError('healthService.readSession', err, { from, to });
       return null;
     }
@@ -388,7 +396,8 @@ export const healthService = {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const res: any = await (hc.readRecords as any)(recordType, { timeRangeFilter });
           return res?.records ?? [];
-        } catch {
+        } catch (caughtErrordc3a6f6a72) {
+    observeCaughtError(caughtErrordc3a6f6a72, {"source":"src/services/healthService.ts","handler":"read","site":"healthService:dc3a6f6a72"});
           return [];
         }
       };
@@ -469,6 +478,7 @@ export const healthService = {
         source: Platform.OS === 'ios' ? 'healthkit' : 'healthconnect',
       };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/healthService.ts","handler":"readSessionMulti","site":"healthService:35aa017a5d"});
       logError('healthService.readSessionMulti', err, {
         n: intervals.length,
       });
@@ -490,7 +500,8 @@ export const healthService = {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const granted: any[] = await hc.getGrantedPermissions();
       return granted.some((g) => g?.accessType === 'read');
-    } catch {
+    } catch (caughtError076efacf5c) {
+    observeCaughtError(caughtError076efacf5c, {"source":"src/services/healthService.ts","handler":"arePermissionsGranted","site":"healthService:076efacf5c"});
       return false;
     }
   },

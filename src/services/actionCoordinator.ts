@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // actionCoordinator — the single place that decides whether an action can run
 // now or has to wait for an identity, and the single place that runs it.
 //
@@ -148,6 +149,7 @@ export async function requestAction(req: ActionRequest): Promise<RequestOutcome>
       has_draft: !!req.draft,
     });
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionCoordinator.ts","handler":"requestAction","site":"actionCoordinator:c751cd750a"});
     // Losing the stash is bad; blocking the sign-up over it is worse. The
     // person can still authenticate and redo the action by hand.
     logError('requestActionPersist', err, { kind: req.kind });
@@ -271,6 +273,7 @@ async function run(kind: PendingActionKind, execute: ActionExecutor): Promise<Ac
   try {
     return await execute();
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionCoordinator.ts","handler":"run","site":"actionCoordinator:5ce3aebc98"});
     const code = (err as { code?: string })?.code ?? '';
     // A target that exists but cannot be read is NOT a failure — the screen has
     // a dedicated view for it. Checked first so it can never be mapped to a
@@ -298,12 +301,14 @@ async function clearAll(req: { kind: PendingActionKind; draft?: { kind: DraftKin
   try {
     if (expected) await clearPendingActionIfMatches(expected);
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionCoordinator.ts","handler":"clearAll","site":"actionCoordinator:e8f7ae7358"});
     logError('actionClearPending', err, { kind: req.kind });
   }
   if (req.draft) {
     try {
       if (draft) await draftStore.consume(req.draft.kind, draft);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionCoordinator.ts","handler":"clearAll","site":"actionCoordinator:bd444a2d75"});
       logError('actionConsumeDraft', err, { kind: req.kind });
     }
   }

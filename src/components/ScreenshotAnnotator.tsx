@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // ScreenshotAnnotator — full-screen markup over a captured screenshot. The
 // tester draws red freehand strokes ("circle what's wrong") with a finger;
 // "שמירה" flattens the image + strokes into a fresh base64 JPEG via
@@ -125,7 +126,8 @@ export function ScreenshotAnnotator({ visible, image, onCancel, onDone }: Props)
         result: 'base64',
       });
       onDone(out);
-    } catch {
+    } catch (caughtError910bff738e) {
+    observeCaughtError(caughtError910bff738e, {"source":"src/components/ScreenshotAnnotator.tsx","handler":"done","site":"ScreenshotAnnotator:910bff738e"});
       onDone(image); // fall back to the un-annotated shot
     } finally {
       setBusy(false);

@@ -1,3 +1,5 @@
+import { observeCaughtError } from '../../utils/errorObservation';
+
 // Post-sign-in onboarding — single profile-customisation step.
 // The previous flow had three intermediate screens (welcome → how
 // → profile) but the user already saw the value pitch on the
@@ -69,7 +71,8 @@ function PostSignInProfileForm() {
           had_prefill: prefilledRef.current,
         });
       })
-      .catch(() => {
+      .catch((caughtError317bbce764: unknown) => {
+    observeCaughtError(caughtError317bbce764, {"source":"src/screens/onboarding/PostSignInOnboardingScreen.tsx","handler":"PostSignInProfileForm","site":"PostSignInOnboardingScreen:317bbce764"});
         if (alive) {
           logEvent(AnalyticsEvent.ProfileConfirmationViewed, { action_kind: 'none' });
         }
@@ -158,7 +161,8 @@ function PostSignInProfileForm() {
       // avatar selection so the preview / save reflect the photo.
       setAvatarId(undefined);
       logEvent(AnalyticsEvent.PhotoUploaded, { source: 'onboarding' });
-    } catch {
+    } catch (caughtError6c4c534adf) {
+    observeCaughtError(caughtError6c4c534adf, {"source":"src/screens/onboarding/PostSignInOnboardingScreen.tsx","handler":"handlePickPhoto","site":"PostSignInOnboardingScreen:6c4c534adf"});
       if (isCurrentOwner()) appAlert(he.error, he.profilePhotoUploadFailed);
     } finally {
       inFlight.current = false;
@@ -192,7 +196,7 @@ function PostSignInProfileForm() {
       // and is exactly what the availability editor tolerates.
       let coords: { lat: number; lng: number } | null = null;
       if (trimmedCity) {
-        coords = await geocodeCity(trimmedCity).catch(() => null);
+        coords = await geocodeCity(trimmedCity).catch((caughtError9b5eba0cf0: unknown) => { observeCaughtError(caughtError9b5eba0cf0, {"source":"src/screens/onboarding/PostSignInOnboardingScreen.tsx","handler":"handleSave","site":"PostSignInOnboardingScreen:9b5eba0cf0"}); return null; });
       }
       if (!isCurrentOwner()) return;
       await complete({
@@ -221,6 +225,7 @@ function PostSignInProfileForm() {
         city_geocoded: !!coords,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/onboarding/PostSignInOnboardingScreen.tsx","handler":"handleSave","site":"PostSignInOnboardingScreen:1f7687100b"});
       if (!isCurrentOwner()) return;
       if (__DEV__) console.warn('[onboarding] complete failed', err);
       logEvent(AnalyticsEvent.ProfileSaveFailed, {

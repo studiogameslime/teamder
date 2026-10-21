@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // EmailAuthScreen — email + password sign-in / sign-up, reached from the
 // "המשך עם מייל" button on SignInScreen. One screen toggles between the two
 // modes; "שכחת סיסמה?" sends a reset email. On success the user store sets
@@ -119,6 +120,7 @@ export function EmailAuthScreen() {
       const out = await resumePendingAction();
       if (out.status === 'ran') reportResumeOutcome(out.kind, out.result);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/auth/EmailAuthScreen.tsx","handler":"finishParkedAction","site":"EmailAuthScreen:48e117ad89"});
       logError('emailAuthResume', err, {});
     }
   };
@@ -156,6 +158,7 @@ export function EmailAuthScreen() {
         await finishParkedAction();
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/auth/EmailAuthScreen.tsx","handler":"submit","site":"EmailAuthScreen:174c49be30"});
       handleAuthError(err);
     } finally {
       inFlight.current = false;
@@ -230,6 +233,7 @@ export function EmailAuthScreen() {
       logEvent(AnalyticsEvent.PasswordResetRequested, { result: 'sent' });
       appAlert(he.emailAuthResetSentTitle, he.emailAuthResetSentBody(resetEmail));
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/auth/EmailAuthScreen.tsx","handler":"onForgotPassword","site":"EmailAuthScreen:8e70ef680a"});
       // Don't reveal whether the address exists — generic confirmation either
       // way is the safe default, but a network/invalid error is worth showing.
       const code = (err as { code?: string })?.code ?? '';
@@ -272,6 +276,7 @@ export function EmailAuthScreen() {
         if (useUserStore.getState().hasCompletedOnboarding()) await finishParkedAction();
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/auth/EmailAuthScreen.tsx","handler":"onProvider","site":"EmailAuthScreen:f02cf6b409"});
       // refreshFromSession keeps a failed profile restore retryable at the root.
       appAlert(he.error, he.signInFailed);
     } finally {

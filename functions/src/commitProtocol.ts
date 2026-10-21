@@ -1,3 +1,4 @@
+import { observeCaughtError } from './serverErrorLog';
 // A round's history, additive statistics and create-only latch now share ONE
 // atomic batch in commitRoundStats (index.ts). Concurrent requests have one
 // winner; the losing payload cannot rewrite that winner's history.
@@ -46,6 +47,7 @@ export async function commitRoundInOrder(
     try {
       await steps.writeHistory();
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/commitProtocol.ts","handler":"commitRoundInOrder","site":"commitProtocol:54d8305693"});
       // NOT swallowed. If the history cannot be stored, do not commit stats
       // that would then be permanently unexplainable — fail so the caller can
       // retry the whole thing.
@@ -56,6 +58,7 @@ export async function commitRoundInOrder(
   try {
     await steps.commitStats();
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/commitProtocol.ts","handler":"commitRoundInOrder","site":"commitProtocol:9306a159e5"});
     if (!steps.isAlreadyExists(err)) throw err;
     // The round was already committed — by a previous attempt whose response
     // was lost, or by a double tap. Repair a missing history before reporting

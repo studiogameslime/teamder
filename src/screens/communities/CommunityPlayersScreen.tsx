@@ -1,3 +1,4 @@
+import { observeCaughtError, observeSettledErrors } from '../../utils/errorObservation';
 // CommunityPlayersScreen — full member list with per-community stats.
 // Reachable from the redesigned CommunityDetailsScreen via the
 // the שחקנים tab, and from the hamburger menu. (The info tab's players
@@ -144,18 +145,19 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
       const iAmGroupAdmin = !!me && g.adminIds.includes(me.id);
       const [users, derived, counts] = await Promise.all([
         groupService.hydrateUsers(ids),
-        gameService.getCommunityPlayerStats(g.id, ids).catch(() => ({})),
+        gameService.getCommunityPlayerStats(g.id, ids).catch((caughtErrordaaee67b80: unknown) => { observeCaughtError(caughtErrordaaee67b80, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"CommunityPlayersScreen","site":"CommunityPlayersScreen:daaee67b80"}); return ({}); }),
         // Card badges are admin-only and only when the club uses cards.
         iAmGroupAdmin && g.cardsEnabled
           ? communityEventsService
               .getActiveCardCounts(g.id, g.yellowCardValidityDays, g.redCardValidityDays)
-              .catch(() => ({}))
+              .catch((caughtErrorcc9ccd361f: unknown) => { observeCaughtError(caughtErrorcc9ccd361f, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"CommunityPlayersScreen","site":"CommunityPlayersScreen:cc9ccd361f"}); return ({}); })
           : Promise.resolve({}),
       ]);
       setMembers(users);
       setStats(derived);
       setCardCounts(counts);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"CommunityPlayersScreen","site":"CommunityPlayersScreen:654e03247e"});
       logError('communityPlayersLoad', err, {
         screen: 'CommunityPlayersScreen',
         groupId,
@@ -323,6 +325,7 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
       // Refresh so the new card immediately bumps the roster discipline badge.
       reload();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"saveCard","site":"CommunityPlayersScreen:9232bdeca5"});
       logError('issueCommunityCard', err, { groupId, userId: cardTarget.user.id });
       appAlert(he.error, he.cardIssueFailed);
     } finally {
@@ -360,12 +363,13 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
             ),
           );
         }
-        await Promise.allSettled(logs);
+        await Promise.allSettled(logs).then(results => observeSettledErrors(results, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"CommunityPlayersScreen","site":"CommunityPlayersScreen:62a821c3b2"}));
         setGroup((g) => (g ? { ...g, ballHolderIds, jerseysHolderIds } : g));
         setEquipTarget(null);
         successHaptic();
         toast.success(he.equipmentUpdatedToast);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"CommunityPlayersScreen","site":"CommunityPlayersScreen:6866e384b0"});
         logError('setEquipmentHolders', err, { groupId, userId: target.id });
         toast.error(he.equipmentUpdateFailed);
       } finally {
@@ -393,6 +397,7 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
         setRatingTarget(null);
         await reload();
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"CommunityPlayersScreen","site":"CommunityPlayersScreen:7130d2434c"});
         logError('setAdminRating', err, { groupId, playerId });
         toast.error(he.error);
       } finally {
@@ -419,6 +424,7 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
                 toast.success(he.communityRemoveMemberDone);
                 await reload();
               } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"onPress","site":"CommunityPlayersScreen:8fc7dabd8e"});
                 if (__DEV__) console.warn('[removeMember] failed', e);
                 const code = (e as Error)?.message;
                 appAlert(
@@ -451,6 +457,7 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
           toast.success(he.communityPromoteAdminDone);
           await reload();
         } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"runPromote","site":"CommunityPlayersScreen:e00249ba12"});
           if (__DEV__) console.warn('[promoteAdmin] failed', e);
           appAlert(he.error, he.friendsActionFailed);
         }
@@ -461,6 +468,7 @@ export function CommunityPlayersScreen(props: CommunityPlayersScreenProps = {}) 
           toast.success(he.communityDemoteAdminDone);
           await reload();
         } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/communities/CommunityPlayersScreen.tsx","handler":"runDemote","site":"CommunityPlayersScreen:1feaa0b41d"});
           if (__DEV__) console.warn('[demoteAdmin] failed', e);
           appAlert(he.error, he.friendsActionFailed);
         }

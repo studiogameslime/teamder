@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // IntentScreen — "איך בא לך להתחיל?"
 //
 // The one question worth asking a new person. Every answer routes into an
@@ -278,7 +279,8 @@ export function IntentScreen() {
           // refresh the store. Close first so iOS can present the next screen.
           try {
             await useUserStore.getState().refreshFromSession(uid);
-          } catch {
+          } catch (caughtError9127caa336) {
+    observeCaughtError(caughtError9127caa336, {"source":"src/screens/entry/IntentScreen.tsx","handler":"IntentScreen","site":"IntentScreen:9127caa336"});
             // The root now shows the saved-account retry gate.
           }
         }}

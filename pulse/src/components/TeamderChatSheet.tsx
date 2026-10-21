@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import { Disclosure } from './ui';
 // The "reply as Teamder" sheet.
 //
@@ -85,13 +86,14 @@ export function TeamderChatSheet({
       try {
         const [t, r] = await Promise.all([
           loadThread(userId, currentTarget.current.userName, force),
-          listUserReports(userId).catch(() => []),
+          listUserReports(userId).catch((caughtError82e60a34fe: unknown) => { observeCaughtError(caughtError82e60a34fe, {"source":"pulse/src/components/TeamderChatSheet.tsx","handler":"TeamderChatSheet","site":"TeamderChatSheet:82e60a34fe"}); return []; }),
         ]);
         if (request.current !== serial) return;
         setThread(t);
         setReports(r);
         setFailed(false);
-      } catch {
+      } catch (caughtError2a53661783) {
+    observeCaughtError(caughtError2a53661783, {"source":"pulse/src/components/TeamderChatSheet.tsx","handler":"TeamderChatSheet","site":"TeamderChatSheet:2a53661783"});
         if (request.current === serial) setFailed(true);
       } finally {
         if (request.current === serial) setLoading(false);
@@ -132,7 +134,8 @@ export function TeamderChatSheet({
       if (currentTarget.current.userId !== userId || !currentTarget.current.visible) return;
       setText('');
       await load(true);
-    } catch {
+    } catch (caughtError7b6537f053) {
+    observeCaughtError(caughtError7b6537f053, {"source":"pulse/src/components/TeamderChatSheet.tsx","handler":"send","site":"TeamderChatSheet:7b6537f053"});
       if (currentTarget.current.userId === userId && currentTarget.current.visible) Alert.alert('השליחה נכשלה', 'נסה שוב');
     } finally {
       sendingRef.current = false;
@@ -149,7 +152,8 @@ export function TeamderChatSheet({
       if (!ok) throw new Error('RESOLUTION_FAILED');
       onStatusChanged?.();
       if (currentTarget.current.userId === userId && currentTarget.current.visible) await load(true, true);
-    } catch {
+    } catch (caughtErrord3ba220cd7) {
+    observeCaughtError(caughtErrord3ba220cd7, {"source":"pulse/src/components/TeamderChatSheet.tsx","handler":"changeResolution","site":"TeamderChatSheet:d3ba220cd7"});
       if (currentTarget.current.userId === userId && currentTarget.current.visible) Alert.alert('הסימון לא נשמר', 'השיחה נשארה במצבה הקודם. נסו שוב.');
     } finally { sendingRef.current = false; setResolving(false); }
   };

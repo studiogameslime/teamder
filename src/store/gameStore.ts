@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Game-tab store — stripped to the surface that the redesigned screens
 // actually read. The original store carried the pre-v2 registration
 // flow (registerSelf / cancelSelf / generateTeams / timer / endMatch)
@@ -125,6 +126,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return { players: next };
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/store/gameStore.ts","handler":"hydratePlayers","site":"gameStore:a88761ce0f"});
       logError('hydratePlayers', err, { count: missing.length });
       if (__DEV__) console.warn('[gameStore] hydratePlayers failed', err);
     }

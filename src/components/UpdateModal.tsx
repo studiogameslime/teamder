@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -27,7 +28,8 @@ export function UpdateModal({ type, onClose, update }: Props) {
     if (busyRef.current) return;
     busyRef.current = true; setBusy(true); setFailed(false);
     try { setFailed(!await openTrackedUpdate(update, useUserStore.getState().currentUser?.id ?? null, 'force_modal')); }
-    catch { setFailed(true); }
+    catch (caughtErrorb51a14975e) {
+    observeCaughtError(caughtErrorb51a14975e, {"source":"src/components/UpdateModal.tsx","handler":"open","site":"UpdateModal:b51a14975e"}); setFailed(true); }
     finally { busyRef.current = false; setBusy(false); }
   };
   return (

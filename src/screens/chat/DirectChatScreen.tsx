@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // DirectChatScreen — a 1-on-1 direct-message chat. Resolves the other person
 // (the participant that isn't me), ensures the conversation doc exists, and
 // renders the shared ChatView in 'dm' scope with the other person's name as
@@ -66,6 +67,7 @@ export function DirectChatScreen() {
         });
         await chatService.markChatRead(me.id, 'dm', convId);
       } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/chat/DirectChatScreen.tsx","handler":"DirectChatScreen","site":"DirectChatScreen:3da6189220"});
         if (!alive) return;
         // Only a rules rejection (friends-only) is a real restriction; every
         // other error (offline / transient) gets a retryable error state.

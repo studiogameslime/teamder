@@ -1,5 +1,6 @@
+import { observeCaughtError } from './serverErrorLog';
 import * as admin from 'firebase-admin';
-import { onRequest } from 'firebase-functions/v2/https';
+import { onRequest } from './observedFunctions';
 import * as fs from 'fs';
 import * as path from 'path';
 import { readTrackedAdLink, renderTrackedAdLink, shortCodeFromPath } from './shortAdLinkPage';
@@ -20,6 +21,7 @@ export const serveAdLink = onRequest({ region: 'us-central1', memory: '256MiB' }
     // Only the existing browser beacon counts clicks. Crawlers/HEAD never add clicks here.
     res.status(200).send(renderTrackedAdLink(landingTemplate(), link));
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/serveAdLink.ts","handler":"module","site":"serveAdLink:12029d589a"});
     console.error('[serveAdLink] failed', err);
     res.status(503).send('לא הצלחנו לפתוח את הקישור כרגע. נסה שוב בקרוב');
   }

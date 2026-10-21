@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // entryStore — what the first-run entry needs to know, and nothing else.
 //
 // Two things: whether this device still needs the entry flow, and whether the
@@ -117,6 +118,7 @@ export const useEntryStore = create<EntryState>((set, get) => ({
     try {
       organicCompleted = await storage.getEntryOrganicCompleted();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/store/entryStore.ts","handler":"hydrate","site":"entryStore:980ca09cb1"});
       logError('entryHydrateFlag', err, {});
     }
 
@@ -125,6 +127,7 @@ export const useEntryStore = create<EntryState>((set, get) => ({
     try {
       invite = inviteFromPending(await readPendingAction());
     } catch (err) {
+    observeCaughtError(err, {"source":"src/store/entryStore.ts","handler":"hydrate","site":"entryStore:e02b7be6e8"});
       // No card rather than a wrong card. The three standing choices still
       // work and the stash is untouched, so nothing is lost but one row.
       logError('entryHydrateInvite', err, {});
@@ -141,6 +144,7 @@ export const useEntryStore = create<EntryState>((set, get) => ({
       const invite = inviteFromPending(await readPendingAction());
       if (revision === inviteReadRevision) set({ invite });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/store/entryStore.ts","handler":"refreshInvite","site":"entryStore:e84216a822"});
       logError('entryRefreshInvite', err, {});
     }
   },

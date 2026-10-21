@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // RemoteGates — UI surfaces driven entirely by Remote Config, so they can be
 // turned on/off and re-worded live from the Firebase console with no release.
 //
@@ -40,7 +41,7 @@ export function AnnouncementBanner(): React.ReactElement | null {
   const url = rcString('announcement_url').trim();
   const open = url
     ? () => {
-        Linking.openURL(url).catch(() => undefined);
+        Linking.openURL(url).catch((caughtError802b27696c: unknown) => { observeCaughtError(caughtError802b27696c, {"source":"src/components/RemoteGates.tsx","handler":"AnnouncementBanner","site":"RemoteGates:802b27696c"}); return undefined; });
       }
     : undefined;
   return (

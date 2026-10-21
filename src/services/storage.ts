@@ -1,3 +1,5 @@
+import { observedRejection, observeCaughtError } from '../utils/errorObservation';
+
 // Thin wrapper over AsyncStorage so callers don't need to know whether we're
 // in mock mode or real mode (keys/values are identical either way).
 
@@ -114,8 +116,9 @@ export type PendingInvite =
 
 let inviteWrites: Promise<unknown> = Promise.resolve();
 function serializeInviteWrite<T>(operation: () => Promise<T>): Promise<T> {
-  const result = inviteWrites.then(operation, operation);
-  inviteWrites = result.catch(() => {});
+  const result = inviteWrites.then(operation, observedRejection(operation, {"source":"src/services/storage.ts","handler":"serializeInviteWrite","site":"storage:67a6b8d54c"}));
+  inviteWrites = result.catch((caughtErrore73a5cf077: unknown) => {
+    observeCaughtError(caughtErrore73a5cf077, {"source":"src/services/storage.ts","handler":"serializeInviteWrite","site":"storage:e73a5cf077"});});
   return result;
 }
 
@@ -124,7 +127,8 @@ async function rememberAttribution(invite: PendingInvite): Promise<void> {
   if (!invite.invitedBy && !invite.source) return;
   const raw = await AsyncStorage.getItem(KEYS.INVITE_ATTRIBUTION);
   let record: { referral?: PendingInvite; acquisition?: PendingInvite; userId?: string; invite?: PendingInvite } = {};
-  try { if (raw) record = JSON.parse(raw); } catch { /* replace unreadable record */ }
+  try { if (raw) record = JSON.parse(raw); } catch (caughtError86f86bd74d) {
+    observeCaughtError(caughtError86f86bd74d, {"source":"src/services/storage.ts","handler":"rememberAttribution","site":"storage:86f86bd74d"}); /* replace unreadable record */ }
   // Upgrade the local legacy record, without changing already chosen axes.
   if (record.invite?.invitedBy && !record.referral) record.referral = record.invite;
   if (record.invite?.source && !record.acquisition) record.acquisition = record.invite;
@@ -159,7 +163,8 @@ export const storage = {
       const n = raw ? Number(raw) : NaN;
       if (!Number.isFinite(n)) return null;
       return Math.min(9000, Math.max(700, n));
-    } catch {
+    } catch (caughtError70d90facd8) {
+    observeCaughtError(caughtError70d90facd8, {"source":"src/services/storage.ts","handler":"getBootDurationMs","site":"storage:70d90facd8"});
       return null;
     }
   },
@@ -173,7 +178,8 @@ export const storage = {
         KEYS.BOOT_DURATION_MS,
         String(Math.round(Math.min(9000, Math.max(700, next)))),
       );
-    } catch {
+    } catch (caughtErrore453f54540) {
+    observeCaughtError(caughtErrore453f54540, {"source":"src/services/storage.ts","handler":"recordBootDurationMs","site":"storage:e453f54540"});
       // Best-effort. A failure costs one less-accurate bar, nothing else.
     }
   },
@@ -185,14 +191,16 @@ export const storage = {
   async getEntryOrganicCompleted(): Promise<boolean> {
     try {
       return (await AsyncStorage.getItem(KEYS.ENTRY_ORGANIC_COMPLETED)) === '1';
-    } catch {
+    } catch (caughtError2e1332b303) {
+    observeCaughtError(caughtError2e1332b303, {"source":"src/services/storage.ts","handler":"getEntryOrganicCompleted","site":"storage:2e1332b303"});
       return false;
     }
   },
   async setEntryOrganicCompleted(): Promise<void> {
     try {
       await AsyncStorage.setItem(KEYS.ENTRY_ORGANIC_COMPLETED, '1');
-    } catch {
+    } catch (caughtErrora3908af913) {
+    observeCaughtError(caughtErrora3908af913, {"source":"src/services/storage.ts","handler":"setEntryOrganicCompleted","site":"storage:a3908af913"});
       // Best-effort. A failure costs a repeated Welcome, never a lost account.
     }
   },
@@ -200,7 +208,8 @@ export const storage = {
   async clearEntryOrganicCompleted(): Promise<void> {
     try {
       await AsyncStorage.removeItem(KEYS.ENTRY_ORGANIC_COMPLETED);
-    } catch {
+    } catch (caughtErrorb3d81853e4) {
+    observeCaughtError(caughtErrorb3d81853e4, {"source":"src/services/storage.ts","handler":"clearEntryOrganicCompleted","site":"storage:b3d81853e4"});
       // Ignored on purpose.
     }
   },
@@ -290,7 +299,8 @@ export const storage = {
       if (credit?.userId && credit.userId !== userId) return;
       if (!pending && !credit?.referral && !credit?.acquisition) return;
       await AsyncStorage.setItem(KEYS.INVITE_NEW_USER, JSON.stringify({ userId, createdAt, url: pending?.url ?? '', expiresAt: Date.now() + 24 * 60 * 60 * 1000, resolved: !pending }));
-    } catch { /* best-effort registration metadata */ }
+    } catch (caughtError0876e040c0) {
+    observeCaughtError(caughtError0876e040c0, {"source":"src/services/storage.ts","handler":"registerFreshInviteUser","site":"storage:0876e040c0"}); /* best-effort registration metadata */ }
     });
   },
   async markInviteAttributionResolved(url: string): Promise<void> {
@@ -308,7 +318,8 @@ export const storage = {
     try {
       const ticket = JSON.parse(raw);
       return ticket.userId === userId && ticket.resolved === true && ticket.expiresAt >= Date.now() ? { createdAt: ticket.createdAt } : null;
-    } catch { return null; }
+    } catch (caughtErrorc173ce2251) {
+    observeCaughtError(caughtErrorc173ce2251, {"source":"src/services/storage.ts","handler":"getFreshInviteUser","site":"storage:c173ce2251"}); return null; }
   },
   async rememberInviteAttribution(invite: PendingInvite): Promise<void> {
     await serializeInviteWrite(() => rememberAttribution(invite));
@@ -334,7 +345,8 @@ export const storage = {
         if (!referral && !acquisition) return null;
         return { ...(acquisition ?? {}), ...(referral ?? {}),
           ...(acquisition?.source ? { source: acquisition.source, campaign: acquisition.campaign, linkId: acquisition.linkId } : {}) } as PendingInvite;
-      } catch { return null; }
+      } catch (caughtError806d9eb6b8) {
+    observeCaughtError(caughtError806d9eb6b8, {"source":"src/services/storage.ts","handler":"getInviteAttribution","site":"storage:806d9eb6b8"}); return null; }
     });
   },
   async getPendingInvite(): Promise<PendingInvite | null> {
@@ -363,7 +375,8 @@ export const storage = {
       if (typeof p.source !== 'string' || p.source === '') delete p.source;
       if (typeof p.campaign !== 'string' || p.campaign === '') delete p.campaign;
       return parsed;
-    } catch {
+    } catch (caughtError3897af4c9d) {
+    observeCaughtError(caughtError3897af4c9d, {"source":"src/services/storage.ts","handler":"getPendingInvite","site":"storage:3897af4c9d"});
       await AsyncStorage.removeItem(KEYS.PENDING_INVITE);
       return null;
     }
@@ -424,7 +437,8 @@ export const storage = {
         day: typeof p.day === 'string' ? p.day : '',
         countToday: Number(p.countToday) || 0,
       };
-    } catch {
+    } catch (caughtErrorc64d6971c1) {
+    observeCaughtError(caughtErrorc64d6971c1, {"source":"src/services/storage.ts","handler":"getAppOpenAdState","site":"storage:c64d6971c1"});
       return empty;
     }
   },
@@ -454,7 +468,8 @@ export const storage = {
       if (!raw) return {};
       const p = JSON.parse(raw);
       return p && typeof p === 'object' ? (p as Record<string, { c: number; t: number }>) : {};
-    } catch {
+    } catch (caughtError31dd7afa4f) {
+    observeCaughtError(caughtError31dd7afa4f, {"source":"src/services/storage.ts","handler":"getCampaignSeen","site":"storage:31dd7afa4f"});
       return {};
     }
   },

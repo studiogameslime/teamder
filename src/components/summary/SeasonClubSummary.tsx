@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -108,7 +109,8 @@ export function SeasonClubSummary({ model }: { model: SeasonSummaryModel }) {
     if (!model.startsAt) return;
     void roundSummaryService.listEveningStats(model.groupId, { from: model.startsAt, ...(model.endsAt ? { to: model.endsAt } : {}) })
       .then(result => { if (alive) setRecord({ source: model, value: eveningRecordsOf(result.evenings).goals, truncated: result.truncated }); })
-      .catch(() => { if (alive) setRecord({ source: model, value: null, truncated: false }); });
+      .catch((caughtError1b5a184dea: unknown) => {
+    observeCaughtError(caughtError1b5a184dea, {"source":"src/components/summary/SeasonClubSummary.tsx","handler":"SeasonClubSummary","site":"SeasonClubSummary:1b5a184dea"}); if (alive) setRecord({ source: model, value: null, truncated: false }); });
     return () => { alive = false; };
   }, [model]);
   const currentRecord = record?.source === model ? record.value : null;

@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // nearby — resolve the viewer's location for the "near me" radius filters
 // (communities feed + games list). Prefers live GPS (expo-location); falls
 // back to a city name (reverse-geocoded, then the caller's saved city) so
@@ -46,7 +47,8 @@ export async function resolveLocationIfGranted(): Promise<
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     Location = require('expo-location');
-  } catch {
+  } catch (caughtError299f45d30b) {
+    observeCaughtError(caughtError299f45d30b, {"source":"src/utils/nearby.ts","handler":"resolveLocationIfGranted","site":"nearby:299f45d30b"});
     return null;
   }
   if (!Location) return null;
@@ -59,7 +61,8 @@ export async function resolveLocationIfGranted(): Promise<
     ]);
     if (!pos) return null;
     return { lat: pos.coords.latitude, lng: pos.coords.longitude };
-  } catch {
+  } catch (caughtError67bb320a28) {
+    observeCaughtError(caughtError67bb320a28, {"source":"src/utils/nearby.ts","handler":"resolveLocationIfGranted","site":"nearby:67bb320a28"});
     return null;
   }
 }
@@ -71,7 +74,8 @@ export async function resolveNearbyLocation(
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     Location = require('expo-location');
-  } catch {
+  } catch (caughtErrore94f516b1a) {
+    observeCaughtError(caughtErrore94f516b1a, {"source":"src/utils/nearby.ts","handler":"resolveNearbyLocation","site":"nearby:e94f516b1a"});
     Location = null;
   }
   if (Location) {
@@ -123,7 +127,8 @@ export async function resolveNearbyLocation(
           city =
             (place?.city || place?.subregion || place?.region || '').trim() ||
             null;
-        } catch {
+        } catch (caughtError88fb261f2f) {
+    observeCaughtError(caughtError88fb261f2f, {"source":"src/utils/nearby.ts","handler":"resolveNearbyLocation","site":"nearby:88fb261f2f"});
           // ignore
         }
         return {
@@ -141,6 +146,7 @@ export async function resolveNearbyLocation(
         canAskAgain,
       };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/utils/nearby.ts","handler":"resolveNearbyLocation","site":"nearby:afcac7d6dc"});
       if (__DEV__) {
         // eslint-disable-next-line no-console
         console.warn('[nearby] location resolve failed', err);
@@ -179,7 +185,8 @@ export function promptLocationDenied(canAskAgain: boolean): void {
           {
             text: he.locationPermOpenSettings,
             onPress: () => {
-              Linking.openSettings().catch(() => {});
+              Linking.openSettings().catch((caughtErrorb0d5e35fb0: unknown) => {
+    observeCaughtError(caughtErrorb0d5e35fb0, {"source":"src/utils/nearby.ts","handler":"onPress","site":"nearby:b0d5e35fb0"});});
             },
           },
         ],

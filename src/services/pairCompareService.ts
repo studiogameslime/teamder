@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Two players, inside ONE club, in ONE slice of its history.
 //
 // This replaces two readers that disagreed with each other:
@@ -180,6 +181,7 @@ async function readLivePair(
       assistsBToA: n(x.assistsBToA),
     };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/pairCompareService.ts","handler":"readLivePair","site":"pairCompareService:8572b038b9"});
     if (!isExpectedDenial(err)) logError('pairCompareLivePair', err, { groupId });
     throw err;
   }
@@ -193,6 +195,7 @@ async function readChemistrySince(groupId: GroupId): Promise<number | null> {
     const v = snap.exists() ? snap.get('chemistrySince') : null;
     return typeof v === 'number' && v > 0 ? v : null;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/pairCompareService.ts","handler":"readChemistrySince","site":"pairCompareService:11202f451f"});
     if (!isExpectedDenial(err)) logError('pairCompareSince', err, { groupId });
     return null;
   }
@@ -224,9 +227,9 @@ export const pairCompareService = {
 
     try {
       const [group, ua, ub] = await Promise.all([
-        groupService.get(groupId).catch(() => null),
-        userService.getUserById(viewerId).catch(() => null),
-        userService.getUserById(otherId).catch(() => null),
+        groupService.get(groupId).catch((caughtError4641373cc3: unknown) => { observeCaughtError(caughtError4641373cc3, {"source":"src/services/pairCompareService.ts","handler":"load","site":"pairCompareService:4641373cc3"}); return null; }),
+        userService.getUserById(viewerId).catch((caughtErrorc892c30930: unknown) => { observeCaughtError(caughtErrorc892c30930, {"source":"src/services/pairCompareService.ts","handler":"load","site":"pairCompareService:c892c30930"}); return null; }),
+        userService.getUserById(otherId).catch((caughtError721a2341cb: unknown) => { observeCaughtError(caughtError721a2341cb, {"source":"src/services/pairCompareService.ts","handler":"load","site":"pairCompareService:721a2341cb"}); return null; }),
       ]);
 
       // ── The slice ────────────────────────────────────────────────────────
@@ -439,6 +442,7 @@ export const pairCompareService = {
         chemistrySince: since,
       };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/pairCompareService.ts","handler":"load","site":"pairCompareService:9c27d5de34"});
       logError('pairCompareLoad', err, { groupId, viewerId, otherId, scope: scope.k });
       return null;
     }

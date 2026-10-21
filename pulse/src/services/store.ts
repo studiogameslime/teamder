@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Thin AsyncStorage wrapper: JSON helpers, "seen review IDs" tracking, and
 // cached snapshots so screens render instantly (and offline) from the last
 // successful poll.
@@ -17,14 +18,16 @@ async function getJSON<T>(key: string, fallback: T): Promise<T> {
   try {
     const raw = await AsyncStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
+  } catch (caughtError8b6db06d5c) {
+    observeCaughtError(caughtError8b6db06d5c, {"source":"pulse/src/services/store.ts","handler":"getJSON","site":"store:8b6db06d5c"});
     return fallback;
   }
 }
 async function setJSON(key: string, value: unknown): Promise<void> {
   try {
     await AsyncStorage.setItem(key, JSON.stringify(value));
-  } catch {
+  } catch (caughtError464e3509e6) {
+    observeCaughtError(caughtError464e3509e6, {"source":"pulse/src/services/store.ts","handler":"setJSON","site":"store:464e3509e6"});
     /* non-fatal */
   }
 }

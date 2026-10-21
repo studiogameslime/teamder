@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // FriendActionButton — the friendship CTA on another player's card.
 //
 // Self-contained: it loads the viewer↔target relationship and renders the
@@ -50,6 +51,7 @@ export function FriendActionButton({ meId, otherUserId, compact = false, onChang
       const next = await friendsService.getRelationship(meId, otherUserId);
       if (epoch.current === current) setRel(next);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/components/profile/FriendActionButton.tsx","handler":"FriendActionButton","site":"FriendActionButton:dc5b84418c"});
       // A failed relationship lookup (e.g. a blocked friendRequests read)
       // must NOT make the button vanish — fall back to 'none' so the
       // user can still send a request.
@@ -82,6 +84,7 @@ export function FriendActionButton({ meId, otherUserId, compact = false, onChang
       await load();
       onChanged?.();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/components/profile/FriendActionButton.tsx","handler":"doCancelOutgoing","site":"FriendActionButton:47c8ea15ba"});
       if (__DEV__) console.warn('[friendAction] cancel failed', e);
       appAlert(he.error, he.friendsActionFailed);
     } finally {
@@ -121,6 +124,7 @@ export function FriendActionButton({ meId, otherUserId, compact = false, onChang
       await load();
       onChanged?.();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/components/profile/FriendActionButton.tsx","handler":"onPress","site":"FriendActionButton:8f0e903779"});
       if (__DEV__) console.warn('[friendAction] failed', e);
       appAlert(he.error, he.friendsActionFailed);
     } finally {

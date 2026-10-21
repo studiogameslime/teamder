@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 // ChatMessagesScreen — "הודעות צ'אט". A live, newest-first feed of every chat
 // message across all games & communities (sender + text + where). The poller
 // fires a local push per new message; this screen is the concentrated view to
@@ -40,7 +41,7 @@ export function ChatMessagesScreen() {
   const [filter, setFilter] = useState<Filter>('all');
 
   const load = useCallback(async () => {
-    const rows = await listRecentChatMessages(80).catch(() => [] as ChatMsg[]);
+    const rows = await listRecentChatMessages(80).catch((caughtErrord17ad35361: unknown) => { observeCaughtError(caughtErrord17ad35361, {"source":"pulse/src/screens/ChatMessagesScreen.tsx","handler":"ChatMessagesScreen","site":"ChatMessagesScreen:d17ad35361"}); return [] as ChatMsg[]; });
     setItems(rows);
     setLoading(false);
     setRefreshing(false);

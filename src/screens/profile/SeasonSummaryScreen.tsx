@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // SeasonSummaryScreen — "סיכום העונה שלי".
 //
 // The season's answer to סיכום הערב: everything that happened to ONE player
@@ -292,6 +293,7 @@ export function SeasonSummaryScreen() {
         toast.error(he.summaryShareUnavailable);
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/profile/SeasonSummaryScreen.tsx","handler":"SeasonSummaryScreen","site":"SeasonSummaryScreen:50f3e9ab52"});
       logError('shareSeasonSummary', err, { groupId });
       toast.error(he.summaryShareFailed);
     } finally {

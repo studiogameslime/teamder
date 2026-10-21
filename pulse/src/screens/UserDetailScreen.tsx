@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import { PlayerHistory } from '../components/PlayerHistory';
 import { PlayerDisclosure as Disclosure } from '../components/PlayerDisclosure';
 import { PlayerOverview, PlayerClubs, PlayerRounds } from '../components/PlayerOverview';
@@ -70,7 +71,8 @@ export function UserDetailScreen() {
         setLoading(true); setLoadFailed(false); setData(null);
         const a = await fetchUserActivity(userId, retry > 0);
         if (alive) setData(a);
-      } catch {
+      } catch (caughtErrorb854a07bc8) {
+    observeCaughtError(caughtErrorb854a07bc8, {"source":"pulse/src/screens/UserDetailScreen.tsx","handler":"UserDetailScreen","site":"UserDetailScreen:b854a07bc8"});
         if (alive) setLoadFailed(true);
       } finally {
         if (alive) setLoading(false);

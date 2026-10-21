@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // ChatView — the shared chat surface for BOTH scopes (game + community).
 // The two screen wrappers resolve a title + moderator flag and hand the
@@ -219,7 +220,8 @@ export function ChatView({
       unsubT();
       clearInterval(tickId);
       // Make sure I'm not left showing as "typing" after I leave.
-      chatService.setTyping(scope, parentId, { id: me.id, name: me.name }, false).catch(() => {});
+      chatService.setTyping(scope, parentId, { id: me.id, name: me.name }, false).catch((caughtError467a05946c: unknown) => {
+    observeCaughtError(caughtError467a05946c, {"source":"src/components/chat/ChatView.tsx","handler":"ChatView","site":"ChatView:467a05946c"});});
     };
   }, [me?.id, scope, parentId]);
 
@@ -227,7 +229,8 @@ export function ChatView({
   const latestMessageId = messages[messages.length - 1]?.id;
 
   useEffect(() => {
-    if (readOnly && me) chatService.setTyping(scope,parentId,{id:me.id,name:me.name},false).catch(()=>{});
+    if (readOnly && me) chatService.setTyping(scope,parentId,{id:me.id,name:me.name},false).catch((caughtError927a993e23: unknown) =>{
+    observeCaughtError(caughtError927a993e23, {"source":"src/components/chat/ChatView.tsx","handler":"ChatView","site":"ChatView:927a993e23"});});
   },[readOnly,me?.id,scope,parentId]);
 
   // Opening the chat (and reading new messages while open) clears my
@@ -235,8 +238,10 @@ export function ChatView({
   // next message — and stamps my read position so others see I'm caught up.
   useEffect(() => {
     if (!me || denied || !focused) return;
-    chatService.markChatRead(me.id, scope, parentId).catch(() => {});
-    chatService.writeReadReceipt(scope, parentId, me).catch(() => {});
+    chatService.markChatRead(me.id, scope, parentId).catch((caughtError811b82a5c3: unknown) => {
+    observeCaughtError(caughtError811b82a5c3, {"source":"src/components/chat/ChatView.tsx","handler":"ChatView","site":"ChatView:811b82a5c3"});});
+    chatService.writeReadReceipt(scope, parentId, me).catch((caughtErrorae2c0fbd2a: unknown) => {
+    observeCaughtError(caughtErrorae2c0fbd2a, {"source":"src/components/chat/ChatView.tsx","handler":"ChatView","site":"ChatView:ae2c0fbd2a"});});
   }, [me?.id, scope, parentId, denied, latestMessageId, focused]);
 
   // Mark this chat as the foreground-active one while it's focused, so an
@@ -253,7 +258,8 @@ export function ChatView({
   const toggleMute = () => {
     if (!me) return;
     logEvent(AnalyticsEvent.ChatMuteToggled, { scope, muted: !muted });
-    chatService.setMuted(me.id, scope, parentId, !muted).catch(() => {});
+    chatService.setMuted(me.id, scope, parentId, !muted).catch((caughtError63bff40a0a: unknown) => {
+    observeCaughtError(caughtError63bff40a0a, {"source":"src/components/chat/ChatView.tsx","handler":"toggleMute","site":"ChatView:63bff40a0a"});});
   };
 
   // Stick to the newest message as they arrive — but only if the user is
@@ -297,14 +303,16 @@ export function ChatView({
     nearBottomRef.current = true;
     listRef.current?.scrollToEnd({ animated: !reduced });
     lastTypingWriteRef.current = 0;
-    chatService.setTyping(scope, parentId, { id: me.id, name: me.name }, false).catch(() => {});
+    chatService.setTyping(scope, parentId, { id: me.id, name: me.name }, false).catch((caughtError6eb2af8309: unknown) => {
+    observeCaughtError(caughtError6eb2af8309, {"source":"src/components/chat/ChatView.tsx","handler":"send","site":"ChatView:6eb2af8309"});});
     // Fire-and-forget — do NOT await the server ack. Firestore durably queues
     // the write and the onSnapshot local echo renders the message instantly,
     // so the composer is free again immediately. Awaiting would freeze it
     // while OFFLINE: addDoc's promise stays pending until reconnect, leaving
     // `sending` stuck true so no further message could be sent. Only a genuine
     // server REJECTION restores the draft + alerts.
-    chatService.sendMessage(scope, parentId, me, text).catch(() => {
+    chatService.sendMessage(scope, parentId, me, text).catch((caughtError4edfaf88b4: unknown) => {
+    observeCaughtError(caughtError4edfaf88b4, {"source":"src/components/chat/ChatView.tsx","handler":"send","site":"ChatView:4edfaf88b4"});
       logEvent(AnalyticsEvent.ChatMessageSendFailed, { scope });
       // Restore only if the box is still empty (user hasn't started a new one).
       setDraft((cur) => cur || text);
@@ -324,7 +332,8 @@ export function ChatView({
       lastTypingWriteRef.current = now;
       chatService
         .setTyping(scope, parentId, { id: me.id, name: me.name }, true)
-        .catch(() => {});
+        .catch((caughtErrord118bfabc6: unknown) => {
+    observeCaughtError(caughtErrord118bfabc6, {"source":"src/components/chat/ChatView.tsx","handler":"onDraftChange","site":"ChatView:d118bfabc6"});});
     }
   };
 
@@ -355,7 +364,8 @@ export function ChatView({
                 mine,
                 asModerator: !mine && canModerate,
               });
-            } catch {
+            } catch (caughtErrorc819588ffa) {
+    observeCaughtError(caughtErrorc819588ffa, {"source":"src/components/chat/ChatView.tsx","handler":"onPress","site":"ChatView:c819588ffa"});
               logEvent(AnalyticsEvent.ChatActionFailed, { scope, action: 'delete' });
               appAlert(he.chatDeleteFailedTitle, he.chatDeleteFailedBody);
             }
@@ -377,7 +387,8 @@ export function ChatView({
             await chatService.reportMessage(me.id, scope, parentId, m);
             logEvent(AnalyticsEvent.ChatMessageReported, { scope, mine: m.senderId === me?.id });
             toast.success(he.chatReportThanks);
-          } catch {
+          } catch (caughtError36ebf7a397) {
+    observeCaughtError(caughtError36ebf7a397, {"source":"src/components/chat/ChatView.tsx","handler":"onPress","site":"ChatView:36ebf7a397"});
             logEvent(AnalyticsEvent.ChatActionFailed, { scope, action: 'report' });
             appAlert(he.chatSendFailedTitle, he.chatSendFailedBody);
           }
@@ -398,7 +409,8 @@ export function ChatView({
             await chatService.blockUser(me.id, m.senderId);
             logEvent(AnalyticsEvent.ChatUserBlocked, { scope });
             toast.success(he.chatBlockDone);
-          } catch {
+          } catch (caughtError04bc904a8c) {
+    observeCaughtError(caughtError04bc904a8c, {"source":"src/components/chat/ChatView.tsx","handler":"onPress","site":"ChatView:04bc904a8c"});
             logEvent(AnalyticsEvent.ChatActionFailed, { scope, action: 'block' });
             appAlert(he.chatSendFailedTitle, he.chatSendFailedBody);
           }

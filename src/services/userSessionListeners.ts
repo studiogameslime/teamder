@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 type Stop = () => void;
 type SessionListener = { uid: string; start: () => void; stop: Stop };
 
@@ -33,6 +34,7 @@ export function subscribeUserSession(
         if (isActive()) unsubscribe = stop;
         else stop();
       } catch (error) {
+    observeCaughtError(error, {"source":"src/services/userSessionListeners.ts","handler":"start","site":"userSessionListeners:507bf1bff9"});
         const report = isActive();
         ++generation;
         if (report) onError(error);

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces } from '@/theme/overlays';
 import { useAuthenticatedAction } from '@/hooks/useAuthenticatedAction';
 import { SafeModal as Modal } from '@/components/SafeModal';
@@ -39,7 +40,8 @@ export function PlayerDiscovery({ preview }: { preview?: SocialPlayer[] }) {
     const request=++epoch.current; setPlayers([]);setCursor(null);setFailed(false);setBusy(true);paging.current=false;
     if(!me||me.isGuest){setBusy(false);return;}
     const timer=setTimeout(()=>{
-      socialPlayersService.search(JSON.parse(key)).then(result=>{if(epoch.current===request){setPlayers(result.players);setCursor(result.cursor);}}).catch(()=>{if(epoch.current===request)setFailed(true);}).finally(()=>{if(epoch.current===request)setBusy(false);});
+      socialPlayersService.search(JSON.parse(key)).then(result=>{if(epoch.current===request){setPlayers(result.players);setCursor(result.cursor);}}).catch((caughtError978e682a35: unknown) =>{
+    observeCaughtError(caughtError978e682a35, {"source":"src/components/social/PlayerDiscovery.tsx","handler":"PlayerDiscovery","site":"PlayerDiscovery:978e682a35"});if(epoch.current===request)setFailed(true);}).finally(()=>{if(epoch.current===request)setBusy(false);});
     },300);
     return()=>{clearTimeout(timer);epoch.current++;};
   },[key,refresh,me?.id,me?.isGuest,preview]);
@@ -47,7 +49,8 @@ export function PlayerDiscovery({ preview }: { preview?: SocialPlayer[] }) {
     if(!cursor||paging.current||busy)return;
     paging.current=true;const request=epoch.current;setBusy(true);setFailed(false);
     try{const result=await socialPlayersService.search({...opts,cursor});if(epoch.current===request){setPlayers(old=>[...new Map([...old,...result.players].map(p=>[p.id,p])).values()]);setCursor(result.cursor);}}
-    catch{if(epoch.current===request)setFailed(true);}
+    catch (caughtError06d890deec){
+    observeCaughtError(caughtError06d890deec, {"source":"src/components/social/PlayerDiscovery.tsx","handler":"more","site":"PlayerDiscovery:06d890deec"});if(epoch.current===request)setFailed(true);}
     finally{if(epoch.current===request){paging.current=false;setBusy(false);}}
   };
   const list=(preview??players).filter(player=>playerDiscoveryMatches(player,opts));
@@ -75,7 +78,8 @@ export function PlayerDiscovery({ preview }: { preview?: SocialPlayer[] }) {
     </View>
     <FlatList data={rows} keyExtractor={r=>r.key} onEndReached={()=>{if(rows.length&&!failed)void more();}} onEndReachedThreshold={0.35} keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingHorizontal:16,paddingBottom:24}} renderItem={({item})=>item.title?<Text style={[s.title,{marginTop:20,marginBottom:10}]}>{item.title}</Text>:item.player?<View style={[s.card,s.row,{padding:12,marginBottom:0,borderRadius:0,elevation:0,borderTopWidth:item.first?1:0,borderBottomWidth:item.last?1:0.5,borderTopLeftRadius:item.first?14:0,borderTopRightRadius:item.first?14:0,borderBottomLeftRadius:item.last?14:0,borderBottomRightRadius:item.last?14:0}]}>
       <Pressable accessibilityRole="button" accessibilityLabel={`פתח פרופיל של ${item.player.name}`} onPress={()=>nav.navigate('PlayerCard',{userId:item.player!.id})} style={[s.row,{flex:1}]}><UserAvatar user={item.player} size={48}/><View style={{flex:1}}><Text style={[s.title,{fontSize:16,flex:0}]}>{item.player.name}</Text><Text style={[s.body,{fontSize:12}]}>{item.player.city}</Text><Text style={[s.body,{fontSize:12}]}>{item.player.sharedRounds?`${item.player.sharedRounds} מחזורים משותפים`:item.player.commonClubCount?'מועדון משותף':playerAvailabilityLines(item.player.availability)[0]??''}</Text></View></Pressable>
-      <View style={{maxWidth:116}}>{me?<FriendActionButton meId={me.id} otherUserId={item.player.id} compact onChanged={()=>{const owner=me.id,id=item.player!.id,request=epoch.current;void friendsService.getRelationship(owner,id).then(relationship=>{if(epoch.current===request&&useUserStore.getState().currentUser?.id===owner)setPlayers(old=>old.map(p=>p.id===id?{...p,friend:relationship==='friends'}:p));}).catch(()=>{});}}/>:null}</View>
+      <View style={{maxWidth:116}}>{me?<FriendActionButton meId={me.id} otherUserId={item.player.id} compact onChanged={()=>{const owner=me.id,id=item.player!.id,request=epoch.current;void friendsService.getRelationship(owner,id).then(relationship=>{if(epoch.current===request&&useUserStore.getState().currentUser?.id===owner)setPlayers(old=>old.map(p=>p.id===id?{...p,friend:relationship==='friends'}:p));}).catch((caughtError4c12f9fc11: unknown) =>{
+    observeCaughtError(caughtError4c12f9fc11, {"source":"src/components/social/PlayerDiscovery.tsx","handler":"PlayerDiscovery","site":"PlayerDiscovery:4c12f9fc11"});});}}/>:null}</View>
     </View>:null}
     ListEmptyComponent={!busy&&!failed?<View style={s.empty}><Ionicons name="people-outline" size={40} color="#2563EB"/><Text style={s.title}>{me?.isGuest?'חברים מחכים על המגרש':cursor?'ממשיך לחפש שחקנים':'לא נמצאו שחקנים'}</Text><Text style={s.body}>{me?.isGuest?'הירשם כדי למצוא שחקנים ולהתחבר לחברים':'נסה שם חלקי או שנה את הסינון'}</Text>{me?.isGuest?<SocialAction title="הירשם והכר שחקנים" icon="people-outline" onPress={()=>authAction.requestAuth()}/>:null}</View>:null}
     ListFooterComponent={<View style={{gap:10,marginTop:12}}>{busy?<ActivityIndicator color="#2563EB"/>:null}{failed?<><Text style={s.body}>לא ניתן לטעון כרגע. התוצאות אינן בהכרח ריקות.</Text><SocialAction title="נסה שוב" icon="refresh-outline" secondary onPress={()=>cursor?void more():setRefresh(n=>n+1)}/></>:cursor?<SocialAction title="הצג שחקנים נוספים" icon="chevron-down" secondary disabled={busy} onPress={()=>void more()}/>:list.length?<Text style={[s.body,{fontSize:11,textAlign:'center'}]}>הפרטים מוצגים בהתאם להגדרות הפרטיות של כל שחקן</Text>:null}</View>}/>

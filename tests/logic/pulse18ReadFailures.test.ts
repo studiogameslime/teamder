@@ -11,10 +11,10 @@ function method(file:string, name:string, context:Record<string,unknown>) {
 }
 
 test('deleting an absent photo succeeds silently; real storage failures stay visible',async()=>{
- const logError=jest.fn(),deleteObject=jest.fn().mockRejectedValue({code:'storage/object-not-found'});
- const remove=method('src/services/photoService.ts','deleteUserPhoto',{USE_MOCK_DATA:false,getFirebase:()=>({storage:{}}),storageRef:jest.fn(),AVATAR_PATH:(uid:string)=>uid,deleteObject,logError});
- await remove('player');expect(logError).not.toHaveBeenCalled();
- deleteObject.mockRejectedValue({code:'storage/unauthorized'});await remove('player');expect(logError).toHaveBeenCalledTimes(1);
+ const logError=jest.fn(),observeCaughtError=jest.fn(),deleteObject=jest.fn().mockRejectedValue({code:'storage/object-not-found'});
+ const remove=method('src/services/photoService.ts','deleteUserPhoto',{USE_MOCK_DATA:false,getFirebase:()=>({storage:{}}),storageRef:jest.fn(),AVATAR_PATH:(uid:string)=>uid,deleteObject,logError,observeCaughtError});
+ await remove('player');expect(logError).not.toHaveBeenCalled();expect(observeCaughtError).not.toHaveBeenCalled();
+ deleteObject.mockRejectedValue({code:'storage/unauthorized'});await remove('player');expect(logError).toHaveBeenCalledTimes(1);expect(observeCaughtError).toHaveBeenCalledTimes(1);
 });
 
 test('available players returns the first examined page, including its non-empty cursor',async()=>{

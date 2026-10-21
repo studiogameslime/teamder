@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Reading the club's pair rollup.
 //
 // One query for the whole club, then the six winners are picked in memory. The
@@ -73,6 +74,7 @@ export const clubChemistryService = {
         since: typeof since === 'number' && since > 0 ? since : null,
       };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/clubChemistryService.ts","handler":"get","site":"clubChemistryService:2616a09c85"});
       if (!isExpectedDenial(err)) logError('clubChemistryGet', err, { groupId });
       if (strict) throw err;
       return empty;

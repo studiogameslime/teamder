@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // BlockedUsersScreen — everyone the user has blocked in chat, with a tap to
 // unblock. Reached from the profile menu ("חסומים"). Blocks live at
 // /users/{uid}/blocked/{blockedId}; unblocking deletes that doc, after which
@@ -83,6 +84,7 @@ export function BlockedUsersScreen() {
             toast.success(he.blockedUnblockDone);
             // The live listener will drop the row.
           } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/profile/BlockedUsersScreen.tsx","handler":"onPress","site":"BlockedUsersScreen:753075b8f0"});
             logError('unblockUser', err, { screen: 'BlockedUsersScreen', targetUserId: uid });
             logEvent(AnalyticsEvent.ChatActionFailed, { action: 'unblock' });
             toast.error(String((err as Error)?.message ?? err));

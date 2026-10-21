@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Campaign authoring from Pulse. Writes a `campaigns/{id}` doc that the
 // soccer backend (push) or app (popup) consumes. Server-side rate limits are
 // the real guard; fetchPushRate powers the UI courtesy guard.
@@ -57,7 +58,7 @@ export async function createCampaign(c: CampaignInput): Promise<CreateResult> {
   // Validation: reject a push that collides in time with an already-queued
   // push (whether scheduled or about to send now).
   if (c.type === 'push') {
-    const existing = await fetchCampaigns().catch(() => [] as FsDoc[]);
+    const existing = await fetchCampaigns().catch((caughtError8cf0dd8c4d: unknown) => { observeCaughtError(caughtError8cf0dd8c4d, {"source":"pulse/src/services/campaigns.ts","handler":"createCampaign","site":"campaigns:8cf0dd8c4d"}); return [] as FsDoc[]; });
     const clash = existing.find(
       (e) =>
         e.type === 'push' &&
@@ -109,7 +110,8 @@ export async function sendTestCampaign(c: CampaignInput, userId: string, userNam
         .filter((d) => d.isTest === true && d.testUserId === userId)
         .map((d) => deleteDoc(`campaigns/${d.id}`)),
     );
-  } catch {
+  } catch (caughtError93b9434bd6) {
+    observeCaughtError(caughtError93b9434bd6, {"source":"pulse/src/services/campaigns.ts","handler":"sendTestCampaign","site":"campaigns:93b9434bd6"});
     /* non-fatal — proceed to create the new test */
   }
   const doc: Record<string, unknown> = {

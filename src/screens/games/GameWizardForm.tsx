@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { useSupportStep } from '@/hooks/useSupportStep';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 // 3-step wizard shared by Create / Edit Game.
@@ -446,6 +447,7 @@ export function GameWizardForm({
       // success → leaving the screen; keep savingRef armed so the
       // departing navigation passes through cleanly.
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/games/GameWizardForm.tsx","handler":"finalizeSubmit","site":"GameWizardForm:b5307ffdd0"});
       savingRef.current = false; // stayed on the form → re-arm the guard
       if (__DEV__) console.warn('[gameWizard] submit failed', e);
       logEvent(AnalyticsEvent.GameWizardSubmitFailed, {
@@ -741,7 +743,8 @@ function Step1({
             .then((city) => {
               if (city) set('city', city);
             })
-            .catch(() => {});
+            .catch((caughtErrorf00bcf4d9c: unknown) => {
+    observeCaughtError(caughtErrorf00bcf4d9c, {"source":"src/screens/games/GameWizardForm.tsx","handler":"Step1","site":"GameWizardForm:f00bcf4d9c"});});
         }}
       />
 

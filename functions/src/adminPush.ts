@@ -1,3 +1,4 @@
+import { observeCaughtError } from './serverErrorLog';
 // Shared FCM sender for founder alerts. Honors the per-type on/off toggles the
 // Pulse dashboard writes to adminConfig/prefs (server-side filtering, because
 // the push fires even when the app is closed). Default = enabled.
@@ -24,7 +25,8 @@ export async function pushToAdmins(
       | Record<string, boolean>
       | undefined;
     if (prefs && prefs[type] === false) return;
-  } catch {
+  } catch (caughtError2a6edd0e98) {
+    observeCaughtError(caughtError2a6edd0e98, {"source":"functions/src/adminPush.ts","handler":"pushToAdmins","site":"adminPush:2a6edd0e98"});
     /* default enabled */
   }
 
@@ -51,6 +53,7 @@ export async function pushToAdmins(
     });
     if (dropped) return;
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/adminPush.ts","handler":"pushToAdmins","site":"adminPush:bb1e136e5b"});
     // Fail-open: a throttle-check failure shouldn't silently swallow a real
     // alert. Worst case is one un-throttled send.
     console.warn('[pushToAdmins] throttle check failed', err);
@@ -61,6 +64,7 @@ export async function pushToAdmins(
     const cfg = await db.collection('adminConfig').doc('push').get();
     tokens = ((cfg.data()?.tokens as string[] | undefined) ?? []).filter(Boolean);
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/adminPush.ts","handler":"pushToAdmins","site":"adminPush:075f215820"});
     console.warn('[pushToAdmins] token read failed', err);
   }
   if (!tokens.length) return;
@@ -86,6 +90,7 @@ export async function pushToAdmins(
         .update({ tokens: admin.firestore.FieldValue.arrayRemove(...dead) });
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/adminPush.ts","handler":"pushToAdmins","site":"adminPush:068b8df813"});
     console.error('[pushToAdmins] send failed', err);
   }
 }

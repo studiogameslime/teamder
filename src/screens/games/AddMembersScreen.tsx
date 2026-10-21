@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // AddMembersScreen — admin-only "register members from the community" picker.
 // Lists the game's community members who AREN'T already in the roster and lets
 // the admin register several at once straight into the game (server-side
@@ -64,7 +65,7 @@ export function AddMembersScreen() {
     (async () => {
       setLoading(true);
       try {
-        const g = await gameService.getGameById(gameId).catch(() => null);
+        const g = await gameService.getGameById(gameId).catch((caughtError236c7003ab: unknown) => { observeCaughtError(caughtError236c7003ab, {"source":"src/screens/games/AddMembersScreen.tsx","handler":"AddMembersScreen","site":"AddMembersScreen:236c7003ab"}); return null; });
         if (!alive) return;
         setGame(g);
         if (!g) {
@@ -89,13 +90,14 @@ export function AddMembersScreen() {
           (id) => !inRoster.has(id) && (reserve || id !== me?.id),
         );
         const profiles = await Promise.all(
-          toLoad.map((id) => userService.getUserById(id).catch(() => null)),
+          toLoad.map((id) => userService.getUserById(id).catch((caughtError591865f3c0: unknown) => { observeCaughtError(caughtError591865f3c0, {"source":"src/screens/games/AddMembersScreen.tsx","handler":"AddMembersScreen","site":"AddMembersScreen:591865f3c0"}); return null; })),
         );
         if (!alive) return;
         setMembers(
           profiles.filter((u): u is User => !!u).sort((a, b) => a.name.localeCompare(b.name, 'he')),
         );
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/AddMembersScreen.tsx","handler":"AddMembersScreen","site":"AddMembersScreen:31cd171528"});
         logError('AddMembersScreen.load', err, { gameId });
       } finally {
         if (alive) setLoading(false);
@@ -114,7 +116,7 @@ export function AddMembersScreen() {
     if (!game) return;
     userService.findAvailablePlayers({ gameId: game.id, day: new Date(game.startsAt).getDay(), excludeIds: [] })
       .then(users => { if (alive) setAvailableIds(new Set(users.map(u => u.id))); })
-      .catch(err => logError('AddMembersScreen.availability', err, { gameId }));
+      .catch(err => { observeCaughtError(err, {"source":"src/screens/games/AddMembersScreen.tsx","handler":"AddMembersScreen","site":"AddMembersScreen:5b29fb8d16"}); return logError('AddMembersScreen.availability', err, { gameId }); });
     return () => { alive = false; };
   }, [game?.id, game?.startsAt]);
 
@@ -168,6 +170,7 @@ export function AddMembersScreen() {
       }
       if (nav.canGoBack()) nav.goBack();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/AddMembersScreen.tsx","handler":"onSubmit","site":"AddMembersScreen:4e5935c0a6"});
       logError('AddMembersScreen.submit', err, { gameId });
       toast.error(he.addMembersError);
     } finally {

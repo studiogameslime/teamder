@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // "מצא לי משחקים" — the user marks when/where they want to play so the
 // matcher can offer them open games with shortages nearby.
@@ -157,7 +158,8 @@ export function AvailabilityEditScreen() {
           });
         }
       })
-      .catch(() => {
+      .catch((caughtError59165b65e3: unknown) => {
+    observeCaughtError(caughtError59165b65e3, {"source":"src/screens/profile/AvailabilityEditScreen.tsx","handler":"AvailabilityEditScreen","site":"AvailabilityEditScreen:59165b65e3"});
         /* no draft to restore */
       });
     return () => {
@@ -270,14 +272,16 @@ export function AvailabilityEditScreen() {
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         Location = require('expo-location');
-      } catch {
+      } catch (caughtError9f1e0b6444) {
+    observeCaughtError(caughtError9f1e0b6444, {"source":"src/screens/profile/AvailabilityEditScreen.tsx","handler":"AvailabilityEditScreen","site":"AvailabilityEditScreen:9f1e0b6444"});
         Location = null;
       }
       if (!Location) return;
       try {
         const cur = await Location.getForegroundPermissionsAsync();
         if (!cancelled) setLocationGranted(cur.granted);
-      } catch {
+      } catch (caughtError9bcc81a4a7) {
+    observeCaughtError(caughtError9bcc81a4a7, {"source":"src/screens/profile/AvailabilityEditScreen.tsx","handler":"AvailabilityEditScreen","site":"AvailabilityEditScreen:9bcc81a4a7"});
         // ignore — leave as not-granted, keep the permission-framed copy.
       }
     })();
@@ -422,7 +426,8 @@ export function AvailabilityEditScreen() {
           const { reverseGeocodeCity } = await import('@/services/geocodeService');
           const c = await reverseGeocodeCity(pin.lat, pin.lng);
           if (c) cityName = c;
-        } catch {
+        } catch (caughtError35d22a6462) {
+    observeCaughtError(caughtError35d22a6462, {"source":"src/screens/profile/AvailabilityEditScreen.tsx","handler":"save","site":"AvailabilityEditScreen:35d22a6462"});
           /* keep previous city name on failure */
         }
       }
@@ -479,6 +484,7 @@ export function AvailabilityEditScreen() {
       savingRef.current = true;
       nav.goBack();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/profile/AvailabilityEditScreen.tsx","handler":"save","site":"AvailabilityEditScreen:a442d6b899"});
       logError('saveAvailability', e, {
         screen: 'AvailabilityEditScreen',
         userId: user.id,

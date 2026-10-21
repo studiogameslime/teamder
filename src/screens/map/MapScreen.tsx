@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // MapScreen — full-screen map of games OR communities, one component, two
 // modes. The chrome matches the product mockup: header + subtitle, a search
@@ -159,6 +160,7 @@ export function MapScreen() {
         }
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/map/MapScreen.tsx","handler":"focusOnMe","site":"MapScreen:fb43915f33"});
       // denied / unavailable — leave the view as-is.
       logError('mapLocateMe', err, { screen: 'MapScreen', mode });
       if (__DEV__) console.warn('[map] locate me failed', err);

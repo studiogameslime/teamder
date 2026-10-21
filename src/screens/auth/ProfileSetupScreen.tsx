@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // Basic profile completion: the existing name gate with optional photo/avatar choice.
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -53,7 +54,8 @@ export function ProfileSetupScreen({ onClose }: { onClose?: () => void } = {}) {
         logEvent(AnalyticsEvent.PhotoUploadFailed, { source: 'profile_setup', reason: result.reason });
         appAlert(he.error, result.reason === 'unavailable' ? he.profilePhotoUnavailable : he.profilePhotoUploadFailed);
       }
-    } catch {
+    } catch (caughtErrorc440b6568f) {
+    observeCaughtError(caughtErrorc440b6568f, {"source":"src/screens/auth/ProfileSetupScreen.tsx","handler":"handlePickPhoto","site":"ProfileSetupScreen:c440b6568f"});
       if (mounted.current) appAlert(he.error, he.profilePhotoUploadFailed);
     } finally {
       inFlight.current = false;
@@ -80,6 +82,7 @@ export function ProfileSetupScreen({ onClose }: { onClose?: () => void } = {}) {
       }
       logEvent(AnalyticsEvent.ProfileConfirmed, { source: 'profile_setup' });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/auth/ProfileSetupScreen.tsx","handler":"handleSave","site":"ProfileSetupScreen:ebf6a14416"});
       // First-run name capture gates entry to the whole app. A silent
       // failure here strands the user on this screen with no feedback —
       // surface the error so they know to retry.

@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // chatMonitorService — reads the Teamder chat data model so Pulse can (a)
 // stream every chat message (with sender + text) and (b) surface user reports
 // of abusive messages. Same datastore service-account token as everything else
@@ -36,7 +37,7 @@ export interface ChatMsg {
 
 export async function listRecentChatMessages(limit = 40): Promise<ChatMsg[]> {
   const docs = await queryGroupRecent('messages', 'createdAt', limit).catch(
-    () => [],
+    (caughtErrorede5585a1d: unknown) => { observeCaughtError(caughtErrorede5585a1d, {"source":"pulse/src/services/chatMonitorService.ts","handler":"listRecentChatMessages","site":"chatMonitorService:ede5585a1d"}); return []; },
   );
   return docs.map((d) => ({
     id: d.id,
@@ -67,7 +68,7 @@ export interface ChatReport {
 }
 
 export async function listChatReports(): Promise<ChatReport[]> {
-  const docs = await listAll('chatReports').catch(() => [] as FsDoc[]);
+  const docs = await listAll('chatReports').catch((caughtErrore665286f40: unknown) => { observeCaughtError(caughtErrore665286f40, {"source":"pulse/src/services/chatMonitorService.ts","handler":"listChatReports","site":"chatMonitorService:e665286f40"}); return [] as FsDoc[]; });
   return docs
     .map((d): ChatReport => ({
       id: d.id,
@@ -119,7 +120,7 @@ export interface ChatBlock {
 
 export async function listRecentBlocks(limit = 80): Promise<ChatBlock[]> {
   const docs = await queryGroupRecent('blocked', 'at', limit).catch(
-    () => [] as Array<FsDoc & { _parentId?: string }>,
+    (caughtErrorfc9f57c86e: unknown) => { observeCaughtError(caughtErrorfc9f57c86e, {"source":"pulse/src/services/chatMonitorService.ts","handler":"listRecentBlocks","site":"chatMonitorService:fc9f57c86e"}); return [] as Array<FsDoc & { _parentId?: string }>; },
   );
   // Unique uids on both sides → one /users read each, cached in a map.
   const uids = new Set<string>();
@@ -131,7 +132,7 @@ export async function listRecentBlocks(limit = 80): Promise<ChatBlock[]> {
   const names: Record<string, string> = {};
   await Promise.all(
     Array.from(uids).map(async (uid) => {
-      const u = await getDoc(`users/${uid}`).catch(() => null);
+      const u = await getDoc(`users/${uid}`).catch((caughtErrorf82ebe75e7: unknown) => { observeCaughtError(caughtErrorf82ebe75e7, {"source":"pulse/src/services/chatMonitorService.ts","handler":"listRecentBlocks","site":"chatMonitorService:f82ebe75e7"}); return null; });
       names[uid] = (u?.name as string) || uid.slice(0, 6);
     }),
   );

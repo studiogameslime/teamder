@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -124,11 +125,12 @@ export function PlayerTimelineScreen() {
         if (version !== requestVersion.current) return;
         setPlayer(users.find(u => u.id === userId) ?? null);
         setActors(Object.fromEntries(users.map(u => [u.id, u.name])));
-      }).catch(err => logError('playerTimelineIdentity', err, {
+      }).catch(err => { observeCaughtError(err, {"source":"src/screens/players/PlayerTimelineScreen.tsx","handler":"PlayerTimelineScreen","site":"PlayerTimelineScreen:86e113d6f1"}); return logError('playerTimelineIdentity', err, {
         groupId,
         userId
-      }));
+      }); });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/players/PlayerTimelineScreen.tsx","handler":"PlayerTimelineScreen","site":"PlayerTimelineScreen:f88cbed123"});
       if (version !== requestVersion.current) return;
       setFailed(true);
       logError('playerTimelineLoad', err, {
@@ -171,6 +173,7 @@ export function PlayerTimelineScreen() {
           toast.success(he.cardRevokedToast);
           await reload();
         } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/players/PlayerTimelineScreen.tsx","handler":"onPress","site":"PlayerTimelineScreen:aa3315e7d5"});
           logError('revokeCardAction', err, {
             id: ev.id
           });

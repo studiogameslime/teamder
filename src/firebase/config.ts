@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // ============================================================
 // FIREBASE CONFIG
 // ============================================================
@@ -119,7 +120,8 @@ export function getFirebase(): {
         // the converter's read-side contract.
         ignoreUndefinedProperties: true,
       });
-    } catch {
+    } catch (caughtErrorcac3883450) {
+    observeCaughtError(caughtErrorcac3883450, {"source":"src/firebase/config.ts","handler":"getFirebase","site":"config:cac3883450"});
       // Already initialised (HMR / fast refresh) — fall back to the
       // existing instance.
       _db = getFirestore(_app);
@@ -139,7 +141,8 @@ export function getFirebase(): {
       _auth = initializeAuth(_app, {
         persistence: getReactNativePersistence(secureAuthStorage),
       });
-    } catch {
+    } catch (caughtErrore46af75247) {
+    observeCaughtError(caughtErrore46af75247, {"source":"src/firebase/config.ts","handler":"getFirebase","site":"config:e46af75247"});
       // initializeAuth throws if already called (HMR / fast refresh path)
       _auth = getAuth(_app);
     }
@@ -157,7 +160,8 @@ export function getFirebase(): {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { initAppCheck } = require('./appCheck');
       void initAppCheck(_app);
-    } catch {
+    } catch (caughtError0cbe312ef1) {
+    observeCaughtError(caughtError0cbe312ef1, {"source":"src/firebase/config.ts","handler":"getFirebase","site":"config:0cbe312ef1"});
       // appCheck.ts itself swallows missing-module errors; this catch
       // is just for any unexpected import-level explosion.
     }

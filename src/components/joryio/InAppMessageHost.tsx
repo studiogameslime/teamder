@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // InAppMessageHost — renders Joryio in-app campaigns.
 //
 // The SDK delivers a message; drawing it is the app's job. Mount this once,
@@ -144,6 +145,7 @@ export function InAppMessageHost(): React.ReactElement | null {
           submittingRef.current = false;
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"src/components/joryio/InAppMessageHost.tsx","handler":"InAppMessageHost","site":"InAppMessageHost:20dbbe584c"});
         logError('inAppOnboardingSubmit', err, {});
         toast.error(he.error);
         submittingRef.current = false;
@@ -166,6 +168,7 @@ export function InAppMessageHost(): React.ReactElement | null {
         logEvent(AnalyticsEvent.InviteShared, { source: 'onboarding' });
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/joryio/InAppMessageHost.tsx","handler":"InAppMessageHost","site":"InAppMessageHost:efe15a74c6"});
       if (__DEV__) console.warn('[inapp] share failed', err);
     }
   }, [vars.inviteUrl]);
@@ -175,7 +178,7 @@ export function InAppMessageHost(): React.ReactElement | null {
       if ((b.action === 'url' || b.action === 'deep_link') && b.url) {
         // Both land in the same place: a footy:// deep link and an https invite
         // URL are each handled by the app's existing link routing.
-        Linking.openURL(b.url).catch(() => undefined);
+        Linking.openURL(b.url).catch((caughtErrorb4d11e15aa: unknown) => { observeCaughtError(caughtErrorb4d11e15aa, {"source":"src/components/joryio/InAppMessageHost.tsx","handler":"InAppMessageHost","site":"InAppMessageHost:b4d11e15aa"}); return undefined; });
       }
       // A button is a click AND a close, and the SDK's own native presenter
       // reports both for the same tap. Report them in that order so CTR counts
@@ -211,7 +214,7 @@ export function InAppMessageHost(): React.ReactElement | null {
               css={msg.css}
               fullscreen={full}
               onClick={(url) => {
-                if (url) Linking.openURL(url).catch(() => undefined);
+                if (url) Linking.openURL(url).catch((caughtErrored3ab23b04: unknown) => { observeCaughtError(caughtErrored3ab23b04, {"source":"src/components/joryio/InAppMessageHost.tsx","handler":"InAppMessageHost","site":"InAppMessageHost:ed3ab23b04"}); return undefined; });
                 if (msg) joryio.trackInAppImpression(msg.id, 'clicked');
                 close('dismissed');
               }}

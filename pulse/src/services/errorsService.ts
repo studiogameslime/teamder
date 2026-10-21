@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Reads the Teamder app's `errors` collection (auto-captured failures /
 // crashes / silent post-condition violations) AND the `feedback` collection
 // (user-submitted bug reports + feature suggestions), and lets the dashboard
@@ -76,7 +77,7 @@ export const rawFeedback = (force = false) =>
 
 export async function fetchErrors(force = false): Promise<ErrorRecord[]> {
   if (!has.firebase()) return [];
-  const docs = await rawErrors(force).catch(() => [] as FsDoc[]);
+  const docs = await rawErrors(force).catch((caughtErrora5296c3ab1: unknown) => { observeCaughtError(caughtErrora5296c3ab1, {"source":"pulse/src/services/errorsService.ts","handler":"fetchErrors","site":"errorsService:a5296c3ab1"}); return [] as FsDoc[]; });
   return sortIssues(docs.map(mapError));
 }
 
@@ -84,8 +85,8 @@ export async function fetchErrors(force = false): Promise<ErrorRecord[]> {
 export async function fetchIssues(force = false): Promise<ErrorRecord[]> {
   if (!has.firebase()) return [];
   const [errs, feedback] = await Promise.all([
-    rawErrors(force).then((d) => d.map(mapError)).catch(() => [] as ErrorRecord[]),
-    rawFeedback(force).then((d) => d.map(mapFeedback)).catch(() => [] as ErrorRecord[]),
+    rawErrors(force).then((d) => d.map(mapError)).catch((caughtError88b291fc3f: unknown) => { observeCaughtError(caughtError88b291fc3f, {"source":"pulse/src/services/errorsService.ts","handler":"fetchIssues","site":"errorsService:88b291fc3f"}); return [] as ErrorRecord[]; }),
+    rawFeedback(force).then((d) => d.map(mapFeedback)).catch((caughtError0a5038fa79: unknown) => { observeCaughtError(caughtError0a5038fa79, {"source":"pulse/src/services/errorsService.ts","handler":"fetchIssues","site":"errorsService:0a5038fa79"}); return [] as ErrorRecord[]; }),
   ]);
   return sortIssues([...errs, ...feedback]);
 }

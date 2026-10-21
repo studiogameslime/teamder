@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Guest gating — guests (anonymous "browse" sessions) can explore public
 // communities + games, but any ACCOUNT action (join, create, RSVP, chat)
 // must prompt them to register first (App Store guideline 5.1.1(v): browsing
@@ -53,6 +54,7 @@ export function ensureNotGuest(body?: string, returnTo?: PendingInvite): boolean
             try {
               await receivePendingInvite(returnTo);
             } catch (err) {
+    observeCaughtError(err, {"source":"src/utils/guestGate.ts","handler":"onPress","site":"guestGate:e9050f574e"});
               if (__DEV__) console.warn('[guestGate] could not stash return target', err);
             }
           }

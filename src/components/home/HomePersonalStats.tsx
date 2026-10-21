@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, AccessibilityInfo, Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -79,10 +80,11 @@ export function HomePersonalStats({ user, onOpen, preview }: { user: User; onOpe
         if (!alive) return;
         setResult({ owner: user.id, stats });
         if (stats.mostPlayedWith) {
-          const partner = await userService.getUserById(stats.mostPlayedWith.uid).catch(() => null);
+          const partner = await userService.getUserById(stats.mostPlayedWith.uid).catch((caughtError80e6d37cbb: unknown) => { observeCaughtError(caughtError80e6d37cbb, {"source":"src/components/home/HomePersonalStats.tsx","handler":"HomePersonalStats","site":"HomePersonalStats:80e6d37cbb"}); return null; });
           if (alive && partner) setResult({ owner: user.id, stats, partner });
         }
-      } catch { if (alive) setFailed(true); }
+      } catch (caughtError4e31577975) {
+    observeCaughtError(caughtError4e31577975, {"source":"src/components/home/HomePersonalStats.tsx","handler":"HomePersonalStats","site":"HomePersonalStats:4e31577975"}); if (alive) setFailed(true); }
     })();
     return () => { alive = false; };
   }, [user.id, user.stats?.goals, user.stats?.assists, retry, preview]));

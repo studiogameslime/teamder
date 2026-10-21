@@ -28,6 +28,7 @@ import android.os.Looper
 import android.util.Base64
 import android.view.PixelCopy
 import android.view.View
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -36,6 +37,30 @@ import java.io.ByteArrayOutputStream
 
 class ScreenCaptureModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
+
+    // Fixed operation codes only: never keep screenshots, state JSON or errors.
+    private val diagnosticCodes = java.util.ArrayDeque<String>()
+    private var diagnosticOverflow = false
+
+    @Synchronized
+    private fun recordDiagnostic(code: String) {
+        if (diagnosticCodes.size == 31) {
+            diagnosticCodes.removeFirst()
+            diagnosticOverflow = true
+        }
+        diagnosticCodes.addLast(code)
+    }
+
+    @ReactMethod
+    @Synchronized
+    fun takeDiagnostics(promise: Promise) {
+        val result = Arguments.createArray()
+        diagnosticCodes.forEach { result.pushString(it) }
+        if (diagnosticOverflow) result.pushString("native.overflow")
+        diagnosticCodes.clear()
+        diagnosticOverflow = false
+        promise.resolve(result)
+    }
 
   override fun getName() = "ScreenCapture"
 
@@ -106,6 +131,7 @@ class ScreenCaptureModule(reactContext: ReactApplicationContext) :
     val overlays = try {
       collectOverlayDecorViews(mainDecor)
     } catch (e: Throwable) {
+      recordDiagnostic("capture.overlay-list")
       return // WindowManagerGlobal internals unavailable — keep base capture.
     }
     if (overlays.isEmpty()) return
@@ -114,17 +140,19 @@ class ScreenCaptureModule(reactContext: ReactApplicationContext) :
     mainDecor.getLocationOnScreen(mainLoc)
     val loc = IntArray(2)
     for (v in overlays) {
+      val checkpoint = canvas.save()
       try {
         v.getLocationOnScreen(loc)
-        canvas.save()
         canvas.translate(
           (loc[0] - mainLoc[0]).toFloat(),
           (loc[1] - mainLoc[1]).toFloat(),
         )
         v.draw(canvas)
-        canvas.restore()
       } catch (e: Throwable) {
+        recordDiagnostic("capture.overlay-draw")
         // Skip a window that won't draw; keep the rest.
+      } finally {
+        canvas.restoreToCount(checkpoint)
       }
     }
   }

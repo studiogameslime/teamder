@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // NotificationOfferHost — where the offer lives, so no business path owns it.
 //
 // Mounted once, beside `WhatsNewGate` and `CampaignGate`. It listens for
@@ -95,6 +96,7 @@ export function NotificationOfferHost({ active }: { active: boolean }) {
           });
           setShown({ context, state: decision.state, opts });
         } catch (err) {
+    observeCaughtError(err, {"source":"src/components/notifications/NotificationOfferHost.tsx","handler":"NotificationOfferHost","site":"NotificationOfferHost:ad4efc0c1f"});
           // An offer that could not be computed is an offer that does not
           // appear. Nothing about the completed action depends on it.
           logError('notificationOfferDecide', err, { context });
@@ -186,6 +188,7 @@ export function NotificationOfferHost({ active }: { active: boolean }) {
           // is what the next context will be judged against.
           await getPushPermissionState();
         } catch (err) {
+    observeCaughtError(err, {"source":"src/components/notifications/NotificationOfferHost.tsx","handler":"NotificationOfferHost","site":"NotificationOfferHost:8c45be2b27"});
           logError('notificationOfferRequest', err, { context: current.context });
         }
       })();

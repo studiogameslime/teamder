@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // NearbyClubsSection — "מועדונים באזור שלך" on the matches tab.
 //
 // When there's no open match to join, the next best thing isn't an empty
@@ -102,7 +103,8 @@ export function NearbyClubsSection({
         // Read through a ref: this callback's deps deliberately exclude
         // `clubs`, so the captured value would be whatever it was when the
         // deps last changed — i.e. still null after the first success.
-        .catch(() => {
+        .catch((caughtErrorae33463b33: unknown) => {
+    observeCaughtError(caughtErrorae33463b33, {"source":"src/components/games/NearbyClubsSection.tsx","handler":"NearbyClubsSection","site":"NearbyClubsSection:ae33463b33"});
           if (alive && clubsRef.current === null) setClubs([]);
         });
       return () => {
@@ -163,6 +165,7 @@ export function NearbyClubsSection({
         setActedOn((s) => new Set(s).add(club.id));
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/games/NearbyClubsSection.tsx","handler":"handleJoin","site":"NearbyClubsSection:30027ef1d9"});
       if (
         err instanceof GroupJoinRejectedError ||
         (err as Error)?.name === 'GroupJoinRejectedError'

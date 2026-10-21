@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 // "התראות אחרונות" — two views via a segmented control:
 //   • שרת  — every push ever sent (Firestore notifications), with who got it
 //            and whether it landed. The complete, recoverable history.
@@ -80,7 +81,8 @@ export function NotificationsLogScreen() {
   const loadServer = useCallback(async (force = false) => {
     setLoadingSrv(true);
     try { setServer(await fetchServerNotifs(250, force)); setFailed(false); }
-    catch { setFailed(true); }
+    catch (caughtError57e4647010) {
+    observeCaughtError(caughtError57e4647010, {"source":"pulse/src/screens/NotificationsLogScreen.tsx","handler":"NotificationsLogScreen","site":"NotificationsLogScreen:57e4647010"}); setFailed(true); }
     setLoadingSrv(false);
   }, []);
   const loadLocal = useCallback(async () => {

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React,{useEffect,useMemo,useState}from'react';
 import{ActivityIndicator,Pressable,StyleSheet,Text,View}from'react-native';
 import{Ionicons}from'@expo/vector-icons';
@@ -15,7 +16,8 @@ export function DiagnosticTimeline({docPath}:{docPath:string}){
  useEffect(()=>{
   if(!open)return;let alive=true;setLoading(true);setFailed(false);setData(null);
   getDoc(docPath).then(d=>{if(alive)setData({current:parseJournal(d?.journal??d?.lastJournal),previous:parseJournal(d?.previousJournal),legacy:typeof(d?.trail??d?.lastTrail)==='string'?String(d?.trail??d?.lastTrail).slice(0,6000):''});})
-   .catch(()=>{if(alive)setFailed(true);}).finally(()=>{if(alive)setLoading(false);});
+   .catch((caughtErrord2bf260d31: unknown) =>{
+    observeCaughtError(caughtErrord2bf260d31, {"source":"pulse/src/components/DiagnosticTimeline.tsx","handler":"DiagnosticTimeline","site":"DiagnosticTimeline:d2bf260d31"});if(alive)setFailed(true);}).finally(()=>{if(alive)setLoading(false);});
   return()=>{alive=false;};
  },[open,docPath,retry]);
  useEffect(()=>{setPrevious(false);setFilter('all');setLimit(30);setCopied(false);},[docPath]);
@@ -33,7 +35,7 @@ export function DiagnosticTimeline({docPath}:{docPath:string}){
      <Text style={s.sub}>{journal.entries.length} צעדים זמינים מתוך {journal.total}</Text>
      {journal.omitted>0?<Text style={s.warning}>הרצף חלקי: {journal.omitted} צעדים הושמטו בגלל מגבלת גודל.</Text>:null}
      <View style={s.actions}>{[['all','הכל'],['nav','מסכים'],['press','לחיצות'],['scroll','גלילות'],['err','שגיאות']].map(([key,label])=><Pressable key={key} onPress={()=>{setFilter(key);setLimit(30);}} style={[s.chip,filter===key&&s.selected]}><Text style={s.text}>{label}</Text></Pressable>)}</View>
-     <Pressable accessibilityRole="button" onPress={()=>{void Clipboard.setStringAsync(copyJournal(journal)).then(()=>setCopied(true)).catch(()=>setCopied(false));}} style={s.copy}><Text style={s.text}>{copied?'הרצף הועתק':'העתק את כל הרצף לשחזור'}</Text><Ionicons name="copy-outline" size={16} color={colors.primary}/></Pressable>
+     <Pressable accessibilityRole="button" onPress={()=>{void Clipboard.setStringAsync(copyJournal(journal)).then(()=>setCopied(true)).catch((caughtError09dab411c4: unknown) =>{ observeCaughtError(caughtError09dab411c4, {"source":"pulse/src/components/DiagnosticTimeline.tsx","handler":"DiagnosticTimeline","site":"DiagnosticTimeline:09dab411c4"}); return setCopied(false); });}} style={s.copy}><Text style={s.text}>{copied?'הרצף הועתק':'העתק את כל הרצף לשחזור'}</Text><Ionicons name="copy-outline" size={16} color={colors.primary}/></Pressable>
      {filtered.slice(0,limit).map((e,i)=><View key={`${e.seq}-${i}`} style={[s.step,e.kind==='err'&&s.error]}>
       {filter==='all'&&e.seq>(i?filtered[i-1].seq:0)+1?<Text style={s.warning}>חסרות {e.seq-(i?filtered[i-1].seq:0)-1} פעולות ברצף</Text>:null}
       <View style={s.head}><Text style={[s.label,e.kind==='err'&&{color:colors.red}]}>{stepLabel(e)}</Text><Text style={s.clock}>#{e.seq} · {stepTime(e.ms)}</Text></View>

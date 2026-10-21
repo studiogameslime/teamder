@@ -1,0 +1,44 @@
+[
+  {
+    "id": "36d720fa2932dbfd0235f66dc577e76f",
+    "operation": "groupHydrateListForUser",
+    "state": "analyzed",
+    "readBackVerified": true
+  },
+  {
+    "id": "790cbe7ee2d6119ee32c48fda758dc54",
+    "operation": "createGame",
+    "state": "analyzed",
+    "readBackVerified": true
+  },
+  {
+    "id": "7fb5891e01349c2486dc19e4173ec26c",
+    "operation": "getAvailabilityCounts",
+    "state": "analyzed",
+    "readBackVerified": true
+  },
+  {
+    "id": "87d942c7165f7a1a48a8f30e8b470fdb",
+    "operation": "fetchFriendsInClubs",
+    "state": "analyzed",
+    "readBackVerified": true
+  },
+  {
+    "id": "9ac08bb3e43685379bd98163a2b9a4b4",
+    "operation": "subscribeForUser",
+    "state": "analyzed",
+    "readBackVerified": true
+  },
+  {
+    "id": "e7377b7e0b47e6d37caad3d6a8d44094",
+    "operation": "deriveInvitesSent",
+    "state": "analyzed",
+    "readBackVerified": true
+  },
+  {
+    "id": "ea4bad8e53642638e282ea4df221cb66",
+    "operation": "hydratePlayers",
+    "state": "analyzed",
+    "readBackVerified": true
+  }
+]

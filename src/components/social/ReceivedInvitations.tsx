@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { useGroupStore } from '@/store/groupStore';
 import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
@@ -27,7 +28,8 @@ export function ReceivedInvitations({refreshKey=0}:{refreshKey?:number}) {
     if(!me||me.isGuest){setBusy(false);return;}
     setBusy(true);
     receivedInvitationsService.list(me.id).then(rows=>{if(epoch.current===turn)setItems(rows);})
-      .catch(()=>{if(epoch.current===turn)setFailed(true);})
+      .catch((caughtError5c003adafb: unknown) =>{
+    observeCaughtError(caughtError5c003adafb, {"source":"src/components/social/ReceivedInvitations.tsx","handler":"ReceivedInvitations","site":"ReceivedInvitations:5c003adafb"});if(epoch.current===turn)setFailed(true);})
       .finally(()=>{if(epoch.current===turn)setBusy(false);});
     return()=>{epoch.current++;};
   },[me?.id,me?.isGuest,retry,refreshKey,membershipKey]));
@@ -46,12 +48,14 @@ export function ReceivedInvitations({refreshKey=0}:{refreshKey?:number}) {
       if (epoch.current !== turn || useUserStore.getState().currentUser?.id !== me.id) return;
       if (result.isMember) setItems(old => old.filter(x => !(x.type === item.type && x.targetId === item.targetId)));
       else setItems(old => old.map(x => x.id === item.id ? { ...x, status: 'pending', read: true } : x));
-      void notificationsService.markRead(item.id).catch(() => {});
+      void notificationsService.markRead(item.id).catch((caughtError3d8b2e5065: unknown) => {
+    observeCaughtError(caughtError3d8b2e5065, {"source":"src/components/social/ReceivedInvitations.tsx","handler":"accept","site":"ReceivedInvitations:3d8b2e5065"});});
       if (!navigateInvite(result)) toast.info('ההצטרפות נשמרה. אפשר לפתוח את הפרטים מהכרטיס או מהרשימה');
       else if (result.status === 'waitlist') toast.success('נכנסת לרשימת ההמתנה למחזור');
       else if (result.status === 'pending') toast.info('בקשת ההצטרפות ממתינה לאישור');
       else toast.success(result.type === 'team' ? 'הצטרפת למועדון!' : 'נרשמת למחזור!');
     } catch (error) {
+    observeCaughtError(error, {"source":"src/components/social/ReceivedInvitations.tsx","handler":"accept","site":"ReceivedInvitations:85eadb2f64"});
       if (epoch.current !== turn || useUserStore.getState().currentUser?.id !== me.id) return;
       const message = error instanceof Error ? error.message : '';
       toast.error(message.includes('GROUP_FULL') ? 'המועדון מלא כרגע' : message.includes('CONFLICT') ? 'כבר נרשמת למחזור אחר בזמן הזה' : message.includes('REJECTED') || message.includes('FORBIDDEN') ? 'לא ניתן להצטרף למחזור הזה' : message.includes('NOT_OPEN') || message.includes('INVITATION_UNAVAILABLE') ? 'ההזמנה אינה זמינה להצטרפות כרגע' : 'ההצטרפות לא הושלמה. אפשר לנסות שוב');

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // notificationsService — push-notification dispatch + per-user prefs.
 //
 // Architecture:
@@ -131,12 +132,14 @@ async function getFcmToken(): Promise<string | null> {
       if (!messaging().isDeviceRegisteredForRemoteMessages) {
         await messaging().registerDeviceForRemoteMessages();
       }
-    } catch {
+    } catch (caughtError5f5dd811d8) {
+    observeCaughtError(caughtError5f5dd811d8, {"source":"src/services/notificationsService.ts","handler":"getFcmToken","site":"notificationsService:5f5dd811d8"});
       /* already registered, or not applicable on this platform */
     }
     const token = await messaging().getToken();
     if (typeof token === 'string' && token.length > 0) return token;
-  } catch {
+  } catch (caughtError5f4243e9c5) {
+    observeCaughtError(caughtError5f4243e9c5, {"source":"src/services/notificationsService.ts","handler":"getFcmToken","site":"notificationsService:5f4243e9c5"});
     // Native module missing (Expo Go, a dev client built before this shipped).
     // Fall through rather than lose Android, which never had the bug.
   }
@@ -151,7 +154,8 @@ async function getFcmToken(): Promise<string | null> {
     // undo the cleanup on every launch.
     if (looksLikeApnsToken(token)) return null;
     return token;
-  } catch {
+  } catch (caughtErrord572bf4985) {
+    observeCaughtError(caughtErrord572bf4985, {"source":"src/services/notificationsService.ts","handler":"getFcmToken","site":"notificationsService:d572bf4985"});
     return null;
   }
 }
@@ -260,6 +264,7 @@ export const notificationsService = {
           }
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"dispatch","site":"notificationsService:10a09baca1"});
         // Cross-user dispatch can't read the RECIPIENT's notifications (rules
         // are self-scoped) — that's expected and the bucket-id latch below
         // still dedups. Only surface genuinely unexpected failures.
@@ -281,6 +286,7 @@ export const notificationsService = {
       try {
         existing = await getDoc(ref);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"dispatch","site":"notificationsService:60dc121c0a"});
         // Missing documents are readable; an existing recipient-owned marker
         // is not. This is a duplicate, not a failed write. Keep actual create
         // failures and errors on our own notifications in the outer catch.
@@ -321,6 +327,7 @@ export const notificationsService = {
         schemaVersion: NOTIFICATION_SCHEMA_VERSION,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"dispatch","site":"notificationsService:4a0e6470b7"});
       logError('dispatchNotification', err, {
         type: input.type,
         recipientId: input.recipientId,
@@ -352,6 +359,7 @@ export const notificationsService = {
       const fn = httpsCallable(functions, 'notifyPlayerCancelled');
       await fn({ gameId: input.gameId, reason: input.reason ?? '' });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"notifyPlayerCancelled","site":"notificationsService:8b20eab5ec"});
       logError('dispatchNotification', err, {
         op: 'playerCancelled',
         gameId: input.gameId,
@@ -459,6 +467,7 @@ export const notificationsService = {
         groupName: typeof p.groupName === 'string' ? p.groupName : '',
       };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"getUnreadSeasonClose","site":"notificationsService:1dc811df1a"});
       // A missing composite index surfaces here as failed-precondition. The
       // home screen simply shows no card; it must never block on this.
       logError('unreadSeasonCloseQuery', err, { uid });
@@ -480,6 +489,7 @@ export const notificationsService = {
         readAt: Date.now(),
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"markRead","site":"notificationsService:9926d38beb"});
       logError('markNotificationRead', err, { notificationId });
       if (__DEV__) console.warn('[notifications] markRead failed', err);
     }
@@ -509,6 +519,7 @@ export const notificationsService = {
       const prefs = data?.notificationPrefs as NotificationPrefs | undefined;
       return prefs ?? null;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"loadPreferences","site":"notificationsService:9f1d962468"});
       logError('loadNotificationPreferences', err, { uid });
       throw err;
     }
@@ -532,6 +543,7 @@ export const notificationsService = {
         { merge: true },
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"savePreferences","site":"notificationsService:6c4c281d9e"});
       logError('saveNotificationPreferences', err, { uid });
       if (__DEV__) console.warn('[notifications] savePreferences failed', err);
       // Rethrow so the settings screen's catch surfaces the failure instead
@@ -561,6 +573,7 @@ export const notificationsService = {
         updatedAt: Date.now(),
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"setCommunitySubscription","site":"notificationsService:7bc0f90544"});
       if (!isExpectedDenial(err)) logError('setCommunitySubscription', err, { uid, groupId, on });
       if (__DEV__) {
         console.warn('[notifications] setCommunitySubscription failed', err);
@@ -606,6 +619,7 @@ export const notificationsService = {
         { merge: true },
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"registerDeviceToken","site":"notificationsService:114b843878"});
       logError('registerDeviceToken', err, { uid });
       if (__DEV__) console.warn('[notifications] registerDeviceToken', err);
     }
@@ -636,7 +650,8 @@ export const notificationsService = {
         { fcmTokens: arrayRemove(...dead), updatedAt: Date.now() },
         { merge: true },
       );
-    } catch {
+    } catch (caughtErrorefc0db84df) {
+    observeCaughtError(caughtErrorefc0db84df, {"source":"src/services/notificationsService.ts","handler":"pruneApnsTokens","site":"notificationsService:efc0db84df"});
       // Best-effort cleanup — never block registration on it.
     }
   },
@@ -654,7 +669,8 @@ export const notificationsService = {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       Notifications = require('expo-notifications');
-    } catch {
+    } catch (caughtError58a112860c) {
+    observeCaughtError(caughtError58a112860c, {"source":"src/services/notificationsService.ts","handler":"unregisterThisDevice","site":"notificationsService:58a112860c"});
       Notifications = null;
     }
     if (!Notifications) return;
@@ -670,6 +686,7 @@ export const notificationsService = {
         { merge: true },
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"unregisterThisDevice","site":"notificationsService:870818598b"});
       // A token we can't fetch / a denied write shouldn't block sign-out.
       if (__DEV__) console.warn('[notifications] unregisterThisDevice', err);
     }
@@ -731,7 +748,8 @@ export const notificationsService = {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       Notifications = require('expo-notifications');
-    } catch {
+    } catch (caughtErroreb11af75e6) {
+    observeCaughtError(caughtErroreb11af75e6, {"source":"src/services/notificationsService.ts","handler":"getPushPermissionStatus","site":"notificationsService:eb11af75e6"});
       Notifications = null;
     }
     if (!Notifications) {
@@ -745,7 +763,8 @@ export const notificationsService = {
         available: true,
         status: cur.status as 'granted' | 'denied' | 'undetermined',
       };
-    } catch {
+    } catch (caughtError7dba32118c) {
+    observeCaughtError(caughtError7dba32118c, {"source":"src/services/notificationsService.ts","handler":"getPushPermissionStatus","site":"notificationsService:7dba32118c"});
       return { granted: false, canAskAgain: true, available: false };
     }
   },
@@ -779,7 +798,8 @@ export const notificationsService = {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       Notifications = require('expo-notifications');
-    } catch {
+    } catch (caughtErrore5668c1bd6) {
+    observeCaughtError(caughtErrore5668c1bd6, {"source":"src/services/notificationsService.ts","handler":"registerPushTokenIfPermitted","site":"notificationsService:e5668c1bd6"});
       return null;
     }
     if (!Notifications) return null;
@@ -792,6 +812,7 @@ export const notificationsService = {
       await this.registerDeviceToken(uid, token);
       return token;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"registerPushTokenIfPermitted","site":"notificationsService:3d160b2695"});
       logError('registerPushTokenIfPermitted', err, { uid });
       if (__DEV__) {
         console.warn('[notifications] registerPushTokenIfPermitted failed', err);
@@ -826,6 +847,7 @@ export const notificationsService = {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       Notifications = require('expo-notifications');
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"requestAndRegisterPushToken","site":"notificationsService:ee8b8b97f8"});
       if (__DEV__) {
         console.warn(
           '[notifications] expo-notifications not available — skipping token registration. Rebuild the dev client to enable.',
@@ -859,6 +881,7 @@ export const notificationsService = {
       await this.registerDeviceToken(uid, token);
       return token;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"requestAndRegisterPushToken","site":"notificationsService:56181b5877"});
       logError('requestAndRegisterPushToken', err, { uid });
       if (__DEV__) {
         console.warn('[notifications] requestAndRegisterPushToken failed', err);
@@ -932,6 +955,7 @@ export const notificationsService = {
       });
       return { invited: result.data?.invited !== false, reason: result.data?.reason };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationsService.ts","handler":"inviteToGame","site":"notificationsService:0601bed08c"});
       logError('inviteToGame', err, {
         recipientId: input.recipientId,
         gameId: input.gameId,

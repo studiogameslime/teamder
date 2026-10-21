@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { canNavigateInvitation } from '@/services/inviteNavigationPolicy';
 import { invitePreflight } from '@/services/invitePreflight';
 import { waitForEntryBootstrap } from '@/services/entryBootstrap';
@@ -289,6 +290,7 @@ export function RootNavigator() {
           exists = await invitePreflight(() => groupService.getPublic(pending.id));
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"src/navigation/RootNavigator.tsx","handler":"RootNavigator","site":"RootNavigator:956cf5df0b"});
         const code =
           typeof (err as { code?: unknown })?.code === 'string'
             ? ((err as { code: string }).code)
@@ -357,6 +359,7 @@ export function RootNavigator() {
         );
       }
     })().catch((err) => {
+    observeCaughtError(err, {"source":"src/navigation/RootNavigator.tsx","handler":"RootNavigator","site":"RootNavigator:e72c077a9a"});
       if (__DEV__) console.warn('[invite] consume failed', err);
     }).finally(async () => {
       consumedRef.current = false;
@@ -405,6 +408,7 @@ export function RootNavigator() {
         if (out.status === 'ran') reportResumeOutcome(out.kind, out.result);
       })
       .catch((err) => {
+    observeCaughtError(err, {"source":"src/navigation/RootNavigator.tsx","handler":"RootNavigator","site":"RootNavigator:93ada660ab"});
         if (__DEV__) console.warn('[coordinator] resume failed', err);
       });
   }, [currentUser?.id, currentUser?.isGuest, hasCompletedOnboarding]);
@@ -417,7 +421,7 @@ export function RootNavigator() {
     if (organicRef.current || !currentUser || !groupHydrated) return;
     organicRef.current = true;
     void (async () => {
-      const pending = await readPendingAction().catch(() => null);
+      const pending = await readPendingAction().catch((caughtError5403c1c648: unknown) => { observeCaughtError(caughtError5403c1c648, {"source":"src/navigation/RootNavigator.tsx","handler":"RootNavigator","site":"RootNavigator:5403c1c648"}); return null; });
       if (pending) return;
       logEvent(AnalyticsEvent.OrganicEntryViewed, {
         is_guest: currentUser.isGuest === true,
@@ -551,6 +555,7 @@ export function RootNavigator() {
     try {
       adsService.initializeAds();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/navigation/RootNavigator.tsx","handler":"RootNavigator","site":"RootNavigator:d6dd29203c"});
       if (__DEV__) console.warn('[boot] adsService.initializeAds threw', err);
     }
   }, [hydrateUser, hydrateEntry]);
@@ -613,6 +618,7 @@ export function RootNavigator() {
     notificationsService
       .registerPushTokenIfPermitted(currentUser.id)
       .catch((err) => {
+    observeCaughtError(err, {"source":"src/navigation/RootNavigator.tsx","handler":"RootNavigator","site":"RootNavigator:79a60699f8"});
         if (__DEV__) {
           console.warn('[boot] registerPushTokenIfPermitted threw', err);
         }

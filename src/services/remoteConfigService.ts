@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // remoteConfigService — server-tunable knobs via Firebase Remote Config.
 //
 // Lets us adjust things like app-open ad frequency LIVE from the Firebase
@@ -112,7 +113,8 @@ function load(): RcInstance | null {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const m = require('@react-native-firebase/remote-config') as RcModule;
     instance = m?.default ? m.default() : null;
-  } catch {
+  } catch (caughtErrorf14dac2f9e) {
+    observeCaughtError(caughtErrorf14dac2f9e, {"source":"src/services/remoteConfigService.ts","handler":"load","site":"remoteConfigService:f14dac2f9e"});
     instance = null;
   }
   return instance;
@@ -137,6 +139,7 @@ export async function initRemoteConfig(): Promise<void> {
     );
     await inst.fetchAndActivate();
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/remoteConfigService.ts","handler":"initRemoteConfig","site":"remoteConfigService:a9aa06fca9"});
     // RC fetch failures are transient (network) and non-fatal — the
     // defaults are still registered below so the app behaves correctly.
     // Don't pollute the dashboard with them; only log the unexpected.
@@ -161,7 +164,8 @@ export function rcNumber(key: RcKey): number {
     // "static" = defaults not registered yet (raced boot) → use in-code value.
     if (v.getSource() === 'static') return fallback;
     return v.asNumber();
-  } catch {
+  } catch (caughtError953e007236) {
+    observeCaughtError(caughtError953e007236, {"source":"src/services/remoteConfigService.ts","handler":"rcNumber","site":"remoteConfigService:953e007236"});
     return fallback;
   }
 }
@@ -174,7 +178,8 @@ export function rcBool(key: RcKey): boolean {
     const v = inst.getValue(key);
     if (v.getSource() === 'static') return fallback;
     return v.asBoolean();
-  } catch {
+  } catch (caughtErrorcf52d09e5e) {
+    observeCaughtError(caughtErrorcf52d09e5e, {"source":"src/services/remoteConfigService.ts","handler":"rcBool","site":"remoteConfigService:cf52d09e5e"});
     return fallback;
   }
 }
@@ -187,7 +192,8 @@ export function rcString(key: RcKey): string {
     const v = inst.getValue(key);
     if (v.getSource() === 'static') return fallback;
     return v.asString();
-  } catch {
+  } catch (caughtErrorbe45906eb6) {
+    observeCaughtError(caughtErrorbe45906eb6, {"source":"src/services/remoteConfigService.ts","handler":"rcString","site":"remoteConfigService:be45906eb6"});
     return fallback;
   }
 }

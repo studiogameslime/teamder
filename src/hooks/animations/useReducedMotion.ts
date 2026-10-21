@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo } from 'react-native';
 
@@ -26,7 +27,8 @@ export function useReducedMotion(): boolean {
         // A newer native event wins over the in-flight startup read.
         if (alive && !receivedChange) setReduced(!!v);
       })
-      .catch(() => {
+      .catch((caughtErrore170ea0305: unknown) => {
+    observeCaughtError(caughtErrore170ea0305, {"source":"src/hooks/animations/useReducedMotion.ts","handler":"useReducedMotion","site":"useReducedMotion:e170ea0305"});
         /* setting unavailable → assume motion allowed */
       });
     return () => {

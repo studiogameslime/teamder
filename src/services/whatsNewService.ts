@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // whatsNewService — decides whether to show the one-time "מה חדש" modal after
 // a version update, and WHICH highlights to show, per user.
 //
@@ -117,6 +118,7 @@ async function fetchWhatsNewDoc(): Promise<WhatsNewDoc | null> {
       items: Array.isArray(d.items) ? (d.items as WhatsNewItem[]) : [],
     };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/whatsNewService.ts","handler":"fetchWhatsNewDoc","site":"whatsNewService:3312d66418"});
     // Launch-path read — offline is expected; don't log it as a failure.
     if (!isExpectedDenial(err)) logError('fetchWhatsNew', err, {});
     throw err;

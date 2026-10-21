@@ -1,3 +1,4 @@
+import { observeCaughtError } from './serverErrorLog';
 // Admin → users campaign engine. Pulse writes a campaign doc to
 // `campaigns/{id}`; this module sends the PUSH-type ones (popup-type
 // campaigns are read directly by the app). Pulse can't call a callable
@@ -196,7 +197,8 @@ async function authMeta(
           lastActiveAt: lr ? new Date(lr).getTime() : undefined,
         });
       }
-    } catch {
+    } catch (caughtError8095a16a76) {
+    observeCaughtError(caughtError8095a16a76, {"source":"functions/src/adminUserPush.ts","handler":"authMeta","site":"adminUserPush:8095a16a76"});
       /* best-effort */
     }
   }
@@ -211,7 +213,8 @@ async function tokensFor(
   try {
     const priv = await db.collection('users').doc(uid).collection('private').doc('push').get();
     return ((priv.data()?.fcmTokens as string[] | undefined) ?? rootTokens ?? []).filter(Boolean);
-  } catch {
+  } catch (caughtError7102045a6f) {
+    observeCaughtError(caughtError7102045a6f, {"source":"functions/src/adminUserPush.ts","handler":"tokensFor","site":"adminUserPush:7102045a6f"});
     return (rootTokens ?? []).filter(Boolean);
   }
 }
@@ -300,6 +303,7 @@ export async function processCampaign(id: string, nowMs: number): Promise<void> 
         'metrics.delivered': sent,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/adminUserPush.ts","handler":"processCampaign","site":"adminUserPush:aa656634a0"});
       await ref.update({ status: 'error', errorMessage: String(err).slice(0, 300) });
     }
     return;
@@ -413,6 +417,7 @@ export async function processCampaign(id: string, nowMs: number): Promise<void> 
       'metrics.delivered': sent,
     });
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/adminUserPush.ts","handler":"processCampaign","site":"adminUserPush:7e9be38f0b"});
     console.error('[processCampaign] failed', err);
     await ref.update({ status: 'error', errorMessage: String(err).slice(0, 300) });
   }
@@ -456,7 +461,8 @@ export async function recordCampaignMetric(campaignId: string, event: string): P
       .collection('campaigns')
       .doc(campaignId)
       .update({ [`metrics.${field}`]: admin.firestore.FieldValue.increment(1) });
-  } catch {
+  } catch (caughtError20e152fbd8) {
+    observeCaughtError(caughtError20e152fbd8, {"source":"functions/src/adminUserPush.ts","handler":"recordCampaignMetric","site":"adminUserPush:20e152fbd8"});
     // NOT_FOUND (campaign doesn't exist) → ignore the bogus metric.
   }
 }

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +8,7 @@ import { SafeModal } from '@/components/SafeModal';
 import { ScrollSurface } from '@/components/ScrollSurface';
 import { ManagerAttention, ManagerRoundNumbers } from './ManagerClubExtras';
 import { RTL_LABEL_ALIGN } from '@/theme';
-import { clubBalance, managerClubInsights, type ClubResults } from '@/utils/managerClubInsights';
+import { balancePercentages, clubBalance, managerClubInsights, type ClubResults } from '@/utils/managerClubInsights';
 import { loadManagerClubResults } from '@/services/managerClubResultsService';
 import type { ManagerData } from '@/services/managerDashboardService';
 import type { User } from '@/types';
@@ -23,10 +24,12 @@ export function ManagerClubInsights({data,viewerId,now,onRound,onApprovals,onRat
   const [results,setResults]=useState<ClubResults>({}),[loading,setLoading]=useState(true),[error,setError]=useState(false),[details,setDetails]=useState(false);
   useEffect(()=>{
     let alive=true;setResults({});setLoading(true);setError(false);setDetails(false);
-    loadManagerClubResults(data.group,data.games,viewerId,now).then(r=>{if(alive)setResults(r);}).catch(()=>{if(alive)setError(true);}).finally(()=>{if(alive)setLoading(false);});
+    loadManagerClubResults(data.group,data.games,viewerId,now).then(r=>{if(alive)setResults(r);}).catch((caughtError37ee49e06c: unknown) =>{
+    observeCaughtError(caughtError37ee49e06c, {"source":"src/components/manager/ManagerClubInsights.tsx","handler":"ManagerClubInsights","site":"ManagerClubInsights:37ee49e06c"});if(alive)setError(true);}).finally(()=>{if(alive)setLoading(false);});
     return ()=>{alive=false;};
   },[data,viewerId,now]);
   const balance=clubBalance(insights.recent,results);
+  const percentages=balancePercentages([balance.draws,balance.oneGoal,balance.wide]);
   const user=(id:string)=>data.users.find(u=>u.id===id)??{id,name:'שחקן ללא פרטים',createdAt:0};
   const open=(id:string)=>{setDetails(false);onRound(id);};
   const resultLabel=(id:string)=>loading?'התוצאות נטענות…':error||results[id]?.unavailable?'התוצאות לא נטענו':`${clubBalance(insights.recent.filter(g=>g.id===id),results).total} משחקים עם תוצאה תקפה`;
@@ -41,14 +44,14 @@ export function ManagerClubInsights({data,viewerId,now,onRound,onApprovals,onRat
         {insights.previousAverage!==null&&<View style={s.insight}><Label style={s.insightText}>{insights.average!>insights.previousAverage?'יותר נרשמים':insights.average!<insights.previousAverage?'פחות נרשמים':'ממוצע הרשמה ללא שינוי'}: {insights.average!.toLocaleString('he-IL',{maximumFractionDigits:1})} לעומת {insights.previousAverage.toLocaleString('he-IL',{maximumFractionDigits:1})} בעשרת המחזורים הקודמים</Label><Ionicons name={insights.average!>insights.previousAverage?'trending-up':insights.average!<insights.previousAverage?'trending-down':'remove-outline'} size={22} color={BLUE}/></View>}
         {insights.returned.length>0&&<View style={s.insight}><Label style={s.insightText}>{insights.returned.length===1?'שחקן אחד נרשם שוב אחרי הפסקה':`${insights.returned.length} שחקנים נרשמו שוב אחרי הפסקה`}</Label><Ionicons name="refresh-outline" size={21} color={GREEN}/></View>}
         <Label style={s.foot}>לפי רשימות ההרשמה שנשמרו; אין אישור נוכחות. הממוצע והתפוסה כוללים אורחים פעילים. שחקנים שונים אינם כוללים אורחים ללא חשבון.</Label>
-        <Pressable accessibilityRole="button" onPress={()=>setDetails(true)} style={s.link}><Label style={s.linkText}>לנתונים המלאים</Label><Ionicons name="chevron-back" size={18} color={BLUE}/></Pressable>
         <ManagerRoundNumbers embedded games={insights.recent} results={results} loading={loading} error={error} onRound={onRound}/>
+        <Pressable accessibilityRole="button" onPress={()=>setDetails(true)} style={s.link}><Label style={s.linkText}>לנתונים המלאים</Label><Ionicons name="chevron-back" size={18} color={BLUE}/></Pressable>
       </Card>
       <Card title="איכות חלוקת הכוחות" icon="football-outline">
         {loading?<View style={s.loading}><ActivityIndicator color={BLUE}/><Label style={s.muted}>טוען תוצאות משחקים…</Label></View>:error?<><Label style={s.muted}>לא ניתן לטעון כרגע את התוצאות</Label></>:<>
           <Label style={s.muted}>{balance.total} משחקים עם תוצאה תקפה מתוך {balance.covered} מחזורים · נבדקו {insights.recent.length} מחזורים אחרונים</Label>
           {balance.total>0?<>
-            {[{label:'תיקו',n:balance.draws,color:BLUE},{label:'הפרש שער אחד',n:balance.oneGoal,color:GREEN},{label:'הפרש שני שערים ומעלה',n:balance.wide,color:AMBER}].map(r=><View key={r.label} style={s.barRow}><Label style={s.barLabel}>{r.label}</Label><Label style={[s.barNumber,{color:r.color}]}>{r.n}</Label><View style={s.track}><View style={[s.fill,{backgroundColor:r.color,width:`${r.n/balance.total*100}%`}]}/></View><Label style={[s.percent,{color:r.color}]}>{Math.round(r.n/balance.total*100)}%</Label></View>)}
+            {[{label:'תיקו',n:balance.draws,color:BLUE},{label:'הפרש שער אחד',n:balance.oneGoal,color:GREEN},{label:'הפרש שני שערים ומעלה',n:balance.wide,color:AMBER}].map((r,index)=><View key={r.label} style={s.barRow}><Label style={s.barLabel}>{r.label}</Label><Label style={[s.barNumber,{color:r.color}]}>{r.n}</Label><View style={s.track}><View style={[s.fill,{backgroundColor:r.color,width:`${r.n/balance.total*100}%`}]}/></View><Label style={[s.percent,{color:r.color}]}>{percentages[index]}%</Label></View>)}
             <View style={[s.insight,{backgroundColor:'#E9F8EF'}]}><Label style={[s.insightText,{color:GREEN}]}>{balance.closePercent}% מהמשחקים הסתיימו בתיקו או בהפרש שער אחד</Label><Ionicons name="stats-chart" size={23} color={GREEN}/></View>
           </>:<Label style={s.muted}>אין תוצאות משחקים מתועדות שניתן לנתח במחזורים האלה.</Label>}
           {(balance.unavailable>0||balance.missing>0||balance.invalid>0)&&<Label style={s.warning}>{balance.unavailable>0?`${balance.unavailable} מחזורים לא נטענו במלואם. `:''}{balance.missing>0?`${balance.missing} מחזורים ללא תוצאות תקפות. `:''}{balance.invalid>0?`${balance.invalid} תוצאות לא תקפות הושמטו. `:''}האחוזים מחושבים רק מהתוצאות התקפות שנטענו.</Label>}

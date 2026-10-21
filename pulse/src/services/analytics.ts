@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import { pulseFetch as fetch } from './adminTransport';
 // Google Analytics (GA4) — totals + breakdowns via the Analytics Data API,
 // using the user's OAuth token (same consent as AdMob).
@@ -43,7 +44,8 @@ async function dimReport(
       name: r.dimensionValues?.[0]?.value ?? '—',
       value: Number(r.metricValues?.[0]?.value ?? 0),
     }));
-  } catch {
+  } catch (caughtError8c9d313cc6) {
+    observeCaughtError(caughtError8c9d313cc6, {"source":"pulse/src/services/analytics.ts","handler":"dimReport","site":"analytics:8c9d313cc6"});
     return [];
   }
 }
@@ -73,7 +75,7 @@ export async function fetchAnalytics(): Promise<AnalyticsSummary | null> {
     dimensions: [{ name: 'date' }],
     metrics: [{ name: 'activeUsers' }],
     orderBys: [{ dimension: { dimensionName: 'date' } }],
-  }).catch(() => ({ rows: [] }));
+  }).catch((caughtError4039352b74: unknown) => { observeCaughtError(caughtError4039352b74, {"source":"pulse/src/services/analytics.ts","handler":"fetchAnalytics","site":"analytics:4039352b74"}); return ({ rows: [] }); });
   const activeUsersDaily: DailyPoint[] = (daily.rows ?? []).map((r: any) => {
     const ds: string = r.dimensionValues?.[0]?.value ?? '';
     return {
@@ -106,7 +108,8 @@ export async function fetchAnalytics(): Promise<AnalyticsSummary | null> {
       if (os.includes('ios')) installsTodayIos += v;
       else if (os.includes('android')) installsTodayAndroid += v;
     });
-  } catch {
+  } catch (caughtError42a6988d93) {
+    observeCaughtError(caughtError42a6988d93, {"source":"pulse/src/services/analytics.ts","handler":"fetchAnalytics","site":"analytics:42a6988d93"});
     /* leave zeros */
   }
 
@@ -138,7 +141,8 @@ export async function fetchAnalytics(): Promise<AnalyticsSummary | null> {
       if (name === 'first_open') installs30 = val;
       if (name === 'app_remove') uninstalls30 = val;
     });
-  } catch {
+  } catch (caughtError7c62cfc874) {
+    observeCaughtError(caughtError7c62cfc874, {"source":"pulse/src/services/analytics.ts","handler":"fetchAnalytics","site":"analytics:7c62cfc874"});
     /* leave zero */
   }
 

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // onboardingService — what the first-run in-app collects, and what the app does
 // with it.
 //
@@ -57,6 +58,7 @@ async function clubInviteUrl(groupId: string, userId: string): Promise<string> {
       fallbackLong: long,
     });
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/onboardingService.ts","handler":"clubInviteUrl","site":"onboardingService:b0d19bbb8d"});
     logError('onboardingInviteUrl', err, { groupId });
     return long;
   }
@@ -91,6 +93,7 @@ async function submit(fields: Record<string, unknown>): Promise<SubmitResult> {
       // they joined does its own inviting.
       return { ok: true, advanceTo: 'w6', groupId: r.group.id };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/onboardingService.ts","handler":"submit","site":"onboardingService:79ca73f4f7"});
       logError('onboardingJoinByCode', err, { code });
       return { ok: false, advanceTo: null, message: he.error };
     }
@@ -112,6 +115,7 @@ async function submit(fields: Record<string, unknown>): Promise<SubmitResult> {
     const inviteUrl = await clubInviteUrl(group.id, me.id);
     return { ok: true, advanceTo: 'w5', groupId: group.id, inviteUrl };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/onboardingService.ts","handler":"submit","site":"onboardingService:0a21ed951d"});
     logError('onboardingCreateGroup', err, { name });
     return { ok: false, advanceTo: null, message: he.error };
   }
@@ -126,7 +130,8 @@ async function shareInvite(url: string): Promise<boolean> {
       message: he.profileInviteShareBody(url),
     });
     return r.action !== 'dismissedAction';
-  } catch {
+  } catch (caughtErrorc3c9bb698e) {
+    observeCaughtError(caughtErrorc3c9bb698e, {"source":"src/services/onboardingService.ts","handler":"shareInvite","site":"onboardingService:c3c9bb698e"});
     return false;
   }
 }

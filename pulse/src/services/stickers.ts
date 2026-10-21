@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // stickers — the physical sticker-campaign map. Each sticker is a pin on the
 // map at the spot it was stuck. Locations arrive as WhatsApp/Google-Maps
 // locations (a link or raw coordinates), which we parse to lat/lng. Stored in
@@ -16,7 +17,7 @@ export interface Sticker {
 const COLL = 'stickers';
 
 export async function fetchStickers(): Promise<Sticker[]> {
-  const docs = await listAll(COLL).catch(() => []);
+  const docs = await listAll(COLL).catch((caughtErrorceb406a4a8: unknown) => { observeCaughtError(caughtErrorceb406a4a8, {"source":"pulse/src/services/stickers.ts","handler":"fetchStickers","site":"stickers:ceb406a4a8"}); return []; });
   return docs
     .map((d) => ({
       id: d.id,
@@ -111,9 +112,10 @@ async function expandShortLink(url: string): Promise<string> {
     const finalUrl = (res as any).url || url;
     if (finalUrl && finalUrl !== url) return finalUrl;
     // Some links only reveal coords in the body — scan it too.
-    const body = await res.text().catch(() => '');
+    const body = await res.text().catch((caughtError0c66543752: unknown) => { observeCaughtError(caughtError0c66543752, {"source":"pulse/src/services/stickers.ts","handler":"expandShortLink","site":"stickers:0c66543752"}); return ''; });
     return body ? `${finalUrl} ${body.slice(0, 4000)}` : finalUrl;
-  } catch {
+  } catch (caughtError3ddd238e2b) {
+    observeCaughtError(caughtError3ddd238e2b, {"source":"pulse/src/services/stickers.ts","handler":"expandShortLink","site":"stickers:3ddd238e2b"});
     return url;
   }
 }
@@ -131,7 +133,8 @@ async function geocodeAddress(q: string): Promise<ParsedLoc | null> {
       const lng = parseFloat(arr[0].lon);
       if (validCoord(lat, lng)) return { lat, lng };
     }
-  } catch {
+  } catch (caughtError03b44aea2c) {
+    observeCaughtError(caughtError03b44aea2c, {"source":"pulse/src/services/stickers.ts","handler":"geocodeAddress","site":"stickers:03b44aea2c"});
     /* ignore */
   }
   return null;

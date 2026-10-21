@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,6 +46,7 @@ export function HistoryScreen() {
         if (alive) setItems(list.sort((a, b) => b.date - a.date));
       })
       .catch((err) => {
+    observeCaughtError(err, {"source":"src/screens/tabs/HistoryScreen.tsx","handler":"HistoryScreen","site":"HistoryScreen:ce494a48d9"});
         // A failed fetch must NOT masquerade as the empty state ("no history")
         // — surface a distinct error + retry instead.
         if (alive) setError(true);

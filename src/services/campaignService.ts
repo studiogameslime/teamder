@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // App-side consumer of POPUP campaigns authored in Pulse (the management
 // app) and stored in `campaigns/{id}`. Push-type campaigns are sent
 // server-side (functions/src/adminUserPush.ts) and never read here.
@@ -191,7 +192,8 @@ export async function getEligiblePopup(user: User): Promise<PopupCampaign | null
     let inGroup = false;
     try {
       inGroup = (await groupService.listForUser(user.id)).length > 0;
-    } catch {
+    } catch (caughtErrore8aebdd3dc) {
+    observeCaughtError(caughtErrore8aebdd3dc, {"source":"src/services/campaignService.ts","handler":"getEligiblePopup","site":"campaignService:e8aebdd3dc"});
       /* best-effort — treat as not-in-group */
     }
 
@@ -256,6 +258,7 @@ export async function getEligiblePopup(user: User): Promise<PopupCampaign | null
       cooldownHours: Number(raw.cooldownHours ?? 24),
     };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/campaignService.ts","handler":"getEligiblePopup","site":"campaignService:7e9088670b"});
     logError('getEligiblePopup', err, { uid: user?.id });
     if (__DEV__) console.warn('[campaignService] getEligiblePopup failed', err);
     return null;
@@ -265,7 +268,8 @@ export async function getEligiblePopup(user: User): Promise<PopupCampaign | null
 export async function markPopupSeen(campaignId: string): Promise<void> {
   try {
     await storage.recordCampaignSeen(campaignId, Date.now());
-  } catch {
+  } catch (caughtError1bc9ac586f) {
+    observeCaughtError(caughtError1bc9ac586f, {"source":"src/services/campaignService.ts","handler":"markPopupSeen","site":"campaignService:1bc9ac586f"});
     /* non-fatal */
   }
 }
@@ -289,6 +293,7 @@ export async function trackCampaignEvent(campaignId: string, event: CampaignEven
     const { functions } = getFirebase();
     await httpsCallable(functions, 'trackCampaignEvent')({ campaignId, event });
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/campaignService.ts","handler":"trackCampaignEvent","site":"campaignService:a0ca305454"});
     if (__DEV__) console.warn('[campaignService] trackCampaignEvent failed', err);
   }
 }

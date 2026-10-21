@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,7 +54,8 @@ export function SeasonsSettings({ groupId, seasons, onChanged }: { groupId: stri
   useEffect(() => {
     if (!open || live) return;
     let alive = true; setHistory(null); setReadError(false);
-    void seasonService.preview(groupId).then(result => { if (alive) setHistory(result); }).catch(() => { if (alive) setReadError(true); });
+    void seasonService.preview(groupId).then(result => { if (alive) setHistory(result); }).catch((caughtError4abd01379a: unknown) => {
+    observeCaughtError(caughtError4abd01379a, {"source":"src/components/community/SeasonsSettings.tsx","handler":"SeasonsSettings","site":"SeasonsSettings:4abd01379a"}); if (alive) setReadError(true); });
     return () => { alive = false; };
   }, [groupId, open, live, attempt]);
 
@@ -80,6 +82,7 @@ export function SeasonsSettings({ groupId, seasons, onChanged }: { groupId: stri
     try {
       await action(); setConfirm(null); toast.success('השינוי בהגדרות העונה נשמר'); onChanged?.();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/community/SeasonsSettings.tsx","handler":"run","site":"SeasonsSettings:14f3b4380c"});
       const stale = err instanceof SeasonRefusedError && err.reason === 'operationStale';
       appAlert('השינוי לא נשמר', err instanceof SeasonRefusedError ? seasonRefusalText(err.reason, { seasonNo: no, played, target: rounds }) : 'לא ניתן להשלים כעת. הבחירה נשמרה במסך ואפשר לנסות שוב.');
       if (stale) { setConfirm(null); onChanged?.(); setAttempt(n => n + 1); }

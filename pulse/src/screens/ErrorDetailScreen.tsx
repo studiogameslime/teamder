@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
 import React, { useEffect, useState } from 'react';
 import {
@@ -50,7 +51,8 @@ export function ErrorDetailScreen() {
     setLoading(true); setFailed(false); setRec(null);
     fetchIssue(id, collection)
       .then(value => { if (alive) setRec(value); })
-      .catch(() => { if (alive) setFailed(true); })
+      .catch((caughtErrorf880a1a49e: unknown) => {
+    observeCaughtError(caughtErrorf880a1a49e, {"source":"pulse/src/screens/ErrorDetailScreen.tsx","handler":"ErrorDetailScreen","site":"ErrorDetailScreen:f880a1a49e"}); if (alive) setFailed(true); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [id, collection, retry]);

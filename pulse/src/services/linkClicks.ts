@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Cross-source link-click totals for the Overview headline card.
 //
 // Every share link (tracked ad links, legacy source links, personal invite
@@ -37,7 +38,7 @@ function ilDateKey(ms: number): string {
 }
 
 export async function fetchLinkClickStats(): Promise<LinkClickStats> {
-  const doc = await getDoc('metrics/linkClicks').catch(() => null);
+  const doc = await getDoc('metrics/linkClicks').catch((caughtError8614ea41e2: unknown) => { observeCaughtError(caughtError8614ea41e2, {"source":"pulse/src/services/linkClicks.ts","handler":"fetchLinkClickStats","site":"linkClicks:8614ea41e2"}); return null; });
   const allTime = Number(doc?.total ?? 0);
   const days: Record<string, number> = (doc?.days as Record<string, number>) ?? {};
 
@@ -56,7 +57,7 @@ export async function fetchLinkClickStats(): Promise<LinkClickStats> {
     yesterday: Number(days[yesterdayKey] ?? 0),
     week,
     allTime,
-    topToday: await computeTopLinkToday(doc, todayKey).catch(() => null),
+    topToday: await computeTopLinkToday(doc, todayKey).catch((caughtErrord2d7f34afc: unknown) => { observeCaughtError(caughtErrord2d7f34afc, {"source":"pulse/src/services/linkClicks.ts","handler":"fetchLinkClickStats","site":"linkClicks:d2d7f34afc"}); return null; }),
   };
 }
 
@@ -99,11 +100,11 @@ async function computeTopLinkToday(
   //  • a legacy source bucket                    → "קמפיין <source>"
   let label: string;
   if (inviterId) {
-    const u = await getDoc(`users/${inviterId}`).catch(() => null);
+    const u = await getDoc(`users/${inviterId}`).catch((caughtErrorb11a5e859a: unknown) => { observeCaughtError(caughtErrorb11a5e859a, {"source":"pulse/src/services/linkClicks.ts","handler":"computeTopLinkToday","site":"linkClicks:b11a5e859a"}); return null; });
     const name = (u?.name as string) || inviterId.slice(0, 6);
     label = `הקישור של ${name}`;
   } else if (linkId) {
-    const a = await getDoc(`adLinks/${linkId}`).catch(() => null);
+    const a = await getDoc(`adLinks/${linkId}`).catch((caughtError5e12ab861d: unknown) => { observeCaughtError(caughtError5e12ab861d, {"source":"pulse/src/services/linkClicks.ts","handler":"computeTopLinkToday","site":"linkClicks:5e12ab861d"}); return null; });
     const name = (a?.name as string) || source || linkId;
     label = `קמפיין ${name}`;
   } else if (source) {

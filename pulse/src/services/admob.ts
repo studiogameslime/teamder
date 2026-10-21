@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import { pulseFetch as fetch } from './adminTransport';
 // AdMob — estimated earnings + breakdowns via the networkReport. OAuth
 // user token. Runs a few targeted reports: daily totals, per-ad-unit
@@ -129,7 +130,8 @@ export async function fetchRevenue(): Promise<RevenueSummary | null> {
       );
       allTime = Number((totalMicros / 1e6).toFixed(2));
     }
-  } catch {
+  } catch (caughtError51fcd4a2c7) {
+    observeCaughtError(caughtError51fcd4a2c7, {"source":"pulse/src/services/admob.ts","handler":"fetchRevenue","site":"admob:51fcd4a2c7"});
     /* keep the last28 fallback */
   }
 
@@ -149,7 +151,8 @@ export async function fetchRevenue(): Promise<RevenueSummary | null> {
           : 0,
       }))
       .sort((a, b) => b.earnings - a.earnings);
-  } catch {
+  } catch (caughtError6046035650) {
+    observeCaughtError(caughtError6046035650, {"source":"pulse/src/services/admob.ts","handler":"fetchRevenue","site":"admob:6046035650"});
     /* leave empty */
   }
 
@@ -166,7 +169,8 @@ export async function fetchRevenue(): Promise<RevenueSummary | null> {
       }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 8);
-  } catch {
+  } catch (caughtErrorbebfa55157) {
+    observeCaughtError(caughtErrorbebfa55157, {"source":"pulse/src/services/admob.ts","handler":"fetchRevenue","site":"admob:bebfa55157"});
     /* leave empty */
   }
 

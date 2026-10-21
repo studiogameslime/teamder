@@ -1,3 +1,5 @@
+import { observeCaughtError } from './errorObservation';
+
 import { pulseFetch as fetch } from './adminTransport';
 // Downloads / installs.
 //   Apple  — App Store Connect Sales Reports API (daily, gzipped TSV).
@@ -37,12 +39,13 @@ export async function fetchAppleDownloads(
         `filter[reportSubType]=SUMMARY&filter[vendorNumber]=${vendor}&` +
         `filter[reportDate]=${date}`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
-      if (res.status !== 200) return { date, units: 0, byCountry: {} as Record<string, number> };
+      if (res.status !== 200) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"pulse/src/services/downloads.ts","handler":"fetchAppleDownloads","site":"downloads.ts:http:41"}); return { date, units: 0, byCountry: {} as Record<string, number> }; }
       const buf = new Uint8Array(await res.arrayBuffer());
       let tsv: string;
       try {
         tsv = strFromU8(gunzipSync(buf));
-      } catch {
+      } catch (caughtError02c28001a4) {
+    observeCaughtError(caughtError02c28001a4, {"source":"pulse/src/services/downloads.ts","handler":"fetchAppleDownloads","site":"downloads:02c28001a4"});
         tsv = strFromU8(buf);
       }
       return parseAppleTsv(tsv, date);
@@ -98,7 +101,7 @@ export async function fetchPlayDownloads(): Promise<StoreDownloads | null> {
   const listRes = await fetch(listUrl, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!listRes.ok) return null; // 403 = permission not granted yet
+  if (!listRes.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + listRes.status}), {"source":"pulse/src/services/downloads.ts","handler":"fetchPlayDownloads","site":"downloads.ts:http:103"}); return null; } // 403 = permission not granted yet
   const list = await listRes.json();
   const names: string[] = (list.items ?? []).map((i: any) => i.name);
 
@@ -146,8 +149,8 @@ export async function fetchLifetimeStats(force = false): Promise<LifetimeStats> 
     return lifetimeCache.data;
   }
   const [android, ios] = await Promise.all([
-    fetchAndroidLifetime().catch(() => null),
-    fetchIosLifetimeDownloads().catch(() => null),
+    fetchAndroidLifetime().catch((caughtError7a6ccab6fc: unknown) => { observeCaughtError(caughtError7a6ccab6fc, {"source":"pulse/src/services/downloads.ts","handler":"fetchLifetimeStats","site":"downloads:7a6ccab6fc"}); return null; }),
+    fetchIosLifetimeDownloads().catch((caughtErrord240fb88a5: unknown) => { observeCaughtError(caughtErrord240fb88a5, {"source":"pulse/src/services/downloads.ts","handler":"fetchLifetimeStats","site":"downloads:d240fb88a5"}); return null; }),
   ]);
   const data: LifetimeStats = { android, ios };
   lifetimeCache = { at: Date.now(), data };
@@ -163,7 +166,7 @@ async function fetchAndroidLifetime(): Promise<LifetimeStats['android']> {
     `https://storage.googleapis.com/storage/v1/b/${bucket}/o?` +
     `prefix=${encodeURIComponent(`stats/installs/installs_${pkg}_`)}`;
   const listRes = await fetch(listUrl, { headers: { Authorization: `Bearer ${token}` } });
-  if (!listRes.ok) return null;
+  if (!listRes.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + listRes.status}), {"source":"pulse/src/services/downloads.ts","handler":"fetchAndroidLifetime","site":"downloads.ts:http:168"}); return null; }
   const list = await listRes.json();
   const overviews: string[] = ((list.items ?? []).map((i: any) => i.name) as string[])
     .filter((n) => n.endsWith('_overview.csv'))
@@ -208,12 +211,13 @@ async function fetchIosLifetimeDownloads(): Promise<LifetimeStats['ios']> {
       `filter[reportSubType]=SUMMARY&filter[vendorNumber]=${vendor}&` +
       `filter[reportDate]=${reportDate}`;
     const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
-    if (res.status !== 200) return 0;
+    if (res.status !== 200) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"pulse/src/services/downloads.ts","handler":"unitsFor","site":"downloads.ts:http:213"}); return 0; }
     const buf = new Uint8Array(await res.arrayBuffer());
     let tsv: string;
     try {
       tsv = strFromU8(gunzipSync(buf));
-    } catch {
+    } catch (caughtError159b65d237) {
+    observeCaughtError(caughtError159b65d237, {"source":"pulse/src/services/downloads.ts","handler":"unitsFor","site":"downloads:159b65d237"});
       tsv = strFromU8(buf);
     }
     return parseAppleTsv(tsv, reportDate).units;

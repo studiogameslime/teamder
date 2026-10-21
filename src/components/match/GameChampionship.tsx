@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // GameChampionship — the leaderboard for a SINGLE finished game.
 //
 // Per-game counters (default ranking: sealed evening rating) plus the
@@ -49,13 +50,15 @@ export function GameChampionship({
     setScoresFailed(false);
     getGameEveningScores(gameId).then(values => {
       if (alive) setScores(values);
-    }).catch(() => { if (alive) setScoresFailed(true); });
+    }).catch((caughtError626a464eb8: unknown) => {
+    observeCaughtError(caughtError626a464eb8, {"source":"src/components/match/GameChampionship.tsx","handler":"GameChampionship","site":"GameChampionship:626a464eb8"}); if (alive) setScoresFailed(true); });
     gameService
       .getGameChampionship(gameId, attendedUids)
       .then((d) => {
         if (alive) setPlayers(d.players);
       })
-      .catch(() => {
+      .catch((caughtError0cfa88e41f: unknown) => {
+    observeCaughtError(caughtError0cfa88e41f, {"source":"src/components/match/GameChampionship.tsx","handler":"GameChampionship","site":"GameChampionship:0cfa88e41f"});
         if (alive) { setPlayers([]); setPlayersFailed(true); }
       });
     return () => {

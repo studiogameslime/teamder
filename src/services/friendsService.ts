@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { readPlayerIdentities } from './publicPlayerService';
 import { StaleSessionError } from './staleSession';
 import { mockCurrentUser } from '@/data/mockUsers';
@@ -138,6 +139,7 @@ export const friendsService = {
     try {
       await callable('sendSocialFriendRequest', { userId: toUserId }, fromUserId);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/friendsService.ts","handler":"sendRequest","site":"friendsService:536cfe45cc"});
       if (String((e as {message?:string})?.message).includes('Request declined')) throw new FriendRequestDeclinedError();
       if (!isExpectedDenial(e)) logError('sendFriendRequest', e, { fromUserId, toUserId });
       throw e;
@@ -165,6 +167,7 @@ export const friendsService = {
     try {
       await callable('acceptFriendRequest', { fromUserId }, toUserId);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/friendsService.ts","handler":"acceptRequest","site":"friendsService:d98a909d80"});
       logError('acceptFriendRequest', e, { fromUserId });
       throw e;
     }
@@ -191,6 +194,7 @@ export const friendsService = {
       });
       assertFriendOwner(toUserId);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/friendsService.ts","handler":"declineRequest","site":"friendsService:7a74a420f5"});
       logError('declineFriendRequest', e, { fromUserId, toUserId });
       throw e;
     }
@@ -211,6 +215,7 @@ export const friendsService = {
       await deleteDoc(docs.friendRequest(id));
       assertFriendOwner(fromUserId);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/friendsService.ts","handler":"cancelRequest","site":"friendsService:982f471d75"});
       logError('cancelFriendRequest', e, { fromUserId, toUserId });
       throw e;
     }
@@ -229,6 +234,7 @@ export const friendsService = {
     try {
       await callable('removeFriendship', { otherUserId: otherId }, meId);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/friendsService.ts","handler":"removeFriend","site":"friendsService:b1777c65ec"});
       logError('removeFriend', e, { otherUserId: otherId });
       throw e;
     }
@@ -313,6 +319,7 @@ export const friendsService = {
       try {
         return await getDoc(docs.friendRequest(id));
       } catch (e) {
+    observeCaughtError(e, {"source":"src/services/friendsService.ts","handler":"readReq","site":"friendsService:067c18b928"});
         const code = (e as { code?: string })?.code;
         if (code !== 'permission-denied') {
           logError('getFriendRelationship', e, { uid, otherId });

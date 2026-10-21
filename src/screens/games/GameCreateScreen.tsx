@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // Create-game screen — thin shell over GameWizardForm. Handles
 // community selection (when the user belongs to more than one) and
@@ -223,6 +224,7 @@ export function GameCreateScreen() {
       };
       setOrphanGroup(synthesized);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/GameCreateScreen.tsx","handler":"startOrphanFlow","site":"GameCreateScreen:1d93fc2afb"});
       setOrphanFailed(true);
       logError('ensurePersonalGroupId', err, {
         screen: 'GameCreateScreen',
@@ -379,6 +381,7 @@ export function GameCreateScreen() {
         try {
           submitted = !!user?.id && await hasDraftCreationAttempt('game', user.id, d.id);
         } catch (error) {
+    observeCaughtError(error, {"source":"src/screens/games/GameCreateScreen.tsx","handler":"GameCreateScreen","site":"GameCreateScreen:b1cc9e0775"});
           logError('restoreCreationAttempt', error, { draftId: d.id });
         }
         if (!alive) return;
@@ -404,6 +407,7 @@ export function GameCreateScreen() {
           toast.info(he.createGameDraftPickNewTime);
         }
       } catch (error) {
+    observeCaughtError(error, {"source":"src/screens/games/GameCreateScreen.tsx","handler":"GameCreateScreen","site":"GameCreateScreen:d8fe5671c4"});
         if (alive) setDraftRecoveryError(creationDraftRecoveryMessage(error));
       } finally {
         if (alive) setCheckedDraft(true);
@@ -642,6 +646,7 @@ export function GameCreateScreen() {
         { gameId, celebrate: true },
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/GameCreateScreen.tsx","handler":"submit","site":"GameCreateScreen:434e22020f"});
       // Overlap guard hit — show the user the existing game's title +
       // time so they understand WHY we blocked the create. Other
       // errors fall through to the wizard's generic error alert.

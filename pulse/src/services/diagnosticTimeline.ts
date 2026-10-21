@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 export type Step={seq:number;ms:number;kind:string;name:string;screen?:string;data?:Record<string,string|number|boolean>};
 export type Journal={sessionId:string;total:number;omitted:number;entries:Step[]};
 export function parseJournal(raw:unknown):Journal|null {
@@ -15,7 +16,8 @@ export function parseJournal(raw:unknown):Journal|null {
    return {seq:e.seq,ms:e.ms,kind:e.kind.slice(0,30),name:e.name.slice(0,120),screen:typeof e.screen==='string'?e.screen.slice(0,100):undefined,data};
   }).sort((a:Step,b:Step)=>a.seq-b.seq);
   return {sessionId:String(v.sessionId??'').slice(0,100),total:v.total,omitted:Math.max(v.omitted,v.total-entries.length),entries};
- }catch{return null;}
+ }catch (caughtError756efbc373){
+    observeCaughtError(caughtError756efbc373, {"source":"pulse/src/services/diagnosticTimeline.ts","handler":"parseJournal","site":"diagnosticTimeline:756efbc373"});return null;}
 }
 const names:Record<string,string>={app_launch:'פתיחת האפליקציה',session_start:'תחילת הפעלה',touch_start:'נגיעה במסך',drag:'גרירה',drag_start:'תחילת גלילה',drag_end:'סיום גרירה',momentum_end:'סיום גלילה',main_tab:'בחירת טאב',club_tab:'בחירת לשונית במועדון',round_tab:'בחירת לשונית במחזור',open_round:'פתיחת מחזור',open_club:'פתיחת מועדון',round_primary:'פעולה בכרטיס המחזור',menu_item:'בחירת פריט בתפריט',menu_toggle:'שינוי מתג',control:'לחיצה על רכיב',button:'לחיצה על כפתור',viewport:'מידות המסך',long_press:'לחיצה ארוכה'};
 export const kindLabels:Record<string,string>={launch:'פתיחה',nav:'מעבר מסך',tap:'מגע',press:'לחיצה',act:'פעולה',scroll:'גלילה',gesture:'מחווה',err:'שגיאה'};

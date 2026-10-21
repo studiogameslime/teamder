@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // "3 חברים שלך כאן" on a club the user hasn't joined.
 //
 // This can't be answered on the client: /groups/{id} is readable only by its
@@ -54,6 +55,7 @@ export async function fetchFriendsInClubs(
     }
     return out;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/clubFriendsService.ts","handler":"fetchFriendsInClubs","site":"clubFriendsService:26c8828c05"});
     logError('fetchFriendsInClubs', err, { count: groupIds.length });
     return {};
   }

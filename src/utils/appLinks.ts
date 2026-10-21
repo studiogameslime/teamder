@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // appLinks — `footy://open/<where>`, the links a campaign is allowed to point at.
 //
 // WHY THIS IS NOT deepLinkService. That file parses INVITES: a session or a
@@ -62,7 +63,8 @@ function queryParam(query: string, key: string): string | undefined {
     if (pair.slice(0, eq) !== key) continue;
     try {
       return decodeURIComponent(pair.slice(eq + 1));
-    } catch {
+    } catch (caughtError692cc4c232) {
+    observeCaughtError(caughtError692cc4c232, {"source":"src/utils/appLinks.ts","handler":"queryParam","site":"appLinks:692cc4c232"});
       return pair.slice(eq + 1);
     }
   }

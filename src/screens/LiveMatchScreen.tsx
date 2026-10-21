@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import { ChangeMotion } from '@/components/anim/ChangeMotion';
 // LiveMatchScreen — pure match timer.
@@ -166,6 +167,7 @@ export function LiveMatchScreen() {
         if (alive) setSelection({gameId,advanced:g.advancedMode === true || g.draftTeams?.completionMode === 'balanced'});
       })
       .catch((error) => {
+    observeCaughtError(error, {"source":"src/screens/LiveMatchScreen.tsx","handler":"LiveMatchScreen","site":"LiveMatchScreen:f7ea75710b"});
         if (!alive) return;
         logError('liveModeLoad',error,{gameId});
         setSelection({gameId,failed:true});
@@ -259,7 +261,7 @@ function PlainLiveMatchScreen() {
     (async () => {
       // Fetch by id (not getMyGames — that filters by status and would
       // hide an already-active game). The guards below gate entry.
-      const g = await gameService.getGameById(gameId).catch(() => null);
+      const g = await gameService.getGameById(gameId).catch((caughtError5a5dd3ffce: unknown) => { observeCaughtError(caughtError5a5dd3ffce, {"source":"src/screens/LiveMatchScreen.tsx","handler":"PlainLiveMatchScreen","site":"LiveMatchScreen:5a5dd3ffce"}); return null; });
       if (!alive) return;
       setGame(g);
       // Distinguish "still loading" from "game is gone" — otherwise a
@@ -364,6 +366,7 @@ function PlainLiveMatchScreen() {
         isAdmin,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/LiveMatchScreen.tsx","handler":"onTimerStart","site":"LiveMatchScreen:fa1cb08ca2"});
       // §4 — the season is mid-close and the club may not start an evening.
       // Said out loud: this catch used to log and return, so the play button
       // did nothing at all and the admin had no way to learn why.
@@ -386,6 +389,7 @@ function PlainLiveMatchScreen() {
         isAdmin,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/LiveMatchScreen.tsx","handler":"onTimerPause","site":"LiveMatchScreen:f16f9f3258"});
       logError('liveTimerPause', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] pauseTimer failed', err);
     }
@@ -401,6 +405,7 @@ function PlainLiveMatchScreen() {
         isAdmin,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/LiveMatchScreen.tsx","handler":"onTimerResume","site":"LiveMatchScreen:93fcfaf2c1"});
       logError('liveTimerResume', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] resumeTimer failed', err);
     }
@@ -427,6 +432,7 @@ function PlainLiveMatchScreen() {
                 isAdmin,
               });
             } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/LiveMatchScreen.tsx","handler":"onPress","site":"LiveMatchScreen:887f5c5377"});
               logError('liveTimerReset', err, { gameId, userId: me?.id });
               if (__DEV__) console.warn('[live] resetTimer failed', err);
             }
@@ -442,6 +448,7 @@ function PlainLiveMatchScreen() {
     try {
       await gameService.endEvening(gameId);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/LiveMatchScreen.tsx","handler":"onEndGame","site":"LiveMatchScreen:50fed80808"});
       logError('endEvening', err, { gameId });
       if (__DEV__) console.warn('[live] endEvening failed', err);
       return;

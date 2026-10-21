@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // HtmlMessageView — draws an `html` Joryio in-app campaign inside a WebView.
 //
 // WHY THIS EXISTS. The SDK's own web view never runs in React Native: the
@@ -259,7 +260,8 @@ export function HtmlMessageView({
       let parsed: { method?: string; args?: Record<string, unknown> };
       try {
         parsed = JSON.parse(e.nativeEvent.data);
-      } catch {
+      } catch (caughtError1254045342) {
+    observeCaughtError(caughtError1254045342, {"source":"src/components/joryio/HtmlMessageView.tsx","handler":"HtmlMessageView","site":"HtmlMessageView:1254045342"});
         return; // not ours — a template may postMessage for its own reasons
       }
       const args = parsed.args ?? {};
@@ -322,7 +324,7 @@ export function HtmlMessageView({
           clickedRef.current = true;
           onClick(undefined); // report the click; we navigate ourselves
         }
-        void Linking.openURL(req.url).catch(() => undefined);
+        void Linking.openURL(req.url).catch((caughtError244a7aae7f: unknown) => { observeCaughtError(caughtError244a7aae7f, {"source":"src/components/joryio/HtmlMessageView.tsx","handler":"HtmlMessageView","site":"HtmlMessageView:244a7aae7f"}); return undefined; });
         return false;
       }
       if (scheme === 'http' || scheme === 'https') {
@@ -330,7 +332,7 @@ export function HtmlMessageView({
           clickedRef.current = true;
           onClick(req.url);
         } else {
-          void Linking.openURL(req.url).catch(() => undefined);
+          void Linking.openURL(req.url).catch((caughtError1b83574033: unknown) => { observeCaughtError(caughtError1b83574033, {"source":"src/components/joryio/HtmlMessageView.tsx","handler":"HtmlMessageView","site":"HtmlMessageView:1b83574033"}); return undefined; });
         }
       }
       return false;

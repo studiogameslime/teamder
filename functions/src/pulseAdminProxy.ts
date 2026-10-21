@@ -1,5 +1,6 @@
+import { observeCaughtError } from './serverErrorLog';
 import * as admin from 'firebase-admin';
-import { onRequest } from 'firebase-functions/v2/https';
+import { onRequest } from './observedFunctions';
 import { defineSecret } from 'firebase-functions/params';
 import { KJUR, KEYUTIL } from 'jsrsasign';
 import { pulseProxyTarget, pulseAdminAllowed } from './pulseProxyPolicy';
@@ -63,7 +64,8 @@ export const pulseAdminProxy = onRequest({ region: 'us-central1', cors: false, s
     const user = await admin.auth().verifyIdToken(bearer, true);
     if (!pulseAdminAllowed(user.uid, user.firebase?.sign_in_provider === 'anonymous', adminUids.value())) { res.status(403).json({ error: 'PULSE_ACCESS_DENIED' }); return; }
     uid = user.uid;
-  } catch { res.status(401).json({ error: 'AUTH_REQUIRED' }); return; }
+  } catch (caughtError86d0d20ac4) {
+    observeCaughtError(caughtError86d0d20ac4, {"source":"functions/src/pulseAdminProxy.ts","handler":"module","site":"pulseAdminProxy:86d0d20ac4"}); res.status(401).json({ error: 'AUTH_REQUIRED' }); return; }
   try {
     const keys = JSON.parse(upstreamKeys.value() || '{}') as Keys;
     if (req.body?.operation === 'session') {
@@ -87,7 +89,7 @@ export const pulseAdminProxy = onRequest({ region: 'us-central1', cors: false, s
     const token = await upstreamToken(target.provider, target.scope, keys);
     const upstream = await fetch(target.url, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(body !== undefined ? { body } : {}), redirect: 'error', signal: AbortSignal.timeout(45000) });
     if (!upstream.ok) {
-      const failure = await upstream.json().catch(() => null) as {error?: {status?: string}} | null;
+      const failure = await upstream.json().catch((caughtError3170693a67: unknown) => { observeCaughtError(caughtError3170693a67, {"source":"functions/src/pulseAdminProxy.ts","handler":"module","site":"pulseAdminProxy:3170693a67"}); return null; }) as {error?: {status?: string}} | null;
       const status = ['ALREADY_EXISTS','FAILED_PRECONDITION','NOT_FOUND'].includes(failure?.error?.status ?? '') ? failure!.error!.status : 'UPSTREAM_REQUEST_FAILED';
       res.json({ status: upstream.status, body: JSON.stringify({ error: {status} }), encoding: 'text' }); return;
     }
@@ -108,6 +110,7 @@ export const pulseAdminProxy = onRequest({ region: 'us-central1', cors: false, s
     if (responseBytes.length > 23000000) throw new Error('PULSE_RESPONSE_TOO_LARGE');
     res.json({ status: upstream.status, body: responseBytes.toString('base64'), encoding: 'base64', contentType });
   } catch (error) {
+    observeCaughtError(error, {"source":"functions/src/pulseAdminProxy.ts","handler":"module","site":"pulseAdminProxy:0331470f80"});
     const code = error instanceof Error ? error.message : '';
     res.status(code === 'PULSE_RATE_LIMIT' ? 429 : code === 'PULSE_TARGET_DENIED' ? 403 : 502).json({ error: code.startsWith('PULSE_') ? code : 'PULSE_REQUEST_FAILED' });
   }

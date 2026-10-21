@@ -1,3 +1,5 @@
+import { observedListener, observeSettledErrors } from '../utils/errorObservation';
+
 import { getDocs, query, where, orderBy, limit, collection, onSnapshot } from 'firebase/firestore';
 import { col, docs } from '@/firebase/firestore';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
@@ -33,7 +35,7 @@ export async function loadManagerDashboard(groupId:string, viewerId:string):Prom
         orderBy('startsAt','desc'),limit(201))))
         .then(s=>s.docs.map(d=>({...d.data(),matches:[]}) as Game)),
     USE_MOCK_DATA ? import('./communityEventsService').then(m=>Promise.all(memberIds(group).map(id=>m.communityEventsService.getPlayerTimeline(groupId,id)))).then(v=>({status:'fulfilled' as const,value:v.flat()})) :
-      Promise.allSettled([withAuthRaceRetry(()=>getDocs(query(collection(getFirebase().db,'communityPlayerEvents'),where('groupId','==',groupId),where('type','in',['ball','jerseys']),orderBy('at','desc'),limit(1001))))]).then(([r])=>r.status==='fulfilled' ? {status:'fulfilled' as const,value:r.value.docs.map(d=>({...d.data(),id:d.id}) as CommunityPlayerEvent)} : r),
+      Promise.allSettled([withAuthRaceRetry(()=>getDocs(query(collection(getFirebase().db,'communityPlayerEvents'),where('groupId','==',groupId),where('type','in',['ball','jerseys']),orderBy('at','desc'),limit(1001))))]).then(results => observeSettledErrors(results, {"source":"src/services/managerDashboardService.ts","handler":"loadManagerDashboard","site":"managerDashboardService:96038994ba"})).then(([r])=>r.status==='fulfilled' ? {status:'fulfilled' as const,value:r.value.docs.map(d=>({...d.data(),id:d.id}) as CommunityPlayerEvent)} : r),
   ]);
   if (USE_MOCK_DATA && __DEV__ && process.env.EXPO_PUBLIC_QA_ROUTES === '1') {
     return (await import('@/data/managerDashboardDemo')).managerDashboardDemo(group,users);
@@ -45,7 +47,7 @@ export async function loadManagerDashboard(groupId:string, viewerId:string):Prom
   // Bound concurrent callable reads. No account-crossing global cache.
   for(let i=0;i<scoreGames.length;i+=4) {
     const batch=scoreGames.slice(i,i+4);
-    const results=await Promise.allSettled(batch.map(g=>getGameEveningScores(g.id)));
+    const results=await Promise.allSettled(batch.map(g=>getGameEveningScores(g.id))).then(results => observeSettledErrors(results, {"source":"src/services/managerDashboardService.ts","handler":"loadManagerDashboard","site":"managerDashboardService:ebc1777423"}));
     results.forEach((r,j)=>{ if(r.status==='fulfilled') scores[batch[j].id]=r.value; else scoresIncomplete=true; });
   }
   if (!USE_MOCK_DATA && getFirebase().auth.currentUser?.uid !== viewerId) throw new Error('manager-session-changed');
@@ -59,5 +61,5 @@ export async function loadManagerDashboard(groupId:string, viewerId:string):Prom
 
 export function watchManagerAccess(groupId:string,viewerId:string,onAccess:(allowed:boolean)=>void):()=>void {
   if(USE_MOCK_DATA)return ()=>{};
-  return onSnapshot(docs.group(groupId),s=>onAccess(s.exists()&&s.data().adminIds.includes(viewerId)),()=>onAccess(false));
+  return onSnapshot(docs.group(groupId),s=>onAccess(s.exists()&&s.data().adminIds.includes(viewerId)),observedListener(()=>onAccess(false), {"source":"src/services/managerDashboardService.ts","handler":"watchManagerAccess","site":"managerDashboardService.ts:snapshot:63"}));
 }

@@ -1,3 +1,5 @@
+import { observedListener, observeCaughtError } from '../utils/errorObservation';
+
 // Reading the sealed round summary.
 //
 // There is deliberately no builder here. The summary is sealed by the
@@ -71,7 +73,7 @@ export const roundSummaryService = {
       where('groupId', '==', groupId), where('gameId', '==', gameId), fsLimit(1)), snapshot => {
       if (snapshot.empty && snapshot.metadata.fromCache) return;
       onValue(snapshot.empty ? null : normalise(snapshot.docs[0].data()));
-    }, onError);
+    }, observedListener(onError, {"source":"src/services/roundSummaryService.ts","handler":"watch","site":"roundSummaryService.ts:snapshot:71"}));
   },
   /**
    * The club's summary for one evening, or null when there is none.
@@ -147,6 +149,7 @@ export const roundSummaryService = {
       });
       return { evenings, truncated: snap.size >= MAX };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/roundSummaryService.ts","handler":"listEveningStats","site":"roundSummaryService:ec30412ef2"});
       if (!isExpectedDenial(err)) {
         logError('listEveningStats', err, { groupId });
       }
@@ -176,6 +179,7 @@ export const roundSummaryService = {
       if (!snap.exists()) return null;
       return normalise(snap.data());
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/roundSummaryService.ts","handler":"get","site":"roundSummaryService:27f70d6290"});
       // Missing documents are the only successful null. A denied or failed
       // read must remain a failure so the screen can offer a retry rather
       // than claim this evening has no recorded data.

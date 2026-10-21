@@ -1,7 +1,7 @@
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
 import { createHash } from 'node:crypto';
 import { getFirestore, FieldPath, FieldValue, Filter } from 'firebase-admin/firestore';
-import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https';
+import { HttpsError, onCall, type CallableRequest } from './observedFunctions';
 import { didEveningHappen } from './eveningPlayed';
 import { socialPairSummary } from './socialPairSummary';
 

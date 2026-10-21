@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // One cabinet for frozen season awards and tiered personal milestones.
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -49,6 +50,7 @@ export function AchievementsScreen() {
     seasonTitlesService.list(owner).then(items => {
       if (alive) setTitleState({ owner, items, failed: false });
     }).catch(error => {
+    observeCaughtError(error, {"source":"src/screens/profile/AchievementsScreen.tsx","handler":"AchievementsScreen","site":"AchievementsScreen:6e0dcfd637"});
       logError('seasonTitlesLoad', error, { userId: owner });
       if (alive) setTitleState({ owner, items: null, failed: true });
     });
@@ -74,7 +76,8 @@ export function AchievementsScreen() {
       .then((u) => {
         if (alive && u) setUser(u);
       })
-      .catch(() => {
+      .catch((caughtErrordd6b4a8cbd: unknown) => {
+    observeCaughtError(caughtErrordd6b4a8cbd, {"source":"src/screens/profile/AchievementsScreen.tsx","handler":"AchievementsScreen","site":"AchievementsScreen:dd6b4a8cbd"});
         // Keep showing the cached store value on transient failure.
       })
       .finally(() => {
@@ -108,7 +111,8 @@ export function AchievementsScreen() {
         );
         if (alive && fresh.length) setCelebrate(fresh);
       })
-      .catch(() => {
+      .catch((caughtError7579262712: unknown) => {
+    observeCaughtError(caughtError7579262712, {"source":"src/screens/profile/AchievementsScreen.tsx","handler":"AchievementsScreen","site":"AchievementsScreen:7579262712"});
         // Derivation failed → fall back to the stored counters via
         // achievementsService.list as a last resort (flag so the loader
         // doesn't spin forever).

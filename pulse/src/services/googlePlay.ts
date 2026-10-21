@@ -1,3 +1,5 @@
+import { observeCaughtError } from './errorObservation';
+
 import { pulseFetch as fetch } from './adminTransport';
 // Google Play reviews + ratings.
 //
@@ -59,7 +61,8 @@ function decodeBytes(buf: ArrayBuffer): string {
   // Fallback: UTF-8.
   try {
     return new (globalThis as any).TextDecoder('utf-8').decode(b);
-  } catch {
+  } catch (caughtError8ae3bd7538) {
+    observeCaughtError(caughtError8ae3bd7538, {"source":"pulse/src/services/googlePlay.ts","handler":"decodeBytes","site":"googlePlay:8ae3bd7538"});
     let s = '';
     for (let i = 0; i < b.length; i += 1) s += String.fromCharCode(b[i]);
     return s;
@@ -157,8 +160,8 @@ export async function fetchPlayReviewsFromReports(): Promise<Review[]> {
 export async function fetchPlayReviews(limit = 50): Promise<Review[]> {
   if (!has.play()) return [];
   const [reports, api] = await Promise.all([
-    fetchPlayReviewsFromReports().catch(() => [] as Review[]),
-    fetchPlayReviewsApi(limit).catch(() => [] as Review[]),
+    fetchPlayReviewsFromReports().catch((caughtErrorb8624d51ba: unknown) => { observeCaughtError(caughtErrorb8624d51ba, {"source":"pulse/src/services/googlePlay.ts","handler":"fetchPlayReviews","site":"googlePlay:b8624d51ba"}); return [] as Review[]; }),
+    fetchPlayReviewsApi(limit).catch((caughtErrorbd7cb2fb48: unknown) => { observeCaughtError(caughtErrorbd7cb2fb48, {"source":"pulse/src/services/googlePlay.ts","handler":"fetchPlayReviews","site":"googlePlay:bd7cb2fb48"}); return [] as Review[]; }),
   ]);
   if (!reports.length) return api;
   const newest = reports.reduce((m, r) => Math.max(m, Date.parse(r.createdAt) || 0), 0);
@@ -186,11 +189,11 @@ export async function fetchPlayProductionRelease(): Promise<PlayRelease | null> 
   const auth = { Authorization: `Bearer ${token}` };
   // open a transient edit
   const eRes = await fetch(`${base}/edits`, { method: 'POST', headers: auth });
-  if (!eRes.ok) return null;
+  if (!eRes.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + eRes.status}), {"source":"pulse/src/services/googlePlay.ts","handler":"fetchPlayProductionRelease","site":"googlePlay.ts:http:191"}); return null; }
   const editId = (await eRes.json()).id as string;
   try {
     const tRes = await fetch(`${base}/edits/${editId}/tracks/production`, { headers: auth });
-    if (!tRes.ok) return null;
+    if (!tRes.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + tRes.status}), {"source":"pulse/src/services/googlePlay.ts","handler":"fetchPlayProductionRelease","site":"googlePlay.ts:http:195"}); return null; }
     const track = await tRes.json();
     const releases: any[] = track.releases ?? [];
     // Prefer a live (completed/inProgress) release; newest versionCode wins.
@@ -206,7 +209,8 @@ export async function fetchPlayProductionRelease(): Promise<PlayRelease | null> 
     return live ?? ranked[0] ?? null;
   } finally {
     // abandon the edit so nothing is committed
-    await fetch(`${base}/edits/${editId}`, { method: 'DELETE', headers: auth }).catch(() => {});
+    await fetch(`${base}/edits/${editId}`, { method: 'DELETE', headers: auth }).catch((caughtErrore62a1476f0: unknown) => {
+    observeCaughtError(caughtErrore62a1476f0, {"source":"pulse/src/services/googlePlay.ts","handler":"fetchPlayProductionRelease","site":"googlePlay:e62a1476f0"});});
   }
 }
 

@@ -31,6 +31,16 @@ it('corrupt storage and write failures never escape or become an upload',async()
  mockDisk.set('teamder.diagnostic.errors.v1','not-json');expect(await s.readPendingDiagnosticErrors()).toEqual([]);
  storage.setItem.mockRejectedValueOnce(new Error('disk-full'));await expect(s.persistDiagnosticJournal()).resolves.toBeUndefined();
 });
-it('bounds the local crash outbox to three error snapshots',async()=>{
- const s=require('@/services/diagnosticStorage');await s.savePendingDiagnosticErrors([1,2,3,4]);expect(await s.readPendingDiagnosticErrors()).toEqual([2,3,4]);
+it('retains all compact errors while keeping only the latest three full journals',async()=>{
+ const s=require('@/services/diagnosticStorage');
+ const rows=Array.from({length:5},(_,i)=>({fp:String(i),entry:{operation:'load',pending:1,journal:'details',trail:'steps'}}));
+ await s.savePendingDiagnosticErrors(rows);const read=await s.readPendingDiagnosticErrors();
+ expect(read).toHaveLength(5);expect(read[0].entry).toMatchObject({journal:'',trail:'',operation:'load',pending:1});
+ expect(read.slice(-3).every((row:any)=>row.entry.journal==='details')).toBe(true);
+});
+it('bounds a runaway outbox and makes discarded batch evidence explicit',async()=>{
+ const s=require('@/services/diagnosticStorage');
+ await s.savePendingDiagnosticErrors(Array.from({length:205},(_,i)=>({fp:String(i),entry:{userId:'A',version:'1',pending:1,journal:'',trail:''}})));
+ const read=await s.readPendingDiagnosticErrors();expect(read).toHaveLength(201);
+ expect(read[0].entry).toMatchObject({operation:'diagnosticOutboxOverflow',userId:'A',context:{omittedBatches:5}});
 });

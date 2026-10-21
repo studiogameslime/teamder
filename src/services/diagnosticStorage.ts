@@ -27,14 +27,26 @@ export function persistDiagnosticJournal():Promise<void>{
  return enqueue(()=>AsyncStorage.setItem(JOURNAL_KEY,json));
 }
 export function savePendingDiagnosticErrors(rows:unknown[]):Promise<void>{
- // Existing error reports only, never ordinary actions. At most 3 snapshots.
- const json=JSON.stringify(rows.slice(-3));
+ // Keep compact records beyond the three full journals. Previously every
+ // fourth signature silently evicted a still-unsent error on process restart.
+ const retained = rows.slice(-200);
+ const compact = retained.map((row, index) => {
+  if (index >= retained.length - 3 || !row || typeof row !== 'object') return row;
+  const r = row as {entry?: Record<string, unknown>};
+  return r.entry ? {...r, entry: {...r.entry, journal: '', trail: ''}} : row;
+ });
+ if (rows.length > retained.length) {
+  const last = retained.at(-1) as {entry?: {userId?: string; version?: string}} | undefined;
+  compact.unshift({fp:'outboxoverflow',entry:{operation:'diagnosticOutboxOverflow',message:'Pending diagnostic queue exceeded 200 batches',
+   pending:1,userId:last?.entry?.userId,version:last?.entry?.version??'unknown',journal:'',trail:'',context:{omittedBatches:rows.length-retained.length}}});
+ }
+ const json=JSON.stringify(compact);
  return enqueue(()=>AsyncStorage.setItem(PENDING_KEY,json));
 }
 export async function readPendingDiagnosticErrors():Promise<unknown[]> {
  await writes;
- try{const raw=await AsyncStorage.getItem(PENDING_KEY);if(!raw||raw.length>240000)return [];
-  const rows:unknown=JSON.parse(raw);return Array.isArray(rows)?rows.slice(-3):[];
+ try{const raw=await AsyncStorage.getItem(PENDING_KEY);if(!raw||raw.length>2000000)return [];
+  const rows:unknown=JSON.parse(raw);return Array.isArray(rows)?rows.slice(-201):[];
  }catch{return [];}
 }
 export function clearDiagnosticStorage():Promise<void>{

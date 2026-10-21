@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // qaService — "משתמשי QA": the people who actually report (authors of the
 // `feedback` collection). For each we roll up their reports + the errors
 // attributed to them (errors.lastUserId), so tapping a QA user shows
@@ -25,8 +26,8 @@ export interface QaUserActivity {
 /** Distinct reporters, each with report + error tallies. Most-pending first. */
 export async function listQaUsers(): Promise<QaUser[]> {
   const [reports, errors] = await Promise.all([
-    listReports().catch(() => [] as ReportItem[]),
-    fetchErrors().catch(() => [] as ErrorRecord[]),
+    listReports().catch((caughtError8861c530f2: unknown) => { observeCaughtError(caughtError8861c530f2, {"source":"pulse/src/services/qaService.ts","handler":"listQaUsers","site":"qaService:8861c530f2"}); return [] as ReportItem[]; }),
+    fetchErrors().catch((caughtError3e9fd48317: unknown) => { observeCaughtError(caughtError3e9fd48317, {"source":"pulse/src/services/qaService.ts","handler":"listQaUsers","site":"qaService:3e9fd48317"}); return [] as ErrorRecord[]; }),
   ]);
 
   const errByUser = new Map<string, { total: number; open: number }>();
@@ -78,8 +79,8 @@ export async function listQaUsers(): Promise<QaUser[]> {
 /** All reports + errors for one user, newest first. */
 export async function userActivity(userId: string): Promise<QaUserActivity> {
   const [reports, errors] = await Promise.all([
-    listReports().catch(() => [] as ReportItem[]),
-    fetchErrors().catch(() => [] as ErrorRecord[]),
+    listReports().catch((caughtError53b3e74deb: unknown) => { observeCaughtError(caughtError53b3e74deb, {"source":"pulse/src/services/qaService.ts","handler":"userActivity","site":"qaService:53b3e74deb"}); return [] as ReportItem[]; }),
+    fetchErrors().catch((caughtError142c2c4626: unknown) => { observeCaughtError(caughtError142c2c4626, {"source":"pulse/src/services/qaService.ts","handler":"userActivity","site":"qaService:142c2c4626"}); return [] as ErrorRecord[]; }),
   ]);
   return {
     reports: reports.filter((r) => r.userId === userId),

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // CommunityChampionship — the club's scorers + assisters leaderboard.
 //
 // Ranks players by score (goal = 2 pts, assist = 1 pt) THROUGH this club's
@@ -127,7 +128,8 @@ export function CommunityChampionship({
       .then((d) => {
         if (alive) setData(d ?? null);
       })
-      .catch(() => {
+      .catch((caughtErrorf6a980831e: unknown) => {
+    observeCaughtError(caughtErrorf6a980831e, {"source":"src/components/community/CommunityChampionship.tsx","handler":"CommunityChampionship","site":"CommunityChampionship:f6a980831e"});
         /* leave null → render nothing */
       });
     return () => {

@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import { PLAYER_ROUND_FIELDS, playerRoundFacts } from './playerSummary';
 import { fetchAuthRecords } from './userAuth';
 import { userRecord } from './userDetails';
@@ -125,7 +126,7 @@ export async function fetchUsers(opts: { force?: boolean } = {}): Promise<AppUse
 // basic fields without loading the whole collection.
 export async function fetchUserById(id: string): Promise<AppUser | null> {
   if (!has.firebase()) return null;
-  const doc = await getDoc(`users/${id}`).catch(() => null);
+  const doc = await getDoc(`users/${id}`).catch((caughtErrorae85d9c56d: unknown) => { observeCaughtError(caughtErrorae85d9c56d, {"source":"pulse/src/services/firebase.ts","handler":"fetchUserById","site":"firebase:ae85d9c56d"}); return null; });
   return doc ? mapUser(doc) : null;
 }
 
@@ -141,8 +142,8 @@ export async function fetchUserCounts(): Promise<UserCounts> {
   if (!has.firebase()) return { total: 0, newToday: 0 };
   const midnight = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
   const [total, todayDocs] = await Promise.all([
-    countCollection('users').catch(() => 0),
-    queryByCreatedAt('users', midnight, Date.now()).catch(() => [] as FsDoc[]),
+    countCollection('users').catch((caughtError84caf5f3fc: unknown) => { observeCaughtError(caughtError84caf5f3fc, {"source":"pulse/src/services/firebase.ts","handler":"fetchUserCounts","site":"firebase:84caf5f3fc"}); return 0; }),
+    queryByCreatedAt('users', midnight, Date.now()).catch((caughtErrore25ff3ed34: unknown) => { observeCaughtError(caughtErrore25ff3ed34, {"source":"pulse/src/services/firebase.ts","handler":"fetchUserCounts","site":"firebase:e25ff3ed34"}); return [] as FsDoc[]; }),
   ]);
   const newToday = todayDocs.map(mapUser).filter((u) => !u.isTest && !u.deleted).length;
   return { total, newToday };
@@ -177,7 +178,8 @@ async function fetchUsersWithAuthUncached(force = false): Promise<AppUser[]> {
       const primary=providers.find(p=>['google.com','apple.com','password'].includes(p)) ?? providers[0];
       auth.set(String(u.id), {provider:primary==='google.com'?'google':primary==='apple.com'?'apple':primary==='password'?'password':'other',lastLoginAt:u.lastLoginAt as number|undefined,lastActiveAt:u.lastActiveAt as number|undefined});
     }
-  } catch {
+  } catch (caughtError94c4535104) {
+    observeCaughtError(caughtError94c4535104, {"source":"pulse/src/services/firebase.ts","handler":"fetchUsersWithAuthUncached","site":"firebase:94c4535104"});
     /* auth unavailable — return Firestore-only users */
   }
   return users.map((u) => {
@@ -209,9 +211,9 @@ export async function fetchAppStats(): Promise<AppStats | null> {
 
   // Counts (cheap server-side aggregations; fall back to 0 on error).
   const [totalGames, totalGroups, authProviders] = await Promise.all([
-    countCollection('games').catch(() => 0),
-    countCollection('groups').catch(() => 0),
-    fetchAuthProviders().catch(() => [] as NameCount[]),
+    countCollection('games').catch((caughtErrorafb0e3adeb: unknown) => { observeCaughtError(caughtErrorafb0e3adeb, {"source":"pulse/src/services/firebase.ts","handler":"fetchAppStats","site":"firebase:afb0e3adeb"}); return 0; }),
+    countCollection('groups').catch((caughtError5215c02b5f: unknown) => { observeCaughtError(caughtError5215c02b5f, {"source":"pulse/src/services/firebase.ts","handler":"fetchAppStats","site":"firebase:5215c02b5f"}); return 0; }),
+    fetchAuthProviders().catch((caughtError8adb5ca99e: unknown) => { observeCaughtError(caughtError8adb5ca99e, {"source":"pulse/src/services/firebase.ts","handler":"fetchAppStats","site":"firebase:8adb5ca99e"}); return [] as NameCount[]; }),
   ]);
 
   const newUsers7 = users.filter((u) => now - u.joinedAt < 7 * DAY).length;
@@ -350,7 +352,8 @@ async function communityPointsUncached(force = false): Promise<CommunityPoint[]>
         members: ids.size,
       };
     });
-  } catch {
+  } catch (caughtError429d9f6c9f) {
+    observeCaughtError(caughtError429d9f6c9f, {"source":"pulse/src/services/firebase.ts","handler":"communityPointsUncached","site":"firebase:429d9f6c9f"});
     return [];
   }
 }
@@ -389,7 +392,8 @@ async function gamePointsUncached(force = false): Promise<GamePoint[]> {
         players: ids.size,
       };
     });
-  } catch {
+  } catch (caughtError6a7328afa8) {
+    observeCaughtError(caughtError6a7328afa8, {"source":"pulse/src/services/firebase.ts","handler":"gamePointsUncached","site":"firebase:6a7328afa8"});
     return [];
   }
 }
@@ -407,7 +411,8 @@ async function groupMemberSetUncached(force = false): Promise<Set<string>> {
       for (const u of (g.playerIds as string[] | undefined) ?? []) set.add(u);
       for (const u of (g.adminIds as string[] | undefined) ?? []) set.add(u);
     }
-  } catch {
+  } catch (caughtError6f4e7b5cce) {
+    observeCaughtError(caughtError6f4e7b5cce, {"source":"pulse/src/services/firebase.ts","handler":"groupMemberSetUncached","site":"firebase:6f4e7b5cce"});
     /* best-effort */
   }
   return set;
@@ -431,7 +436,8 @@ async function fetchUserActivityUncached(userId: string): Promise<UserActivity> 
   const limitedSources: string[] = [];
   async function read<T>(label: string, promise: Promise<T>, fallback: T, limit?: number): Promise<T> {
     try { const value = await promise; if (limit && Array.isArray(value) && value.length >= limit) limitedSources.push(label); return value; }
-    catch { failedSources.push(label); return fallback; }
+    catch (caughtError01e11031a1) {
+    observeCaughtError(caughtError01e11031a1, {"source":"pulse/src/services/firebase.ts","handler":"read","site":"firebase:01e11031a1"}); failedSources.push(label); return fallback; }
   }
   if (!has.firebase()) throw new Error('PULSE_FIREBASE_UNAVAILABLE');
 

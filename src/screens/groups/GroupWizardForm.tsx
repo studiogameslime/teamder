@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { useSupportStep } from '@/hooks/useSupportStep';
 // Two-step wizard shared by Create / Edit Community (rolling-ball
 // StepIndicator, mirroring the create-game flow):
@@ -271,6 +272,7 @@ export function GroupWizardForm({
     try {
       await onSubmit(values);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/groups/GroupWizardForm.tsx","handler":"submit","site":"GroupWizardForm:2f93e02866"});
       savingRef.current = false; // save failed → still genuinely dirty
       if (__DEV__) console.warn('[groupWizard] submit failed', e);
       appAlert(he.error, he.groupWizardSubmitFailed);

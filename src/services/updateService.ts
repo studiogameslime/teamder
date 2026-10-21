@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { Linking, NativeModules, Platform } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import * as Application from 'expo-application';
@@ -22,7 +23,8 @@ export const isReleaseVersion = (value: unknown): value is string =>
 function bounded<T>(promise: Promise<T>, timeoutMs = 8000): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Store check timed out')), timeoutMs);
-    promise.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+    promise.then(value => { clearTimeout(timer); resolve(value); }, error => {
+    observeCaughtError(error, {"source":"src/services/updateService.ts","handler":"bounded","site":"updateService:9a518dd28f"}); clearTimeout(timer); reject(error); });
   });
 }
 
@@ -127,9 +129,11 @@ async function resolveStoreUpdate(): Promise<StoreUpdate | null> {
       const minimum = snap.exists() ? snap.data().minimumSupportedVersion : null;
       if (isReleaseVersion(minimum) && compareVersions(current, minimum) < 0 &&
           (!available.targetVersion || compareVersions(available.targetVersion, minimum) >= 0)) available.kind = 'force';
-    } catch { /* Available store update stays optional. */ }
+    } catch (caughtError4f2a256c7f) {
+    observeCaughtError(caughtError4f2a256c7f, {"source":"src/services/updateService.ts","handler":"resolveStoreUpdate","site":"updateService:4f2a256c7f"}); /* Available store update stays optional. */ }
     return available;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/updateService.ts","handler":"resolveStoreUpdate","site":"updateService:d6d7f5046d"});
     // Offline, missing Play ownership/store and unavailable country listings
     // are normal absence-of-evidence cases, not application crashes.
     if (__DEV__) console.warn('[update] check failed', err);
@@ -141,7 +145,8 @@ export async function openStore(): Promise<boolean> {
   try {
     if (Platform.OS === 'android') {
       try { await Linking.openURL(`market://details?id=${ANDROID_PACKAGE}`); }
-      catch { await Linking.openURL(PLAY_STORE_URL); }
+      catch (caughtError447bc31acb) {
+    observeCaughtError(caughtError447bc31acb, {"source":"src/services/updateService.ts","handler":"openStore","site":"updateService:447bc31acb"}); await Linking.openURL(PLAY_STORE_URL); }
       return true;
     }
     if (Platform.OS === 'ios') {
@@ -157,7 +162,8 @@ export async function openStore(): Promise<boolean> {
         try {
           await Linking.openURL(IOS_APP_STORE_URL);
           return true;
-        } catch {
+        } catch (caughtErrorb6612d5d9a) {
+    observeCaughtError(caughtErrorb6612d5d9a, {"source":"src/services/updateService.ts","handler":"openStore","site":"updateService:b6612d5d9a"});
           /* scheme blocked / failed — fall through to the https link */
         }
       }
@@ -168,6 +174,7 @@ export async function openStore(): Promise<boolean> {
       return false;
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/updateService.ts","handler":"openStore","site":"updateService:5545d4b374"});
     logError('openStore', err, { platform: Platform.OS });
     if (__DEV__) console.warn('[update] openStore failed', err);
   }

@@ -1,3 +1,5 @@
+import { observeCaughtError } from '../utils/errorObservation';
+
 // weatherService — forecast lookup via Open-Meteo.
 //
 // Open-Meteo is keyless and free for non-commercial / low-volume use.
@@ -69,6 +71,7 @@ async function geocodeCity(
       },
     });
     if (!res.ok) {
+    observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"src/services/weatherService.ts","handler":"geocodeCity","site":"weatherService.ts:http:72"});
       geocodeMemo.set(trimmed, null);
       return null;
     }
@@ -84,6 +87,7 @@ async function geocodeCity(
     geocodeMemo.set(trimmed, out);
     return out;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/weatherService.ts","handler":"geocodeCity","site":"weatherService:937d3dd56e"});
     logError('weatherGeocodeCity', err, { name: trimmed });
     if (__DEV__) console.warn('[weather] geocode failed', err);
     geocodeMemo.set(trimmed, null);
@@ -155,6 +159,7 @@ export async function getForecastFor(
   try {
     const res = await fetch(url);
     if (!res.ok) {
+    observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"src/services/weatherService.ts","handler":"getForecastFor","site":"weatherService.ts:http:159"});
       return null;
     }
     const data = await res.json();
@@ -178,6 +183,7 @@ export async function getForecastFor(
     memo.set(key, { value: out, at: Date.now() });
     return out;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/weatherService.ts","handler":"getForecastFor","site":"weatherService:f7c4c45d70"});
     logError('getForecastFor', err, { lat, lng, startsAt });
     if (__DEV__) console.warn('[weather] fetch failed', err);
     return null;

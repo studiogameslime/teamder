@@ -1,3 +1,5 @@
+import { observeCaughtError } from '../utils/errorObservation';
+
 // deepLinkService — incoming-URL parser + pending-invite stash.
 //
 // Two URL families both flow through `parseInviteUrl`:
@@ -92,7 +94,8 @@ function decodeSourceToken(tok: string): string {
       }
     }
     return out;
-  } catch {
+  } catch (caughtErrorf112149639) {
+    observeCaughtError(caughtErrorf112149639, {"source":"src/services/deepLinkService.ts","handler":"decodeSourceToken","site":"deepLinkService:f112149639"});
     return '';
   }
 }
@@ -190,6 +193,7 @@ export function parseInviteUrl(url: string): PendingInvite | null {
         : undefined;
     return { type, id, ...(invitedBy ? { invitedBy } : {}), ...acq };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/deepLinkService.ts","handler":"parseInviteUrl","site":"deepLinkService:10fa77655e"});
     logError('parseInviteUrl', err, { url });
     return null;
   }
@@ -216,7 +220,7 @@ export async function resolveInviteUrl(url: string): Promise<PendingInvite | nul
   try {
     const request = (async () => {
       const response = await fetch(`https://${short[1]}/i/${short[2]}?resolve=1`, { signal: controller.signal });
-      if (!response.ok) return null;
+      if (!response.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + response.status}), {"source":"src/services/deepLinkService.ts","handler":"resolveInviteUrl","site":"deepLinkService.ts:http:222"}); return null; }
       const html = await response.text();
       if (html.length > 200000) return null;
       // JSON after server rollout; legacy HTML remains compatible until rollout.
@@ -228,7 +232,8 @@ export async function resolveInviteUrl(url: string): Promise<PendingInvite | nul
       // A canonical code owns the target and inviter. Query aliases cannot
       // overwrite it, and retaining `code` would recursively reject app URLs.
       const query = rawQuery.split('&').filter((pair) => {
-        try { return !['invitedBy', 'code', 'g'].includes(decodeURIComponent(pair.split('=')[0])); } catch { return false; }
+        try { return !['invitedBy', 'code', 'g'].includes(decodeURIComponent(pair.split('=')[0])); } catch (caughtError98ca4836c8) {
+    observeCaughtError(caughtError98ca4836c8, {"source":"src/services/deepLinkService.ts","handler":"resolveInviteUrl","site":"deepLinkService:98ca4836c8"}); return false; }
       }).join('&');
       const inviter = typeof payload.invitedBy === 'string' ? payload.invitedBy : '';
       const path = payload.type === 'app' ? 'app' : `${payload.type}/${encodeURIComponent(payload.id)}`;
@@ -237,7 +242,8 @@ export async function resolveInviteUrl(url: string): Promise<PendingInvite | nul
     return await Promise.race([request, new Promise<null>((resolve) => {
       timer = setTimeout(() => { controller.abort(); resolve(null); }, 4000);
     })]);
-  } catch { return null; }
+  } catch (caughtError96ab1ad268) {
+    observeCaughtError(caughtError96ab1ad268, {"source":"src/services/deepLinkService.ts","handler":"resolveInviteUrl","site":"deepLinkService:96ab1ad268"}); return null; }
   finally { if (timer) clearTimeout(timer); }
 }
 

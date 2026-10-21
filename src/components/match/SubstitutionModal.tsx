@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +33,8 @@ export function SubstitutionModal({ visible, teams, initialSource, running, capa
     if (writing.current || !a || !targetTeam || sourceTeam?.index === targetTeam.index || (!b && slot === null)) return;
     writing.current = true; setBusy(true); setError('');
     try { if (b && onSwap) await onSwap(a.id, b.id); else if (!b && onMove) await onMove(a.id, targetTeam.index); else throw new Error('missing substitution action'); onClose(); }
-    catch { setError('החילוף לא נשמר. בדקו שההרכבים לא השתנו ונסו שוב.'); }
+    catch (caughtError17ed5121ae) {
+    observeCaughtError(caughtError17ed5121ae, {"source":"src/components/match/SubstitutionModal.tsx","handler":"confirm","site":"SubstitutionModal:17ed5121ae"}); setError('החילוף לא נשמר. בדקו שההרכבים לא השתנו ונסו שוב.'); }
     finally { writing.current = false; setBusy(false); }
   };
   return <SafeModal visible={visible} transparent animationType="slide" onRequestClose={close}><View style={s.backdrop}><Pressable style={StyleSheet.absoluteFill} onPress={close}/><View style={[s.sheet, { maxHeight: height * 0.92, paddingBottom: 14 + insets.bottom }]}>

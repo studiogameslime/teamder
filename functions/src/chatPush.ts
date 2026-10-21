@@ -1,3 +1,4 @@
+import { observeCaughtError } from './serverErrorLog';
 // Chat fan-out: on every new chat message, increment each recipient's
 // per-chat unread counter and send ONE push per chat until they open it.
 //
@@ -20,7 +21,7 @@
 //   • Tokens:   /users/{uid}/private/push            { fcmTokens: string[] }
 
 import * as admin from 'firebase-admin';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated } from './observedFunctions';
 import { notifySupportReply, updateSupportSummary } from './supportReply';
 
 type ChatScope = 'game' | 'community' | 'dm';
@@ -95,6 +96,7 @@ async function sendChatPush(
       (t) => typeof t === 'string' && t.length > 0,
     );
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/chatPush.ts","handler":"sendChatPush","site":"chatPush:864bf51faf"});
     console.warn('[chatPush] token read failed', { uid }, err);
     return;
   }
@@ -117,9 +119,10 @@ async function sendChatPush(
         .update({
           fcmTokens: admin.firestore.FieldValue.arrayRemove(...dead),
         })
-        .catch(() => undefined);
+        .catch((caughtError0128983b00: unknown) => { observeCaughtError(caughtError0128983b00, {"source":"functions/src/chatPush.ts","handler":"sendChatPush","site":"chatPush:0128983b00"}); return undefined; });
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/chatPush.ts","handler":"sendChatPush","site":"chatPush:87ba1b4394"});
     console.error('[chatPush] send failed', { uid }, err);
   }
 }
@@ -218,6 +221,7 @@ async function handleRecipient(
         .get();
       muted = settings.data()?.muted === true;
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/chatPush.ts","handler":"handleRecipient","site":"chatPush:23df79d9bf"});
       console.warn('[chatPush] settings read failed', { uid, chatKey }, err);
     }
     if (muted) return;
@@ -231,6 +235,7 @@ async function handleRecipient(
       chatKey,
     });
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/chatPush.ts","handler":"handleRecipient","site":"chatPush:f78bfd94e1"});
     console.error('[chatPush] recipient failed', { uid, chatKey }, err);
   }
 }
@@ -300,6 +305,7 @@ async function handleChatMessage(
             return; // recipient blocks non-friend DMs
           }
         } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/chatPush.ts","handler":"handleChatMessage","site":"chatPush:dad05de520"});
           console.warn('[chatPush] dm friends-only check failed', err);
         }
       }
@@ -317,6 +323,7 @@ async function handleChatMessage(
       );
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/chatPush.ts","handler":"handleChatMessage","site":"chatPush:4b34885eab"});
     console.error('[chatPush] parent resolve failed', { scope, parentId }, err);
     return;
   }
@@ -348,7 +355,7 @@ async function handleChatMessage(
         },
         { merge: true },
       )
-      .catch((err) => console.warn('[chatPush] sender stamp failed', err));
+      .catch((err) => { observeCaughtError(err, {"source":"functions/src/chatPush.ts","handler":"handleChatMessage","site":"chatPush:143d54486e"}); return console.warn('[chatPush] sender stamp failed', err); });
   }
 
   const targets = recipients.filter(
@@ -371,6 +378,7 @@ async function handleChatMessage(
         if (s.exists) blocked.add(targets[i]);
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/chatPush.ts","handler":"handleChatMessage","site":"chatPush:a66f3d4426"});
       console.warn(
         '[chatPush] blocked prefetch failed',
         { scope, parentId },

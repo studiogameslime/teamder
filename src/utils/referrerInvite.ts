@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Reading a Play Install Referrer string.
 //
 // Extracted from `installReferrerService` so it can be tested. The service
@@ -10,7 +11,8 @@ import type { PendingInvite } from '@/services/storage';
 function safeDecode(s: string): string {
   try {
     return decodeURIComponent(s);
-  } catch {
+  } catch (caughtErrorb60a9a856d) {
+    observeCaughtError(caughtErrorb60a9a856d, {"source":"src/utils/referrerInvite.ts","handler":"safeDecode","site":"referrerInvite:b60a9a856d"});
     return s;
   }
 }

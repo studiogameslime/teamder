@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -26,20 +27,24 @@ export async function openTrackedUpdate(update: StoreUpdate, userId: string | nu
   logEvent(AnalyticsEvent.UpdatePromptTapped, params);
   let previousReceipt: string | null | undefined;
   try {
-    try { previousReceipt = await AsyncStorage.getItem(KEY); } catch { /* Best effort. */ }
-    try { await AsyncStorage.setItem(KEY, JSON.stringify(receipt)); } catch { /* Opening the store remains available. */ }
-    const opened = await openStore().catch(() => false);
+    try { previousReceipt = await AsyncStorage.getItem(KEY); } catch (caughtError61d72586ee) {
+    observeCaughtError(caughtError61d72586ee, {"source":"src/services/updateAttributionService.ts","handler":"openTrackedUpdate","site":"updateAttributionService:61d72586ee"}); /* Best effort. */ }
+    try { await AsyncStorage.setItem(KEY, JSON.stringify(receipt)); } catch (caughtError6f811efc9d) {
+    observeCaughtError(caughtError6f811efc9d, {"source":"src/services/updateAttributionService.ts","handler":"openTrackedUpdate","site":"updateAttributionService:6f811efc9d"}); /* Opening the store remains available. */ }
+    const opened = await openStore().catch((caughtError568a872ee7: unknown) => { observeCaughtError(caughtError568a872ee7, {"source":"src/services/updateAttributionService.ts","handler":"openTrackedUpdate","site":"updateAttributionService:568a872ee7"}); return false; });
     if (!opened) {
       // Do not erase a previous successful attempt when this tap cannot open the store.
       try {
         if (previousReceipt) await AsyncStorage.setItem(KEY, previousReceipt);
         else await AsyncStorage.removeItem(KEY);
-      } catch { /* The failed receipt has opened=false and cannot complete. */ }
+      } catch (caughtError02398f5b3e) {
+    observeCaughtError(caughtError02398f5b3e, {"source":"src/services/updateAttributionService.ts","handler":"openTrackedUpdate","site":"updateAttributionService:02398f5b3e"}); /* The failed receipt has opened=false and cannot complete. */ }
       logEvent(AnalyticsEvent.UpdateStoreOpenFailed, params);
       return false;
     }
     receipt.opened = true;
-    try { await AsyncStorage.setItem(KEY, JSON.stringify(receipt)); } catch { /* Click remains measured; completion may be unobservable. */ }
+    try { await AsyncStorage.setItem(KEY, JSON.stringify(receipt)); } catch (caughtError30a5fd5a56) {
+    observeCaughtError(caughtError30a5fd5a56, {"source":"src/services/updateAttributionService.ts","handler":"openTrackedUpdate","site":"updateAttributionService:30a5fd5a56"}); /* Click remains measured; completion may be unobservable. */ }
     logEvent(AnalyticsEvent.UpdateStoreOpened, params);
     return true;
   } finally { opening = false; }
@@ -53,7 +58,8 @@ export async function reconcileStoreUpdate(userId: string | null): Promise<void>
     const raw = await AsyncStorage.getItem(KEY);
     if (!raw) return;
     let receipt: Receipt;
-    try { receipt = JSON.parse(raw); } catch { await AsyncStorage.removeItem(KEY); return; }
+    try { receipt = JSON.parse(raw); } catch (caughtErrord49269706d) {
+    observeCaughtError(caughtErrord49269706d, {"source":"src/services/updateAttributionService.ts","handler":"reconcileStoreUpdate","site":"updateAttributionService:d49269706d"}); await AsyncStorage.removeItem(KEY); return; }
     if (!receipt?.update || !Number.isFinite(receipt.clickedAt) || Date.now() - receipt.clickedAt > WINDOW || receipt.clickedAt > Date.now() || receipt.reported) {
       await AsyncStorage.removeItem(KEY); return;
     }
@@ -80,6 +86,7 @@ export async function reconcileStoreUpdate(userId: string | null): Promise<void>
       attribution: 'new_binary_after_store_open',
     });
     await AsyncStorage.removeItem(KEY);
-  } catch { /* Retry after a storage failure. Telemetry cannot block launch. */ }
+  } catch (caughtError04411859e0) {
+    observeCaughtError(caughtError04411859e0, {"source":"src/services/updateAttributionService.ts","handler":"reconcileStoreUpdate","site":"updateAttributionService:04411859e0"}); /* Retry after a storage failure. Telemetry cannot block launch. */ }
   finally { reconciling = false; }
 }

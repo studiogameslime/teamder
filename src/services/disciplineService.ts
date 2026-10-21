@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // disciplineService — issue / revoke yellow & red cards.
 //
 // Phase 4 rules (auto-issued from "I'm late"):
@@ -110,6 +111,7 @@ export const disciplineService = {
         });
         return event;
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/disciplineService.ts","handler":"issueCard","site":"disciplineService:7f147008c0"});
         logError('issueCard', err, {
           userId: input.userId,
           type: input.type,
@@ -164,6 +166,7 @@ export const disciplineService = {
       });
       return true;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/disciplineService.ts","handler":"revokeCard","site":"disciplineService:b8eb674a79"});
       logError('revokeCard', err, { userId, eventId });
       if (__DEV__) {
         // eslint-disable-next-line no-console
@@ -249,6 +252,7 @@ export const disciplineService = {
               (d) => ({ ...d.data(), matches: [] } as Game),
             );
           } catch (err) {
+    observeCaughtError(err, {"source":"src/services/disciplineService.ts","handler":"getPlayerDisciplineSnapshot","site":"disciplineService:cbebd803ff"});
             logError('getPlayerDisciplineSnapshot', err, { userId });
             if (__DEV__) {
               console.warn(
@@ -381,7 +385,8 @@ async function applyMock(
   let cur: User;
   try {
     cur = JSON.parse(json) as User;
-  } catch {
+  } catch (caughtErrora74791b4a0) {
+    observeCaughtError(caughtErrora74791b4a0, {"source":"src/services/disciplineService.ts","handler":"applyMock","site":"disciplineService:a74791b4a0"});
     return;
   }
   // Mock-mode storage holds only the auth user — cross-user writes

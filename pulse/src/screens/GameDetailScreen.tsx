@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -25,7 +26,8 @@ function RosterEntry({player:p,data,onUser}:{player:RoundPlayer;data:RoundDetail
 export function GameDetailScreen(){
  const route=useRoute<any>();const nav=useNavigation<any>();const id=route.params?.gameId as string;
  const [data,setData]=useState<RoundDetails|null>(null);const [busy,setBusy]=useState(true);const [failed,setFailed]=useState(false);const [retry,setRetry]=useState(0);const [tab,setTab]=useState('overview');
- useEffect(()=>{let alive=true;setBusy(true);setFailed(false);fetchRoundDetails(id,retry>0).then(result=>{if(alive)setData(result)}).catch(()=>{if(alive)setFailed(true)}).finally(()=>{if(alive)setBusy(false)});return()=>{alive=false}},[id,retry]);
+ useEffect(()=>{let alive=true;setBusy(true);setFailed(false);fetchRoundDetails(id,retry>0).then(result=>{if(alive)setData(result)}).catch((caughtError744827c0a0: unknown) =>{
+    observeCaughtError(caughtError744827c0a0, {"source":"pulse/src/screens/GameDetailScreen.tsx","handler":"GameDetailScreen","site":"GameDetailScreen:744827c0a0"});if(alive)setFailed(true)}).finally(()=>{if(alive)setBusy(false)});return()=>{alive=false}},[id,retry]);
  const openUser=(userId:string)=>nav.getParent()?.navigate('Users',{screen:'UserDetail',params:{userId}});
  const names=new Map<string,string>(data?.players.flatMap(p=>p.guest?[[p.id,p.name],[p.id.startsWith('guest:')?p.id:`guest:${p.id}`,p.name]] as [string,string][]:[[p.id,p.name]]));
  return <Screen title="פרטי מחזור" onBack={()=>nav.goBack()} refreshControl={<RefreshControl refreshing={busy && !!data} onRefresh={()=>setRetry(n=>n+1)} tintColor={colors.primary}/>}>

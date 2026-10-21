@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // The evenings waiting on an admin's word, and the one call that answers.
 //
 // An evening the sweep closed with no trace of play is 'unverified': finished,
@@ -54,6 +55,7 @@ export const eveningVerifyService = {
       await httpsCallable(functions, 'setEveningPlayed')({ gameId, played, ...(occurredAt ? { occurredAt } : {}) });
       return true;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/eveningVerifyService.ts","handler":"setPlayed","site":"eveningVerifyService:1abf80c00c"});
       logError('setEveningPlayed', err, { gameId, played });
       return false;
     }

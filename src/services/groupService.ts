@@ -1,3 +1,5 @@
+import { observedListener, observeCaughtError } from '../utils/errorObservation';
+
 import { hydrateClubAdminRatings } from './clubAdminRatings';
 import { assertCreationOwner } from './creationOwner';
 import { readPlayerIdentities } from './publicPlayerService';
@@ -146,6 +148,7 @@ export const groupService = {
     try {
       snap = await getDocs(q);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"listForUser","site":"groupService:23aec4203c"});
       logError('listForUser', err, { userId });
       if (__DEV__) console.warn('[groupService] listForUser failed', err);
       throw err;
@@ -200,8 +203,9 @@ export const groupService = {
         const current = ++revision;
         void Promise.all(snap.docs.map(d => d.data()).filter(g => g.isPersonal !== true).map(hydrateClubAdminRatings))
           .then(groups => { if (active && isActive() && current === revision) onChange(groups); })
-          .catch(error => { if (active && isActive() && current === revision) reportError(error); });
-      }, error => { if (active && isActive()) reportError(error); });
+          .catch(error => {
+    observeCaughtError(error, {"source":"src/services/groupService.ts","handler":"subscribeForUser","site":"groupService:3881468194"}); if (active && isActive() && current === revision) reportError(error); });
+      }, observedListener(error => { if (active && isActive()) reportError(error); }, {"source":"src/services/groupService.ts","handler":"subscribeForUser","site":"groupService.ts:snapshot:200"}));
       return () => { active = false; ++revision; unsubscribe(); };
     }, reportError);
 
@@ -224,6 +228,7 @@ export const groupService = {
     try {
       snap = await getDocs(q);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"listPendingForUser","site":"groupService:e61871a687"});
       logError('listPendingForUser', err, { userId });
       if (__DEV__) console.warn('[groupService] listPendingForUser failed', err);
       throw err;
@@ -237,6 +242,7 @@ export const groupService = {
       const snap = await (options?.fromServer ? getDocFromServer(docs.group(groupId)) : getDoc(docs.group(groupId)));
       return snap.exists() ? await hydrateClubAdminRatings(snap.data()) : null;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"get","site":"groupService:c8b2b03b48"});
       // A DELETED club reads back as `permission-denied`, not "not found":
       // `allow get` is a membership test, and on a missing document there is
       // no `resource.data` to test, so the rule refuses. Same answer arrives
@@ -291,6 +297,7 @@ export const groupService = {
         ),
       ]);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"findSharedCommunities","site":"groupService:27b8f897ad"});
       logError('findSharedCommunities', err, { uidA, uidB });
       if (__DEV__) {
         console.warn('[groupService] findSharedCommunities failed', err);
@@ -351,6 +358,7 @@ export const groupService = {
     try {
       snap = await getDocs(q);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"searchGroups","site":"groupService:caccfc9d7a"});
       logError('searchGroups', err, { query: norm });
       if (__DEV__) console.warn('[groupService] searchGroups failed', err);
       throw err;
@@ -518,6 +526,7 @@ export const groupService = {
         throw new Error('createGroupCallable: no groupId returned');
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"createGroup","site":"groupService:e5834c8903"});
       // Re-throw with the Firebase error code preserved so the UI can
       // distinguish rate-limit (`resource-exhausted`) from validation
       // (`invalid-argument`) from auth (`unauthenticated`).
@@ -558,6 +567,7 @@ export const groupService = {
       await storage.setCurrentGroupId(g.id);
       return g;
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/groupService.ts","handler":"createGroup","site":"groupService:f23768f1af"});
       if (isStaleSession(e)) throw e;
       logError('createGroup', e, { groupId, phase: 'postCreateRead' });
       throw e;
@@ -589,6 +599,7 @@ export const groupService = {
     try {
       res = (await fn({})) as { data?: { groupId?: string } };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"ensurePersonalGroupId","site":"groupService:a11fdf3bfc"});
       logError('ensurePersonalGroup', err, {});
       if (__DEV__) console.warn('[groupService] ensurePersonalGroup failed', err);
       throw err;
@@ -640,6 +651,7 @@ export const groupService = {
         ...(input.fromGameId ? { fromGameId: input.fromGameId } : {}),
       })) as { data?: { ok?: boolean; invited?: number } };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"promoteOrphanGroup","site":"groupService:9d0c256521"});
       logError('promoteOrphanGroup', err, {
         groupId: input.groupId,
         inviteCount: input.inviteUserIds.length,
@@ -686,6 +698,7 @@ export const groupService = {
         data?: { invited?: number };
       };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"inviteFriendsToGroup","site":"groupService:9fb3b694bb"});
       logError('inviteFriendsToGroup', err, {
         groupId,
         friendCount: friendIds.length,
@@ -725,6 +738,7 @@ export const groupService = {
       const snap = await withAuthRaceRetry(() => getDoc(docs.groupPublic(groupId)));
       return snap.exists() ? snap.data() : null;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"getPublic","site":"groupService:84a848cab6"});
       logError('getPublicGroup', err, { groupId });
       if (__DEV__) console.warn('[groupService] getPublic failed', err);
       throw err;
@@ -739,6 +753,7 @@ export const groupService = {
     try {
       snap = await getDocs(col.groupsPublic());
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"listPublicGroups","site":"groupService:e391aa91c1"});
       logError('listPublicGroups', err, {});
       if (__DEV__) console.warn('[groupService] listPublicGroups failed', err);
       throw err;
@@ -789,6 +804,7 @@ export const groupService = {
     try {
       nameSnap = await getDocs(q);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"searchPublicGroups","site":"groupService:a4656b5c90"});
       logError('searchPublicGroups', err, { query: norm });
       if (__DEV__) console.warn('[groupService] searchPublicGroups failed', err);
       throw err;
@@ -1021,6 +1037,7 @@ export const groupService = {
         });
       });
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/groupService.ts","handler":"approveMember","site":"groupService:8f5c4f446b"});
       const code = (e as { code?: string; message?: string })?.code
         ?? (e as Error)?.message;
       if (
@@ -1061,6 +1078,7 @@ export const groupService = {
       );
       await batch.commit();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"approveMember","site":"groupService:a75af589f5"});
       logError('approveMember', err, { groupId, userId, phase: 'auditTrail' });
       if (__DEV__) {
         console.warn('[groupService] approveMember audit-trail flip failed', err);
@@ -1079,6 +1097,7 @@ export const groupService = {
       });
       await pubBatch.commit();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"approveMember","site":"groupService:ede42bd4f1"});
       logError('approveMember', err, { groupId, phase: 'mirrorSync' });
       if (__DEV__) console.warn('[groupService] failed to sync public memberCount', err);
     }
@@ -1125,6 +1144,7 @@ export const groupService = {
         );
       return r && r.decidedBy ? { by: r.decidedBy, at: r.decidedAt ?? 0 } : null;
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/groupService.ts","handler":"getMemberApprover","site":"groupService:fc1a61bd38"});
       if (__DEV__) console.warn('[getMemberApprover] failed', e);
       return null;
     }
@@ -1167,6 +1187,7 @@ export const groupService = {
       });
       await batch.commit();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/groupService.ts","handler":"rejectMember","site":"groupService:89781421fe"});
       logError('rejectMember', e, { groupId, userId });
       throw e;
     }
@@ -1371,6 +1392,7 @@ export const groupService = {
     try {
       await batch.commit();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"updateGroupMetadata","site":"groupService:6be419a45d"});
       logError('updateGroupMetadata', err, {
         groupId,
         callerId,
@@ -1426,6 +1448,7 @@ export const groupService = {
         updatedAt: Date.now(),
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"promoteToCoach","site":"groupService:d00910508f"});
       logError('promoteToCoach', err, { groupId, callerId, targetUserId });
       if (__DEV__) console.warn('[groupService] promoteToCoach failed', err);
       throw err;
@@ -1469,6 +1492,7 @@ export const groupService = {
         updatedAt: Date.now(),
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"demoteCoach","site":"groupService:31d1d8459c"});
       logError('demoteCoach', err, { groupId, callerId, targetUserId });
       if (__DEV__) console.warn('[groupService] demoteCoach failed', err);
       throw err;
@@ -1519,6 +1543,7 @@ export const groupService = {
     try {
       snap = await getDoc(ref);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/groupService.ts","handler":"leaveGroup","site":"groupService:b80cdf90c6"});
       logError('leaveGroup', e, { groupId, userId, phase: 'preRead' });
       throw e;
     }
@@ -1551,6 +1576,7 @@ export const groupService = {
           updatedAt: Date.now(),
         });
       } catch (e) {
+    observeCaughtError(e, {"source":"src/services/groupService.ts","handler":"leaveGroup","site":"groupService:e3133db52d"});
         logError('leaveGroup', e, { groupId, userId, phase: 'creatorHandoff' });
         throw e;
       }
@@ -1578,6 +1604,7 @@ export const groupService = {
         updatedAt: Date.now(),
       });
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/groupService.ts","handler":"leaveGroup","site":"groupService:e5352c2031"});
       logError('leaveGroup', e, { groupId, userId });
       throw e;
     }
@@ -1612,6 +1639,7 @@ export const groupService = {
             decidedBy: userId,
           });
         } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"leaveGroup","site":"groupService:b4787611d3"});
           logError('leaveGroup', err, { groupId, phase: 'joinRequestSweep' });
           if (__DEV__)
             console.warn(
@@ -1622,6 +1650,7 @@ export const groupService = {
         }
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"leaveGroup","site":"groupService:49b9404923"});
       logError('leaveGroup', err, { groupId, phase: 'joinRequestSweep' });
       if (__DEV__)
         console.warn(
@@ -1688,6 +1717,7 @@ export const groupService = {
     try {
       snap = await getDoc(ref);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/groupService.ts","handler":"removeMember","site":"groupService:eff61660af"});
       logError('removeMember', e, { groupId, targetUserId });
       throw e;
     }
@@ -1707,6 +1737,7 @@ export const groupService = {
         updatedAt: Date.now(),
       });
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/groupService.ts","handler":"removeMember","site":"groupService:f45b7b461d"});
       logError('removeMember', e, { groupId, targetUserId });
       throw e;
     }
@@ -1743,6 +1774,7 @@ export const groupService = {
             decidedBy: callerId,
           });
         } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"removeMember","site":"groupService:bffae8c4ac"});
           logError('removeMember', err, { groupId, phase: 'joinRequestSweep' });
           if (__DEV__) {
             console.warn(
@@ -1754,6 +1786,7 @@ export const groupService = {
         }
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"removeMember","site":"groupService:3ee66063ad"});
       logError('removeMember', err, { groupId, phase: 'joinRequestSweep' });
       if (__DEV__) {
         console.warn('[groupService] removeMember: join-request sweep failed', err);
@@ -1833,6 +1866,7 @@ export const groupService = {
         memberRecipients = Array.from(set);
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"deleteGroup","site":"groupService:0e1b72ba51"});
       if ((err as Error)?.message === 'NOT_CREATOR') throw err;
       logError('deleteGroup', err, { groupId, phase: 'preflight' });
       if (__DEV__)
@@ -1867,6 +1901,7 @@ export const groupService = {
         try {
           await deleteDoc(docs.game(game.id));
         } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"deleteGroup","site":"groupService:7e41c991b1"});
           childFailed = true;
           logError('deleteGroup', err, { groupId, phase: 'gameCascade' });
           if (__DEV__)
@@ -1874,6 +1909,7 @@ export const groupService = {
         }
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"deleteGroup","site":"groupService:32568eef9f"});
       childFailed = true;
       logError('deleteGroup', err, { groupId, phase: 'gameCascade' });
       if (__DEV__) console.warn('[groupService] game cascade lookup failed', err);
@@ -1896,6 +1932,7 @@ export const groupService = {
             decidedBy: callerId,
           });
         } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"deleteGroup","site":"groupService:bb25e9bfc1"});
           childFailed = true;
           logError('deleteGroup', err, { groupId, phase: 'joinRequestCleanup' });
           if (__DEV__)
@@ -1903,6 +1940,7 @@ export const groupService = {
         }
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"deleteGroup","site":"groupService:5d474b5612"});
       childFailed = true;
       logError('deleteGroup', err, { groupId, phase: 'joinRequestCleanup' });
       if (__DEV__) console.warn('[groupService] joinRequest cleanup failed', err);
@@ -1926,6 +1964,7 @@ export const groupService = {
         await deleteDoc(docs.groupPublic(groupId));
         publicDeleted = true;
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"deleteGroup","site":"groupService:4ee03b4d4f"});
         logError('deleteGroup', err, { groupId, phase: 'publicMirror' });
         if (__DEV__)
           console.warn(
@@ -2003,6 +2042,7 @@ export const groupService = {
       return readPlayerIdentities(ids);
 
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"hydratePublicUsers","site":"groupService:0efd386896"});
       // Transport failure is not a successful empty roster. The caller may
       // retain its previous names or offer retry.
       logError('hydratePublicUsers', err, { userCount: ids.length, isAnon });
@@ -2156,6 +2196,7 @@ async function submitJoinByPublic(
     serverStatus=result.data.status;
     logEvent(AnalyticsEvent.GroupJoined,{groupId,instant:serverStatus==='joined'});
   } catch(error) {
+    observeCaughtError(error, {"source":"src/services/groupService.ts","handler":"submitJoinByPublic","site":"groupService:567eb4a56d"});
     const e=error as {code?:string;message?:string};
     if(e.message?.includes('GROUP_JOIN_REJECTED'))throw new GroupJoinRejectedError();
     if(e.message?.includes('GROUP_FULL'))throw Object.assign(new Error('GROUP_FULL'),{code:'GROUP_FULL'});

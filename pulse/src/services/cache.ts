@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Tiny in-memory TTL cache. The Pulse collections are all small — the read
@@ -30,9 +31,11 @@ export function cached<T>(
   const p = Promise.resolve().then(fn);
   const entry = { at: 0, pending: true, p };
   store.set(key, entry);
-  void p.then(() => { entry.pending = false; entry.at = Date.now(); }, () => {});
+  void p.then(() => { entry.pending = false; entry.at = Date.now(); }, (caughtErrorea2685cb95: unknown) => {
+    observeCaughtError(caughtErrorea2685cb95, {"source":"pulse/src/services/cache.ts","handler":"cached","site":"cache:ea2685cb95"});});
   // Never cache a failure — drop it so the next call retries.
-  p.catch(() => {
+  p.catch((caughtError899b27e576: unknown) => {
+    observeCaughtError(caughtError899b27e576, {"source":"pulse/src/services/cache.ts","handler":"cached","site":"cache:899b27e576"});
     if (store.get(key)?.p === p) store.delete(key);
   });
   return p;
@@ -49,7 +52,8 @@ export function cached<T>(
 /** Store a value for the next cold start. Fire-and-forget; never throws. */
 export function persist(key: string, value: unknown): void {
   void AsyncStorage.setItem(`${DISK_PREFIX}${key}`, JSON.stringify(value)).catch(
-    () => {},
+    (caughtErrorf9f301b237: unknown) => {
+    observeCaughtError(caughtErrorf9f301b237, {"source":"pulse/src/services/cache.ts","handler":"persist","site":"cache:f9f301b237"});},
   );
 }
 
@@ -58,7 +62,8 @@ export async function readPersisted<T>(key: string): Promise<T | null> {
   try {
     const raw = await AsyncStorage.getItem(`${DISK_PREFIX}${key}`);
     return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
+  } catch (caughtError70b86def67) {
+    observeCaughtError(caughtError70b86def67, {"source":"pulse/src/services/cache.ts","handler":"readPersisted","site":"cache:70b86def67"});
     return null;
   }
 }

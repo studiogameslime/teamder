@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // CommunityDetailsPublicScreen — non-member preview of a community.
 //
 // Reads /groupsPublic/{id} ONLY. Never touches /groups/{id} (which is
@@ -105,6 +106,7 @@ export function CommunityDetailsPublicScreen() {
     receivedInvitationsService.listInbox(me.id).then(items => {
       if (active) setInvitation({uid: me.id, groupId, available: hasClubInvitation(items, groupId)});
     }).catch(error => {
+    observeCaughtError(error, {"source":"src/screens/communities/CommunityDetailsPublicScreen.tsx","handler":"CommunityDetailsPublicScreen","site":"CommunityDetailsPublicScreen:3adda5f5d5"});
       if (active) {
         setInvitation({uid: me.id, groupId, available: false});
         logError('communityInvitationLookup', error, {groupId});
@@ -122,12 +124,13 @@ export function CommunityDetailsPublicScreen() {
         groupService.getPublic(groupId),
         gameService
           .getUpcomingPublicGamesForGroup(groupId)
-          .catch(() => [] as Game[]),
+          .catch((caughtError530609f80d: unknown) => { observeCaughtError(caughtError530609f80d, {"source":"src/screens/communities/CommunityDetailsPublicScreen.tsx","handler":"CommunityDetailsPublicScreen","site":"CommunityDetailsPublicScreen:530609f80d"}); return [] as Game[]; }),
       ]);
       if (generation !== loadGeneration.current) return;
       setGroup(g);
       setUpcomingGames(games);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/CommunityDetailsPublicScreen.tsx","handler":"CommunityDetailsPublicScreen","site":"CommunityDetailsPublicScreen:dab39d7a00"});
       if (generation !== loadGeneration.current) return;
       setLoadFailed(true);
       logError('communityPublicReload', err, {
@@ -262,6 +265,7 @@ export function CommunityDetailsPublicScreen() {
         openMemberView();
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/CommunityDetailsPublicScreen.tsx","handler":"handleJoin","site":"CommunityDetailsPublicScreen:b2aa05024c"});
       logEvent(AnalyticsEvent.GroupJoinFailed, {
         groupId: group.id,
         reason:
@@ -313,6 +317,7 @@ export function CommunityDetailsPublicScreen() {
       toast.success(he.toastJoinRequestCancelled);
       if (nav.isFocused()) nav.goBack();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/CommunityDetailsPublicScreen.tsx","handler":"handleCancelRequest","site":"CommunityDetailsPublicScreen:d299dd2cca"});
       logError('cancelJoinGroup', err, {
         screen: 'CommunityDetailsPublicScreen',
         groupId: group.id,

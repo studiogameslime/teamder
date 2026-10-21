@@ -1,3 +1,5 @@
+import { observeCaughtError } from './errorObservation';
+
 import { pulseFetch as fetch } from './adminTransport';
 // Firestore REST shapes are preserved; all requests pass through the
 // authenticated, project-scoped administrative backend.
@@ -270,6 +272,7 @@ export async function patchDoc(
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+  if (!res.ok) observeCaughtError(Object.assign(new Error('Firestore write failed'), {code:`http/${res.status}`}), {source:'pulse/src/services/firestoreRest.ts',handler:'patchDoc',site:'firestoreRest:patchDoc'});
   return res.ok;
 }
 
@@ -283,9 +286,11 @@ export async function createDocOnly(path: string, fields: Record<string, unknown
   });
   if (res.ok) return 'created';
   // Firestore precondition failures use FAILED_PRECONDITION (400), not only 409.
-  const body = await res.json().catch(() => null);
+  const body = await res.json().catch((caughtError3ce871c8e3: unknown) => { observeCaughtError(caughtError3ce871c8e3, {"source":"pulse/src/services/firestoreRest.ts","handler":"createDocOnly","site":"firestoreRest:3ce871c8e3"}); return null; });
   const code = body?.error?.status;
-  return code === 'ALREADY_EXISTS' || code === 'FAILED_PRECONDITION' ? 'conflict' : 'error';
+  if (code === 'ALREADY_EXISTS' || code === 'FAILED_PRECONDITION') return 'conflict';
+  observeCaughtError(Object.assign(new Error('Firestore create failed'), {code:`http/${res.status}`}), {source:'pulse/src/services/firestoreRest.ts',handler:'createDocOnly',site:'firestoreRest:createDocOnly'});
+  return 'error';
 }
 
 // Delete a document by path (needs datastore.user IAM).
@@ -295,6 +300,7 @@ export async function deleteDoc(path: string): Promise<boolean> {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (!res.ok) observeCaughtError(Object.assign(new Error('Firestore delete failed'), {code:`http/${res.status}`}), {source:'pulse/src/services/firestoreRest.ts',handler:'deleteDoc',site:'firestoreRest:deleteDoc'});
   return res.ok;
 }
 
@@ -407,7 +413,7 @@ export async function countCollection(collection: string): Promise<number> {
       },
     }),
   });
-  if (!res.ok) return 0;
+  if (!res.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"pulse/src/services/firestoreRest.ts","handler":"countCollection","site":"firestoreRest.ts:http:411"}); return 0; }
   const json = await res.json();
   // A count() aggregation bills 1 read per up-to-1000 index entries — cheap.
   recordRead(`${collection} (ספירה)`, 1);
@@ -438,7 +444,7 @@ export async function countWhereEquals(
       },
     }),
   });
-  if (!res.ok) return 0;
+  if (!res.ok) { observeCaughtError(Object.assign(new Error('HTTP request failed'), {code: 'http/' + res.status}), {"source":"pulse/src/services/firestoreRest.ts","handler":"countWhereEquals","site":"firestoreRest.ts:http:442"}); return 0; }
   const json = await res.json();
   recordRead(`${collection} (ספירה)`, 1);
   const v = json?.[0]?.result?.aggregateFields?.c;

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // PromoteOrphanScreen — post-orphan-game "create a community from the
 // people you just played with" flow. Reached two ways:
 //
@@ -109,6 +110,7 @@ export function PromoteOrphanScreen() {
           setIncludedIds(init);
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/PromoteOrphanScreen.tsx","handler":"PromoteOrphanScreen","site":"PromoteOrphanScreen:b52eb7558b"});
         logError('promoteOrphanLoad', err, {
           screen: 'PromoteOrphanScreen',
           gameId,
@@ -184,6 +186,7 @@ export function PromoteOrphanScreen() {
         ],
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/PromoteOrphanScreen.tsx","handler":"submit","site":"PromoteOrphanScreen:724d1019a4"});
       logError('promoteOrphanGroup', err, {
         screen: 'PromoteOrphanScreen',
         groupId,

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RtlTextInput as TextInput } from './RtlTextInput';
@@ -13,7 +14,8 @@ export function SupportOutreachPanel({ onOpenThread }: { onOpenThread: (userId: 
   const load = useCallback(async () => {
     setBusy(true); setError('');
     try { const [cfg, rows] = await Promise.all([getOutreachSettings(), getOutreachJobs()]); setSettings(cfg); setJobs(rows); }
-    catch { setError('לא הצלחנו לטעון את הגדרות הליווי. נסו שוב.'); }
+    catch (caughtErrore30af17db3) {
+    observeCaughtError(caughtErrore30af17db3, {"source":"pulse/src/components/SupportOutreachPanel.tsx","handler":"SupportOutreachPanel","site":"SupportOutreachPanel:e30af17db3"}); setError('לא הצלחנו לטעון את הגדרות הליווי. נסו שוב.'); }
     finally { setBusy(false); }
   }, []);
   useEffect(() => { if (expanded) void load(); }, [expanded, load]);
@@ -21,7 +23,8 @@ export function SupportOutreachPanel({ onOpenThread }: { onOpenThread: (userId: 
     if (!settings || busy) return;
     setBusy(true); setError(''); setSaved(false);
     try { await saveOutreachSettings(settings); setSaved(true); }
-    catch (e) { setError(e instanceof Error ? e.message : 'השמירה נכשלה'); }
+    catch (e) {
+    observeCaughtError(e, {"source":"pulse/src/components/SupportOutreachPanel.tsx","handler":"save","site":"SupportOutreachPanel:c44687378b"}); setError(e instanceof Error ? e.message : 'השמירה נכשלה'); }
     finally { setBusy(false); }
   };
   const field = (key: keyof OutreachSettings, value: string) => { if (!settings) return; setSaved(false); setSettings({ ...settings, [key]: ['template', 'timeZone'].includes(key) ? value : value.trim() ? Number(value.replace(',', '.')) : NaN }); };

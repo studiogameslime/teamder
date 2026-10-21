@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // AreaDemandCard — "ביקוש לכדורגל באזור שלך", shown on the matches tab when
 // the open-games list is thin.
 //
@@ -95,7 +96,8 @@ export function AreaDemandCard({
         // Only fail into nothing if we have NEVER had data — a transient
         // error on a refetch used to hide a card that was already showing.
         // Via a ref, because this callback has empty deps on purpose.
-        .catch(() => {
+        .catch((caughtError380bfe8235: unknown) => {
+    observeCaughtError(caughtError380bfe8235, {"source":"src/components/games/AreaDemandCard.tsx","handler":"AreaDemandCard","site":"AreaDemandCard:380bfe8235"});
           if (alive && !dataRef.current) setFailed(true);
         });
       return () => {

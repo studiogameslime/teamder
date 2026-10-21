@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Shared NavigationContainer ref used by non-React code (deep-link
 // handler, push-notification taps) that needs to navigate without
 // being mounted inside the React tree. App.tsx wires this same
@@ -35,7 +36,8 @@ function tabsMounted(): boolean {
       | { routeNames?: readonly string[] }
       | undefined;
     return !!state?.routeNames?.includes('GameTab');
-  } catch {
+  } catch (caughtErrorad2ae17a4d) {
+    observeCaughtError(caughtErrorad2ae17a4d, {"source":"src/navigation/navigationRef.ts","handler":"tabsMounted","site":"navigationRef:ad2ae17a4d"});
     return false;
   }
 }
@@ -54,7 +56,8 @@ export function navigateCampaign(action: {
     // Only allow safe web / own-scheme URLs — never javascript:, file:, etc.
     const v = (action.value ?? '').trim();
     if (/^(https?:\/\/|teamder:\/\/|footy:\/\/)/i.test(v)) {
-      void Linking.openURL(v).catch(() => {});
+      void Linking.openURL(v).catch((caughtError00a11d2884: unknown) => {
+    observeCaughtError(caughtError00a11d2884, {"source":"src/navigation/navigationRef.ts","handler":"navigateCampaign","site":"navigationRef:00a11d2884"});});
     }
     return true;
   }
@@ -231,7 +234,8 @@ export function currentRouteName(): string | null {
   if (!navigationRef.isReady()) return null;
   try {
     return navigationRef.getCurrentRoute()?.name ?? null;
-  } catch {
+  } catch (caughtErrora861320492) {
+    observeCaughtError(caughtErrora861320492, {"source":"src/navigation/navigationRef.ts","handler":"currentRouteName","site":"navigationRef:a861320492"});
     return null;
   }
 }

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // MatchRoundsScreen — "היסטוריית המשחקים" for a finished game.
 //
 // Reached from the finished-game MatchDetails ("היסטוריית המשחקים" CTA).
@@ -232,6 +233,7 @@ export function MatchRoundsScreen(props: MatchRoundsScreenProps = {}) {
       const realIds = [...ids].filter((id) => !isGuestId(id));
       if (realIds.length) void hydratePlayers(realIds);
     })().catch(error => {
+    observeCaughtError(error, {"source":"src/screens/games/MatchRoundsScreen.tsx","handler":"MatchRoundsScreen","site":"MatchRoundsScreen:918ead89fe"});
       if (!current()) return;
       // Keep this context's previous snapshot on a refresh failure. An initial
       // failure has no snapshot and renders the error instead of an empty list.

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // homeConfigService — Pulse-controlled master switches for home-screen surfaces,
 // stored in Firestore under appConfig/features. The Teamder app reads them; the
 // Pulse dashboard flips them (no app release needed). Contract mirrors
@@ -19,7 +20,8 @@ export async function getAvailabilityCardEnabled(): Promise<boolean> {
     if (!snap.exists()) return true;
     const data = snap.data() as { availabilityCardEnabled?: unknown };
     return data.availabilityCardEnabled !== false;
-  } catch {
+  } catch (caughtErrorf205a50faf) {
+    observeCaughtError(caughtErrorf205a50faf, {"source":"src/services/homeConfigService.ts","handler":"getAvailabilityCardEnabled","site":"homeConfigService:f205a50faf"});
     return true; // fail-open — a config read hiccup must never blank the home
   }
 }

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // What we can honestly say about the person who invited you.
 //
 // ─── The privacy shape of this file ──────────────────────────────────────
@@ -95,6 +96,7 @@ export async function resolveInviter(
     }
     return { inviter: found };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/personalInvite.ts","handler":"resolveInviter","site":"personalInvite:49c928a7f2"});
     logError('resolveInviter', err, {});
     return { inviter: null, reason: 'read_failed' };
   }
@@ -119,6 +121,7 @@ export async function resolveInviteActivity(
     const open = await gameService.getOpenGames(viewerId, []);
     games = open.filter((g) => isPlaying(g, invitedBy)).slice(0, MAX_GAMES);
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/personalInvite.ts","handler":"resolveInviteActivity","site":"personalInvite:57659b45a7"});
     logError('resolveInviteGames', err, {});
     throw err;
   }
@@ -134,6 +137,7 @@ export async function resolveInviteActivity(
   try {
     const found = await Promise.all(
       groupIds.map((id) => groupService.getPublic(id).catch((err) => {
+    observeCaughtError(err, {"source":"src/services/personalInvite.ts","handler":"resolveInviteActivity","site":"personalInvite:6e76fb3eab"});
         clubsUnavailable = true;
         logError('resolveInviteClubs', err, { groupId: id });
         return null;
@@ -141,6 +145,7 @@ export async function resolveInviteActivity(
     );
     clubs = found.filter((g): g is GroupPublic => !!g);
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/personalInvite.ts","handler":"resolveInviteActivity","site":"personalInvite:4db38a1d2e"});
     // Games survive a club failure. They are separate sections on the screen
     // and there is no reason for one to take the other down.
     logError('resolveInviteClubs', err, {});

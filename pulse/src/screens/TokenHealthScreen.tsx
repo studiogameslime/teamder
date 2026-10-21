@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 // TokenHealthScreen — push reachability. Who can actually receive a push, who
 // has no token, and who has a token that keeps failing (stale). The operational
 // view behind the low FCM delivery rate.
@@ -37,7 +38,7 @@ export function TokenHealthScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (force = false) => {
-    setData(await fetchTokenHealth(force).catch(() => null));
+    setData(await fetchTokenHealth(force).catch((caughtError7dee2a19f2: unknown) => { observeCaughtError(caughtError7dee2a19f2, {"source":"pulse/src/screens/TokenHealthScreen.tsx","handler":"TokenHealthScreen","site":"TokenHealthScreen:7dee2a19f2"}); return null; }));
     setLoading(false);
     setRefreshing(false);
   }, []);

@@ -17,12 +17,36 @@ _token = None
 _expires = 0
 
 
+def load_credentials():
+    """Read personal runtime JSON in memory; retain local-file compatibility."""
+    if 'PULSE_CREDENTIALS_JSON' in os.environ:
+        # An explicitly configured personal value wins. Never silently fall
+        # back to a different local identity when that value is invalid.
+        raw = os.environ['PULSE_CREDENTIALS_JSON']
+    else:
+        key_path = os.environ.get('PULSE_CREDENTIALS', str(ROOT / 'credentials/gplay-service-account.json'))
+        raw = pathlib.Path(key_path).read_text(encoding='utf-8')
+    try:
+        key = json.loads(raw)
+    except (ValueError, TypeError):
+        raise ValueError('Invalid Pulse credential JSON') from None
+    if not isinstance(key, dict) or any(
+        not isinstance(key.get(field), str) or not key[field].strip()
+        for field in ('client_email', 'private_key')
+    ):
+        raise ValueError('Missing Pulse credential fields')
+    return key
+
+
+# Preserve the environment setup entry point.
+credentials = load_credentials
+
+
 def headers():
     global _token, _expires
     if time.time() >= _expires:
+        key = load_credentials()
         import jwt
-        key_path = os.environ.get('PULSE_CREDENTIALS', str(ROOT / 'credentials/gplay-service-account.json'))
-        key = json.loads(pathlib.Path(key_path).read_text(encoding='utf-8'))
         now = int(time.time())
         assertion = jwt.encode({'iss': key['client_email'], 'scope': 'https://www.googleapis.com/auth/datastore',
                                 'aud': 'https://oauth2.googleapis.com/token', 'iat': now, 'exp': now + 3600},

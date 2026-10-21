@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import { pulseFetch as fetch } from './adminTransport';
 // Free-tier usage monitor. Pulls real usage from Google Cloud Monitoring
 // (Firestore reads/writes/deletes, Cloud Functions invocations) and Cloud
@@ -117,7 +118,8 @@ async function metricSum(
       }
     }
     return sum;
-  } catch {
+  } catch (caughtError718c756796) {
+    observeCaughtError(caughtError718c756796, {"source":"pulse/src/services/quota.ts","handler":"metricSum","site":"quota:718c756796"});
     return null;
   }
 }
@@ -154,7 +156,8 @@ async function metricByType(
     return [...byType.entries()]
       .map(([type, value]) => ({ type, value }))
       .sort((a, b) => b.value - a.value);
-  } catch {
+  } catch (caughtErrora67b9d63fe) {
+    observeCaughtError(caughtErrora67b9d63fe, {"source":"pulse/src/services/quota.ts","handler":"metricByType","site":"quota:a67b9d63fe"});
     return null;
   }
 }
@@ -198,7 +201,8 @@ async function schedulerJobs(token: string): Promise<{ count: number; names: str
         any = true;
         for (const j of json.jobs) names.push(String(j.name).split('/').pop() ?? '');
       }
-    } catch {
+    } catch (caughtError5dee9a5b38) {
+    observeCaughtError(caughtError5dee9a5b38, {"source":"pulse/src/services/quota.ts","handler":"schedulerJobs","site":"quota:5dee9a5b38"});
       // ignore a single location failing
     }
   }
@@ -221,7 +225,7 @@ export async function fetchQuota(): Promise<QuotaReport> {
     metricSum(token, 'firestore.googleapis.com/document/delete_count', startToday, now),
     metricSum(token, 'cloudfunctions.googleapis.com/function/execution_count', startMonth, now),
     schedulerJobs(token),
-    getReadMeter().catch(() => null),
+    getReadMeter().catch((caughtErrord105046ed1: unknown) => { observeCaughtError(caughtErrord105046ed1, {"source":"pulse/src/services/quota.ts","handler":"fetchQuota","site":"quota:d105046ed1"}); return null; }),
   ]);
 
   const reads = readTypes ? readTypes.reduce((s, t) => s + t.value, 0) : null;
@@ -308,7 +312,8 @@ export async function notifyQuotaAlerts(report: QuotaReport): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(ALERT_KEY);
     if (raw) state = JSON.parse(raw);
-  } catch {
+  } catch (caughtErrorfe579cd49b) {
+    observeCaughtError(caughtErrorfe579cd49b, {"source":"pulse/src/services/quota.ts","handler":"notifyQuotaAlerts","site":"quota:fe579cd49b"});
     /* ignore */
   }
 
@@ -334,7 +339,8 @@ export async function notifyQuotaAlerts(report: QuotaReport): Promise<void> {
   if (changed) {
     try {
       await AsyncStorage.setItem(ALERT_KEY, JSON.stringify(state));
-    } catch {
+    } catch (caughtErrora45a31db37) {
+    observeCaughtError(caughtErrora45a31db37, {"source":"pulse/src/services/quota.ts","handler":"notifyQuotaAlerts","site":"quota:a45a31db37"});
       /* ignore */
     }
   }
@@ -345,7 +351,8 @@ export async function notifyQuotaAlerts(report: QuotaReport): Promise<void> {
 export async function checkAndNotifyQuota(): Promise<void> {
   try {
     await notifyQuotaAlerts(await fetchQuota());
-  } catch {
+  } catch (caughtErrorc8d8faa4e7) {
+    observeCaughtError(caughtErrorc8d8faa4e7, {"source":"pulse/src/services/quota.ts","handler":"checkAndNotifyQuota","site":"quota:c8d8faa4e7"});
     /* ignore — never block app open on this */
   }
 }

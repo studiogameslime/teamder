@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // FillerInterestsSection — admin-only review surface for the
 // cross-community filler matching flow.
 //
@@ -100,8 +101,8 @@ export function FillerInterestsSection({
       const hydrated: CandidateRow[] = await Promise.all(
         uids.map(async (uid) => {
           const [user, trust] = await Promise.all([
-            userService.getUserById(uid).catch(() => null),
-            trustService.getSummary(uid).catch(() => null),
+            userService.getUserById(uid).catch((caughtErrord1f3b79ed5: unknown) => { observeCaughtError(caughtErrord1f3b79ed5, {"source":"src/components/match/FillerInterestsSection.tsx","handler":"FillerInterestsSection","site":"FillerInterestsSection:d1f3b79ed5"}); return null; }),
+            trustService.getSummary(uid).catch((caughtError78fcfa31b0: unknown) => { observeCaughtError(caughtError78fcfa31b0, {"source":"src/components/match/FillerInterestsSection.tsx","handler":"FillerInterestsSection","site":"FillerInterestsSection:78fcfa31b0"}); return null; }),
           ]);
           return { uid, user, trust };
         }),
@@ -114,6 +115,7 @@ export function FillerInterestsSection({
       });
       setRows(hydrated);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/match/FillerInterestsSection.tsx","handler":"FillerInterestsSection","site":"FillerInterestsSection:7751f8cec2"});
       logError('loadFillerInterests', err, {
         screen: 'FillerInterestsSection',
         gameId,
@@ -162,6 +164,7 @@ export function FillerInterestsSection({
       toast.success(he.fillerApproveSuccess);
       await load();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/components/match/FillerInterestsSection.tsx","handler":"handleApprove","site":"FillerInterestsSection:21dcb6c49d"});
       const e = err as { code?: string; message?: string };
       const msg = (e.code ?? '').replace(/^functions\//, '');
       // `failed-precondition` means the game closed or filled while the admin
@@ -205,6 +208,7 @@ export function FillerInterestsSection({
               await fn({ gameId, candidateUid });
               await load();
             } catch (err) {
+    observeCaughtError(err, {"source":"src/components/match/FillerInterestsSection.tsx","handler":"onPress","site":"FillerInterestsSection:5a89bd6f91"});
               logError('declineFiller', err, {
                 screen: 'FillerInterestsSection',
                 gameId,

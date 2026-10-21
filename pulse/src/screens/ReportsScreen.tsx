@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import { useNavigation } from '@react-navigation/native';
 // ReportsBody — "דיווחים ממשתמשים" segment of the unified Dev Inbox. Every
 // user-submitted bug report / suggestion (the `feedback` collection) with text,
@@ -66,7 +67,7 @@ export function ReportsBody() {
   const saving = useRef(new Set<string>());
 
   const load = useCallback(async () => {
-    const rows = await listReports().catch(() => [] as ReportItem[]);
+    const rows = await listReports().catch((caughtError4a1ecedb8b: unknown) => { observeCaughtError(caughtError4a1ecedb8b, {"source":"pulse/src/screens/ReportsScreen.tsx","handler":"ReportsBody","site":"ReportsScreen:4a1ecedb8b"}); return [] as ReportItem[]; });
     setItems(rows);
     setLoading(false);
     setRefreshing(false);
@@ -85,7 +86,8 @@ export function ReportsBody() {
     try {
       if (!await write()) throw new Error('not saved');
       apply();
-    } catch { Alert.alert('השינוי לא נשמר', 'הדיווח נשאר במצבו הקודם. נסו שוב.'); }
+    } catch (caughtError83832a5633) {
+    observeCaughtError(caughtError83832a5633, {"source":"pulse/src/screens/ReportsScreen.tsx","handler":"saveChange","site":"ReportsScreen:83832a5633"}); Alert.alert('השינוי לא נשמר', 'הדיווח נשאר במצבו הקודם. נסו שוב.'); }
     finally { saving.current.delete(id); }
   };
   const cycleStatus = async (it: ReportItem) => {

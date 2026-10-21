@@ -1,6 +1,6 @@
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onCall, HttpsError } from './observedFunctions';
 
 export function cleanAdminRatings(value: unknown): Record<string, number> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};

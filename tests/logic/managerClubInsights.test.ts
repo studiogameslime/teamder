@@ -1,4 +1,4 @@
-import { clubBalance, clubRoundNumbers, managerClubInsights, managerNeedsAttention } from '../../src/utils/managerClubInsights';
+import { balancePercentages, clubBalance, clubRoundNumbers, managerClubInsights, managerNeedsAttention } from '../../src/utils/managerClubInsights';
 import type { Game,Group } from '../../src/types';
 const now=2_000_000_000_000,day=86400000;
 const group={id:'g',adminIds:['admin'],playerIds:['a','b'],joinedAt:{a:now-100*day,b:now-8*day}} as unknown as Group;
@@ -75,4 +75,16 @@ it('attention separates topic count from items and filters club, date, membershi
  expect(view.pending).toEqual(['x','y']);expect(view.unverified.map(r=>r.id)).toEqual(['u']);expect(view.unrated).toEqual(['a','b']);expect(view.topics).toBe(3);
  expect(managerNeedsAttention({...g,internalRating:false},[],now).unrated).toEqual([]);
  expect(managerNeedsAttention({...g,pendingPlayerIds:[],adminRatings:{admin:1,a:2,b:5}},[],now).topics).toBe(0);
+});
+
+it('allocates the missing rounded percent without changing game counts', () => {
+ expect(balancePercentages([27,40,25])).toEqual([29,44,27]);
+ expect(balancePercentages([1,1,1])).toEqual([34,33,33]);
+ expect(balancePercentages([0,0,0])).toEqual([0,0,0]);
+ expect(balancePercentages([0,1,0])).toEqual([0,100,0]);
+ for (let draws=0;draws<15;draws++) for (let one=0;one<15;one++) for (let wide=0;wide<15;wide++) {
+  const counts=[draws,one,wide], actual=balancePercentages(counts), total=draws+one+wide;
+  expect(actual.reduce((sum,value)=>sum+value,0)).toBe(total ? 100 : 0);
+  actual.forEach((value,index)=>expect(Math.abs(value-(total?counts[index]/total*100:0))).toBeLessThan(1.000000001));
+ }
 });

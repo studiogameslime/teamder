@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Talking to a user AS Teamder.
 //
 // When someone reports a bug we want to answer them — but from the brand, not
@@ -195,7 +196,7 @@ export async function listUserReports(userId: string): Promise<UserReport[]> {
   if (!has.firebase() || !userId) return [];
   return cached(`userReports.${userId}`, async () => {
     const docs = await queryEquals('feedback', 'userId', userId, REPORTS_LIMIT).catch(
-      () => [],
+      (caughtError3bb28ccec3: unknown) => { observeCaughtError(caughtError3bb28ccec3, {"source":"pulse/src/services/teamderChatService.ts","handler":"listUserReports","site":"teamderChatService:3bb28ccec3"}); return []; },
     );
     return docs
       .map((d) => ({

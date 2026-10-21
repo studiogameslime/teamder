@@ -1,0 +1,28 @@
+{
+  "readBackVerified": true,
+  "receipts": [
+    {
+      "collection": "feedback",
+      "id": "cBLEwjZwpPSIpjXjYihx",
+      "alreadyVerified": true
+    },
+    {
+      "collection": "feedback",
+      "id": "uLcxSSIeSrPuB5PCQ70Q",
+      "written": true,
+      "readBackVerified": true
+    },
+    {
+      "collection": "tasks",
+      "id": "task-1792434980659-l0oj",
+      "written": true,
+      "readBackVerified": true
+    },
+    {
+      "collection": "tasks",
+      "id": "task-1792413390246-8d46",
+      "written": true,
+      "readBackVerified": true
+    }
+  ]
+}

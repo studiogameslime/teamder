@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { roundSaveError } from '@/utils/roundSaveError';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // Advanced match preparation and live control. The shared timer is derived
@@ -301,7 +302,7 @@ export function AdvancedLiveMatchScreen() {
     (async () => {
       // Fetch by id (not getMyGames — that filters by status and would
       // hide an already-active game). The guards below gate entry.
-      const g = await gameService.getGameById(gameId).catch(() => null);
+      const g = await gameService.getGameById(gameId).catch((caughtError1e2ab83bcd: unknown) => { observeCaughtError(caughtError1e2ab83bcd, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"AdvancedLiveMatchScreen","site":"AdvancedLiveMatchScreen:1e2ab83bcd"}); return null; });
       if (!alive) return;
       setGame(g);
       // Distinguish "still loading" from "game is gone" — otherwise a
@@ -419,7 +420,8 @@ export function AdvancedLiveMatchScreen() {
           ...(previous?.gameId===gameId && previous.key===currentRoundKey && previous.capturedAt ? {capturedAt:previous.capturedAt} : {}),
           ...(Number.isFinite(history.at) && history.at > 0 ? {endedAt:history.at} : {}),
           live:savedRoundLive(previous?.gameId===gameId && previous.key===currentRoundKey ? previous.live : live!,history)}));
-      } catch(error){if(alive){setSavedResultLoadFailed(true);logError('loadSavedRoundView',error,{gameId});}}
+      } catch(error){
+    observeCaughtError(error, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"AdvancedLiveMatchScreen","site":"AdvancedLiveMatchScreen:2fe67e9876"});if(alive){setSavedResultLoadFailed(true);logError('loadSavedRoundView',error,{gameId});}}
     })();
     return()=>{alive=false;};
   },[gameId,currentRoundKey,pendingSavedRound,savedResultRetry]);
@@ -444,14 +446,17 @@ export function AdvancedLiveMatchScreen() {
     setOpeningLoading(true);
     void AsyncStorage.getItem(openingStorageKey).then(raw => {
       let restored: Partial<OpeningPlan> | undefined;
-      try { const value = raw ? JSON.parse(raw) : null; if (value?.source === openingSource) restored = value.plan; } catch { /* An invalid local draft is discarded. */ }
+      try { const value = raw ? JSON.parse(raw) : null; if (value?.source === openingSource) restored = value.plan; } catch (caughtError4110b5670f) {
+    observeCaughtError(caughtError4110b5670f, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"AdvancedLiveMatchScreen","site":"AdvancedLiveMatchScreen:4110b5670f"}); /* An invalid local draft is discarded. */ }
       if (alive) { setOpeningPlan(initialOpeningPlan(draftTeams, restored)); setOpeningLoading(false); }
-    }).catch(() => { if (alive) { setOpeningPlan(initialOpeningPlan(draftTeams)); setOpeningLoading(false); } });
+    }).catch((caughtError5a630c571a: unknown) => {
+    observeCaughtError(caughtError5a630c571a, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"AdvancedLiveMatchScreen","site":"AdvancedLiveMatchScreen:5a630c571a"}); if (alive) { setOpeningPlan(initialOpeningPlan(draftTeams)); setOpeningLoading(false); } });
     return () => { alive = false; };
   }, [openingSource, openingStorageKey, !!rotation]);
   const changeOpening = (plan: OpeningPlan) => {
     setOpeningPlan(plan);
-    void AsyncStorage.setItem(openingStorageKey, JSON.stringify({ source: openingSource, plan })).catch(() => {});
+    void AsyncStorage.setItem(openingStorageKey, JSON.stringify({ source: openingSource, plan })).catch((caughtError9d8d4ac04a: unknown) => {
+    observeCaughtError(caughtError9d8d4ac04a, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"changeOpening","site":"AdvancedLiveMatchScreen:9d8d4ac04a"});});
   };
   const firstTwo = openingPlan?.selected ?? [];
 
@@ -509,6 +514,7 @@ export function AdvancedLiveMatchScreen() {
     try {
       await gameService.recordWinner(gameId, me.id, teamIndex);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onRotationWinner","site":"AdvancedLiveMatchScreen:50f3a43640"});
       logError('liveRecordWinner', err, { gameId, userId: me.id });
       toast.error(he.roundFinalizeFailed);
       if (__DEV__) console.warn('[live] recordWinner failed', err);
@@ -737,6 +743,7 @@ export function AdvancedLiveMatchScreen() {
         flow.source,
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"advanceFillFlow","site":"AdvancedLiveMatchScreen:6c903aed8b"});
       logError('liveCommitFilledRotation', err, { gameId });
       toast.error('שמירת ההרכבים נכשלה. יש לפתוח מחדש את בחירת ההרכבים לפי מצב המשחק המעודכן.');
       if (__DEV__) console.warn('[live] commitFilledRotation failed', err);
@@ -763,6 +770,7 @@ export function AdvancedLiveMatchScreen() {
         winner:history.winnerSide==='tie'?null:teamName(history.winnerSide==='A' ? history.teamAIndex ?? current.rotation.playing[0] : history.teamBIndex ?? current.rotation.playing[1],current.draftTeams?.teams),
       });
     } catch(error) {
+    observeCaughtError(error, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"resumeSavedRound","site":"AdvancedLiveMatchScreen:5f2cb50400"});
       logError('resumeSavedRound',error,{gameId});toast.error('לא הצלחנו לחדש את המעבר למשחק הבא. התוצאה נשמרה; נסו שוב.');
     } finally {startingRef.current=false;markBusy(-1);}
   };
@@ -870,6 +878,7 @@ export function AdvancedLiveMatchScreen() {
       // keep ticking through the fill flow. It's zeroed after the new round is
       // committed (see advanceFillFlow).
       await gameService.pauseTimer(gameId, me.id, me.name ?? '', currentRoundKey ?? undefined).catch(error => {
+    observeCaughtError(error, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onEndRound","site":"AdvancedLiveMatchScreen:49684d57e9"});
         if ((error as { code?: string })?.code === 'TIMER_CHANGED') throw error;
       });
       // Read the score NOW. `prepareRoundResult` below commits the round's
@@ -912,6 +921,7 @@ export function AdvancedLiveMatchScreen() {
       });
       beginFillFlow(res.skeleton, res.draft, undefined, false, endedResult);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onEndRound","site":"AdvancedLiveMatchScreen:642f735efe"});
       logError('liveFinalizeRound', err, { gameId, userId: me.id });
       toast.error(roundSaveError(err, he.roundFinalizeFailed));
       if (__DEV__) console.warn('[live] finalizeRound failed', err);
@@ -959,6 +969,7 @@ export function AdvancedLiveMatchScreen() {
         beginFillFlow(res.skeleton, res.draft);
       } else throw new Error('לא התקבל אישור לסיום הפנדלים. נסו שוב.');
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onTieWinner","site":"AdvancedLiveMatchScreen:da6f889f1e"});
       logError('liveFinalizeRoundTie', err, { gameId, userId: me.id });
       toast.error(roundSaveError(err, he.roundFinalizeFailed));
       if (shootoutDecision) setDecisionOpen(true);
@@ -1039,6 +1050,7 @@ export function AdvancedLiveMatchScreen() {
       });
       beginFillFlow(res.skeleton, res.draft);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"resolveTie","site":"AdvancedLiveMatchScreen:c2b9919202"});
       logError('liveResolveTie', err, { gameId, userId: me.id, mode });
       toast.error(roundSaveError(err, he.roundFinalizeFailed));
       if (shootoutDecision) setDecisionOpen(true);
@@ -1085,6 +1097,7 @@ export function AdvancedLiveMatchScreen() {
         throw new Error('לא התקבל אישור לסיום הפנדלים. הבעיטות נשמרו; נסו שוב.');
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onShootoutDecided","site":"AdvancedLiveMatchScreen:778802818e"});
       logError('liveShootoutDecided', err, { gameId, userId: me.id });
       throw err;
     } finally {
@@ -1134,6 +1147,7 @@ export function AdvancedLiveMatchScreen() {
       // The user starts the clock separately after the rosters are saved.
       beginFillFlow(prep.skeleton, prep.draft, prep.baseTeams);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onStartRound","site":"AdvancedLiveMatchScreen:ae9b5e0468"});
       // §4 — the season is mid-close and the club may not start an evening.
       if ((err as Error)?.message === 'SEASON_CLOSING') {
         appAlert(he.seasonClosingBlockTitle, he.seasonClosingBlockBody);
@@ -1253,6 +1267,7 @@ export function AdvancedLiveMatchScreen() {
         isAdmin,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onTimerStart","site":"AdvancedLiveMatchScreen:de77484b00"});
       // §4 — the season is mid-close and the club may not start an evening.
       if ((err as Error)?.message === 'SEASON_CLOSING') {
         appAlert(he.seasonClosingBlockTitle, he.seasonClosingBlockBody);
@@ -1276,6 +1291,7 @@ export function AdvancedLiveMatchScreen() {
         isAdmin,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onTimerPause","site":"AdvancedLiveMatchScreen:192732e8f0"});
       logError('liveTimerPause', err, { gameId, userId: me?.id });
       toast.error((err as { code?: string })?.code === 'TIMER_CHANGED' ? (err as Error).message : 'פעולת השעון לא נשמרה. נסו שוב.');
       if (__DEV__) console.warn('[live] pauseTimer failed', err);
@@ -1294,6 +1310,7 @@ export function AdvancedLiveMatchScreen() {
         isAdmin,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onTimerResume","site":"AdvancedLiveMatchScreen:b4ef4aad94"});
       logError('liveTimerResume', err, { gameId, userId: me?.id });
       toast.error((err as { code?: string })?.code === 'TIMER_CHANGED' ? (err as Error).message : 'פעולת השעון לא נשמרה. נסו שוב.');
       if (__DEV__) console.warn('[live] resumeTimer failed', err);
@@ -1321,6 +1338,7 @@ export function AdvancedLiveMatchScreen() {
                 isAdmin,
               });
             } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onPress","site":"AdvancedLiveMatchScreen:eebc5bd7e9"});
               logError('liveTimerReset', err, { gameId, userId: me?.id });
               toast.error((err as { code?: string })?.code === 'TIMER_CHANGED' ? (err as Error).message : 'פעולת השעון לא נשמרה. נסו שוב.');
               if (__DEV__) console.warn('[live] resetTimer failed', err);
@@ -1364,7 +1382,7 @@ export function AdvancedLiveMatchScreen() {
         // longest ago). Non-blocking — an empty map just hides the hints.
         const lastTaken = await communityEventsService
           .getLastTakenMap(grpId)
-          .catch(() => ({}));
+          .catch((caughtError09ded3cb12: unknown) => { observeCaughtError(caughtError09ded3cb12, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onEndGame","site":"AdvancedLiveMatchScreen:09ded3cb12"}); return ({}); });
         setHandoff({
           players: registered,
           initial: {
@@ -1377,6 +1395,7 @@ export function AdvancedLiveMatchScreen() {
         leaveLiveScreen();
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onEndGame","site":"AdvancedLiveMatchScreen:379ef5e6e0"});
       logError('endEvening', err, { gameId });
       if (__DEV__) console.warn('[live] endEvening failed', err);
       leaveLiveScreen();
@@ -1406,6 +1425,7 @@ export function AdvancedLiveMatchScreen() {
           holders.jerseysHolderIds,
         );
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onSaveHandoff","site":"AdvancedLiveMatchScreen:63c14bff50"});
         logError('setEquipmentHolders', err, { gameId, grpId });
       }
     }
@@ -1653,6 +1673,7 @@ export function AdvancedLiveMatchScreen() {
               midRound: timerRunning,
             });
           } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onPress","site":"AdvancedLiveMatchScreen:a14aeec8b7"});
             logError('retireEmptyTeam', err, { gameId, teamIndex: dropping });
           }
         },
@@ -1698,9 +1719,10 @@ export function AdvancedLiveMatchScreen() {
               // Re-read rather than trusting the screen's copy: the write above
               // and any refill have both landed by now, so this sees the roster
               // as it actually is.
-              const fresh = await gameService.getGameById(gameId).catch(() => null);
+              const fresh = await gameService.getGameById(gameId).catch((caughtError2161d79c48: unknown) => { observeCaughtError(caughtError2161d79c48, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onPress","site":"AdvancedLiveMatchScreen:2161d79c48"}); return null; });
               await offerRetireEmptyTeam(fresh?.draftTeams?.teams, fresh?.rotation ?? null);
             } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onPress","site":"AdvancedLiveMatchScreen:3022d54f1f"});
               logError('markPlayerWentHome', err, { gameId, playerId: player.id });
             } finally {
               homeActionRef.current = false;
@@ -1738,6 +1760,7 @@ export function AdvancedLiveMatchScreen() {
                 midRound: timerRunning,
               });
             } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onPress","site":"AdvancedLiveMatchScreen:30ee5b1089"});
               if ((err as {code?: string})?.code === 'RESTORE_REQUIRES_SPACE') {
                 toast.error((err as Error).message);
               } else {
@@ -1761,7 +1784,8 @@ export function AdvancedLiveMatchScreen() {
       await gameService.swapPlayers(gameId, aId, bId, rotation ? roundCommitKey(rotation) : undefined);
       toast.info(he.swapDoneSwapped(resolveFillPlayer(aId)?.name ?? '', resolveFillPlayer(bId)?.name ?? ''));
       logEvent(AnalyticsEvent.LiveRosterAction, { gameId, action: 'swapped', midRound: timerRunning });
-    } catch (err) { logError('swapPlayers', err, { gameId, aId, bId }); throw err; }
+    } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onSwapPlayers","site":"AdvancedLiveMatchScreen:f957f951e5"}); logError('swapPlayers', err, { gameId, aId, bId }); throw err; }
     finally { homeActionRef.current = false; }
   };
 
@@ -1776,7 +1800,8 @@ export function AdvancedLiveMatchScreen() {
       await gameService.movePlayerToTeam(gameId, playerId, teamIndex, rotation ? roundCommitKey(rotation) : undefined);
       toast.info(he.swapDoneMoved(resolveFillPlayer(playerId)?.name ?? '', teamName(teamIndex, draftTeams?.teams)));
       logEvent(AnalyticsEvent.LiveRosterAction, { gameId, action: 'moved', teamIndex, midRound: timerRunning });
-    } catch (err) { logError('movePlayerToTeam', err, { gameId, playerId, teamIndex }); throw err; }
+    } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"onMovePlayer","site":"AdvancedLiveMatchScreen:e0d3bc0535"}); logError('movePlayerToTeam', err, { gameId, playerId, teamIndex }); throw err; }
     finally { homeActionRef.current = false; }
   };
 

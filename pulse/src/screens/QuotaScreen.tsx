@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -108,6 +109,7 @@ export function QuotaScreen() {
       setErr(null);
       notifyQuotaAlerts(report); // push if anything crossed 80% (deduped)
     } catch (e: any) {
+    observeCaughtError(e, {"source":"pulse/src/screens/QuotaScreen.tsx","handler":"QuotaScreen","site":"QuotaScreen:aaca851a17"});
       setErr(String(e?.message ?? e));
     } finally {
       setLoading(false);

@@ -1,3 +1,5 @@
+import { observeCaughtError, observeSettledErrors, reportServerError } from './serverErrorLog';
+
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
 import { creationReceiptId, fingerprintCreation } from './creationReceipt';
 import { guestJoinNotices, guestJoinMessage, joinNoticeRecipients } from './guestJoinNotice';
@@ -42,8 +44,8 @@ import {
   onDocumentCreated,
   onDocumentUpdated,
   onDocumentWritten,
-} from 'firebase-functions/v2/firestore';
-import { onSchedule } from 'firebase-functions/v2/scheduler';
+} from './observedFunctions';
+import { onSchedule } from './observedFunctions';
 import { StatBatch, MAX_ROUND_BATCH_OPS } from './statBatch';
 import { commitRoundInOrder } from './commitProtocol';
 import { liveRoundKey, matchesLiveRound } from './liveRoundCommit';
@@ -85,8 +87,8 @@ import {
   didEveningHappen,
   type PlayableEvening,
 } from './eveningPlayed';
-import { onCall, HttpsError, onRequest } from 'firebase-functions/v2/https';
-import { onTaskDispatched } from 'firebase-functions/v2/tasks';
+import { onCall, HttpsError, onRequest } from './observedFunctions';
+import { onTaskDispatched } from './observedFunctions';
 import { getFunctions as getGcpFunctions } from 'firebase-admin/functions';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -332,7 +334,7 @@ async function dispatchGrowthMilestoneIfNeeded(
         },
       }),
     ),
-  );
+  ).then(results => observeSettledErrors(results, {"source":"functions/src/index.ts","handler":"dispatchGrowthMilestoneIfNeeded","site":"index:ed433aa714"}));
 }
 
 // ─── createNotificationOnce — single source for writing /notifications ───
@@ -634,6 +636,7 @@ async function createNotificationOnce(input: {
         // same id, we'll handle it via AlreadyExists.
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"createNotificationOnce","site":"index:fcb661e345"});
       // Index missing / network blip — log but don't block. The
       // bucket-id create below still provides retry safety.
       console.warn(
@@ -679,6 +682,7 @@ async function createNotificationOnce(input: {
     );
     return { wrote: true, id };
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"createNotificationOnce","site":"index:c3d53ba702"});
     // Firestore Admin throws AlreadyExists (gRPC code 6) when the
     // doc already exists. Any other code is a real failure.
     const code = (err as { code?: number | string }).code;
@@ -713,6 +717,7 @@ async function createNotificationOnce(input: {
           return { wrote: false, id, skipped: 'aggregated' };
         }
       } catch (mergeErr) {
+    observeCaughtError(mergeErr, {"source":"functions/src/index.ts","handler":"createNotificationOnce","site":"index:2f186f8e9a"});
         console.warn(
           '[createNotificationOnce] aggregation merge failed',
           { type: input.type, recipientId: input.recipientId, id },
@@ -1428,6 +1433,7 @@ async function resolveRecipients(
           uids = uids.filter((uid) => !inRoster.has(uid));
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"resolveRecipients","site":"index:d19e8a2dd7"});
         console.warn('[newGameInCommunity] roster exclude failed', err);
       }
     }
@@ -1448,6 +1454,7 @@ async function resolveRecipients(
         uids = uids.filter((uid) => members.has(uid));
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"resolveRecipients","site":"index:908f1e8642"});
       console.warn('[newGameInCommunity] membership filter failed', groupId, err);
     }
     // Always include the organiser on a registration-open push, even if
@@ -1822,7 +1829,7 @@ async function deliverBatch(
           .collection('users')
           .doc(uid)
           .update({ fcmTokens: admin.firestore.FieldValue.arrayRemove(...toks) })
-          .catch(() => undefined),
+          .catch((caughtErrordc1360251c: unknown) => { observeCaughtError(caughtErrordc1360251c, {"source":"functions/src/index.ts","handler":"deliverBatch","site":"index:dc1360251c"}); return undefined; }),
         db
           .collection('users')
           .doc(uid)
@@ -1842,9 +1849,9 @@ async function deliverBatch(
               admin.firestore.FieldValue.delete(),
             ]),
           )
-          .catch(() => undefined),
+          .catch((caughtError22257238f9: unknown) => { observeCaughtError(caughtError22257238f9, {"source":"functions/src/index.ts","handler":"deliverBatch","site":"index:22257238f9"}); return undefined; }),
       ]),
-    );
+    ).then(results => observeSettledErrors(results, {"source":"functions/src/index.ts","handler":"deliverBatch","site":"index:b0d192d68e"}));
     console.log(
       `[notifications] ${type}: pruned ${deadTokens.size} dead token(s) across ${byUser.size} user(s)`,
     );
@@ -1913,7 +1920,8 @@ async function canonicaliseNotificationPayload(
           if (typeof g.title === 'string') payload.gameTitle = g.title;
           if (typeof g.startsAt === 'number') payload.startsAt = g.startsAt;
         })
-        .catch(() => {
+        .catch((caughtErrorbf9c2b682b: unknown) => {
+    observeCaughtError(caughtErrorbf9c2b682b, {"source":"functions/src/index.ts","handler":"canonicaliseNotificationPayload","site":"index:bf9c2b682b"});
           /* best-effort */
         }),
     );
@@ -1929,7 +1937,8 @@ async function canonicaliseNotificationPayload(
           const g = snap.data() as { name?: string };
           if (typeof g.name === 'string') payload.groupName = g.name;
         })
-        .catch(() => {
+        .catch((caughtError21202fa5e8: unknown) => {
+    observeCaughtError(caughtError21202fa5e8, {"source":"functions/src/index.ts","handler":"canonicaliseNotificationPayload","site":"index:21202fa5e8"});
           /* best-effort */
         }),
     );
@@ -1992,6 +2001,7 @@ export const onNotificationCreated = onDocumentCreated(
           { merge: true },
         );
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:244fcee99c"});
         console.warn('[onNotificationCreated] latch write failed', err);
       }
     }
@@ -2042,6 +2052,7 @@ export const onNotificationCreated = onDocumentCreated(
       skippedNoToken = res.skippedNoToken;
       skippedDormant = res.skippedDormant;
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:72a3543b35"});
       console.error('[onNotificationCreated] delivery failed', err);
     }
 
@@ -2137,7 +2148,7 @@ async function runSendGameReminders(): Promise<void> {
     .filter((doc) => (doc.data() as { reminderSent?: boolean }).reminderSent !== true)
     .map((doc) => sendGameReminderForGame(doc.id));
 
-  const results = await Promise.allSettled(ops);
+  const results = await Promise.allSettled(ops).then(results => observeSettledErrors(results, {"source":"functions/src/index.ts","handler":"runSendGameReminders","site":"index:be3e2bc7dd"}));
   const ok = results.filter(
     (r) => r.status === 'fulfilled' && r.value === true,
   ).length;
@@ -2255,6 +2266,7 @@ async function runSendRsvpNudges(): Promise<void> {
         claimed = true;
       });
     } catch (e) {
+    observeCaughtError(e, {"source":"functions/src/index.ts","handler":"runSendRsvpNudges","site":"index:3b57379ad9"});
       console.error('[sendRsvpNudges] latch txn failed', doc.id, e);
       continue;
     }
@@ -2278,6 +2290,7 @@ async function runSendRsvpNudges(): Promise<void> {
         });
         nudged += 1;
       } catch (e) {
+    observeCaughtError(e, {"source":"functions/src/index.ts","handler":"runSendRsvpNudges","site":"index:21e65b4081"});
         console.error('[sendRsvpNudges] add failed', doc.id, uid, e);
       }
     }
@@ -2371,6 +2384,7 @@ export const flushPendingJoinerNotifsTask = onTaskDispatched(
         });
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:faa2e8b899"});
       console.error('[flushPendingJoinerNotifsTask] claim failed', gameId, err);
       throw err;       // task will retry per retryConfig
     }
@@ -2392,6 +2406,7 @@ export const flushPendingJoinerNotifsTask = onTaskDispatched(
         })
         .filter((n) => n.length > 0);
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:fb4b1cd54f"});
       console.error('[flushPendingJoinerNotifsTask] name lookup failed', err);
     }
 
@@ -2410,6 +2425,7 @@ export const flushPendingJoinerNotifsTask = onTaskDispatched(
         },
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:3e7d7cf244"});
       console.error('[flushPendingJoinerNotifsTask] dispatch failed', gameId, err);
       throw err;       // retry per retryConfig
     }
@@ -2475,6 +2491,7 @@ export const scheduledGameMomentTask = onTaskDispatched(
         console.warn(`[scheduledGameMomentTask] unknown moment '${moment}'`);
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:7653d7df13"});
       console.error('[scheduledGameMomentTask] failed', gameId, moment, err);
       throw err; // retry per retryConfig
     }
@@ -2583,6 +2600,7 @@ async function enqueueGameMoments(
         `[enqueueGameMoments] ${op.moment} for ${gameId} @ ${new Date(op.at).toISOString()}`,
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"enqueueGameMoments","site":"index:9526ef4340"});
       // Non-fatal — the safety-net cron will still pick this game up
       // within 5 minutes of the moment.
       console.error(
@@ -2872,6 +2890,7 @@ export const onJoinRequestCreated = onDocumentCreated(
           },
         );
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:071cf77a4c"});
       // ALREADY_EXISTS (gRPC code 6) → a reconcile for this window is already
       // scheduled. That's the dedupe working as intended; swallow it.
       const code = (err as { code?: number | string })?.code;
@@ -2893,6 +2912,7 @@ export const reconcileJoinsTask = onTaskDispatched(
     try {
       await reconcileGameJoins(gameId);
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:9734c2fa3c"});
       console.error('[reconcileJoinsTask] failed', gameId, err);
       throw err; // retry per retryConfig
     }
@@ -3046,6 +3066,7 @@ async function runFlipScheduledGames(): Promise<void> {
       const r = await flipScheduledGameOnce(doc.id);
       if (r === 'flipped' || r === 'notified') flipped++;
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runFlipScheduledGames","site":"index:6563bc5da8"});
       console.error(`[flipScheduledGames] flip failed for ${doc.id}`, err);
     }
   }
@@ -3356,6 +3377,7 @@ async function runCreateSeriesOccurrences(): Promise<void> {
       await doc.ref.update({ lastOccurrenceAt: nextStartsAt });
       created += 1;
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runCreateSeriesOccurrences","site":"index:86dd77e9e1"});
       console.error('[seriesOccurrences] create failed', doc.id, err);
     }
   }
@@ -3385,6 +3407,7 @@ async function runCloneRecurringGames(): Promise<void> {
       if (gid) seriesGroups.add(gid);
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runCloneRecurringGames","site":"index:2f1241f8a2"});
     console.error('[cloneRecurringGames] series guard failed', err);
   }
   // `recurring == true` accumulates EVERY weekly instance ever created (each
@@ -3594,6 +3617,7 @@ async function runCloneRecurringGames(): Promise<void> {
       try {
         await ref.create({ ...next, id: cloneId });
       } catch (e) {
+    observeCaughtError(e, {"source":"functions/src/index.ts","handler":"runCloneRecurringGames","site":"index:a121162b5c"});
         // ALREADY_EXISTS: this week's clone is already there (a prior partial
         // run). Just (re)assert the latch and move on — no duplicate, no second
         // notification. Match both the numeric gRPC code AND the string form
@@ -3624,6 +3648,7 @@ async function runCloneRecurringGames(): Promise<void> {
       }
       cloned++;
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runCloneRecurringGames","site":"index:63e20a42cb"});
       console.error(`[cloneRecurringGames] clone failed for ${doc.id}`, err);
     }
   }
@@ -3701,6 +3726,7 @@ async function runFlipPublicGames(): Promise<void> {
       const r = await flipPublicGameOnce(doc.id);
       if (r === 'flipped') flipped++;
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runFlipPublicGames","site":"index:420be8479c"});
       console.error(`[flipPublicGames] flip failed for ${doc.id}`, err);
     }
   }
@@ -3828,6 +3854,7 @@ async function runExpireStaleOffers(): Promise<void> {
       });
       advanced += 1;
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runExpireStaleOffers","site":"index:07234a984f"});
       console.error('[expireStaleOffers] failed', gameDoc.id, err);
     }
   }
@@ -3881,6 +3908,7 @@ async function runHolidayGameNotices(): Promise<void> {
       // Stamp regardless of push outcome so we don't re-scan/re-notify.
       await doc.ref.set({ holidayNotifiedAt: now }, { merge: true });
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runHolidayGameNotices","site":"index:1b638b3254"});
       console.error('[holidayGameNotices] failed', doc.id, err);
     }
   }
@@ -3998,7 +4026,7 @@ async function runCleanupStaleGames(): Promise<void> {
 
   // allSettled (not all): one failing delete/finish must not abandon the rest
   // of the sweep for this tick.
-  const results = await Promise.allSettled(ops);
+  const results = await Promise.allSettled(ops).then(results => observeSettledErrors(results, {"source":"functions/src/index.ts","handler":"runCleanupStaleGames","site":"index:185f82d65d"}));
   const failed = results.filter((r) => r.status === 'rejected').length;
   console.log(
     `[cleanupStaleGames] swept ${snap.size} stale games — deleted ${deleted} zombies, finished ${finished}, failed ${failed}`
@@ -4058,6 +4086,7 @@ async function runDailyCleanup(): Promise<void> {
       notifsDeleted = snap.size;
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runDailyCleanup","site":"index:1dc45d5e2c"});
     console.error('[dailyCleanup] notifications sweep failed', err);
   }
 
@@ -4087,6 +4116,7 @@ async function runDailyCleanup(): Promise<void> {
           candidates.push(latch.id);
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runDailyCleanup","site":"index:9c08551c1f"});
         console.warn(
           '[dailyCleanup] latch game lookup failed',
           latch.id,
@@ -4103,6 +4133,7 @@ async function runDailyCleanup(): Promise<void> {
       latchesDeleted = candidates.length;
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runDailyCleanup","site":"index:8330bcca88"});
     console.error('[dailyCleanup] latches sweep failed', err);
   }
 
@@ -4124,6 +4155,7 @@ async function runDailyCleanup(): Promise<void> {
       requestsDeleted = snap.size;
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runDailyCleanup","site":"index:bbe5eb2178"});
     console.error('[dailyCleanup] joinRequests sweep failed', err);
   }
 
@@ -4168,6 +4200,7 @@ async function runDailyCleanup(): Promise<void> {
         await batch.commit();
         fillerInterestsDeleted += interests.size;
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runDailyCleanup","site":"index:16aeaa787f"});
         console.warn(
           '[dailyCleanup] fillerInterests sweep failed for',
           gameId,
@@ -4176,6 +4209,7 @@ async function runDailyCleanup(): Promise<void> {
       }
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runDailyCleanup","site":"index:e3c75ee0f6"});
     console.error('[dailyCleanup] fillerInterests outer sweep failed', err);
   }
 
@@ -4261,6 +4295,7 @@ export const onGroupPendingChanged = onDocumentWritten(
       try {
         await db.collection('groupsPublic').doc(groupId).delete();
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:c55ca0d5c7"});
         console.warn(
           '[onGroupDeleted] groupsPublic cleanup failed',
           groupId,
@@ -4326,6 +4361,7 @@ export const onGroupPendingChanged = onDocumentWritten(
             { merge: true },
           );
         } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:71815b2cf9"});
           console.warn(
             '[onGroupPendingChanged] unsubscribe on leave failed',
             uid,
@@ -4346,6 +4382,7 @@ export const onGroupPendingChanged = onDocumentWritten(
             { merge: true },
           );
         } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:fad6b58bc6"});
           console.warn(
             '[onGroupPendingChanged] subscription default failed',
             uid,
@@ -4377,6 +4414,7 @@ export const onGroupPendingChanged = onDocumentWritten(
           );
           await b.commit();
         } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:506df70bcc"});
           const code = (err as { code?: number | string }).code;
           if (code === 6 || code === 'already-exists') continue;
           console.warn(
@@ -4425,6 +4463,7 @@ export const onGroupPendingChanged = onDocumentWritten(
               updatedAt: Date.now(),
             });
         } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:69b737bad2"});
           console.warn(
             '[onGroupPendingChanged] equipment/rating holder prune failed',
             event.params.groupId,
@@ -4447,6 +4486,7 @@ export const onGroupPendingChanged = onDocumentWritten(
             { merge: true },
           );
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:9d5e267d09"});
         console.warn(
           '[onGroupWritten] groupsPublic memberCount sync failed',
           event.params.groupId,
@@ -4467,6 +4507,7 @@ export const onGroupPendingChanged = onDocumentWritten(
           (after as { name?: string }).name || '',
         );
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:802ce5681e"});
         console.warn(
           '[onGroupPendingChanged] milestone dispatch failed',
           event.params.groupId,
@@ -4507,7 +4548,7 @@ export const onGroupPendingChanged = onDocumentWritten(
         );
       }
     }
-    const results = await Promise.allSettled(ops);
+    const results = await Promise.allSettled(ops).then(results => observeSettledErrors(results, {"source":"functions/src/index.ts","handler":"module","site":"index:a88968064b"}));
     const failed = results.filter((r) => r.status === 'rejected').length;
     if (failed > 0) {
       console.warn(
@@ -4649,6 +4690,7 @@ export const onGameTimerChanged = onDocumentWritten(
         });
         ok += res.successCount;
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:a021ffa428"});
         console.warn('[onGameTimerChanged] send failed', err);
       }
     }
@@ -4782,6 +4824,7 @@ async function isPersonalGroup(groupId: string): Promise<boolean> {
     const snap = await db.collection('groups').doc(groupId).get();
     personal = snap.data()?.isPersonal === true;
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"isPersonalGroup","site":"index:b4be1c0d35"});
     // A read failure must not silently turn a personal group into a real one.
     // Treating it as NOT personal preserves the old behaviour, which is the
     // safer direction: it writes a document nobody reads rather than skipping
@@ -4878,6 +4921,7 @@ async function rollUpClubPairs(args: {
     await guardFinishSeasonBatch(batch, groupId, args.seasonId);
     try { await batch.commit(); }
     catch (error) {
+    observeCaughtError(error, {"source":"functions/src/index.ts","handler":"rollUpClubPairs","site":"index:8ce7002d9a"});
       const code = (error as { code?: unknown }).code;
       if (code !== 6 && code !== 'already-exists') throw error;
     }
@@ -4901,6 +4945,7 @@ async function rollUpClubPairs(args: {
   // Each chunk's increments are already protected by its own atomic create.
   try { await markerRef.create({ groupId, gameId, at, pairs: entries.length, createdAt: now }); }
   catch (error) {
+    observeCaughtError(error, {"source":"functions/src/index.ts","handler":"rollUpClubPairs","site":"index:a91ccec818"});
     const code = (error as { code?: unknown }).code;
     if (code !== 6 && code !== 'already-exists') throw error;
   }
@@ -5234,6 +5279,7 @@ async function sealRoundSummary(args: {
       }
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"sealRoundSummary","site":"index:98e9b829cf"});
     console.warn('[season] progress mirror skipped', groupId, err);
   }
   // Club totals are LIFETIME here, same as the player rows above: a milestone
@@ -5374,6 +5420,7 @@ async function sealRoundSummary(args: {
   try {
     await batch.commit();
   } catch (error) {
+    observeCaughtError(error, {"source":"functions/src/index.ts","handler":"sealRoundSummary","site":"index:6fbb881349"});
     const code = (error as { code?: unknown }).code;
     if (code === 6 || code === 'already-exists') return;
     throw error;
@@ -5513,7 +5560,8 @@ export const onGameRosterChanged = onDocumentWritten(
               rosterCount,
               deletedAt: Date.now(),
             });
-        } catch {
+        } catch (caughtError6440185207) {
+    observeCaughtError(caughtError6440185207, {"source":"functions/src/index.ts","handler":"module","site":"index:6440185207"});
           /* already recorded — a client stamped the exact deleter, or a retry */
         }
       }
@@ -5545,6 +5593,7 @@ export const onGameRosterChanged = onDocumentWritten(
               },
             });
           } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:8015817558"});
             console.error(
               '[onGameRosterChanged] delete cancellation push failed',
               event.params.gameId,
@@ -5558,7 +5607,8 @@ export const onGameRosterChanged = onDocumentWritten(
 
     if (after.groupId && (before?.status !== after.status || (before as Record<string, unknown> | undefined)?.playVerified !== (after as Record<string, unknown>).playVerified)) {
       try { await seasonManager().refresh(after.groupId); }
-      catch (err) { await reportServerError({ operation: 'seasonStateAfterEvening', err, context: { groupId: after.groupId } }); }
+      catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:dec29eb78c"}); await reportServerError({ operation: 'seasonStateAfterEvening', err, context: { groupId: after.groupId } }); }
     }
 
     const ref = event.data!.after.ref;
@@ -5597,7 +5647,8 @@ export const onGameRosterChanged = onDocumentWritten(
       groupSnapOnce = p;
       // Attached here so the rejection is observed even if no consumer ever
       // awaits it — an unhandled rejection would take the whole function down.
-      p.catch(() => {
+      p.catch((caughtError268372f677: unknown) => {
+    observeCaughtError(caughtError268372f677, {"source":"functions/src/index.ts","handler":"groupOnce","site":"index:268372f677"});
         if (groupSnapOnce === p) groupSnapOnce = null;
       });
       return p;
@@ -5654,6 +5705,7 @@ export const onGameRosterChanged = onDocumentWritten(
         await flipScheduledGameOnce(event.params.gameId);
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:ebbdff1081"});
       console.error(
         '[onGameRosterChanged] immediate open failed',
         event.params.gameId,
@@ -5688,6 +5740,7 @@ export const onGameRosterChanged = onDocumentWritten(
           },
         });
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:3c2d74b308"});
         console.error(
           '[onGameRosterChanged] spotOffered push failed',
           event.params.gameId,
@@ -5734,6 +5787,7 @@ export const onGameRosterChanged = onDocumentWritten(
         }
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:9a568a8e0f"});
       console.error(
         '[onGameRosterChanged] guestPromoted push failed',
         event.params.gameId,
@@ -5899,6 +5953,7 @@ export const onGameRosterChanged = onDocumentWritten(
           }
         });
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:9e270b2f66"});
         console.error(
           '[onGameRosterChanged] promote/prune failed',
           event.params.gameId,
@@ -5917,6 +5972,7 @@ export const onGameRosterChanged = onDocumentWritten(
             },
           });
         } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:1caad8b281"});
           console.error(
             '[onGameRosterChanged] spotOpened push failed',
             event.params.gameId,
@@ -6025,6 +6081,7 @@ export const onGameRosterChanged = onDocumentWritten(
           await event.data!.after.ref.update(clearRetry);
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:f44055fdab"});
         // A missing stamp is recoverable — the rollover resolves an unstamped
         // game to the open season. Losing the evening's stats is not, so this
         // never throws into the rest of the trigger.
@@ -6033,6 +6090,7 @@ export const onGameRosterChanged = onDocumentWritten(
           try {
             await event.data!.after.ref.update({ seasonStampRetry: true });
           } catch (flagErr) {
+    observeCaughtError(flagErr, {"source":"functions/src/index.ts","handler":"module","site":"index:b5003e0684"});
             console.error(
               '[season] stamp retry marker failed',
               event.params.gameId,
@@ -6115,6 +6173,7 @@ export const onGameRosterChanged = onDocumentWritten(
         }
         await batch.commit();
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:51e1327a34"});
         const code = (err as { code?: number | string }).code;
         if (code === 6 || code === 'already-exists') {
           console.log(
@@ -6488,6 +6547,7 @@ export const onGameRosterChanged = onDocumentWritten(
             if (legacyRows.length > 0 && legacyRows.every(row => row.exists)) {
               try { await standingsLatch.create({ at: Date.now(), legacy: true, hadPointsTable }); }
               catch (error) {
+    observeCaughtError(error, {"source":"functions/src/index.ts","handler":"module","site":"index:8e81af9b6d"});
                 const code = (error as { code?: unknown }).code;
                 if (code !== 6 && code !== 'already-exists') throw error;
               }
@@ -6656,6 +6716,7 @@ export const onGameRosterChanged = onDocumentWritten(
                 (after as { seasonId?: string }).seasonId || stampedSeasonId || undefined);
               await standingBatch.commit();
             } catch (error) {
+    observeCaughtError(error, {"source":"functions/src/index.ts","handler":"module","site":"index:541896be60"});
               const code = (error as { code?: unknown }).code;
               if (code !== 6 && code !== 'already-exists') throw error;
             }
@@ -6707,6 +6768,7 @@ export const onGameRosterChanged = onDocumentWritten(
               seasonId: (after as { seasonId?: string }).seasonId || stampedSeasonId || undefined,
             });
           } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:db498bffbb"});
             console.error(
               '[onGameRosterChanged] club pair rollup failed',
               event.params.gameId,
@@ -6760,6 +6822,7 @@ export const onGameRosterChanged = onDocumentWritten(
               standings: (await standingsLatch.get()).get('hadPointsTable') ? sealedStandings : [],
             });
           } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:2f455ab8bd"});
             console.error(
               '[onGameRosterChanged] round summary failed',
               event.params.gameId,
@@ -6769,6 +6832,7 @@ export const onGameRosterChanged = onDocumentWritten(
           }
 
         } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:1482cf1bc5"});
           console.error(
             '[onGameRosterChanged] evening standings failed',
             event.params.gameId,
@@ -6803,7 +6867,7 @@ export const onGameRosterChanged = onDocumentWritten(
             }),
           );
         }
-        const summaryResults = await Promise.allSettled(summaryOps);
+        const summaryResults = await Promise.allSettled(summaryOps).then(results => observeSettledErrors(results, {"source":"functions/src/index.ts","handler":"module","site":"index:21e4ba28c4"}));
         const summaryFailed = summaryResults.filter(
           (r) => r.status === 'rejected',
         ).length;
@@ -6813,6 +6877,7 @@ export const onGameRosterChanged = onDocumentWritten(
           );
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:cdebf5436a"});
         console.error(
           '[onGameRosterChanged] eveningSummary fan-out failed',
           event.params.gameId,
@@ -6855,6 +6920,7 @@ export const onGameRosterChanged = onDocumentWritten(
               (gSnap.data()?.adminIds as string[] | undefined) ?? [];
             for (const a of gAdmins) recipients.add(a);
           } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:25c6969766"});
             console.warn(
               '[onGameRosterChanged] group admins read failed',
               after.groupId,
@@ -6896,7 +6962,7 @@ export const onGameRosterChanged = onDocumentWritten(
             );
           }
         }
-        const results = await Promise.allSettled(ops);
+        const results = await Promise.allSettled(ops).then(results => observeSettledErrors(results, {"source":"functions/src/index.ts","handler":"module","site":"index:fb6db5bfeb"}));
         const failed = results.filter((r) => r.status === 'rejected').length;
         if (failed > 0) {
           console.warn(
@@ -6955,6 +7021,7 @@ export const onGameRosterChanged = onDocumentWritten(
           await revokeDisciplineCardsFor(uid, event.params.gameId);
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:37631d45a2"});
         console.warn(
           '[onGameRosterChanged] discipline write failed',
           uid,
@@ -6998,6 +7065,7 @@ export const onGameRosterChanged = onDocumentWritten(
           );
           await b.commit();
         } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:20a83f91b9"});
           const code = (err as { code?: number | string }).code;
           if (code === 6 || code === 'already-exists') continue;
           console.warn(
@@ -7040,6 +7108,7 @@ export const onGameRosterChanged = onDocumentWritten(
             })
             .filter((n) => n.length > 0);
         } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:9c37f80907"});
           console.error('[onGameRosterChanged] joiner name lookup failed', err);
         }
         try {
@@ -7057,6 +7126,7 @@ export const onGameRosterChanged = onDocumentWritten(
             },
           });
         } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:051983fd2c"});
           console.error(
             '[onGameRosterChanged] gamePlayersJoined dispatch failed',
             event.params.gameId,
@@ -7111,6 +7181,7 @@ export const onGameRosterChanged = onDocumentWritten(
         claimed = true;
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:24610d0674"});
       console.error('[onGameRosterChanged] latch transaction failed', err);
       return;
     }
@@ -7477,6 +7548,7 @@ async function loadRecentSplits(
     }
     return out;
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"loadRecentSplits","site":"index:41a2148620"});
     // Variety is an enhancement, never a blocker — without history the split
     // is decided on rating alone, exactly as before.
     console.warn('[autoBalance] loadRecentSplits failed', groupId, err);
@@ -7783,6 +7855,7 @@ async function generateForGame(
       console.log(`[autoBalance] generated teams for ${ref.id}`);
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"generateForGame","site":"index:56f750263e"});
     console.error('[autoBalance] generateForGame failed', ref.id, err);
   }
 }
@@ -7943,6 +8016,7 @@ async function fanOutTeamsReadyPush(
       if (first) guestNameById[`${GUEST_ID_PREFIX}${gu.id}`] = first;
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"fanOutTeamsReadyPush","site":"index:d036590e0b"});
     console.error('[teamsReady] failed to load guest names', gameId, err);
   }
   // Guest first-names per team, in roster order.
@@ -8010,6 +8084,7 @@ async function fanOutTeamsReadyPush(
           })
           .then(() => 'created' as const)
           .catch((err) => {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"fanOutTeamsReadyPush","site":"index:d34ef04959"});
             const code = (err as { code?: number | string }).code;
             if (code === 6 || code === 'already-exists') return 'duplicate';
             throw err;
@@ -8017,7 +8092,7 @@ async function fanOutTeamsReadyPush(
       );
     });
   });
-  const results = await Promise.allSettled(writes);
+  const results = await Promise.allSettled(writes).then(results => observeSettledErrors(results, {"source":"functions/src/index.ts","handler":"fanOutTeamsReadyPush","site":"index:afdbab0309"}));
   let created = 0;
   let duplicate = 0;
   for (const r of results) {
@@ -8037,6 +8112,7 @@ async function fanOutTeamsReadyPush(
   try {
     await ref.update({ teamsNotifiedAt: now });
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"fanOutTeamsReadyPush","site":"index:3e63bc6a97"});
     console.warn('[teamsReady] teamsNotifiedAt stamp failed', gameId, err);
   }
   return { created, duplicate };
@@ -8188,6 +8264,7 @@ async function generateDraftTeamsForGame(
       await fanOutTeamsReadyPush(ref, ref.id, built);
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"generateDraftTeamsForGame","site":"index:b7f7dc552f"});
     console.error('[autoBalance] generateDraftTeamsForGame failed', ref.id, err);
   }
 }
@@ -8439,6 +8516,7 @@ export const deleteMyAccount = onCall(
         }
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:16bb61ca9e"});
       console.error('[deleteMyAccount] community sweep failed', uid, err);
       cleanupFailures.push('communities');
     }
@@ -8467,6 +8545,7 @@ export const deleteMyAccount = onCall(
         });
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:f2bea6e7d6"});
       console.error('[deleteMyAccount] game sweep failed', uid, err);
       cleanupFailures.push('games');
     }
@@ -8480,9 +8559,11 @@ export const deleteMyAccount = onCall(
           .collection('users')
           .doc(fid)
           .update({ friends: admin.firestore.FieldValue.arrayRemove(uid) })
-          .catch(() => { cleanupFailures.push('friend'); });
+          .catch((caughtErrora8fa05ed2f: unknown) => {
+    observeCaughtError(caughtErrora8fa05ed2f, {"source":"functions/src/index.ts","handler":"module","site":"index:a8fa05ed2f"}); cleanupFailures.push('friend'); });
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:5414435daa"});
       console.error('[deleteMyAccount] friends cleanup failed', uid, err);
       cleanupFailures.push('friends');
     }
@@ -8520,6 +8601,7 @@ export const deleteMyAccount = onCall(
         cursor = msgs.docs[msgs.docs.length - 1];
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:52cf9e72d5"});
       // Do not claim deletion completed if anonymisation did not finish.
       console.warn('[deleteMyAccount] chat anonymise skipped', uid, err);
       cleanupFailures.push('messages');
@@ -8552,12 +8634,14 @@ export const deleteMyAccount = onCall(
         .doc('push')
         .delete();
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:f523124f8a"});
       console.error('[deleteMyAccount] user doc anonymise failed', uid, err);
       throw new HttpsError('unavailable', 'ACCOUNT_CLEANUP_RETRY_REQUIRED');
     }
     try {
       await admin.auth().deleteUser(uid);
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:8d952dc997"});
       console.error('[deleteMyAccount] auth delete failed', uid, err);
       throw new HttpsError('internal', 'account data cleared but auth delete failed');
     }
@@ -8828,7 +8912,7 @@ export const adminAddPlayers = onCall(
         recipientId: uid,
         payload: { gameId, gameTitle: title, adderName, startsAt, waitlisted },
         createdByUid: callerUid,
-      }).catch((err) => console.warn('[adminAddPlayers] push failed', uid, err));
+      }).catch((err) => { observeCaughtError(err, {"source":"functions/src/index.ts","handler":"pushOne","site":"index:80827dba41"}); return console.warn('[adminAddPlayers] push failed', uid, err); });
     };
     await Promise.all([
       ...result.addedToPlayers.map((uid) => pushOne(uid, false)),
@@ -9224,6 +9308,7 @@ export const getGameEveningScores = onCall(
           .where('gameId', '==', id).select('userId', 'score').get()).docs.map(d => d.data()),
       });
     } catch (error) {
+    observeCaughtError(error, {"source":"functions/src/index.ts","handler":"module","site":"index:c5ec9d3925"});
       if (error instanceof EveningScoresAccessError) throw new HttpsError(error.code, error.message);
       throw error;
     }
@@ -9365,6 +9450,7 @@ export const promoteOrphanToGroup = onCall(
         }
         if (best) effectiveFromGameId = best.id;
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:6508e9638d"});
         console.error('[promoteOrphanToGroup] derive fromGame failed', groupId, err);
       }
     }
@@ -9456,6 +9542,7 @@ export const promoteOrphanToGroup = onCall(
         });
         await batch.commit();
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:d617c2f253"});
         console.error(
           '[promoteOrphanToGroup] stats reset failed',
           groupId,
@@ -9519,6 +9606,7 @@ export const promoteOrphanToGroup = onCall(
       await step();
       await b.commit();
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:2cb0a670ff"});
       console.error('[promoteOrphanToGroup] club artefact purge failed', groupId, err);
     }
 
@@ -9553,7 +9641,7 @@ export const promoteOrphanToGroup = onCall(
         (inviter.data()!.name as string).slice(0, 60)) ||
       '';
     const sentInvites = await Promise.allSettled(dedupedInvitees.map(recipientUid =>
-      sendClubInvitation(db, callerUid, {name:inviterName}, groupId, recipientUid, true)));
+      sendClubInvitation(db, callerUid, {name:inviterName}, groupId, recipientUid, true))).then(results => observeSettledErrors(results, {"source":"functions/src/index.ts","handler":"module","site":"index:29c33672e6"}));
     return { ok: true, invited: sentInvites.filter(r=>r.status==='fulfilled'&&r.value.invited).length };
 
   },
@@ -9618,6 +9706,7 @@ async function runSendPromotePrompts(): Promise<void> {
       await doc.ref.update({ promotePromptSent: true, updatedAt: now });
       dispatched += 1;
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runSendPromotePrompts","site":"index:502b761c38"});
       console.error('[sendPromotePrompts] dispatch failed', doc.id, err);
     }
   }
@@ -9790,6 +9879,7 @@ export const uploadGroupCover = onCall(
         },
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:764ae62753"});
       console.error('[uploadGroupCover] save failed', groupId, err);
       throw new HttpsError('internal', 'upload failed');
     }
@@ -10023,6 +10113,7 @@ export const backfillGroupCreatorIdsOnce = onCall(
         });
         touched += 1;
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:83f0d2c926"});
         console.warn(
           '[backfillGroupCreatorIdsOnce] update failed',
           doc.id,
@@ -10211,6 +10302,7 @@ async function recomputeCommunityShowcase(
     try {
       await db.collection('communityShowcase').doc(groupId).delete();
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"recomputeCommunityShowcase","site":"index:e345c01a02"});
       console.warn(
         '[updateCommunityShowcase] showcase teardown failed',
         groupId,
@@ -10224,7 +10316,8 @@ async function recomputeCommunityShowcase(
   if (groupSnap.data()?.isPersonal === true) {
     try {
       await db.collection('communityShowcase').doc(groupId).delete();
-    } catch {
+    } catch (caughtErrorcc9a15fd1f) {
+    observeCaughtError(caughtErrorcc9a15fd1f, {"source":"functions/src/index.ts","handler":"recomputeCommunityShowcase","site":"index:cc9a15fd1f"});
       /* nothing to tear down */
     }
     return;
@@ -10501,6 +10594,7 @@ export const updateShowcaseOnGroupChange = onDocumentWritten(
     try {
       await recomputeCommunityShowcase(groupId, event.data?.after);
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:fb8fb36f3f"});
       console.warn(
         '[updateShowcaseOnGroupChange] recompute failed',
         groupId,
@@ -10552,6 +10646,7 @@ export const updateShowcaseOnGameChange = onDocumentWritten(
     try {
       await recomputeCommunityShowcase(groupId);
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:03676698dd"});
       console.warn(
         '[updateShowcaseOnGameChange] recompute failed',
         groupId,
@@ -10663,6 +10758,7 @@ async function loadShowcaseSummary(
       coverPhotoUrl: cover,
     };
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"loadShowcaseSummary","site":"index:11948422e5"});
     console.warn(
       '[serveCommunityPage] showcase fetch failed',
       groupId,
@@ -10804,6 +10900,7 @@ export const serveCommunityPage = onRequest(
       );
       res.status(200).send(rendered);
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:3469cb0104"});
       console.error('[serveCommunityPage] render failed', err);
       // Best-effort fallback: serve the static template untouched so
       // the user still sees the page; crawlers fall back to the static
@@ -10814,7 +10911,8 @@ export const serveCommunityPage = onRequest(
           ? INVITE_TEMPLATE_PATH
           : COMMUNITY_TEMPLATE_PATH;
         res.status(200).send(loadTemplate(fallbackPath));
-      } catch {
+      } catch (caughtError3e06e864ae) {
+    observeCaughtError(caughtError3e06e864ae, {"source":"functions/src/index.ts","handler":"module","site":"index:3e06e864ae"});
         res.status(500).send('internal error');
       }
     }
@@ -10867,7 +10965,8 @@ export const serveInviteCode = onRequest(
               { clicks: admin.firestore.FieldValue.increment(1), lastClickAt: Date.now() },
               { merge: true },
             )
-            .catch(() => {});
+            .catch((caughtError7e99ab02e9: unknown) => {
+    observeCaughtError(caughtError7e99ab02e9, {"source":"functions/src/index.ts","handler":"module","site":"index:7e99ab02e9"});});
           // …AND the per-INVITER counter the dashboard profile reads for
           // "קליקים על הקישור". trackLinkClick's legacy `?inviter=` path bumps
           // this, but short links (`/i/<code>`) used to skip it — so a person's
@@ -10882,7 +10981,8 @@ export const serveInviteCode = onRequest(
                 { clicks: admin.firestore.FieldValue.increment(1), lastClickAt: Date.now() },
                 { merge: true },
               )
-              .catch(() => {});
+              .catch((caughtErrore4f3c961cb: unknown) => {
+    observeCaughtError(caughtErrore4f3c961cb, {"source":"functions/src/index.ts","handler":"module","site":"index:e4f3c961cb"});});
           }
           // …and into the cross-source daily aggregate the dashboard reads,
           // attributed to the inviter (or the short-code when anonymous).
@@ -10890,7 +10990,8 @@ export const serveInviteCode = onRequest(
             inviterId: invitedBy || undefined,
             code: code || undefined,
             kind: 'invite',
-          }).catch(() => {});
+          }).catch((caughtError4234e94f0a: unknown) => {
+    observeCaughtError(caughtError4234e94f0a, {"source":"functions/src/index.ts","handler":"module","site":"index:4234e94f0a"});});
         }
       }
 
@@ -10908,7 +11009,7 @@ export const serveInviteCode = onRequest(
       let meta: { title: string; description: string };
       let ogImage: string | null = null;
       if (type === 'team' && targetId) {
-        summary = await loadShowcaseSummary(targetId).catch(() => null);
+        summary = await loadShowcaseSummary(targetId).catch((caughtError7ef740fe46: unknown) => { observeCaughtError(caughtError7ef740fe46, {"source":"functions/src/index.ts","handler":"module","site":"index:7ef740fe46"}); return null; });
         meta = buildMetaBlock(summary);
         ogImage = summary?.coverPhotoUrl ?? null;
       } else if (type === 'session' && targetId) {
@@ -10916,7 +11017,7 @@ export const serveInviteCode = onRequest(
           .collection('games')
           .doc(targetId)
           .get()
-          .catch(() => null);
+          .catch((caughtErrord3ba0452f0: unknown) => { observeCaughtError(caughtErrord3ba0452f0, {"source":"functions/src/index.ts","handler":"module","site":"index:d3ba0452f0"}); return null; });
         const gd = g && g.exists ? (g.data() as Record<string, unknown>) : null;
         const gt =
           gd && typeof gd.title === 'string' && gd.title.trim()
@@ -10945,7 +11046,7 @@ export const serveInviteCode = onRequest(
           .collection('usersPublic')
           .doc(invitedBy)
           .get()
-          .catch(() => null);
+          .catch((caughtError67b01def13: unknown) => { observeCaughtError(caughtError67b01def13, {"source":"functions/src/index.ts","handler":"module","site":"index:67b01def13"}); return null; });
         const nm =
           u && u.exists && typeof (u.data() as { name?: string })?.name === 'string'
             ? ((u.data() as { name?: string }).name as string).trim()
@@ -10975,11 +11076,13 @@ export const serveInviteCode = onRequest(
       res.set('Cache-Control', 'no-store');
       res.status(200).send(out);
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:579f7f5ef4"});
       console.error('[serveInviteCode] render failed', err);
       try {
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.status(200).send(loadTemplate(INVITE_TEMPLATE_PATH));
-      } catch {
+      } catch (caughtErrorb236915f7b) {
+    observeCaughtError(caughtErrorb236915f7b, {"source":"functions/src/index.ts","handler":"module","site":"index:b236915f7b"});
         res.status(500).send('internal error');
       }
     }
@@ -11216,6 +11319,7 @@ async function getCityCoords(
       }
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"getCityCoords","site":"index:2f1784df77"});
     console.warn('[getCityCoords] cache read failed', city, err);
   }
   // Cache miss → Nominatim.
@@ -11244,6 +11348,7 @@ async function getCityCoords(
       }
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"getCityCoords","site":"index:e5921fd81c"});
     console.warn('[getCityCoords] Nominatim fetch failed', city, err);
   }
   // Persist outcome (positive AND negative) so we don't re-query
@@ -11268,6 +11373,7 @@ async function getCityCoords(
         { merge: true },
       );
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"getCityCoords","site":"index:85584adc9a"});
     console.warn('[getCityCoords] cache write failed', city, err);
   }
   return coords;
@@ -11644,6 +11750,7 @@ async function reserveFillerPush(
       return true;
     });
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"reserveFillerPush","site":"index:c542ac50ab"});
     console.error('[reserveFillerPush] txn failed', uid, err);
     return false;
   }
@@ -11870,7 +11977,8 @@ export const fillerPulseTask = onTaskDispatched(
       // create-once marker so fillerPulseChains doesn't grow unbounded.
       try {
         await db.collection('fillerPulseChains').doc(gameId).delete();
-      } catch {
+      } catch (caughtErrorf89de775ba) {
+    observeCaughtError(caughtErrorf89de775ba, {"source":"functions/src/index.ts","handler":"module","site":"index:f89de775ba"});
         /* best-effort cleanup */
       }
     }
@@ -11909,7 +12017,8 @@ async function maybeStartFillerPulse(
       .collection('fillerPulseChains')
       .doc(gameId)
       .create({ startedAt: Date.now() });
-  } catch {
+  } catch (caughtError7e1ca43ca6) {
+    observeCaughtError(caughtError7e1ca43ca6, {"source":"functions/src/index.ts","handler":"maybeStartFillerPulse","site":"index:7e1ca43ca6"});
     return; // a chain already exists for this game
   }
   try {
@@ -11918,12 +12027,14 @@ async function maybeStartFillerPulse(
       // Small delay lets the creation transaction settle before the first read.
       .enqueue({ gameId }, { scheduleTime: new Date(Date.now() + 15 * 1000) });
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"maybeStartFillerPulse","site":"index:f230765309"});
     console.error('[maybeStartFillerPulse] enqueue failed', gameId, err);
     // Roll back the marker so the chain isn't permanently blocked — the sweep
     // (or a later trigger) can still start it.
     try {
       await db.collection('fillerPulseChains').doc(gameId).delete();
-    } catch {
+    } catch (caughtError0f7d8ffb89) {
+    observeCaughtError(caughtError0f7d8ffb89, {"source":"functions/src/index.ts","handler":"maybeStartFillerPulse","site":"index:0f7d8ffb89"});
       /* best-effort */
     }
   }
@@ -11990,7 +12101,8 @@ export const startGameFillerPulse = onCall(
         .collection('fillerPulseChains')
         .doc(gameId)
         .create({ startedAt: Date.now(), manual: true });
-    } catch {
+    } catch (caughtError732bd6f971) {
+    observeCaughtError(caughtError732bd6f971, {"source":"functions/src/index.ts","handler":"module","site":"index:732bd6f971"});
       return { started: true, alreadyRunning: true };
     }
     try {
@@ -11998,8 +12110,9 @@ export const startGameFillerPulse = onCall(
         .taskQueue('fillerPulseTask')
         .enqueue({ gameId }, { scheduleTime: new Date(Date.now() + 2000) });
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:8279344e8e"});
       console.error('[startGameFillerPulse] enqueue failed', gameId, err);
-      await db.collection('fillerPulseChains').doc(gameId).delete().catch(() => undefined);
+      await db.collection('fillerPulseChains').doc(gameId).delete().catch((caughtErrorf0e4ab6726: unknown) => { observeCaughtError(caughtErrorf0e4ab6726, {"source":"functions/src/index.ts","handler":"module","site":"index:f0e4ab6726"}); return undefined; });
       throw new HttpsError('internal', 'could not start');
     }
     return { started: true };
@@ -12103,6 +12216,7 @@ async function runSendShortageWarnings(): Promise<void> {
       );
       pushed += 1;
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runSendShortageWarnings","site":"index:dd79a47b9c"});
       console.error(
         '[shortageWarnings] dispatch failed',
         doc.id,
@@ -12649,6 +12763,7 @@ export const approveFiller = onCall(
         createdByUid: callerUid,
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:fe1fc60220"});
       console.warn('[approveFiller] notif dispatch failed', err);
     }
 
@@ -12756,7 +12871,8 @@ export const onFriendRequestCreated = onDocumentCreated(
       const u = await db.collection('users').doc(req.fromUserId).get();
       const n = u.exists ? (u.data() as { name?: string }).name : '';
       if (typeof n === 'string' && n.length > 0) fromName = n;
-    } catch {
+    } catch (caughtError09c54b7f0a) {
+    observeCaughtError(caughtError09c54b7f0a, {"source":"functions/src/index.ts","handler":"module","site":"index:09c54b7f0a"});
       /* best-effort */
     }
     await createNotificationOnce({
@@ -12805,7 +12921,8 @@ export const acceptFriendRequest = onCall(
       const u = await db.collection('users').doc(uid).get();
       const n = u.exists ? (u.data() as { name?: string }).name : '';
       if (typeof n === 'string' && n.length > 0) accepterName = n;
-    } catch {
+    } catch (caughtErrorcc3e1f13fd) {
+    observeCaughtError(caughtErrorcc3e1f13fd, {"source":"functions/src/index.ts","handler":"module","site":"index:cc3e1f13fd"});
       /* best-effort */
     }
     await createNotificationOnce({
@@ -12925,7 +13042,7 @@ export const inviteFriendsToGroup = onCall(
       (fid) => inviterFriends.has(fid) && !members.has(fid),
     );
     const results = await Promise.allSettled([...new Set(toInvite)].map(fid =>
-      sendClubInvitation(db, uid, {name:inviterName}, groupId, fid)));
+      sendClubInvitation(db, uid, {name:inviterName}, groupId, fid))).then(results => observeSettledErrors(results, {"source":"functions/src/index.ts","handler":"module","site":"index:a001e8c1e6"}));
     return { invited: results.filter(r=>r.status==='fulfilled'&&r.value.invited).length };
 
   },
@@ -12977,7 +13094,8 @@ export const onNewUserJoined = onDocumentCreated('users/{uid}', async (event) =>
       const link = (await db.collection('adLinks').doc(linkId).get()).data();
       const n = link?.name;
       if (typeof n === 'string' && n.trim()) linkName = n.trim();
-    } catch {
+    } catch (caughtErrorf8a4e48869) {
+    observeCaughtError(caughtErrorf8a4e48869, {"source":"functions/src/index.ts","handler":"module","site":"index:f8a4e48869"});
       // ignore — fall back to the source token decoded from the link
     }
     if (!linkName && source) linkName = source;
@@ -12988,7 +13106,8 @@ export const onNewUserJoined = onDocumentCreated('users/{uid}', async (event) =>
       const invName =
         inv?.name && inv.name !== 'משתמש שהוסר' ? (inv.name as string) : null;
       via = invName ? ` · דרך ${invName}` : ' · דרך הזמנה';
-    } catch {
+    } catch (caughtErroraffacef029) {
+    observeCaughtError(caughtErroraffacef029, {"source":"functions/src/index.ts","handler":"module","site":"index:affacef029"});
       via = ' · דרך הזמנה';
     }
   } else if (campaign) {
@@ -13012,7 +13131,8 @@ async function adminAlertUserName(uid: string): Promise<string> {
     const d = await admin.firestore().collection('users').doc(uid).get();
     const n = (d.data() as { name?: string } | undefined)?.name;
     return n && n !== 'משתמש שהוסר' ? n : 'מישהו';
-  } catch {
+  } catch (caughtErrorfbfca8618b) {
+    observeCaughtError(caughtErrorfbfca8618b, {"source":"functions/src/index.ts","handler":"adminAlertUserName","site":"index:fbfca8618b"});
     return 'מישהו';
   }
 }
@@ -13265,7 +13385,8 @@ export const getInvitePreview = onRequest(
         try {
           const u = await db.collection('usersPublic').doc(inviterId).get();
           inviter = publicInviterFields(u.exists ? u.data() as Record<string, unknown> : undefined);
-        } catch { /* An optional public identity must not hide the target. */ }
+        } catch (caughtError1a6ab81312) {
+    observeCaughtError(caughtError1a6ab81312, {"source":"functions/src/index.ts","handler":"module","site":"index:1a6ab81312"}); /* An optional public identity must not hide the target. */ }
       }
 
       if (link.type === 'session' && targetId) {
@@ -13383,14 +13504,16 @@ export const getInvitePreview = onRequest(
               };
             }
           }
-        } catch { /* Optional public activity unavailable; omit the cards. */ }
+        } catch (caughtError3e7b501e04) {
+    observeCaughtError(caughtError3e7b501e04, {"source":"functions/src/index.ts","handler":"module","site":"index:3e7b501e04"}); /* Optional public activity unavailable; omit the cards. */ }
         res.json({ type: 'personal', ...inviter, ...(community ? { community } : {}), ...(nextGame ? { nextGame } : {}) });
         return;
       }
 
       // app/go/unknown → generic; the page shows the universal Teamder version.
       res.json({ type: 'generic' });
-    } catch {
+    } catch (caughtErrore3f25faf8f) {
+    observeCaughtError(caughtErrore3f25faf8f, {"source":"functions/src/index.ts","handler":"module","site":"index:e3f25faf8f"});
       // Never leak an internal error — degrade to the generic page.
       res.json({ type: 'generic' });
     }
@@ -13445,7 +13568,8 @@ export const trackLinkClick = onRequest(
         source: s || undefined,
         kind: l || s ? 'ad' : 'invite',
       });
-    } catch {
+    } catch (caughtErrorbf89c7adb0) {
+    observeCaughtError(caughtErrorbf89c7adb0, {"source":"functions/src/index.ts","handler":"module","site":"index:bf89c7adb0"});
       /* best-effort beacon — never error the user's redirect */
     }
     res.set('Cache-Control', 'no-store');
@@ -13561,6 +13685,7 @@ async function runSweep(label: string, fn: () => Promise<void>): Promise<void> {
   try {
     await fn();
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"runSweep","site":"index:a6537037ca"});
     console.error(`[cron] sweep "${label}" failed`, err);
   }
 }
@@ -13598,6 +13723,7 @@ async function claimCronWindow(name: string, dueAfterMs: number): Promise<boolea
       return true;
     });
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"claimCronWindow","site":"index:a0610a66e5"});
     // A contended transaction that cannot commit means someone else claimed the
     // window. Not being due is the safe answer.
     console.warn(`[cron] could not claim window "${name}"`, err);
@@ -14000,6 +14126,7 @@ export const resolveSpotOffer = onCall(
         if (result.changed) tx.update(ref, result.patch);
         return { ok: true, changed: result.changed };
       } catch (error) {
+    observeCaughtError(error, {"source":"functions/src/index.ts","handler":"module","site":"index:7e1599a1cc"});
         throw new HttpsError('failed-precondition', (error as Error).message);
       }
     });
@@ -14952,6 +15079,7 @@ export const commitRoundStats = onCall(
                   roundId,
                 );
               } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:26a480af6a"});
                 const code = (err as { code?: unknown })?.code;
                 if (code !== 6 && code !== 'already-exists') throw err;
               }
@@ -15028,6 +15156,7 @@ export const commitRoundStats = onCall(
       // fails to commit.
       await db.collection('games').doc(gameId).set(patch, { merge: true });
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:7f98e46696"});
       console.error('[commitRoundStats] played-stamp failed', gameId, err);
     }
 
@@ -15527,6 +15656,7 @@ async function archivedCareerOf(groupId: string): Promise<
     }
     archivedClubTotals.set(groupId, club);
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"archivedCareerOf","site":"index:caf6e1f668"});
     console.error('[season] archived career read failed', groupId, err);
   }
   return out;
@@ -15547,55 +15677,7 @@ async function archivedCareerOf(groupId: string): Promise<
  * Mirrors the client's aggregated shape (fingerprint + count + first/lastSeen)
  * so the inbox groups a recurring failure into one row instead of a flood.
  */
-async function reportServerError(args: {
-  operation: string;
-  err: unknown;
-  context?: Record<string, unknown>;
-}): Promise<void> {
-  try {
-    const e = args.err as { message?: string; code?: string | number; stack?: string };
-    const message = String(e?.message ?? args.err ?? 'unknown');
-    // Signature, not incident: the same failure on the same club every hour is
-    // one row with a count, which is what makes it readable.
-    const fp = `srv_${args.operation}_${String(args.context?.groupId ?? '')}`
-      .replace(/[^\w]/g, '')
-      .slice(0, 80);
-    const ref = db.collection('errors').doc(fp);
-    const now = admin.firestore.Timestamp.now();
-    const common = {
-      operation: args.operation,
-      title: `שגיאת שרת · ${args.operation}`,
-      category: 'server',
-      lastMessage: message.slice(0, 500),
-      lastCode: e?.code != null ? String(e.code) : null,
-      lastStack: (e?.stack ?? '').slice(0, 2000) || null,
-      lastContext: args.context ?? {},
-      lastUserId: null,
-      lastScreen: null,
-      platform: 'server',
-      osVersion: '',
-      appVersion: 'functions',
-      lastSeen: now,
-    };
-    await db.runTransaction(async (tx) => {
-      const cur = await tx.get(ref);
-      if (cur.exists) {
-        tx.set(ref, { ...common, count: (cur.get('count') ?? 0) + 1 }, { merge: true });
-      } else {
-        tx.set(ref, {
-          ...common,
-          fingerprint: fp,
-          count: 1,
-          status: 'new',
-          firstSeen: now,
-        });
-      }
-    });
-  } catch (reportErr) {
-    // The reporter must never be the thing that breaks the caller.
-    console.error('[reportServerError] failed', args.operation, reportErr);
-  }
-}
+
 
 // ─── Seasons ─────────────────────────────────────────────────────────────
 //
@@ -15659,7 +15741,7 @@ async function announceSeasonClosed(args: {
         }),
       );
     }
-    const results = await Promise.allSettled(ops);
+    const results = await Promise.allSettled(ops).then(results => observeSettledErrors(results, {"source":"functions/src/index.ts","handler":"announceSeasonClosed","site":"index:cbc635a297"}));
     const failed = results.filter((r) => r.status === 'rejected' || (r.value as { skipped?: string })?.skipped === 'error').length;
     await snap.ref.set({ notificationPending: failed > 0, notificationAttemptAt: Date.now() }, { merge: true });
     if (failed > 0) {
@@ -15668,6 +15750,7 @@ async function announceSeasonClosed(args: {
       );
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"announceSeasonClosed","site":"index:9eb065714b"});
     console.error('[season] summary fan-out failed', groupId, seasonId, err);
   }
 }
@@ -15762,6 +15845,7 @@ async function playedEveningsOfSeason(
     );
     return countSeasonEvenings(games, seasonId, seasonNo);
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"playedEveningsOfSeason","site":"index:d8a545b23c"});
     // A failed count must not become a zero: returning -1 lets the caller keep
     // whatever it already had rather than wiping a season's progress because
     // one query failed.
@@ -15886,6 +15970,7 @@ export const syncUserPublic = onDocumentWritten(
       try {
         await db.collection('usersPublic').doc(uid).delete();
       } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:424a7c53b6"});
         console.warn('[syncUserPublic] delete failed', uid, err);
       }
       return;
@@ -15901,6 +15986,7 @@ export const syncUserPublic = onDocumentWritten(
         .doc(uid)
         .set(buildUsersPublic(uid, after), { merge: false });
     } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:7826b17f0f"});
       console.warn('[syncUserPublic] write failed', uid, err);
     }
   },
@@ -15935,6 +16021,7 @@ export const sendClubRegistrationReminder = onCall({ enforceAppCheck: ENFORCE_AP
      payload:{gameId,gameTitle:game.title||'המחזור',startsAt:game.startsAt}});
    return {wrote:result.wrote};
  } catch(error) {
+    observeCaughtError(error, {"source":"functions/src/index.ts","handler":"module","site":"index:01fa799532"});
    // Release only this claim, never a newer send. A failed send must be retryable.
    await db.runTransaction(async tx=>{
      const record=(await tx.get(receiptRef)).data();

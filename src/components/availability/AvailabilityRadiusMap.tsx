@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // AvailabilityRadiusMap — the "search area" map for the availability screen.
 //
 // Shows a draggable ball pin at the user's location with a translucent blue
@@ -64,7 +65,8 @@ export function AvailabilityRadiusMap({ center, radiusKm, onPick, onExpand }: Pr
       ) {
         onPick?.(msg.lat, msg.lng);
       }
-    } catch {
+    } catch (caughtError80b127b1e1) {
+    observeCaughtError(caughtError80b127b1e1, {"source":"src/components/availability/AvailabilityRadiusMap.tsx","handler":"handleMessage","site":"AvailabilityRadiusMap:80b127b1e1"});
       /* ignore malformed bridge messages */
     }
   };

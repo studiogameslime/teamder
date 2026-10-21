@@ -1,3 +1,4 @@
+import { observeCaughtError } from './services/errorObservation';
 // Background polling via expo-background-fetch + expo-task-manager. On
 // Android this runs through WorkManager every ~15 min while the app is
 // installed (even backgrounded), firing local notifications for new
@@ -19,6 +20,7 @@ TaskManager.defineTask(POLL_TASK, async () => {
       ? BackgroundFetch.BackgroundFetchResult.NewData
       : BackgroundFetch.BackgroundFetchResult.NoData;
   } catch (e) {
+    observeCaughtError(e, {"source":"pulse/src/background.ts","handler":"module","site":"background:f4c4fcd7ba"});
     console.warn('[bg] poll failed:', (e as Error).message);
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
@@ -33,6 +35,7 @@ TaskManager.defineTask(QUOTA_TASK, async () => {
     await checkAndNotifyQuota();
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (e) {
+    observeCaughtError(e, {"source":"pulse/src/background.ts","handler":"module","site":"background:60d6811a03"});
     console.warn('[bg] quota check failed:', (e as Error).message);
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
@@ -54,6 +57,7 @@ export async function registerBackgroundQuota(): Promise<void> {
       startOnBoot: true,
     });
   } catch (e) {
+    observeCaughtError(e, {"source":"pulse/src/background.ts","handler":"registerBackgroundQuota","site":"background:16d8c9e213"});
     console.warn('[bg] quota register failed:', (e as Error).message);
   }
 }
@@ -75,6 +79,7 @@ export async function registerBackgroundPoll(): Promise<void> {
       startOnBoot: true,
     });
   } catch (e) {
+    observeCaughtError(e, {"source":"pulse/src/background.ts","handler":"registerBackgroundPoll","site":"background:b0525a7832"});
     console.warn('[bg] register failed:', (e as Error).message);
   }
 }
@@ -87,6 +92,7 @@ export async function unregisterBackgroundPoll(): Promise<void> {
       await BackgroundFetch.unregisterTaskAsync(POLL_TASK);
     }
   } catch (e) {
+    observeCaughtError(e, {"source":"pulse/src/background.ts","handler":"unregisterBackgroundPoll","site":"background:edfd5bbb06"});
     console.warn('[bg] unregister failed:', (e as Error).message);
   }
 }

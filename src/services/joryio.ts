@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // joryio — Joryio integration for Teamder.
 //
 // Installed from npm: @joryio/react-native-sdk@1.3.0-beta.1.
@@ -260,6 +261,7 @@ export async function bindIdentity(
     unclaimedAnonymousRun = false;
     return shouldAlias ? 'aliased' : 'identified';
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/joryio.ts","handler":"bindIdentity","site":"joryio:add708494b"});
     logUnexpected('joryioBindIdentity', {
       message: err instanceof Error ? err.message : String(err),
       isAnonymous: subject?.isAnonymous,
@@ -296,7 +298,8 @@ export async function registerPushToken(token: string): Promise<boolean> {
     try {
       const messaging = require('@react-native-firebase/messaging').default;
       token = await messaging().getAPNSToken();
-    } catch {
+    } catch (caughtError89a7f2a33e) {
+    observeCaughtError(caughtError89a7f2a33e, {"source":"src/services/joryio.ts","handler":"registerPushToken","site":"joryio:89a7f2a33e"});
       return false;
     }
     if (!token || !/^[0-9a-f]{64}$/i.test(token)) return false;
@@ -332,7 +335,8 @@ export async function registerPushToken(token: string): Promise<boolean> {
   try {
     const status = await Joryio.getPushPermissionStatus();
     if (status) Joryio.setAttribute('push_permission', status);
-  } catch {
+  } catch (caughtError47d960c2b9) {
+    observeCaughtError(caughtError47d960c2b9, {"source":"src/services/joryio.ts","handler":"registerPushToken","site":"joryio:47d960c2b9"});
     // Permission diagnostics must not turn a confirmed registration into failure.
   }
   return true;
@@ -454,7 +458,8 @@ export async function isTrackingOptedOut(): Promise<boolean> {
   if (USE_MOCK_DATA) return false;
   try {
     return await Joryio.isUserOptedOut();
-  } catch {
+  } catch (caughtErroraf59ba929a) {
+    observeCaughtError(caughtErroraf59ba929a, {"source":"src/services/joryio.ts","handler":"isTrackingOptedOut","site":"joryio:af59ba929a"});
     return false;
   }
 }

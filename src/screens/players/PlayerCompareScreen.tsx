@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // Two players, one club — "יחד" and "ראש בראש" on a single screen.
 //
 // This screen replaces two surfaces that said different things about the same
@@ -115,13 +116,13 @@ export function PlayerCompareScreen() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const g = await groupService.get(groupId).catch(() => null);
+      const g = await groupService.get(groupId).catch((caughtError90d03b9cb5: unknown) => { observeCaughtError(caughtError90d03b9cb5, {"source":"src/screens/players/PlayerCompareScreen.tsx","handler":"PlayerCompareScreen","site":"PlayerCompareScreen:90d03b9cb5"}); return null; });
       if (!alive) return;
       setSeasons(g?.seasons);
       if (g?.seasons && !g.seasons.enabled && hasArchivedStats(g.seasons)) setScope({ k: 'all' });
       // Only a club that has actually closed one pays for the list.
       if (hasArchivedStats(g?.seasons)) {
-        const list = await seasonHistoryService.list(groupId, true).catch(() => 'error' as const);
+        const list = await seasonHistoryService.list(groupId, true).catch((caughtErrore20a1515eb: unknown) => { observeCaughtError(caughtErrore20a1515eb, {"source":"src/screens/players/PlayerCompareScreen.tsx","handler":"PlayerCompareScreen","site":"PlayerCompareScreen:e20a1515eb"}); return 'error' as const; });
         if (!alive) return;
         if (list !== 'error') {
           setPastSeasons(list.map((s) => ({ seasonId: s.seasonId, no: s.no, nonSeason:s.nonSeason })));
@@ -191,6 +192,7 @@ export function PlayerCompareScreen() {
         toast.error(he.summaryShareUnavailable);
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/players/PlayerCompareScreen.tsx","handler":"PlayerCompareScreen","site":"PlayerCompareScreen:26a9798366"});
       logError('sharePlayerCompare', err, { groupId, otherUid });
       toast.error(he.summaryShareFailed);
     } finally {

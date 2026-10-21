@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RtlTextInput as TextInput } from './RtlTextInput';
@@ -15,7 +16,8 @@ export function NewSupportChatPicker({ visible, onClose, onSelect }: { visible: 
     if (!visible) return;
     let alive = true; setSearch(''); setUsers([]); setLoading(true); setFailed(false);
     void fetchUsers({ force: true }).then(rows => { if (alive) setUsers(rows.filter(u => !u.deleted && !u.isTest && u.id !== 'teamder' && !u.id.includes('__') && !/[\/\s]/.test(u.id))); })
-      .catch(() => { if (alive) setFailed(true); }).finally(() => { if (alive) setLoading(false); });
+      .catch((caughtError2b3b625851: unknown) => {
+    observeCaughtError(caughtError2b3b625851, {"source":"pulse/src/components/NewSupportChatPicker.tsx","handler":"NewSupportChatPicker","site":"NewSupportChatPicker:2b3b625851"}); if (alive) setFailed(true); }).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [visible, retry]);
   const matches = useMemo(() => users.filter(u => `${u.name} ${u.city ?? ''}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())), [users, search]);

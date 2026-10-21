@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // Existing PlayerCard route: self/guest remain here; another full-account
 // player uses SocialPlayerProfile with server-projected identity and statistics.
 // Do not introduce a second profile route when extending discovery.
@@ -144,7 +145,8 @@ export function PlayerCardScreen() {
         .then((list) => {
           if (alive) setPublicUser(list[0] ?? null);
         })
-        .catch(() => {
+        .catch((caughtError20584b91e6: unknown) => {
+    observeCaughtError(caughtError20584b91e6, {"source":"src/screens/players/PlayerCardScreen.tsx","handler":"PlayerCardScreen","site":"PlayerCardScreen:20584b91e6"});
           if (alive) setPublicUser(null);
         })
         .finally(() => {
@@ -156,7 +158,8 @@ export function PlayerCardScreen() {
         .then((u) => {
           if (alive) setUser(u);
         })
-        .catch(() => {
+        .catch((caughtErrorac8e4e577e: unknown) => {
+    observeCaughtError(caughtErrorac8e4e577e, {"source":"src/screens/players/PlayerCardScreen.tsx","handler":"PlayerCardScreen","site":"PlayerCardScreen:ac8e4e577e"});
           if (alive) setUser(null);
         })
         .finally(() => {
@@ -187,6 +190,7 @@ export function PlayerCardScreen() {
           if (alive) setReferralCount(n);
         })
         .catch((err) => {
+    observeCaughtError(err, {"source":"src/screens/players/PlayerCardScreen.tsx","handler":"PlayerCardScreen","site":"PlayerCardScreen:61575508be"});
           if (__DEV__) {
             console.warn('[playerCard] getInvitedUsersCount failed', err);
           }
@@ -230,7 +234,8 @@ export function PlayerCardScreen() {
           .sort((a, b) => a.startsAt - b.startsAt)[0];
         setNextGame(next ?? null);
       })
-      .catch(() => {
+      .catch((caughtErrorf15e87c655: unknown) => {
+    observeCaughtError(caughtErrorf15e87c655, {"source":"src/screens/players/PlayerCardScreen.tsx","handler":"PlayerCardScreen","site":"PlayerCardScreen:f15e87c655"});
         if (alive) setNextGame(null);
       })
       .finally(() => {
@@ -740,12 +745,14 @@ function PairStatsSection({
       .getPairStats(viewerId, otherId, groupId)
       .then((s) => alive && setStats(s))
       .catch((err) => {
+    observeCaughtError(err, {"source":"src/screens/players/PlayerCardScreen.tsx","handler":"PairStatsSection","site":"PlayerCardScreen:33ed28abca"});
         if (__DEV__) console.warn('[pairStats] query failed', err);
       });
     groupService
       .findSharedCommunities(viewerId, otherId)
       .then((groups) => alive && setSharedGroups(groups))
       .catch((err) => {
+    observeCaughtError(err, {"source":"src/screens/players/PlayerCardScreen.tsx","handler":"PairStatsSection","site":"PlayerCardScreen:8777055a2f"});
         if (__DEV__) console.warn('[pairStats] shared-communities failed', err);
       });
     return () => {
@@ -899,7 +906,8 @@ function AchievementsSection({ user }: { user: User }) {
         const fresh = await achievementsService.persistDerivedUnlocks(user.id, c);
         if (alive && fresh.length) setCelebrate(fresh);
       })
-      .catch(() => {
+      .catch((caughtError9540441a23: unknown) => {
+    observeCaughtError(caughtError9540441a23, {"source":"src/screens/players/PlayerCardScreen.tsx","handler":"AchievementsSection","site":"PlayerCardScreen:9540441a23"});
         if (alive) setDeriveFailed(true);
       });
     return () => {

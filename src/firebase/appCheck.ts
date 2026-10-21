@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // App Check wiring.
 //
 // Two layers, because we have a hybrid SDK setup:
@@ -68,6 +69,7 @@ export async function initAppCheck(app: FirebaseApp): Promise<void> {
     const m = require('@react-native-firebase/app-check') as NativeModule;
     appCheckMod = m?.default ?? null;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/firebase/appCheck.ts","handler":"initAppCheck","site":"appCheck:782f2b5f5c"});
     if (__DEV__) {
       console.warn(
         '[appCheck] native module not linked — skipping App Check init',
@@ -107,6 +109,7 @@ export async function initAppCheck(app: FirebaseApp): Promise<void> {
       isTokenAutoRefreshEnabled: true,
     });
   } catch (err) {
+    observeCaughtError(err, {"source":"src/firebase/appCheck.ts","handler":"initAppCheck","site":"appCheck:8f588b4bd4"});
     if (__DEV__) {
       console.warn('[appCheck] native init failed', err);
     }
@@ -138,6 +141,7 @@ export async function initAppCheck(app: FirebaseApp): Promise<void> {
       console.log('[appCheck] initialized (debug mode)');
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"src/firebase/appCheck.ts","handler":"initAppCheck","site":"appCheck:f1e8023a93"});
     if (__DEV__) {
       console.warn('[appCheck] JS SDK bridge failed', err);
     }

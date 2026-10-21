@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // The heart: pull every source, detect NEW reviews, fire notifications,
 // and persist a snapshot for the UI. Each source is isolated so one
 // failure (or one missing credential) never blocks the others.
@@ -50,6 +51,7 @@ async function safe<T>(label: string, fn: () => Promise<T>): Promise<T | null> {
       }),
     ]);
   } catch (e) {
+    observeCaughtError(e, {"source":"pulse/src/services/poller.ts","handler":"safe","site":"poller:fb72ac3fea"});
     console.warn(`[poll] ${label} failed:`, (e as Error).message);
     return null;
   } finally {

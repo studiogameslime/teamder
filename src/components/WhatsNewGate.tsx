@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // WhatsNewGate — decides (once per launch) whether to show the "מה חדש" modal.
 // Mounted in App.tsx next to CampaignGate and only made `active` when the app
 // is past splash, signed in, onboarded, and NOT showing a force/optional update
@@ -43,7 +44,8 @@ export function WhatsNewGate({
         if (!alive) return;
         complete = true;
         if (p) setPayload(p);
-      } catch {
+      } catch (caughtErrorce7f198388) {
+    observeCaughtError(caughtErrorce7f198388, {"source":"src/components/WhatsNewGate.tsx","handler":"WhatsNewGate","site":"WhatsNewGate:ce7f198388"});
         // Transient network/storage failures must not consume this release.
         if (alive) {
           checkedRef.current = false;
@@ -69,7 +71,8 @@ export function WhatsNewGate({
     if (!active || !payload) return;
     // Persist only after a committed render of the visible sheet. A gate
     // deactivated during the fetch must not mark an unseen sheet as shown.
-    void markWhatsNewSeen(payload.version).catch(() => {
+    void markWhatsNewSeen(payload.version).catch((caughtError3c7dd4e55e: unknown) => {
+    observeCaughtError(caughtError3c7dd4e55e, {"source":"src/components/WhatsNewGate.tsx","handler":"WhatsNewGate","site":"WhatsNewGate:3c7dd4e55e"});
       // Keep the session visible/usable; a later launch can retry persistence.
     });
   }, [active, payload]);

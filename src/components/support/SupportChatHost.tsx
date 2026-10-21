@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, FlatList, Image, Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,7 +59,8 @@ export function SupportChatHost({ active, hideBubble = false }: { active: boolea
     const stop = chatService.subscribeMessages('dm', convId, rows => {
       if (useUserStore.getState().currentUser?.id !== uid) return;
       setMessages(rows); setLoading(false); setLoadFailed(false);
-      void chatService.markChatRead(uid, 'dm', convId).catch(() => {});
+      void chatService.markChatRead(uid, 'dm', convId).catch((caughtError1389365cfe: unknown) => {
+    observeCaughtError(caughtError1389365cfe, {"source":"src/components/support/SupportChatHost.tsx","handler":"SupportChatHost","site":"SupportChatHost:1389365cfe"});});
     }, () => { setLoading(false); setLoadFailed(true); });
     return () => { stop(); if (getActiveChat() === `dm__${convId}`) setActiveChat(previous); };
   }, [visible, uid, convId, retry]);
@@ -77,7 +79,8 @@ export function SupportChatHost({ active, hideBubble = false }: { active: boolea
           if (cancelled || useUserStore.getState().currentUser?.id !== uid) return;
           if (!sameSource() || !image || image.length > 180_000) throw new Error('צילום גדול מדי או שהמסך השתנה.');
           state.patch(uid, { image, attemptId: undefined });
-        } catch { if (!cancelled) setError('לא הצלחנו לצלם את המסך. אפשר לנסות שוב או לשלוח בלי צילום.'); }
+        } catch (caughtErrore2a6d0817f) {
+    observeCaughtError(caughtErrore2a6d0817f, {"source":"src/components/support/SupportChatHost.tsx","handler":"SupportChatHost","site":"SupportChatHost:e2a6d0817f"}); if (!cancelled) setError('לא הצלחנו לצלם את המסך. אפשר לנסות שוב או לשלוח בלי צילום.'); }
         finally { if (!cancelled && mounted.current) setCapturing(false); }
       })();
     }, Platform.OS === 'ios' ? 700 : 450);
@@ -95,7 +98,8 @@ export function SupportChatHost({ active, hideBubble = false }: { active: boolea
       if (useUserStore.getState().currentUser?.id !== uid) return;
       state.patch(uid, { text: '', image: undefined, attemptId: undefined });
       await chatService.touchMyDmEntry(uid, convId, { name: 'Teamder' });
-    } catch { if (useUserStore.getState().currentUser?.id === uid) setError('השליחה נכשלה. ההודעה והצילום נשמרו — נסו שוב.'); }
+    } catch (caughtError6b3c8ee2f6) {
+    observeCaughtError(caughtError6b3c8ee2f6, {"source":"src/components/support/SupportChatHost.tsx","handler":"send","site":"SupportChatHost:6b3c8ee2f6"}); if (useUserStore.getState().currentUser?.id === uid) setError('השליחה נכשלה. ההודעה והצילום נשמרו — נסו שוב.'); }
     finally { busy.current = false; if (mounted.current) setSending(false); }
   };
   return <>
@@ -134,7 +138,8 @@ export function SupportChatHost({ active, hideBubble = false }: { active: boolea
       </SafeKeyboardAvoidingView>
     </Modal>
     <Modal visible={!!preview} transparent animationType="fade" onRequestClose={() => setPreview(null)}><View style={s.preview}><Pressable onPress={() => setPreview(null)} style={s.previewClose} accessibilityLabel="סגירת צילום"><Ionicons name="close" size={28} color="white" /></Pressable>{preview ? <Image source={{ uri: `data:image/jpeg;base64,${preview}` }} style={{ flex: 1, width: '100%' }} resizeMode="contain" /> : null}</View></Modal>
-    <ContextualAuthSheet visible={authOpen} kind="account_upgrade" hasDraft copy={{ title: 'מתחברים כדי לדבר עם הצוות', body: 'ההודעה והצילום נשמרו. לאחר ההתחברות אפשר לחזור ולשלוח.' }} onCancel={() => { setAuthOpen(false); authDraft.current = null; }} onEmailTransition={() => { setAuthOpen(false); state.close(); }} onAuthenticated={async ({ uid: nextUid }) => { setAuthOpen(false); try { await useUserStore.getState().refreshFromSession(nextUid); } catch { setError('לא הצלחנו לחדש את ההתחברות. ההודעה נשמרה.'); } }} />
+    <ContextualAuthSheet visible={authOpen} kind="account_upgrade" hasDraft copy={{ title: 'מתחברים כדי לדבר עם הצוות', body: 'ההודעה והצילום נשמרו. לאחר ההתחברות אפשר לחזור ולשלוח.' }} onCancel={() => { setAuthOpen(false); authDraft.current = null; }} onEmailTransition={() => { setAuthOpen(false); state.close(); }} onAuthenticated={async ({ uid: nextUid }) => { setAuthOpen(false); try { await useUserStore.getState().refreshFromSession(nextUid); } catch (caughtError4dc4d473d8) {
+    observeCaughtError(caughtError4dc4d473d8, {"source":"src/components/support/SupportChatHost.tsx","handler":"SupportChatHost","site":"SupportChatHost:4dc4d473d8"}); setError('לא הצלחנו לחדש את ההתחברות. ההודעה נשמרה.'); } }} />
   </>;
 }
 const s = StyleSheet.create({

@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Master switch for the Teamder home "פנויים לשחק לידך" availability card,
 // stored at appConfig/features.availabilityCardEnabled. The Teamder app reads
 // this and hides the whole home availability surface when it's false. Same
@@ -5,7 +6,7 @@
 import { getDoc, patchDoc } from './firestoreRest';
 
 export async function fetchAvailabilityCardEnabled(): Promise<boolean> {
-  const doc = await getDoc('appConfig/features').catch(() => null);
+  const doc = await getDoc('appConfig/features').catch((caughtError34d8745f61: unknown) => { observeCaughtError(caughtError34d8745f61, {"source":"pulse/src/services/homeConfig.ts","handler":"fetchAvailabilityCardEnabled","site":"homeConfig:34d8745f61"}); return null; });
   return doc?.availabilityCardEnabled !== false;
 }
 

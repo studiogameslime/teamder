@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // QARouteLauncher — a dev-only way to open any screen directly.
 //
 // WHY THIS EXISTS. The visual census could not reach most of the product: the
@@ -226,7 +227,8 @@ function focusedTab(): string {
       if (cur && TAB_ROOT[cur.name]) return cur.name;
       node = cur?.state as typeof node;
     }
-  } catch {
+  } catch (caughtErrorbd1ef6d84e) {
+    observeCaughtError(caughtErrorbd1ef6d84e, {"source":"src/dev/QARouteLauncher.tsx","handler":"focusedTab","site":"QARouteLauncher:bd1ef6d84e"});
     /* dev tool */
   }
   return '';
@@ -265,7 +267,8 @@ function navigateTo(route: string) {
     } else {
       nav.navigate(tab, { screen: route, initial: false, params: hit?.[3] });
     }
-  } catch {
+  } catch (caughtError3c284b5685) {
+    observeCaughtError(caughtError3c284b5685, {"source":"src/dev/QARouteLauncher.tsx","handler":"navigateTo","site":"QARouteLauncher:3c284b5685"});
     /* dev tool — never throw into the app */
   }
 }
@@ -605,14 +608,16 @@ export function QARouteLauncher(): React.ReactElement | null {
       setTimeout(() => navigateTo(target), 400);
     };
     const sub = Linking.addEventListener('url', (e) => handle(e.url));
-    void Linking.getInitialURL().then(handle).catch(() => {});
+    void Linking.getInitialURL().then(handle).catch((caughtError554a02004d: unknown) => {
+    observeCaughtError(caughtError554a02004d, {"source":"src/dev/QARouteLauncher.tsx","handler":"QARouteLauncher","site":"QARouteLauncher:554a02004d"});});
     const tick = setInterval(() => {
       try {
         const r = navigationRef.isReady()
           ? navigationRef.getCurrentRoute()?.name
           : undefined;
         setHere(r ?? '');
-      } catch {
+      } catch (caughtError238d9ddcd9) {
+    observeCaughtError(caughtError238d9ddcd9, {"source":"src/dev/QARouteLauncher.tsx","handler":"QARouteLauncher","site":"QARouteLauncher:238d9ddcd9"});
         /* dev tool */
       }
     }, 700);

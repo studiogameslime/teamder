@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import pathlib
+import os
 import unittest
 from unittest.mock import patch
 
@@ -20,6 +21,82 @@ class Response:
 
 
 class PulseTests(unittest.TestCase):
+    def test_inline_credentials_take_precedence_without_file_access(self):
+        key = {'client_email': 'test@example.invalid', 'private_key': 'test-only-key'}
+        with patch.dict(pulse.os.environ, {'PULSE_CREDENTIALS_JSON': json.dumps(key)}, clear=True), \
+                patch.object(pathlib.Path, 'read_text') as read:
+            self.assertEqual(pulse.load_credentials(), key)
+            read.assert_not_called()
+
+    def test_invalid_inline_credentials_do_not_fallback_or_leak(self):
+        for value in ('', 'secret-invalid-json', '[]', '{}'):
+            with self.subTest(value=value), patch.dict(pulse.os.environ, {'PULSE_CREDENTIALS_JSON': value}, clear=True), \
+                    patch.object(pathlib.Path, 'read_text') as read:
+                with self.assertRaisesRegex(ValueError, 'Invalid Pulse credential JSON|Missing Pulse credential fields'):
+                    pulse.load_credentials()
+                read.assert_not_called()
+
+    def test_file_credentials_remain_supported(self):
+        with patch.dict(pulse.os.environ, {'PULSE_CREDENTIALS': '/test/key.json'}, clear=True), \
+                patch.object(pathlib.Path, 'read_text', return_value='{"client_email":"test","private_key":"fake"}') as read:
+            self.assertEqual(pulse.load_credentials(), {'client_email': 'test', 'private_key': 'fake'})
+            read.assert_called_once_with(encoding='utf-8')
+    def test_personal_json_wins_without_reading_or_writing_a_file(self):
+        key = {'client_email': 'reader@example.invalid', 'private_key': 'fake-private-key'}
+        with patch.dict(os.environ, {'PULSE_CREDENTIALS_JSON': json.dumps(key), 'PULSE_CREDENTIALS': '/not-used'}, clear=True), \
+                patch.object(pathlib.Path, 'read_text') as read, patch.object(pathlib.Path, 'write_text') as write:
+            self.assertEqual(pulse.load_credentials(), key)
+            read.assert_not_called()
+            write.assert_not_called()
+
+    def test_existing_local_key_path_still_works(self):
+        key = {'client_email': 'reader@example.invalid', 'private_key': 'fake-private-key'}
+        with patch.dict(os.environ, {'PULSE_CREDENTIALS': '/local/fake-key.json'}, clear=True), \
+                patch.object(pathlib.Path, 'read_text', return_value=json.dumps(key)) as read:
+            self.assertEqual(pulse.load_credentials(), key)
+            self.assertEqual(read.call_args.kwargs, {'encoding': 'utf-8'})
+
+    def test_absent_configuration_keeps_default_local_path(self):
+        with patch.dict(os.environ, {}, clear=True), patch.object(pathlib.Path, 'read_text', autospec=True, return_value='{}') as read:
+            with self.assertRaises(ValueError):
+                pulse.load_credentials()
+            self.assertEqual(read.call_args.args[0], pulse.ROOT / 'credentials/gplay-service-account.json')
+
+    def test_invalid_personal_value_fails_without_falling_back_or_leaking(self):
+        for raw in ('', '{fake-private-key', 'null', '[]', '{}', '{"client_email": 3, "private_key": "fake-private-key"}'):
+            with self.subTest(raw=raw), patch.dict(os.environ, {'PULSE_CREDENTIALS_JSON': raw}, clear=True), \
+                    patch.object(pathlib.Path, 'read_text') as read:
+                with self.assertRaises(ValueError) as raised:
+                    pulse.load_credentials()
+                self.assertNotIn('fake-private-key', str(raised.exception))
+                read.assert_not_called()
+
+    def test_inline_authentication_uses_memory_only_and_caches_token(self):
+        import jwt
+        key = {'client_email': 'reader@example.invalid', 'private_key': 'fake-private-key'}
+        with patch.dict(os.environ, {'PULSE_CREDENTIALS_JSON': json.dumps(key)}, clear=True), \
+                patch.object(pulse, '_token', None), patch.object(pulse, '_expires', 0), \
+                patch.object(jwt, 'encode', return_value='fake-assertion') as sign, \
+                patch.object(pathlib.Path, 'read_text') as read, \
+                patch.object(pulse.urllib.request, 'urlopen', return_value=Response({'access_token': 'fake-access-token', 'expires_in': 3600})) as network:
+            self.assertEqual(pulse.headers()['Authorization'], 'Bearer fake-access-token')
+            self.assertEqual(pulse.headers()['Authorization'], 'Bearer fake-access-token')
+            self.assertEqual(sign.call_args.args[0]['iss'], key['client_email'])
+            self.assertEqual(sign.call_args.args[1], key['private_key'])
+            self.assertEqual(sign.call_args.kwargs['algorithm'], 'RS256')
+            self.assertEqual(network.call_count, 1)
+            self.assertEqual(network.call_args.args[0].full_url, 'https://oauth2.googleapis.com/token')
+            self.assertNotIn(b'fake-private-key', network.call_args.args[0].data)
+            read.assert_not_called()
+
+    def test_invalid_personal_json_returns_safe_protocol_error_without_network(self):
+        with patch.dict(os.environ, {'PULSE_CREDENTIALS_JSON': 'fake-private-key'}, clear=True), \
+                patch.object(pulse, '_expires', 0), patch.object(pulse.urllib.request, 'urlopen') as network:
+            response = pulse.handle({'id': 1, 'method': 'tools/call', 'params': {'name': 'pulse_summary'}})
+            self.assertTrue(response['result']['isError'])
+            self.assertNotIn('fake-private-key', json.dumps(response))
+            network.assert_not_called()
+
     def test_cursor_includes_old_documents_and_missing_dates(self):
         first = [{'document': {'name': pulse.BASE + '/feedback/' + str(i), 'fields': {}}} for i in range(200)]
         last = [{'document': {'name': pulse.BASE + '/feedback/last', 'fields': {}}}]

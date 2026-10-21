@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Real Google Sign-In.
 //
 // Android + iOS: native Google account picker via
@@ -175,6 +176,7 @@ export async function signInWithGoogle(): Promise<FirebaseUser> {
     mirrorToNativeAuth((rn) => rn.GoogleAuthProvider.credential(data.idToken));
     return cred.user;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/firebase/auth.ts","handler":"signInWithGoogle","site":"auth:e93847c6c6"});
     const e = err as { name?: string; code?: string; message?: string; customData?: unknown };
     logError('signInGoogle', err, { provider: 'google', code: e?.code });
     if (__DEV__) {
@@ -232,11 +234,13 @@ export async function signUpWithEmail(
     const cred = await fbCreateUserWithEmailAndPassword(auth, trimmed, password);
     // Best-effort verification email — never block the sign-up on it.
     sendEmailVerification(cred.user).catch((e) => {
+    observeCaughtError(e, {"source":"src/firebase/auth.ts","handler":"signUpWithEmail","site":"auth:f00d988a23"});
       if (__DEV__) console.warn('[auth] sendEmailVerification failed', e);
     });
     mirrorEmailToNativeAuth(trimmed, password);
     return cred.user;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/firebase/auth.ts","handler":"signUpWithEmail","site":"auth:b9d9cebfcb"});
     const code = (err as { code?: string })?.code ?? '';
     // Collision: this address is already a Firebase account. If it belongs to
     // a social provider, the user has no password to sign in with — guide
@@ -251,6 +255,7 @@ export async function signUpWithEmail(
           throw new EmailRegisteredWithProviderError('apple');
         }
       } catch (inner) {
+    observeCaughtError(inner, {"source":"src/firebase/auth.ts","handler":"signUpWithEmail","site":"auth:4ba779d108"});
         if (inner instanceof EmailRegisteredWithProviderError) throw inner;
         // fetch failed — fall through to the generic error below.
       }
@@ -292,9 +297,11 @@ function mirrorEmailToNativeAuth(email: string, password: string): void {
     rnAuth()
       .signInWithEmailAndPassword(email, password)
       .catch((e: unknown) => {
+    observeCaughtError(e, {"source":"src/firebase/auth.ts","handler":"mirrorEmailToNativeAuth","site":"auth:21f50c8dcc"});
         if (__DEV__) console.warn('[auth] native email mirror failed', e);
       });
   } catch (e) {
+    observeCaughtError(e, {"source":"src/firebase/auth.ts","handler":"mirrorEmailToNativeAuth","site":"auth:8e57829aca"});
     if (__DEV__) console.warn('[auth] native-auth module unavailable', e);
   }
 }
@@ -323,9 +330,11 @@ function mirrorToNativeAuth(
     rnAuth()
       .signInWithCredential(makeCredential(rnAuth))
       .catch((e: unknown) => {
+    observeCaughtError(e, {"source":"src/firebase/auth.ts","handler":"mirrorToNativeAuth","site":"auth:f1545b2f93"});
         if (__DEV__) console.warn('[auth] native-auth mirror failed', e);
       });
   } catch (e) {
+    observeCaughtError(e, {"source":"src/firebase/auth.ts","handler":"mirrorToNativeAuth","site":"auth:bb637dc61a"});
     // Native module not linked (e.g. pre-rebuild) — widget stays unauthed.
     if (__DEV__) console.warn('[auth] native-auth module unavailable', e);
   }
@@ -360,11 +369,13 @@ function ensureNativeAuthMirror(): void {
         );
       })
       .catch((e: unknown) => {
+    observeCaughtError(e, {"source":"src/firebase/auth.ts","handler":"ensureNativeAuthMirror","site":"auth:5d44e1daba"});
         // No cached Google session / silent sign-in unavailable — the user
         // can still re-login to activate the widget. Stay quiet in prod.
         if (__DEV__) console.warn('[auth] boot native-auth mirror skipped', e);
       });
   } catch (e) {
+    observeCaughtError(e, {"source":"src/firebase/auth.ts","handler":"ensureNativeAuthMirror","site":"auth:ab829cbc1d"});
     if (__DEV__) console.warn('[auth] native-auth module unavailable', e);
   }
 }
@@ -374,7 +385,8 @@ export async function isAppleSignInAvailable(): Promise<boolean> {
   if (Platform.OS !== 'ios') return false;
   try {
     return await AppleAuthentication.isAvailableAsync();
-  } catch {
+  } catch (caughtError559b8aa01a) {
+    observeCaughtError(caughtError559b8aa01a, {"source":"src/firebase/auth.ts","handler":"isAppleSignInAvailable","site":"auth:559b8aa01a"});
     return false;
   }
 }
@@ -414,6 +426,7 @@ export async function signInWithApple(): Promise<{
     rawNonce = acquired.rawNonce;
     fullName = acquired.fullName;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/firebase/auth.ts","handler":"signInWithApple","site":"auth:55177f2bf9"});
     const code = (err as { code?: string })?.code ?? '';
     if (code === 'ERR_REQUEST_CANCELED' || code === 'ERR_CANCELED') {
       throw new Error('Sign-in cancelled');
@@ -431,6 +444,7 @@ export async function signInWithApple(): Promise<{
     );
     return { user: cred.user, fullName: fullName || undefined };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/firebase/auth.ts","handler":"signInWithApple","site":"auth:92cbab73b5"});
     const e = err as { code?: string };
     logError('signInApple', err, { provider: 'apple', code: e?.code });
     if (__DEV__) {
@@ -461,6 +475,7 @@ export async function signOutFirebase(): Promise<void> {
     try {
       await GoogleSignin.signOut();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/firebase/auth.ts","handler":"signOutFirebase","site":"auth:0934df6e68"});
       logError('signOut', e, {});
       // best-effort
     }
@@ -471,7 +486,8 @@ export async function signOutFirebase(): Promise<void> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     await require('@react-native-firebase/auth').default().signOut();
-  } catch {
+  } catch (caughtErrord8f4ee9b1d) {
+    observeCaughtError(caughtErrord8f4ee9b1d, {"source":"src/firebase/auth.ts","handler":"signOutFirebase","site":"auth:d8f4ee9b1d"});
     // Not signed in natively / module unavailable — fine.
   }
 }
@@ -594,7 +610,8 @@ export async function ensureRecentAccountAuth(password?: string): Promise<void> 
     credential=new OAuthProvider('apple.com').credential({idToken:identityToken,rawNonce});
   } else if(providerId==='google.com') {
     ensureGoogleConfigured();
-    await GoogleSignin.signOut().catch(()=>{});
+    await GoogleSignin.signOut().catch((caughtError7b43963dec: unknown) =>{
+    observeCaughtError(caughtError7b43963dec, {"source":"src/firebase/auth.ts","handler":"ensureRecentAccountAuth","site":"auth:7b43963dec"});});
     if(Platform.OS==='android')await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog:true});
     const result=await GoogleSignin.signIn();
     if(!isSuccessResponse(result)||!result.data?.idToken)throw new Error('reauth: cancelled');
@@ -626,6 +643,7 @@ export async function deleteCurrentFirebaseUser(
   try {
     await deleteUser(user);
   } catch (e: any) {
+    observeCaughtError(e, {"source":"src/firebase/auth.ts","handler":"deleteCurrentFirebaseUser","site":"auth:19946af218"});
     logError('deleteAccount', e, { code: e?.code });
     if (e?.code !== 'auth/requires-recent-login') throw e;
 
@@ -644,7 +662,8 @@ export async function deleteCurrentFirebaseUser(
 
     if (Platform.OS !== 'android' && Platform.OS !== 'ios') throw e;
     ensureGoogleConfigured();
-    await GoogleSignin.signOut().catch(() => {});
+    await GoogleSignin.signOut().catch((caughtError284a1c98ec: unknown) => {
+    observeCaughtError(caughtError284a1c98ec, {"source":"src/firebase/auth.ts","handler":"deleteCurrentFirebaseUser","site":"auth:284a1c98ec"});});
     if (Platform.OS === 'android') {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     }

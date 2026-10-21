@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // physicalSyncService — after a game, reads the player's wearable session and
 // uploads the physical metrics via the saveGamePhysical callable.
 //
@@ -56,7 +57,7 @@ export const physicalSyncService = {
       // getServerOffsetMs() would still be 0 and the windows would be shifted off
       // the real wearable data by the device's clock skew. syncServerClock()
       // hydrates the persisted game-day offset (and refreshes) — best-effort.
-      await syncServerClock().catch(() => 0);
+      await syncServerClock().catch((caughtError454bda06c2: unknown) => { observeCaughtError(caughtError454bda06c2, {"source":"src/services/physicalSyncService.ts","handler":"syncForGame","site":"physicalSyncService:454bda06c2"}); return 0; });
       const offset = getServerOffsetMs();
       const sorted = (
         Array.isArray(g.liveMatch?.activeIntervals) ? g.liveMatch!.activeIntervals : []
@@ -117,6 +118,7 @@ export const physicalSyncService = {
       await httpsCallable(getFirebase().functions, 'saveGamePhysical')({ gameId, metrics });
       return true;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/physicalSyncService.ts","handler":"syncForGame","site":"physicalSyncService:2858cc6337"});
       logError('physicalSync.syncForGame', err, { gameId });
       return false;
     }

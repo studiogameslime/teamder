@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Release log — the single source of truth for "what was fixed / added and
 // in which version". Stored in Firestore at appConfig/releaseLog so it can be
 // updated without rebuilding Pulse. The "גרסאות" screen joins this editorial
@@ -34,7 +35,7 @@ export interface ReleaseLog {
 }
 
 export async function fetchReleaseLog(): Promise<ReleaseLog> {
-  const doc = await getDoc('appConfig/releaseLog').catch(() => null);
+  const doc = await getDoc('appConfig/releaseLog').catch((caughtErroreba7fc439d: unknown) => { observeCaughtError(caughtErroreba7fc439d, {"source":"pulse/src/services/releaseLog.ts","handler":"fetchReleaseLog","site":"releaseLog:eba7fc439d"}); return null; });
   const items: ReleaseItem[] = Array.isArray(doc?.items)
     ? (doc!.items as any[]).map((i) => ({
         title: String(i.title ?? ''),
@@ -55,7 +56,7 @@ export async function fetchReleaseLog(): Promise<ReleaseLog> {
  *  mirroring how pulseFeatures stores its images (no Storage bucket needed).
  *  Returns the base64 string, or null when missing. */
 export async function fetchReleaseShot(id: string): Promise<string | null> {
-  const doc = await getDoc(`releaseShots/${id}`).catch(() => null);
+  const doc = await getDoc(`releaseShots/${id}`).catch((caughtError25598a3a31: unknown) => { observeCaughtError(caughtError25598a3a31, {"source":"pulse/src/services/releaseLog.ts","handler":"fetchReleaseShot","site":"releaseLog:25598a3a31"}); return null; });
   const b64 = doc?.b64;
   return typeof b64 === 'string' && b64.length > 0 ? b64 : null;
 }

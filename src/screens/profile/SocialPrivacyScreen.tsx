@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +21,8 @@ export function SocialPrivacyScreen() {
     if (busy || !me || me.isGuest) return;
     setBusy(true);
     try { await socialPlayersService.savePrivacy({discoverable,statistics},me.id); toast.success('הגדרות הפרטיות נשמרו'); }
-    catch { toast.error('לא ניתן לשמור כרגע. נסה שוב'); }
+    catch (caughtErrore2dac7046d) {
+    observeCaughtError(caughtErrore2dac7046d, {"source":"src/screens/profile/SocialPrivacyScreen.tsx","handler":"save","site":"SocialPrivacyScreen:e2dac7046d"}); toast.error('לא ניתן לשמור כרגע. נסה שוב'); }
     finally { setBusy(false); }
   };
   return <SafeAreaView style={s.root} edges={['top']}><ScreenHeader title="פרטיות השחקן" />

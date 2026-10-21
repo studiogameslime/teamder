@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 // ChatReportsScreen — "דיווחי צ'אט". Every message a user reported as abusive
 // (the top-level `chatReports` collection): the offending text, who sent it,
 // who reported it, and where (game/community). Grouped by the reported sender
@@ -62,7 +63,7 @@ export function ChatReportsScreen() {
   const [filter, setFilter] = useState<Filter>('all');
 
   const load = useCallback(async () => {
-    const rows = await listChatReports().catch(() => [] as ChatReport[]);
+    const rows = await listChatReports().catch((caughtError41d8c9003a: unknown) => { observeCaughtError(caughtError41d8c9003a, {"source":"pulse/src/screens/ChatReportsScreen.tsx","handler":"ChatReportsScreen","site":"ChatReportsScreen:41d8c9003a"}); return [] as ChatReport[]; });
     setItems(rows);
     setLoading(false);
     setRefreshing(false);
@@ -79,7 +80,8 @@ export function ChatReportsScreen() {
     const next =
       STATUS_ORDER[(STATUS_ORDER.indexOf(it.status) + 1) % STATUS_ORDER.length];
     patch(it.id, { status: next });
-    await setChatReportStatus(it.id, next).catch(() => {});
+    await setChatReportStatus(it.id, next).catch((caughtError945349229e: unknown) => {
+    observeCaughtError(caughtError945349229e, {"source":"pulse/src/screens/ChatReportsScreen.tsx","handler":"cycleStatus","site":"ChatReportsScreen:945349229e"});});
   };
   const remove = (it: ChatReport) => {
     Alert.alert(
@@ -92,7 +94,8 @@ export function ChatReportsScreen() {
           style: 'destructive',
           onPress: async () => {
             setItems((prev) => prev.filter((r) => r.id !== it.id));
-            await deleteChatReport(it.id).catch(() => {});
+            await deleteChatReport(it.id).catch((caughtError949e27ef9a: unknown) => {
+    observeCaughtError(caughtError949e27ef9a, {"source":"pulse/src/screens/ChatReportsScreen.tsx","handler":"onPress","site":"ChatReportsScreen:949e27ef9a"});});
           },
         },
       ],

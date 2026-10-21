@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, Text as SvgText } from 'react-native-svg';
@@ -59,8 +60,8 @@ export function MapScreen() {
   useEffect(() => {
     let alive = true;
     Promise.all([
-      fetchCommunityPoints().catch(() => [] as CommunityPoint[]),
-      fetchGamePoints().catch(() => [] as GamePoint[]),
+      fetchCommunityPoints().catch((caughtErrorffd795e986: unknown) => { observeCaughtError(caughtErrorffd795e986, {"source":"pulse/src/screens/MapScreen.tsx","handler":"MapScreen","site":"MapScreen:ffd795e986"}); return [] as CommunityPoint[]; }),
+      fetchGamePoints().catch((caughtError70000fc3ea: unknown) => { observeCaughtError(caughtError70000fc3ea, {"source":"pulse/src/screens/MapScreen.tsx","handler":"MapScreen","site":"MapScreen:70000fc3ea"}); return [] as GamePoint[]; }),
     ]).then(([c, g]) => {
       if (!alive) return;
       setComms(c);

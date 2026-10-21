@@ -1,3 +1,5 @@
+import { observedListener, observeCaughtError } from '../utils/errorObservation';
+
 import { isOfficialSender, TEAMDER_UID } from '@/utils/officialAccount';
 import { mergeSupportMessages } from '@/utils/supportTimeline';
 import { socialPlayersService } from './socialPlayersService';
@@ -99,7 +101,8 @@ function afterChatAuth(attach: () => () => void, onError?: (err: unknown) => voi
       if(stopped)return;
       if(!user)throw new Error('chat: not signed in');
       unsubscribe=attach();
-    }catch(err){if(!stopped)onError?.(err);}
+    }catch(err){
+    observeCaughtError(err, {"source":"src/services/chatService.ts","handler":"afterChatAuth","site":"chatService:b8550c7bc2"});if(!stopped)onError?.(err);}
   })();
   return ()=>{stopped=true;unsubscribe?.();};
 }
@@ -116,7 +119,7 @@ export const chatService = {
           archivedAt: typeof x.archivedAt === 'number' ? x.archivedAt : 0, archivedMessageId: typeof x.archivedMessageId === 'string' ? x.archivedMessageId : undefined };
       }
       cb(settings);
-    }, onError),onError);
+    }, observedListener(onError, {"source":"src/services/chatService.ts","handler":"subscribePreferences","site":"chatService.ts:snapshot:113"})),onError);
   },
   async setPreferences(uid: string, scope: ChatScope, parentId: string, patch: Partial<ChatPreferences>): Promise<void> {
     rejectDemoChatWrite();
@@ -128,7 +131,7 @@ export const chatService = {
       const { mockGamesV2 } = require('@/data/mockData') as typeof import('@/data/mockData');
       cb(mockGamesV2.find(g => g.id === gameId) ?? null); return () => {};
     }
-    return afterChatAuth(()=>onSnapshot(docs.game(gameId), snap => cb(snap.exists() ? { ...snap.data(), matches: [] } : null), onError),onError);
+    return afterChatAuth(()=>onSnapshot(docs.game(gameId), snap => cb(snap.exists() ? { ...snap.data(), matches: [] } : null), observedListener(onError, {"source":"src/services/chatService.ts","handler":"subscribeGameParent","site":"chatService.ts:snapshot:133"})),onError);
   },
   /** Live metadata only; messages are never scanned to build the inbox.
    * Includes historical rounds so the archive survives an app restart. */
@@ -151,7 +154,7 @@ export const chatService = {
           if (g.players.includes(uid) || g.createdBy === uid || adminGroupIds.includes(g.groupId)) games.set(g.id, g);
         }
         cb([...games.values()]);
-      }, onError));
+      }, observedListener(onError, {"source":"src/services/chatService.ts","handler":"subscribeInboxGames","site":"chatService.ts:snapshot:148"})));
       return () => unsub.forEach(fn => fn());
     },onError);
   },
@@ -205,17 +208,19 @@ export const chatService = {
                 if (cancelled || !listening) return;
                 windows[index] = snap.docs.map(d => ({ ...d.data(), id: d.id }));
                 if (windows.every(window => window !== undefined)) onMessages(mergeSupportMessages(windows as ChatMessage[][], WINDOW));
-              }, fail));
+              }, observedListener(fail, {"source":"src/services/chatService.ts","handler":"subscribeMessages","site":"chatService.ts:snapshot:206"})));
             });
-          } catch (err) { real(); throw err; }
+          } catch (err) {
+    observeCaughtError(err, {"source":"src/services/chatService.ts","handler":"subscribeMessages","site":"chatService:ccec989e69"}); real(); throw err; }
           return;
         }
         real = onSnapshot(
           q,
           (snap) => { if (!cancelled) onMessages(snap.docs.map((d) => ({ ...d.data(), id: d.id })).reverse()); },
-          (err) => { if (!cancelled) onError?.(err); },
+          observedListener((err) => { if (!cancelled) onError?.(err); }, {"source":"src/services/chatService.ts","handler":"subscribeMessages","site":"chatService.ts:snapshot:216"}),
         );
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/chatService.ts","handler":"subscribeMessages","site":"chatService:9f06df4c14"});
         if (!cancelled) onError?.(err);
       }
     })();
@@ -313,6 +318,7 @@ export const chatService = {
         { merge: true },
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/chatService.ts","handler":"touchMyDmEntry","site":"chatService:9ba9ad1390"});
       logError('touchMyDmEntry', err, { convId });
     }
   },
@@ -369,7 +375,7 @@ export const chatService = {
           };
         }),
       );
-    }, error => { if (isActive()) reportError(error); }), reportError);
+    }, observedListener(error => { if (isActive()) reportError(error); }, {"source":"src/services/chatService.ts","handler":"subscribeUnread","site":"chatService.ts:snapshot:356"})), reportError);
   },
 
   /** Mark a chat read — resets my unread counter for it to 0. */
@@ -419,7 +425,8 @@ export const chatService = {
       const first = (user.name ?? '').trim().split(/\s+/)[0] || (user.name ?? '');
       await setDoc(ref, { name: first, at: Date.now() });
     } else {
-      await deleteDoc(ref).catch(() => {});
+      await deleteDoc(ref).catch((caughtError0eecf363f8: unknown) => {
+    observeCaughtError(caughtError0eecf363f8, {"source":"src/services/chatService.ts","handler":"setTyping","site":"chatService:0eecf363f8"});});
     }
   },
 
@@ -441,7 +448,7 @@ export const chatService = {
           };
         }),
       );
-    });
+    }, observedListener(undefined, {"source":"src/services/chatService.ts","handler":"subscribeTyping","site":"chatService.ts:snapshot:439"}));
   },
 
   /** Subscribe to every member's read position in this chat. */
@@ -464,7 +471,7 @@ export const chatService = {
           };
         }),
       );
-    });
+    }, observedListener(undefined, {"source":"src/services/chatService.ts","handler":"subscribeReads","site":"chatService.ts:snapshot:460"}));
   },
 
   // ── Per-chat mute ──────────────────────────────────────────────────────
@@ -478,7 +485,7 @@ export const chatService = {
     if (USE_MOCK_DATA) { cb(false); return () => {}; }
     return onSnapshot(
       doc(col.userChatSettings(uid), chatKeyFor(scope, parentId)),
-      (snap) => cb(snap.exists() && snap.data()?.muted === true),
+      (snap) => cb(snap.exists() && snap.data()?.muted === true), observedListener(undefined, {"source":"src/services/chatService.ts","handler":"subscribeMuted","site":"chatService.ts:snapshot:485"}),
     );
   },
 
@@ -511,15 +518,16 @@ export const chatService = {
       (snap) => {
         cb(new Set(snap.docs.map((d) => d.id)));
       },
-      (err) => {
+      observedListener((err) => {
         // Without an error handler a transient rules/permission failure
         // leaves the success callback unfired forever, hanging the
         // BlockedUsersScreen on its loader. Report the error without erasing
         // the last confirmed block list.
         reportError(err);
-      },
+      }, {"source":"src/services/chatService.ts","handler":"subscribeBlocked","site":"chatService.ts:snapshot:515"}),
     );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/chatService.ts","handler":"subscribeBlocked","site":"chatService:6691592f62"});
       reportError(err);
       return () => {};
     }

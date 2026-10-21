@@ -1,3 +1,5 @@
+import { observedListener, observeCaughtError } from '../utils/errorObservation';
+
 // useGameEvents — realtime listener that turns game-doc changes into
 // in-app banners (and, optionally, mirrors the snapshot back into the
 // caller's local state so the screen stays up-to-date without an
@@ -152,7 +154,8 @@ export function useGameEvents(
         if (missing.length > 0) {
           void store
             .hydratePlayers(missing)
-            .catch(() => {})
+            .catch((caughtError0af137ee4d: unknown) => {
+    observeCaughtError(caughtError0af137ee4d, {"source":"src/services/useGameEvents.ts","handler":"flushRosterBanners","site":"useGameEvents:0af137ee4d"});})
             .finally(fire);
         } else {
           fire();
@@ -222,6 +225,7 @@ export function useGameEvents(
         try {
           onUpdateRef.current?.({ ...curr, matches: [] } as Game);
         } catch (err) {
+    observeCaughtError(err, {"source":"src/services/useGameEvents.ts","handler":"useGameEvents","site":"useGameEvents:0527b98e38"});
           logError('useGameEventsOnUpdate', err, { gameId });
           if (__DEV__) console.warn('[useGameEvents] onUpdate threw', err);
         }
@@ -282,7 +286,7 @@ export function useGameEvents(
 
         prevRef.current = curr;
       },
-      (err) => {
+      observedListener((err) => {
         // Lost read access mid-view (admin removed the viewer) → let the
         // screen pivot to the blocked state live, not just on the next focus.
         const code =
@@ -309,7 +313,7 @@ export function useGameEvents(
         }
         logError('useGameEventsSnapshot', err, { gameId });
         if (__DEV__) console.warn('[useGameEvents] snapshot error', err);
-      }
+      }, {"source":"src/services/useGameEvents.ts","handler":"useGameEvents","site":"useGameEvents.ts:snapshot:176"})
     );
 
     return () => {

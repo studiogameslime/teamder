@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 // FeaturesBody — the "פיצרים" segment of the unified Dev Inbox. Jot free text,
 // attach screenshots, tag bug vs feature, track status (new/in-progress/done).
 // Claude reads `pulseFeatures` on demand and implements the open ones.
@@ -78,7 +79,8 @@ export function FeaturesBody() {
           base64: true,
         });
         if (m.base64) next.push(m.base64);
-      } catch {
+      } catch (caughtErrorf804d04cfe) {
+    observeCaughtError(caughtErrorf804d04cfe, {"source":"pulse/src/screens/FeaturesScreen.tsx","handler":"pickImages","site":"FeaturesScreen:f804d04cfe"});
         /* skip a bad image */
       }
     }

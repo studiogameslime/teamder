@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 type Storage = {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
@@ -9,9 +10,9 @@ export function encryptedPersistence(secure: Storage, legacy: Storage,
   hash: (key: string) => Promise<string>, version: () => string): Storage {
   const pending = new Map<string, Promise<unknown>>();
   const serial = <T>(key: string, work: () => Promise<T>): Promise<T> => {
-    const next = (pending.get(key) ?? Promise.resolve()).catch(() => undefined).then(work);
+    const next = (pending.get(key) ?? Promise.resolve()).catch((caughtErrorc721d6d125: unknown) => { observeCaughtError(caughtErrorc721d6d125, {"source":"src/utils/encryptedPersistence.ts","handler":"serial","site":"encryptedPersistence:c721d6d125"}); return undefined; }).then(work);
     pending.set(key, next);
-    void next.finally(() => { if (pending.get(key) === next) pending.delete(key); }).catch(() => undefined);
+    void next.finally(() => { if (pending.get(key) === next) pending.delete(key); }).catch((caughtErrord92b02ddc4: unknown) => { observeCaughtError(caughtErrord92b02ddc4, {"source":"src/utils/encryptedPersistence.ts","handler":"serial","site":"encryptedPersistence:d92b02ddc4"}); return undefined; });
     return next;
   };
   type Manifest = { version: string; count: number };
@@ -44,7 +45,7 @@ export function encryptedPersistence(secure: Storage, legacy: Storage,
     if (await read(base, entry) !== value) throw new Error('AUTH_STORAGE_VERIFY_FAILED');
     await secure.setItem(base, JSON.stringify(entry));
     // Cleanup is best effort AFTER committing: a cleanup error must not revert the new login.
-    await discard(base, old).catch(() => undefined);
+    await discard(base, old).catch((caughtErrorad7510b017: unknown) => { observeCaughtError(caughtErrorad7510b017, {"source":"src/utils/encryptedPersistence.ts","handler":"write","site":"encryptedPersistence:ad7510b017"}); return undefined; });
   }
   return {
     getItem: key => serial(key, async () => {

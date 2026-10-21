@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { RtlTextInput as TextInput } from './RtlTextInput';
@@ -23,7 +24,7 @@ export function UserPicker({
     setLoading(true);
     fetchUsers()
       .then((u) => setUsers(u.filter((x) => !x.deleted)))
-      .catch(() => setUsers([]))
+      .catch((caughtError254f2b9c1c: unknown) => { observeCaughtError(caughtError254f2b9c1c, {"source":"pulse/src/components/UserPicker.tsx","handler":"UserPicker","site":"UserPicker:254f2b9c1c"}); return setUsers([]); })
       .finally(() => setLoading(false));
   }, [visible]);
 

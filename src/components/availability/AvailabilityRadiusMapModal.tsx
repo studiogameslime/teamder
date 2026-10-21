@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // AvailabilityRadiusMapModal — the big, readable version of the
 // availability "search area" map. Opens from the expand badge on the
 // inline AvailabilityRadiusMap. Unlike the games-filter modal this one is
@@ -91,7 +92,8 @@ export function AvailabilityRadiusMapModal({
       ) {
         onPick(msg.lat, msg.lng);
       }
-    } catch {
+    } catch (caughtError31eb27e840) {
+    observeCaughtError(caughtError31eb27e840, {"source":"src/components/availability/AvailabilityRadiusMapModal.tsx","handler":"handleMessage","site":"AvailabilityRadiusMapModal:31eb27e840"});
       /* ignore malformed bridge messages */
     }
   };

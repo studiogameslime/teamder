@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // ChampionshipTable — the shared scorers/assisters leaderboard used by both
 // the community championship (always shown) and the per-game championship
 // (shown once a game is finished).
@@ -44,7 +45,7 @@ export function ChampionshipTable({
   useEffect(() => {
     let alive = true;
     Promise.all(
-      rows.map((r) => userService.getUserById(r.uid).catch(() => null)),
+      rows.map((r) => userService.getUserById(r.uid).catch((caughtError63dfbe612e: unknown) => { observeCaughtError(caughtError63dfbe612e, {"source":"src/components/community/ChampionshipTable.tsx","handler":"ChampionshipTable","site":"ChampionshipTable:63dfbe612e"}); return null; })),
     ).then((fetched) => {
       if (!alive) return;
       const map: Record<string, Resolved> = {};

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // assistantInsightsService — the club-shaped facts behind the coach's messages.
 //
 // Everything else the coach reasons about (next match, played-this-week,
@@ -168,7 +169,7 @@ export const assistantInsightsService = {
         if (!attendance && lastPlayedMs != null) {
           const stats = await gameService
             .getCommunityStats(groupId)
-            .catch(() => null);
+            .catch((caughtErrord627a90095: unknown) => { observeCaughtError(caughtErrord627a90095, {"source":"src/services/assistantInsightsService.ts","handler":"getClubInsight","site":"assistantInsightsService:d627a90095"}); return null; });
           attendance = {
             streak: stats?.currentStreakByUser?.[userId] ?? 0,
             nights: stats?.attendedByUser?.[userId] ?? 0,
@@ -271,7 +272,7 @@ export const assistantInsightsService = {
           if (rivalCache && rivalCache.key === key && rivalCache.uid === rival.uid) {
             rivalName = rivalCache.name;
           } else {
-            const u = await userService.getUserById(rival.uid).catch(() => null);
+            const u = await userService.getUserById(rival.uid).catch((caughtErrorb5e6a0e682: unknown) => { observeCaughtError(caughtErrorb5e6a0e682, {"source":"src/services/assistantInsightsService.ts","handler":"getClubInsight","site":"assistantInsightsService:b5e6a0e682"}); return null; });
             rivalName = (u?.name ?? '').trim().split(/\s+/)[0] || null;
             rivalCache = { key, uid: rival.uid, name: rivalName };
           }
@@ -299,6 +300,7 @@ export const assistantInsightsService = {
         };
         return value;
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/assistantInsightsService.ts","handler":"getClubInsight","site":"assistantInsightsService:f2d290c697"});
         logError('assistantClubInsight', err, { userId, groupId });
         return null;
       } finally {

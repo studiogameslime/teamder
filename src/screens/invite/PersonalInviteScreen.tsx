@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,7 +77,8 @@ export function PersonalInviteScreen() {
     try {
       const result = await resolveInviteLandingActivity(invitedBy, me.id, me.isGuest === true);
       if (request === activityRequest.current) setActivity({ status: 'ready', owner: `${me.id}:${me.isGuest === true}:${invitedBy}`, ...result });
-    } catch {
+    } catch (caughtErrordc4bd89c96) {
+    observeCaughtError(caughtErrordc4bd89c96, {"source":"src/screens/invite/PersonalInviteScreen.tsx","handler":"PersonalInviteScreen","site":"PersonalInviteScreen:dc4bd89c96"});
       // Keep the inviter visible and make the failed query retryable.
       if (request === activityRequest.current) setActivity({ status: 'error' });
     }

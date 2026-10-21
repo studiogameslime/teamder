@@ -1,3 +1,4 @@
+import { errorCauseObjects } from '../utils/errorIdentity';
 // Centralized client-side error logging → Firestore `errors` collection.
 //
 // Design goals:
@@ -12,12 +13,13 @@
 
 import { Platform } from 'react-native';
 import { crumbErr, formatTrail } from '@/services/breadcrumbs';
-import { diagnosticAttachment, diagnosticOwner } from './diagnosticJournal';
+import { diagnosticAttachment, diagnosticOwner, diagnosticReportScreen } from './diagnosticJournal';
 import { readPendingDiagnosticErrors, savePendingDiagnosticErrors, persistDiagnosticJournal } from './diagnosticStorage';
 import Constants from 'expo-constants';
 import { httpsCallable } from 'firebase/functions';
 import { getFirebase } from '../firebase/config';
 import { redactDiagnosticContext, redactDiagnosticText } from '../utils/diagnosticRedaction';
+import { caughtErrorOrigin, clearCaughtErrorOrigins, installCaughtErrorSink } from '../utils/errorObservation';
 
 export interface ErrorContext {
   /** What the user/app was doing — short stable label, e.g. 'createGame'. */
@@ -27,6 +29,7 @@ export interface ErrorContext {
 }
 
 interface Buffered {
+  deliveryId?: string;
   operation: string;
   message: string;
   code?: string;
@@ -44,8 +47,8 @@ const FLUSH_MS = 12000; // coalesce window
 // Hard ceiling on DB writes per unique signature per app session. Coalescing
 // already caps a bug to ~1 write / 12s / device; this additionally bounds a
 // device stuck in a bad state all day so it can't hammer one `errors/{fp}`
-// doc indefinitely. After the cap, occurrences are dropped (count freezes) —
-// 30 writes is plenty to know "this happens a lot" while protecting the DB.
+// doc indefinitely. After the cap, compact pending counts remain local for
+// the next process/session rather than being silently discarded.
 const SESSION_WRITE_CAP = 30;
 const buffer = new Map<string, Buffered>();
 // Keep unacknowledged writes on disk even while their network request is pending.
@@ -54,6 +57,7 @@ let ownerGeneration = 0;
 const flushedPerFp = new Map<string, number>(); // writes done this session, by fp
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let inFlush = false;
+let reportedObjects = new WeakSet<object>();
 
 const appVersion =
   (Constants.expoConfig?.version as string | undefined) ?? 'unknown';
@@ -66,13 +70,14 @@ function persistPending(immediate=false):void {
  if(pendingTimer){if(!immediate)return;clearTimeout(pendingTimer);pendingTimer=undefined;}
  const save=()=>{
   pendingTimer=undefined;
-  const rows=new Map<string,Buffered>(delivering);
-  for(const [fp,entry] of buffer){if(entry.pending>0)rows.set(fp,{...entry,pending:entry.pending+(delivering.get(fp)?.pending??0)});}
-  void savePendingDiagnosticErrors([...rows].map(([fp,entry])=>({fp,entry})));
+  const rows = [...delivering.values()].map(entry => ({fp: djb2(`${entry.operation}|${normalize(entry.message)}`), entry}));
+  for(const [fp,entry] of buffer){if(entry.pending>0)rows.push({fp,entry});}
+  void savePendingDiagnosticErrors(rows);
  };
  if(immediate)save();else pendingTimer=setTimeout(save,250);
 }
 export function clearPendingErrors():void {
+ reportedObjects = new WeakSet(); clearCaughtErrorOrigins();
  ownerGeneration+=1;buffer.clear();delivering.clear();flushedPerFp.clear();
  if(flushTimer)clearTimeout(flushTimer);flushTimer=null;
  if(pendingTimer)clearTimeout(pendingTimer);pendingTimer=undefined;
@@ -101,7 +106,8 @@ export async function restorePendingErrors(viewerId:string):Promise<void> {
     trail: redactDiagnosticText(entry.trail),
     context: safeContext(entry.context),
   };
-  if(!buffer.has(fp))buffer.set(fp,clean);else buffer.get(fp)!.pending+=entry.pending;
+  if (typeof entry.deliveryId === 'string' && /^[a-z0-9-]{10,100}$/.test(entry.deliveryId)) delivering.set(entry.deliveryId, clean);
+  else if(!buffer.has(fp))buffer.set(fp,clean);else buffer.get(fp)!.pending+=entry.pending;
  }
  persistPending();await flush();
 }
@@ -125,28 +131,28 @@ function errInfo(e: unknown): { message: string; code?: string; stack?: string }
   if (e instanceof Error) {
     return {
       message: e.message || e.name || 'Error',
-      code: (e as { code?: string }).code,
+      code: (e as { code?: unknown }).code == null ? undefined : String((e as { code?: unknown }).code),
       stack: e.stack?.slice(0, 1500),
     };
   }
   if (typeof e === 'string') return { message: e };
+  if (e && typeof e === 'object') {
+    const value = e as { message?: unknown; code?: unknown; stack?: unknown };
+    if (typeof value.message === 'string') return {
+      message: value.message,
+      code: value.code == null ? undefined : String(value.code),
+      stack: typeof value.stack === 'string' ? value.stack.slice(0, 1500) : undefined,
+    };
+  }
   try {
-    return { message: JSON.stringify(e).slice(0, 500) };
+    return { message: (JSON.stringify(e) ?? String(e)).slice(0, 500) };
   } catch {
     return { message: String(e) };
   }
 }
 
-// ── transient-error filter ─────────────────────────────────────────
-// Environmental blips — the device lost connectivity, a request timed out,
-// or an auth token momentarily lapsed — are NOT actionable code bugs. They
-// used to land in the `errors` dev-inbox as "פעולה נכשלה · <op>" noise (a
-// user walking into a dead-zone mid-tap), one doc each, drowning real
-// regressions. Skip logging them: the operation already failed gracefully
-// (every call site is wrapped), and there is nothing to fix in the app.
-// Deliberately NARROW — only unambiguously network/offline/timeout codes.
-// `unauthenticated` is intentionally EXCLUDED (it can signal a real
-// auth-gating regression, not just a token race), so it still gets logged.
+// Network failures remain visible, tagged as transient instead of discarded.
+// Existing coalescing and per-signature delivery limits constrain repeated noise.
 const TRANSIENT_CODES: ReadonlySet<string> = new Set([
   'unavailable',
   'deadline-exceeded',
@@ -158,17 +164,8 @@ const TRANSIENT_CODES: ReadonlySet<string> = new Set([
   'auth/timeout',
 ]);
 
-// ── signed-out denial filter ───────────────────────────────────────
-// EVERY rule in firestore.rules begins with isSignedIn(). So a
-// `permission-denied` / `unauthenticated` raised while NO session exists is
-// the expected outcome of a read fired by a signed-out session — not a bug,
-// and nothing in the app can be fixed for it. withAuthRaceRetry already
-// distinguishes the two cases: it retries the cold-start race and rethrows
-// early on `if (!user) throw err; // genuinely signed out`, which is the only
-// path that reaches here with no uid.
-//
-// Deliberately conditional on there being NO uid: when a session DOES exist,
-// a denial still gets logged, so a real rules regression keeps surfacing.
+// Keep signed-out denials distinguishable from a permission regression in an
+// authenticated session. Delivery still requires an authenticated session.
 const DENIED_CODES: ReadonlySet<string> = new Set([
   'permission-denied',
   'unauthenticated',
@@ -312,19 +309,22 @@ export function logError(
   operation: string,
   error: unknown,
   context?: ErrorContext,
+  captured?: { uid?: string; trail: string; journal: string },
 ): void {
   try {
+    const objects = errorCauseObjects(error);
+    if (objects.some(object => reportedObjects.has(object))) return;
     const info = errInfo(error);
     const message = redactDiagnosticText(info.message).slice(0,2000);
     const code = typeof info.code === 'string' ? redactDiagnosticText(info.code).slice(0,100) : undefined;
     const stack = info.stack ? redactDiagnosticText(info.stack).slice(0,1500) : undefined;
     operation = redactDiagnosticText(operation).slice(0,100);
-    // Drop transient network/offline/timeout blips — not actionable bugs,
-    // just dead-zone noise in the dev inbox (see isTransientEnvError).
-    if (isTransientEnvError(code, message)) return;
+    // Preserve environment failures with explicit classification.
+    const transient = isTransientEnvError(code, message);
     const uid = currentUid();
-    // A denial with no session at all is an expected outcome, not a bug.
-    if (isSignedOutDenial(code, uid)) return;
+    // A signed-out denial is retained with its cause, not silently discarded.
+    const signedOutDenial = isSignedOutDenial(code, uid);
+    context = { ...caughtErrorOrigin(error), ...context, ...(transient ? { transient: true } : {}), ...(signedOutDenial ? { signedOutDenial: true } : {}) };
     // On the report trail too — a failure is a step, and "the tap DID reach
     // something, and that something failed" is a different story from a tap
     // that reached nothing. The operation name only; the message, the stack
@@ -333,15 +333,16 @@ export function logError(
     const fp = djb2(`${operation}|${normalize(message)}`);
     // Runaway guard: once this signature has been written SESSION_WRITE_CAP
     // times this session, stop buffering it (protects a single hot doc).
-    if ((flushedPerFp.get(fp) ?? 0) >= SESSION_WRITE_CAP) return;
-    const screen = typeof context?.screen === 'string' ? redactDiagnosticText(context.screen).slice(0,100) : undefined;
+    const currentScreen = context?.screen ?? diagnosticReportScreen();
+    const screen = typeof currentScreen === 'string' ? redactDiagnosticText(currentScreen).slice(0,100) : undefined;
     const existing = buffer.get(fp);
     // Auth may switch just before App's ownership effect runs. Never attach
     // the previous account's actions in that narrow transition window.
     const owner=diagnosticOwner();
     const sameOwner=owner===undefined||owner===uid;
-    const trail=sameOwner?redactDiagnosticText(formatTrail()).slice(-6000):'';
-    const journal=sameOwner?diagnosticAttachment():'';
+    const capturedMatches = captured && captured.uid === uid;
+    const trail=sameOwner?redactDiagnosticText(capturedMatches ? captured.trail : formatTrail()).slice(-6000):'';
+    const journal=sameOwner?(capturedMatches ? captured.journal : diagnosticAttachment()):'';
     if (existing) {
       existing.pending += 1;
       existing.message = message;
@@ -365,7 +366,8 @@ export function logError(
       });
     }
     persistPending();
-    scheduleFlush();
+    if ((flushedPerFp.get(fp) ?? 0) < SESSION_WRITE_CAP) scheduleFlush();
+    for (const object of objects) reportedObjects.add(object);
   } catch {
     // logging must never throw
   }
@@ -398,9 +400,20 @@ export function logUnexpected(operation: string, context?: ErrorContext): void {
   // puts the underlying failure, and widening it to the whole serialised
   // context would start matching on screen names and ids.
   const cause = typeof context?.message === 'string' ? context.message : '';
-  if (cause && isTransientEnvError(undefined, cause)) return;
-  logError(operation, new Error(operation), { ...(context ?? {}), silent: true });
+  logError(operation, new Error(operation), { ...(context ?? {}), silent: true, ...(cause && isTransientEnvError(undefined, cause) ? { transient: true } : {}) });
 }
+
+// Existing explicit logError calls get first choice of the operation/context.
+// The fallback runs after the catch, with its source attached. No network work
+// is awaited by the application operation, and a rethrown Error is counted once.
+installCaughtErrorSink((error, origin) => {
+  const generation = ownerGeneration;
+  const captured = {uid: currentUid(), trail: formatTrail(), journal: diagnosticAttachment()};
+  const screen = diagnosticReportScreen();
+  void Promise.resolve().then(() => {
+    if (generation === ownerGeneration) logError(`caught:${origin.site}`, error, {...origin, screen}, captured);
+  });
+});
 
 /**
  * True for failures that are EXPECTED outcomes of a best-effort write, not
@@ -484,7 +497,7 @@ export function installGlobalErrorHandlers(): void {
 }
 
 export async function flush(): Promise<void> {
-  if (inFlush || buffer.size === 0) return;
+  if (inFlush || buffer.size === 0 && delivering.size === 0) return;
   inFlush = true;
   const generation = ownerGeneration;
   let functions;
@@ -495,20 +508,25 @@ export async function flush(): Promise<void> {
     inFlush = false;
     return;
   }
-  const entries = [...buffer.entries()].filter(([, e]) => e.pending > 0);
-  for (const [fp, live] of entries) {
+  for (const [fp, live] of buffer) {
+    if (live.pending <= 0) continue;
+    if ((flushedPerFp.get(fp) ?? 0) >= SESSION_WRITE_CAP) continue;
+    if (!live.userId) live.userId = currentUid();
+    if (live.userId !== currentUid()) { buffer.delete(fp); continue; }
+    const deliveryId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    delivering.set(deliveryId, {...live, deliveryId});
+    buffer.delete(fp);
+  }
+  persistPending(true);
+  for (const [deliveryId, e] of [...delivering]) {
     if(generation!==ownerGeneration)break;
     // Freeze the occurrence before awaiting a write; later navigation/errors
     // cannot change the journal paired with this error.
     // A pre-auth error can be sent once this process has its first session.
     // Ownerless records from a previous process are never restored to a new user.
-    if (!live.userId) live.userId=currentUid();
-    const e={...live};
     const delta = e.pending;
-    live.pending = 0;
-    if(e.userId!==currentUid())continue;
-    delivering.set(fp,e);
-    persistPending(true);
+    const fp = djb2(`${e.operation}|${normalize(e.message)}`);
+    if(e.userId!==currentUid()){delivering.delete(deliveryId);continue;}
     const silent = e.context?.silent === true;
     const category = categoryFor(e.operation, silent);
     const common = {
@@ -529,16 +547,15 @@ export async function flush(): Promise<void> {
       appVersion:e.version,
     };
     try {
-      await httpsCallable(functions,'recordClientError')({...common,count:delta});
+      await httpsCallable(functions,'recordClientError')({...common,count:delta,deliveryId});
       if(generation===ownerGeneration)flushedPerFp.set(fp, (flushedPerFp.get(fp) ?? 0) + 1);
+      delivering.delete(deliveryId);
     } catch {
-      if(generation!==ownerGeneration||e.userId!==currentUid()){delivering.delete(fp);continue;}
+      if(generation!==ownerGeneration||e.userId!==currentUid()){delivering.delete(deliveryId);continue;}
       // Never fall back to the insecure direct-write path.
-      if(generation===ownerGeneration)live.pending += delta;
     }
-    delivering.delete(fp);
   }
   inFlush = false;
   persistPending(true);
-  if([...buffer.values()].some(e=>e.pending>0))scheduleFlush();
+  if(delivering.size || [...buffer].some(([fp,e])=>e.pending>0 && (flushedPerFp.get(fp)??0)<SESSION_WRITE_CAP))scheduleFlush();
 }

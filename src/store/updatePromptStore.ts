@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updateTargetKey, type StoreUpdate } from '@/services/updateService';
@@ -20,7 +21,8 @@ export async function applyStoreUpdate(update: StoreUpdate | null): Promise<void
   try {
     const raw = await AsyncStorage.getItem(SNOOZE_KEY);
     if (!snooze && raw) snooze = JSON.parse(raw);
-  } catch { /* A storage failure must not hide a real store update. */ }
+  } catch (caughtError90063af6a4) {
+    observeCaughtError(caughtError90063af6a4, {"source":"src/store/updatePromptStore.ts","handler":"applyStoreUpdate","site":"updatePromptStore:90063af6a4"}); /* A storage failure must not hide a real store update. */ }
   if (current !== revision) return;
   const hidden = snooze?.target === updateTargetKey(update) && Number.isFinite(snooze.until) && Date.now() < snooze.until;
   useUpdatePromptStore.setState({ update: hidden ? null : update });
@@ -32,6 +34,7 @@ export function dismissStoreUpdate(): void {
   ++revision;
   sessionSnooze = { target: updateTargetKey(update), until: Date.now() + DAY };
   useUpdatePromptStore.setState({ update: null });
-  void AsyncStorage.setItem(SNOOZE_KEY, JSON.stringify(sessionSnooze)).catch(() => {});
+  void AsyncStorage.setItem(SNOOZE_KEY, JSON.stringify(sessionSnooze)).catch((caughtError8c8928f55f: unknown) => {
+    observeCaughtError(caughtError8c8928f55f, {"source":"src/store/updatePromptStore.ts","handler":"dismissStoreUpdate","site":"updatePromptStore:8c8928f55f"});});
   logEvent(AnalyticsEvent.UpdatePromptDismissed, { target: updateTargetKey(update), source: 'home_banner' });
 }

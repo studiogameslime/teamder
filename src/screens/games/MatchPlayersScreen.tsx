@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { upsertSavedGuest } from '@/utils/savedGuest';
 // MatchPlayersScreen — full roster for a single game.
 //
@@ -191,6 +192,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
         if (uids.length > 0) hydratePlayers(uids);
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchPlayersScreen.tsx","handler":"MatchPlayersScreen","site":"MatchPlayersScreen:e9c6d9c862"});
       logError('matchPlayersLoad', err, {
         screen: 'MatchPlayersScreen',
         gameId,
@@ -291,7 +293,8 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
       .then((c) => {
         if (alive) setCardCounts(c);
       })
-      .catch(() => {
+      .catch((caughtErrorbce067773d: unknown) => {
+    observeCaughtError(caughtErrorbce067773d, {"source":"src/screens/games/MatchPlayersScreen.tsx","handler":"MatchPlayersScreen","site":"MatchPlayersScreen:bce067773d"});
         if (alive) setCardCounts({});
       });
     return () => {
@@ -361,6 +364,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
               toast.success('השחקן הוסר מהמשחק');
               await reload();
             } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchPlayersScreen.tsx","handler":"onPress","site":"MatchPlayersScreen:84c37aa2c5"});
               logError('matchPlayersRemove', err, {
                 screen: 'MatchPlayersScreen',
                 gameId: game.id,
@@ -387,6 +391,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
         await gameService.adminReorderRoster(game.id, players, waitlist);
         await reload();
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchPlayersScreen.tsx","handler":"MatchPlayersScreen","site":"MatchPlayersScreen:4049716037"});
         logError('matchPlayersReorder', err, { screen: 'MatchPlayersScreen', gameId: game.id });
         toast.error(String((err as Error)?.message ?? err));
         await reload();
@@ -443,7 +448,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
       setGame((g) => (g ? { ...g, guests: nextGuests } : g));
       gameService
         .adminReorderGuests(game.id, currentUser.id, nextGuests)
-        .catch(() => reload());
+        .catch((caughtErrord6a85bcc3b: unknown) => { observeCaughtError(caughtErrord6a85bcc3b, {"source":"src/screens/games/MatchPlayersScreen.tsx","handler":"MatchPlayersScreen","site":"MatchPlayersScreen:d6a85bcc3b"}); return reload(); });
     },
     [game, currentUser, reload],
   );
@@ -779,7 +784,8 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
                                 currentUser!.id,
                               );
                               await reload();
-                            } catch {
+                            } catch (caughtError570f2f03c4) {
+    observeCaughtError(caughtError570f2f03c4, {"source":"src/screens/games/MatchPlayersScreen.tsx","handler":"MatchPlayersScreen","site":"MatchPlayersScreen:570f2f03c4"});
                               // stale offer / network — silent
                             } finally {
                               setBusyOffer(false);
@@ -797,7 +803,8 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
                                 currentUser!.id,
                               );
                               await reload();
-                            } catch {
+                            } catch (caughtError00455fc928) {
+    observeCaughtError(caughtError00455fc928, {"source":"src/screens/games/MatchPlayersScreen.tsx","handler":"MatchPlayersScreen","site":"MatchPlayersScreen:00455fc928"});
                               // ignore
                             } finally {
                               setBusyOffer(false);
@@ -822,7 +829,8 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
                                         game.id,
                                       );
                                       await reload();
-                                    } catch {
+                                    } catch (caughtError074c35b176) {
+    observeCaughtError(caughtError074c35b176, {"source":"src/screens/games/MatchPlayersScreen.tsx","handler":"onPress","site":"MatchPlayersScreen:074c35b176"});
                                       // ignore
                                     } finally {
                                       setBusyOffer(false);
@@ -942,6 +950,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
                               }
                               await reload();
                             } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchPlayersScreen.tsx","handler":"MatchPlayersScreen","site":"MatchPlayersScreen:b9e734e35e"});
                               toast.error(String((err as Error)?.message ?? err));
                             }
                           }
@@ -966,6 +975,7 @@ export function MatchPlayersScreen(props: MatchPlayersScreenProps = {}) {
                                       );
                                       await reload();
                                     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchPlayersScreen.tsx","handler":"onPress","site":"MatchPlayersScreen:6c26be2366"});
                                       toast.error(
                                         String((err as Error)?.message ?? err),
                                       );

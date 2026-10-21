@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // trustService — derives a single 0-100 reliability score per user
 // from objective game-history signals.
 //
@@ -218,6 +219,7 @@ export const trustService = {
               (d) => ({ ...d.data(), matches: [] }) as Game,
             );
           } catch (err) {
+    observeCaughtError(err, {"source":"src/services/trustService.ts","handler":"getSummary","site":"trustService:b1432d7734"});
             logError('getTrustSummary', err, { userId });
             if (__DEV__) console.warn('[trust] getSummary failed', err);
             throw err;

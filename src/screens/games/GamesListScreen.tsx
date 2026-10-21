@@ -1,3 +1,4 @@
+import { observeCaughtError, observeSettledErrors } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // Sectioned rounds feed: my rounds first, upcoming registration, then discovery.
 // Club photos and personal status live on the cards; registration stays in the services.
@@ -157,7 +158,8 @@ export function GamesListScreen() {
   const [requestCount, setRequestCount] = useState(0);
   useEffect(() => {
     const fetchCount = () => {
-      if (user) getInboxCount(user.id).then(setRequestCount).catch(() => {});
+      if (user) getInboxCount(user.id).then(setRequestCount).catch((caughtError19d2b52fd4: unknown) => {
+    observeCaughtError(caughtError19d2b52fd4, {"source":"src/screens/games/GamesListScreen.tsx","handler":"fetchCount","site":"GamesListScreen:19d2b52fd4"});});
     };
     fetchCount();
     return nav.addListener('focus', fetchCount);
@@ -267,6 +269,7 @@ export function GamesListScreen() {
         if (uids.length > 0) hydratePlayers(uids);
         return { mine: a, community: b, open: c };
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/GamesListScreen.tsx","handler":"GamesListScreen","site":"GamesListScreen:5e63241921"});
         logError('reloadGamesList', err, {
           screen: 'GamesListScreen',
           userId: user.id,
@@ -342,6 +345,7 @@ export function GamesListScreen() {
       await gameService.cancelGameV2(game.id, user.id);
       await reload();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/GamesListScreen.tsx","handler":"runCancel","site":"GamesListScreen:b86f6b6211"});
       if (__DEV__) console.warn('[gamesList] late-cancel failed', err);
       toast.error(he.error);
     } finally {
@@ -453,6 +457,7 @@ export function GamesListScreen() {
         await reload();
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/GamesListScreen.tsx","handler":"handleCardPrimary","site":"GamesListScreen:631dc99645"});
       const code =
         typeof (err as { code?: unknown })?.code === 'string'
           ? ((err as { code: string }).code)
@@ -566,7 +571,7 @@ export function GamesListScreen() {
     const memberIds = new Set(myCommunities.map((g) => g.id));
     const ids = [...new Set([...myGames, ...communityGames, ...openGames]
       .map((g) => g.groupId).filter((id): id is string => !!id && !memberIds.has(id)))];
-    Promise.allSettled(ids.map((id) => groupService.getPublic(id))).then((results) => {
+    Promise.allSettled(ids.map((id) => groupService.getPublic(id))).then(results => observeSettledErrors(results, {"source":"src/screens/games/GamesListScreen.tsx","handler":"GamesListScreen","site":"GamesListScreen:2fa1405820"})).then((results) => {
       if (!active) return;
       setPublicCovers(previous => mergeRoundCovers(previous, ownerId, ids, results));
     });
@@ -950,6 +955,7 @@ export function GamesListScreen() {
             }
             toast.success(he.registrationConflictResolved);
           } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/games/GamesListScreen.tsx","handler":"GamesListScreen","site":"GamesListScreen:f8c4b0e2f0"});
             logError('gamesListConflictCancelOther', e, {
               screen: 'GamesListScreen',
               conflictGameId,

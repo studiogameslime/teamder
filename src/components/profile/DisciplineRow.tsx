@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // DisciplineRow — compact trust-meter row on the profile screen.
 // Replaces the old yellow/red counter pair: shows a single 0-100
 // reliability meter on the leading edge plus a title + caption with
@@ -40,6 +41,7 @@ export function DisciplineRow({ userId }: Props) {
         if (alive) setState({ kind: 'ready', summary });
       })
       .catch((err) => {
+    observeCaughtError(err, {"source":"src/components/profile/DisciplineRow.tsx","handler":"DisciplineRow","site":"DisciplineRow:a74fb4fa0e"});
         logError('loadTrustSummary', err, {
           screen: 'DisciplineRow',
           userId,

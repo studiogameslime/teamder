@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // gameCreation — making a game, without a screen.
 //
 // Extracted from `GameCreateScreen.submit` because the resumer has to run when
@@ -152,7 +153,8 @@ export async function createGameFromValues(ctx: CreateGameContext): Promise<Crea
       inviteIds.map((rid) =>
         notificationsService
           .inviteToGame({ recipientId: rid, gameId: created.id })
-          .catch(() => {
+          .catch((caughtErroredfe64c7dc: unknown) => {
+    observeCaughtError(caughtErroredfe64c7dc, {"source":"src/services/gameCreation.ts","handler":"createGameFromValues","site":"gameCreation:edfe64c7dc"});
             /* best-effort per-invite */
           }),
       ),

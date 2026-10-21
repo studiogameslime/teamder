@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import { collectionData } from './collectionData';
 // gamesService — UPCOMING / currently-active Teamder games with their
 // registration counts AND a managerial "was it active?" read-out (timer
@@ -224,7 +225,7 @@ export interface GamesReport {
 export async function fetchGames(now: number = Date.now(), force = false): Promise<GamesReport> {
   const [docs, groups] = await Promise.all([
     collectionData('games', force),
-    collectionData('groups', force).catch(() => []),
+    collectionData('groups', force).catch((caughtErrorfaf42824ef: unknown) => { observeCaughtError(caughtErrorfaf42824ef, {"source":"pulse/src/services/gamesService.ts","handler":"fetchGames","site":"gamesService:faf42824ef"}); return []; }),
   ]);
   const groupName = new Map<string, string>();
   for (const g of groups) {

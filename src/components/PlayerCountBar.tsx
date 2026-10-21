@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // PlayerCountBar — subtle progress bar replacing the plain "7/10"
 // label. Uses the brand's primary green for fill, transitions to a
 // glow when the roster is full so the eye lands on it. Subtle by
@@ -61,7 +62,8 @@ export function PlayerCountBar({ current, max, label }: Props) {
       );
       // Light tap — celebratory but not interrupting. Failures (older
       // devices, simulators) are silently ignored; this is sugar.
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch((caughtError0aa088c796: unknown) => {
+    observeCaughtError(caughtError0aa088c796, {"source":"src/components/PlayerCountBar.tsx","handler":"PlayerCountBar","site":"PlayerCountBar:0aa088c796"});});
     }
     // If the count drops back below max (e.g. someone cancels), allow
     // the next re-fill to celebrate again.

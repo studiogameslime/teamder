@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // achievementsService — counter increments + unlock evaluation.
 //
 // Two unlock paths now coexist:
@@ -126,6 +127,7 @@ export const achievementsService = {
         await bumpFirebase(uid, metric, by);
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/achievementsService.ts","handler":"bump","site":"achievementsService:56b1430ea5"});
       if (!isExpectedDenial(err)) logError('bumpAchievement', err, { uid, metric });
       if (__DEV__) {
         // eslint-disable-next-line no-console
@@ -250,6 +252,7 @@ export const achievementsService = {
         }
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/achievementsService.ts","handler":"deriveCounters","site":"achievementsService:f2fd78650a"});
       logError('deriveGamesJoined', err, { userId });
       throw err;
     }
@@ -276,6 +279,7 @@ export const achievementsService = {
           if (w > maxWinsWithPlayer) maxWinsWithPlayer = w;
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/achievementsService.ts","handler":"deriveCounters","site":"achievementsService:1b128ed818"});
         logError('deriveMaxWinsWithPlayer', err, { userId });
         throw err;
       }
@@ -289,6 +293,7 @@ export const achievementsService = {
       const { userService } = await import('./userService');
       invitesSent = await userService.getInvitedUsersCount(userId);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/achievementsService.ts","handler":"deriveCounters","site":"achievementsService:069a93d2c3"});
       logError('deriveInvitesSent', err, { userId });
       throw err;
     }
@@ -331,6 +336,7 @@ export const achievementsService = {
       }
       return await persistFirebase(userId, counters);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/achievementsService.ts","handler":"persistDerivedUnlocks","site":"achievementsService:3973050ba5"});
       if (!isExpectedDenial(err)) logError('persistDerivedUnlocks', err, { userId });
       if (__DEV__) {
         // eslint-disable-next-line no-console
@@ -422,7 +428,8 @@ async function bumpMock(
   let cur: User;
   try {
     cur = JSON.parse(json) as User;
-  } catch {
+  } catch (caughtError85745f4948) {
+    observeCaughtError(caughtError85745f4948, {"source":"src/services/achievementsService.ts","handler":"bumpMock","site":"achievementsService:85745f4948"});
     return;
   }
   if (cur.id !== uid) return;
@@ -522,7 +529,8 @@ async function persistMock(
   let cur: User;
   try {
     cur = JSON.parse(json) as User;
-  } catch {
+  } catch (caughtError42fa2575a5) {
+    observeCaughtError(caughtError42fa2575a5, {"source":"src/services/achievementsService.ts","handler":"persistMock","site":"achievementsService:42fa2575a5"});
     return [];
   }
   if (cur.id !== uid) return [];

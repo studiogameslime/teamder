@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // NotificationsSettingsScreen — toggles for each push notification type,
 // grouped by category under a hero explainer.
 //
@@ -100,7 +101,8 @@ export function NotificationsSettingsScreen() {
         if (!active) return;
         setPermGranted(status.available ? status.granted : null);
         setPermCanAsk(status.canAskAgain);
-      }).catch(() => { /* Preserve the last known permission on a transient read failure. */ });
+      }).catch((caughtErrorf397b46366: unknown) => {
+    observeCaughtError(caughtErrorf397b46366, {"source":"src/screens/profile/NotificationsSettingsScreen.tsx","handler":"NotificationsSettingsScreen","site":"NotificationsSettingsScreen:f397b46366"}); /* Preserve the last known permission on a transient read failure. */ });
     });
     return () => { active = false; subscription.remove(); };
   }, []);
@@ -119,7 +121,8 @@ export function NotificationsSettingsScreen() {
       let saved;
       try {
         saved = await notificationsService.loadPreferences(user.id);
-      } catch {
+      } catch (caughtError0a02825609) {
+    observeCaughtError(caughtError0a02825609, {"source":"src/screens/profile/NotificationsSettingsScreen.tsx","handler":"NotificationsSettingsScreen","site":"NotificationsSettingsScreen:0a02825609"});
         if (!cancelled) appAlert(he.error, 'לא ניתן לטעון את הגדרות ההתראות. יש לפתוח את המסך מחדש ולנסות שוב.');
         return;
       }
@@ -161,7 +164,8 @@ export function NotificationsSettingsScreen() {
       // Permanently denied — the OS prompt is gone, so the only remaining
       // path is the app's own page in the system settings.
       logEvent(AnalyticsEvent.NotificationPermissionSettingsOpened);
-      Linking.openSettings().catch(() => {});
+      Linking.openSettings().catch((caughtError4846118af0: unknown) => {
+    observeCaughtError(caughtError4846118af0, {"source":"src/screens/profile/NotificationsSettingsScreen.tsx","handler":"handleEnablePermission","site":"NotificationsSettingsScreen:4846118af0"});});
       return;
     }
     setPermBusy(true);
@@ -169,6 +173,7 @@ export function NotificationsSettingsScreen() {
       await notificationsService.requestAndRegisterPushToken(user.id);
       await refreshPermission();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/profile/NotificationsSettingsScreen.tsx","handler":"handleEnablePermission","site":"NotificationsSettingsScreen:ade1625dd9"});
       if (__DEV__) console.warn('[notifications] enable failed', e);
     } finally {
       setPermBusy(false);
@@ -232,6 +237,7 @@ export function NotificationsSettingsScreen() {
       savingRef.current = true;
       nav.goBack();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/profile/NotificationsSettingsScreen.tsx","handler":"save","site":"NotificationsSettingsScreen:60e59f0f2b"});
       // savePreferences is a Firestore write with no logging of its own;
       // a failed save would otherwise only surface as a transient Alert
       // and vanish. Record it so the dashboard sees the failure.

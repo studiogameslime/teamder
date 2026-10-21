@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces } from '@/theme/overlays';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, BackHandler, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ImageSourcePropType } from 'react-native';
@@ -63,7 +64,8 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
     if(preview || !owner || !ids.length) return;
     groupService.hydratePublicUsers(ids).then(users=>{
       if(live && useUserStore.getState().currentUser?.id===owner) setSenderNames({owner,names:Object.fromEntries(users.map(u=>[u.id,u.name]))});
-    }).catch(err=>{if(live)logError('ChatInbox.senderNames',err);});
+    }).catch(err=>{
+    observeCaughtError(err, {"source":"src/components/chat/ChatInbox.tsx","handler":"ChatInbox","site":"ChatInbox:fef5a09a1f"});if(live)logError('ChatInbox.senderNames',err);});
     return()=>{live=false;};
   },[senderIds,me?.id,preview,retry]);
   useEffect(()=>{if(preview){setPreferences(preview.preferences);setFriends(preview.friends);setLoading(false);}},[preview]);
@@ -81,7 +83,7 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
   useEffect(()=>{
     let live=true;
     if (preview) return;
-    Promise.all(otherIds.map(async id=>[id,await userService.getUserById(id).catch(()=>null)] as const)).then(pairs=>{
+    Promise.all(otherIds.map(async id=>[id,await userService.getUserById(id).catch((caughtError0862998ed1: unknown) =>{ observeCaughtError(caughtError0862998ed1, {"source":"src/components/chat/ChatInbox.tsx","handler":"ChatInbox","site":"ChatInbox:0862998ed1"}); return null; })] as const)).then(pairs=>{
       if(live) setProfiles(Object.fromEntries(pairs.filter((p):p is readonly [string,User]=>!!p[1])));
     });
     return ()=>{live=false;};
@@ -89,7 +91,8 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
   useEffect(()=>{
     if(mode!=='new'||preview||!me) return;
     let live=true;setFriendsLoading(true);setFriendsFailed(false);setFriends([]);
-    friendsService.listFriends(me.id).then(rows=>{if(live)setFriends(rows);}).catch(()=>{if(live)setFriendsFailed(true);}).finally(()=>{if(live)setFriendsLoading(false);});
+    friendsService.listFriends(me.id).then(rows=>{if(live)setFriends(rows);}).catch((caughtError3dbc2dce7d: unknown) =>{
+    observeCaughtError(caughtError3dbc2dce7d, {"source":"src/components/chat/ChatInbox.tsx","handler":"ChatInbox","site":"ChatInbox:3dbc2dce7d"});if(live)setFriendsFailed(true);}).finally(()=>{if(live)setFriendsLoading(false);});
     return ()=>{live=false;};
   },[mode,me?.id,preview,retry]);
   useFocusEffect(useCallback(()=>{
@@ -139,7 +142,8 @@ export function ChatInbox({ preview }: { preview?: InboxPreview }) {
       if(!preview)await chatService.setPreferences(me.id,selected.scope,selected.id,patch);
       setPreferences(p=>({...p,[key(selected)]:{...(p[key(selected)] ?? {muted:false,pinned:false,archivedAt:0}),...patch}}));
       setSelected(null);
-    }catch{toast.error('לא ניתן לשמור כרגע. נסו שוב.');}finally{setBusy(false);}
+    }catch (caughtError8c7618929b){
+    observeCaughtError(caughtError8c7618929b, {"source":"src/components/chat/ChatInbox.tsx","handler":"update","site":"ChatInbox:8c7618929b"});toast.error('לא ניתן לשמור כרגע. נסו שוב.');}finally{setBusy(false);}
   };
   const changeMode=(next:typeof mode)=>{setMode(next);setSearch('');setFilter('all');};
   const renderRow=(item:InboxRow)=><Pressable accessibilityRole="button" accessibilityLabel={`פתיחת ${item.title}`} onPress={()=>open(item)} onLongPress={()=>setSelected(item)} style={({pressed})=>[s.card,pressed&&{opacity:0.7}]}>

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // serverClock — a shared, device-independent time base for the live-match
 // timer.
 //
@@ -66,7 +67,8 @@ async function hydrateFromCache(): Promise<void> {
       const n = Number(raw);
       if (Number.isFinite(n)) offsetMs = n;
     }
-  } catch {
+  } catch (caughtErrorfc2240db1f) {
+    observeCaughtError(caughtErrorfc2240db1f, {"source":"src/services/serverClock.ts","handler":"hydrateFromCache","site":"serverClock:fc2240db1f"});
     // Non-fatal; we just start from a zero offset.
   }
 }
@@ -89,7 +91,8 @@ async function probeOnce(): Promise<{ offset: number; rtt: number } | null> {
     // that minus our local clock at t1.
     const offset = serverTime + rtt / 2 - t1;
     return { offset, rtt };
-  } catch {
+  } catch (caughtErrorc6566fca82) {
+    observeCaughtError(caughtErrorc6566fca82, {"source":"src/services/serverClock.ts","handler":"probeOnce","site":"serverClock:c6566fca82"});
     return null;
   }
 }
@@ -118,7 +121,8 @@ export async function syncServerClock(force = false): Promise<number> {
       lastSyncAt = Date.now();
       try {
         await AsyncStorage.setItem(OFFSET_STORAGE_KEY, String(offsetMs));
-      } catch {
+      } catch (caughtError19dfa0bb0e) {
+    observeCaughtError(caughtError19dfa0bb0e, {"source":"src/services/serverClock.ts","handler":"syncServerClock","site":"serverClock:19dfa0bb0e"});
         // Non-fatal — the in-memory offset still applies this session.
       }
     }

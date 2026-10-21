@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Keep the screen on while the app is in the foreground.
 //
 // Asked for outright: "while the app is open, the screen should not turn off".
@@ -44,7 +45,8 @@ function keepAwake(): KeepAwake | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
     mod = require('expo-keep-awake') as KeepAwake;
-  } catch {
+  } catch (caughtErrorb081dac7e1) {
+    observeCaughtError(caughtErrorb081dac7e1, {"source":"src/hooks/useScreenAwake.ts","handler":"keepAwake","site":"useScreenAwake:b081dac7e1"});
     mod = null;
   }
   return mod;
@@ -66,7 +68,8 @@ export function useScreenAwake(enabled = true) {
     const acquire = () => {
       if (held) return;
       held = true;
-      api.activateKeepAwakeAsync(TAG).catch(() => {
+      api.activateKeepAwakeAsync(TAG).catch((caughtError2c9cd6b504: unknown) => {
+    observeCaughtError(caughtError2c9cd6b504, {"source":"src/hooks/useScreenAwake.ts","handler":"acquire","site":"useScreenAwake:2c9cd6b504"});
         held = false;
       });
     };
@@ -76,7 +79,8 @@ export function useScreenAwake(enabled = true) {
       held = false;
       try {
         api.deactivateKeepAwake(TAG);
-      } catch {
+      } catch (caughtErrore6baa4ff13) {
+    observeCaughtError(caughtErrore6baa4ff13, {"source":"src/hooks/useScreenAwake.ts","handler":"release","site":"useScreenAwake:e6baa4ff13"});
         /* already gone — nothing to undo */
       }
     };

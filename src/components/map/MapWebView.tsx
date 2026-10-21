@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // MapWebView — zero-cost interactive map (NO API key, NO billing, NO Google).
 // MapLibre GL JS over the OpenFreeMap "liberty" vector style inside a WebView,
 // locked to Israel, with date-coloured football points + numbered clusters.
@@ -134,7 +135,8 @@ export function MapWebView({
       ) {
         onPick(msg.lat, msg.lng);
       }
-    } catch {
+    } catch (caughtError211512b127) {
+    observeCaughtError(caughtError211512b127, {"source":"src/components/map/MapWebView.tsx","handler":"handleMessage","site":"MapWebView:211512b127"});
       // Ignore malformed bridge messages.
     }
   };

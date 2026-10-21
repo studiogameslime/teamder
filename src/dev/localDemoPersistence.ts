@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   LOCAL_DEMO_KEY,
@@ -12,7 +13,8 @@ export function restoreLocalDemoRound(): Promise<void> {
   if (!__DEV__ || process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK !== '1' ||
       process.env.EXPO_PUBLIC_QA_ROUTES !== '1') return Promise.resolve();
   if (restoration) return restoration;
-  restoration = restore().catch(error => { restoration = undefined; throw error; });
+  restoration = restore().catch(error => {
+    observeCaughtError(error, {"source":"src/dev/localDemoPersistence.ts","handler":"restoreLocalDemoRound","site":"localDemoPersistence:c78721e8fe"}); restoration = undefined; throw error; });
   return restoration;
 }
 

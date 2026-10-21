@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -161,6 +162,7 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
       await save();
       if (current()) setupAttempt.current = null;
     } catch (error) {
+    observeCaughtError(error, {"source":"src/components/match/ShootoutWizard.tsx","handler":"saveSetup","site":"ShootoutWizard:3e98f418ab"});
       logError('shootoutSaveSetup', error, { gameId, roundId, stage: screen });
       if (current()) {
         setSaveError(true);
@@ -207,7 +209,8 @@ export function Shootout({ visible, gameId, shootout, draftTeams, rotation, play
         attempt.current = null; attemptPeople.current = null; setKickerId(null); setSelectedKeeperId(null); setScreen('kicker');
       }
       logEvent(AnalyticsEvent.ShootoutKickRecorded, { gameId, team: pending.team, scored: pending.scored, outcome: pending.outcome, kickIndex: pending.expectedKickCount ?? 0 });
-    } catch (error) { logError('shootoutRecordKick', error, { gameId, roundId, kickId: pending.id }); if (visibleRef.current && uiEpoch.current === epoch) {
+    } catch (error) {
+    observeCaughtError(error, {"source":"src/components/match/ShootoutWizard.tsx","handler":"record","site":"ShootoutWizard:1ef2574c21"}); logError('shootoutRecordKick', error, { gameId, roundId, kickId: pending.id }); if (visibleRef.current && uiEpoch.current === epoch) {
       const code = (error as {code?:string})?.code;
       setSaveError(true); setReselectAllowed(code === 'LIVE_ROSTER_CHANGED' || code === 'LIVE_KICK_CHANGED');
       if (code === 'LIVE_KICK_CHANGED') setSaveErrorMessage('התור השתנה. בחרו שחקנים לתור העדכני.');

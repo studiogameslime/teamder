@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -47,6 +48,7 @@ export function SignInScreen() {
     try {
       await signIn();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/auth/SignInScreen.tsx","handler":"handlePress","site":"SignInScreen:9261495028"});
       const e = err as { message?: string; code?: string };
       const code = (e?.code ?? '').toString().toLowerCase();
       const msg = (e?.message ?? '').toLowerCase();
@@ -100,6 +102,7 @@ export function SignInScreen() {
     try {
       await signInApple();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/auth/SignInScreen.tsx","handler":"handleApple","site":"SignInScreen:b0e5a401df"});
       if (__DEV__) console.warn('[signIn] apple failed', err);
       const e = err as { message?: string; code?: string };
       const code = (e?.code ?? '').toString();
@@ -145,6 +148,7 @@ export function SignInScreen() {
     try {
       await signInGuest();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/auth/SignInScreen.tsx","handler":"handleGuest","site":"SignInScreen:b501ddbc2a"});
       if (__DEV__) console.warn('[signIn] guest failed', err);
       logError('signInGuestScreen', err, { screen: 'SignInScreen' });
       logEvent(AnalyticsEvent.SignInFailed, { method: 'guest' });

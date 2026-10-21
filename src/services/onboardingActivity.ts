@@ -1,3 +1,5 @@
+import { observedRejection, observeCaughtError } from '../utils/errorObservation';
+
 /** Separate, allowlisted remote onboarding stream. Diagnostic breadcrumbs stay local. */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
@@ -41,7 +43,7 @@ function schedule() {
   if (timer) return;
   timer = setTimeout(() => {
     timer = undefined;
-    chain = chain.then(flush).catch(retryLater);
+    chain = chain.then(flush).catch(observedRejection(retryLater, {"source":"src/services/onboardingActivity.ts","handler":"schedule","site":"onboardingActivity:7528c38986"}));
   }, retryMs);
 }
 function validEvent(value: unknown): value is Event {
@@ -65,7 +67,8 @@ async function readQueue(): Promise<Event[]> {
   const raw = await AsyncStorage.getItem(KEY);
   if (!raw) return [];
   let values: unknown;
-  try { values = JSON.parse(raw); } catch { await quarantine([raw]); await AsyncStorage.setItem(KEY, '[]'); return []; }
+  try { values = JSON.parse(raw); } catch (caughtError392f65dc97) {
+    observeCaughtError(caughtError392f65dc97, {"source":"src/services/onboardingActivity.ts","handler":"readQueue","site":"onboardingActivity:392f65dc97"}); await quarantine([raw]); await AsyncStorage.setItem(KEY, '[]'); return []; }
   if (!Array.isArray(values)) { await quarantine([values]); await AsyncStorage.setItem(KEY, '[]'); return []; }
   const good = values.filter(validEvent).filter(event =>
     event.ownerUid !== null || event.sessionId === sessionId || claimedSessions.has(event.sessionId));
@@ -91,6 +94,7 @@ async function flush() {
   let acknowledged: string[];
   try { acknowledged = (await send({ events: batch, expectedUid: uid })).data.acknowledged; }
   catch (error) {
+    observeCaughtError(error, {"source":"src/services/onboardingActivity.ts","handler":"flush","site":"onboardingActivity:9544dacd45"});
     if (String((error as { code?: string }).code).endsWith('invalid-argument')) {
       // A permanently rejected batch must not block later valid events forever.
       // Retry each independently to isolate the poison record.
@@ -99,6 +103,7 @@ async function flush() {
         if (auth.currentUser?.uid !== uid) { schedule(); break; }
         try { acknowledged.push(...(await send({ events: [event], expectedUid: uid })).data.acknowledged); }
         catch (single) {
+    observeCaughtError(single, {"source":"src/services/onboardingActivity.ts","handler":"flush","site":"onboardingActivity:bc853eb0e4"});
           if (!String((single as { code?: string }).code).endsWith('invalid-argument')) throw single;
           await quarantine([event]); acknowledged.push(event.id);
         }
@@ -137,5 +142,5 @@ export function recordOnboardingActivity(action: string, params: Record<string, 
   }
   const event: Event = { id: `${sessionId}-${++sequence}`, sessionId, sequence, occurredAt: Date.now(), action, params: safeActivityParams({ ...getEntryContext(), ...params }), ownerUid };
   awaitingPersistence.push(event);
-  chain = chain.then(persistPending).catch(retryLater);
+  chain = chain.then(persistPending).catch(observedRejection(retryLater, {"source":"src/services/onboardingActivity.ts","handler":"recordOnboardingActivity","site":"onboardingActivity:39d454d30a"}));
 }

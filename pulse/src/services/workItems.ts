@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // The work list — EVERYTHING that needs doing, in one place.
 //
 // Pulse used to scatter the same question ("what's open?") across five screens,
@@ -508,7 +509,8 @@ export async function listWorkSnapshot(force = false, onProgress?: (items: WorkI
   const receive = <T,>(index: number, stream: WorkStream, pending: Promise<T[]>, map: (item: T) => WorkItem) => pending.then(rows => {
     streams[index] = rows.map(map);
     if (streams.some(items => items.length)) onProgress?.(collect());
-  }).catch(() => { failedStreams.push(stream); });
+  }).catch((caughtError9674678c43: unknown) => {
+    observeCaughtError(caughtError9674678c43, {"source":"pulse/src/services/workItems.ts","handler":"receive","site":"workItems:9674678c43"}); failedStreams.push(stream); });
   await Promise.all([
     receive(0, 'task', lean('task', force), d => ({ ...fromTask(taskFromDoc(d)), unresolved: readUnresolvedWork(d) })),
     receive(1, 'error', lean('error', force), d => ({ ...fromError(d), unresolved: readUnresolvedWork(d) })),

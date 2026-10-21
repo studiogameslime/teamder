@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
@@ -17,7 +18,8 @@ export function UserDevicesCard({ userId, flat=false }: { userId: string; flat?:
     let alive = true;
     setDevices(null); setFailed(false);
     fetchUserDevices(userId, retry > 0).then(rows => { if (alive) setDevices(rows); })
-      .catch(() => { if (alive) setFailed(true); });
+      .catch((caughtError57e435d3ae: unknown) => {
+    observeCaughtError(caughtError57e435d3ae, {"source":"pulse/src/components/DeviceVersions.tsx","handler":"UserDevicesCard","site":"DeviceVersions:57e435d3ae"}); if (alive) setFailed(true); });
     return () => { alive = false; };
   }, [userId, retry]);
   return <Card style={{ gap: 8, ...(flat?{backgroundColor:'transparent',borderWidth:0,padding:0}: {}) }}>

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // govmapService — address / POI autocomplete via govmap (מפ"י), the official
 // Israeli mapping service. Free, no API key, and unlike a plain street geocoder
 // it indexes NAMED places too (schools, community centres, parks) — which is
@@ -159,14 +160,17 @@ export async function searchPlaces(
     return value;
   };
   if(Date.now()<primaryUnavailableUntil){
-    try{return remember(await searchBackup(q,maxResults));}catch{return {places:[],unavailable:true};}
+    try{return remember(await searchBackup(q,maxResults));}catch (caughtErrorc9a85a2913){
+    observeCaughtError(caughtErrorc9a85a2913, {"source":"src/services/govmapService.ts","handler":"searchPlaces","site":"govmapService:c9a85a2913"});return {places:[],unavailable:true};}
   }
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const places=toPlaces(await fetchOnce(q,maxResults));
       if(places.length)return remember(places);
-      try{return remember(await searchBackup(q,maxResults));}catch{return remember([]);}
+      try{return remember(await searchBackup(q,maxResults));}catch (caughtError7ef45b4de9){
+    observeCaughtError(caughtError7ef45b4de9, {"source":"src/services/govmapService.ts","handler":"searchPlaces","site":"govmapService:7ef45b4de9"});return remember([]);}
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/govmapService.ts","handler":"searchPlaces","site":"govmapService:f0ced6ce35"});
       if (isUpstreamDown(err)) {
         // One retry — a 504 from an overloaded public service is usually over
         // by the next request.
@@ -180,7 +184,8 @@ export async function searchPlaces(
       // Respect upstream rejection: do not spoof browser headers or hammer it.
       // A short circuit avoids repeating the same 403 on each keystroke.
       primaryUnavailableUntil=Date.now()+60000;
-      try{return remember(await searchBackup(q,maxResults));}catch{
+      try{return remember(await searchBackup(q,maxResults));}catch (caughtError9d49774938){
+    observeCaughtError(caughtError9d49774938, {"source":"src/services/govmapService.ts","handler":"searchPlaces","site":"govmapService:9d49774938"});
         if ((err as Error)?.message === 'govmap autocomplete 403') logError('govmapSearch',err,{query:q});
       }
       // Graceful either way: the field still works as free text.

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // "כימיה במועדון" — six pairs worth knowing about, inside the club statistics
 // screen. Not a screen of its own: it sits beside the leaders and the fun
 // facts, and a category with nothing behind it simply isn't drawn.
@@ -176,14 +177,15 @@ export function ChemistrySection({
       }
       if (identities) { setPeople(identities); return; }
       if (ids.size === 0) return;
-      const users = await groupService.hydrateUsers(Array.from(ids)).catch(() => []);
+      const users = await groupService.hydrateUsers(Array.from(ids)).catch((caughtError431c64aa77: unknown) => { observeCaughtError(caughtError431c64aa77, {"source":"src/components/chemistry/ChemistrySection.tsx","handler":"ChemistrySection","site":"ChemistrySection:431c64aa77"}); return []; });
       if (!alive) return;
       const map: Record<string, PairPerson> = {};
       for (const u of users) {
         map[u.id] = { id: u.id, name: u.name, photoUrl: u.photoUrl, avatarId: u.avatarId };
       }
       setPeople(map);
-      } catch {
+      } catch (caughtError294f8707b7) {
+    observeCaughtError(caughtError294f8707b7, {"source":"src/components/chemistry/ChemistrySection.tsx","handler":"ChemistrySection","site":"ChemistrySection:294f8707b7"});
         if (alive) setLoaded({ groupId, source: pairs, data: null, failed: true });
       }
     })();

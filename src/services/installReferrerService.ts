@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { resolveIncomingInvite } from './incomingInvite';
 // installReferrerService — recover an invite from the Play Install
 // Referrer after a fresh install.
@@ -48,7 +49,8 @@ function loadModule(): PlayInstallReferrerModule | null {
       PlayInstallReferrer?: PlayInstallReferrerModule;
     };
     return mod?.PlayInstallReferrer ?? null;
-  } catch {
+  } catch (caughtErrorb304e818c2) {
+    observeCaughtError(caughtErrorb304e818c2, {"source":"src/services/installReferrerService.ts","handler":"loadModule","site":"installReferrerService:b304e818c2"});
     return null;
   }
 }
@@ -92,7 +94,8 @@ async function recoverReferrer(): Promise<void> {
         // Transient failures and late callbacks cannot consume or overwrite.
         finish(err ? null : info);
       });
-    } catch { finish(null); }
+    } catch (caughtError4ef98bcd9f) {
+    observeCaughtError(caughtError4ef98bcd9f, {"source":"src/services/installReferrerService.ts","handler":"recoverReferrer","site":"installReferrerService:4ef98bcd9f"}); finish(null); }
   });
   if (!result) return; // Retry on next launch, with no repeated polling.
   try {
@@ -108,6 +111,7 @@ async function recoverReferrer(): Promise<void> {
     }
     await storage.setInstallReferrerConsumed();
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/installReferrerService.ts","handler":"recoverReferrer","site":"installReferrerService:986ced231d"});
     // A failed stash remains retryable rather than recording successful recovery.
     logError('installReferrerPersist', err, {});
   }

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
 import { I18nManager, PanResponder, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -51,7 +52,7 @@ export function ManualAllocation({game,userId,players,count,onBack,onSaved,previ
       if(!alive)return;
       if(!preferSaved && hasManualDraft(raw,manualDraftRevision(game.draftTeams))) {const data=JSON.parse(raw!); setTeams(restoreManualTeams(data.teams,players.map(p=>p.id),count,capacity));}
       else if(!preview && game.draftTeams) setTeams(restoreManualTeams(Array.from({length:count},(_,index)=>game.draftTeams?.teams.find(team=>team.index===index)?.playerIds??[]),players.map(p=>p.id),count,capacity));
-    }).catch(()=>toast.info('לא הצלחנו לטעון את הטיוטה המקומית')).finally(()=>{if(alive)setReady(true);});
+    }).catch((caughtError4932fe9ba0: unknown) =>{ observeCaughtError(caughtError4932fe9ba0, {"source":"src/components/draft/ManualAllocation.tsx","handler":"ManualAllocation","site":"ManualAllocation:4932fe9ba0"}); return toast.info('לא הצלחנו לטעון את הטיוטה המקומית'); }).finally(()=>{if(alive)setReady(true);});
     return()=>{alive=false;};
   },[key]);
   useEffect(()=>{if(ready){setTeams(prev=>restoreManualTeams(prev,players.map(p=>p.id),count,capacity));setHistory([]);}},[rosterKey,count,capacity,ready]);
@@ -123,9 +124,10 @@ export function ManualAllocation({game,userId,players,count,onBack,onSaved,previ
       if(fresh.status==='finished'||fresh.status==='cancelled')throw Error('ROUND_CLOSED');
       await gameService.saveDraftTeams(game.id,{...createManualDraft(teams,userId,Date.now(),fresh.draftTeams?.teams),...(fresh.draftTeams?.completionMode==='balanced'?{completionMode:'balanced' as const,fillMode:'temporary' as const}:{})},undefined,true,game);
       // A cleanup failure must not turn a successful server save into an error.
-      await AsyncStorage.removeItem(key).catch(()=>undefined);
+      await AsyncStorage.removeItem(key).catch((caughtError1d1768f728: unknown) =>{ observeCaughtError(caughtError1d1768f728, {"source":"src/components/draft/ManualAllocation.tsx","handler":"save","site":"ManualAllocation:1d1768f728"}); return undefined; });
       setDirty(false);allowLeave.current=true;toast.success('הכוחות נשמרו כטיוטה');onSaved();
-    }catch(error){logError('manualAllocationSave',error,{gameId:game.id});toast.error(error instanceof Error&&error.message==='DRAFT_ROSTER_CHANGED'?'הרכב המחזור השתנה. חזרו למסך החלוקה כדי לטעון את ההרכב המעודכן':error instanceof Error&&error.message==='ROUND_CLOSED'?'לא ניתן לשמור כוחות במחזור שהסתיים או בוטל':'לא הצלחנו לשמור. הטיוטה נשארה במכשיר, נסו שוב');}
+    }catch(error){
+    observeCaughtError(error, {"source":"src/components/draft/ManualAllocation.tsx","handler":"save","site":"ManualAllocation:fafe973f03"});logError('manualAllocationSave',error,{gameId:game.id});toast.error(error instanceof Error&&error.message==='DRAFT_ROSTER_CHANGED'?'הרכב המחזור השתנה. חזרו למסך החלוקה כדי לטעון את ההרכב המעודכן':error instanceof Error&&error.message==='ROUND_CLOSED'?'לא ניתן לשמור כוחות במחזור שהסתיים או בוטל':'לא הצלחנו לשמור. הטיוטה נשארה במכשיר, נסו שוב');}
     finally{lock.current=false;setSaving(false);}
   };
   const chip=(p:Player, layout: 'pool'|'wide'|'column' = 'pool')=><PlayerChip layout={layout} key={p.id} player={p} disabled={saving||!ready} onPress={()=>setPicked(p.id)}

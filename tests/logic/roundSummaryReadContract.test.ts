@@ -32,7 +32,9 @@ test('a missing-summary watch ignores empty cache snapshots and accepts the late
  callback({empty:true,metadata:{fromCache:false}});expect(accept).toHaveBeenLastCalledWith(null);
  callback({empty:false,metadata:{fromCache:false},docs:[{data:()=>({gameId:'g',groupId:'club',stats:{goals:2}})}]});
  expect(accept).toHaveBeenLastCalledWith(expect.objectContaining({gameId:'g',stats:{goals:2},events:[]}));
- expect(mockOnSnapshot.mock.calls[0][2]).toBe(fail);
+ const error = new Error('listener unavailable');
+ mockOnSnapshot.mock.calls[0][2](error);
+ expect(fail).toHaveBeenCalledTimes(1);expect(fail).toHaveBeenCalledWith(error);
 });
 
 test('existing summary preserves totals, coverage and identities while normalising optional arrays', async () => {

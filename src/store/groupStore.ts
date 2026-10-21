@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { Group, GroupId, User, UserId } from '@/types';
@@ -112,7 +113,8 @@ function persistSelection(id: GroupId | null, isCurrent: () => boolean): Promise
   const next = selectionQueue.then(async () => {
     if (isCurrent()) await storage.setCurrentGroupId(id);
   });
-  selectionQueue = next.catch(() => {});
+  selectionQueue = next.catch((caughtError87cd10789d: unknown) => {
+    observeCaughtError(caughtError87cd10789d, {"source":"src/store/groupStore.ts","handler":"persistSelection","site":"groupStore:87cd10789d"});});
   return next;
 }
 
@@ -224,6 +226,7 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
         p.then(
           (value) => ({ ok: true, value }),
           (err: unknown) => {
+    observeCaughtError(err, {"source":"src/store/groupStore.ts","handler":"settle","site":"groupStore:8ee2a07af5"});
             // A hydrate overtaken by a session change is not a fault: the
             // question was asked on behalf of a uid that no longer holds the
             // token, and the hydrate for the new one is already on its way.
@@ -247,6 +250,7 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
         groupService.listPendingForUser(userId),
       ),
       storage.getCurrentGroupId().catch((err) => {
+    observeCaughtError(err, {"source":"src/store/groupStore.ts","handler":"hydrate","site":"groupStore:68abe679db"});
         logError('groupHydrateGetCurrentGroupId', err, { userId });
         return null;
       }),
@@ -259,6 +263,7 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
       if (currentGroupId && !groups.find((g) => g.id === currentGroupId)) {
         currentGroupId = null;
         await persistSelection(null, isCurrent).catch((err) => {
+    observeCaughtError(err, {"source":"src/store/groupStore.ts","handler":"hydrate","site":"groupStore:2f68a86a91"});
           logError('groupHydrateSetCurrentGroupId', err, { userId });
         });
         if (!isCurrent()) return;
@@ -266,6 +271,7 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
       if (!currentGroupId && groups.length > 0) {
         currentGroupId = groups[0].id;
         await persistSelection(currentGroupId, isCurrent).catch((err) => {
+    observeCaughtError(err, {"source":"src/store/groupStore.ts","handler":"hydrate","site":"groupStore:84425d2d54"});
           logError('groupHydrateSetCurrentGroupId', err, { userId, currentGroupId });
         });
         if (!isCurrent()) return;
@@ -358,7 +364,7 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
     } else if (status === 'joined' || status === 'already_member') {
       // The callable returns a stub. Read this club's canonical member document
       // instead of blocking the join on every club and pending request query.
-      const joined = await groupService.get(groupId).catch(() => null);
+      const joined = await groupService.get(groupId).catch((caughtErrorb417029bff: unknown) => { observeCaughtError(caughtErrorb417029bff, {"source":"src/store/groupStore.ts","handler":"requestJoinById","site":"groupStore:b417029bff"}); return null; });
       assertCurrent();
       if (joined?.id === groupId &&
           (joined.playerIds.includes(userId) || joined.adminIds.includes(userId))) {

@@ -88,3 +88,45 @@ it('refuses a screenshot captured under another account',async()=>{
  await expect(f.submitFeedback('bug','test','MatchDetails',undefined,'bug',captured)).rejects.toThrow('session changed');
  expect(mockAdd).not.toHaveBeenCalled();
 });
+
+it('counts one caught Error once across service, screen and global observers',async()=>{
+ const e=require('@/services/errorLog'),o=require('@/utils/errorObservation');
+ const failure=new Error('same failure'), origin={source:'src/service.ts',handler:'load',site:'service:one'};
+ o.observeCaughtError(failure,origin);e.logError('loadClub',failure,{groupId:'club'});
+ o.observeCaughtError(failure,{...origin,source:'src/screen.ts'});e.logError('unhandledRejection',failure);
+ await Promise.resolve();await e.flush();
+ expect(mockUpdate).toHaveBeenCalledTimes(1);
+ expect(mockUpdate.mock.calls[0][1]).toMatchObject({operation:'loadClub',count:1,lastContext:{source:'src/service.ts',groupId:'club'}});
+});
+it('keeps distinct occurrences, reports network failures and preserves plain-object codes',async()=>{
+ const e=require('@/services/errorLog');
+ e.logError('load',{message:'offline',code:'unavailable'});e.logError('load',{message:'offline',code:'unavailable'});
+ await e.flush();expect(mockUpdate.mock.calls[0][1]).toMatchObject({count:2,lastCode:'unavailable',lastContext:{transient:true}});
+});
+it('reports undefined rejection reasons instead of silently failing normalization',async()=>{
+ const e=require('@/services/errorLog');e.logError('load',undefined);await e.flush();
+ expect(mockUpdate.mock.calls[0][1]).toMatchObject({lastMessage:'undefined',count:1});
+});
+it('freezes fallback evidence at the catch before navigation changes',async()=>{
+ const e=require('@/services/errorLog'),o=require('@/utils/errorObservation'),j=require('@/services/diagnosticJournal');
+ j.diagnosticRoute('MatchDetails',{gameId:'g'});
+ o.observeCaughtError(new Error('hidden'),{source:'source.ts',handler:'load',site:'source:load'});
+ j.diagnosticRoute('Profile');await Promise.resolve();await e.flush();
+ const payload=mockUpdate.mock.calls[0][1];expect(payload.lastScreen).toBe('MatchDetails');
+ expect(payload.lastJournal).toContain('MatchDetails');expect(payload.lastJournal).not.toContain('Profile');
+});
+it('retries a frozen batch with the same id without mixing in newer occurrences',async()=>{
+ const e=require('@/services/errorLog');
+ mockUpdate.mockRejectedValueOnce(new Error('response lost'));
+ e.logError('load',new Error('bug'));await e.flush();const first=mockUpdate.mock.calls[0][1];
+ e.logError('load',new Error('bug'));await e.flush();
+ expect(mockUpdate.mock.calls[1][1]).toMatchObject({deliveryId:first.deliveryId,count:1});
+ expect(mockUpdate.mock.calls[2][1].deliveryId).not.toBe(first.deliveryId);
+ expect(mockUpdate.mock.calls[2][1].count).toBe(1);
+});
+it('deduplicates an explicit cause wrapper while retaining a separate occurrence',async()=>{
+ const e=require('@/services/errorLog'),root=new Error('failed');
+ e.logError('load',root);e.logError('load',Object.assign(new Error('wrapped'),{cause:root}));e.logError('load',new Error('failed'));
+ await e.flush();
+ expect(mockUpdate).toHaveBeenCalledTimes(1);expect(mockUpdate.mock.calls[0][1].count).toBe(2);
+});

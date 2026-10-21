@@ -1,3 +1,5 @@
+import './src/services/errorLog';
+import { observeCaughtError } from './src/services/errorObservation';
 import { AdminLoginScreen } from './src/screens/AdminLoginScreen';
 import { isPulseSignedIn, onPulseSessionChanged, restorePulseSession } from './src/services/adminSession';
 import React, { useEffect, useState } from 'react';
@@ -54,13 +56,13 @@ function AuthenticatedApp() {
       await registerBackgroundQuota();
       // Register this device for real-time "מישהו נרשם!" pushes.
       await registerForRealtimeAlerts();
-    })();
+    })().catch((error: unknown) => observeCaughtError(error, {source:'pulse/App.tsx',handler:'AuthenticatedApp.startup',site:'App:startup'}));
   }, []);
 
   return (
     <SafeAreaProvider style={{ flex: 1, direction: 'rtl' }}>
       <DashboardProvider>
-        <NavigationContainer direction="rtl" theme={navTheme} ref={navRef} onReady={() => { void openInitialOnboardingNotification(); }}>
+        <NavigationContainer direction="rtl" theme={navTheme} ref={navRef} onReady={() => { void openInitialOnboardingNotification().catch((error: unknown) => observeCaughtError(error, {source:'pulse/App.tsx',handler:'openInitialOnboardingNotification',site:'App:initialNotification'})); }}>
           <StatusBar style="light" />
           <RootTabs />
         </NavigationContainer>
@@ -73,7 +75,8 @@ export default function App() {
   const [ready, setReady] = useState(false), [signedIn, setSignedIn] = useState(isPulseSignedIn);
   useEffect(() => {
     const unsubscribe = onPulseSessionChanged(() => setSignedIn(isPulseSignedIn()));
-    void restorePulseSession().catch(() => {}).finally(() => setReady(true));
+    void restorePulseSession().catch((caughtError0324ac7a22: unknown) => {
+    observeCaughtError(caughtError0324ac7a22, {"source":"pulse/App.tsx","handler":"App","site":"App:0324ac7a22"});}).finally(() => setReady(true));
     return unsubscribe;
   }, []);
   return !ready ? <View style={{flex:1,backgroundColor:colors.bg,justifyContent:'center'}}><ActivityIndicator color={colors.primary}/></View>

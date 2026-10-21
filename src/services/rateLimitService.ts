@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // rateLimitService — per-user spam guards.
 //
 // Anchored to a /rateLimits/{uid}_{op} doc. The document holds a
@@ -98,6 +99,7 @@ export async function consume(
     );
     return true;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/rateLimitService.ts","handler":"consume","site":"rateLimitService:190a5a1203"});
     logError('rateLimitConsume', err, { uid, op });
     if (__DEV__) {
       console.warn('[rateLimit] consume failed (fail-open)', op, err);

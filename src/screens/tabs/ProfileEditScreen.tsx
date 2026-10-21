@@ -1,3 +1,5 @@
+import { observeCaughtError } from '../../utils/errorObservation';
+
 // ProfileEditScreen — edit name + profile picture (photo OR avatar).
 // Mirrors the onboarding profile step: pick a photo from the gallery
 // or tap one of the built-in avatars. The legacy "open jersey
@@ -198,7 +200,8 @@ export function ProfileEditScreen() {
         // user switched away from it (photo → avatar). Deferred to here so a
         // cancelled edit never leaves a broken avatar. Best-effort.
         if (user.photoUrl && !photoUrl) {
-          deleteUserPhoto(user.id).catch(() => {});
+          deleteUserPhoto(user.id).catch((caughtErrordfc64de20d: unknown) => {
+    observeCaughtError(caughtErrordfc64de20d, {"source":"src/screens/tabs/ProfileEditScreen.tsx","handler":"save","site":"ProfileEditScreen:dfc64de20d"});});
         }
         // Explicitly snap local form state to the saved values RIGHT
         // NOW. The local-state-sync useEffect would do this when the
@@ -217,6 +220,7 @@ export function ProfileEditScreen() {
       }
       nav.goBack();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/tabs/ProfileEditScreen.tsx","handler":"save","site":"ProfileEditScreen:a0689cfc96"});
       // If we get here, the save FAILED — the previous version
       // swallowed this in `finally` and the user thought the click
       // did nothing. Surface the error and don't navigate away;

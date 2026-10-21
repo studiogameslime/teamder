@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // playerStatsService — the data behind the dedicated "סטטיסטיקה" screen.
 //
 // Everything here is DERIVED from data we already keep. The core uses three
@@ -137,6 +138,7 @@ export const playerStatsService = {
         }
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/playerStatsService.ts","handler":"compute","site":"playerStatsService:f492053211"});
       logError('playerStats.games', err, { userId });
       throw err;
     }
@@ -245,6 +247,7 @@ export const playerStatsService = {
           );
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/playerStatsService.ts","handler":"compute","site":"playerStatsService:e545ae83bd"});
       logError('playerStats.pairs', err, { userId });
       throw err;
     }

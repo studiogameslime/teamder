@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../errorObservation';
 // Teamder Assistant — priority resolver + stable copy rotation.
 //
 // Two jobs:
@@ -74,7 +75,8 @@ export function resolveAssistantMessage(
     let msg: AssistantMessage | null = null;
     try {
       msg = rule(ctx);
-    } catch {
+    } catch (caughtError02879bc062) {
+    observeCaughtError(caughtError02879bc062, {"source":"src/utils/assistant/resolve.ts","handler":"resolveAssistantMessage","site":"resolve:02879bc062"});
       // A broken rule must never blank the home screen.
       msg = null;
     }

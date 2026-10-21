@@ -1,3 +1,5 @@
+import { observeCaughtError } from '../../utils/errorObservation';
+
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import { ScrollSurface } from '@/components/ScrollSurface';
 import { recordDiagnostic } from '@/services/diagnosticJournal';
@@ -146,7 +148,8 @@ export function useCommunityLifetimeTotals(input: {
     ]).then(([live, archived]) => {
       if (!alive || currentRequest.current !== request || useUserStore.getState().currentUser?.id !== viewerId) return;
       setState({ owner, data: { goals: live.goals + archived.goals, rounds: live.rounds + archived.rounds }, failed: false });
-    }).catch(() => {
+    }).catch((caughtError11ec5a8978: unknown) => {
+    observeCaughtError(caughtError11ec5a8978, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"useCommunityLifetimeTotals","site":"CommunityDetailsScreen:11ec5a8978"});
       if (!alive || currentRequest.current !== request || useUserStore.getState().currentUser?.id !== viewerId) return;
       setState(previous => ({ owner, data: previous.owner === owner ? previous.data : null, failed: true }));
     });
@@ -267,15 +270,16 @@ export function CommunityDetailsScreen() {
         );
         const [users, games, hist, cStats] = await Promise.all([
           groupService.hydrateUsers(memberIds),
-          gameService.getUpcomingGamesForGroup(g.id).catch(() => [] as Game[]),
-          gameService.getHistory(g.id).catch(() => [] as GameSummary[]),
-          gameService.getCommunityStats(g.id).catch(() => null),
+          gameService.getUpcomingGamesForGroup(g.id).catch((caughtError856a55f9be: unknown) => { observeCaughtError(caughtError856a55f9be, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:856a55f9be"}); return [] as Game[]; }),
+          gameService.getHistory(g.id).catch((caughtError1d0bb2e6aa: unknown) => { observeCaughtError(caughtError1d0bb2e6aa, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:1d0bb2e6aa"}); return [] as GameSummary[]; }),
+          gameService.getCommunityStats(g.id).catch((caughtError19e9cfb3de: unknown) => { observeCaughtError(caughtError19e9cfb3de, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:19e9cfb3de"}); return null; }),
         ]);
         setMembers(users);
         setUpcoming(games);
         setHistory(hist);
         setCommunityStats(cStats);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:0f6042652a"});
         // Not logged when the club is simply unreachable — deleted, or one the
         // viewer is not in. Both come back as `permission-denied` (see
         // `groupService.get`), and both are ordinary states of a stale link,
@@ -343,7 +347,8 @@ export function CommunityDetailsScreen() {
           });
         }
       })
-      .catch(() => {});
+      .catch((caughtErrord5d5877c8e: unknown) => {
+    observeCaughtError(caughtErrord5d5877c8e, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:d5d5877c8e"});});
     return () => {
       alive = false;
     };
@@ -472,6 +477,7 @@ export function CommunityDetailsScreen() {
       logEvent(AnalyticsEvent.CommunityCoverUploaded, { groupId: group.id });
       toast.success(he.communityCoverUpdated);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"handleSelectBuiltinCover","site":"CommunityDetailsScreen:870977f1dc"});
       logError('updateGroupMetadata', e, {
         screen: 'CommunityDetailsScreen',
         groupId: group.id,
@@ -517,6 +523,7 @@ export function CommunityDetailsScreen() {
       logEvent(AnalyticsEvent.CommunityCoverUploaded, { groupId: group.id });
       toast.success(he.communityCoverUpdated);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"handleUploadCover","site":"CommunityDetailsScreen:acc2f6989c"});
       logError('updateGroupMetadata', e, {
         screen: 'CommunityDetailsScreen',
         groupId: group.id,
@@ -551,6 +558,7 @@ export function CommunityDetailsScreen() {
       toast.success(he.communityInviteFriendsSent(invited));
       reload();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"handleSendInvites","site":"CommunityDetailsScreen:6d686dc260"});
       logError('inviteFriendsToGroup', e, {
         screen: 'CommunityDetailsScreen',
         groupId: group.id,
@@ -582,6 +590,7 @@ export function CommunityDetailsScreen() {
       setLeaveOpen(false);
       nav.goBack();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"confirmLeave","site":"CommunityDetailsScreen:59a9ae9853"});
       const msg = (e as Error).message;
       setLeaveOpen(false);
       if (msg === 'LAST_ADMIN') {
@@ -623,6 +632,7 @@ export function CommunityDetailsScreen() {
         logEvent(AnalyticsEvent.InviteShared, { groupId: group.id });
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"handleInvite","site":"CommunityDetailsScreen:3d19f58290"});
       logError('communityShare', err, {
         screen: 'CommunityDetailsScreen',
         groupId: group.id,
@@ -1433,6 +1443,7 @@ export function CommunityDetailsScreen() {
             toast.success(he.deleteGroupSuccess);
             nav.goBack();
           } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:fd46500d28"});
             if (__DEV__) console.warn('[community] delete failed', err);
             toast.error(he.error);
           }

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // availabilityFeedService — powers the home-screen "פנויים לשחק לידך" calendar.
 //
 // Returns, for today + the next 6 days, how many players are available in each
@@ -128,6 +129,7 @@ export const availabilityFeedService = {
         if (epoch === startEpoch) cached = { at: Date.now(), value };
         return value;
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/availabilityFeedService.ts","handler":"getAvailabilityCounts","site":"availabilityFeedService:cd5dca167b"});
         // A session that hasn't finished attaching yet is a timing fact, not a
         // bug, and the card already fails soft. Reporting it filled the error
         // inbox with an entry nobody can act on.

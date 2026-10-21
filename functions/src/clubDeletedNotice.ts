@@ -1,4 +1,4 @@
-import { onDocumentDeletedWithAuthContext } from 'firebase-functions/v2/firestore';
+import { onDocumentDeletedWithAuthContext } from './observedFunctions';
 import { getFirestore } from 'firebase-admin/firestore';
 
 // A client cannot prove that a club was deleted. Only the deletion event can.

@@ -1,3 +1,4 @@
+import { observeCaughtError } from './serverErrorLog';
 export interface OutreachConfig {
   enabled: boolean;
   delayHours: number;
@@ -15,7 +16,8 @@ export const DEFAULT_OUTREACH: OutreachConfig = {
 export function readOutreachConfig(raw: Record<string, unknown> = {}): OutreachConfig {
   const number = (key: keyof OutreachConfig, min: number, max: number) => typeof raw[key] === 'number' && Number.isFinite(raw[key]) && (raw[key] as number) >= min && (raw[key] as number) <= max ? raw[key] as number : DEFAULT_OUTREACH[key] as number;
   let timeZone = typeof raw.timeZone === 'string' ? raw.timeZone : DEFAULT_OUTREACH.timeZone;
-  try { new Intl.DateTimeFormat('en', { timeZone }).format(); } catch { timeZone = DEFAULT_OUTREACH.timeZone; }
+  try { new Intl.DateTimeFormat('en', { timeZone }).format(); } catch (caughtError3be64d1925) {
+    observeCaughtError(caughtError3be64d1925, {"source":"functions/src/supportOutreachPolicy.ts","handler":"readOutreachConfig","site":"supportOutreachPolicy:3be64d1925"}); timeZone = DEFAULT_OUTREACH.timeZone; }
   const startHour = Math.floor(number('startHour', 0, 23)), endHour = Math.floor(number('endHour', 1, 24));
   return { enabled: raw.enabled === true, delayHours: number('delayHours', 0.1, 720), newUserDays: number('newUserDays', 0, 365),
     startHour: startHour < endHour ? startHour : 9, endHour: startHour < endHour ? endHour : 20, timeZone,
@@ -24,7 +26,8 @@ export function readOutreachConfig(raw: Record<string, unknown> = {}): OutreachC
 export function nextOutreachTime(at: number, config: OutreachConfig, userTimeZone?: string): number {
   let formatter: Intl.DateTimeFormat;
   try { formatter = new Intl.DateTimeFormat('en-GB', { timeZone: userTimeZone || config.timeZone, hour: '2-digit', hourCycle: 'h23' }); }
-  catch { formatter = new Intl.DateTimeFormat('en-GB', { timeZone: config.timeZone, hour: '2-digit', hourCycle: 'h23' }); }
+  catch (caughtError991c190644) {
+    observeCaughtError(caughtError991c190644, {"source":"functions/src/supportOutreachPolicy.ts","handler":"nextOutreachTime","site":"supportOutreachPolicy:991c190644"}); formatter = new Intl.DateTimeFormat('en-GB', { timeZone: config.timeZone, hour: '2-digit', hourCycle: 'h23' }); }
   for (let minutes = 0; minutes <= 48 * 60; minutes++) {
     const candidate = at + minutes * 60_000, hour = Number(formatter.format(new Date(candidate)));
     if (hour >= config.startHour && hour < config.endHour) return candidate;

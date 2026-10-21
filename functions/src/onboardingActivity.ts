@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin';
 import { createHash } from 'crypto';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onCall, HttpsError } from './observedFunctions';
+import { onDocumentCreated } from './observedFunctions';
 import { ONBOARDING_ACTIONS, safeActivityParams } from './onboardingActivityCatalog';
 import { onboardingPushMilestone } from './onboardingPushPolicy';
 import { onboardingPushContent } from './onboardingPushContent';

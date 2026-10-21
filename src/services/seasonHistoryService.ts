@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // seasonHistoryService — a club's finished seasons, and who won what.
 //
 // Nothing here is recomputed: a past season is a record, and a record that
@@ -134,6 +135,7 @@ export const seasonHistoryService = {
       if (!snap.exists()) return null;
       return parseSeasonTable(await readSeasonArchiveData(db, snap.data() as Record<string, unknown>));
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/seasonHistoryService.ts","handler":"table","site":"seasonHistoryService:39a0ef20ed"});
       logError('seasonHistoryTable', err, { groupId, seasonId });
       return null;
     }
@@ -166,6 +168,7 @@ export const seasonHistoryService = {
       });
       return out.sort((a, b) => b.no - a.no);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/seasonHistoryService.ts","handler":"list","site":"seasonHistoryService:d741e36ead"});
       logError('seasonHistoryList', err, { groupId });
       // NOT []. An empty list means "this club has finished no seasons", and a
       // club with five archives told that on a dropped connection reads as

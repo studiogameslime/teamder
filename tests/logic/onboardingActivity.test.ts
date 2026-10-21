@@ -23,8 +23,8 @@ jest.mock('firebase-functions/v2/https', () => ({
   onCall: (_options: any, handler: any) => handler,
   HttpsError: class extends Error { constructor(public code: string, message: string) { super(message); } },
 }), { virtual: true });
-jest.mock('firebase-functions/v2/firestore', () => ({ onDocumentCreated: (_options: any, handler: any) => handler }), { virtual: true });
-import { recordOnboardingActivity, onOnboardingActivity } from '../../functions/src/onboardingActivity';
+jest.doMock(require.resolve('firebase-functions/v2/firestore', { paths: [process.cwd() + '/functions'] }), () => ({ onDocumentCreated: (_options: any, handler: any) => handler }));
+const { recordOnboardingActivity, onOnboardingActivity } = require('../../functions/src/onboardingActivity');
 import { onboardingGuestNumber } from '../../functions/src/onboardingGuest';
 const ingest = recordOnboardingActivity as unknown as (request: any) => Promise<any>;
 const deliver = onOnboardingActivity as unknown as (event: any) => Promise<any>;

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // CreateGroupScreen — thin shell over GroupWizardForm. Translates the
 // wizard's GroupFormValues into a `createGroup` call. Same wizard
 // surface as CommunityEditScreen — only the initial values + submit
@@ -69,6 +70,7 @@ export function CreateGroupScreen() {
         { groupId, celebrate: true },
       );
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/groups/CreateGroupScreen.tsx","handler":"createFromValues","site":"CreateGroupScreen:b5f8b480c2"});
       // Two practical failure modes, both worth their own message:
       //   `unauthenticated`  — the App Check / Play Integrity gate rejected the
       //                        callable. Common on an emulator, or before the

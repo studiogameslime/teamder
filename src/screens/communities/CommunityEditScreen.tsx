@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // CommunityEditScreen — thin shell over GroupWizardForm. The form
 // surface is identical to the create flow; only the initial values
 // (hydrated from the existing community) and the submit label differ.
@@ -142,6 +143,7 @@ export function CommunityEditScreen() {
       await reloadGroups(me.id);
       nav.replace('CommunityDetails', { groupId: original.id });
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/communities/CommunityEditScreen.tsx","handler":"submit","site":"CommunityEditScreen:0d8284b020"});
       const code =
         typeof (e as { code?: unknown })?.code === 'string'
           ? ((e as { code: string }).code)

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { PlayerDisclosure as Disclosure } from './PlayerDisclosure';
@@ -50,17 +51,20 @@ export function UserProfileInformation({data,compact=false}:{data:UserActivity;c
 }
 function AuthInformation({userId}:{userId:string}) {
  const [state,setState]=useState<{loading:boolean;record?:Record<string,unknown>;error?:boolean}>({loading:false});
- const load=async()=>{setState({loading:true});try {const u=await fetchUserAuthRecord(userId,!!state.error || !!state.record);setState({loading:false,record:u ?? {status:'לא נמצאה רשומת התחברות'}});}catch{setState({loading:false,error:true});}};
+ const load=async()=>{setState({loading:true});try {const u=await fetchUserAuthRecord(userId,!!state.error || !!state.record);setState({loading:false,record:u ?? {status:'לא נמצאה רשומת התחברות'}});}catch (caughtError9036e0c8c7){
+    observeCaughtError(caughtError9036e0c8c7, {"source":"pulse/src/components/UserInformation.tsx","handler":"load","site":"UserInformation:9036e0c8c7"});setState({loading:false,error:true});}};
  return <Card><Text style={txt}>השלמת פרטי ההתחברות דורשת סנכרון של רשימת החשבונות. המידע עשוי להיות חסר בחשבון שנמחק.</Text><Pressable accessibilityRole="button" disabled={state.loading} onPress={load} style={{padding:14}}><Text style={{...txt,color:colors.primary}}>{state.loading?'טוען…':'השלמת נתוני התחברות'}</Text></Pressable>{state.error?<Text style={{...txt,color:colors.amber}}>טעינת ההתחברות נכשלה</Text>:state.record?<RecordFields value={state.record}/>:null}</Card>;
 }
 export function PublicInformation({userId,source='public'}:{userId:string;source?:'public'|'stats'|'push'}) {
  const [record,setRecord]=useState<Record<string,unknown>|null>();const [failed,setFailed]=useState(false);const [retry,setRetry]=useState(0);
- useEffect(()=>{let alive=true;setFailed(false);(source==='stats' ? fetchPlayerStatsRecord(userId,retry>0) : source==='push' ? fetchUserPushRecord(userId,retry>0).then(value=>userRecord(value) as Record<string,unknown>|null) : fetchPublicUserRecord(userId,retry>0)).then(r=>{if(alive)setRecord(r)}).catch(()=>{if(alive)setFailed(true)});return()=>{alive=false}},[userId,retry,source]);
+ useEffect(()=>{let alive=true;setFailed(false);(source==='stats' ? fetchPlayerStatsRecord(userId,retry>0) : source==='push' ? fetchUserPushRecord(userId,retry>0).then(value=>userRecord(value) as Record<string,unknown>|null) : fetchPublicUserRecord(userId,retry>0)).then(r=>{if(alive)setRecord(r)}).catch((caughtError12b54aec3f: unknown) =>{
+    observeCaughtError(caughtError12b54aec3f, {"source":"pulse/src/components/UserInformation.tsx","handler":"PublicInformation","site":"UserInformation:12b54aec3f"});if(alive)setFailed(true)});return()=>{alive=false}},[userId,retry,source]);
  return <Card>{record !== undefined && !failed ? <Pressable accessibilityRole="button" onPress={()=>{setRecord(undefined);setRetry(n=>n+1)}} style={{padding:12}}><Text style={{...txt,color:colors.primary}}>רענון סעיף</Text></Pressable> : null}{failed?<Pressable onPress={()=>setRetry(n=>n+1)}><Text style={txt}>הטעינה נכשלה. ניסיון חוזר</Text></Pressable>:record===undefined?<ActivityIndicator color={colors.primary}/>:record?<RecordFields value={record}/>:<Text style={txt}>לא נמצאה רשומה במקור הזה</Text>}</Card>;
 }
 export function UserRelatedRecords({userId,source,onOpen}:{userId:string;source:UserSource;onOpen?:(id:string)=>void}) {
  const [rows,setRows]=useState<Record<string,unknown>[]|null>(null);const [failed,setFailed]=useState(false);const [retry,setRetry]=useState(0);
- useEffect(()=>{let alive=true;setRows(null);setFailed(false);fetchUserRecords(userId,source,retry>0).then(r=>{if(alive)setRows(r)}).catch(()=>{if(alive)setFailed(true)});return()=>{alive=false}},[userId,source,retry]);
+ useEffect(()=>{let alive=true;setRows(null);setFailed(false);fetchUserRecords(userId,source,retry>0).then(r=>{if(alive)setRows(r)}).catch((caughtError9e165e4260: unknown) =>{
+    observeCaughtError(caughtError9e165e4260, {"source":"pulse/src/components/UserInformation.tsx","handler":"UserRelatedRecords","site":"UserInformation:9e165e4260"});if(alive)setFailed(true)});return()=>{alive=false}},[userId,source,retry]);
  return <Card style={{gap:12}}>{rows !== null && !failed ? <Pressable accessibilityRole="button" onPress={()=>setRetry(n=>n+1)} style={{padding:12}}><Text style={{...txt,color:colors.primary}}>רענון סעיף</Text></Pressable> : null}{failed?<Pressable onPress={()=>setRetry(n=>n+1)}><Text style={{...txt,color:colors.amber}}>טעינת {USER_SOURCES[source].label} נכשלה. לחצו לניסיון חוזר.</Text></Pressable>:rows===null?<ActivityIndicator color={colors.primary}/>:<><Text style={font.small}>{rows.length} רשומות נטענו · חלון של עד {USER_RECORD_LIMIT}; אינו מבטיח את הרשומות האחרונות או היסטוריה מלאה</Text>{!rows.length?<Text style={txt}>לא נמצאו רשומות עבור המשתמש במקור הזה</Text>:rows.map(row=><Disclosure key={String(row.id)} title={String(row.title ?? row.type ?? row.action ?? row.id)}><RecordFields value={row}/>{onOpen?<Pressable onPress={()=>onOpen(String(row.sessionId ?? row.id))} style={{padding:12}}><Text style={{...txt,color:colors.primary}}>פתיחת הרצף המלא</Text></Pressable>:null}</Disclosure>)}</>}</Card>;
 }
 export function UserRelationships({data,onUser}:{data:UserActivity;onUser:(id:string)=>void}) {

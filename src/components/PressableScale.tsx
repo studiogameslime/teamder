@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // PressableScale — Pressable that scales down 0.96 on press-in and
 // springs back on release. Reusable foundation for buttons, cards,
 // and any tappable surface that should feel responsive.
@@ -38,7 +39,8 @@ function tapHaptic() {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       _haptics = require('expo-haptics');
-    } catch {
+    } catch (caughtError38aefa2b27) {
+    observeCaughtError(caughtError38aefa2b27, {"source":"src/components/PressableScale.tsx","handler":"tapHaptic","site":"PressableScale:38aefa2b27"});
       _haptics = null;
     }
   }
@@ -46,7 +48,8 @@ function tapHaptic() {
   // Light selection-level impact — barely perceptible but the tap
   // feels "physical". Anything heavier here ends up feeling noisy
   // because it fires on every interactive surface in the app.
-  _haptics.selectionAsync().catch(() => {});
+  _haptics.selectionAsync().catch((caughtError554cad05c0: unknown) => {
+    observeCaughtError(caughtError554cad05c0, {"source":"src/components/PressableScale.tsx","handler":"tapHaptic","site":"PressableScale:554cad05c0"});});
 }
 
 interface Props extends Omit<PressableProps, 'style'> {

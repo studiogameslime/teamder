@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { PairStory } from './PairStory';
 import {PlayerAvailabilitySummary} from './PlayerAvailabilitySummary';
 import { DraggableMenuSheet } from '@/components/DraggableMenuSheet';
@@ -41,13 +42,15 @@ export function SocialPlayerProfile({ userId, groupId, preview }: { userId: stri
     if(preview||!me)return;
     let alive=true;
     setInviteLoading(true);setInviteError(false);setGames([]);
-    gameService.getMyGames(me.id).then(mine=>{if(alive)setGames(mine.filter(g=>g.startsAt>Date.now()&&g.status==='open'&&(g.createdBy===me.id||groups.some(c=>c.id===g.groupId&&c.adminIds.includes(me.id)))));}).catch(()=>{if(alive)setInviteError(true);}).finally(()=>{if(alive)setInviteLoading(false);});
+    gameService.getMyGames(me.id).then(mine=>{if(alive)setGames(mine.filter(g=>g.startsAt>Date.now()&&g.status==='open'&&(g.createdBy===me.id||groups.some(c=>c.id===g.groupId&&c.adminIds.includes(me.id)))));}).catch((caughtErrorbea7efa9cc: unknown) =>{
+    observeCaughtError(caughtErrorbea7efa9cc, {"source":"src/components/social/SocialPlayerProfile.tsx","handler":"SocialPlayerProfile","site":"SocialPlayerProfile:bea7efa9cc"});if(alive)setInviteError(true);}).finally(()=>{if(alive)setInviteLoading(false);});
     return()=>{alive=false;};
   },[me?.id,userId,groups,preview]));
   useFocusEffect(useCallback(()=>{
     if(preview)return;
     let alive=true;setBusy(true);setFailed(false);setBlocked(false);setSent([]);
-    socialPlayersService.profile(userId).then(profile=>{if(alive)setResult({owner:me?.id??'',target:userId,profile});}).catch(()=>{if(alive){setFailed(true);setResult(null);}}).finally(()=>{if(alive)setBusy(false);});
+    socialPlayersService.profile(userId).then(profile=>{if(alive)setResult({owner:me?.id??'',target:userId,profile});}).catch((caughtErrorb12beb79be: unknown) =>{
+    observeCaughtError(caughtErrorb12beb79be, {"source":"src/components/social/SocialPlayerProfile.tsx","handler":"SocialPlayerProfile","site":"SocialPlayerProfile:b12beb79be"});if(alive){setFailed(true);setResult(null);}}).finally(()=>{if(alive)setBusy(false);});
     return()=>{alive=false;};
   },[userId,me?.id,tick,preview]));
   const profile=preview??(result && result.owner===me?.id&&result.target===userId?result.profile:null);
@@ -57,7 +60,8 @@ export function SocialPlayerProfile({ userId, groupId, preview }: { userId: stri
     setInvites(true);setInviteLoading(true);setInviteError(false);setGames([]);
     if(preview){setInviteLoading(false);return;}
     try{const mine=await gameService.getMyGames(me!.id);setGames(mine.filter(g=>g.startsAt>Date.now()&&g.status==='open'&&(g.createdBy===me!.id||managers.some(c=>c.id===g.groupId))));}
-    catch{setInviteError(true);}
+    catch (caughtError554725b05a){
+    observeCaughtError(caughtError554725b05a, {"source":"src/components/social/SocialPlayerProfile.tsx","handler":"openInvites","site":"SocialPlayerProfile:554725b05a"});setInviteError(true);}
     finally{setInviteLoading(false);}
   };
   const send=async(kind:'club'|'game',id:string)=>{
@@ -70,12 +74,13 @@ export function SocialPlayerProfile({ userId, groupId, preview }: { userId: stri
       if(kind==='club'){const r=await socialPlayersService.inviteToClub(id,userId);if(!active())return;if(r.invited)toast.success('ההזמנה למועדון נשלחה');else{toast.info(r.reason==='already_invited'?'כבר נשלחה לשחקן הזמנה למועדון':r.reason==='rejected'?'קיימת דחייה קודמת. יש לטפל בה לפני שליחת הזמנה':r.reason==='pending'?'השחקן כבר ממתין לאישור הצטרפות':'השחקן כבר חבר במועדון');if(r.reason==='rejected')return;}}
       else{const r=await notificationsService.inviteToGame({recipientId:userId,gameId:id});if(!active())return;if(r.invited)toast.success('ההזמנה למחזור נשלחה');else toast.info(r.reason==='already_registered'?'השחקן כבר רשום למחזור או ממתין לאישור':'כבר נשלחה לשחקן הזמנה למחזור');}
       setSent(old=>[...old,`${kind}:${id}`]);
-    }catch{if(active())toast.error('לא ניתן לשלוח. ייתכן שההרשמה נסגרה, שהמחזור מלא או שכבר קיימת הזמנה.');}
+    }catch (caughtError31b7a947c1){
+    observeCaughtError(caughtError31b7a947c1, {"source":"src/components/social/SocialPlayerProfile.tsx","handler":"send","site":"SocialPlayerProfile:31b7a947c1"});if(active())toast.error('לא ניתן לשלוח. ייתכן שההרשמה נסגרה, שהמחזור מלא או שכבר קיימת הזמנה.');}
     finally{sendingRef.current=false;setSending(null);}
   };
   const options=()=>setPlayerOptions(true);
-  const removeFriend=()=>{setPlayerOptions(false);if(!me||preview)return;appAlert('הסרת חברות','להסיר את השחקן מרשימת החברים?',[{text:'ביטול',style:'cancel'},{text:'הסר',style:'destructive',onPress:()=>void friendsService.removeFriend(me.id,userId).then(()=>setTick(n=>n+1)).catch(()=>toast.error('לא ניתן להסיר כרגע'))}]);};
-  const blockPlayer=()=>{setPlayerOptions(false);if(!me||preview)return;appAlert('חסימת שחקן','לא תוכל ליצור איתו קשר דרך החיפוש והפרופיל.',[{text:'ביטול',style:'cancel'},{text:'חסום',style:'destructive',onPress:()=>void chatService.blockUser(me.id,userId).then(()=>{setBlocked(true);setResult(null);toast.success('השחקן נחסם');}).catch(()=>toast.error('לא ניתן לחסום כרגע'))}]);};
+  const removeFriend=()=>{setPlayerOptions(false);if(!me||preview)return;appAlert('הסרת חברות','להסיר את השחקן מרשימת החברים?',[{text:'ביטול',style:'cancel'},{text:'הסר',style:'destructive',onPress:()=>void friendsService.removeFriend(me.id,userId).then(()=>setTick(n=>n+1)).catch((caughtError77f5a3eeee: unknown) =>{ observeCaughtError(caughtError77f5a3eeee, {"source":"src/components/social/SocialPlayerProfile.tsx","handler":"onPress","site":"SocialPlayerProfile:77f5a3eeee"}); return toast.error('לא ניתן להסיר כרגע'); })}]);};
+  const blockPlayer=()=>{setPlayerOptions(false);if(!me||preview)return;appAlert('חסימת שחקן','לא תוכל ליצור איתו קשר דרך החיפוש והפרופיל.',[{text:'ביטול',style:'cancel'},{text:'חסום',style:'destructive',onPress:()=>void chatService.blockUser(me.id,userId).then(()=>{setBlocked(true);setResult(null);toast.success('השחקן נחסם');}).catch((caughtError2c1793099d: unknown) =>{ observeCaughtError(caughtError2c1793099d, {"source":"src/components/social/SocialPlayerProfile.tsx","handler":"onPress","site":"SocialPlayerProfile:2c1793099d"}); return toast.error('לא ניתן לחסום כרגע'); })}]);};
   if(busy&&!preview)return <SafeAreaView style={s.root} edges={['top']}><ScreenHeader title="כרטיס שחקן"/><View style={s.empty}><ActivityIndicator color="#2563EB"/></View></SafeAreaView>;
   if(!profile||failed||blocked)return <SafeAreaView style={s.root} edges={['top']}><ScreenHeader title="כרטיס שחקן"/><View style={s.empty}><Text style={s.body}>{blocked?'השחקן נחסם':'לא ניתן להציג את השחקן כרגע.'}</Text>{!blocked?<SocialAction title="נסה שוב" icon="refresh-outline" secondary onPress={()=>setTick(n=>n+1)}/>:null}</View></SafeAreaView>;
   const p=profile.player,availability=playerAvailabilityLines(p.availability),stats=profile.canSeeStatistics?profile.statistics?.stats:null;

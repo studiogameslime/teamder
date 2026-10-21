@@ -1,5 +1,6 @@
+import { observeCaughtError } from './serverErrorLog';
 import * as admin from 'firebase-admin';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onCall, HttpsError } from './observedFunctions';
 import { validateSupportMessage } from './supportMessagePolicy';
 
 const stableContext = (value: Record<string, unknown> = {}) => JSON.stringify(Object.keys(value).sort().map(key => [key, value[key]]));
@@ -11,7 +12,8 @@ export const sendSupportMessage = onCall({ region: 'us-central1', maxInstances: 
   const uid = request.auth.uid;
   if (uid === 'teamder' || uid.includes('__') || /[\/\s]/.test(uid) || request.data?.expectedUid !== uid) throw new HttpsError('failed-precondition', 'Identity changed');
   let message: ReturnType<typeof validateSupportMessage>;
-  try { message = validateSupportMessage(request.data); } catch { throw new HttpsError('invalid-argument', 'Invalid support message'); }
+  try { message = validateSupportMessage(request.data); } catch (caughtErrore588fb13df) {
+    observeCaughtError(caughtErrore588fb13df, {"source":"functions/src/supportMessage.ts","handler":"module","site":"supportMessage:e588fb13df"}); throw new HttpsError('invalid-argument', 'Invalid support message'); }
   const db = admin.firestore();
   const convId = [uid, 'teamder'].sort().join('__');
   const conversation = db.doc(`dmConversations/${convId}`);

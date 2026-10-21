@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { readPlayerIdentity, playerReadCall } from './publicPlayerService';
 import { StaleSessionError } from './staleSession';
 import { resetOnboardingJourney } from './onboardingActivity';
@@ -119,7 +120,8 @@ export const userService = {
       if (!json) return null;
       try {
         return JSON.parse(json) as User;
-      } catch {
+      } catch (caughtError013372e6ae) {
+    observeCaughtError(caughtError013372e6ae, {"source":"src/services/userService.ts","handler":"getCurrentUser","site":"userService:013372e6ae"});
         return null;
       }
     }
@@ -149,6 +151,7 @@ export const userService = {
         ),
       ]);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"getCurrentUser","site":"userService:c2f30c2c24"});
       if (__DEV__) console.warn('[auth] getCurrentUser read timed out', err);
       const cached = await readCachedAuthUser(fbUser.uid);
       if (cached) return cached;
@@ -208,6 +211,7 @@ export const userService = {
     try {
       await setDoc(ref, fresh);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"getCurrentUser","site":"userService:28aa453138"});
       logError('createUserDoc', err, { uid: fresh.id, source: 'getCurrentUser' });
       if (__DEV__) console.warn('[auth] lazy user-doc create failed', err);
       if (cached) return cached;
@@ -273,6 +277,7 @@ export const userService = {
       // The doc exists: whatever was denied, this is not the reason.
       if (snap.exists()) return false;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"ensureUserDoc","site":"userService:ce6f177e17"});
       // Could not even read it (offline, timed out, or the read itself was
       // denied) — we have no evidence the doc is missing, so we claim nothing
       // and the caller rethrows the original denial.
@@ -326,6 +331,7 @@ export const userService = {
     try {
       await setDoc(ref, fresh);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"signInWithGoogle","site":"userService:bd7909616f"});
       logError('createUserDoc', err, { uid: fresh.id, provider: 'google', email: fresh.email });
       if (__DEV__) console.warn('[auth] user doc create failed', err);
       // Best-effort sign-out — if THAT fails too there's nothing we
@@ -333,7 +339,8 @@ export const userService = {
       // `getCurrentUser()` which lazy-creates the doc anyway.
       try {
         await signOutFirebase();
-      } catch {
+      } catch (caughtError463cc1c2d5) {
+    observeCaughtError(caughtError463cc1c2d5, {"source":"src/services/userService.ts","handler":"signInWithGoogle","site":"userService:463cc1c2d5"});
         /* swallow */
       }
       throw err;
@@ -374,11 +381,13 @@ export const userService = {
     try {
       await setDoc(ref, fresh);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"signInWithApple","site":"userService:f81698febd"});
       logError('createUserDoc', err, { uid: fresh.id, provider: 'apple', email: fresh.email });
       if (__DEV__) console.warn('[auth] apple user doc create failed', err);
       try {
         await signOutFirebase();
-      } catch {
+      } catch (caughtErroraca86af4e9) {
+    observeCaughtError(caughtErroraca86af4e9, {"source":"src/services/userService.ts","handler":"signInWithApple","site":"userService:aca86af4e9"});
         /* swallow */
       }
       throw err;
@@ -420,10 +429,12 @@ export const userService = {
     try {
       await setDoc(ref, fresh);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"signInWithEmail","site":"userService:54283bb2e4"});
       logError('createUserDoc', err, { uid: fresh.id, provider: 'email', email: fresh.email });
       try {
         await signOutFirebase();
-      } catch {
+      } catch (caughtErrorad0436b68e) {
+    observeCaughtError(caughtErrorad0436b68e, {"source":"src/services/userService.ts","handler":"signInWithEmail","site":"userService:ad0436b68e"});
         /* swallow */
       }
       throw err;
@@ -463,10 +474,12 @@ export const userService = {
     try {
       await setDoc(ref, fresh);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"signUpWithEmail","site":"userService:a389a51e35"});
       logError('createUserDoc', err, { uid: fresh.id, provider: 'email', email: fresh.email });
       try {
         await signOutFirebase();
-      } catch {
+      } catch (caughtError615bb967a4) {
+    observeCaughtError(caughtError615bb967a4, {"source":"src/services/userService.ts","handler":"signUpWithEmail","site":"userService:615bb967a4"});
         /* swallow */
       }
       throw err;
@@ -586,6 +599,7 @@ export const userService = {
       // The explicit photo clear carries Firestore's deleteField sentinel.
       await updateDoc(ref, { ...updates, ...cityUpdates } as never);
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/userService.ts","handler":"completeOnboarding","site":"userService:343e18b87e"});
       logError('completeOnboarding', e, {
         uid: cur.id,
         name: trimmedName,
@@ -794,7 +808,8 @@ export const userService = {
     // storage so the app boots to sign-in.
     try {
       await signOutFirebase();
-    } catch {
+    } catch (caughtError122961c43c) {
+    observeCaughtError(caughtError122961c43c, {"source":"src/services/userService.ts","handler":"deleteOwnAccount","site":"userService:122961c43c"});
       /* token already invalidated by the server-side delete — expected */
     }
     await storage.clearDeleteSweepNotified();
@@ -868,6 +883,7 @@ export const userService = {
         // other dynamic update-map call sites (e.g. updateGameDoc).
         await updateDoc(ref, updates as never);
       } catch (e) {
+    observeCaughtError(e, {"source":"src/services/userService.ts","handler":"updateProfile","site":"userService:27581be5bc"});
         logError('updateProfile', e, {
           uid: cur.id,
           fields: Object.keys(patch || {}),
@@ -930,7 +946,8 @@ async function readCachedAuthUser(uid: string): Promise<User | null> {
     if (!json) return null;
     const cached = JSON.parse(json) as User;
     return cached?.id === uid ? cached : null;
-  } catch {
+  } catch (caughtError3a81dea376) {
+    observeCaughtError(caughtError3a81dea376, {"source":"src/services/userService.ts","handler":"readCachedAuthUser","site":"userService:3a81dea376"});
     return null;
   }
 }
@@ -956,6 +973,7 @@ async function cacheAuthUser(user: User): Promise<void> {
     if (user.isGuest) return;
     await storage.setAuthUserJson(JSON.stringify(user));
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"cacheAuthUser","site":"userService:128ead61a3"});
     if (__DEV__) console.warn('[userService] cacheAuthUser failed', err);
   }
 }
@@ -1008,6 +1026,7 @@ async function applyInviteAttributionIfFresh(
       invitedAt: serverTimestamp(),
     });
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"applyInviteAttributionIfFresh","site":"userService:caf8ff2c8b"});
     logError('applyInviteAttribution', err, { newUserId });
     if (__DEV__) console.warn('[userService] invite attribution failed', err);
   }
@@ -1047,6 +1066,7 @@ async function applyAcquisitionIfFresh(newUserId: string): Promise<void> {
       },
     });
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"applyAcquisitionIfFresh","site":"userService:5d65adfc4f"});
     logError('applyAcquisition', err, { newUserId });
     if (__DEV__) console.warn('[userService] acquisition write failed', err);
   }
@@ -1073,6 +1093,7 @@ async function touchPresence(uid: string): Promise<void> {
       lastSeenAt: now,
     });
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/userService.ts","handler":"touchPresence","site":"userService:e0bee8440f"});
     // A denied/transient write here is non-fatal — segments degrade
     // gracefully (fall back to Auth metadata). Don't surface it.
     if (__DEV__) console.warn('[userService] presence ping failed', err);

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { ReorderMotion } from '@/components/anim/ChangeMotion';
 // CommunityStatsTable — the club's cumulative per-player stats table, shown in
 // community details. One row per player: גולים · משחקים · ניצחונות · הפסדים ·
@@ -209,7 +210,7 @@ export function CommunityStatsTable({
       rows.map((r) =>
         guestNames?.[r.uid]
           ? Promise.resolve(null)
-          : userService.getUserById(r.uid).catch(() => null),
+          : userService.getUserById(r.uid).catch((caughtErrorb9700bc22e: unknown) => { observeCaughtError(caughtErrorb9700bc22e, {"source":"src/components/community/CommunityStatsTable.tsx","handler":"CommunityStatsTable","site":"CommunityStatsTable:b9700bc22e"}); return null; }),
       ),
     ).then((fetched) => {
       if (!alive) return;

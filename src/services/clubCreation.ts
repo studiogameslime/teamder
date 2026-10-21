@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // clubCreation — making a club, without a screen.
 //
 // Same reason as `gameCreation`: the resumer has to run when
@@ -57,7 +58,8 @@ export async function createClubFromValues(
         geocodeCity(cityVal),
         new Promise<null>((resolve) => setTimeout(() => resolve(null), 7000)),
       ]);
-    } catch {
+    } catch (caughtError1207211e66) {
+    observeCaughtError(caughtError1207211e66, {"source":"src/services/clubCreation.ts","handler":"createClubFromValues","site":"clubCreation:1207211e66"});
       coords = null;
     }
   }
@@ -108,6 +110,7 @@ export async function createClubFromValues(
       assertCreationOwner(creator.id);
       await seasonService.enable(newClubSeasonsArgs(v.seasons, group.id)!);
     } catch (seasonErr) {
+    observeCaughtError(seasonErr, {"source":"src/services/clubCreation.ts","handler":"createClubFromValues","site":"clubCreation:8f28d5a699"});
       assertCreationOwner(creator.id);
       seasonsFailed = !(seasonErr instanceof SeasonRefusedError && seasonErr.reason === 'seasonsAlreadyOn');
       if (seasonsFailed) logError('createGroupSeasons', seasonErr, { groupId: group.id });

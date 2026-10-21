@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import React, { forwardRef, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,7 +57,8 @@ export function ClubStatusOverview(data: ClubStatusData & { compact?: boolean })
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       uri = await captureRef(cardRef, { format: 'png', quality: 1, result: 'tmpfile', fileName: 'club-status' });
       await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'מצב המועדון' });
-    } catch {
+    } catch (caughtErrorca69792d1f) {
+    observeCaughtError(caughtErrorca69792d1f, {"source":"src/components/community/ClubStatusCard.tsx","handler":"share","site":"ClubStatusCard:ca69792d1f"});
       appAlert('לא ניתן לשתף כרגע', 'אפשר לנסות שוב או לצלם את הכרטיס ישירות.');
     } finally {
       if (uri) releaseCapture(uri);

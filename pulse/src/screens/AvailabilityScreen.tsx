@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import { Disclosure } from '../components/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, RefreshControl, ScrollView, StyleSheet, Switch, Text, View, Pressable } from 'react-native';
@@ -34,13 +35,13 @@ export function AvailabilityScreen() {
   useEffect(() => {
     fetchAvailabilityCardEnabled()
       .then(setCardOn)
-      .catch(() => setCardOn(true));
+      .catch((caughtErrorb40a30b6eb: unknown) => { observeCaughtError(caughtErrorb40a30b6eb, {"source":"pulse/src/screens/AvailabilityScreen.tsx","handler":"AvailabilityScreen","site":"AvailabilityScreen:b40a30b6eb"}); return setCardOn(true); });
   }, []);
   const onToggleCard = async (next: boolean) => {
     const prev = cardOn;
     setCardOn(next); // optimistic
     setCardBusy(true);
-    const ok = await setAvailabilityCardEnabled(next).catch(() => false);
+    const ok = await setAvailabilityCardEnabled(next).catch((caughtErrore9d3f3fdbd: unknown) => { observeCaughtError(caughtErrore9d3f3fdbd, {"source":"pulse/src/screens/AvailabilityScreen.tsx","handler":"onToggleCard","site":"AvailabilityScreen:e9d3f3fdbd"}); return false; });
     setCardBusy(false);
     if (!ok) setCardOn(prev ?? true); // revert on failure
   };
@@ -50,6 +51,7 @@ export function AvailabilityScreen() {
     try {
       setData(await fetchAvailability(city));
     } catch (e) {
+    observeCaughtError(e, {"source":"pulse/src/screens/AvailabilityScreen.tsx","handler":"AvailabilityScreen","site":"AvailabilityScreen:8601d1dfba"});
       // leave previous data; surfaced via empty state
       console.warn('[availability] load failed', (e as Error).message);
     } finally {

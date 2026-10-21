@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
@@ -32,7 +33,8 @@ export function UpdateBanner() {
     if (busyRef.current) return;
     busyRef.current = true; setBusy(true); setFailed(false);
     try { setFailed(!await openTrackedUpdate(update, useUserStore.getState().currentUser?.id ?? null, 'home_banner')); }
-    catch { setFailed(true); }
+    catch (caughtErrorf6c0f13fd8) {
+    observeCaughtError(caughtErrorf6c0f13fd8, {"source":"src/components/UpdateBanner.tsx","handler":"open","site":"UpdateBanner:f6c0f13fd8"}); setFailed(true); }
     finally { busyRef.current = false; setBusy(false); }
   };
   return <View style={styles.card} testID="store-update-banner">

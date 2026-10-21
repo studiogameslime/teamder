@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // DraftBoardScreen — Step 2 of חלוקת כוחות (the heart of the feature).
 //
@@ -152,6 +153,7 @@ export function DraftBoardScreen() {
           setTeamColors(restored);
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/DraftBoardScreen.tsx","handler":"DraftBoardScreen","site":"DraftBoardScreen:97cca203ac"});
         if (!alive || currentOwner.current !== ownerKey) return;
         setLoadFailed(true);
         logError('draftBoardLoad', err, { gameId });
@@ -346,6 +348,7 @@ export function DraftBoardScreen() {
       appAlert(he.draftTitle, he.draftSaved);
       nav.navigate('MatchDetails', { gameId });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/DraftBoardScreen.tsx","handler":"DraftBoardScreen","site":"DraftBoardScreen:b7e8bce2dd"});
       logError('draftSave', err, { gameId });
       appAlert(he.draftTitle, he.draftSaveError);
     } finally {

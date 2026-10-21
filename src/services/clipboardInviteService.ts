@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // clipboardInviteService — iOS deferred-deep-link recovery.
 //
 // Apple has no Play-Install-Referrer equivalent, so an invite link
@@ -83,6 +84,7 @@ async function recoverClipboardInvite(): Promise<void> {
       }
     }
   } catch (e) {
+    observeCaughtError(e, {"source":"src/services/clipboardInviteService.ts","handler":"recoverClipboardInvite","site":"clipboardInviteService:ddddc349fd"});
     logError('consumeClipboardInvite', e, {});
     if (__DEV__) console.warn('[clipboardInvite] failed', e);
   }

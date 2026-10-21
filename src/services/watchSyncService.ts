@@ -1,3 +1,5 @@
+import { observeCaughtError } from '../utils/errorObservation';
+import { drainNativeDiagnostics, type NativeDiagnosticBridge } from '../native/nativeDiagnostics';
 // watchSyncService — pushes the user's current game state to the paired
 // Wear OS watch via the native WatchBridge module (Data Layer).
 //
@@ -221,7 +223,7 @@ export async function computeWatchPayload(
 async function resolveRoster(game: Game): Promise<WatchPlayer[]> {
   const ids = game.players ?? [];
   const users = await Promise.all(
-    ids.map((uid) => userService.getUserById(uid).catch(() => null)),
+    ids.map((uid) => userService.getUserById(uid).catch((caughtError1c23754395: unknown) => { observeCaughtError(caughtError1c23754395, {"source":"src/services/watchSyncService.ts","handler":"resolveRoster","site":"watchSyncService:1c23754395"}); return null; })),
   );
   const real: WatchPlayer[] = ids.map((uid, i) => ({
     name: users[i]?.name?.trim() || 'שחקן',
@@ -240,7 +242,7 @@ async function resolveRoster(game: Game): Promise<WatchPlayer[]> {
   return [...real, ...guests];
 }
 
-type WatchBridgeLike = {
+type WatchBridgeLike = NativeDiagnosticBridge & {
   publishState: (json: string) => Promise<void>;
   /** iOS Expo module only — true when a Teamder Apple Watch is paired+installed. */
   isWatchPaired?: () => boolean;
@@ -259,7 +261,8 @@ function resolveWatchBridge(): WatchBridgeLike {
       // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
       const { getWatchBridge } = require('../../modules/watch-bridge');
       return getWatchBridge();
-    } catch {
+    } catch (caughtError719a522632) {
+    observeCaughtError(caughtError719a522632, {"source":"src/services/watchSyncService.ts","handler":"resolveWatchBridge","site":"watchSyncService:719a522632"});
       return null;
     }
   }
@@ -309,11 +312,14 @@ export async function publishWatchState(
     lastPublishedSeq = seq;
     await bridge.publishState(JSON.stringify(payload));
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/watchSyncService.ts","handler":"publishWatchState","site":"watchSyncService:15590d3063"});
     // Best-effort relay to the Wear OS companion — a failure here is almost
     // always environmental (no watch paired, Data Layer busy) and never
     // affects the phone UX, so we deliberately do NOT log it as a bug (it
     // only added noise to the panel). Dev-only console for debugging.
     if (__DEV__) console.warn('[watch] publishWatchState failed', err);
+  } finally {
+    await drainNativeDiagnostics(bridge);
   }
 }
 

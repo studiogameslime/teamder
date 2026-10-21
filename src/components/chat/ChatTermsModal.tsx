@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 // ---------------------------------------------------------------------------
 // Chat terms-of-service gate.
@@ -57,7 +58,8 @@ export function useChatTermsAccepted(): {
       try {
         const v = await AsyncStorage.getItem(TERMS_KEY);
         if (alive) setAccepted(v === '1');
-      } catch {
+      } catch (caughtErrorce47a92da1) {
+    observeCaughtError(caughtErrorce47a92da1, {"source":"src/components/chat/ChatTermsModal.tsx","handler":"useChatTermsAccepted","site":"ChatTermsModal:ce47a92da1"});
         if (alive) setAccepted(false);
       }
     })();

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // FriendsScreen — manage mutual friendships.
 //
 //   ① Incoming requests (accept / decline) — shown only when present.
@@ -78,6 +79,7 @@ export function FriendsScreen() {
         setIncoming(inc);
         setOutgoing(out);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/profile/FriendsScreen.tsx","handler":"FriendsScreen","site":"FriendsScreen:c2eccf8e73"});
         if (!active()) return;
         setLoadFailed(true);
         // The list-load has no per-call logging in friendsService (the
@@ -130,6 +132,7 @@ export function FriendsScreen() {
       toast.success(he.friendsAccepted);
       await load();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/profile/FriendsScreen.tsx","handler":"handleAccept","site":"FriendsScreen:cc7616a4f8"});
       if (!isCurrentUser()) return;
       if (accepted && !wasFriend) setFriends((prev) => prev.filter((f) => f.id !== accepted.id));
       if (acceptedRequest) setIncoming((prev) => prev.some((r) => r.request.fromUserId === fromUserId) ? prev : [...prev, acceptedRequest]);
@@ -147,6 +150,7 @@ export function FriendsScreen() {
       await friendsService.declineRequest(fromUserId, me.id);
       await load();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/profile/FriendsScreen.tsx","handler":"handleDecline","site":"FriendsScreen:5136ee3dd6"});
       if (!isCurrentUser()) return;
       if (__DEV__) console.warn('[friends] decline failed', e);
       appAlert(he.error, he.friendsActionFailed);
@@ -167,6 +171,7 @@ export function FriendsScreen() {
       setOutgoing((prev) => prev.filter((o) => o.request.toUserId !== toUserId));
       await load();
     } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/profile/FriendsScreen.tsx","handler":"handleCancelOutgoing","site":"FriendsScreen:324995b2e9"});
       if (!isCurrentUser()) return;
       if (__DEV__) console.warn('[friends] cancel request failed', e);
       appAlert(he.error, he.friendsActionFailed);
@@ -196,6 +201,7 @@ export function FriendsScreen() {
             setFriends((prev) => prev.filter((f) => f.id !== friend.id));
             await load();
           } catch (e) {
+    observeCaughtError(e, {"source":"src/screens/profile/FriendsScreen.tsx","handler":"onPress","site":"FriendsScreen:c333f5ebe4"});
             if (!isCurrentUser()) return;
             if (__DEV__) console.warn('[friends] remove failed', e);
             appAlert(he.error, he.friendsActionFailed);
@@ -361,7 +367,8 @@ export function FriendsScreen() {
                         title: he.inviteShareSubject,
                         message: he.profileInviteShareBody(link),
                       });
-                    } catch {
+                    } catch (caughtError4a0cf87ac7) {
+    observeCaughtError(caughtError4a0cf87ac7, {"source":"src/screens/profile/FriendsScreen.tsx","handler":"FriendsScreen","site":"FriendsScreen:4a0cf87ac7"});
                       /* user dismissed share sheet */
                     }
                   }}

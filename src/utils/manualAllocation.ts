@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import type { DraftTeamsResult } from '@/types';
 
 /** A deliberate new split freezes its own roster, never a previous split. */
@@ -23,7 +24,8 @@ export function hasManualDraft(raw: string | null, savedRevision?: string): bool
     if (savedRevision !== undefined && (value?.baseDraftRevision ?? '') !== savedRevision) return false;
     return Array.isArray(value?.teams) && value.teams.length > 0 &&
       value.teams.every((team: unknown) => Array.isArray(team) && team.every(id => typeof id === 'string'));
-  } catch { return false; }
+  } catch (caughtError5c0810325d) {
+    observeCaughtError(caughtError5c0810325d, {"source":"src/utils/manualAllocation.ts","handler":"hasManualDraft","site":"manualAllocation:5c0810325d"}); return false; }
 }
 
 export function moveManualPlayer(teams: string[][], id: string, target: number, capacity: number, replace?: string): string[][] {

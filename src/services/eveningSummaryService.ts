@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // eveningSummaryService — builds the shareable "סיכום הערב" model for one
 // player in one finished game, from data across phases:
 //   • phase 1  goals/assists/wins/losses/rounds → gamePlayerStats + eveningScore
@@ -314,13 +315,13 @@ export const eveningSummaryService = {
         await Promise.all([
           gameService.getGameById(gameId),
           getDoc(doc(db, 'gamePlayerStats', `${gameId}__${uid}`)),
-          getDocs(collection(db, 'games', gameId, 'roundHistory')).catch(() => null),
+          getDocs(collection(db, 'games', gameId, 'roundHistory')).catch((caughtError580075a5c5: unknown) => { observeCaughtError(caughtError580075a5c5, {"source":"src/services/eveningSummaryService.ts","handler":"getEveningSummary","site":"eveningSummaryService:580075a5c5"}); return null; }),
           (viewerName
             ? Promise.resolve(viewerName)
             : userService.getUserById(uid).then((u) => u?.name ?? '')
-          ).catch(() => ''),
+          ).catch((caughtErrore9d9f11f60: unknown) => { observeCaughtError(caughtErrore9d9f11f60, {"source":"src/services/eveningSummaryService.ts","handler":"getEveningSummary","site":"eveningSummaryService:e9d9f11f60"}); return ''; }),
           getDoc(doc(db, 'eveningStandings', `${gameId}__${uid}`)).catch(
-            () => null,
+            (caughtError8ea82a52b5: unknown) => { observeCaughtError(caughtError8ea82a52b5, {"source":"src/services/eveningSummaryService.ts","handler":"getEveningSummary","site":"eveningSummaryService:8ea82a52b5"}); return null; },
           ),
         ]);
       // Missing is not failed: a missing summary may be unavailable, while a
@@ -367,7 +368,7 @@ export const eveningSummaryService = {
       // by the evening-standings Cloud Function. Absent (new group / read failed) →
       // eveningScore falls back to its DEFAULT_*_FOR_10. Never blocks the card.
       const benchSnap = game?.groupId
-        ? await getDoc(doc(db, 'communityStats', game.groupId)).catch(() => null)
+        ? await getDoc(doc(db, 'communityStats', game.groupId)).catch((caughtError66700a4e99: unknown) => { observeCaughtError(caughtError66700a4e99, {"source":"src/services/eveningSummaryService.ts","handler":"getEveningSummary","site":"eveningSummaryService:66700a4e99"}); return null; })
         : null;
       const bench =
         benchSnap && benchSnap.exists()
@@ -544,6 +545,7 @@ export const eveningSummaryService = {
           && outcomes.filter((o) => o === 'loss').length === row.losses ? outcomes : undefined,
       };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/eveningSummaryService.ts","handler":"getEveningSummary","site":"eveningSummaryService:7294f04357"});
       logError('getEveningSummary', err, { gameId, uid });
       throw err;
     }
@@ -554,6 +556,7 @@ export const eveningSummaryService = {
     try {
       return await readPersonalEveningRecords(model.recordScope.groupId, model.uid, model.recordScope.startsAt, model);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/eveningSummaryService.ts","handler":"getPersonalRecords","site":"eveningSummaryService:2db5fffcd0"});
       logError('readPersonalEveningRecords', err, { gameId: model.gameId, uid: model.uid });
       return [];
     }

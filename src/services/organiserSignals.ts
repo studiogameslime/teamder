@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Telling Joryio what kind of organiser this is, so a journey can say something
 // true about their club.
 //
@@ -40,7 +41,8 @@ async function readBest(): Promise<Best> {
   try {
     const raw = await AsyncStorage.getItem(BEST_KEY);
     return raw ? (JSON.parse(raw) as Best) : {};
-  } catch {
+  } catch (caughtError242034e766) {
+    observeCaughtError(caughtError242034e766, {"source":"src/services/organiserSignals.ts","handler":"readBest","site":"organiserSignals:242034e766"});
     return {};
   }
 }
@@ -81,6 +83,7 @@ export async function reportOrganiserState(
     }
     if (changed) await AsyncStorage.setItem(BEST_KEY, JSON.stringify(best));
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/organiserSignals.ts","handler":"reportOrganiserState","site":"organiserSignals:673fc9323f"});
     // Never surfaced and never fatal: this feeds marketing, and a club screen
     // must not fail to render because an analytics attribute did not land.
     logError('reportOrganiserState', err, { userId });

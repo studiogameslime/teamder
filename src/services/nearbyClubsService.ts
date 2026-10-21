@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // nearbyClubsService — clubs to suggest on the matches tab when there aren't
 // enough open matches to fill it.
 //
@@ -96,6 +97,7 @@ export const nearbyClubsService = {
       // reached the Firestore channel.
       directory = await withAuthRaceRetry(() => loadDirectory());
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/nearbyClubsService.ts","handler":"getNearbyClubs","site":"nearbyClubsService:681d6be9ab"});
       logError('getNearbyClubs', err, { userId: user.id });
       return { clubs: [], scope: 'all' };
     }

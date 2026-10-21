@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import { signOutPulse } from '../services/adminSession';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
@@ -67,7 +68,7 @@ export function SettingsScreen() {
   const [prefs, setPrefs] = useState<NotifPrefs | null>(null);
 
   useEffect(() => {
-    fetchNotifPrefs().then(setPrefs).catch(() => setPrefs(null));
+    fetchNotifPrefs().then(setPrefs).catch((caughtError7d662c203e: unknown) => { observeCaughtError(caughtError7d662c203e, {"source":"pulse/src/screens/SettingsScreen.tsx","handler":"SettingsScreen","site":"SettingsScreen:7d662c203e"}); return setPrefs(null); });
   }, []);
 
   const togglePref = async (key: string, value: boolean) => {

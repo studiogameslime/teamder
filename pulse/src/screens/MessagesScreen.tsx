@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { RtlTextInput as TextInput } from '../components/RtlTextInput';
@@ -33,7 +34,8 @@ export function MessagesScreen() {
     try {
       const rows = await listThreads(force);
       if (mounted.current) { setThreads(rows); setFailed(false); setUpdatedAt(Date.now()); }
-    } catch { if (mounted.current) setFailed(true); }
+    } catch (caughtErrorddbeea1114) {
+    observeCaughtError(caughtErrorddbeea1114, {"source":"pulse/src/screens/MessagesScreen.tsx","handler":"MessagesScreen","site":"MessagesScreen:ddbeea1114"}); if (mounted.current) setFailed(true); }
     finally { inFlight.current = false; if (mounted.current) setLoading(false); }
   }, []);
   useFocusEffect(useCallback(() => {
@@ -48,7 +50,8 @@ export function MessagesScreen() {
     if (!userId || userId === 'teamder' || /[\/\s]/.test(userId) || userId.includes('__')) return;
     let alive = true;
     setOpen({ userId, userName: '' });
-    void userNameOf(userId).then(userName => { if (alive) setOpen({ userId, userName }); }).catch(() => {});
+    void userNameOf(userId).then(userName => { if (alive) setOpen({ userId, userName }); }).catch((caughtError786129217a: unknown) => {
+    observeCaughtError(caughtError786129217a, {"source":"pulse/src/screens/MessagesScreen.tsx","handler":"MessagesScreen","site":"MessagesScreen:786129217a"});});
     return () => { alive = false; };
   }, [params?.userId, params?.messageId]);
   const refresh = async () => { setRefreshing(true); await load(true); if (mounted.current) setRefreshing(false); };

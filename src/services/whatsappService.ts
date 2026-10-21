@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Tiny helper that opens a wa.me deep link for a community contact phone.
 // Israeli-aware: normalises 05XXXXXXXX → 9725XXXXXXXX (the country-code
 // expanded form wa.me requires). +9725XXXXXXXX and any other E.164 input
@@ -50,6 +51,7 @@ export async function openWhatsApp(phone: string | undefined): Promise<boolean> 
     await Linking.openURL(url);
     return true;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/whatsappService.ts","handler":"openWhatsApp","site":"whatsappService:1af00ddcd0"});
     // "Unable to open URL" means WhatsApp is not installed and no browser
     // claimed wa.me. That is a fact about the phone, not a fault in the app,
     // and it was filling the error inbox with an entry nobody can act on. The
@@ -78,7 +80,8 @@ export async function shareToWhatsApp(text: string): Promise<boolean> {
     try {
       await Linking.openURL(url);
       return true;
-    } catch {
+    } catch (caughtError6750f30257) {
+    observeCaughtError(caughtError6750f30257, {"source":"src/services/whatsappService.ts","handler":"shareToWhatsApp","site":"whatsappService:6750f30257"});
       /* try the next candidate */
     }
   }

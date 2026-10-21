@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 /** Only the latest view/refresh may publish results, errors or loading state. */
 export function createOnboardingActivityLoader<T>(options: {
   query: (session: string | null) => Promise<T[]>;
@@ -15,7 +16,8 @@ export function createOnboardingActivityLoader<T>(options: {
       try {
         const rows = await options.query(session);
         if (request === generation) options.rows(rows);
-      } catch {
+      } catch (caughtError5176c536de) {
+    observeCaughtError(caughtError5176c536de, {"source":"pulse/src/services/onboardingActivityLoader.ts","handler":"load","site":"onboardingActivityLoader:5176c536de"});
         if (request === generation) options.error('לא ניתן לטעון את הפעולות. נסו שוב.');
       } finally {
         if (request === generation) options.loading(false);

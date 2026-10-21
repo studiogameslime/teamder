@@ -1,3 +1,6 @@
+import { observeCaughtError, observedListener, observeSettledErrors } from '../utils/errorObservation';
+
+
 import { seasonScheduleBoundary } from '@/utils/seasonPolicy';
 import { httpsCallable } from 'firebase/functions';
 import { waitForJoinResult } from '@/utils/joinRequestResult';
@@ -307,6 +310,7 @@ async function updateGameDoc(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await updateDoc(docs.game(gameId), stripUndefined(patch) as any);
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"updateGameDoc","site":"gameService:f1a3a6bb79"});
     logError('updateGameDoc', err, { gameId, fields: Object.keys(patch) });
     if (__DEV__) console.warn('[gameService] updateGameDoc failed', err);
     throw err;
@@ -463,6 +467,7 @@ async function loadViewerHistoryStats(
       where('gameId', '==', game.id), where('userId', '==', viewerId), limit(1)));
     return snap.docs[0]?.data();
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"loadViewerHistoryStats","site":"gameService:ca1c8c3ded"});
     logError('getHistoryStats', err, { gameId: game.id });
     // Secondary scoring can fail without hiding history; render dashes.
     return undefined;
@@ -479,6 +484,7 @@ async function loadRoundsFor(gameId: string): Promise<MatchRound[]> {
   try {
     snap = await getDocs(q);
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"loadRoundsFor","site":"gameService:85b291f156"});
     logError('loadRoundsFor', err, { gameId });
     if (__DEV__) console.warn('[gameService] loadRoundsFor failed', err);
     throw err;
@@ -526,6 +532,7 @@ async function findOverlappingGameInGroup(
       ),
     );
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"findOverlappingGameInGroup","site":"gameService:0ade8bc526"});
     logError('findOverlappingGameInGroup', err, { groupId, startsAt });
     if (__DEV__) {
       console.warn('[gameService] findOverlappingGameInGroup failed', err);
@@ -766,12 +773,14 @@ function waitForSavedDraft(gameId: string, expectedCreatedAt: number, signal?: A
           // Version identity is exact: device clocks are not a global ordering.
           if (game.id !== gameId || game.draftTeams?.createdAt !== expectedCreatedAt || !game.draftTeams.teams.length) return;
           finish(undefined, game);
-        } catch (error) { finish(error); }
-      }, error => finish(error));
+        } catch (error) {
+    observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"waitForSavedDraft","site":"gameService:d0785bc702"}); finish(error); }
+      }, observedListener(error => finish(error), {"source":"src/services/gameService.ts","handler":"waitForSavedDraft","site":"gameService.ts:snapshot:766"}));
       // Test adapters (and cached listener implementations) can deliver an
       // initial event before returning the unsubscribe function.
       if (settled) cleanup();
-    } catch (error) { finish(error); }
+    } catch (error) {
+    observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"waitForSavedDraft","site":"gameService:4a1776f8d2"}); finish(error); }
   });
 }
 
@@ -806,12 +815,14 @@ function waitForClearedShootout(gameId: string, decision: ShootoutDecisionContex
           if (game && !game.liveMatch?.shootout && matchesRoundDecision(game, expected)) { finish(undefined, game); return; }
           if (isDiscardedBoard(game)) return;
           finish(new Error('המשחק, ההרכבים או התוצאה השתנו. יש לבדוק את המצב המעודכן לפני הסיום.'));
-        } catch (error) { finish(error); }
-      }, error => finish(error));
+        } catch (error) {
+    observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"waitForClearedShootout","site":"gameService:86929b68b1"}); finish(error); }
+      }, observedListener(error => finish(error), {"source":"src/services/gameService.ts","handler":"waitForClearedShootout","site":"gameService.ts:snapshot:809"}));
       // A test adapter or cached subscriber can deliver before registration
       // returns. Its unsubscribe must still run exactly once.
       if (settled) cleanup();
-    } catch (error) { finish(error); }
+    } catch (error) {
+    observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"waitForClearedShootout","site":"gameService:277758c458"}); finish(error); }
   });
 }
 
@@ -847,10 +858,12 @@ function waitForCommittedRound(gameId: string, committedRoundId: string, source:
           if (game && game.lastCommittedRoundId === committedRoundId && sameBoard(game)) { finish(undefined, game); return; }
           if (isPrevious(game)) return;
           finish(changed());
-        } catch (error) { finish(error); }
-      }, error => finish(error));
+        } catch (error) {
+    observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"waitForCommittedRound","site":"gameService:25595dc78c"}); finish(error); }
+      }, observedListener(error => finish(error), {"source":"src/services/gameService.ts","handler":"waitForCommittedRound","site":"gameService.ts:snapshot:852"}));
       if (settled) cleanup();
-    } catch (error) { finish(error); }
+    } catch (error) {
+    observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"waitForCommittedRound","site":"gameService:5f91234eae"}); finish(error); }
   });
 }
 
@@ -883,10 +896,12 @@ function waitForRosterMutation(gameId: string, receipt: LiveRosterMutationReceip
           const game: Game | null = snapshot.exists() ? {...snapshot.data(), matches: []} : null;
           if (same(game, receipt.after, after)) {finish(undefined, game!); return;}
           if (!same(game, receipt.before, before)) finish(changed());
-        } catch (error) {finish(error);}
-      }, error => finish(error));
+        } catch (error) {
+    observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"waitForRosterMutation","site":"gameService:e7485aa6c4"});finish(error);}
+      }, observedListener(error => finish(error), {"source":"src/services/gameService.ts","handler":"waitForRosterMutation","site":"gameService.ts:snapshot:891"}));
       if (settled) cleanup();
-    } catch (error) {finish(error);}
+    } catch (error) {
+    observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"waitForRosterMutation","site":"gameService:32fbd2bbaa"});finish(error);}
   });
 }
 
@@ -940,6 +955,7 @@ export const gameService = {
       if (!snap.exists()) return null;
       return { ...snap.data(), matches: [] };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getGameById","site":"gameService:1876706f85"});
       const code =
         typeof (err as { code?: unknown })?.code === 'string'
           ? ((err as { code: string }).code)
@@ -983,6 +999,7 @@ export const gameService = {
       const matches = await loadRoundsFor(docData.id);
       return { ...docData, matches };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getActiveGameForGroup","site":"gameService:8024b47ef0"});
       logError('getActiveGameForGroup', err, { groupId });
       if (__DEV__) {
         console.warn('[gameService] getActiveGameForGroup failed', err);
@@ -1035,6 +1052,7 @@ export const gameService = {
       const data = fresh.data();
       return { ...data, matches: [] };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"createGame","site":"gameService:1f666e0791"});
       logError('createGameLegacy', err, { groupId, fieldName });
       if (__DEV__) console.warn('[gameService] createGame failed', err);
       throw err;
@@ -1086,6 +1104,7 @@ export const gameService = {
         query(collection(db, 'communityPlayerStats'), where('groupId', '==', groupId)),
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getCommunityPlayerStats","site":"gameService:5b6c9ba4a8"});
       if (isPermissionDenied(err)) return acc; // deleted group / non-member
       logError('getCommunityPlayerStats', err, {
         groupId,
@@ -1178,6 +1197,7 @@ export const gameService = {
     try {
       snap = await getDocs(q);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getPairStats","site":"gameService:9857dac810"});
       logError('getPairStats', err, { uidA, uidB, groupId });
       if (__DEV__) console.warn('[gameService] getPairStats failed', err);
       throw err;
@@ -1252,6 +1272,7 @@ export const gameService = {
         acc.assistedMe = aIsFirst ? bToA : aToB;
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getPairStats","site":"gameService:42b2734cb3"});
       if (__DEV__) console.warn('[gameService] pairStats read failed', err);
     }
     return acc;
@@ -1451,6 +1472,7 @@ export const gameService = {
         cursor = page.docs[page.docs.length - 1];
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getCommunityStats","site":"gameService:6bef636f2b"});
       if (isPermissionDenied(err) && !strict) return empty; // deleted group / non-member
       logError('getCommunityStats', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityStats failed', err);
@@ -1738,6 +1760,7 @@ export const gameService = {
       const ownGoals = cs?.ownGoals ?? 0;
       return { totalGoals, totalRounds, tiedRounds, shootoutRounds, scorelessRounds, countedRounds, guestGoals, ownGoals, players };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getCommunityChampionship","site":"gameService:a0e7a06d51"});
       logError('getCommunityChampionship', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityChampionship failed', err);
       // `strict` remains in the signature for existing callers. A failed
@@ -1801,6 +1824,7 @@ export const gameService = {
         typeof v === 'number' && Number.isFinite(v) ? Math.max(0, v) : 0;
       return { goals: n(d.goals), rounds: n(d.rounds) };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getCommunityTotals","site":"gameService:909dd3c81f"});
       logError('getCommunityTotals', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityTotals failed', err);
       throw err;
@@ -1843,6 +1867,7 @@ export const gameService = {
       if (!data.a || !data.b || assists <= 0) return null;
       return { uidA: data.a, uidB: data.b, assists };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getCommunityDeadlyDuo","site":"gameService:e458bf6aa9"});
       logError('getCommunityDeadlyDuo', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityDeadlyDuo failed', err);
       return null;
@@ -1900,6 +1925,7 @@ export const gameService = {
         players: rankChampionshipRows(statRows, 'points', true),
       };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getGameChampionship","site":"gameService:533a2a7aed"});
       logError('getGameChampionship', err, { gameId });
       if (__DEV__) console.warn('[gameService] getGameChampionship failed', err);
       throw err;
@@ -1930,6 +1956,7 @@ export const gameService = {
         })
         .sort((a, b) => b.at - a.at);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getRetroGoals","site":"gameService:9f06067641"});
       logError('getRetroGoals', err, { gameId });
       if (__DEV__) console.warn('[gameService] getRetroGoals failed', err);
       throw err;
@@ -1975,6 +2002,7 @@ export const gameService = {
       // tested without Firestore.
       return sortRounds(arr);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getRoundHistory","site":"gameService:88905c218f"});
       logError('getRoundHistory', err, { gameId });
       if (__DEV__) console.warn('[gameService] getRoundHistory failed', err);
       // The live result-recovery caller must distinguish an unavailable read
@@ -2077,6 +2105,7 @@ export const gameService = {
       }
       return out;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getRecentSplits","site":"gameService:67d5ad5db6"});
       // History is an enhancement, never a blocker: a failure here just means
       // the split is decided on rating alone, exactly as it was before.
       logError('getRecentSplits', err, { groupId });
@@ -2117,6 +2146,7 @@ export const gameService = {
     try {
       snap = await getDocs(q);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getHistory","site":"gameService:2b5998fc7b"});
       if (isPermissionDenied(err)) return []; // deleted group / non-member
       logError('getHistory', err, { groupId });
       if (__DEV__) console.warn('[gameService] getHistory failed', err);
@@ -2206,6 +2236,7 @@ export const gameService = {
         ),
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getPlayedGames","site":"gameService:8128e88529"});
       logError('getPlayedGames', err, { userId });
       if (__DEV__) console.warn('[gameService] getPlayedGames failed', err);
       throw err;
@@ -2241,6 +2272,7 @@ export const gameService = {
         0,
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getPlayedGamesCount","site":"gameService:322fc6e888"});
       if (isPermissionDenied(err)) return null; // deleted game / no access — quiet
       logError('getPlayedGamesCount', err, { userId });
       if (__DEV__) console.warn('[gameService] getPlayedGamesCount failed', err);
@@ -2293,6 +2325,7 @@ export const gameService = {
     try {
       await batch.commit();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"saveGame","site":"gameService:5cbbb5c2ac"});
       logError('saveGame', err, {
         gameId: next.id,
         roundCount: next.matches.length,
@@ -2356,7 +2389,7 @@ export const gameService = {
           ),
         ),
       ),
-    ]);
+    ]).then(results => observeSettledErrors(results, {"source":"src/services/gameService.ts","handler":"getMyGames","site":"gameService:8fcd755f8e"}));
     const seen = new Set<string>();
     const all: Game[] = [];
     if (participatingResult.status === 'fulfilled') {
@@ -2481,7 +2514,7 @@ export const gameService = {
           ),
         ),
       ),
-    ]);
+    ]).then(results => observeSettledErrors(results, {"source":"src/services/gameService.ts","handler":"getMyRecentGamesRaw","site":"gameService:7d3082e6b7"}));
     const seen = new Set<string>();
     const all: Game[] = [];
     if (participatingResult.status === 'fulfilled') {
@@ -2545,7 +2578,8 @@ export const gameService = {
     let mine: Game[] = [];
     try {
       mine = await this.getMyRecentGamesRaw(userId);
-    } catch {
+    } catch (caughtError9f61a5df09) {
+    observeCaughtError(caughtError9f61a5df09, {"source":"src/services/gameService.ts","handler":"getJustFinishedGame","site":"gameService:9f61a5df09"});
       return null; // a home card is never worth surfacing an error for
     }
     const played = mine
@@ -2664,7 +2698,7 @@ export const gameService = {
           );
           emit();
         },
-        fail,
+        observedListener(fail, {"source":"src/services/gameService.ts","handler":"subscribeMyLiveOrUpcomingGames","site":"gameService.ts:snapshot:2686"}),
       );
       try {
         const unsubB = onSnapshot(
@@ -2680,13 +2714,14 @@ export const gameService = {
             );
             emit();
           },
-          fail,
+          observedListener(fail, {"source":"src/services/gameService.ts","handler":"subscribeMyLiveOrUpcomingGames","site":"gameService.ts:snapshot:2702"}),
         );
         return () => {
           unsubA();
           unsubB();
         };
       } catch (error) {
+    observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"subscribeMyLiveOrUpcomingGames","site":"gameService:4dcb051bda"});
         unsubA();
         throw error;
       }
@@ -2740,6 +2775,7 @@ export const gameService = {
             ),
           ).catch(
             (err: { code?: string }) => {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getCommunityGames","site":"gameService:bbcb704961"});
               if (err?.code !== 'permission-denied') {
                 logError('getCommunityGames', err, {
                   userId,
@@ -2825,6 +2861,7 @@ export const gameService = {
               ),
             ),
           ).catch((err: { code?: string }) => {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getMyUpcomingScheduledGames","site":"gameService:c4d38138cd"});
             if (err?.code !== 'permission-denied') {
               logError('getMyUpcomingScheduledGames', err, {
                 userId,
@@ -2913,6 +2950,7 @@ export const gameService = {
         ),
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getUpcomingPublicGamesForGroup","site":"gameService:770dcded23"});
       logError('getUpcomingPublicGamesForGroup', err, { groupId });
       if (__DEV__) {
         console.warn(
@@ -2958,6 +2996,7 @@ export const gameService = {
         ),
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getUpcomingGamesForGroup","site":"gameService:1e443dca0d"});
       if (isPermissionDenied(err)) return []; // deleted group / non-member
       logError('getUpcomingGamesForGroup', err, { groupId });
       if (__DEV__) {
@@ -3024,6 +3063,7 @@ export const gameService = {
         ),
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getOpenGames","site":"gameService:fb4d06b946"});
       logError('getOpenGames', err, {
         userId,
         excludeCount: excludeCommunityIds.length,
@@ -3204,6 +3244,7 @@ export const gameService = {
         });
         return { ...game, seriesId };
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"ensureCreationSeries","site":"gameService:c4fb70b9c2"});
         logError('createGameSeries', err, { gameId: game.id, groupId: input.groupId });
         return game; // best-effort; a subsequent same-attempt retry reconciles the link
       }
@@ -3435,6 +3476,7 @@ export const gameService = {
           createdId = ref.id;
         }
       } catch (e) {
+    observeCaughtError(e, {"source":"src/services/gameService.ts","handler":"createGameV2","site":"gameService:338b7a739b"});
         const code = (e as { code?: string })?.code;
         if (
           ![
@@ -3480,6 +3522,7 @@ export const gameService = {
           settings: settingsFromGame({ ...input, startsAt: input.startsAt }),
         });
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"createGameV2","site":"gameService:cb372d47d9"});
         logError('createGameSeries', err, {
           gameId: createdId,
           groupId: input.groupId,
@@ -3489,7 +3532,7 @@ export const gameService = {
       // Created BY a series (the weekly occurrence) — just stamp the link.
       await updateDoc(docs.game(createdId), {
         seriesId: input.seriesId,
-      } as Partial<GameDoc>).catch(() => undefined);
+      } as Partial<GameDoc>).catch((caughtErrore8ed32a0df: unknown) => { observeCaughtError(caughtErrore8ed32a0df, {"source":"src/services/gameService.ts","handler":"createGameV2","site":"gameService:e8ed32a0df"}); return undefined; });
     }
 
     // Best-effort geocoding so the new game shows on the games map. Fire-
@@ -3515,6 +3558,7 @@ export const gameService = {
           return undefined;
         })
         .catch((err) => {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"createGameV2","site":"gameService:c218903ae1"});
           logError('createGameGeocode', err, {
             gameId: createdId,
             groupId: input.groupId,
@@ -3696,6 +3740,7 @@ export const gameService = {
       try {
         snap = await getDoc(docs.game(gameId));
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"updateGameV2","site":"gameService:b625db1cf7"});
         logError('updateGameV2', err, { gameId, fields: Object.keys(patch) });
         if (__DEV__) console.warn('[gameService] updateGameV2 read failed', err);
         throw err;
@@ -4182,6 +4227,7 @@ export const gameService = {
     try {
       res = await call();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"adminAddMembers","site":"gameService:812fd327f4"});
       // The callable sometimes reaches the server with NO auth token even
       // though we're signed in (recurring `functions/unauthenticated`, real
       // report on 1.0.40) — the SDK attached a stale/expired token. Force a
@@ -4245,6 +4291,7 @@ export const gameService = {
     try {
       await call();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"adminReorderRoster","site":"gameService:e1564f067a"});
       const code = (err as { code?: string } | undefined)?.code;
       if (code === 'functions/unauthenticated' || code === 'unauthenticated') {
         await user.getIdToken(true);
@@ -4945,6 +4992,7 @@ export const gameService = {
         return { winnerSide: result.winnerSide === 'tie' ? null : result.winnerSide,
           tieResolution: result.tieResolution ?? tieResolution };
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"_commitRoundStatsAndClear","site":"gameService:b2d49637f8"});
         logError('commitRoundStats', err, { gameId });
         if (__DEV__) console.warn('[gameService] commitRoundStats failed', err);
         // Rethrow so the caller keeps the goal log intact instead of clearing
@@ -5837,6 +5885,7 @@ export const gameService = {
       try {
         captureRoster((await getDoc(docs.game(gameId))).data());
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"deleteGame","site":"gameService:f40dd4a15d"});
         logError('deleteGameCaptureRoster', err, { gameId });
         /* best-effort — still delete + dispatch with whatever we captured */
       }
@@ -5858,6 +5907,7 @@ export const gameService = {
             deletedAt: Date.now(),
           });
         } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"deleteGame","site":"gameService:965d4e9d59"});
           logError('gameDeletionAudit', err, { gameId });
           /* best-effort — the server trigger still records a fallback */
         }
@@ -5865,6 +5915,7 @@ export const gameService = {
       try {
         await deleteDoc(docs.game(gameId));
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"deleteGame","site":"gameService:6cf81c9068"});
         logError('deleteGame', err, { gameId });
         if (__DEV__) console.warn('[gameService] deleteGame failed', err);
         throw err;
@@ -5983,6 +6034,7 @@ export const gameService = {
           ),
         );
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"findRegistrationConflict","site":"gameService:3a37d47370"});
         logError('findRegistrationConflict', err, {
           userId,
           targetGameId: targetGame.id,
@@ -6151,7 +6203,7 @@ export const gameService = {
     // invalidates that early answer; a rejected early read is always handled.
     const conflictRead = typeof knownStartsAt === 'number' && Number.isFinite(knownStartsAt)
       ? gameService.findRegistrationConflict(userId, { id: gameId, startsAt: knownStartsAt })
-        .then(conflict => ({ conflict }), error => ({ error }))
+        .then(conflict => ({ conflict }), error => { observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"requestJoinGame","site":"gameService:64d3234241"}); return ({ error }); })
       : null;
     const ref = docs.game(gameId);
     const snap = await getDoc(ref);
@@ -6206,7 +6258,7 @@ export const gameService = {
     // re-join failed with permission-denied. Delete any stale doc first so the
     // setDoc below is always a fresh CREATE (self-delete + self-create are both
     // allowed). No-op when there's nothing to delete.
-    await deleteDoc(reqRef).catch(() => undefined);
+    await deleteDoc(reqRef).catch((caughtError2dfbce48c9: unknown) => { observeCaughtError(caughtError2dfbce48c9, {"source":"src/services/gameService.ts","handler":"requestJoinGame","site":"gameService:2dfbce48c9"}); return undefined; });
     await setDoc(reqRef, {
       uid: userId,
       tappedAt,
@@ -6219,7 +6271,7 @@ export const gameService = {
     logEvent(AnalyticsEvent.GameJoinRequested, { gameId, fair: true, source, requestMs });
     const result = await waitForJoinResult((next, fail) => onSnapshot(reqRef, snap => {
       if (snap.exists()) next(snap.data());
-    }, fail), () => getFirebase().auth.currentUser?.uid === userId);
+    }, observedListener(fail, {"source":"src/services/gameService.ts","handler":"requestJoinGame","site":"gameService.ts:snapshot:6270"})), () => getFirebase().auth.currentUser?.uid === userId);
     logEvent(AnalyticsEvent.GameJoined, { gameId, fair: true, source, bucket: result.bucket, requestMs, totalMs: Math.max(0, Date.now() - requestStartedAt) });
     return result;
   },
@@ -6591,6 +6643,7 @@ export const gameService = {
       tx.update(ref, updates as any);
       return { bucket };
     }).catch((err) => {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"joinGameV2","site":"gameService:6abf93a89c"});
       // Re-throw with full debug context attached. The catch in
       // MatchDetailsScreen logs the message; this guarantees the
       // user sees actionable detail in the redbox.
@@ -6777,6 +6830,7 @@ export const gameService = {
       };
       });
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/gameService.ts","handler":"approveGameJoin","site":"gameService:bb528c253b"});
       const code = (e as { code?: string })?.code;
       if (
         ![
@@ -6894,6 +6948,7 @@ export const gameService = {
       return { changed: true, title: data.title ?? '' };
       });
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/gameService.ts","handler":"rejectGameJoin","site":"gameService:c6ca409a0d"});
       const code = (e as { code?: string })?.code;
       if (
         ![
@@ -7155,6 +7210,7 @@ export const gameService = {
       };
       });
     } catch (e) {
+    observeCaughtError(e, {"source":"src/services/gameService.ts","handler":"cancelGameV2","site":"gameService:1360c2f35a"});
       const code = (e as { code?: string })?.code;
       if (
         ![
@@ -7405,6 +7461,7 @@ export const gameService = {
         };
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"removePlayer","site":"gameService:0d34a94ce0"});
       logError('removePlayer', err, { gameId, callerId, targetUserId });
       if (__DEV__) console.warn('[gameService] removePlayer failed', err);
       throw err;
@@ -7495,6 +7552,7 @@ export const gameService = {
       await this._resolveSpotOffer(gameId, userId, 'confirm');
       logEvent(AnalyticsEvent.WaitlistPromoted, { gameId, promotedUserId: userId, viaOfferConfirm: true });
     } catch (error) {
+    observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"confirmSpotOffer","site":"gameService:2494985273"});
       logError('confirmSpotOffer', error, { gameId, userId });
       throw error;
     }
@@ -7506,6 +7564,7 @@ export const gameService = {
       await this._resolveSpotOffer(gameId, userId, 'pass');
       logEvent(AnalyticsEvent.SpotOfferDecided, { gameId, decision: 'passed' });
     } catch (error) {
+    observeCaughtError(error, {"source":"src/services/gameService.ts","handler":"passSpotOffer","site":"gameService:e9b2e76d69"});
       logError('passSpotOffer', error, { gameId, userId });
       throw error;
     }
@@ -7565,11 +7624,12 @@ export const gameService = {
       };
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"adminAdvanceOffer","site":"gameService:46075646d1"});
       logError('adminAdvanceOffer', err, { gameId });
       if (__DEV__) console.warn('[gameService] adminAdvanceOffer failed', err);
       throw err;
     }
-    if (!result.ok) return; // no-op when there's nothing to advance
+    if (!result.ok) { return; } // no-op when there's nothing to advance
     logEvent(AnalyticsEvent.SpotOfferDecided, {
       gameId,
       decision: 'admin_advanced',
@@ -7698,6 +7758,7 @@ export const gameService = {
         query(col.games(), where('participantIds', 'array-contains', userId)),
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"leaveAllGamesForAccountDeletion","site":"gameService:ccceb3bc5c"});
       logError('leaveGame', err, { userId });
       if (__DEV__) console.warn('[leaveAll] query failed', err);
       return;
@@ -7791,6 +7852,7 @@ export const gameService = {
         }
         if (result.wasInPlayers) noteAdmin(result.createdBy, result.title);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"leaveAllGamesForAccountDeletion","site":"gameService:ebe9e1c729"});
         logError('leaveGame', err, { userId });
         if (__DEV__) console.warn('[leaveAll] tx failed', gd.id, err);
       }
@@ -7847,6 +7909,7 @@ export const gameService = {
           updatedAt: Date.now(),
         });
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"cancelGameByAdmin","site":"gameService:43ad84778e"});
         logError('cancelGameByAdmin', err, { gameId });
         if (__DEV__) {
           console.warn('[gameService] cancelGameByAdmin failed', err);
@@ -7939,6 +8002,7 @@ export const gameService = {
       });
       logEvent(AnalyticsEvent.GameVisibilityChanged, { gameId, visibility });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"setVisibility","site":"gameService:e405c258a4"});
       logError('setVisibility', err, { gameId, visibility, uid });
       if (__DEV__) console.warn('[gameService] setVisibility failed', err);
       throw err;
@@ -7969,6 +8033,7 @@ export const gameService = {
       if (snap.data().status !== 'open') return;
       await updateDoc(ref, { status: 'locked', updatedAt: Date.now() });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"lockRegistration","site":"gameService:382d1ddf37"});
       logError('lockRegistration', err, { gameId });
       if (__DEV__) console.warn('[gameService] lockRegistration failed', err);
       throw err;
@@ -8036,6 +8101,7 @@ export const gameService = {
         });
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"startEvening","site":"gameService:6c67bbc44a"});
       logError('startEvening', err, { gameId });
       if (__DEV__) console.warn('[gameService] startEvening failed', err);
       throw err;
@@ -8089,7 +8155,8 @@ export const gameService = {
       const gid = typeof data.groupId === 'string' ? data.groupId : '';
       if (gid) {
         try { await withAuthRaceRetry(() => httpsCallable(getFirebase().functions, 'startSeasonEvening', { timeout: 310000 })({ gameId })); }
-        catch (err) { if (String((err as Error)?.message).includes('SEASON_CLOSING')) throw new Error('SEASON_CLOSING'); throw err; }
+        catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"markGameStarted","site":"gameService:8cd4a8ffef"}); if (String((err as Error)?.message).includes('SEASON_CLOSING')) throw new Error('SEASON_CLOSING'); throw err; }
         return;
       }
       // The first goal may now precede the first timer start. Re-read under
@@ -8124,6 +8191,7 @@ export const gameService = {
         }
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"markGameStarted","site":"gameService:f9e7328a17"});
       // SEASON_CLOSING is not a failure. It is this function's own refusal,
       // thrown twenty lines above, and every caller catches it and shows the
       // dialog that explains it (§4). Reporting it put a product decision in
@@ -8154,6 +8222,7 @@ export const gameService = {
     try {
       await mutateSharedTimer(gameId, userId, userName, 'start', expectedRoundId);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"startTimer","site":"gameService:71aa4d92d2"});
       logError('startTimer', err, { gameId, userId, expectedRoundId });
       if (__DEV__) console.warn('[gameService] startTimer failed', err);
       throw err;
@@ -8170,6 +8239,7 @@ export const gameService = {
     try {
       await mutateSharedTimer(gameId, userId, userName, 'pause', expectedRoundId);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"pauseTimer","site":"gameService:0fce48cf27"});
       logError('pauseTimer', err, { gameId, userId, expectedRoundId });
       if (__DEV__) console.warn('[gameService] pauseTimer failed', err);
       throw err;
@@ -8187,6 +8257,7 @@ export const gameService = {
     try {
       await mutateSharedTimer(gameId, userId, userName, 'reset', expectedRoundId);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"resetTimer","site":"gameService:d8d84c20ab"});
       logError('resetTimer', err, { gameId, userId, expectedRoundId });
       if (__DEV__) console.warn('[gameService] resetTimer failed', err);
       throw err;
@@ -8257,6 +8328,7 @@ export const gameService = {
         try {
           await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide);
         } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"endEvening","site":"gameService:af5ab43c19"});
           logError('endEvening.commitFinalRound', err, { gameId });
           // No successful finish until the last result exists. Preserve the
           // active evening and allow retry with the SAME immutable round id.
@@ -8328,6 +8400,7 @@ export const gameService = {
         tx.update(ref, updates as UpdateData<import('firebase/firestore').DocumentData>);
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"endEvening","site":"gameService:47aed20d0b"});
       logError('endEvening', err, { gameId });
       if (__DEV__) console.warn('[gameService] endEvening failed', err);
       throw err;
@@ -8385,6 +8458,7 @@ export const gameService = {
         updatedAt: Date.now(),
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"setArrival","site":"gameService:41848bf0f8"});
       logError('setArrival', err, { gameId, userId, status });
       if (__DEV__) console.warn('[gameService] setArrival failed', err);
       throw err;
@@ -8485,10 +8559,10 @@ export const gameService = {
         if (!snap.exists()) return cb(null);
         cb(snap.data().liveMatch ?? null);
       },
-      (err) => {
+      observedListener((err) => {
         logError('subscribeLiveMatch', err, { gameId });
         if (__DEV__) console.warn('[gameService] subscribeLiveMatch error', err);
-      }
+      }, {"source":"src/services/gameService.ts","handler":"subscribeLiveMatch","site":"gameService.ts:snapshot:8554"})
     );
     return unsub;
   },
@@ -8524,10 +8598,10 @@ export const gameService = {
         const g = snap.data();
         cb({ rotation: g.rotation, draftTeams: g.draftTeams });
       },
-      (err) => {
+      observedListener((err) => {
         logError('subscribeRotation', err, { gameId });
         if (__DEV__) console.warn('[gameService] subscribeRotation error', err);
-      },
+      }, {"source":"src/services/gameService.ts","handler":"subscribeRotation","site":"gameService.ts:snapshot:8592"}),
     );
   },
 
@@ -8576,10 +8650,10 @@ export const gameService = {
         const g = snap.data();
         cb({ game:{...g,matches:[]}, liveMatch: g.liveMatch ?? null, rotation: g.rotation, draftTeams: g.draftTeams, lastCommittedRoundId:g.lastCommittedRoundId });
       },
-      (err) => {
+      observedListener((err) => {
         logError('subscribeLiveGame', err, { gameId });
         if (__DEV__) console.warn('[gameService] subscribeLiveGame error', err);
-      },
+      }, {"source":"src/services/gameService.ts","handler":"subscribeLiveGame","site":"gameService.ts:snapshot:8644"}),
     );
   },
 
@@ -8691,6 +8765,7 @@ export const gameService = {
         });
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"addGuest","site":"gameService:aec9ef7af1"});
       logError('addGuest', err, { gameId, callerId, name });
       if (__DEV__) console.warn('[gameService] addGuest failed', err);
       throw err;
@@ -8780,6 +8855,7 @@ export const gameService = {
       logEvent(AnalyticsEvent.GuestRenamed, { gameId });
       return saved;
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"updateGuest","site":"gameService:7c9c0cd0a7"});
       logError('updateGuest', err, { gameId, callerId, guestId });
       if (__DEV__) console.warn('[gameService] updateGuest failed', err);
       throw err;
@@ -8844,6 +8920,7 @@ export const gameService = {
         'setGuestRating',
       )({ gameId, guestId, rating });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"setGuestRating","site":"gameService:cd11bbc777"});
       logError('setGuestRating', err, { gameId, callerId, guestId });
       if (__DEV__) console.warn('[gameService] setGuestRating failed', err);
       throw err;
@@ -8925,6 +9002,7 @@ export const gameService = {
         });
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"removeGuest","site":"gameService:11228a13bd"});
       logError('removeGuest', err, { gameId, callerId, guestId });
       if (__DEV__) console.warn('[gameService] removeGuest failed', err);
       throw err;
@@ -8985,6 +9063,7 @@ export const gameService = {
         tx.update(ref, { guests: nextGuests, updatedAt: Date.now() });
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"adminReorderGuests","site":"gameService:fdf2dd2c11"});
       logError('adminReorderGuests', err, { gameId, callerId });
       if (__DEV__) console.warn('[gameService] adminReorderGuests failed', err);
       throw err;

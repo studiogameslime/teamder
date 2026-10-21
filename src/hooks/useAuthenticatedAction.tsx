@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // useAuthenticatedAction — the one thing a screen calls to do a gated action.
 //
 // Five screens needed "run this, but sign the person in first if they are a
@@ -115,6 +116,7 @@ export function useAuthenticatedAction(): UseAuthenticatedAction {
       try {
         await useUserStore.getState().refreshFromSession(uid);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/hooks/useAuthenticatedAction.tsx","handler":"useAuthenticatedAction","site":"useAuthenticatedAction:f9797665b8"});
         logError('authenticatedProfileRestore', err, {});
         return;
       }
@@ -149,6 +151,7 @@ export function useAuthenticatedAction(): UseAuthenticatedAction {
         // is the whole of the "exactly once" guarantee for the message too.
         if (out.status === 'ran') reportResumeOutcome(out.kind, out.result);
       } catch (err) {
+    observeCaughtError(err, {"source":"src/hooks/useAuthenticatedAction.tsx","handler":"useAuthenticatedAction","site":"useAuthenticatedAction:3b4b07aded"});
         logError('authenticatedActionResume', err, {});
       }
     },

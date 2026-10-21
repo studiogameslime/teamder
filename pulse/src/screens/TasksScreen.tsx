@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../services/errorObservation';
 import { Dropdown } from '../components/Dropdown';
 import { boardBuckets, boardSections, type BoardTab } from '../services/workBoard';
 import { timeAgo } from '../format';
@@ -147,7 +148,8 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
           if (alive) setItems(previous => [...partial, ...previous.filter(item => !partial.some(row => row.key === item.key))]);
         });
         if (alive) { setItems(previous => retainFailedWork(previous, fresh)); setFailedStreams(fresh.failedStreams); }
-      } catch {
+      } catch (caughtErrora2f62e5898) {
+    observeCaughtError(caughtErrora2f62e5898, {"source":"pulse/src/screens/TasksScreen.tsx","handler":"TasksScreen","site":"TasksScreen:a2f62e5898"});
         if (alive) setFailedStreams(['task', 'error', 'report', 'feature', 'idea', 'chat']);
       } finally {
         if (alive) setLoading(false);
@@ -164,7 +166,8 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
       const result = await listWorkSnapshot(force);
       setItems(previous => retainFailedWork(previous, result));
       setFailedStreams(result.failedStreams);
-    } catch {
+    } catch (caughtErrorc01e9f63cc) {
+    observeCaughtError(caughtErrorc01e9f63cc, {"source":"pulse/src/screens/TasksScreen.tsx","handler":"TasksScreen","site":"TasksScreen:c01e9f63cc"});
       setFailedStreams(['task', 'error', 'report', 'feature', 'idea', 'chat']);
     } finally {
       setRefreshing(false);
@@ -197,7 +200,8 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
       const ok = await (reopen ? reopenItem(item) : closeItem(item));
       if (!ok) throw new Error('SAVE_FAILED');
       setItems(previous => previous.map(i => i.key === item.key ? {...i, state: reopen ? (i.claude ? 'claude' : 'open') : 'done'} : i));
-    } catch { Alert.alert('השינוי לא נשמר', 'הפריט נשאר במצבו הקודם. נסו שוב.'); }
+    } catch (caughtErrord7a862a39e) {
+    observeCaughtError(caughtErrord7a862a39e, {"source":"pulse/src/screens/TasksScreen.tsx","handler":"saveState","site":"TasksScreen:d7a862a39e"}); Alert.alert('השינוי לא נשמר', 'הפריט נשאר במצבו הקודם. נסו שוב.'); }
     finally { savingItems.current.delete(item.key); }
   };
   const accept = (item: WorkItem) => saveState(item, false);
@@ -209,13 +213,15 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
       if (!await clearDoneByClaude(item.docPath)) throw Error('SAVE_FAILED');
       setItems(prev=>prev.map(i=>i.key===item.key?{...i,state:'open',claude:null}:i));
       invalidateStream(item.stream);
-    } catch { Alert.alert('השינוי לא נשמר','המשימה עדיין ממתינה לאישור. נסו שוב.'); }
+    } catch (caughtErroreaa31c1909) {
+    observeCaughtError(caughtErroreaa31c1909, {"source":"pulse/src/screens/TasksScreen.tsx","handler":"withdraw","site":"TasksScreen:eaa31c1909"}); Alert.alert('השינוי לא נשמר','המשימה עדיין ממתינה לאישור. נסו שוב.'); }
   };
 
   const setPriority = async (item: WorkItem, p: TaskPriority) => {
     if (item.stream !== 'task') return;
     setItems((prev) => prev.map((i) => (i.key === item.key ? { ...i, priority: p } : i)));
-    await updateTask(item.id, { priority: p }, Date.now()).catch(() => {});
+    await updateTask(item.id, { priority: p }, Date.now()).catch((caughtErrorc073a9314f: unknown) => {
+    observeCaughtError(caughtErrorc073a9314f, {"source":"pulse/src/screens/TasksScreen.tsx","handler":"setPriority","site":"TasksScreen:c073a9314f"});});
   };
 
   const destroy = (item: WorkItem) => {
@@ -226,7 +232,8 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
         style: 'destructive',
         onPress: async () => {
           setItems((prev) => prev.filter((i) => i.key !== item.key));
-          try {if(!await (item.stream==='idea'?deleteIdea(item.id):removeTask(item.id)))throw Error();await reload(true);}catch{Alert.alert('המחיקה נכשלה','הרשימה תרוענן כדי להציג את המצב שנשמר.');await reload(true);}
+          try {if(!await (item.stream==='idea'?deleteIdea(item.id):removeTask(item.id)))throw Error();await reload(true);}catch (caughtErrorbb3a0ff2fc){
+    observeCaughtError(caughtErrorbb3a0ff2fc, {"source":"pulse/src/screens/TasksScreen.tsx","handler":"onPress","site":"TasksScreen:bb3a0ff2fc"});Alert.alert('המחיקה נכשלה','הרשימה תרוענן כדי להציג את המצב שנשמר.');await reload(true);}
         },
       },
     ]);
@@ -316,7 +323,8 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
                     key={item.key}
                     item={item}
                     onZoom={lightbox.open}
-                    onPromote={item.stream==='idea' ? async (status)=>{try{if(!await setIdeaStatus(item.id,status))throw Error();invalidateStream('idea');await reload(true);}catch{Alert.alert('השינוי לא נשמר','הרעיון נשאר במצבו הקודם.');}} : undefined}
+                    onPromote={item.stream==='idea' ? async (status)=>{try{if(!await setIdeaStatus(item.id,status))throw Error();invalidateStream('idea');await reload(true);}catch (caughtError79cf765b58){
+    observeCaughtError(caughtError79cf765b58, {"source":"pulse/src/screens/TasksScreen.tsx","handler":"TasksScreen","site":"TasksScreen:79cf765b58"});Alert.alert('השינוי לא נשמר','הרעיון נשאר במצבו הקודם.');}} : undefined}
                     onAccept={() => accept(item)}
                     onReopen={() => reopen(item)}
                     onWithdraw={() => withdraw(item)}
@@ -347,7 +355,8 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
           // thread cache is keyed inside the chat service, so force it.
           listAwaitingReply(true)
             .then(() => reload(true))
-            .catch(() => {});
+            .catch((caughtError1f6c590798: unknown) => {
+    observeCaughtError(caughtError1f6c590798, {"source":"pulse/src/screens/TasksScreen.tsx","handler":"TasksScreen","site":"TasksScreen:1f6c590798"});});
         }}
       />
 
@@ -422,7 +431,8 @@ function WorkRow({
       .then((r) => {
         if (alive) setShots(r);
       })
-      .catch(() => {
+      .catch((caughtError0547aacb1f: unknown) => {
+    observeCaughtError(caughtError0547aacb1f, {"source":"pulse/src/screens/TasksScreen.tsx","handler":"WorkRow","site":"TasksScreen:0547aacb1f"});
         if (alive) setShotsFailed(true);
       })
       .finally(() => {
@@ -722,7 +732,8 @@ function TaskComposer({
         });
       }
       onSaved();
-    } catch {
+    } catch (caughtError996b1ff5ed) {
+    observeCaughtError(caughtError996b1ff5ed, {"source":"pulse/src/screens/TasksScreen.tsx","handler":"save","site":"TasksScreen:996b1ff5ed"});
       Alert.alert('השמירה נכשלה', 'נסה שוב');
     } finally {
       setBusy(false);

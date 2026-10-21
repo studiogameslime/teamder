@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { upsertSavedGuest } from '@/utils/savedGuest';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { hasManualDraft, manualDraftRevision } from '@/utils/manualAllocation';
@@ -530,7 +531,8 @@ function useMatchRoundSummary(
       if (!summary && groupId) stopWatching = roundSummaryService.watch(gameId, groupId, accept, () => {
         if (ownsRead()) setRead(previous => ({ ...previous, status: 'error' }));
       });
-    }).catch(() => {
+    }).catch((caughtError3460b17d1d: unknown) => {
+    observeCaughtError(caughtError3460b17d1d, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"useMatchRoundSummary","site":"MatchDetailsScreen:3460b17d1d"});
       if (!ownsRead()) return;
       setRead((previous) => ({
         owner,
@@ -608,7 +610,7 @@ export function MatchDetailsScreen() {
     if (manualDraftKey) {
       AsyncStorage.getItem(manualDraftKey).then(raw => {
         if (active) setManualDraftScope(hasManualDraft(raw, savedDraftRevision) ? manualDraftKey : null);
-      }).catch(error => logError('manualDraftLookup', error, { gameId }));
+      }).catch(error => { observeCaughtError(error, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"MatchDetailsScreen","site":"MatchDetailsScreen:8391398b97"}); return logError('manualDraftLookup', error, { gameId }); });
     }
     return () => { active = false; };
   }, [manualDraftKey, gameId, savedDraftRevision]));
@@ -688,7 +690,8 @@ export function MatchDetailsScreen() {
       .then((blocked) => {
         if (alive) setRedBlocked(blocked);
       })
-      .catch(() => {
+      .catch((caughtError8b28c5895c: unknown) => {
+    observeCaughtError(caughtError8b28c5895c, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"MatchDetailsScreen","site":"MatchDetailsScreen:8b28c5895c"});
         if (alive) setRedBlocked(false);
       });
     return () => {
@@ -894,6 +897,7 @@ export function MatchDetailsScreen() {
       );
       if (uids.length > 0) hydratePlayers(uids);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"MatchDetailsScreen","site":"MatchDetailsScreen:12ce809dd6"});
       // Service surfaces a stable code for the rules-denied case; we
       // pivot the whole screen to the blocked-access render so no
       // game info ever mounts. Any other error stays opaque (logged
@@ -968,6 +972,7 @@ export function MatchDetailsScreen() {
         if (alive) setPreCheckConflict(c);
       })
       .catch((err) => {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"MatchDetailsScreen","site":"MatchDetailsScreen:3136612301"});
         if (__DEV__) {
           console.warn('[matchDetails] pre-check conflict failed', err);
         }
@@ -1026,7 +1031,8 @@ export function MatchDetailsScreen() {
     let alive = true;
     import('@/services/groupService').then(m=>m.groupService.getPublic(heroGroupId)).then(cover=>{
       if(alive)setPublicHeroCover({groupId:heroGroupId,ownerId:user.id,cover});
-    }).catch(()=>{if(alive)setPublicHeroCover({groupId:heroGroupId,ownerId:user.id,cover:null});});
+    }).catch((caughtError68d182a048: unknown) =>{
+    observeCaughtError(caughtError68d182a048, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"MatchDetailsScreen","site":"MatchDetailsScreen:68d182a048"});if(alive)setPublicHeroCover({groupId:heroGroupId,ownerId:user.id,cover:null});});
     return()=>{alive=false;};
   },[heroGroupId,memberHeroClub,user?.id]);
   const publicCoverResolved = publicHeroCover?.groupId===heroGroupId && publicHeroCover?.ownerId===user?.id;
@@ -1157,6 +1163,7 @@ export function MatchDetailsScreen() {
       setFillerState('sent');
       toast.success(he.fillerApplySent);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"onApplyAsFiller","site":"MatchDetailsScreen:653840416b"});
       // Reached at last: the helper used to swallow its own errors, so this
       // branch was dead and the screen said "נשלח" for applications the
       // server had refused.
@@ -1311,7 +1318,7 @@ export function MatchDetailsScreen() {
                 grp?.redCardValidityDays,
                 !!grp?.cardsEnabled,
               )
-              .catch(() => true)
+              .catch((caughtError06b2592c13: unknown) => { observeCaughtError(caughtError06b2592c13, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"performPrimary","site":"MatchDetailsScreen:06b2592c13"}); return true; })
           : false;
         setRedBlocked(stillBlocked);
         if (stillBlocked) {
@@ -1474,6 +1481,7 @@ export function MatchDetailsScreen() {
         }, JOIN_AUDIT_DELAY_MS);
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"performPrimary","site":"MatchDetailsScreen:685db85463"});
       if (__DEV__) {
         const e = err as { code?: string; message?: string; original?: unknown };
         console.warn(
@@ -1589,13 +1597,15 @@ export function MatchDetailsScreen() {
             startsAt: game.startsAt,
           });
           setPreCheckConflict(next);
-        } catch {
+        } catch (caughtErrorf52df4dd5b) {
+    observeCaughtError(caughtErrorf52df4dd5b, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"handleCancelConflicting","site":"MatchDetailsScreen:f52df4dd5b"});
           // Network hiccup on the post-check is non-blocking — the
           // authoritative re-check inside joinGameV2 will catch any
           // remaining clash when the user actually taps "הצטרף".
         }
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"handleCancelConflicting","site":"MatchDetailsScreen:7de51bd34c"});
       if (__DEV__) {
         console.warn('[matchDetails] cancel conflicting failed', err);
       }
@@ -1849,6 +1859,7 @@ export function MatchDetailsScreen() {
         logEvent(AnalyticsEvent.InviteShared, { gameId: game.id });
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"handleInvitePlayers","site":"MatchDetailsScreen:f4a0d022cc"});
       logError('matchInviteShare', err, {
         screen: 'MatchDetailsScreen',
         gameId: game.id,
@@ -1888,6 +1899,7 @@ export function MatchDetailsScreen() {
       });
       toast.success(he.toastGameJoined);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"handleConfirmSpotOffer","site":"MatchDetailsScreen:2052ac28c9"});
       logError('confirmSpotOffer', err, {
         screen: 'MatchDetailsScreen',
         gameId: game.id,
@@ -1972,7 +1984,8 @@ export function MatchDetailsScreen() {
     let copied = false;
     try {
       copied = (await Clipboard.setStringAsync(destination)) !== false;
-    } catch {
+    } catch (caughtError29451c2e6c) {
+    observeCaughtError(caughtError29451c2e6c, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"failNavigation","site":"MatchDetailsScreen:29451c2e6c"});
       copied = false;
     }
     toast.error(
@@ -1997,10 +2010,10 @@ export function MatchDetailsScreen() {
     const fLng = game.fieldLng;
     if (typeof fLat === 'number' && typeof fLng === 'number') {
       Linking.openURL(`waze://?ll=${fLat},${fLng}&navigate=yes`)
-        .catch(() =>
-          Linking.openURL(
+        .catch((caughtErrore2979a5915: unknown) =>
+          { observeCaughtError(caughtErrore2979a5915, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:e2979a5915"}); return Linking.openURL(
             `https://www.google.com/maps/search/?api=1&query=${fLat},${fLng}`,
-          ),
+          ); },
         )
         // A third rung, and the one that actually catches this in the wild.
         //
@@ -2010,15 +2023,15 @@ export function MatchDetailsScreen() {
         // ordinary state on a device with no browser set as default, not a
         // bug. `geo:` is the Android intent every maps app registers for, so
         // it succeeds where a web URL has nobody to hand it to.
-        .catch(() =>
-          Linking.openURL(`geo:${fLat},${fLng}?q=${fLat},${fLng}`),
+        .catch((caughtErrore2979a5915: unknown) =>
+          { observeCaughtError(caughtErrore2979a5915, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:e2979a5915"}); return Linking.openURL(`geo:${fLat},${fLng}?q=${fLat},${fLng}`); },
         )
         // …and TELL them. This path logged and returned, so the button did
         // nothing at all and said nothing about it — while the text-query
         // fallback thirty lines below has shown a toast all along. Same
         // failure, two behaviours, and the silent one was on the path most
         // games take.
-        .catch((err) => failNavigation(err, `${fLat},${fLng}`));
+        .catch((err) => { observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:e2979a5915"}); return failNavigation(err, `${fLat},${fLng}`); });
       return;
     }
 
@@ -2045,15 +2058,15 @@ export function MatchDetailsScreen() {
     // Waze's `q` param + `navigate=yes` jumps straight to navigation
     // instead of dropping the user on the search results screen.
     Linking.openURL(`waze://?q=${q}&navigate=yes`)
-      .catch(() =>
-        Linking.openURL(
+      .catch((caughtError3608605c19: unknown) =>
+        { observeCaughtError(caughtError3608605c19, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:3608605c19"}); return Linking.openURL(
           `https://www.google.com/maps/search/?api=1&query=${q}`,
-        ),
+        ); },
       )
       // Same third rung as the precise path above — a text query works as a
       // `geo:` intent too, via its `q` parameter.
-      .catch(() => Linking.openURL(`geo:0,0?q=${q}`))
-      .catch((err) => failNavigation(err, dest));
+      .catch((caughtError3608605c19: unknown) => { observeCaughtError(caughtError3608605c19, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:3608605c19"}); return Linking.openURL(`geo:0,0?q=${q}`); })
+      .catch((err) => { observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"openWaze","site":"MatchDetailsScreen:3608605c19"}); return failNavigation(err, dest); });
   };
 
   // The right invite link for THIS game: ALWAYS a direct session link to
@@ -2101,6 +2114,7 @@ export function MatchDetailsScreen() {
         logEvent(AnalyticsEvent.InviteShared, { gameId: game.id });
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"handleShare","site":"MatchDetailsScreen:62c5eb5f7a"});
       logError('matchShare', err, {
         screen: 'MatchDetailsScreen',
         gameId: game.id,
@@ -2120,6 +2134,7 @@ export function MatchDetailsScreen() {
       await gameService.setVisibility(game.id, target);
       await reload();
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"flipVisibility","site":"MatchDetailsScreen:993d041e41"});
       logError('matchSetVisibility', err, {
         screen: 'MatchDetailsScreen',
         gameId: game.id,
@@ -2151,6 +2166,7 @@ export function MatchDetailsScreen() {
               await seriesService.stop(game.seriesId as string);
               toast.success(he.stopSeriesSuccess);
             } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"onPress","site":"MatchDetailsScreen:c377a8cc7f"});
               logError('stopSeries', err, {
                 screen: 'MatchDetailsScreen',
                 gameId: game.id,
@@ -2241,6 +2257,7 @@ export function MatchDetailsScreen() {
         value: next ?? 'cleared',
       });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"handleSetTeamFeedback","site":"MatchDetailsScreen:8ce3a7882f"});
       logError('setDraftTeamFeedback', err, { gameId: game.id });
       toast.error(he.error);
       await reload();
@@ -2258,6 +2275,7 @@ export function MatchDetailsScreen() {
       });
       toast.success(he.autoBalanceNotifySent);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"handleNotifyTeams","site":"MatchDetailsScreen:55c74d4c4e"});
       logError('notifyTeamsReady', err, { gameId: game.id });
       toast.error(he.error);
     } finally {
@@ -2285,6 +2303,7 @@ export function MatchDetailsScreen() {
             });
             toast.success(he.draftPublishedToast);
           } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"onPress","site":"MatchDetailsScreen:be5344c6e2"});
             logError('publishDraftTeams', err, { gameId: game.id });
             toast.error(he.error);
           } finally {
@@ -2702,6 +2721,7 @@ export function MatchDetailsScreen() {
             );
             toast.success(he.guestRowRemoveSuccess);
           } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"onPress","site":"MatchDetailsScreen:90757f3506"});
             logError('removeGuest', err, {
               screen: 'MatchDetailsScreen',
               gameId: game.id,
@@ -2841,7 +2861,8 @@ export function MatchDetailsScreen() {
         gameId: game.id,
         numTeams: splitTeams.length,
       });
-    } catch {
+    } catch (caughtError9ccfb4ca0f) {
+    observeCaughtError(caughtError9ccfb4ca0f, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"handleExportTeams","site":"MatchDetailsScreen:9ccfb4ca0f"});
       /* user dismissed the share sheet */
     }
   };
@@ -3226,6 +3247,7 @@ export function MatchDetailsScreen() {
                     prev ? { ...prev, pinnedMessage: text || undefined } : prev,
                   );
                 } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"MatchDetailsScreen","site":"MatchDetailsScreen:bb256ae083"});
                   logError('setPinnedMessage', err, {
                     screen: 'MatchDetailsScreen',
                     gameId: game.id,
@@ -3778,6 +3800,7 @@ export function MatchDetailsScreen() {
             toast.success(he.deleteGameSuccess);
             nav.goBack();
           } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/MatchDetailsScreen.tsx","handler":"MatchDetailsScreen","site":"MatchDetailsScreen:6bdbd96a9a"});
             if (__DEV__) console.warn('[matchDetails] delete failed', err);
             toast.error(he.error);
           }

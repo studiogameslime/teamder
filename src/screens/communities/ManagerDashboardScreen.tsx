@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ImageBackground, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -75,7 +76,8 @@ export function ManagerDashboardScreen() {
    let active=true;setLoading(true);setError('');setSnapshot(null);setNow(Date.now());setRatingTarget(null);setDetails(null);
    if(!me) {setLoading(false);setError('לוח המנהל זמין למנהלי המועדון בלבד');return;}
    const stopAccess=watchManagerAccess(groupId,me.id,allowed=>{if(!allowed){active=false;setSnapshot(null);setLoading(false);setError('לוח המנהל זמין למנהלי המועדון בלבד');setRatingTarget(null);setDetails(null);}});
-   loadManagerDashboard(groupId,me.id).then(value=>{if(active)setSnapshot({owner:me.id,data:value});}).catch(err=>{if(active){logError('loadManagerDashboard',err,{groupId});setError(managerLoadErrorMessage(err));}}).finally(()=>{if(active)setLoading(false);});
+   loadManagerDashboard(groupId,me.id).then(value=>{if(active)setSnapshot({owner:me.id,data:value});}).catch(err=>{
+    observeCaughtError(err, {"source":"src/screens/communities/ManagerDashboardScreen.tsx","handler":"ManagerDashboardScreen","site":"ManagerDashboardScreen:f26a3e4703"});if(active){logError('loadManagerDashboard',err,{groupId});setError(managerLoadErrorMessage(err));}}).finally(()=>{if(active)setLoading(false);});
    return ()=>{active=false;stopAccess();};
  },[groupId,me?.id,refresh]));
  useEffect(()=>{setTab(initialTab(route.params.initialTab));setFilter(route.params.initialFilter??'all');},[groupId,route.params.initialTab,route.params.initialFilter]);
@@ -95,7 +97,8 @@ export function ManagerDashboardScreen() {
    if(!data||!me||!ratingTarget||saving)return;
    setSaving(true);
    try {await groupService.setAdminRating(groupId,me.id,ratingTarget.id,value);logEvent(value===null?AnalyticsEvent.RatingCleared:AnalyticsEvent.PlayerRated,{groupId,rating:value,wasRated:true});setRatingTarget(null);setRefresh(v=>v+1);toast.success('הדירוג עודכן');}
-   catch {toast.error('לא ניתן לעדכן את הדירוג');}finally{setSaving(false);}
+   catch (caughtErrorfde2e5c3cb) {
+    observeCaughtError(caughtErrorfde2e5c3cb, {"source":"src/screens/communities/ManagerDashboardScreen.tsx","handler":"saveRating","site":"ManagerDashboardScreen:fde2e5c3cb"});toast.error('לא ניתן לעדכן את הדירוג');}finally{setSaving(false);}
  };
  const periodPicker=<View style={s.period}>{([30,90,...(data?.group.seasons?.enabled?['season']:[])] as Period[]).map(p=><Pressable key={p} accessibilityRole="button" accessibilityState={{selected:period===p}} onPress={()=>setPeriod(p)} style={[s.periodItem,period===p&&s.periodActive]}><Label style={[s.periodLabel,period===p&&{color:'#FFF'}]}>{p===30?'חודש':p===90?'3 חודשים':'עונה'}</Label></Pressable>)}</View>;
  const person=(id:string,subtitle:string)=><View key={id} style={s.person}>

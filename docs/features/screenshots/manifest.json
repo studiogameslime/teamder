@@ -18803,5 +18803,31 @@
       "לקוח פיתוח מקומי, חשבון הבדיקה הראשון; אינו צילום מגרסת החנות."
     ],
     "sha256": "d11e4328ec03ecf2f77df85b03c3b607de645061c1370f117f3d364f7aab29d1"
+  },
+  {
+    "file": "manager-pulse-2026-10-21-before.jpg",
+    "source": "docs/audits/evidence/pulse-handoff-2026-10-21/manager-before.jpg",
+    "platform": "Chromium / react-native-web",
+    "environment": "תצוגת רכיבי לוח המנהל עם נתוני בדיקה",
+    "sourceCommit": "e6f205f4fe9f278ac3d7f3cb049fb06b31252bb7",
+    "captured": "2026-10-21",
+    "notes": [
+      "רכיבי ManagerClubInsights ו־ManagerClubExtras עצמם; התאמות דפדפן לאייקונים, חלוניות ושירותי נתונים.",
+      "לא בדיקת מכשיר אנדרואיד או אייפון; נתוני הדיווח משוחזרים בזיכרון."
+    ],
+    "sha256": "b80167a9721441b63d7bcd2ea62aabe8b520e21cbc4aaebfb37ae7bd31657f97"
+  },
+  {
+    "file": "manager-pulse-2026-10-21-after.jpg",
+    "source": "docs/audits/evidence/pulse-handoff-2026-10-21/manager-after.jpg",
+    "platform": "Chromium / react-native-web",
+    "environment": "תצוגת רכיבי לוח המנהל עם נתוני בדיקה",
+    "sourceCommit": "e6f205f4fe9f278ac3d7f3cb049fb06b31252bb7 + local changes",
+    "captured": "2026-10-21",
+    "notes": [
+      "רכיבי ManagerClubInsights ו־ManagerClubExtras עצמם; התאמות דפדפן לאייקונים, חלוניות ושירותי נתונים.",
+      "לא בדיקת מכשיר אנדרואיד או אייפון; נתוני הדיווח משוחזרים בזיכרון."
+    ],
+    "sha256": "9f57b4e07e386a548982e432429294ec9d7587d509b8ebe68bfb157ace0d34e0"
   }
 ]

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // FriendsInvitePicker — multi-select of the organizer's friends, shown in
 // the quick-game wizard. Selected ids are handed back to the form and
 // turned into `inviteToGame` pushes the moment the game is created.
@@ -58,6 +59,7 @@ export function FriendsInvitePicker({ selected, onChange, exclude }: Props) {
           setLoading(false);
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"src/components/games/FriendsInvitePicker.tsx","handler":"FriendsInvitePicker","site":"FriendsInvitePicker:c5339bee12"});
         logError('listFriendsForInvite', err, {
           screen: 'FriendsInvitePicker',
           userId: me.id,

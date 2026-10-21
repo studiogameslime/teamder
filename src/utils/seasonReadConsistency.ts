@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 import type { GroupSeasons } from '@/types';
 
 /** Firestore may keep retrying a lost connection without settling a read.
@@ -6,7 +7,8 @@ export function withSeasonReadTimeout<T>(read: Promise<T>, timeoutMs = 30_000): 
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(Object.assign(new Error('Season statistics read timed out'),
       { code: 'deadline-exceeded' })), timeoutMs);
-    read.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+    read.then(value => { clearTimeout(timer); resolve(value); }, error => {
+    observeCaughtError(error, {"source":"src/utils/seasonReadConsistency.ts","handler":"withSeasonReadTimeout","site":"seasonReadConsistency:a85036a9e1"}); clearTimeout(timer); reject(error); });
   });
 }
 

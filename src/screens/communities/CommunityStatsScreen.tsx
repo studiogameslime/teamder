@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { ScrollSurface } from '@/components/ScrollSurface';
 // CommunityStatsScreen — the club's collective statistics dashboard.
 //
@@ -276,7 +277,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
           gameService.getCommunityChampionship(groupId, undefined, true),
           gameService.getCommunityStats(groupId, current.seasons?.enabled && current.seasons.currentId
             ? { currentId: current.seasons.currentId, currentNo: current.seasons.currentNo ?? 1 } : undefined, true),
-          gameService.getCommunityDeadlyDuo(groupId).catch(() => null),
+          gameService.getCommunityDeadlyDuo(groupId).catch((caughtErrorb4333c7ff8: unknown) => { observeCaughtError(caughtErrorb4333c7ff8, {"source":"src/screens/communities/CommunityStatsScreen.tsx","handler":"CommunityStatsScreen","site":"CommunityStatsScreen:b4333c7ff8"}); return null; }),
         ]),
       );
       if (!alive) return;
@@ -318,7 +319,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
               else setPastFailed(true);
               setPastLoaded(true);
             })
-            .catch(() => {
+            .catch((caughtError12e4a8681d: unknown) => {
+    observeCaughtError(caughtError12e4a8681d, {"source":"src/screens/communities/CommunityStatsScreen.tsx","handler":"CommunityStatsScreen","site":"CommunityStatsScreen:12e4a8681d"});
               if (alive) { setPastFailed(true); setPastLoaded(true); }
             });
         } else {
@@ -381,7 +383,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
       if (s?.lifetime?.longestStreakUid) ids.add(s.lifetime.longestStreakUid);
       if (s?.topPlayers?.[0]?.uid) ids.add(s.topPlayers[0].uid);
       const fetched = await Promise.all(
-        Array.from(ids).map((id) => userService.getUserById(id).catch(() => null)),
+        Array.from(ids).map((id) => userService.getUserById(id).catch((caughtErrorb5bb5446a2: unknown) => { observeCaughtError(caughtErrorb5bb5446a2, {"source":"src/screens/communities/CommunityStatsScreen.tsx","handler":"CommunityStatsScreen","site":"CommunityStatsScreen:b5bb5446a2"}); return null; })),
       );
       if (!alive) return;
       const map: Record<string, Resolved> = {};
@@ -391,6 +393,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
       setPeople(map);
       setLoading(false);
     })().catch((error) => {
+    observeCaughtError(error, {"source":"src/screens/communities/CommunityStatsScreen.tsx","handler":"CommunityStatsScreen","site":"CommunityStatsScreen:d930b103f5"});
       if (alive) { setLoadFailed(true); logError('loadCommunityStatistics', error, { groupId }); }
     }).finally(() => {
       if (alive) setLoading(false);
@@ -496,6 +499,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
         else setArchive(t as FinishedSeasonTable);
       })
       .catch((error) => {
+    observeCaughtError(error, {"source":"src/screens/communities/CommunityStatsScreen.tsx","handler":"CommunityStatsScreen","site":"CommunityStatsScreen:510379c91d"});
         if (!alive) return;
         setArchiveBusy(false);
         setArchiveFailed(true);
@@ -551,7 +555,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
       .then((r) => {
         if (alive) setEveningStats(r.evenings);
       })
-      .catch(() => undefined);
+      .catch((caughtErrore00efc2a7e: unknown) => { observeCaughtError(caughtErrore00efc2a7e, {"source":"src/screens/communities/CommunityStatsScreen.tsx","handler":"CommunityStatsScreen","site":"CommunityStatsScreen:e00efc2a7e"}); return undefined; });
     return () => {
       alive = false;
     };

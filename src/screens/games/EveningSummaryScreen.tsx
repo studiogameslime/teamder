@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 import { ScrollSurface } from '@/components/ScrollSurface';
 // EveningSummaryScreen — shows the shareable "סיכום הערב" card for the
 // current user in a finished game, with a Share button that captures the
@@ -95,6 +96,7 @@ export function EveningSummaryScreen() {
         if (alive) setModel({ ...m, personalRecords });
       }
     })().catch((error) => {
+    observeCaughtError(error, {"source":"src/screens/games/EveningSummaryScreen.tsx","handler":"EveningSummaryScreen","site":"EveningSummaryScreen:42d05f6b1d"});
       if (!alive) return;
       logError('loadEveningSummary', error, { gameId });
       setFailed(true);
@@ -130,6 +132,7 @@ export function EveningSummaryScreen() {
         toast.error(he.summaryShareUnavailable);
       }
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/EveningSummaryScreen.tsx","handler":"onShare","site":"EveningSummaryScreen:2135cafc93"});
       logError('shareEveningSummary', err, { gameId });
       toast.error(he.summaryShareFailed);
     } finally {

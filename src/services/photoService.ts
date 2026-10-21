@@ -1,3 +1,5 @@
+import { observeCaughtError } from '../utils/errorObservation';
+
 // Profile photo upload pipeline.
 //
 // pickAndUploadAvatar() opens the native gallery picker, lets the
@@ -57,6 +59,7 @@ function loadNativePickers():
     }
     return { ok: true, ImagePicker, ImageManipulator };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/photoService.ts","handler":"loadNativePickers","site":"photoService:9891adfacd"});
     if (__DEV__) {
       console.warn(
         '[photoService] native picker module not linked — rebuild the dev client',
@@ -147,6 +150,7 @@ export async function pickAndUploadAvatar(
       { compress: JPEG_QUALITY, format: ImageManipulator.SaveFormat.JPEG },
     );
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/photoService.ts","handler":"pickAndUploadAvatar","site":"photoService:7d2b7cf776"});
     logError('pickAndUploadAvatar', err, { uid });
     return { ok: false, reason: 'unknown', err };
   }
@@ -159,6 +163,7 @@ export async function pickAndUploadAvatar(
     const res = await fetch(resized.uri);
     blob = await res.blob();
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/photoService.ts","handler":"pickAndUploadAvatar","site":"photoService:b6038a69ed"});
     logError('uploadAvatar', err, { reason: 'network' });
     return { ok: false, reason: 'network', err };
   }
@@ -171,6 +176,7 @@ export async function pickAndUploadAvatar(
     const url = await getDownloadURL(objectRef);
     return { ok: true, url };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/photoService.ts","handler":"pickAndUploadAvatar","site":"photoService:f44c1e6b65"});
     logError('uploadAvatar', err, { reason: 'network' });
     return { ok: false, reason: 'network', err };
   }
@@ -229,6 +235,7 @@ export async function pickAndUploadGroupCover(
       },
     );
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/photoService.ts","handler":"pickAndUploadGroupCover","site":"photoService:8254dbee74"});
     logError('pickAndUploadGroupCover', err, { groupId });
     return { ok: false, reason: 'unknown', err };
   }
@@ -257,6 +264,7 @@ export async function pickAndUploadGroupCover(
     if (!url) return { ok: false, reason: 'network' };
     return { ok: true, url };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/photoService.ts","handler":"pickAndUploadGroupCover","site":"photoService:a982c10819"});
     logError('uploadGroupCover', err, { groupId });
     return { ok: false, reason: 'network', err };
   }
@@ -276,6 +284,7 @@ export async function deleteUserPhoto(uid: string): Promise<void> {
   } catch (err) {
     // Deleting an absent avatar has already achieved the requested state.
     if ((err as { code?: string })?.code === 'storage/object-not-found') return;
+    observeCaughtError(err, {"source":"src/services/photoService.ts","handler":"deleteUserPhoto","site":"photoService:7585f06c2d"});
     logError('deleteUserPhoto', err, { uid });
     // 404 / permission-denied / network — all acceptable.
   }

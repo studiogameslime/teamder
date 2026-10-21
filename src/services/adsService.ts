@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // adsService — wraps react-native-google-mobile-ads with safe degradation.
 //
 // Key design choice: AdMob is OFF BY DEFAULT.
@@ -199,6 +200,7 @@ function loadAdsMod(): AdsModule | null {
     const mod = require(moduleName);
     adsMod = mod && typeof mod === 'object' ? (mod as AdsModule) : null;
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/adsService.ts","handler":"loadAdsMod","site":"adsService:eb59271f0c"});
     logError('adsLoadModule', err, {});
     if (__DEV__) console.warn('[ads] native module not available — ads disabled', err);
     adsMod = null;
@@ -300,6 +302,7 @@ async function refreshAdsMaster(): Promise<void> {
       }
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/adsService.ts","handler":"refreshAdsMaster","site":"adsService:1201931385"});
     if (__DEV__) console.warn('[ads] refreshAdsMaster failed', err);
   } finally {
     // Mark loaded even on failure: a genuine read error falls back to the
@@ -361,6 +364,7 @@ export const adsService = {
       try {
         mod = loadAdsMod();
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/adsService.ts","handler":"initializeAds","site":"adsService:efdff74bb3"});
         logError('adsInitLoadModule', err, {});
         if (__DEV__) console.warn('[ads] loadAdsMod threw', err);
         return;
@@ -385,6 +389,7 @@ export const adsService = {
           appOpenAdHandle.load();
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"src/services/adsService.ts","handler":"initializeAds","site":"adsService:6075600f88"});
         logError('initializeAds', err, {});
         if (__DEV__) console.warn('[ads] initializeAds failed', err);
       }
@@ -449,7 +454,8 @@ export const adsService = {
     let gate: { lastShownAt: number; day: string; countToday: number };
     try {
       gate = await storage.getAppOpenAdState();
-    } catch {
+    } catch (caughtError836d98b4f2) {
+    observeCaughtError(caughtError836d98b4f2, {"source":"src/services/adsService.ts","handler":"showAppOpenAdIfAvailable","site":"adsService:836d98b4f2"});
       gate = { lastShownAt: 0, day: '', countToday: 0 };
     }
     if (Date.now() - gate.lastShownAt < rcNumber('app_open_cooldown_ms')) return;
@@ -459,7 +465,8 @@ export const adsService = {
     let mod: AdsModule | null = null;
     try {
       mod = loadAdsMod();
-    } catch {
+    } catch (caughtErrora5ec13cdb3) {
+    observeCaughtError(caughtErrora5ec13cdb3, {"source":"src/services/adsService.ts","handler":"showAppOpenAdIfAvailable","site":"adsService:a5ec13cdb3"});
       return;
     }
     if (!mod || !appOpenAdHandle) return;
@@ -479,8 +486,9 @@ export const adsService = {
           day: today,
           countToday: countToday + 1,
         })
-        .catch(() => undefined);
+        .catch((caughtErrore3eff8532a: unknown) => { observeCaughtError(caughtErrore3eff8532a, {"source":"src/services/adsService.ts","handler":"showAppOpenAdIfAvailable","site":"adsService:e3eff8532a"}); return undefined; });
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/adsService.ts","handler":"showAppOpenAdIfAvailable","site":"adsService:cc9fb0e8ec"});
       logError('showAppOpenAd', err, {});
       if (__DEV__) console.warn('[ads] showAppOpenAdIfAvailable failed', err);
     }
@@ -520,7 +528,8 @@ export function BannerAd(): React.ReactElement | null {
   let mod: AdsModule | null = null;
   try {
     mod = loadAdsMod();
-  } catch {
+  } catch (caughtError7cb3bf10ae) {
+    observeCaughtError(caughtError7cb3bf10ae, {"source":"src/services/adsService.ts","handler":"BannerAd","site":"adsService:7cb3bf10ae"});
     return null;
   }
   if (!mod) return null;

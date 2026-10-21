@@ -1,0 +1,8 @@
+{
+  "source": "src/services/photoService.ts",
+  "function": "deleteUserPhoto",
+  "code": "export async function deleteUserPhoto(uid: string): Promise<void> {\n  if (!uid || USE_MOCK_DATA) return;\n  try {\n    const { storage } = getFirebase();\n    await deleteObject(storageRef(storage, AVATAR_PATH(uid)));\n  } catch (err) {\n    // Deleting an absent avatar has already achieved the requested state.\n    if ((err as { code?: string })?.code === 'storage/object-not-found') return;\n    observeCaughtError(err, {\"source\":\"src/services/photoService.ts\",\"handler\":\"deleteUserPhoto\",\"site\":\"photoService:7585f06c2d\"});\n    logError('deleteUserPhoto', err, { uid });\n    // 404 / permission-denied / network — all acceptable.\n  }\n}",
+  "test": "tests/logic/pulse18ReadFailures.test.ts",
+  "result": "33 tests passed in 4 focused suites",
+  "limit": "בדיקה מבודדת של הקוד; לא מחיקה בייצור ולא בדיקת מכשיר. התיקון מקומי וטרם הופץ."
+}

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // LEGACY, not registered in the current RootNavigator (2026-10-10).
 // Active entry: IntentScreen and PostSignupOnboarding. Keep this historical
 // presentation separate; see docs/features/entry/legacy-and-hidden.md.
@@ -89,7 +90,8 @@ export function OnboardingScreen() {
     logEvent(AnalyticsEvent.OnboardingCompleted, { via: 'cta', slide: index + 1 });
     try {
       await completeOnboarding();
-    } catch {
+    } catch (caughtError9e900a9939) {
+    observeCaughtError(caughtError9e900a9939, {"source":"src/screens/onboarding/OnboardingScreen.tsx","handler":"handleStart","site":"OnboardingScreen:9e900a9939"});
       // no-op
     } finally {
       setBusy(false);

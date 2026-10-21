@@ -1,9 +1,11 @@
+import { observeCaughtError } from '../../src/utils/errorObservation';
 // JS handle for the iOS WatchConnectivity sender (Expo native module).
 // Android uses the classic NativeModules.WatchBridge (Wear Data Layer) instead;
 // this local module is iOS-only (see expo-module.config.json).
 import { requireNativeModule } from 'expo-modules-core';
 
 export interface WatchBridge {
+  takeDiagnostics?(): Promise<string[]>;
   /** Push the stringified WatchPayload to the paired Apple Watch. */
   publishState(json: string): Promise<void>;
   /** True only when a paired Apple Watch has the Teamder watch app installed. */
@@ -14,7 +16,8 @@ export interface WatchBridge {
 export function getWatchBridge(): WatchBridge | null {
   try {
     return requireNativeModule('WatchBridge') as WatchBridge;
-  } catch {
+  } catch (caughtErrorfd28c6d1ed) {
+    observeCaughtError(caughtErrorfd28c6d1ed, {"source":"modules/watch-bridge/index.ts","handler":"getWatchBridge","site":"index:fd28c6d1ed"});
     return null;
   }
 }

@@ -1,0 +1,50 @@
+{
+  "status": "uploaded_and_verified",
+  "target": "appConfig/releaseLog",
+  "reason": "ששת רישומי ההרחבה נוספו ליומן הקיים ונקראו חזרה; version next, ללא הפצה.",
+  "items": [
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "דיווח שגיאות",
+      "title": "כיסוי תפיסות שגיאה, דחיות מקבילות ומאזיני מסד עם מקור והקשר",
+      "localOnly": true
+    },
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "דיווח שגיאות",
+      "title": "מניעת ספירה חוזרת של אותו אובייקט שגיאה ושמירת כשלי רשת מסווגים",
+      "localOnly": true
+    },
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "דיווח שגיאות",
+      "title": "קבלות משלוח למניעת ספירה כפולה אחרי אובדן תשובה",
+      "localOnly": true
+    },
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "דיווח שגיאות",
+      "title": "הפרדת מנות ממתינות ממופעים חדשים ושמירת עד 200 מנות מקומיות עם דיווח חריגה",
+      "localOnly": true
+    },
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "שרת",
+      "title": "איסוף כשלים לכל הפעלת שרת, צנזור, איגוד ושימור מזהי דיווחי העונות",
+      "localOnly": true
+    },
+    {
+      "version": "next",
+      "kind": "fix",
+      "area": "פולס",
+      "title": "דיווח עצמי דרך החיבור המאומת, כתיבה מותנית ושמירת כשלי אתחול וכתיבה",
+      "localOnly": true
+    }
+  ],
+  "receipt": "../pulse-handoff-2026-10-21/release-log-live-receipt.json"
+}

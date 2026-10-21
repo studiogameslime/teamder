@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // actionResumers — what each action kind does when it is resumed after a sign-in.
 //
 // Registered at module scope, imported once from App.tsx. Deliberately NOT in
@@ -103,6 +104,7 @@ registerResumer('join_game', async (action: PendingAction): Promise<ActionResult
       terminal: true,
     };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionResumers.ts","handler":"module","site":"actionResumers:ae8a788b88"});
     const code = (err as { code?: string })?.code ?? '';
     // Signing into an account that had already joined is an ordinary thing to
     // do, not a failure.
@@ -142,6 +144,7 @@ registerResumer('apply_filler', async (action: PendingAction): Promise<ActionRes
     // place; it puts the person in front of an admin.
     return { outcome: 'approval_pending', terminal: true };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionResumers.ts","handler":"module","site":"actionResumers:7b2e3e9501"});
     const code = (err as { code?: string })?.code ?? '';
     // `already-exists` means the interest is already on record — which is the
     // state the person was asking for. Not a failure.
@@ -174,7 +177,8 @@ registerResumer('join_club', async (action: PendingAction): Promise<ActionResult
   // Best-effort, and tolerant of a store that cannot answer: this is a guard
   // against acting on a half-loaded list, not a dependency.
   if (!groupState.hydrated && typeof groupState.hydrate === 'function') {
-    await groupState.hydrate(me.id).catch(() => {});
+    await groupState.hydrate(me.id).catch((caughtErrorace291e804: unknown) => {
+    observeCaughtError(caughtErrorace291e804, {"source":"src/services/actionResumers.ts","handler":"module","site":"actionResumers:ace291e804"});});
   }
   if (!isCurrentUser(me.id)) return { outcome: 'joined', terminal: false, reason: 'unknown' };
   if (useGroupStore.getState().groups.some((g) => g.id === groupId)) {
@@ -191,6 +195,7 @@ registerResumer('join_club', async (action: PendingAction): Promise<ActionResult
       terminal: true,
     };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionResumers.ts","handler":"module","site":"actionResumers:dd590bfb36"});
     return fromError(err, 'resumeJoinClub');
   }
 });
@@ -241,6 +246,7 @@ registerResumer('create_club', async (action: PendingAction): Promise<ActionResu
     navigateAfterCreate({ type: 'club', id: groupId });
     return { outcome: 'created', terminal: true };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionResumers.ts","handler":"module","site":"actionResumers:e83107142c"});
     return fromError(err, 'resumeCreateClub');
   }
 });
@@ -271,6 +277,7 @@ registerResumer('create_game', async (action: PendingAction): Promise<ActionResu
     try {
       club = await groupService.get(groupId);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionResumers.ts","handler":"module","site":"actionResumers:910196c31a"});
       const result = fromError(err, 'resumeCreateGameClubRead', 'created');
       return { ...result, terminal: false, reason: result.reason ?? 'unknown' };
     }
@@ -294,6 +301,7 @@ registerResumer('create_game', async (action: PendingAction): Promise<ActionResu
   try {
     submitted = await hasDraftCreationAttempt('game', me.id, draft.id);
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionResumers.ts","handler":"module","site":"actionResumers:7d8fc4fe54"});
     return { ...fromError(err, 'resumeCreationAttempt'), terminal: false };
   }
   if (!isCurrentUser(me.id)) return { outcome: 'created', terminal: false, reason: 'unknown' };
@@ -316,6 +324,7 @@ registerResumer('create_game', async (action: PendingAction): Promise<ActionResu
     navigateAfterCreate({ type: 'game', id: gameId });
     return { outcome: 'created', terminal: true };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionResumers.ts","handler":"module","site":"actionResumers:faa61d2ccb"});
     // A VALIDATION failure is not a failure of the resumer.
     //
     // `createGameFromValues` throws a plain Error with a Hebrew message when
@@ -370,6 +379,7 @@ registerResumer('save_availability', async (action: PendingAction): Promise<Acti
     await persistAvailability(me.id, availability, coords ?? null);
     return { outcome: 'created', terminal: true };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/actionResumers.ts","handler":"module","site":"actionResumers:43dfdc995d"});
     return fromError(err, 'resumeSaveAvailability');
   }
 });

@@ -1,6 +1,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  setupFilesAfterEnv: ['<rootDir>/tests/setupErrorObservation.ts'],
   globalSetup: '<rootDir>/tests/setup-generated-templates.cjs',
   // Avoid VM global lookup overhead in Math-heavy performance checks.
   sandboxInjectedGlobals: ['Math'],

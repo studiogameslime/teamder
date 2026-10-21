@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { readSeasonArchiveData } from './seasonArchiveData';
 // seasonSummaryService — one player's season, fetched.
 //
@@ -305,7 +306,7 @@ async function resolvePeers(
     else missing.push(uid);
   }
   // Same public identity batch as the statistics screen; no private player reads.
-  const users = await groupService.hydrateUsers(missing).catch(() => []);
+  const users = await groupService.hydrateUsers(missing).catch((caughtError30dac58d6a: unknown) => { observeCaughtError(caughtError30dac58d6a, {"source":"src/services/seasonSummaryService.ts","handler":"resolvePeers","site":"seasonSummaryService:30dac58d6a"}); return []; });
   for (const u of users) {
     if (u.name) names[u.id] = u.name;
     if (u.avatarId || u.photoUrl) avatars[u.id] = {
@@ -422,7 +423,8 @@ export const seasonSummaryService = {
       // former member can still read their frozen archive independently.
       let groupSnap: Awaited<ReturnType<typeof getDoc>> | undefined;
       if (seasonId) {
-        try { groupSnap = await getDoc(doc(db, 'groups', groupId)); } catch { /* archive access is independent */ }
+        try { groupSnap = await getDoc(doc(db, 'groups', groupId)); } catch (caughtErrorb4ed59465a) {
+    observeCaughtError(caughtErrorb4ed59465a, {"source":"src/services/seasonSummaryService.ts","handler":"load","site":"seasonSummaryService:b4ed59465a"}); /* archive access is independent */ }
         const known = (groupSnap?.data() as { seasons?: GroupSeasons } | undefined)?.seasons;
         if (!(known?.enabled && known.currentId === seasonId)) {
         const archived = await getDoc(
@@ -526,6 +528,7 @@ export const seasonSummaryService = {
         available: seasonChoices(seasons),
       };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/seasonSummaryService.ts","handler":"load","site":"seasonSummaryService:0e169caccb"});
       logError('seasonSummaryLoad', err, { groupId, userId, seasonId: seasonId ?? '' });
       // NOT null. Null means "this club does not run seasons", and saying that
       // to somebody who just tapped a push about a season they played — because

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // ErrorBoundary — catches uncaught render-time exceptions in any React
 // subtree and shows a Hebrew RTL fallback UI instead of leaving the app
 // frozen on a white screen (production) or a Metro red box (dev).
@@ -60,7 +61,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
     if (this.props.onError) {
       try {
         this.props.onError(error, info);
-      } catch {
+      } catch (caughtErrorf17e125df0) {
+    observeCaughtError(caughtErrorf17e125df0, {"source":"src/components/ErrorBoundary.tsx","handler":"componentDidCatch","site":"ErrorBoundary:f17e125df0"});
         // A faulty reporter must never re-crash the boundary itself.
       }
     } else if (__DEV__) {

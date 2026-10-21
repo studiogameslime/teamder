@@ -1,3 +1,4 @@
+import { observeCaughtError } from './serverErrorLog';
 // Closing a season: archive, then zero. Never delete, never on a clock.
 //
 // This is the only destructive path in the app that runs unattended, so the
@@ -675,6 +676,7 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     });
     await archiveBatch.commit();
   } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/seasonRollover.ts","handler":"closeSeason","site":"seasonRollover:883c85ade3"});
     const code = (err as { code?: number | string }).code;
     if (code !== 6 && code !== 'already-exists') throw err;
 

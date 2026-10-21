@@ -1,3 +1,4 @@
+import { observeCaughtError } from './errorObservation';
 // Local notifications (no server / no FCM). The poller fires these when a
 // new review appears, even from the background task.
 //
@@ -97,7 +98,8 @@ export async function getDevicePushToken(): Promise<string | null> {
     if (!(await ensureNotificationSetup())) return null;
     const t = await Notifications.getDevicePushTokenAsync();
     return typeof t.data === 'string' ? t.data : null;
-  } catch {
+  } catch (caughtErroraec9fa164d) {
+    observeCaughtError(caughtErroraec9fa164d, {"source":"pulse/src/services/notify.ts","handler":"getDevicePushToken","site":"notify:aec9fa164d"});
     return null;
   }
 }

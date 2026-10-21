@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Handles taps on the action buttons we attach to `gameReminder`
 // pushes — "אני בא" → JOIN_GAME, "לא בא" → CANCEL_GAME — and the
 // `spotOffered` push (head of waitlist getting offered an open
@@ -54,7 +55,8 @@ export async function handleGameReminderAction(
           content: { title: 'Teamder', body, data: { type: 'gameReminder', gameId } },
           trigger: null,
         });
-      } catch {
+      } catch (caughtErrorff0c45fc57) {
+    observeCaughtError(caughtErrorff0c45fc57, {"source":"src/services/notificationActionService.ts","handler":"handleGameReminderAction","site":"notificationActionService:ff0c45fc57"});
         // ignore — confirmation is a nicety, not required for the join
       }
     } else {
@@ -65,6 +67,7 @@ export async function handleGameReminderAction(
       });
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationActionService.ts","handler":"handleGameReminderAction","site":"notificationActionService:e7c164d478"});
     // REGISTRATION_CONFLICT is an EXPECTED outcome here, not a failure:
     // the user tapped "אני בא" from a reminder while already booked into
     // an overlapping game. The join is correctly refused server-side;
@@ -127,10 +130,12 @@ export async function handleSpotOfferAction(
         content: { title: 'Teamder', body, data: { type: 'gameReminder', gameId } },
         trigger: null,
       });
-    } catch {
+    } catch (caughtErrorfbe7082d68) {
+    observeCaughtError(caughtErrorfbe7082d68, {"source":"src/services/notificationActionService.ts","handler":"handleSpotOfferAction","site":"notificationActionService:fbe7082d68"});
       // ignore — confirmation is a nicety, not required for the action
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationActionService.ts","handler":"handleSpotOfferAction","site":"notificationActionService:40454a8ffb"});
     // EXPECTED outcomes — the offer simply isn't actionable anymore (it
     // passed/expired, was filled, the game closed, etc.). These are normal
     // product behaviour, not failures, so don't log them as errors (was
@@ -238,6 +243,7 @@ export async function handleFillerOpportunityAction(
     const fn = httpsCallable(functions, 'submitFillerInterest');
     await fn({ gameId });
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/notificationActionService.ts","handler":"handleFillerOpportunityAction","site":"notificationActionService:9f6ce474b1"});
     // Logged here because this is where the context is, then RE-THROWN so the
     // caller can tell the person the truth. Common server answers: the game
     // filled up, the admin disabled fillers, interest was already submitted.

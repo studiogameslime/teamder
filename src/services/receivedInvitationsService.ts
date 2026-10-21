@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { useUserStore } from '@/store/userStore';
@@ -16,11 +17,11 @@ async function withPreviews(items: ReceivedInvitation[], uid: string): Promise<R
   if (!items.length) return items;
   const clubs = new Map<string, ReturnType<typeof groupService.getPublic>>();
   const club = (id: string) => {
-    if (!clubs.has(id)) clubs.set(id, groupService.getPublic(id).catch(() => null));
+    if (!clubs.has(id)) clubs.set(id, groupService.getPublic(id).catch((caughtError71e70f241f: unknown) => { observeCaughtError(caughtError71e70f241f, {"source":"src/services/receivedInvitationsService.ts","handler":"club","site":"receivedInvitationsService:71e70f241f"}); return null; }));
     return clubs.get(id)!;
   };
   const inviterIds = [...new Set(items.map(item => item.payload.inviterId).filter((id): id is string => typeof id === 'string' && !!id))];
-  const people = await groupService.hydratePublicUsers(inviterIds).catch(() => []);
+  const people = await groupService.hydratePublicUsers(inviterIds).catch((caughtError03ee5dd9bc: unknown) => { observeCaughtError(caughtError03ee5dd9bc, {"source":"src/services/receivedInvitationsService.ts","handler":"withPreviews","site":"receivedInvitationsService:03ee5dd9bc"}); return []; });
   const rows = await Promise.all(items.map(async item => {
     const person = people.find(p => p.id === item.payload.inviterId);
     const identity = { inviterPhotoUrl: person?.photoUrl, inviterAvatarId: person?.avatarId };
@@ -30,7 +31,7 @@ async function withPreviews(items: ReceivedInvitation[], uid: string): Promise<R
       return { ...item, ...(member ? { status: 'joined' as const } : {}),
         ...(target ? { title: target.name, preview: { ...identity, coverPhotoUrl: target.coverPhotoUrl, coverImageId: target.coverImageId, city: target.city, isOpen: target.isOpen } } : { preview: identity }) };
     }
-    const game = await gameService.getGameById(item.targetId).catch(() => null);
+    const game = await gameService.getGameById(item.targetId).catch((caughtErrora383d44e92: unknown) => { observeCaughtError(caughtErrora383d44e92, {"source":"src/services/receivedInvitationsService.ts","handler":"withPreviews","site":"receivedInvitationsService:a383d44e92"}); return null; });
     if (!game) return { ...item, preview: identity };
     const target = game.groupId && !game.isOrphanContext ? await club(game.groupId) : null;
     const joined = [...game.players, ...game.waitlist].includes(uid);
@@ -65,6 +66,7 @@ export const receivedInvitationsService = {
       assertOwner();
       return finish(result.data as {id:string;data:Record<string,any>}[]);
     } catch(error) {
+    observeCaughtError(error, {"source":"src/services/receivedInvitationsService.ts","handler":"listInbox","site":"receivedInvitationsService:39f13a4226"});
       assertOwner();
       // Older deployed servers have no endpoint yet. Preserve the existing
       // recipient-bound inbox until the coordinated release, never on denial.

@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // authUpgrade — turning an anonymous session into a real account.
 //
 // ONE normalisation of every provider's result and every way it can fail, so
@@ -153,7 +154,8 @@ function credentialFromError(err: unknown): AuthCredential | null {
     try {
       const c = extract();
       if (c) return c;
-    } catch {
+    } catch (caughtErrore33516c0c9) {
+    observeCaughtError(caughtErrore33516c0c9, {"source":"src/services/authUpgrade.ts","handler":"credentialFromError","site":"authUpgrade:e33516c0c9"});
       /* not this provider */
     }
   }
@@ -219,6 +221,7 @@ export async function upgradeAnonymous(
   try {
     acquired = await acquire(method, opts?.email, opts?.password);
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/authUpgrade.ts","handler":"upgradeAnonymous","site":"authUpgrade:123c7441c6"});
     if (isCancellation(err)) return { status: 'cancelled' };
     const code = String((err as { code?: unknown })?.code ?? 'provider-failed');
     // Environment failures are reported to analytics by the caller, not to the
@@ -240,6 +243,7 @@ export async function upgradeAnonymous(
       await bindUpgradedIdentity(cred.user.uid, method, true);
       return { status: 'linked', uid: cred.user.uid, isNewAccount: true };
     } catch (err) {
+    observeCaughtError(err, {"source":"src/services/authUpgrade.ts","handler":"upgradeAnonymous","site":"authUpgrade:0207edb007"});
       const code = (err as { code?: string })?.code ?? '';
       if (isCancellation(err)) return { status: 'cancelled' };
 
@@ -264,6 +268,7 @@ export async function upgradeAnonymous(
         await bindUpgradedIdentity(cred.user.uid, method, false);
         return { status: 'switched', uid: cred.user.uid, isNewAccount: false };
       } catch (inner) {
+    observeCaughtError(inner, {"source":"src/services/authUpgrade.ts","handler":"upgradeAnonymous","site":"authUpgrade:0b5d72841e"});
         if (isCancellation(inner)) return { status: 'cancelled' };
         const icode = (inner as { code?: string })?.code ?? 'signin-failed';
 
@@ -294,6 +299,7 @@ export async function upgradeAnonymous(
             await bindUpgradedIdentity(cred.user.uid, method, false);
             return { status: 'switched', uid: cred.user.uid, isNewAccount: false };
           } catch (retry) {
+    observeCaughtError(retry, {"source":"src/services/authUpgrade.ts","handler":"upgradeAnonymous","site":"authUpgrade:d197353c74"});
             if (isCancellation(retry)) return { status: 'cancelled' };
             const rcode = (retry as { code?: string })?.code ?? 'signin-failed';
             logError('upgradeNonceRetry', retry, { method, code: rcode });
@@ -315,6 +321,7 @@ export async function upgradeAnonymous(
     await bindUpgradedIdentity(cred.user.uid, method, false);
     return { status: 'switched', uid: cred.user.uid, isNewAccount: false };
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/authUpgrade.ts","handler":"upgradeAnonymous","site":"authUpgrade:80b203d99f"});
     if (isCancellation(err)) return { status: 'cancelled' };
     const code = (err as { code?: string })?.code ?? 'signin-failed';
     logError('upgradeSignIn', err, { method, code });
@@ -344,6 +351,7 @@ async function bindUpgradedIdentity(
       });
     }
   } catch (err) {
+    observeCaughtError(err, {"source":"src/services/authUpgrade.ts","handler":"bindUpgradedIdentity","site":"authUpgrade:69856db96b"});
     // Analytics identity must never be able to fail an authentication.
     logError('upgradeBindIdentity', err, { uid, method, isNew });
   }

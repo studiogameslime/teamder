@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../../utils/errorObservation';
 // AvailablePlayersScreen — coach-only "find invitable players for this
 // game" surface. Pulls users whose availability matches the game's
 // weekday + city + hour and that aren't already in the game, then lets
@@ -137,6 +138,7 @@ export function AvailablePlayersScreen() {
           } else setCandidates(list);
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/AvailablePlayersScreen.tsx","handler":"AvailablePlayersScreen","site":"AvailablePlayersScreen:dc3fc2a5b4"});
         logError('findAvailablePlayers', err, {
           screen: 'AvailablePlayersScreen',
           gameId,
@@ -170,6 +172,7 @@ export function AvailablePlayersScreen() {
       setCandidates(old => [...new Map([...old,...page.players].map(p => [p.id,p])).values()]);
       setCursor(page.cursor);
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/AvailablePlayersScreen.tsx","handler":"loadMore","site":"AvailablePlayersScreen:5663fa9289"});
       if (request === pageEpoch.current) setMoreFailed(true);
       logError('findAvailablePlayersPage', err, {gameId});
     } finally {
@@ -197,6 +200,7 @@ export function AvailablePlayersScreen() {
         he.playerCardInviteSentToast.replace('{name}', target.name),
       );
     } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/AvailablePlayersScreen.tsx","handler":"invite","site":"AvailablePlayersScreen:18a2145173"});
       logError('inviteToGame', err, {
         screen: 'AvailablePlayersScreen',
         gameId: game.id,
@@ -250,6 +254,7 @@ export function AvailablePlayersScreen() {
               toast.error(REASON_MSG[res.reason ?? ''] ?? he.sendPulseError);
             }
           } catch (err) {
+    observeCaughtError(err, {"source":"src/screens/games/AvailablePlayersScreen.tsx","handler":"onPress","site":"AvailablePlayersScreen:3163eb023a"});
             logError('startFillerPulse', err, { gameId: game.id });
             toast.error(he.sendPulseError);
           } finally {

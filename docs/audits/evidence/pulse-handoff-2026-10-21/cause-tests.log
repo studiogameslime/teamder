@@ -1,0 +1,20 @@
+[copy-template] copied public/c/index.html → functions/templates/community.html
+[copy-template] copied public/invite.html → functions/templates/invite.html
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in /workspace/teamder/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+PASS tests/logic/errorIdentity.test.ts
+PASS tests/diagnosticDelivery.test.ts
+PASS tests/logic/pulseErrorDelivery.test.ts
+PASS tests/logic/serverErrorReporting.test.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       34 passed, 34 total
+Snapshots:   0 total
+Time:        0.588 s, estimated 1 s
+Ran all test suites matching /tests\/diagnosticDelivery.test.ts|tests\/logic\/serverErrorReporting.test.ts|tests\/logic\/pulseErrorDelivery.test.ts|tests\/logic\/errorIdentity.test.ts/i.
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

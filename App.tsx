@@ -1,3 +1,4 @@
+import { observeCaughtError } from './src/utils/errorObservation';
 import { userService } from '@/services/userService';
 import { resolveIncomingInvite, startInviteRecovery } from '@/services/incomingInvite';
 import { finishEntryBootstrap } from '@/services/entryBootstrap';
@@ -19,7 +20,8 @@ import * as ExpoSplash from 'expo-splash-screen';
 // between the native splash dismissing and Reanimated's first frame.
 void joryio.init();
 
-ExpoSplash.preventAutoHideAsync().catch(() => {
+ExpoSplash.preventAutoHideAsync().catch((caughtError9d5d605b53: unknown) => {
+    observeCaughtError(caughtError9d5d605b53, {"source":"App.tsx","handler":"module","site":"App:9d5d605b53"});
   // Already hidden / not available — non-fatal.
 });
 
@@ -175,7 +177,8 @@ try {
       // response is always delivered → the handler joins + lands on the game.
       options: { opensAppToForeground: true },
     },
-  ]).catch(() => {});
+  ]).catch((caughtError3522a007e5: unknown) => {
+    observeCaughtError(caughtError3522a007e5, {"source":"App.tsx","handler":"module","site":"App:3522a007e5"});});
   // Waitlist promotion offer: someone cancelled, head of waitlist
   // gets a chance to claim the spot. CONFIRM_SPOT moves them into
   // players[]; PASS_SPOT removes them from waitlist entirely (so
@@ -193,12 +196,14 @@ try {
       buttonTitle: 'ויתור',
       options: { opensAppToForeground: false, isDestructive: true },
     },
-  ]).catch(() => {});
+  ]).catch((caughtError16870efe4d: unknown) => {
+    observeCaughtError(caughtError16870efe4d, {"source":"App.tsx","handler":"module","site":"App:16870efe4d"});});
   // NOTE: the cross-community filler opportunity push (`fillerOpportunity`)
   // deliberately has NO action-button category — tapping the push opens the
   // game screen where the candidate expresses interest. The old "לא הפעם"
   // button was a silent no-op and "מעוניין" was redundant with tap-to-open.
-} catch {
+} catch (caughtError1b1d1c5033) {
+    observeCaughtError(caughtError1b1d1c5033, {"source":"App.tsx","handler":"module","site":"App:1b1d1c5033"});
   // expo-notifications native module not available — no-op.
 }
 import { NavigationContainer } from '@react-navigation/native';
@@ -562,6 +567,7 @@ export default function App() {
           has_draft: false,
         });
       } catch (err) {
+    observeCaughtError(err, {"source":"App.tsx","handler":"handleCold","site":"App:dbdb66ccad"});
         if (__DEV__) console.warn('[invite] stash failed', err);
       }
     };
@@ -627,6 +633,7 @@ export default function App() {
           console.info('[invite] after install-referrer →', after);
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"App.tsx","handler":"App","site":"App:1ffa079f54"});
         if (__DEV__) console.warn('[invite] install-referrer threw', err);
       }
 
@@ -643,6 +650,7 @@ export default function App() {
           console.info('[invite] after clipboard →', after);
         }
       } catch (err) {
+    observeCaughtError(err, {"source":"App.tsx","handler":"App","site":"App:bf6dc80944"});
         if (__DEV__) console.warn('[invite] clipboard invite threw', err);
       }
 
@@ -654,12 +662,14 @@ export default function App() {
       const resolved = await storage.getPendingInvite();
       reportEntrySource(resolved ? 'deferred' : 'organic', resolved);
     })().catch((err) => {
+    observeCaughtError(err, {"source":"App.tsx","handler":"App","site":"App:005f0af332"});
       if (__DEV__) console.warn('[invite] bootstrap failed', err);
     }).finally(finishEntryBootstrap);
 
     const stopRecovery = startInviteRecovery(() => userService.completeDeferredInviteAttribution());
     const sub = Linking.addEventListener('url', (e) => {
       void handleWarm(e.url).catch((err) => {
+    observeCaughtError(err, {"source":"App.tsx","handler":"App","site":"App:3cc26ee3dc"});
         if (__DEV__) console.warn('[invite] warm ingress failed', err);
       });
     });
@@ -679,6 +689,7 @@ export default function App() {
   useEffect(() => {
     if (!currentUserId) return;
     void userService.completeDeferredInviteAttribution().catch((err) => {
+    observeCaughtError(err, {"source":"App.tsx","handler":"App","site":"App:1625451152"});
       if (__DEV__) console.warn('[invite] late attribution retry failed', err);
     });
   }, [currentUserId, onboardingComplete]);
@@ -739,7 +750,8 @@ export default function App() {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       Notifications = require('expo-notifications');
-    } catch {
+    } catch (caughtError1412ec2c03) {
+    observeCaughtError(caughtError1412ec2c03, {"source":"App.tsx","handler":"App","site":"App:1412ec2c03"});
       return; // native module not linked (Expo Go) — no-op
     }
     if (!Notifications) return;
@@ -753,7 +765,8 @@ export default function App() {
       if (!notifId) return;
       try {
         await Notif.dismissNotificationAsync(notifId);
-      } catch {
+      } catch (caughtError154a0e0518) {
+    observeCaughtError(caughtError154a0e0518, {"source":"App.tsx","handler":"dismissNotificationSafely","site":"App:154a0e0518"});
         // Best-effort — older expo-notifications versions / iOS
         // foreground-not-shown cases throw. The OS will dismiss the
         // notification itself when the user taps it anyway.
@@ -923,7 +936,8 @@ export default function App() {
             }, 3500),
           ),
         ]);
-      } catch {
+      } catch (caughtErrorc0d416f739) {
+    observeCaughtError(caughtErrorc0d416f739, {"source":"App.tsx","handler":"handleSplashFinish","site":"App:c0d416f739"});
         // never block reveal on an ad failure
       }
       // NOT an impression. This fires on every signed-in cold start, after the

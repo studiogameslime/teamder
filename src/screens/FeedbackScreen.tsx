@@ -1,3 +1,4 @@
+import { observeCaughtError } from '../utils/errorObservation';
 // Both menu entries open this form on their own tab; the draft survives tab changes.
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -54,13 +55,15 @@ function FeedbackForm({ params, routeName }: { params?: FeedbackParams; routeNam
     if (pickingRef.current || inFlight.current) return;
     Keyboard.dismiss(); pickingRef.current = true; setPicking(true);
     try { const selected = await pickFeedbackImage(); if (selected && alive.current) setImage(selected); }
-    catch { if (alive.current) toast.error('לא הצלחנו לצרף תמונה. אפשר לנסות שוב ולבדוק את הגישה לתמונות.'); }
+    catch (caughtErrora3495c901e) {
+    observeCaughtError(caughtErrora3495c901e, {"source":"src/screens/FeedbackScreen.tsx","handler":"chooseImage","site":"FeedbackScreen:a3495c901e"}); if (alive.current) toast.error('לא הצלחנו לצרף תמונה. אפשר לנסות שוב ולבדוק את הגישה לתמונות.'); }
     finally { pickingRef.current = false; if (alive.current) setPicking(false); }
   };
   const onAnnotated = async (base64: string) => {
     setAnnotating(false); setPicking(true); pickingRef.current = true;
     try { const result = base64.length < FEEDBACK_IMAGE_LIMIT ? base64 : await prepareFeedbackImage({ uri: `data:image/jpeg;base64,${base64}` }); if (alive.current) setImage(result); }
-    catch { if (alive.current) toast.error('לא הצלחנו לשמור את הסימון. התמונה המקורית נשמרה.'); }
+    catch (caughtErrored4778d3d0) {
+    observeCaughtError(caughtErrored4778d3d0, {"source":"src/screens/FeedbackScreen.tsx","handler":"onAnnotated","site":"FeedbackScreen:ed4778d3d0"}); if (alive.current) toast.error('לא הצלחנו לשמור את הסימון. התמונה המקורית נשמרה.'); }
     finally { pickingRef.current = false; if (alive.current) setPicking(false); }
   };
   const onSubmit = async () => {
@@ -70,7 +73,8 @@ function FeedbackForm({ params, routeName }: { params?: FeedbackParams; routeNam
       await submitFeedback(type, context + trimmed, diagnostics.screen ?? routeName, image ?? undefined, type === 'bug' ? 'bug' : 'feature', diagnostics);
       logEvent(AnalyticsEvent.FeedbackSubmitted, { type, length: trimmed.length, fromScreen: routeName });
       if (alive.current) { toast.success(he.feedbackSuccess); if (nav.isFocused()) nav.goBack(); }
-    } catch { if (alive.current) toast.error(he.feedbackError); }
+    } catch (caughtErrorb80cd6f287) {
+    observeCaughtError(caughtErrorb80cd6f287, {"source":"src/screens/FeedbackScreen.tsx","handler":"onSubmit","site":"FeedbackScreen:b80cd6f287"}); if (alive.current) toast.error(he.feedbackError); }
     finally { inFlight.current = false; if (alive.current) setSending(false); }
   };
   return <SafeAreaView style={s.root} edges={['top']}>

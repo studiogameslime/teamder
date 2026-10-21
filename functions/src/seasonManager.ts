@@ -1,3 +1,4 @@
+import { observeCaughtError } from './serverErrorLog';
 import * as admin from 'firebase-admin';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { acquireSeasonOperation } from './seasonOperation';
@@ -304,7 +305,8 @@ export class SeasonManager {
 
   private async patchIfFresh(ref: admin.firestore.DocumentReference, snap: admin.firestore.DocumentSnapshot, patch: Data) {
     try { await ref.update(Object.fromEntries(Object.entries(patch).map(([key, value]) => [`seasons.${key}`, value])), { lastUpdateTime: snap.updateTime! }); return true; }
-    catch (err) { if ((err as {code?: number}).code === 9) return false; throw err; }
+    catch (err) {
+    observeCaughtError(err, {"source":"functions/src/seasonManager.ts","handler":"patchIfFresh","site":"seasonManager:26478a773b"}); if ((err as {code?: number}).code === 9) return false; throw err; }
   }
 
   private async finish(groupId: string) {
@@ -365,7 +367,8 @@ export class SeasonManager {
       const page = await q.get();
       for (const d of page.docs) {
         try { await this.refresh(d.id); }
-        catch (err) { await this.deps.report({ operation: 'seasonRollover', err, context: { groupId: d.id } }); }
+        catch (err) {
+    observeCaughtError(err, {"source":"functions/src/seasonManager.ts","handler":"sweep","site":"seasonManager:2af601be64"}); await this.deps.report({ operation: 'seasonRollover', err, context: { groupId: d.id } }); }
       }
       if (page.size < 100) return;
       cursor = page.docs[page.size - 1];
@@ -385,7 +388,8 @@ export class SeasonManager {
             await this.deps.announce({ groupId: v.groupId, groupName: v.groupName ?? '', seasonId: v.seasonId, seasonNo: v.no });
             if (++published >= 5) return;
           }
-        } catch (err) { await this.deps.report({ operation: 'seasonPublication', err, context: { groupId: v.groupId } }); }
+        } catch (err) {
+    observeCaughtError(err, {"source":"functions/src/seasonManager.ts","handler":"recoverPublications","site":"seasonManager:6c8d55f77c"}); await this.deps.report({ operation: 'seasonPublication', err, context: { groupId: v.groupId } }); }
       }
       if (page.size < 100) return;
       cursor = page.docs[page.size - 1];
