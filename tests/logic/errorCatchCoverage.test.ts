@@ -3,7 +3,7 @@ import { execFileSync } from 'child_process';
 const { inspect } = require('../../scripts/error-catch-audit.cjs');
 
 test('all owned TypeScript catches, rejection handlers, snapshots and HTTP fallbacks have observation or a documented recursion boundary', () => {
-  const report = JSON.parse(execFileSync(process.execPath,['scripts/error-catch-audit.cjs','--json'],{encoding:'utf8'}));
+  const report = JSON.parse(execFileSync(process.execPath,['scripts/error-catch-audit.cjs','--json'],{encoding:'utf8',stdio:['ignore','pipe','pipe']}));
   expect(report.rows.filter((row:any)=>row.runtime!=='tooling-or-third-party'&&!['observed','recursion-boundary'].includes(row.state))).toEqual([]);
 });
 test('instrumentation preserves control flow and is repeatable', () => {
@@ -19,7 +19,7 @@ test('domain result.ok is not mistaken for an HTTP response', () => {
   expect(inspect('src/example.ts',http,true).source).toContain('observeCaughtError(');
 });
 test('server trigger factories all use the reporting lifetime wrapper, except diagnostic ingestion', () => {
-  const files=execFileSync('git',['ls-files','functions/src'],{encoding:'utf8'}).trim().split('\n');
+  const files=execFileSync('git',['ls-files','functions/src'],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim().split('\n');
   const misses=files.filter(file=>file.endsWith('.ts')&&!file.endsWith('/clientDiagnostics.ts')).filter(file=>
     /import\s*\{[^}]*\bon(?:Call|Request|Document\w+|Schedule|TaskDispatched)\b[^}]*\}\s*from\s*['"]firebase-functions\/v2\//s.test(fs.readFileSync(file,'utf8')));
   expect(misses).toEqual([]);

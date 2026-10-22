@@ -2866,22 +2866,23 @@
       "domain": "shared",
       "technical": "shared/native-integrations.md",
       "simple": "shared/native-integrations.simple.md",
-      "capturedOn": "2026-10-21",
+      "capturedOn": "2026-10-22",
       "basis": "existing-documentation-only",
-      "summary": "נוסף תיעוד אוטומטי לנקודות כשל במסלול הזה, עם מקור התקלה. הפעולה המקורית שומרת על ערכי החזרה והודעות השגיאה שלה. השינוי מקומי, טרם הופץ, ואין אימות מסירה חיה לפולס.",
+      "summary": "נוסף חיבור לאיסוף קריסות של רכיבי המכשיר, שיסייע לאבחן גם כשל שאינו מגיע לדיווחי האפליקציה הרגילים. החיבור יתחיל לפעול רק בגרסה מקורית חדשה; טרם אומתה קליטת קריסה ממכשיר. החיבור והבדיקות.",
       "latestDatedSection": "2026-10-21",
       "recentSections": [
+        "איסוף קריסות מקוריות — 21.10.2026",
         "תיעוד כשל משני בגשר — 21.10.2026"
       ],
       "evidenceExcerpts": [
-        "נוספו תצפיות דיווח בנקודות הכשל של המקורות המשויכים לפיצ׳ר, במסגרת הרחבה רוחבית. נשמרו ערכי החזרה, הזריקות ותנאי הפעולה הקיימים; נוסף מקור קוד והקשר לדיווח. כיסוי תחבירי אינו הוכחת הרצה של כל מצב. השינוי מקומי וטרם הופץ; בדיקות המסירה, מגבלות מניעת הכפילויות…",
-        "computeWatchPayload ב־watchSyncService.ts מחפשת תחילה את המחזור הראשון שיש בו liveMatch שטרם הסתיים. אחרת מסננת מחזורים עתידיים שאינם הסתיימו/בוטלו וממיינת לפי startsAt; הראשון הוא הקרוב. מחזור מתוזמן שפתיחת הרשמתו עתידית יוצר scheduled; אחרת upcoming; ללא…",
-        "הזמן בחבילה: כשרץ ויש התחלה חיובית, baseElapsedMs = accumulatedMs + max(0, serverNow - lastStartedAt); אחרת הזמן המצטבר בלבד. לדוגמה: מצטבר 120,000, עברו 30,000 מתחילת מקטע → 150,000 אלפיות שנייה. החבילה מכילה בסיס והיסט שעון, ולא שידור בכל שנייה. publishSeq…"
+        "תוסף האנדרואיד מוסיף firebase-crashlytics-gradle:3.0.6 ואת תוסף היישום. קישור הספרייה באייפון מוסיף שלב ios_config.sh אחרי ההידור, המפעיל את כלי העלאת סמלי הקריסה. פעולות התוסף נבדקו בזיכרון, כולל הפעלה חוזרת ושימור תלויות קיימות. אין בכך הוכחה להידור, להעלאת…",
+        "באימות הסופי מ־22.10.2026 עברו כל 5,179 הבדיקות ובדיקת הטיפוסים, וכן אריזת קוד לאנדרואיד ולאייפון. האריזה אינה הידור מקורי; העלאת סמלים וקליטת דיווח ממכשיר עדיין לא אומתו.",
+        "נוספו תצפיות דיווח בנקודות הכשל של המקורות המשויכים לפיצ׳ר, במסגרת הרחבה רוחבית. נשמרו ערכי החזרה, הזריקות ותנאי הפעולה הקיימים; נוסף מקור קוד והקשר לדיווח. כיסוי תחבירי אינו הוכחת הרצה של כל מצב. השינוי מקומי וטרם הופץ; בדיקות המסירה, מגבלות מניעת הכפילויות…"
       ],
       "screens": [],
       "documents": {
-        "shared/native-integrations.md": "f5f11546ab142f4a29d9d336a00748ac904037702c0accb37d872dbef5531728",
-        "shared/native-integrations.simple.md": "56211e0c1f4a75433d155b9182c123e5b1c3af416ab2c760f65923e1c87244b1"
+        "shared/native-integrations.md": "392f869d1d0ad8a5af9f5b79de78bbda4e2ec87f7f427a5911c24aa2081d3745",
+        "shared/native-integrations.simple.md": "0a63ccd558dbdd34eaa71113edda477b4beb94d0a12b4dd1bdb03f450f2875e7"
       },
       "sources": {
         "src/native/nativeDiagnostics.ts": "7077c0f3302e30aa84319664f5fc9cd45402d5767e4a218a5960045039a24b37",
@@ -2998,24 +2999,24 @@
       "domain": "shared",
       "technical": "shared/diagnostic-journal.md",
       "simple": "shared/diagnostic-journal.simple.md",
-      "capturedOn": "2026-10-21",
+      "capturedOn": "2026-10-22",
       "basis": "existing-documentation-only",
-      "summary": "נוספה אפשרות להזדהות לקריאת פולס בעזרת אישורים מהכספת האישית, בלי להעביר קובץ מפתח בצ׳אט. שמירה בכספת לבדה אינה משלימה את החיבור: הסביבה צריכה לקבל את המשתנה האישי וגישה לרשת. ההרחבה נבדקה מקומית; טרם אומתה קריאת דיווח אמיתי דרך החיבור החדש, ואין שינוי בהרשאות או במצב הטיפול במשימות.",
+      "summary": "נוסף חיבור לאיסוף קריסות דרך Firebase Crashlytics, כולל כשלים של רכיבים מקוריים שיכולים לקרות לפני עליית המסכים. תקלות מקוד האפליקציה נשלחות גם אליו לאחר מניעת דיווח כפול וסינון פרטי קשר, אישורי גישה ומזהי חשבון מסומנים; רצף הפעולות והתמונות אינם מועתקים אליו. הדיווח הקיים בפולס נשמר.",
       "latestDatedSection": "2026-10-21",
       "recentSections": [
+        "חיבור איסוף קריסות — 21.10.2026",
         "השלמת מסלולים מקוריים — 21.10.2026",
-        "חיבור קריאה בענן באמצעות כספת אישית — 21.10.2026",
-        "מניעת ספירה כפולה של מעטפת חריגה — 21.10.2026"
+        "חיבור קריאה בענן באמצעות כספת אישית — 21.10.2026"
       ],
       "evidenceExcerpts": [
-        "בדיקות ההרחבה: 12 בדיקות חיבור בפייתון, בדיקת טיפוסים וכל 5,121 בדיקות הפרויקט עברו. מסירה והשלמת הגדרת הסביבה.",
-        "הכספת צריכה להיות משויכת לסביבה, והסביבה צריכה לבקש את המשתנה כערך אישי. בקשת רשת עם תחליף סוד אינה מספקת מפתח לחתימה מקומית. מקור: הוראות החיבור והגבולות. בדיקות scripts/tests/test_pulse_mcp.py: 12 בדיקות עברו, כולל מסירה מדומה ומטמון אסימון. משתנה ואישור…",
-        "דוח הכיסוי, בדיקות ומגבלות. בדיקות ההתנהגות והמסירה נמצאות ב־tests/logic/errorObservation.test.ts, tests/logic/errorCatchCoverage.test.ts, tests/logic/serverErrorReporting.test.ts, tests/logic/clientErrorReceipt.test.ts,…"
+        "בדיקות ההתנהגות, האריזה, סקירת שני הסוכנים ומגבלות ההפצה מפורטות ב־דוח החיבור. אין שינוי מסך או ניווט ואין צורך בצילום חדש. נדרשים בינארי חדש, בדיקת מכשיר ואימות העלאת סמלים וקליטת אירוע בשירות; אין בסבב זה בניית חנות או פריסה.",
+        "באימות הסופי מ־22.10.2026 עברו בדיקת טיפוסים וכל 5,179 הבדיקות ב־457 חבילות; גם אריזות קוד ההפצה לאנדרואיד ולאייפון הצליחו. אלו בדיקות קוד ותצורה, לא אימות קליטת קריסה ממכשיר. שתי רשומות נוספו ליומן השחרורים כ־next ואומתו בקריאה חוזרת, תוך שימור 825 הרשומות…",
+        "בדיקות ההרחבה: 12 בדיקות חיבור בפייתון, בדיקת טיפוסים וכל 5,121 בדיקות הפרויקט עברו. מסירה והשלמת הגדרת הסביבה."
       ],
       "screens": [],
       "documents": {
-        "shared/diagnostic-journal.md": "78cd92b813c243511f7fc8a95388743ef2a1904da2738eb5b852f8333f80f89b",
-        "shared/diagnostic-journal.simple.md": "8740f318b58a71d450294be078510f4ba3ec6aa0a235670b206e60f79a8de549"
+        "shared/diagnostic-journal.md": "dcb5cf3bf5de0c2fefb916936b410e249362ece71ffae534c328051cc6e4bc48",
+        "shared/diagnostic-journal.simple.md": "4133cf1b1e2b3bf1b3503c14ee7c934b9a706dd52ff3c462c405a204c568ed92"
       },
       "sources": {
         "functions/src/clientDiagnostics.ts": "beb5c624bb9d0d275413714581a45a99e152c985ed4296c2ad25262152922b0c",
@@ -3024,16 +3025,17 @@
         "pulse/src/services/errorLog.ts": "dbd6dfa5dfe9ab3e8575810080c6fcfecdf117b495091251a3739440bd7c1254",
         "src/native/nativeDiagnostics.ts": "7077c0f3302e30aa84319664f5fc9cd45402d5767e4a218a5960045039a24b37",
         "src/services/breadcrumbs.ts": "fc886c763518714887df2c05b44380e6d511acb12ef2147886bb44f30d40bc4f",
+        "src/services/crashlyticsService.ts": "1f710da35e3ab6ecffcee0f3bc1c6f8debc1a0eec23b7638f0d309dd1f911189",
         "src/services/diagnosticJournal.ts": "ee146d639cc518c389c4aad056a12add3646db70b0013af47f722b1e66c96c26",
         "src/services/diagnosticStorage.ts": "a4865e9c087bff4716bec14311ac5a1d571e1b1d96dc2f19d9add62f850e0449",
-        "src/services/errorLog.ts": "f997de18f81f2b1ec6d27bcd3969e48782cb5758e168241778025283b85117d4",
+        "src/services/errorLog.ts": "ea01ab2ac405d18f00e89103140552030fa51f2bbc5b6ed124eff9165fe466f4",
         "src/utils/errorObservation.ts": "9799b4022facfadf880ed2c065ab972c779343178fd6c10139fd81586e73d125",
-        "tests/diagnosticDelivery.test.ts": "d932408359b50a946b5cafe71971ee75fbc5b58a45b7d99cbfe7e3e9a60b8612",
+        "tests/diagnosticDelivery.test.ts": "7f5079e419a2d864b597daa2815ae9db5f6d427732327853ccd60c168755f63a",
         "tests/diagnosticStorage.test.ts": "911036eb432d620e50fee626f19294543a044ef6e3abd22fa729551a3e0785c8",
         "tests/logic/breadcrumbs.test.ts": "29a96b18ed8edf641862f84fb82b2e38a9cdf2b567941ba859b80a4dd291181e",
         "tests/logic/clientErrorReceipt.test.ts": "07f7286ba743a6d570a974e189d3b1fb068f62d86f84298f4c2f2815a6b01aa0",
         "tests/logic/diagnosticJournal.test.ts": "beb8a48bfe8b3f4fcebf1eaccfcf8c5ed15ea670375786f0575a3b95bba63493",
-        "tests/logic/errorCatchCoverage.test.ts": "9fd7889dc8e42ca3116c8a2a31cfcbe0e108bd019ad2b09dfdab467be64d9438",
+        "tests/logic/errorCatchCoverage.test.ts": "b5c77b53b366626d201ac6c0e2455eb72eab67aee20ae1377d1528ee3b6222c8",
         "tests/logic/errorObservation.test.ts": "c1085ecfca60eb41c69d9d201c3f51cfb36446de4187aa28abbc24d244cb3dbd",
         "tests/logic/pulseDiagnosticTimeline.test.ts": "5f078b283f104ee9ea9f3c99f2d42fc18d4eb5706dc49400bdc20b8f8cafbbf9",
         "tests/logic/pulseErrorDelivery.test.ts": "3d1420b33c483458915fb92705142db384b914910aaaf8ea4c614d6024c2b877",

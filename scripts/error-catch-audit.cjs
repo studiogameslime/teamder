@@ -11,6 +11,7 @@ const boundaries = {
   'functions/src/errorIdentity.ts': 'Error identity inspection recursion boundary; mirrored across runtimes.',
   'pulse/src/services/errorIdentity.ts': 'Error identity inspection recursion boundary; mirrored across runtimes.',
   'src/services/errorLog.ts': 'Reporter delivery/retry and global-handler installation: avoid recursive reports.',
+  'src/services/crashlyticsService.ts': 'Secondary native reporter: never recursively report initialization or delivery failures.',
   'src/services/diagnosticStorage.ts': 'Reporter persistence: unavailable storage must not recursively persist itself.',
   'src/services/diagnosticJournal.ts': 'Reporter journal: must not recursively record its own failure.',
   'src/utils/diagnosticRedaction.ts': 'Reporter sanitizer: must not report unredacted fallback values.',
@@ -161,7 +162,7 @@ function inspect(file, source, write = false) {
 function main() {
   const write = process.argv.includes('--write');
   const requested = process.argv.find(a => a.startsWith('--domain='))?.split('=')[1];
-  const files = cp.execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).split('\0').filter(Boolean);
+  const files = cp.execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 16 * 1024 * 1024 }).split('\0').filter(Boolean);
   const rows = [], counts = {};
   const additionalRuntimeSites = [];
   for (const file of files) {
@@ -178,7 +179,9 @@ function main() {
       if (/\bcatch\s*[({]|\brunCatching\b|\btry\?/.test(line)) additionalRuntimeSites.push({file,line:index+1,state:'requires-platform-review'});
     });
   }
-  if (process.argv.includes('--json')) console.log(JSON.stringify({ counts, filesInventoried:files.length, additionalRuntimeSites, rows }, null, 2));
+  // Write the complete machine-readable result before exit, including when
+  // stdout is a child-process pipe in a restricted runner.
+  if (process.argv.includes('--json')) fs.writeFileSync(process.stdout.fd, JSON.stringify({ counts, filesInventoried:files.length, additionalRuntimeSites, rows }, null, 2) + '\n');
   else { console.log(counts); for (const r of rows.filter(r => r.state === 'manual-review')) console.log(r); }
   if (process.argv.includes('--check') && rows.some(r => r.runtime !== 'tooling-or-third-party' && !['observed','recursion-boundary'].includes(r.state))) process.exitCode = 1;
 }

@@ -1,0 +1,7 @@
+PASS tests/logic/discoveryDefaultFriends.test.ts
+
+Test Suites: 457 passed, 457 total
+Tests:       5179 passed, 5179 total
+Snapshots:   0 total
+Time:        130.157 s, estimated 143 s
+Ran all test suites.

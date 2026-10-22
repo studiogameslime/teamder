@@ -20,6 +20,7 @@ import { httpsCallable } from 'firebase/functions';
 import { getFirebase } from '../firebase/config';
 import { redactDiagnosticContext, redactDiagnosticText } from '../utils/diagnosticRedaction';
 import { caughtErrorOrigin, clearCaughtErrorOrigins, installCaughtErrorSink } from '../utils/errorObservation';
+import { reportCrashlyticsError } from './crashlyticsService';
 
 export interface ErrorContext {
   /** What the user/app was doing — short stable label, e.g. 'createGame'. */
@@ -368,6 +369,13 @@ export function logError(
     persistPending();
     if ((flushedPerFp.get(fp) ?? 0) < SESSION_WRITE_CAP) scheduleFlush();
     for (const object of objects) reportedObjects.add(object);
+    reportCrashlyticsError({
+      operation, message, code, stack,
+      source: typeof context.source === 'string' ? context.source : undefined,
+      handler: typeof context.handler === 'string' ? context.handler : undefined,
+      site: typeof context.site === 'string' ? context.site : undefined,
+      isFatal: context.isFatal === true,
+    });
   } catch {
     // logging must never throw
   }
@@ -481,16 +489,30 @@ export function installGlobalErrorHandlers(): void {
   } catch {
     // never block startup
   }
-  // Best-effort unhandled-promise-rejection tracking (RN promise polyfill).
+  // Hermes uses its own Promise in RN 0.79; the polyfill tracker cannot see
+  // those rejections. Use the runtime hook first, with the same option shape.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const tracking = require('promise/setimmediate/rejection-tracking');
-    tracking.enable({
+    const options = {
       allRejections: true,
       onUnhandled: (_id: unknown, error: unknown) =>
         logError('unhandledRejection', error),
       onHandled: () => {},
-    });
+    };
+    const hermes = (global as unknown as {
+      HermesInternal?: {
+        hasPromise?: () => boolean;
+        enablePromiseRejectionTracker?: (config: typeof options) => void;
+      };
+    }).HermesInternal;
+    if (hermes?.hasPromise?.() && hermes.enablePromiseRejectionTracker) {
+      // RN already installs its LogBox tracker in development. Keep it intact;
+      // release Hermes has no built-in tracker and needs ours.
+      if (typeof __DEV__ === 'undefined' || !__DEV__) hermes.enablePromiseRejectionTracker(options);
+    } else {
+      // Same pinned promise instance as React Native's non-Hermes Promise.
+      const tracking = require('promise/setimmediate/rejection-tracking');
+      tracking.enable(options);
+    }
   } catch {
     // polyfill not present / different RN internals — skip
   }

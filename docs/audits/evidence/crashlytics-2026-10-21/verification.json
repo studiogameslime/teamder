@@ -1,0 +1,66 @@
+{
+  "verifiedAtUTC": "2026-10-22T09:17:15.816957+00:00",
+  "baseCommit": "0258172c5853f5ae5c4e06ae376421f11dddfd48",
+  "typecheck": {
+    "command": "npx tsc --noEmit",
+    "passed": true
+  },
+  "tests": {
+    "command": "npx jest --runInBand",
+    "passed": true,
+    "suites": 457,
+    "tests": 5179,
+    "seconds": 130.157
+  },
+  "jsExports": {
+    "android": {
+      "passed": true,
+      "nativeBuild": false
+    },
+    "ios": {
+      "passed": true,
+      "nativeBuild": false
+    },
+    "bytecodeGenerated": false
+  },
+  "independentReviews": [
+    "native configuration, plugin transforms and both patched SDK entry points",
+    "sanitized reporting, deduplication and Hermes promise tracking"
+  ],
+  "freshPackagePatchMatchesInstalled": {
+    "lib/namespaced.ts": true,
+    "dist/module/namespaced.js": true
+  },
+  "cleanInstallAndPostinstallPassed": true,
+  "featureStatus": {
+    "failures": 0,
+    "features": 85,
+    "screens": 98
+  },
+  "documentationCheck": {
+    "historicalMissingReferences": 107,
+    "currentFeatureFailures": 0,
+    "overallPassed": false
+  },
+  "sourceSha256": {
+    "src/services/crashlyticsService.ts": "1f710da35e3ab6ecffcee0f3bc1c6f8debc1a0eec23b7638f0d309dd1f911189",
+    "src/services/errorLog.ts": "ea01ab2ac405d18f00e89103140552030fa51f2bbc5b6ed124eff9165fe466f4",
+    "app.json": "8c5d336198a4035db3aa43c96ae9d36ff5e56de7c2cd5ac82954434f8b324214",
+    "firebase.json": "677550cba945e37b9bc9808e34d793b993667fd50709b9fd8dbf5840e5499f45",
+    "package.json": "41c6362b685cedc734c2f99c8ad8072f36a90cdd008c9e56f2162ba11f313343",
+    "package-lock.json": "3632f2196c05401ee70647a48779d217348f1fa0a460951098ed28ccff0db205",
+    "patches/@react-native-firebase+crashlytics+24.0.0.patch": "0832d3a2346e065b75e4d658356751fa104b2ca9d8383d87767e889c4fa14418",
+    "scripts/error-catch-audit.cjs": "8b225dded42355f485cae1211479d5d4e045f1a70912a3b4fe9747c04923cab5",
+    "tests/logic/errorCatchCoverage.test.ts": "b5c77b53b366626d201ac6c0e2455eb72eab67aee20ae1377d1528ee3b6222c8"
+  },
+  "releaseLogReceipt": "release-log-receipt.json",
+  "nativeBinaryBuilt": false,
+  "appDeployed": false,
+  "liveCrashReceptionVerified": false,
+  "limitations": [
+    "A new native binary is required; existing binaries do not gain the native SDK through a JS update.",
+    "Native symbol upload and actual device crash reception were not verified.",
+    "Native fatal reports do not pass through the JS text sanitizer.",
+    "Native Crashlytics reports do not automatically create Pulse inbox items."
+  ]
+}

@@ -1,0 +1,62 @@
+diff --git a/node_modules/@react-native-firebase/crashlytics/lib/namespaced.ts b/node_modules/@react-native-firebase/crashlytics/lib/namespaced.ts
+--- a/node_modules/@react-native-firebase/crashlytics/lib/namespaced.ts
++++ b/node_modules/@react-native-firebase/crashlytics/lib/namespaced.ts
+@@ -56,8 +56,12 @@
+     customUrlOrRegion?: string | null,
+   ) {
+     super(app, config, customUrlOrRegion);
+-    setGlobalErrorHandler(this.native);
+-    setOnUnhandledPromiseRejectionHandler(this.native);
++    // Respect the JS generation flag before installing either automatic handler.
++    // The host app can then report sanitized errors without duplicate raw reports.
++    if (this.native.isErrorGenerationOnJSCrashEnabled) {
++      setGlobalErrorHandler(this.native);
++      setOnUnhandledPromiseRejectionHandler(this.native);
++    }
+     this._isCrashlyticsCollectionEnabled = this.native.isCrashlyticsCollectionEnabled;
+   }
+ 
+@@ -129,8 +133,10 @@
+ 
+   recordError(error: Error, jsErrorName?: string): void {
+     if (isError(error)) {
+-      StackTrace.fromError(error, { offline: true }).then(stackFrames => {
+-        this.native.recordError(createNativeErrorObj(error, stackFrames, false, jsErrorName));
++      StackTrace.fromError(error, { offline: true }).catch(() => []).then(stackFrames => {
++        return this.native.recordError(createNativeErrorObj(error, stackFrames, false, jsErrorName));
++      }).catch(() => {
++        // A reporting failure must not become another unhandled rejection.
+       });
+     } else {
+       console.warn(
+diff --git a/node_modules/@react-native-firebase/crashlytics/dist/module/namespaced.js b/node_modules/@react-native-firebase/crashlytics/dist/module/namespaced.js
+--- a/node_modules/@react-native-firebase/crashlytics/dist/module/namespaced.js
++++ b/node_modules/@react-native-firebase/crashlytics/dist/module/namespaced.js
+@@ -30,8 +30,12 @@
+ class FirebaseCrashlyticsModule extends FirebaseModule {
+   constructor(app, config, customUrlOrRegion) {
+     super(app, config, customUrlOrRegion);
+-    setGlobalErrorHandler(this.native);
+-    setOnUnhandledPromiseRejectionHandler(this.native);
++    // Respect the JS generation flag before installing either automatic handler.
++    // The host app can then report sanitized errors without duplicate raw reports.
++    if (this.native.isErrorGenerationOnJSCrashEnabled) {
++      setGlobalErrorHandler(this.native);
++      setOnUnhandledPromiseRejectionHandler(this.native);
++    }
+     this._isCrashlyticsCollectionEnabled = this.native.isCrashlyticsCollectionEnabled;
+   }
+   get isCrashlyticsCollectionEnabled() {
+@@ -81,8 +85,10 @@
+     if (isError(error)) {
+       StackTrace.fromError(error, {
+         offline: true
+-      }).then(stackFrames => {
+-        this.native.recordError(createNativeErrorObj(error, stackFrames, false, jsErrorName));
++      }).catch(() => []).then(stackFrames => {
++        return this.native.recordError(createNativeErrorObj(error, stackFrames, false, jsErrorName));
++      }).catch(() => {
++        // A reporting failure must not become another unhandled rejection.
+       });
+     } else {
+       console.warn('firebase.crashlytics().recordError(*) expects an instance of Error. Non Errors will be ignored.');

@@ -1,0 +1,15 @@
+{
+  "productionUpdated": true,
+  "readBackVerified": true,
+  "added": 2,
+  "previousItemsPreserved": 825,
+  "totalItems": 827,
+  "entries": [
+    "crashlytics-20261021-native",
+    "crashlytics-20261021-hermes"
+  ],
+  "version": "next",
+  "appDeployed": false,
+  "nativeBinaryBuilt": false,
+  "updateTime": "2026-10-22T07:24:05.844256Z"
+}
