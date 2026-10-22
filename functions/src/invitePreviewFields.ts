@@ -83,7 +83,7 @@ const COVER_URLS: Record<string, string> = {
   "c09": "/covers/goal-perspective.jpg",
   "c10": "/covers/captain-detail.jpg",
   "c11": "/covers/daylight-pitch.jpg",
-  "c12": "/covers/daylight-ball.jpg",
+  "c12": "/covers/daylight-team.jpg",
   "c13": "/covers/daylight-team.jpg",
   "c14": "/covers/daylight-match.jpg",
   "c15": "/covers/daylight-coast.jpg",

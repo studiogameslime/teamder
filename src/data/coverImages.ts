@@ -35,7 +35,9 @@ export const COVER_IMAGES: CoverDef[] = [
   { id: 'c10', source: require('../assets/images/groupImages/captain-detail.jpg') },
   // Bright daytime covers; append new ids without replacing persisted choices.
   { id: 'c11', source: require('../assets/images/groupImages/daylight-pitch.jpg') },
-  { id: 'c12', source: require('../assets/images/groupImages/daylight-ball.jpg') },
+  // Keep the persisted id stable, but use a wider team photo for the
+  // fallback shown when a round has no usable club cover.
+  { id: 'c12', source: require('../assets/images/groupImages/daylight-team.jpg') },
   { id: 'c13', source: require('../assets/images/groupImages/daylight-team.jpg') },
   { id: 'c14', source: require('../assets/images/groupImages/daylight-match.jpg') },
   { id: 'c15', source: require('../assets/images/groupImages/daylight-coast.jpg') },
