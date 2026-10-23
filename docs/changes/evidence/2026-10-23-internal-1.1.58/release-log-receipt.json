@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-23T14:48:53.844Z",
+  "releasedItems": 22,
+  "archivedItems": 484,
+  "archivedVersions": [
+    "1.1.47",
+    "1.1.52",
+    "1.1.50",
+    "1.1.51",
+    "1.1.55",
+    "1.1.46",
+    "1.1.48",
+    "1.1.45",
+    "1.1.53",
+    "1.1.49"
+  ],
+  "version": {
+    "deployedFunctions": [],
+    "productionPromoted": false,
+    "testSuites": 472,
+    "rulesDeployed": false,
+    "submittedAt": 1792766932553,
+    "sourceFilesVerified": 1034,
+    "aabSha256": "c0d2e3e3fd3fb1e998042b62a09b4fdb7986afeb001ddc6e81ea1e97afabbc53",
+    "sourceProof": "artifacts/internal58-source-before.json",
+    "gitCommitHash": "c8ff15ee35093d8cff8c2e24d73b8d1f670f9e78",
+    "includedFixes": 22,
+    "androidInternalCode": 292,
+    "builder": "local-windows-gradle",
+    "track": "internal",
+    "tests": 5261,
+    "androidInternalAt": 1792766932553
+  },
+  "readbackVerified": true,
+  "existingScreenshotsPreserved": true
+}

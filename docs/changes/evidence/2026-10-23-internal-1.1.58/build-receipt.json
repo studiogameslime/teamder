@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-23T14:35:05.119Z",
+  "commit": "c8ff15ee35093d8cff8c2e24d73b8d1f670f9e78",
+  "exitCode": 0,
+  "changedSources": [],
+  "artifact": {
+    "path": "android/app/build/outputs/bundle/release/app-release.aab",
+    "size": 109334352,
+    "sha256": "c0d2e3e3fd3fb1e998042b62a09b4fdb7986afeb001ddc6e81ea1e97afabbc53"
+  }
+}

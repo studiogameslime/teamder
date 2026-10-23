@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-23T14:52:10.659Z",
+  "version": "1.1.58",
+  "versionCode": 292,
+  "files": {
+    "build-receipt.json": "f1cfdde1da0fec7e27f18204ea5c91f5f6a2909561048f3880be8f6b1cae1a76",
+    "code-checks.json": "9837ae3221effe33ded6727c981c500d38fa9df4a607e4bb03013b8e72ee9de6",
+    "direct-submit-receipt.json": "5a82dcd4e364f862c5ce021c98ea8c5263c2fb1a49bf9060a66b2a26155d5c12",
+    "feature-status-check.json": "a95079b5d2b2982934b7dc753b5f5910e64d6cb1c4514ce806a867ede608dea9",
+    "git-source-proof.json": "f02262f039aaf926361508ae8afcfb14e68b857e449bcd0cd7f1eb877b532315",
+    "jest-summary.txt": "ffabbe48580e4103f4f93ba7581f46f68f8b7da3013634e7f499c9f636748756",
+    "offline-binary.json": "92a96d03bfbda0b107d8d257d618264be925680757d4cb67823d59cc4ede9ceb",
+    "release-log-receipt.json": "c5178f6ef6afd6dec5cc46194d696b12f837ea3d1eef4709b821c70edde1054f",
+    "signing-certificate.json": "0c7979b5b4de72306653d9f14f820df8428913068b81456782998c46d05a7a1f",
+    "tracks-before.json": "dc4d1a69b84a4e11bad92994ae682caaac20a2242ee653123a1d662e5e1f60c1",
+    "tracks-verified.json": "4a013a424a4082147392b89a3448a299df0ff38dd1d150afebccaf5949831b82"
+  }
+}

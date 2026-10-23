@@ -3010,7 +3010,8 @@
       "latestDatedSection": "2026-10-23",
       "recentSections": [
         "בדיקת קריסה יזומה מהבית — 23.10.2026",
-        "שירות שעון שאינו זמין — 23.10.2026"
+        "שירות שעון שאינו זמין — 23.10.2026",
+        "הפצה פנימית מאומתת — 23.10.2026"
       ],
       "evidenceExcerpts": [
         "src/services/crashlyticsTestService.ts מפעיל קריסה מקורית רק אחרי אישור בכרטיס הבית, עם בדיקות פלטפורמה, מודול, איסוף וזהות לפני ואחרי setUserId. השיוך הוא לדוח הבדיקה היזום בלבד; מסלול crashlyticsService.ts המסונן לא שונה. מזהה אינו דוא״ל. בביטול, דמו,…",
@@ -3019,8 +3020,8 @@
       ],
       "screens": [],
       "documents": {
-        "shared/native-integrations.md": "feb61df8683fd786d5098136ff8e68f3f4e0876cf6b71223d5d47a575b5d3e74",
-        "shared/native-integrations.simple.md": "c25bbd65cdaa78c8819907effba934c2b501cd013ecfc2748a7cd10d6830d783"
+        "shared/native-integrations.md": "7df249aed1ffa75d64bf4126311e9a47d7a34a756fc9bbc34008e4c78f46e7af",
+        "shared/native-integrations.simple.md": "84d61ecedc974a0e2ff2aa4d79e9e149c99f002366ace438d86502de78b49ba7"
       },
       "sources": {
         "src/native/nativeDiagnostics.ts": "7077c0f3302e30aa84319664f5fc9cd45402d5767e4a218a5960045039a24b37",
@@ -3148,7 +3149,8 @@
       "summary": "נוסף כפתור בדיקה זמני בבית לכל המשתמשים המחוברים. רק אישור מפורש גורם לקריסה בגרסה מקורית שאינה בפיתוח; דוח הבדיקה מקבל את מזהה החשבון המחובר. אין עדיין אימות קליטת דוח ממכשיר. פירוט האימות והמגבלות.",
       "latestDatedSection": "2026-10-23",
       "recentSections": [
-        "בדיקת קריסה יזומה מהבית — 23.10.2026"
+        "בדיקת קריסה יזומה מהבית — 23.10.2026",
+        "בנייה והפצה פנימית — 23.10.2026"
       ],
       "evidenceExcerpts": [
         "src/services/crashlyticsTestService.ts מפעיל קריסה מקורית רק אחרי אישור בכרטיס הבית, עם בדיקות פלטפורמה, מודול, איסוף וזהות לפני ואחרי setUserId. השיוך הוא לדוח הבדיקה היזום בלבד; מסלול crashlyticsService.ts המסונן לא שונה. מזהה אינו דוא״ל. בביטול, דמו,…",
@@ -3157,8 +3159,8 @@
       ],
       "screens": [],
       "documents": {
-        "shared/diagnostic-journal.md": "836178e1f2db8f5ea407b840dee2865859b9360a95ea72fff37f7b663907179d",
-        "shared/diagnostic-journal.simple.md": "ce126c5671bc98f95ad5048ffdeba2241029bd80fb1741386969acc0a9010038"
+        "shared/diagnostic-journal.md": "85711b8b9302cf22d919d620118cda27db3496de1385ed902208e409470f5aa2",
+        "shared/diagnostic-journal.simple.md": "b673969695e939b6a103e32b25f3d42d58afc04e1c4989a0f23453ccec931ad8"
       },
       "sources": {
         "functions/src/clientDiagnostics.ts": "beb5c624bb9d0d275413714581a45a99e152c985ed4296c2ad25262152922b0c",

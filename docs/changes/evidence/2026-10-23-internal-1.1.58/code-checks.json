@@ -1,0 +1,19 @@
+{
+  "applicationTypes": {
+    "exitCode": 0,
+    "command": "node node_modules/typescript/bin/tsc --noEmit"
+  },
+  "serverTypes": {
+    "exitCode": 0,
+    "command": "node node_modules/typescript/bin/tsc --noEmit -p functions/tsconfig.json"
+  },
+  "jest": {
+    "exitCode": 0,
+    "suites": 472,
+    "tests": 5261,
+    "command": "node node_modules/jest/bin/jest.js --runInBand"
+  },
+  "testScope": "Application source unchanged after full suite; only app version changed. Types rerun after bump.",
+  "deviceInstallTested": false,
+  "crashEventTested": false
+}

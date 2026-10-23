@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-23T14:47:05.751698+00:00",
+  "version": "1.1.58",
+  "versionCode": 292,
+  "track": "internal",
+  "sourceCommit": "c8ff15ee35093d8cff8c2e24d73b8d1f670f9e78",
+  "aabSha256": "c0d2e3e3fd3fb1e998042b62a09b4fdb7986afeb001ddc6e81ea1e97afabbc53",
+  "expoSubmissionCanceled": true,
+  "editId": "15028007593813310880",
+  "stage": "committed",
+  "baselineVerified": true,
+  "uploadedBundle": {
+    "versionCode": 292,
+    "sha1": "937434ee3ce926446d0f48f1deb2001629fad55b",
+    "sha256": "c0d2e3e3fd3fb1e998042b62a09b4fdb7986afeb001ddc6e81ea1e97afabbc53"
+  },
+  "otherTracksUnchangedBeforeCommit": true,
+  "validation": {
+    "id": "15028007593813310880",
+    "expiryTimeSeconds": "1792773995"
+  },
+  "commit": {
+    "id": "15028007593813310880",
+    "expiryTimeSeconds": "1792773995"
+  },
+  "committedAt": "2026-10-23T14:48:20.981263+00:00"
+}
