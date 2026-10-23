@@ -95,7 +95,7 @@ export const nearbyClubsService = {
       // Same cold-start auth race as the roster reads — the communities feed
       // renders immediately on launch, so this fires before the ID token has
       // reached the Firestore channel.
-      directory = await withAuthRaceRetry(() => loadDirectory());
+      directory = await withAuthRaceRetry(() => loadDirectory(), { retryTransientReads: true });
     } catch (err) {
     observeCaughtError(err, {"source":"src/services/nearbyClubsService.ts","handler":"getNearbyClubs","site":"nearbyClubsService:681d6be9ab"});
       logError('getNearbyClubs', err, { userId: user.id });

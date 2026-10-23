@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, type ImageSourcePropType, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { FieldType, GameFormat } from '@/types';
@@ -72,7 +73,18 @@ export function NextGameCard({
         <View style={preview.row}><Ionicons name="calendar-outline" size={22} color="#0B1942"/><Text style={preview.heading}>{he.communityNextGameEyebrow}</Text></View>
         <Text style={preview.location}>{he.communityNextGameNone}</Text>
       </View>
-      <View style={[preview.photo,{minHeight:90}]}><Image source={require('@/assets/images/match-football.png')} style={{width:'100%',height:90}} resizeMode="contain" accessible={false}/></View>
+      <View style={[preview.photo, preview.emptyPhoto]} accessible={false}>
+        <Svg width={112} height={90} viewBox="0 0 112 90">
+          <Circle cx={56} cy={45} r={39} fill="#D1E5FC" />
+          <Rect x={22} y={17} width={68} height={59} rx={11} fill="#FFFFFF" stroke="#8CB7EB" strokeWidth={2} />
+          <Path d="M33 17H79Q90 17 90 28V33H22V28Q22 17 33 17Z" fill="#2861F4" />
+          <Path d="M38 12V23M74 12V23" stroke="#0B1942" strokeWidth={4} strokeLinecap="round" />
+          <Rect x={32} y={41} width={48} height={26} rx={3} fill="#E8F5EF" stroke="#60A58D" strokeWidth={1.5} />
+          <Line x1={56} y1={41} x2={56} y2={67} stroke="#60A58D" strokeWidth={1.5} />
+          <Circle cx={56} cy={54} r={7} fill="none" stroke="#60A58D" strokeWidth={1.5} />
+          <Path d="M32 48H38V60H32M80 48H74V60H80" fill="none" stroke="#60A58D" strokeWidth={1.5} />
+        </Svg>
+      </View>
     </View>
     {onCreateRecurring ? <Pressable style={preview.cta} accessibilityRole="button" accessibilityLabel={he.communityNextGameCreateRecurring} onPress={onCreateRecurring}><Text style={preview.ctaText}>{he.communityNextGameCreateRecurring}</Text><Ionicons name="repeat" size={18} color="#FFFFFF"/></Pressable> : null}
   </View>;
@@ -199,6 +211,7 @@ const preview = StyleSheet.create({
   time: { color: '#0B1942', fontSize: 30, fontWeight: '900', textAlign: RTL_LABEL_ALIGN },
   location: { color: '#304D79', fontSize: 14, flexShrink: 1, textAlign: RTL_LABEL_ALIGN },
   photo: { flex: 1, minHeight: 150, borderRadius: 16, overflow: 'hidden', backgroundColor: '#DBEAFE' },
+  emptyPhoto: { minHeight: 90, alignItems: 'center', justifyContent: 'center' },
   image: { position: 'absolute', width: '100%', height: '100%' },
   stats: { flexDirection: 'row', backgroundColor: '#F8FBFF', borderRadius: 16, paddingVertical: 10 },
   stat: { flex: 1, alignItems: 'center', gap: 3, paddingHorizontal: 4 },

@@ -319,9 +319,9 @@ export const friendsService = {
       try {
         return await getDoc(docs.friendRequest(id));
       } catch (e) {
-    observeCaughtError(e, {"source":"src/services/friendsService.ts","handler":"readReq","site":"friendsService:067c18b928"});
         const code = (e as { code?: string })?.code;
         if (code !== 'permission-denied') {
+          observeCaughtError(e, {"source":"src/services/friendsService.ts","handler":"readReq","site":"friendsService:067c18b928"});
           logError('getFriendRelationship', e, { uid, otherId });
           throw e;
         }

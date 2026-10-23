@@ -50,6 +50,8 @@ export interface SeasonTitleAwarded {
   names: string[];
   /** Distinct identities, including both members of every winning duo. */
   winners?: { id: string; name: string; coverage?: { rated: number; of: number } }[];
+  /** Preserve the awarded pair identities; one player may win with several partners. */
+  pairs?: { id: string; name: string }[][];
   value: number;
   valueUnit?: 'percent';
   /** Whether the reader is one of the holders — the row is highlighted. */
@@ -268,6 +270,7 @@ function allTitlesOf(
           .join(' + '),
       ),
       winners: distinctSeasonWinners(holders).map(id => ({ id, name: str(players[id]?.displayName) || '—', ...(key === 'mvp' && readSeasonCoverage(a, id) ? { coverage: readSeasonCoverage(a, id) } : {}) })),
+      ...(key === 'deadlyDuo' ? { pairs: holders.map(w => w.split('__')).filter(ids => ids.length === 2).map(ids => ids.map(id => ({ id, name: str(players[id]?.displayName) || '—' }))) } : {}),
       value: num(a.value),
       ...(a.valueUnit === 'percent' ? { valueUnit: 'percent' as const } : {}),
       mine: holders.some((w) => w === me || w.split('__').includes(me)),

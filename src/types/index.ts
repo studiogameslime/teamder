@@ -1016,6 +1016,8 @@ export interface GroupSeasons {
   /** Evenings this season has played, mirrored here because the counter it
    *  comes from is server-only. Lets the app show progress, not just a target. */
   playedRounds?: number;
+  /** Server-owned blockers, scoped to currentId; absent is not a clean bill of health. */
+  closureStatus?: import('../utils/seasonClosureStatus').SeasonClosureStatus;
   /**
    * The season met its finish line and is inside the 24-hour correction window.
    *

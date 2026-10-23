@@ -10,6 +10,8 @@ import { httpsCallable } from 'firebase/functions';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 import type { ClubFriend } from '@/utils/clubCard';
+import { retryRead } from './readRetry';
+import { StaleSessionError, isStaleSession } from './staleSession';
 
 export interface ClubFriendsEntry {
   /** The real number, which may exceed `friends.length`. */
@@ -30,12 +32,14 @@ export async function fetchFriendsInClubs(
 ): Promise<Record<string, ClubFriendsEntry>> {
   if (USE_MOCK_DATA || groupIds.length === 0) return {};
   try {
-    const { functions } = getFirebase();
+    const { functions, auth } = getFirebase();
+    const owner = auth.currentUser?.uid;
+    const check = () => { if (auth.currentUser?.uid !== owner) throw new StaleSessionError(owner ?? '', auth.currentUser?.uid ?? ''); };
     const call = httpsCallable<
       { groupIds: string[] },
       { clubs: Record<string, { total?: number; friends?: unknown[] }> }
     >(functions, 'getFriendsInClubs');
-    const res = await call({ groupIds: groupIds.slice(0, MAX_IDS) });
+    const res = await retryRead(() => call({ groupIds: groupIds.slice(0, MAX_IDS) }), check);
     const out: Record<string, ClubFriendsEntry> = {};
     for (const [gid, v] of Object.entries(res.data?.clubs ?? {})) {
       const friends = Array.isArray(v?.friends)
@@ -55,6 +59,7 @@ export async function fetchFriendsInClubs(
     }
     return out;
   } catch (err) {
+    if (isStaleSession(err)) throw err;
     observeCaughtError(err, {"source":"src/services/clubFriendsService.ts","handler":"fetchFriendsInClubs","site":"clubFriendsService:26c8828c05"});
     logError('fetchFriendsInClubs', err, { count: groupIds.length });
     return {};

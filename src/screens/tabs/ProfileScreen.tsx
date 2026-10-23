@@ -16,6 +16,7 @@ import { observeCaughtError } from '../../utils/errorObservation';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AppState,
   Linking,
   Platform,
   Pressable,
@@ -53,6 +54,7 @@ import { HomeActionTiles } from '@/components/home/HomeDashboardParts';
 import { HomeAvailabilityPanel } from '@/components/home/HomeAvailabilityPanel';
 import { buildAvailabilityView } from '@/utils/homeAvailabilityView';
 import { HomeHero } from '@/components/home/HomeHero';
+import { CrashTestCard } from '@/components/home/CrashTestCard';
 import {
   UpcomingRoundCard,
   CompletedRoundCard,
@@ -543,18 +545,31 @@ export function ProfileScreen() {
         return;
       }
       let alive = true;
-      getInboxCount(uid)
+      let version = 0;
+      const refreshCount = () => {
+        const request = ++version;
+        getInboxCount(uid)
         .then((n) => {
-          if (alive) setInboxCount(n);
+          if (alive && request === version) setInboxCount(n);
         })
         .catch((caughtError825d3507aa: unknown) => {
     observeCaughtError(caughtError825d3507aa, {"source":"src/screens/tabs/ProfileScreen.tsx","handler":"ProfileScreen","site":"ProfileScreen:825d3507aa"});
           /* transient — keep the previous count */
         });
+      };
+      refreshCount();
+      // Navigation focus remains unchanged while the app is suspended. The
+      // previous request can expire there; resume must start a fresh read.
+      const subscription = AppState.addEventListener('change', state => {
+        ++version;
+        if (state === 'active') refreshCount();
+      });
       return () => {
         alive = false;
+        ++version;
+        subscription.remove();
       };
-    }, [localUser?.id]),
+    }, [localUser?.id, localUser?.isGuest]),
   );
 
   // Pulse master switch for the home availability surface — refreshed on focus.
@@ -1468,6 +1483,8 @@ export function ProfileScreen() {
         />
 
         <View style={styles.body}>
+
+          <CrashTestCard userId={user?.id ?? ''} />
 
           {/* §22 — "your season ended". The one in-app place this is ever said.
               `announceSeasonClosed` has been writing a notification per

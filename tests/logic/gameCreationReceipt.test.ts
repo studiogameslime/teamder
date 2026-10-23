@@ -3,6 +3,10 @@ import ts from 'typescript';
 import vm from 'vm';
 import { createHash } from 'crypto';
 import { creationPayload } from '@/services/creationAttempt';
+import { assertCreationOwner } from '@/services/creationOwner';
+const mockAuth = { currentUser: { uid: 'owner' } };
+jest.mock('@/firebase/config', () => ({ USE_MOCK_DATA: false, getFirebase: () => ({ auth: mockAuth }) }));
+beforeEach(() => { mockAuth.currentUser = { uid: 'owner' }; });
 
 jest.mock('@react-native-async-storage/async-storage', () => ({}));
 const source = ts.createSourceFile('gameService.ts', fs.readFileSync('src/services/gameService.ts', 'utf8'), ts.ScriptTarget.Latest, true);
@@ -38,14 +42,14 @@ function setup() {
     queue = next.then(() => undefined, () => undefined);
     return next;
   };
-  const context: any = { module: { exports: {} }, clearMyGamesCache: () => {}, creationPayload,
+  const context: any = { module: { exports: {} }, clearMyGamesCache: () => {}, creationPayload, assertCreationOwner,
     require: () => ({ CryptoDigestAlgorithm: { SHA256: 'sha256' }, digestStringAsync: async (_: string, text: string) => createHash('sha256').update(text).digest('hex') }),
     requireString: (_: string, value: string) => value.trim(), optionalString: (_: string, value: string) => value?.trim(),
     requireInt: (_: string, value: number) => value,
     failValidation: (_: string, text: string) => { throw Object.assign(Error(text), { code: 'VALIDATION_ERROR' }); },
     ensureSeasonSchedule: async () => {}, // Receipt fixtures have no season window; policy is exercised separately.
     enforceRateLimit: charges, findOverlappingGameInGroup: overlap, USE_MOCK_DATA: false, __DEV__: false,
-    getDocFromServer: getServer, docs: { game: (id: string) => id }, getFirebase: () => ({ db: {} }), runTransaction,
+    getDocFromServer: getServer, docs: { game: (id: string) => id }, getFirebase: () => ({ db: {}, auth: mockAuth }), runTransaction,
     notificationsService: { dispatch }, logError: () => {}, logUnexpected: () => {}, logEvent: () => {},
     AnalyticsEvent: new Proxy({}, { get: (_t, key) => String(key) }), Date,
     seriesService: { ensureForGame: ensureSeries }, settingsFromGame: (input: unknown) => input,
@@ -91,9 +95,24 @@ test('same token with different creation content cannot overwrite or return anot
 
 test('same token for another user produces an independent user-scoped target', async () => {
   const s = setup(); const first = await s.invoke(input());
+  mockAuth.currentUser = { uid: 'other' };
   const next = await s.invoke(input({ createdBy: 'other' }));
   expect(next.id).not.toBe(first.id);
   expect(s.documents.size).toBe(2);
+});
+
+test('a stale creator is stopped before reads, rate checks or writes', async () => {
+  const s = setup(); mockAuth.currentUser = { uid: 'replacement' };
+  await expect(s.invoke(input())).rejects.toMatchObject({ name: 'StaleSessionError' });
+  expect(s.getServer).not.toHaveBeenCalled(); expect(s.charges).not.toHaveBeenCalled();
+  expect(s.documents.size).toBe(0);
+});
+
+test('account replacement during creation preparation prevents the transaction', async () => {
+  const s = setup();
+  s.charges.mockImplementation(async () => { mockAuth.currentUser = { uid: 'replacement' }; });
+  await expect(s.invoke(input())).rejects.toMatchObject({ name: 'StaleSessionError' });
+  expect(s.documents.size).toBe(0);
 });
 
 test('failure before transaction commit leaves no document; exact retry creates one', async () => {

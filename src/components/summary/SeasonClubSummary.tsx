@@ -57,13 +57,15 @@ export function SeasonAwardRows({ awards, all = false, provisional = false, pers
             <Text style={seasonSummaryStyles.heading}>{opened ? he.seasonTitleNames[opened.key] : ''}</Text>
             <Pressable onPress={() => setOpened(null)} accessibilityRole="button" accessibilityLabel="סגירה" hitSlop={10}><Ionicons name="close" size={24} color={colors.text} /></Pressable>
           </View>
-          <Text style={seasonSummaryStyles.note}>{provisional ? 'המובילים כרגע' : 'כל השותפים לזכייה'} · {opened ? he.seasonTitleValue(opened.key, opened.value, opened.valueUnit) : ''}</Text>
+          <Text style={seasonSummaryStyles.note}>{opened?.key === 'deadlyDuo' ? 'הצמדים הזוכים' : provisional ? 'המובילים כרגע' : 'כל השותפים לזכייה'} · {opened ? he.seasonTitleValue(opened.key, opened.value, opened.valueUnit) : ''}</Text>
           <ScrollView style={{ maxHeight: 380 }}>
-            {(opened?.winners ?? opened?.names.map((name, i) => ({ id: String(i), name, coverage: undefined })) ?? []).map(w => <View key={w.id} style={seasonSummaryStyles.winner}>
+            {opened?.key === 'deadlyDuo' ? (opened.pairs?.length ? opened.pairs.map((pair, index) => <View key={pair.map(w => w.id).join('__')} style={seasonSummaryStyles.winnerPair}>
+              <Text style={seasonSummaryStyles.awardName}>{`צמד ${index + 1}`}</Text>
+              {pair.map(w => <View key={w.id} style={seasonSummaryStyles.winner}><UserAvatar user={{ ...people[w.id], id: w.id, name: w.name }} size={38} /><Text style={[seasonSummaryStyles.winnerName, { flex: 1 }]}>{w.name}</Text></View>)}
+            </View>) : opened.names.map((name, index) => <View key={index} style={seasonSummaryStyles.winnerPair}><Text style={seasonSummaryStyles.awardName}>{`צמד ${index + 1}`}</Text><Text style={seasonSummaryStyles.winnerName}>{`\u2068${name}\u2069`}</Text></View>)) : (opened?.winners ?? opened?.names.map((name, i) => ({ id: String(i), name, coverage: undefined })) ?? []).map(w => <View key={w.id} style={seasonSummaryStyles.winner}>
               <UserAvatar user={{ ...people[w.id], id: w.id, name: w.name }} size={38} />
               <View style={{ flex: 1 }}><Text style={seasonSummaryStyles.winnerName}>{w.name}</Text>{w.coverage ? <Text style={seasonSummaryStyles.muted}>{he.seasonTitleCoverage(w.coverage.rated, w.coverage.of)}</Text> : null}</View>
             </View>)}
-            {opened?.key === 'deadlyDuo' ? <Text style={seasonSummaryStyles.note}>הצמדים הזוכים: {opened.names.join(' · ')}</Text> : null}
           </ScrollView>
         </View>
       </View>
@@ -147,13 +149,14 @@ export function SeasonClubSummary({ model }: { model: SeasonSummaryModel }) {
     </View>
     <View style={seasonSummaryStyles.card}>
       <SeasonSectionTitle text="הצמדים של המועדון" icon="people-outline" />
-      {model.club && model.club.pairsComplete !== false ? <ChemistrySection groupId={model.groupId} pairs={model.club.pairs} identities={people} seasonScoped appearance="summary" motionEnabled={false} /> : <Text style={seasonSummaryStyles.note}>נתוני הצמדים אינם זמינים לעונה הזאת.</Text>}
+      {model.club && model.club.pairsComplete !== false ? <ChemistrySection groupId={model.groupId} pairs={model.club.pairs} identities={people} seasonScoped appearance="summary" motionEnabled={false} emptyText={model.closed ? 'לא נמצאו צמדים עם מספיק נתונים בעונה הזאת.' : undefined} /> : <Text style={seasonSummaryStyles.note}>נתוני הצמדים אינם זמינים לעונה הזאת.</Text>}
       <Text style={seasonSummaryStyles.note}>לפחות 10 משחקים יחד לחישוב אחוז הניצחונות</Text>
     </View>
   </>;
 }
 
 export const seasonSummaryStyles = StyleSheet.create({
+  winnerPair: { borderWidth: 1, borderColor: '#DFEAF8', borderRadius: 12, padding: 10, marginTop: 10, gap: 6 },
   card: { backgroundColor: colors.surface, borderRadius: 13, borderWidth: 1, borderColor: '#DFEAF8', padding: 10, gap: 6 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   heading: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN },

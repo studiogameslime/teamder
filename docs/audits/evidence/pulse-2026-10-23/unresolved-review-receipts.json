@@ -1,0 +1,32 @@
+[
+  {
+    "path": "errors/0ed2fff668ab391434aa9c777a3fe722",
+    "state": "analyzed",
+    "readBackVerified": true,
+    "sourcePreserved": true
+  },
+  {
+    "path": "errors/701bd4e467e9a76308f245a44577a1cb",
+    "state": "analyzed",
+    "readBackVerified": true,
+    "sourcePreserved": true
+  },
+  {
+    "path": "errors/d3a3c615cf65d62632c82a561de6d000",
+    "state": "analyzed",
+    "readBackVerified": true,
+    "sourcePreserved": true
+  },
+  {
+    "path": "errors/ea8ade9319a9a51cb2b94af79717d044",
+    "state": "analyzed",
+    "readBackVerified": true,
+    "sourcePreserved": true
+  },
+  {
+    "path": "errors/f1aadfbeef82b5b25c36dcff580a45fb",
+    "state": "analyzed",
+    "readBackVerified": true,
+    "sourcePreserved": true
+  }
+]

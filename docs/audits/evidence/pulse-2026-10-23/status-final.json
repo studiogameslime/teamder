@@ -1,0 +1,10 @@
+{
+  "failures": [
+    "home/dashboard: ×ª×™×¢×•×“ ×”×©×ª× ×”: home/dashboard.md",
+    "home/dashboard: ×ª×™×¢×•×“ ×”×©×ª× ×”: home/dashboard.simple.md",
+    "home/round-cards: ×ª×™×¢×•×“ ×”×©×ª× ×”: home/round-cards.md",
+    "home/round-cards: ×ª×™×¢×•×“ ×”×©×ª× ×”: home/round-cards.simple.md",
+    "clubs/covers-and-invitations: ×ž×§×•×¨ ×”×©×ª× ×”: src/data/coverImages.ts",
+    "entry/landing-and-links: ×ž×§×•×¨ ×”×©×ª× ×”: functions/src/invitePreviewFields.ts"
+  ]
+}

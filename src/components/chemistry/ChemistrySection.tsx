@@ -118,8 +118,10 @@ export function ChemistrySection({
   preview = false,
   motionEnabled = true,
   identities,
+  emptyText,
 }: {
   groupId: string;
+  emptyText?: string;
   pairs?: Record<string, PairTotals> | null;
   /**
    * The caller has already named the window on screen — the scope chip says
@@ -206,7 +208,7 @@ export function ChemistrySection({
   if (!data) return <ChemistryLoadNotice failed={current?.failed === true} onRetry={() => setAttempt(x => x + 1)} />;
   if (preview && !data.picks.some(p => p.kind === 'winningDuo')) return <></>;
   if (data.picks.length === 0) {
-    return <Text style={styles.empty}>{he.chemistryEmpty}</Text>;
+    return <Text style={styles.empty}>{emptyText ?? he.chemistryEmpty}</Text>;
   }
 
   return (

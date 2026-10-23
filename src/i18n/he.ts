@@ -3829,6 +3829,15 @@ export const he = {
   // path to grow it — hiding both the number and the CTA together is
   // a missed engagement opportunity.
   profileInviteFriendsCta: 'הזמן חברים לאפליקציה',
+  crashTestTitle: 'בדיקת דיווח קריסה',
+  crashTestBody: 'בדיקה זמנית לטסטרים. האפליקציה תיסגר בכוונה לאחר אישור.',
+  crashTestButton: 'בדיקת קריסה',
+  crashTestConfirm: 'האפליקציה תיסגר בכוונה ודוח הבדיקה ישויך לחשבון שמחובר כעת. לאחר הסגירה פתח אותה שוב עם חיבור לאינטרנט כדי לשלוח את הדוח. להפעיל?',
+  crashTestConfirmButton: 'כן, הפעל קריסה',
+  crashTestDevelopment: 'במצב פיתוח או דמו לא מופעלת קריסה. יש לבצע את הבדיקה בגרסת הבדיקה המותקנת מהחנות.',
+  crashTestSessionChanged: 'החשבון המחובר השתנה. פתח מחדש את מסך הבית ונסה שוב.',
+  crashTestCollectionDisabled: 'איסוף דוחות הקריסה כבוי במכשיר הזה. הקריסה לא הופעלה.',
+  crashTestUnavailable: 'רכיב דיווח הקריסות אינו זמין בגרסה הזו או שלא ניתן להפעילו. הקריסה לא הופעלה.',
   profileInviteShareBody: (link: string) =>
     `אני משחק כדורגל בעזרת אפליקציית Teamder ⚽\nתוריד גם אתה ובוא לשחק:\n${link}`,
   profileApprovalsCount: (n: number) =>

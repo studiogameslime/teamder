@@ -4,6 +4,8 @@ jest.mock('expo-localization', () => ({ getLocales: () => [{ regionCode: 'IL' }]
 jest.mock('firebase/firestore', () => ({ doc: jest.fn(), getDoc: jest.fn() }));
 jest.mock('@/firebase/config', () => ({ getFirebase: () => ({ db: {} }), USE_MOCK_DATA: false }));
 jest.mock('@/services/errorLog', () => ({ logError: jest.fn(), isExpectedDenial: () => true }));
+jest.mock('../../src/utils/errorObservation', () => ({ observeCaughtError: jest.fn() }));
+import { observeCaughtError } from '../../src/utils/errorObservation';
 import { Linking, NativeModules, Platform } from 'react-native';
 import { getDoc } from 'firebase/firestore';
 import { checkForUpdate, openStore } from '@/services/updateService';
@@ -30,6 +32,20 @@ test('same version name but higher native build is an available update', async (
 test('missing bridge and unavailable store do not block app use', async () => {
   NativeModules.TeamderStoreUpdate = undefined; expect(await checkForUpdate()).toBeNull();
   NativeModules.TeamderStoreUpdate = bridge; bridge.check.mockRejectedValue(new Error('Not owned by Play')); expect(await checkForUpdate()).toBeNull();
+});
+
+test('Play ownership -10 is normal unavailability at both observation points', async () => {
+  bridge.check.mockRejectedValue(new Error('-10: Install Error(-10): The app is not owned by any user on this device.'));
+  expect(await checkForUpdate()).toBeNull();
+  expect(observeCaughtError).not.toHaveBeenCalled();
+  expect(getDoc).not.toHaveBeenCalled();
+});
+
+test('other native store failures remain visible', async () => {
+  const error = new Error('Install Error(-6): download failed');
+  bridge.check.mockRejectedValue(error);
+  expect(await checkForUpdate()).toBeNull();
+  expect(observeCaughtError).toHaveBeenCalledWith(error, expect.objectContaining({ handler: 'bounded' }));
 });
 test('config failure leaves verified store update optional', async () => {
   (getDoc as jest.Mock).mockRejectedValue(new Error('offline')); expect((await checkForUpdate())?.kind).toBe('optional');

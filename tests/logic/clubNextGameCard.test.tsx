@@ -2,6 +2,7 @@ import React from 'react';
 jest.mock('@/assets/images/match-football.png',()=>1);
 jest.mock('react-native',()=>({View:'View',Text:'Text',Pressable:'Pressable',Image:'Image',StyleSheet:{create:(s:any)=>s}}));
 jest.mock('@expo/vector-icons',()=>({Ionicons:'Icon'}));
+jest.mock('react-native-svg',()=>({__esModule:true,default:'Svg',Circle:'Circle',Line:'Line',Path:'Path',Rect:'Rect'}));
 jest.mock('expo-linear-gradient',()=>({LinearGradient:'Gradient'}));
 jest.mock('@/theme',()=>({spacing:{lg:16},RTL_LABEL_ALIGN:'left'}));
 import {NextGameCard} from '@/components/community/NextGameCard';
@@ -25,6 +26,7 @@ test('deferred registration keeps its explanation and delegates member/admin dec
 });
 test('no upcoming round retains the optional create action without inventing statistics',()=>{
  const create=jest.fn();const tree=NextGameCard({onCreateRecurring:create});expect(text(tree)).toContain(he.communityNextGameNone);
- all(tree).find(n=>n.type==='Pressable').props.onPress();expect(create).toHaveBeenCalledTimes(1);expect(all(tree).filter(n=>n.type==='Image')).toHaveLength(1);
+ all(tree).find(n=>n.type==='Pressable').props.onPress();expect(create).toHaveBeenCalledTimes(1);expect(all(tree).filter(n=>n.type==='Image')).toHaveLength(0);
+ expect(all(tree).filter(n=>n.type==='Svg')).toHaveLength(1);
  expect(text(tree)).not.toContain(he.communityNextGameStatPlayers);expect(text(tree)).not.toContain('0/');
 });

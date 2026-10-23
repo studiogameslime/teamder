@@ -1,6 +1,7 @@
 import { observeCaughtError } from '../services/errorObservation';
 import { Dropdown } from '../components/Dropdown';
 import { boardBuckets, boardSections, type BoardTab } from '../services/workBoard';
+import { workCategory, type WorkCategory } from '../services/unresolvedWork';
 import { timeAgo } from '../format';
 import { navRef } from '../navigation/navRef';
 import { DiagnosticTimeline } from '../components/DiagnosticTimeline';
@@ -86,7 +87,7 @@ const TAB_LABEL: Record<Tab, string> = {
 };
 
 /** Tag filter — `all` plus one chip per kind. */
-type Filter = 'all' | WorkKind;
+type Filter = 'all' | WorkCategory;
 
 export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?:BoardTab;initialFilter?:Filter} = {}) {
   const [items, setItems] = useState<WorkItem[]>([]);
@@ -94,7 +95,6 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [rowLimit, setRowLimit] = useState(40);
-  const [newest, setNewest] = useState(false);
   const [tab, setTab] = useState<Tab>(initialTab);
   const [filter, setFilter] = useState<Filter>(initialFilter);
   const [search, setSearch] = useState('');
@@ -174,21 +174,21 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
     }
   }, []);
 
-  useEffect(()=>setRowLimit(40),[tab,filter,search,newest]);
+  useEffect(()=>setRowLimit(40),[tab,filter,search]);
 
   const byState = useMemo(() => boardBuckets(items), [items]);
 
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return byState[tab].filter(item => (filter === 'all' || item.kind === filter) && (!query || [item.title, item.body, item.reporterName, item.screen].some(value => value.toLowerCase().includes(query))));
+    return byState[tab].filter(item => (filter === 'all' || workCategory(item) === filter) && (!query || [item.title, item.body, item.reporterName, item.screen, item.reviewReason ?? '', item.unresolved?.reason ?? '', item.unresolved?.nextStep ?? ''].some(value => value.toLowerCase().includes(query))));
   }, [byState, tab, filter, search]);
 
-  const groups = useMemo(() => boardSections(visible, newest), [visible, newest]);
+  const groups = useMemo(() => boardSections(visible), [visible]);
 
   /** Counts per KIND inside the CURRENT tab — drives the filter chips. */
   const kindCounts = useMemo(() => {
     const out: Record<string, number> = {};
-    for (const i of byState[tab]) out[i.kind] = (out[i.kind] ?? 0) + 1;
+    for (const i of byState[tab]) { const category=workCategory(i); out[category] = (out[category] ?? 0) + 1; }
     return out;
   }, [byState, tab]);
 
@@ -277,8 +277,8 @@ export function TasksScreen({initialTab='open',initialFilter='all'}:{initialTab?
         </View>
 
         <View style={{flexDirection:'row',direction:'rtl',gap:8,paddingVertical:12}}>
-          <Dropdown flex={1} title="סוג משימה" value={filter} options={[{value:'all',label:'כל הסוגים'},...KIND_ORDER.filter(k=>(kindCounts[k] ?? 0)>0).map(k=>({value:k,label:KIND_LABEL[k]}))]} onSelect={v=>setFilter(v as Filter)}/>
-          <Dropdown flex={1.25} title="מיון משימות" value={newest?'newest':'priority'} options={[{value:'priority',label:'דחיפות ועדכניות'},{value:'newest',label:'עדכניות'}]} onSelect={v=>setNewest(v==='newest')}/>
+          <Dropdown flex={1} title="סוג משימה" value={filter} options={[{value:'all',label:'כל הסוגים'},...KIND_ORDER.flatMap(k=>[{value:k,label:KIND_LABEL[k]},...(k==='bug'?[{value:'unresolved',label:'באגים לא פתורים'}]:[])]).filter(option=>(kindCounts[option.value] ?? 0)>0)]} onSelect={v=>setFilter(v as Filter)}/>
+          <Text style={{...font.small,alignSelf:'center'}}>מהחדש לישן</Text>
         </View>
         {tab==='claude'?<Text style={{ ...font.small,color:colors.primary,textAlign: RTL_LABEL_ALIGN,paddingBottom:10}}>בוצע ע״י רובנס · ממתין לאישור שלך</Text>:null}
       </View>
@@ -456,9 +456,13 @@ function WorkRow({
         // while the separate check button resolves it without sending.
         onPress={() => (item.stream === 'chat' ? onReply?.() : setExpanded((v) => !v))}
       >
-        <View style={{width:32,height:32,borderRadius:16,backgroundColor:item.kind==='error'?colors.amber+'18':colors.primarySoft,alignItems:'center',justifyContent:'center'}}><Ionicons name={KIND_ICON[item.kind] as never} size={17} color={item.kind==='error'?colors.amber:colors.primary}/></View>
+        <View style={{width:28,height:28,borderRadius:14,backgroundColor:item.kind==='error'?colors.amber+'18':colors.primarySoft,alignItems:'center',justifyContent:'center'}}><Ionicons name={KIND_ICON[item.kind] as never} size={15} color={item.kind==='error'?colors.amber:colors.primary}/></View>
 
         <View style={st.rowText}>
+          <Text style={[st.rowTitle, isDone && st.strike]} numberOfLines={expanded ? 0 : 2}>
+            {item.title}
+          </Text>
+          <View style={st.metaRow}>
             <View style={[st.kindPill, item.kind === 'chat' && st.kindPillChat]}>
               <Ionicons
                 name={KIND_ICON[item.kind] as never}
@@ -469,10 +473,6 @@ function WorkRow({
                 {KIND_LABEL[item.kind]}
               </Text>
             </View>
-          <Text style={[st.rowTitle, isDone && st.strike]} numberOfLines={expanded ? 0 : 2}>
-            {item.title}
-          </Text>
-          <View style={st.metaRow}>
             {/* The tag. Every row carries one, so the kind of work is legible
                 without reading the title. */}
             {/* The idea gate, stated on the row rather than left to memory:
@@ -511,6 +511,7 @@ function WorkRow({
           <Text style={{ ...font.h1,textAlign: RTL_LABEL_ALIGN}}>{item.title}</Text>
           <Text style={st.meta}>{byClaude?'בוצע ע״י רובנס · ממתין לאישורך':isDone?'סגורה':'פתוחה'}</Text>
           {item.unresolved && item.state === 'open' ? <View style={{padding:12,borderRadius:12,backgroundColor:'#F59E0B18',gap:8}}><Text style={[st.notes,{color:colors.text}]}>מה כבר נבדק: {item.unresolved.reason}</Text><Text style={st.notes}>מה חסר לפתרון: {item.unresolved.nextStep}</Text></View> : null}
+          {item.reviewReason ? <View style={{padding:12,borderRadius:12,backgroundColor:colors.surfaceAlt,gap:6}}><Text style={font.title}>למה הפריט עדיין פתוח</Text><Text style={st.notes}>{item.reviewReason}</Text></View> : null}
           {item.body ? <Text style={st.notes}>{item.body}</Text> : null}
           {loadingShots ? (
             <ActivityIndicator color={colors.primary} style={{ alignSelf: 'flex-end' }} />
@@ -928,7 +929,7 @@ const st = StyleSheet.create({
     overflow: 'hidden',
   },
   rowDone: { opacity: 0.6 },
-  rowMain: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'flex-start', gap: 12, padding: 16 },
+  rowMain: { flexDirection: 'row', direction: 'rtl' as const, alignItems: 'flex-start', gap: 8, paddingHorizontal: 12, paddingVertical: 9, minHeight: 48 },
   check: {
     width: 22,
     height: 22,
@@ -940,7 +941,7 @@ const st = StyleSheet.create({
     marginTop: 1,
   },
   checkOn: { backgroundColor: colors.green, borderColor: colors.green },
-  rowText: { flex: 1, gap: 5 },
+  rowText: { flex: 1, gap: 3 },
   rowTitle: { 
     ...font.title,
     color: colors.text,

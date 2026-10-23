@@ -16,7 +16,7 @@ function nodes(element: any): any[] { return !element || typeof element !== 'obj
 beforeEach(() => { mockStates = []; mockIndex = 0; });
 test('shared category exposes all five identities by long press and closes with the button', () => {
   const winners = ['a', 'b', 'c', 'd', 'e'].map(id => ({ id, name: 'שם משותף' }));
-  const props = { awards: [{ key: 'deadlyDuo' as const, names: ['שם משותף + שם משותף'], winners, value: 5, mine: false }], all: true };
+  const props = { awards: [{ key: 'deadlyDuo' as const, names: ['צמד ראשון', 'צמד שני', 'צמד שלישי'], winners, pairs: [[winners[0],winners[1]], [winners[0],winners[2]], [winners[3],winners[4]]], value: 5, mine: false }], all: true };
   const render = () => { mockIndex = 0; return nodes(SeasonAwardRows(props)); };
   let tree = render();
   expect(tree.find(n => n.type === 'Pressable' && n.props.disabled === false)?.props.accessibilityLabel).toContain('5 שחקנים');
@@ -25,7 +25,8 @@ test('shared category exposes all five identities by long press and closes with 
   expect(tree.find(n => n.type === 'Modal')!.props.visible).toBe(false);
   category.props.onLongPress(); tree = render();
   expect(tree.find(n => n.type === 'Modal')!.props.visible).toBe(true);
-  expect(nodes(tree.find(n => n.type === 'Modal')).filter(n => n.type === 'Avatar').map(n => n.props.user.id)).toEqual(['a','b','c','d','e']);
+  expect(nodes(tree.find(n => n.type === 'Modal')).filter(n => n.type === 'Avatar').map(n => n.props.user.id)).toEqual(['a','b','a','c','d','e']);
+  expect(nodes(tree.find(n => n.type === 'Modal')).filter(n => n.type === 'Text').map(n=>n.props.children).join(' ')).toContain('צמד 3');
   tree.find(n => n.props.accessibilityLabel === 'סגירה')!.props.onPress();
   expect(render().find(n => n.type === 'Modal')!.props.visible).toBe(false);
 });

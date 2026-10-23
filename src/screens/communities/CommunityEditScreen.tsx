@@ -43,6 +43,7 @@ export function CommunityEditScreen() {
   // canonical value (otherwise the user is stuck looking at the
   // rejected number).
   const [revertSignal, setRevertSignal] = useState(0);
+  const [seasonsDirty, setSeasonsDirty] = useState(false);
 
   // Pre-fill the wizard from the live group. Only the fields the
   // refactored wizard exposes are hydrated. Legacy fields on the
@@ -100,6 +101,10 @@ export function CommunityEditScreen() {
   }
 
   const submit = async (v: GroupFormValues) => {
+    if (seasonsDirty) {
+      appAlert('השינויים בעונה עדיין לא נשמרו', 'שינית את הגדרות העונה. כדי לשמור אותן, לחץ קודם על ״שמור הגדרות עונה״. אחר כך תוכל לשמור את פרטי המועדון.');
+      return;
+    }
     const toDays = (s: string): number | null => {
       const n = parseInt(s, 10);
       return Number.isFinite(n) && n > 0 ? n : null;
@@ -187,6 +192,7 @@ export function CommunityEditScreen() {
         <SeasonsSettings
           groupId={original.id}
           seasons={original.seasons}
+            onDirtyChange={setSeasonsDirty}
           onChanged={() => {
             if (me?.id) void reloadGroups(me.id);
           }}

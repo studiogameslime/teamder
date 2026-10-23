@@ -24,7 +24,7 @@ const histories: { key: SeasonHistoryChoice; title: string; body: string; icon: 
   { key: 'continue', title: 'להמשיך עם הפעילות הקודמת', body: 'המחזורים והנתונים הקודמים נכנסים לעונה הפעילה. היעד נמדד מתחילת התקופה שנכללת.', icon: 'layers-outline' },
 ];
 
-export function SeasonsSettings({ groupId, seasons, onChanged }: { groupId: string; seasons?: GroupSeasons; onChanged?: () => void }) {
+export function SeasonsSettings({ groupId, seasons, onChanged, onDirtyChange }: { groupId: string; seasons?: GroupSeasons; onChanged?: () => void; onDirtyChange?: (dirty: boolean) => void }) {
   const live = seasons?.enabled === true;
   const [open, setOpen] = useState(live);
   const [scope, setScope] = useState<'current' | 'next'>('current');
@@ -65,7 +65,8 @@ export function SeasonsSettings({ groupId, seasons, onChanged }: { groupId: stri
   const target = makeSeasonTarget(cadence, cadence === 'date' ? months : rounds, todayIn(undefined, start));
   const validation = validateSeasonTarget({ target, played, includedHistory: included, now: Date.now(),
     previousType: live && scope === 'current' ? seasons?.cadence.type : undefined, activation: !live });
-  const changed = !live || cadence !== stored?.type || (cadence === 'rounds' ? rounds !== stored?.targetRounds : months !== stored?.months);
+  const changed = !live || cadence !== (stored?.type ?? 'rounds') || (cadence === 'rounds' ? rounds !== (stored?.targetRounds ?? 24) : months !== (stored?.months ?? 3));
+  useEffect(() => { onDirtyChange?.(open && changed); }, [onDirtyChange, open, changed]);
   const plan = planActivation({ cadence, months, targetRounds: rounds, choice, playedHistory: history?.played ?? 0,
     today: todayIn(), historyStartsOn: todayIn(undefined, history?.startsAt || Date.now()) });
   const pending = seasons?.pendingClose;
@@ -80,7 +81,7 @@ export function SeasonsSettings({ groupId, seasons, onChanged }: { groupId: stri
     if (busyRef.current) return;
     busyRef.current = true; setBusy(label);
     try {
-      await action(); setConfirm(null); toast.success('השינוי בהגדרות העונה נשמר'); onChanged?.();
+      await action(); setConfirm(null); onDirtyChange?.(false); toast.success('השינוי בהגדרות העונה נשמר'); onChanged?.();
     } catch (err) {
     observeCaughtError(err, {"source":"src/components/community/SeasonsSettings.tsx","handler":"run","site":"SeasonsSettings:14f3b4380c"});
       const stale = err instanceof SeasonRefusedError && err.reason === 'operationStale';
@@ -103,6 +104,7 @@ export function SeasonsSettings({ groupId, seasons, onChanged }: { groupId: stri
   const short = (seasons?.playedRounds ?? 0) < MIN_SEASON_ROUNDS;
   const closeBody = [
     `בעונה הושלמו ${he.seasonsRoundsUnit(seasons?.playedRounds ?? 0)}.`,
+    `כדי לסיים עונה ולפרסם תארים, צריך להשלים לפחות ${MIN_SEASON_ROUNDS} מחזורים תקינים.`,
     short
       ? 'העונה תבוטל ללא תארים וללא קידום מספר העונה, והמועדון יחזור לפעילות ללא עונות. המחזורים והנתונים יישמרו בכל הזמנים, ללא שיוך לעונה, ויהיו זמינים לבחירה בהפעלה הבאה.'
       : `העונה תיסגר והתארים יפורסמו. ${confirm === 'disable' ? 'לאחר מכן העונות יכובו.' : 'לאחר מכן תיפתח העונה הבאה.'}`,

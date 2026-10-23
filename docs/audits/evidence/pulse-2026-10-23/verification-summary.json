@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-23",
+  "baseCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+  "workingTreeChanges": true,
+  "typecheckExitCode": 0,
+  "testSuites": 461,
+  "tests": 5199,
+  "allPassed": true,
+  "finalTestSeconds": 223.64,
+  "handoversReadBackVerified": 10,
+  "ownerRequestedClosures": 1,
+  "newReleaseLogItemsReadBackVerified": 6,
+  "visualVerification": "production components with browser adapters and fixture data; not native device verification",
+  "featureDocsMissingHistoricalLinks": 107,
+  "preexistingStatusFindings": 6,
+  "sourceTextLfSha256": {
+    "src/services/leaderHistoryService.ts": "7a535638ca81af32dfd01523a8b090d0ddb278ac82ba50fcea2b6c5cdff8f54c",
+    "src/utils/leaderChronology.ts": "bef2b2bad531c2053cbf2fd38a5c6ebd688bcf59fcf502c7388d3a34a5496720",
+    "src/utils/expectedIntegrationError.ts": "d121c882c905a15177152a618b0890d4eb17a014531fd5f37b218d3ad3c4d401",
+    "src/components/match/MatchActionPitch.tsx": "20d690225dd9f5baaba418ddbbfec272cb27dd05c7ec8daa42ba1cea7a93ecf9",
+    "src/screens/communities/CommunityStatsScreen.tsx": "024ceb1e9da4008bb725d6c4c9bf0f83be4800252fdf794aeba0ca8394978268",
+    "src/components/RequestsBell.tsx": "6a11f7e2bb039b7ad1e2802befc7e906c5e66dfa4fdc5ab677b1bc0788c37c69",
+    "src/screens/RequestsScreen.tsx": "5dc0c3b99f5c55a563606f54bc9b573117a571f90785061e6c84a92b343adb17",
+    "src/screens/games/GamesListScreen.tsx": "fd4e3a0fd48d0f6875d1cc7e380bab724a0a73a134eec64e580fb50fe848d764",
+    "src/services/watchSyncService.ts": "01034e051d0609d0abd5c07d50d76eca7089baa3591ddf418a84b9a490163787",
+    "src/services/friendsService.ts": "7091a7d97ba9c227c4578e7d16ce5e4e3dfe28a85c97c1fe3a68d9143c186d31",
+    "src/services/updateService.ts": "f5102a403cd85e9b1c354472d35edcf97beb65cb970d754fdcfdff3069790b43"
+  }
+}

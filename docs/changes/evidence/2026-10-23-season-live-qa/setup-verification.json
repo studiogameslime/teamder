@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-23T10:43:54.165Z",
+  "status": "waiting-real-window",
+  "checks": 48,
+  "closeAt": "2026-10-24T10:41:26.584Z",
+  "season": "s4",
+  "played": 5,
+  "historyPreserved": {
+    "games": 17,
+    "archives": 7
+  },
+  "clientOpened": false,
+  "clientSyncCalled": false,
+  "manualJobRun": false,
+  "groupId": "J060YQu6QTcgk3glUDj2",
+  "seasonId": "s4",
+  "gameIds": [
+    "J1kKd4Mc6aTRDAcUWQ4m",
+    "A15cWfoxOAcovQmAhi4l",
+    "xcN4KP05okjBMa0hAgy3",
+    "XuM2rGiYLED5uAKWAzpO",
+    "h8OUad88zXdLGLnyl9eo"
+  ],
+  "setupMethod": "admin-rest-fixture-real-deployed-triggers",
+  "observationStartsAt": "2026-10-23T10:41:35.468Z",
+  "dueAt": 1792752086584,
+  "closeAtMs": 1792838486584,
+  "correctionWindowMs": 86400000,
+  "automaticSummaries": 5,
+  "qaPlayers": 2,
+  "fixtureWritesCompleted": true,
+  "shoshiWrites": 0,
+  "automationId": "automation",
+  "scheduledReadOnlyCheck": "2026-10-24T11:20:00Z",
+  "limitations": [
+    "Real 24-hour period is still pending",
+    "Setup used admin REST fixture, not client login or callable creation",
+    "Regular evenings with attendance only; no new goals, mini-games, or scored MVP",
+    "No real-production failure injected; recovery tested in isolated emulator",
+    "Client closure explanation UI remains unshipped"
+  ]
+}

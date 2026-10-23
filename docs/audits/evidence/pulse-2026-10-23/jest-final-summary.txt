@@ -1,0 +1,7 @@
+PASS tests/logic/errorIdentity.test.ts
+
+Test Suites: 461 passed, 461 total
+Tests:       5199 passed, 5199 total
+Snapshots:   0 total
+Time:        223.64 s, estimated 446 s
+Ran all test suites.

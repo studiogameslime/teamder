@@ -43,8 +43,8 @@ const rtl = I18nManager.isRTL;
 const logicalStart = (x: number, width: number, itemWidth: number) => rtl ? width - x - itemWidth / 2 : x - itemWidth / 2;
 const participantDiscSize = (height: number, concise: boolean) => concise ? (height < 145 ? 32 : 36) : height < 210 ? 42 : 52;
 
-function Participant({ person, x, y, width, height, active, visible, disabled, dive = 0, concise = false }: {
-  person: PitchParticipant; x: number; y: number; width: number; height: number; active: boolean; visible: boolean; disabled?: boolean; dive?: number; concise?: boolean;
+function Participant({ person, x, y, width, height, active, visible, disabled, dive = 0, concise = false, sideLabels = false }: {
+  person: PitchParticipant; x: number; y: number; width: number; height: number; active: boolean; visible: boolean; disabled?: boolean; dive?: number; concise?: boolean; sideLabels?: boolean;
 }) {
   const reduced = useReducedMotion();
   const compact = height < 210;
@@ -63,22 +63,25 @@ function Participant({ person, x, y, width, height, active, visible, disabled, d
   }, [person.player?.id, visible, reduced, entrance]);
   useEffect(() => {
     cancelAnimation(lunge); lunge.value = 0;
-    if (dive && visible && !reduced) lunge.value = withDelay(140, withSequence(withTiming(dive, { duration: 270 }), withTiming(0, { duration: 320 })));
+    if (dive && visible && !reduced) lunge.value = withDelay(140, withSequence(withTiming(dive, { duration: 270 }), withDelay(350, withTiming(0, { duration: 320 }))));
     return () => cancelAnimation(lunge);
   }, [dive, visible, reduced, lunge]);
   const haloStyle = useAnimatedStyle(() => ({ opacity: 0.24 + halo.value * 0.30, transform: [{ scale: 1 + halo.value * 0.18 }] }));
   const avatarStyle = useAnimatedStyle(() => ({ transform: [{ scale: entrance.value }, { translateY: (1 - entrance.value) * 20 }, { translateX: lunge.value }] }));
   const filled = !!person.player || !!person.fallback;
   const editable = !!person.player && !!person.onEdit && !disabled;
+  const labels = <>
+    <Text allowFontScaling={!concise} maxFontSizeMultiplier={1.15} style={[s.role,compact && s.compactLabel]} numberOfLines={1}>{concise && person.player ? `${person.label} · ⁨${person.player.name}⁩` : person.label}</Text>
+    {!concise && <Text maxFontSizeMultiplier={1.15} style={[s.playerName,compact && s.compactLabel]} numberOfLines={1}>{person.player?.name ?? person.fallback ?? `בחירת ${person.label}`}</Text>}
+    {person.teamLabel && <Text allowFontScaling={!concise} maxFontSizeMultiplier={1.15} style={[s.teamTag,compact && s.compactTeamTag, { backgroundColor: person.ink ?? '#14532D' }]} numberOfLines={1}>{person.teamLabel}</Text>}
+  </>;
   const content = <>
     <Animated.View style={[s.disc, avatarStyle, { width: discSize, height: discSize, borderRadius: discSize / 2, borderColor: person.color, backgroundColor: filled || active ? '#FFFFFF' : 'rgba(255,255,255,0.25)' }]}>
       {active && <Animated.View pointerEvents="none" style={[s.halo, { borderColor: person.color }, haloStyle]}/>}
       {person.player ? <UserAvatar user={person.player} size={discSize - 6}/> : <Text maxFontSizeMultiplier={1.1} style={[s.plus, compact && {fontSize:27,lineHeight:34}, { color: active || filled ? (person.ink ?? '#166534') : '#FFFFFF' }]}>{person.fallback ? '—' : '+'}</Text>}
       {editable && <View style={s.editDot}><Text style={s.editIcon}>✎</Text></View>}
     </Animated.View>
-    <Text allowFontScaling={!concise} maxFontSizeMultiplier={1.15} style={[s.role,compact && s.compactLabel]} numberOfLines={1}>{concise && person.player ? `${person.label} · ⁨${person.player.name}⁩` : person.label}</Text>
-    {!concise && <Text maxFontSizeMultiplier={1.15} style={[s.playerName,compact && s.compactLabel]} numberOfLines={1}>{person.player?.name ?? person.fallback ?? `בחירת ${person.label}`}</Text>}
-    {person.teamLabel && <Text allowFontScaling={!concise} maxFontSizeMultiplier={1.15} style={[s.teamTag,compact && s.compactTeamTag, { backgroundColor: person.ink ?? '#14532D' }]} numberOfLines={1}>{person.teamLabel}</Text>}
+    {sideLabels ? <View style={{ position: 'absolute', start: -76, top: 0, width: 76, alignItems: 'center', gap: 1 }}>{labels}</View> : labels}
   </>;
   const position = { width:slotWidth,start: logicalStart(x * width, width, slotWidth), top: y * height - discSize / 2 };
   return editable ? <Pressable onPress={person.onEdit} accessibilityRole="button" accessibilityLabel={`שינוי ${person.label}, ${person.player!.name}`} style={[s.participant, position]}>{content}</Pressable>
@@ -97,10 +100,11 @@ export function MatchActionPitch({ mode, primary, secondary, activeRole, status,
     ? {primary:{x:0.75,y:0.36},secondary:{x:0.25,y:0.52}}
     : {primary:{x:0.50,y:0.65},secondary:{x:0.50,y:0.13}}) : geometry[mode];
   const passStartY = positions.secondary.y - 0.11;
-  // Keep a penalty ball beside the kicker, clear of the keeper's labels above
-  // and the kicker disc itself. Use the same anchor before and after the ACK.
-  const shotStartX = mode === 'penalty' ? positions.primary.x + (participantDiscSize(height, height < 210) / 2 + 20) / width : positions.primary.x;
-  const shotStartY = mode === 'penalty' ? positions.primary.y : positions.primary.y - 0.10;
+  // In front of the kicker, toward the goal; the same anchor survives the ACK.
+  const shotStartX = positions.primary.x;
+  const shotStartY = mode === 'penalty'
+    ? positions.primary.y - (participantDiscSize(height, height < 210) / 2 + 18) / height
+    : positions.primary.y - 0.10;
   useEffect(() => {
     const current = ++epoch.current;
     cancelAnimation(progress); cancelAnimation(net); cancelAnimation(celebration);
@@ -132,7 +136,7 @@ export function MatchActionPitch({ mode, primary, secondary, activeRole, status,
       const u = mode === 'goal' && hasPass ? (p - 0.44) / 0.56 : p;
       const startX = shotStartX;
       const startY = shotStartY;
-      const endX = outcome === 'miss' ? 0.96 : outcome === 'save' ? 0.44 : 0.50;
+      const endX = outcome === 'miss' ? 0.96 : outcome === 'save' ? 0.44 : mode === 'penalty' ? 0.64 : 0.50;
       const endY = outcome === 'miss' ? 0.07 : outcome === 'save' ? 0.20 : 0.10;
       x = startX + (endX - startX) * u; y = startY + (endY - startY) * u - Math.sin(Math.PI * u) * 0.035;
     }
@@ -160,7 +164,7 @@ export function MatchActionPitch({ mode, primary, secondary, activeRole, status,
     </Animated.View>
     {teamPreview ? <View pointerEvents="none" accessible={false} style={s.previewShirts}><TeamShirtIllustration color={primary.color} width={height < 180 ? 42 : 58}/><TeamShirtIllustration color={secondary.color} width={height < 180 ? 42 : 58}/></View> : <>
     <Participant person={primary} {...positions.primary} width={width} height={height} active={activeRole === 'primary' && status === 'idle'} visible={visible} disabled={disabled} concise={mode === 'penalty' && height < 210}/>
-    <Participant person={secondary} {...positions.secondary} width={width} height={height} active={activeRole === 'secondary' && status === 'idle'} visible={visible} disabled={disabled} concise={mode === 'penalty' && height < 210} dive={mode === 'penalty' && saved ? (outcome === 'save' ? -22 : 15) : 0}/>
+    <Participant person={secondary} {...positions.secondary} width={width} height={height} active={activeRole === 'secondary' && status === 'idle'} visible={visible} disabled={disabled} concise={mode === 'penalty' && height < 210} sideLabels={mode === 'penalty'} dive={mode === 'penalty' && saved ? -22 : 0}/>
     </>}
     {!teamPreview && visible && (mode === 'penalty' || saved) && <Animated.View testID="match-action-ball" pointerEvents="none" accessible={false} style={[s.ball, ballStyle]}>
       <Image source={require('@/assets/images/match-football.png')} style={s.ballImage} resizeMode="contain" accessible={false}/>

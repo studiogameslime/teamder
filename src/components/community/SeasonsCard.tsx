@@ -30,6 +30,7 @@ import {
 import { seasonService } from '@/services/seasonService';
 import { MIN_SEASON_ROUNDS, seasonTargetDue } from '@/utils/seasonPolicy';
 import type { GroupSeasons } from '@/types';
+import { seasonClosureMessages } from '@/utils/seasonClosureStatus';
 
 function formatDate(ms: number): string {
   return new Date(ms).toLocaleDateString('he-IL', {
@@ -165,6 +166,8 @@ export function SeasonsCard({
 
   const rounds =
     cadence?.type === 'rounds' && typeof cadence.targetRounds === 'number';
+  const closure = seasons.closureStatus?.seasonId === seasons.currentId ? seasons.closureStatus : undefined;
+  const closureMessages = seasonClosureMessages(closure);
 
   return (
     <View style={styles.card}>
@@ -215,10 +218,18 @@ export function SeasonsCard({
       {/* Inside the 24-hour correction window: how long is LEFT, ticking.
           Every other number on this card counts evenings, and once the target
           is met there are none — what an admin wants then is the clock. */}
-      {closesIn !== null ? (
+      {closesIn !== null && !(closesIn === 0 && closureMessages.length > 0) ? (
         <Text style={[styles.note, styles.noteUrgent]}>
-          {seasons.manualClose ? 'ממתינים להשלמת סגירת העונה' : seasons.pendingClose?.pausedAt != null ? `הטיימר נעצר — ${seasons.pendingClose.awaitingVerification ?? 1} מחזורים ממתינים לאימות. נותרו ${formatCloseCountdown(closesIn)} שעות לתיקונים לאחר האימות.` : closesIn === 0 ? 'חלון התיקונים הסתיים. משלימים את סגירת העונה…' : he.seasonsClosesIn(formatCloseCountdown(closesIn))}
+          {seasons.manualClose ? 'ממתינים להשלמת סגירת העונה' : seasons.pendingClose?.pausedAt != null ? `הטיימר נעצר — ${seasons.pendingClose.awaitingVerification ?? 1} מחזורים ממתינים לאימות. נותרו ${formatCloseCountdown(closesIn)} שעות לתיקונים לאחר האימות.` : closesIn === 0 ? 'חלון התיקונים הסתיים. ממתינים לבדיקת הסגירה האוטומטית בשרת.' : he.seasonsClosesIn(formatCloseCountdown(closesIn))}
         </Text>
+      ) : null}
+      {closureMessages.length ? (
+        <View accessibilityLiveRegion="polite" style={styles.blockers}>
+          {closureMessages.map(message => <Text key={message} style={[styles.note, styles.noteUrgent]}>{message}</Text>)}
+          {closure!.rounds.map(round => <Text key={round.id} style={styles.note}>
+            {`מחזור ${round.startsAt ? formatDate(round.startsAt) : 'ללא מועד'} — ${round.reason === 'unsealed' ? 'הסיכום טרם הושלם' : round.reason === 'active' ? 'טרם הסתיים' : 'ממתין לאימות'}`}
+          </Text>)}
+        </View>
       ) : null}
       {cadence && seasonTargetDue(cadence, seasons.playedRounds ?? 0, now) && (seasons.playedRounds ?? 0) < MIN_SEASON_ROUNDS ? <Text style={[styles.note, styles.noteUrgent]}>{`יעד הזמן הגיע. חסרים ${MIN_SEASON_ROUNDS - (seasons.playedRounds ?? 0)} מחזורים תקינים למינימום. העונה ממשיכה ואפשר להאריך אותה.`}</Text> : null}
       {daysLeft !== null ? (
@@ -305,6 +316,7 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontWeight: '800',
   },
+  blockers: { gap: spacing.xs },
   /** The season-history CTA, edge to edge across the card.
    *
    *  The card sits in CommunityDetails' body beside the stats button, both

@@ -97,6 +97,7 @@ export interface WorkItem {
   /** Why, when `claudeMayAct` is false — or what the item is waiting for. */
   hint: string;
   unresolved?: UnresolvedWork;
+  reviewReason?: string;
 }
 
 // Plural, because every place these are shown carries a count beside them
@@ -139,15 +140,15 @@ export const KIND_ICON: Record<WorkKind, string> = {
   chat: 'mail-unread',
 };
 
-/** Order the groups appear in — most urgent kind of work first. */
+/** Owner-defined category order; waiting conversations remain visible last. */
 export const KIND_ORDER: WorkKind[] = [
-  'chat',
   'error',
   'report',
   'bug',
-  'ui',
   'feature',
+  'ui',
   'idea',
+  'chat',
 ];
 
 /** The collection each stream lives in — also the closing vocabulary key. */
@@ -204,13 +205,13 @@ export const DONE_LIMIT = 20;
  */
 const LIST_FIELDS: Record<Exclude<WorkStream, 'chat'>, readonly string[]> = {
   task: ['title', 'notes', 'category', 'status', 'priority', 'source', 'sourceId', 'screen',
-    'reporterId', 'reporterName', 'createdAt', 'doneAt',
+    'reporterId', 'reporterName', 'createdAt', 'doneAt', 'reviewReason',
     'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
   error: ['title', 'operation', 'status', 'count', 'firstSeen', 'lastSeen',
-    'lastMessage', 'lastScreen', 'lastUserId',
+    'lastMessage', 'lastScreen', 'lastUserId', 'reviewReason',
     'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
   report: ['type', 'message', 'userName', 'userId', 'screen', 'createdAt',
-    'status', 'fixRequested', 'trail',
+    'status', 'fixRequested', 'trail', 'reviewReason',
     'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
   feature: ['kind', 'text', 'status', 'createdAt',
     'claudeStatus', 'claudeNote', 'claudeAt', 'unresolved', 'unresolvedAt', 'unresolvedReason', 'unresolvedNextStep'],
@@ -512,9 +513,9 @@ export async function listWorkSnapshot(force = false, onProgress?: (items: WorkI
   }).catch((caughtError9674678c43: unknown) => {
     observeCaughtError(caughtError9674678c43, {"source":"pulse/src/services/workItems.ts","handler":"receive","site":"workItems:9674678c43"}); failedStreams.push(stream); });
   await Promise.all([
-    receive(0, 'task', lean('task', force), d => ({ ...fromTask(taskFromDoc(d)), unresolved: readUnresolvedWork(d) })),
-    receive(1, 'error', lean('error', force), d => ({ ...fromError(d), unresolved: readUnresolvedWork(d) })),
-    receive(2, 'report', lean('report', force), d => ({ ...fromReport(d), unresolved: readUnresolvedWork(d) })),
+    receive(0, 'task', lean('task', force), d => ({ ...fromTask(taskFromDoc(d)), unresolved: readUnresolvedWork(d), reviewReason: typeof d.reviewReason === 'string' ? d.reviewReason : '' })),
+    receive(1, 'error', lean('error', force), d => ({ ...fromError(d), unresolved: readUnresolvedWork(d), reviewReason: typeof d.reviewReason === 'string' ? d.reviewReason : '' })),
+    receive(2, 'report', lean('report', force), d => ({ ...fromReport(d), unresolved: readUnresolvedWork(d), reviewReason: typeof d.reviewReason === 'string' ? d.reviewReason : '' })),
     receive(3, 'feature', lean('feature', force), d => fromFeature(featureFromDoc(d))),
     receive(4, 'idea', lean('idea', force), d => fromIdea(ideaFromDoc(d))),
     receive(5, 'chat', listAwaitingReply(force), fromThread),

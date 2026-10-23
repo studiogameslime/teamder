@@ -1,4 +1,5 @@
 import { observeCaughtError } from '../utils/errorObservation';
+import { isWearableApiUnavailable } from '../utils/expectedIntegrationError';
 import { drainNativeDiagnostics, type NativeDiagnosticBridge } from '../native/nativeDiagnostics';
 // watchSyncService — pushes the user's current game state to the paired
 // Wear OS watch via the native WatchBridge module (Data Layer).
@@ -302,6 +303,7 @@ export async function publishWatchState(
   // otherwise the first live payload could ship an offset of 0. De-duped +
   // cached, so it's a no-op network-wise once synced this session.
   await syncServerClock();
+  let publishingToBridge = false;
   try {
     const payload = await computeWatchPayload(myGames, viewer);
     // Out-of-order guard: two concurrent publishes (e.g. a snapshot + the
@@ -310,9 +312,15 @@ export async function publishWatchState(
     // Drop any publish that STARTED before the newest one we've already written.
     if (seq < lastPublishedSeq) return;
     lastPublishedSeq = seq;
-    await bridge.publishState(JSON.stringify(payload));
+    const json = JSON.stringify(payload);
+    publishingToBridge = true;
+    await bridge.publishState(json);
   } catch (err) {
-    observeCaughtError(err, {"source":"src/services/watchSyncService.ts","handler":"publishWatchState","site":"watchSyncService:15590d3063"});
+    // Phones without Wearable.API still use the widget portion of this bridge.
+    // Only this native call's absence is expected; payload failures stay visible.
+    if (!publishingToBridge || !isWearableApiUnavailable(err)) {
+      observeCaughtError(err, {"source":"src/services/watchSyncService.ts","handler":"publishWatchState","site":"watchSyncService:15590d3063"});
+    }
     // Best-effort relay to the Wear OS companion — a failure here is almost
     // always environmental (no watch paired, Data Layer busy) and never
     // affects the phone UX, so we deliberately do NOT log it as a bug (it

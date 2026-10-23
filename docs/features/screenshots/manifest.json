@@ -18829,5 +18829,253 @@
       "לא בדיקת מכשיר אנדרואיד או אייפון; נתוני הדיווח משוחזרים בזיכרון."
     ],
     "sha256": "9f57b4e07e386a548982e432429294ec9d7587d509b8ebe68bfb157ace0d34e0"
+  },
+  {
+    "file": "pulse-penalty-before-2026-10-23.png",
+    "source": "docs\\audits\\evidence\\pulse-2026-10-23\\penalty-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיב מקור במתאם דפדפן, נתוני בדיקה, RTL",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "שינויים מקומיים מעל קומיט הבסיס; ללא הרצה מקורית באנדרואיד או באייפון",
+      "מיקום הכדור נדגם במצב המתנה וב־82% מהמסלול; תחליפי אווטרים"
+    ],
+    "sha256": "a81356f9ab3cbeaa39225e63699872280ba5eeef7df69a254dabb4ebd949cfc2"
+  },
+  {
+    "file": "pulse-penalty-after-2026-10-23.png",
+    "source": "docs\\audits\\evidence\\pulse-2026-10-23\\penalty-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיב מקור במתאם דפדפן, נתוני בדיקה, RTL",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "שינויים מקומיים מעל קומיט הבסיס; ללא הרצה מקורית באנדרואיד או באייפון",
+      "מיקום הכדור נדגם במצב המתנה וב־82% מהמסלול; תחליפי אווטרים"
+    ],
+    "sha256": "4f3c2ee15fe37e520afe2c57e3541a9ee2051f195bd00b64f0e8d14f03f9e98e"
+  },
+  {
+    "file": "pulse-penalty-goal-after-2026-10-23.png",
+    "source": "docs\\audits\\evidence\\pulse-2026-10-23\\penalty-goal-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיב מקור במתאם דפדפן, נתוני בדיקה, RTL",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "שינויים מקומיים מעל קומיט הבסיס; ללא הרצה מקורית באנדרואיד או באייפון",
+      "מיקום הכדור נדגם במצב המתנה וב־82% מהמסלול; תחליפי אווטרים"
+    ],
+    "sha256": "50944ae8bfd8e66a5f64b8bee075f9996f5779038d0157b94ac6f8bcba32a984"
+  },
+  {
+    "file": "pulse-leader-before-2026-10-23.png",
+    "source": "docs\\audits\\evidence\\pulse-2026-10-23\\leader-before.png",
+    "platform": "דפדפן",
+    "environment": "רכיב מקור במתאם דפדפן, נתוני בדיקה, RTL",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "שינויים מקומיים מעל קומיט הבסיס; ללא הרצה מקורית באנדרואיד או באייפון",
+      "כרטיס המקור ונתוני שני שחקנים שהגיעו ל־20 במחזורים שונים; אינו מסך מלא"
+    ],
+    "sha256": "40bf13c4755e6905f8abcbeabfcc6985ef1b9dacf088728bacec50dd36f7cbc4"
+  },
+  {
+    "file": "pulse-leader-after-2026-10-23.png",
+    "source": "docs\\audits\\evidence\\pulse-2026-10-23\\leader-after.png",
+    "platform": "דפדפן",
+    "environment": "רכיב מקור במתאם דפדפן, נתוני בדיקה, RTL",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "שינויים מקומיים מעל קומיט הבסיס; ללא הרצה מקורית באנדרואיד או באייפון",
+      "כרטיס המקור ונתוני שני שחקנים שהגיעו ל־20 במחזורים שונים; אינו מסך מלא"
+    ],
+    "sha256": "a57267d3cb2438b0b1c8e5a0bbe8db93adb33c373b98a63439843386bfa481ab"
+  },
+  {
+    "file": "club-empty-round-before-2026-10-23.png",
+    "source": "artifacts/empty-round-2026-10-23/NextGameCard.before.tsx",
+    "platform": "דפדפן",
+    "environment": "רכיב מקור במתאם דפדפן, מצב ריק, RTL",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "שינוי מקומי; אין אימות אנדרואיד או אייפון. סמלי הספרייה מוחלפים במתאם."
+    ],
+    "sha256": "2b5f9bc2555469b568dca078381f6099683a3179568774328639ad263fd5cd55"
+  },
+  {
+    "file": "club-empty-round-after-2026-10-23.png",
+    "source": "src/components/community/NextGameCard.tsx",
+    "platform": "דפדפן",
+    "environment": "רכיב מקור במתאם דפדפן, מצב ריק, RTL",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "שינוי מקומי; אין אימות אנדרואיד או אייפון. סמלי הספרייה מוחלפים במתאם."
+    ],
+    "sha256": "35bbb6707826bc3a4094398c97b70eba4f7b25bf1d70a953bba9e875b3f75b4f"
+  },
+  {
+    "file": "season-closure-before-2026-10-23.png",
+    "source": "artifacts/season-auto-2026-10-23/SeasonsCard.before.tsx",
+    "platform": "דפדפן",
+    "environment": "רכיב מקור במתאם דפדפן, נתוני דמה, רוחב 390 וכיווניות עברית",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "שינוי מקומי וטרם הופץ. המתאם מדמה יישור בכיווניות כפויה; אין אימות אנדרואיד או אייפון. סמלי הספרייה מוחלפים."
+    ],
+    "sha256": "0e52d5e1f7fcfff5a9b5f390c3c9f14529c626f93b8854921bdbf2174da563d3"
+  },
+  {
+    "file": "season-closure-after-2026-10-23.png",
+    "source": "src/components/community/SeasonsCard.tsx",
+    "platform": "דפדפן",
+    "environment": "רכיב מקור במתאם דפדפן, נתוני דמה, רוחב 390 וכיווניות עברית",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "שינוי מקומי וטרם הופץ. המתאם מדמה יישור בכיווניות כפויה; אין אימות אנדרואיד או אייפון. סמלי הספרייה מוחלפים."
+    ],
+    "sha256": "e2bb8bce0204701acb9fa61e2840604d0fd801e1bb41ecd62fb7e23b8f41e34c"
+  },
+  {
+    "file": "home-crash-test-before-2026-10-23.png",
+    "source": "אימולטור Teamder_API_35, קוד מקומי מעל 18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "platform": "Android",
+    "environment": "דמו בפיתוח, ללא חיבור לייצור",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "נתוני דמו; הבית לפני הוספת הכפתור, בלי אימות דוח קריסה.",
+      "שינוי מקומי וטרם הופץ."
+    ],
+    "sha256": "348552941ee4464caa3dba7030ca6aa88cf8d3198485ca699c48de13f40cb6e0"
+  },
+  {
+    "file": "home-crash-test-after-2026-10-23.png",
+    "source": "אימולטור Teamder_API_35, קוד מקומי מעל 18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "platform": "Android",
+    "environment": "דמו בפיתוח, ללא חיבור לייצור",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "נתוני דמו; הכפתור נצפה אך לא הופעלה קריסה. שכבות פיתוח מופיעות בצילום.",
+      "שינוי מקומי וטרם הופץ."
+    ],
+    "sha256": "56e60f7b279ec469ca5f5dd137fdb73cffedce02f2e00b7dd60eb1aca6290eba"
+  },
+  {
+    "file": "season-minimum-after-2026-10-23.png",
+    "source": "אימולטור Teamder_API_35, קוד מקומי מעל 18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "platform": "Android",
+    "environment": "דמו בפיתוח, ללא חיבור לייצור",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "חלונית במועדון דמו קיים עם אפס מחזורים; לא אושר סיום העונה.",
+      "שינוי מקומי וטרם הופץ."
+    ],
+    "sha256": "b71283f20620e274df6263586176f8f46cd4053b29c712b8f34acc89031d473f"
+  },
+  {
+    "file": "season-pairs-before-2026-10-23.jpg",
+    "source": "artifacts\\pulse-followup-2026-10-23\\feedback__ZZ3YCmxUxt2hyaFeipdV__0.jpg",
+    "platform": "Android",
+    "environment": "צילום הדיווח המקורי מגרסה 1.1.57",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "הועתק לצורכי השוואה; לא צילום חדש של הבינארי המקומי."
+    ],
+    "sha256": "072c85690bd1b5be1f46b9180b54e8348e1a91e674f609c21aa06d17f1b797cf"
+  },
+  {
+    "file": "season-pairs-after-2026-10-23.png",
+    "source": "Android Emulator Teamder_API_35",
+    "platform": "Android",
+    "environment": "רכיבי המקור באנדרואיד עם נתוני דמו מנותקים",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "לא הופץ ולא אומת באייפון או במכשיר המדווח."
+    ],
+    "sha256": "d61a4527a26be51282e3555b31e50d1b7cacb7f8a9b2db77eab0c3dcda4ae7e2"
+  },
+  {
+    "file": "season-closed-empty-before-2026-10-23.jpg",
+    "source": "artifacts\\pulse-followup-2026-10-23\\feedback__26d7yBcKl7xo7wSRM1q0__0.jpg",
+    "platform": "Android",
+    "environment": "צילום הדיווח המקורי מגרסה 1.1.57",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "הועתק לצורכי השוואה; לא צילום חדש של הבינארי המקומי."
+    ],
+    "sha256": "adfb16ad213f1f1ee6f258f232c2dfa63705b145141739f53adb9c1ac3500cf5"
+  },
+  {
+    "file": "season-closed-empty-after-2026-10-23.png",
+    "source": "Android Emulator Teamder_API_35",
+    "platform": "Android",
+    "environment": "רכיבי המקור באנדרואיד עם נתוני דמו מנותקים",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "לא הופץ ולא אומת באייפון או במכשיר המדווח."
+    ],
+    "sha256": "d7c7b176640f68353249451703d318e48d203ce1b7ffd580c99e53d29f2de572"
+  },
+  {
+    "file": "season-club-tooltip-before-2026-10-23.jpg",
+    "source": "artifacts\\pulse-followup-2026-10-23\\feedback__b2SChqAKgRYYGT7xU6Sx__0.jpg",
+    "platform": "Android",
+    "environment": "צילום הדיווח המקורי מגרסה 1.1.57",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "הועתק לצורכי השוואה; לא צילום חדש של הבינארי המקומי."
+    ],
+    "sha256": "3272f1199b6f0a35de405e8236392d88d2e4f6028162c35535608cdae4132749"
+  },
+  {
+    "file": "season-club-tooltip-after-2026-10-23.png",
+    "source": "Android Emulator Teamder_API_35",
+    "platform": "Android",
+    "environment": "רכיבי המקור באנדרואיד עם נתוני דמו מנותקים",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "לא הופץ ולא אומת באייפון או במכשיר המדווח."
+    ],
+    "sha256": "4b2ac48172ba3698472e0dcac868adba9bb78d84a287f659f28fed1ce61a0b4e"
+  },
+  {
+    "file": "season-unsaved-before-2026-10-23.jpg",
+    "source": "artifacts\\pulse-followup-2026-10-23\\feedback__gaV0ZXF7sZduoZQluga5__0.jpg",
+    "platform": "Android",
+    "environment": "צילום הדיווח המקורי מגרסה 1.1.57",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "הועתק לצורכי השוואה; לא צילום חדש של הבינארי המקומי."
+    ],
+    "sha256": "88561bbeb49382af3024623b9ba71030c5ddd65019bee50f2fbbb47a3ecc1d1a"
+  },
+  {
+    "file": "season-unsaved-after-2026-10-23.png",
+    "source": "Android Emulator Teamder_API_35",
+    "platform": "Android",
+    "environment": "רכיבי המקור באנדרואיד עם נתוני דמו מנותקים",
+    "sourceCommit": "18683eefacd7918cd8c4a6516b7c20f09874f6fd",
+    "captured": "2026-10-23",
+    "notes": [
+      "לא הופץ ולא אומת באייפון או במכשיר המדווח."
+    ],
+    "sha256": "d2dd55e973fa4c21ba934b9d4c4045e8f401c5178e54d520ba4b81dd8d5e2810"
   }
 ]

@@ -2,6 +2,7 @@ import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
 import { StaleSessionError } from '../../src/services/staleSession';
+import { retryRead } from '../../src/services/readRetry';
 
 function fixture(retry?: (fn: () => Promise<any>) => Promise<any>) {
   const auth = { currentUser: { uid: 'owner', isAnonymous: false } };
@@ -14,6 +15,7 @@ function fixture(retry?: (fn: () => Promise<any>) => Promise<any>) {
     '@/firebase/firestore': {col: {usersPublic: () => 'usersPublic'}},
     '@/firebase/authRace': { withAuthRaceRetry: retry ?? ((fn: () => Promise<any>) => fn()) },
     './staleSession': { StaleSessionError },
+    './readRetry': { retryRead },
   };
   const module = { exports: {} as any };
   const code = ts.transpileModule(fs.readFileSync('src/services/publicPlayerService.ts', 'utf8'), {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;

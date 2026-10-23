@@ -122,3 +122,7 @@ userService.findAvailablePlayers; gameService.getGameById; notificationsService.
 ## אימות — 21.10.2026
 
 קובץ הבדיקות המשותף `tests/logic/pulse18ReadFailures.test.ts` הורחב בבדיקת מחיקת תמונת פרופיל. מסלול חיפוש השחקנים הזמינים ובדיקות העימוד וההמתנה שלו לא שונו בסבב זה.
+
+## תלות במידע על סגירת עונה — 23.10.2026
+
+בדיקת ההבדל ב־`src/firebase/firestore.ts` וב־`src/types/index.ts` מראה שהשינוי מוגבל לקריאת `seasons.closureStatus` בחוזה `GroupSeasons`. יתר ממירי הנתונים והמסלולים המתועדים כאן לא שונו במשימה זו. אימות הריצה החדש מתייחס להתאוששות ולכרטיס העונה, ולא להרצה חדשה של כל מצבי המסך הזה. [המסלול, הבדיקות והמגבלות](../../changes/2026-10-23-season-automatic-recovery.md).

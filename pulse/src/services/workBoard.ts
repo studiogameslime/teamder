@@ -1,4 +1,5 @@
-import type { WorkItem } from './workItems';
+import { KIND_ORDER, type WorkItem, type WorkKind } from './workItems';
+import { groupWorkSections } from './unresolvedWork';
 export type BoardTab = 'open' | 'claude' | 'done';
 export function boardBuckets(items: WorkItem[]) {
   return {
@@ -7,9 +8,11 @@ export function boardBuckets(items: WorkItem[]) {
     done: items.filter(i=>i.state==='done'),
   };
 }
-export function boardSections(items:WorkItem[], newest=false) {
- const sorted=[...items].sort((a,b)=>b.createdAt-a.createdAt);
- if(newest) return [{key:'all',title:'לפי עדכניות',items:sorted}];
- const urgent=sorted.filter(i=>i.state==='open' && (i.priority==='high' || !!i.unresolved));
- return [{key:'urgent',title:'דורש טיפול קודם',items:urgent},{key:'rest',title:urgent.length?'להמשך עבודה':'כל הפריטים',items:sorted.filter(i=>!urgent.includes(i))}].filter(g=>g.items.length);
+export function boardSections(items:WorkItem[]) {
+ const titles: Record<WorkKind,string> = {error:'שגיאות',report:'דיווחים',bug:'באגים',feature:'פיצ׳ר',ui:'עיצוב',idea:'רעיון',chat:'שיחות ממתינות'};
+ return groupWorkSections(items,KIND_ORDER).map(group=>({
+   key:group.kind,
+   title:group.kind==='unresolved'?'באגים לא פתורים':titles[group.kind],
+   items:[...group.items].sort((a,b)=>b.createdAt-a.createdAt),
+ }));
 }

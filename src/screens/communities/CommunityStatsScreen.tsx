@@ -1,4 +1,6 @@
 import { observeCaughtError } from '../../utils/errorObservation';
+import { readLeaderHistory } from '@/services/leaderHistoryService';
+import { earliestCountLeaders, earliestWinRateLeaders, randomLeader, type LeaderHistoryRow, type LeaderMetric } from '@/utils/leaderChronology';
 import { ScrollSurface } from '@/components/ScrollSurface';
 // CommunityStatsScreen — the club's collective statistics dashboard.
 //
@@ -227,6 +229,8 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
    * running season begins where the last sealed one ended.
    */
   const [eveningStats, setEveningStats] = useState<EveningStat[]>([]);
+  const [leaderHistory, setLeaderHistory] = useState<{ key: string; rows: LeaderHistoryRow[] } | null>(null);
+  const leaderDraws = useRef(new Map<string, string>());
 
   const [archive, setArchive] = useState<FinishedSeasonTable | null>(null);
   /** Every past season, merged with the live rows. Fetched once, then cached —
@@ -936,7 +940,7 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
     ? winIds.length && winValue != null ? { uid: winIds[0], tiedIds: winIds.slice(1), value: winValue, unit: 'אחוז ניצחונות', suffix: '%' } : null
     : derived.topWinner ? { uid: derived.topWinner.uid, tiedIds: [] as string[], value: derived.topWinner.wins, unit: 'נצחונות', suffix: undefined } : null;
 
-  const leaderItems = ([
+  const baseLeaderItems = ([
                 derived.topScorer && {
                   title: he.communityStatsTopScorer,
                   uid: derived.topScorer.uid,
@@ -1007,6 +1011,54 @@ export function CommunityStatsScreen(props: CommunityStatsScreenProps = {}) {
                 tint: string;
                 suffix?: string;
               }[]);
+
+  const leaderMetrics: Record<string, LeaderMetric> = {
+    [he.communityStatsTopScorer]: 'goals', [he.communityStatsTopAssister]: 'assists',
+    [he.communityStatsTopWinner]: 'wins', [he.communityStatsCleanSheetKing]: 'cleanSheets',
+    [he.communityStatsMostLoyal]: 'games', [he.communityStatsPenaltyKing]: 'penScored',
+    [he.communityStatsPenaltyKeeperKing]: 'penSaved', [he.communityStatsOwnGoalKing]: 'ownGoals',
+  };
+  const historyKey = JSON.stringify([groupId, recordWindow]);
+  const ties = baseLeaderItems.map(item => {
+    const metric = leaderMetrics[item.title];
+    if (!metric) return null;
+    if (item.title === he.communityStatsTopWinner && rateScope) {
+      return winIds.length > 1 && winValue != null ? { title: item.title, metric, target: winValue, ids: winIds, rate: true } : null;
+    }
+    const target = metric === 'games' ? mostLoyal?.nights ?? 0 : Math.max(...derived.players.map(p => p[metric] ?? 0));
+    const ids = derived.players.filter(p => (metric === 'games' && scope.k === 'current' ? attended[p.uid] ?? 0 : p[metric] ?? 0) === target).map(p => p.uid);
+    return ids.length > 1 ? { title: item.title, metric, target, ids, rate: false } : null;
+  }).filter((x): x is NonNullable<typeof x> => !!x);
+  const tieKey = JSON.stringify(ties);
+  useEffect(() => {
+    if (!visible || !ties.length) return;
+    let alive = true;
+    setLeaderHistory(null);
+    readLeaderHistory(groupId, recordWindow, () => alive).then(rows => {
+      if (alive) setLeaderHistory({ key: historyKey, rows });
+    }).catch(error => { if (alive) observeCaughtError(error, { source: 'src/screens/communities/CommunityStatsScreen.tsx', handler: 'leaderHistory', site: 'leaderHistory:read' }); });
+    return () => { alive = false; };
+  }, [visible, historyKey, tieKey, viewChamp]);
+  const leaderItems = baseLeaderItems.map(item => {
+    const tie = ties.find(t => t.title === item.title);
+    if (!tie || leaderHistory?.key !== historyKey) return item;
+    const ids = tie.rate
+      ? earliestWinRateLeaders(tie.ids, tie.target, Math.ceil((scopedCard?.completedRounds ?? seasons?.playedRounds ?? 0) / 2), leaderHistory.rows,
+        Object.fromEntries(derived.players.map(p => [p.uid, { wins: p.wins, rounds: p.rounds, games: p.games }])))
+      : earliestCountLeaders(tie.ids, tie.metric, tie.target, leaderHistory.rows);
+    if (!ids) return item;
+    const key = JSON.stringify([historyKey, item.title, tie.target, ids]);
+    let uid = leaderDraws.current.get(key);
+    if (!uid) { uid = randomLeader(ids); if (uid) leaderDraws.current.set(key, uid); }
+    if (!uid) return item;
+    const player = derived.players.find(p => p.uid === uid);
+    if (player && (tie.metric === 'penScored' || tie.metric === 'penSaved')) {
+      const count = player[tie.metric] ?? 0;
+      const attempts = (tie.metric === 'penScored' ? player.penTaken : player.penFaced) ?? 0;
+      return { ...item, uid, tiedIds: [], value: pctOf(count, attempts), unit: `${count}/${attempts}` };
+    }
+    return { ...item, uid, tiedIds: [] };
+  });
 
   return (
     // Embedded, the shell above already claimed the top inset.

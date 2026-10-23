@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { readSeasonClosureStatus } from '@/utils/seasonClosureStatus';
 import ts from 'typescript';
 import vm from 'vm';
 import { isCalendarDate } from '@/utils/seasonDates';
@@ -18,7 +19,7 @@ test('a short disabled first season is reactivation, not a first activation',()=
 test('the actual Firestore converter preserves noncompetitive history before season one closes',()=>{
   const source=ts.createSourceFile('f.ts',fs.readFileSync('src/firebase/firestore.ts','utf8'),ts.ScriptTarget.Latest,true);
   const fn=source.statements.find((n):n is ts.FunctionDeclaration=>ts.isFunctionDeclaration(n)&&n.name?.text==='readGroupSeasons')!;
-  const ctx:any={exports:{},isCalendarDate};
+  const ctx:any={exports:{},isCalendarDate,readSeasonClosureStatus};
   vm.runInNewContext(ts.transpileModule(fn.getText(source),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,ctx);
   const seasons=ctx.exports.readGroupSeasons({currentId:'s1',currentNo:1,enabled:true,count:0,disabledAt:123,hasArchivedPeriods:true,cadence:{type:'rounds',targetRounds:2}});
   expect(seasons.hasArchivedPeriods).toBe(true);expect(hasArchivedStats(seasons)).toBe(true);

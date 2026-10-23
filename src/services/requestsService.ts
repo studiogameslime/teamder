@@ -31,7 +31,7 @@ export interface InboxRequests {
 
 /** Groups the user ADMINS that have at least one pending join request. */
 async function myAdminGroupsWithPending(userId: UserId): Promise<Group[]> {
-  const groups = await groupService.listForUser(userId);
+  const groups = await groupService.listForUser(userId, { includeAdminRatings: false });
   return groups.filter(
     (g) => (g.adminIds ?? []).includes(userId) && (g.pendingPlayerIds ?? []).length > 0,
   );

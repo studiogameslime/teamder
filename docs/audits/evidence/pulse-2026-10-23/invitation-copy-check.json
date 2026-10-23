@@ -1,0 +1,7 @@
+{
+  "source": "functions/src/index.ts",
+  "executedTemplate": "`${inviter} מזמין אותך להצטרף ל\"${name}\". פתח את ההזמנה והצטרף למועדון`",
+  "output": "יוסי מזמין אותך להצטרף ל\"הכחולים\". פתח את ההזמנה והצטרף למועדון",
+  "passed": true,
+  "serverDeployed": false
+}

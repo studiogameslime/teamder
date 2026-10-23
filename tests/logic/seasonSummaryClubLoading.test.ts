@@ -82,6 +82,14 @@ test('current club reads every pair, keeps leaders provisional and does not sum 
   expect(requests.find(q => q.collection === 'communityPairStats').filters).toEqual([['groupId','==','g']]);
 });
 
+test('archived winning duos retain each exact partnership, including a repeated player and duplicate names', async () => {
+  const {service:api}=service({seasonId:'s1',no:1,completedRounds:8,players:{a:{displayName:'שם זהה'},b:{displayName:'שם זהה'},c:{displayName:'שלוש'}},pairs:{},totals:{},awards:{deadlyDuo:{winners:['a__b','a__c'],value:2}}});
+  const model=await api.load({groupId:'g',userId:'a',seasonId:'s1'});
+  const award=model.seasonTitles.find((a:any)=>a.key==='deadlyDuo');
+  expect(award.pairs.map((p:any[])=>p.map(w=>w.id))).toEqual([['a','b'],['a','c']]);
+  expect(award.pairs[0].map((w:any)=>w.name)).toEqual(['שם זהה','שם זהה']);
+});
+
 
 test.each([undefined, 'percent'])('closed award unit %s survives personal and club readers without recomputing old winners', async valueUnit => {
   const {service:api} = service({seasonId:'s1',no:1,completedRounds:13,players:{a:{displayName:'אחד',games:1,rounds:10,wins:1}},pairs:{},totals:{},awards:{topWinner:{winners:['a'],value:1,...(valueUnit?{valueUnit}:{})}}});

@@ -7,15 +7,44 @@ import { boardBuckets, boardSections } from '../../pulse/src/services/workBoard'
 import { loadItemImages, type WorkItem } from '../../pulse/src/services/workItems';
 import { markDoneByRubens } from '../../pulse/src/services/claudeWork';
 import { getDoc,patchDoc } from '../../pulse/src/services/firestoreRest';
-const row=(patch:Partial<WorkItem>={})=>({key:'task:1',docPath:'tasks/1',stream:'task',state:'open',createdAt:1,claudeMayAct:true,priority:'normal',...patch} as WorkItem);
+import { workCategory } from '../../pulse/src/services/unresolvedWork';
+const row=(patch:Partial<WorkItem>={})=>({key:'task:1',docPath:'tasks/1',stream:'task',kind:'bug',state:'open',createdAt:1,claudeMayAct:true,priority:'normal',...patch} as WorkItem);
 beforeEach(()=>jest.clearAllMocks());
+
+test('unresolved category groups only unresolved open bugs, reports and errors once, newest first, after ordinary bugs',()=>{
+ const unresolved={since:1,reason:'לא שוחזר',nextStep:'בדיקת מכשיר'};
+ const items=[row({key:'error',kind:'error',createdAt:2,unresolved}),row({key:'report',kind:'report',createdAt:3,unresolved}),row({key:'bug',createdAt:1,unresolved}),row({key:'ordinary'}),row({key:'idea',kind:'idea',unresolved})];
+ const groups=boardSections(items);
+ expect(groups.map(g=>g.key)).toEqual(['bug','unresolved','idea']);
+ expect(groups[1].title).toBe('באגים לא פתורים');
+ expect(groups[1].items.map(i=>i.key)).toEqual(['report','error','bug']);
+ expect(groups.flatMap(g=>g.items)).toHaveLength(items.length);
+ expect(items.map(workCategory)).toEqual(['unresolved','unresolved','unresolved','bug','idea']);
+ for(const state of ['claude','done'] as const)expect(workCategory({...items[0],state})).toBe('error');
+});
 test('all open work including parked ideas remains in open tab without changing execution permission',()=>{
  const chat=row({stream:'chat',claudeMayAct:false});const idea=row({stream:'idea',claudeMayAct:false});const approved=row({stream:'idea'});const review=row({state:'claude'});
  const b=boardBuckets([chat,idea,approved,review]);expect(b.open).toEqual([chat,idea,approved]);expect(idea.claudeMayAct).toBe(false);expect(b.claude).toEqual([review]);
 });
-test('urgent and unresolved work lead the list without duplication, newest mode preserves all items',()=>{
+test('newest creation time leads even when older work is urgent or unresolved, without mutating the input',()=>{
  const a=row({key:'a',priority:'high'}),b=row({key:'b',createdAt:10}),c=row({key:'c',unresolved:{since:0,reason:'',nextStep:''}});
- expect(boardSections([a,b,c])[0].items).toEqual([a,c]);expect(boardSections([a,b,c]).flatMap(g=>g.items)).toHaveLength(3);expect(boardSections([a,b,c],true)[0].items[0]).toBe(b);
+ const input=[a,b,c];
+ expect(boardSections(input)[0].items).toEqual([b,a]);
+ expect(boardSections(input).flatMap(g=>g.items)).toHaveLength(3);
+ expect(input).toEqual([a,b,c]);
+});
+
+test.each(['open','claude','done'] as const)('categories retain the owner order and every item belongs to its own group in %s',state=>{
+ const kinds=['chat','idea','ui','feature','bug','report','error'] as const;
+ const items=kinds.map((kind,index)=>row({key:kind,kind,state,createdAt:index,priority:kind==='ui'?'high':'normal'}));
+ {
+  const groups=boardSections(items);
+  expect(groups.map(group=>group.key)).toEqual(['error','report','bug','feature','ui','idea','chat']);
+  expect(groups.flatMap(group=>group.items)).toHaveLength(items.length);
+  for(const group of groups) expect(group.items.every(item=>item.kind===group.key)).toBe(true);
+ }
+ expect(boardSections(items.filter(item=>item.kind==='ui')).map(group=>group.key)).toEqual(['ui']);
+ expect(boardSections([])).toEqual([]);
 });
 test('task attachments and linked original report are loaded only on detail demand and proof remains separate',async()=>{
  (getDoc as jest.Mock).mockImplementation(async(p:string)=>p==='tasks/1'?{images:['task-shot'],claudeImages:['proof']}:{image:'report-shot',images:['task-shot']});

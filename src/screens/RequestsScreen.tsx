@@ -54,8 +54,14 @@ export function RequestsScreen() {
     setGroupId(initialGroupId);
   }, [initialGroupId, route.key]);
   const load = useCallback(async () => {
-    if (!me) return;
     const version = ++loadVersion.current;
+    if (!me || me.isGuest) {
+      setData(EMPTY);
+      setLoadFailed(false);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
       const next = await getInboxRequests(me.id);
       if (version !== loadVersion.current) return;
@@ -74,7 +80,7 @@ export function RequestsScreen() {
         setRefreshing(false);
       }
     }
-  }, [me?.id]);
+  }, [me?.id, me?.isGuest]);
   useFocusEffect(useCallback(() => {
     void load();
     return () => {

@@ -157,13 +157,16 @@ export function GamesListScreen() {
   // focus (cheap aggregation; see requestsService).
   const [requestCount, setRequestCount] = useState(0);
   useEffect(() => {
+    let alive = true;
     const fetchCount = () => {
-      if (user) getInboxCount(user.id).then(setRequestCount).catch((caughtError19d2b52fd4: unknown) => {
+      if (!user || isGuest) { setRequestCount(0); return; }
+      getInboxCount(user.id).then(value => { if (alive) setRequestCount(value); }).catch((caughtError19d2b52fd4: unknown) => {
     observeCaughtError(caughtError19d2b52fd4, {"source":"src/screens/games/GamesListScreen.tsx","handler":"fetchCount","site":"GamesListScreen:19d2b52fd4"});});
     };
     fetchCount();
-    return nav.addListener('focus', fetchCount);
-  }, [nav, user]);
+    const unsubscribe = nav.addListener('focus', fetchCount);
+    return () => { alive = false; unsubscribe(); };
+  }, [nav, user, isGuest]);
   // Soft-confirm for cancellations past the cancel-deadline window.
   // Holds the target game so onConfirm knows what to cancel.
   const [lateCancelGame, setLateCancelGame] = useState<Game | null>(null);

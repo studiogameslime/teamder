@@ -1,4 +1,6 @@
 import { observeCaughtError } from '../utils/errorObservation';
+import { retryRead } from './readRetry';
+import { StaleSessionError } from './staleSession';
 // availabilityFeedService — powers the home-screen "פנויים לשחק לידך" calendar.
 //
 // Returns, for today + the next 6 days, how many players are available in each
@@ -118,7 +120,8 @@ export const availabilityFeedService = {
         // Retry once through the cold-start auth race — the callable rejects
         // with `functions/unauthenticated` if it fires before the ID token has
         // attached, which is what put this in the production error log.
-        const res = await withAuthRaceRetry(() => fn({}));
+        const check = () => { if (getFirebase().auth.currentUser?.uid !== uid) throw new StaleSessionError(uid, getFirebase().auth.currentUser?.uid ?? ''); };
+        const res = await withAuthRaceRetry(() => retryRead(() => fn({}), check));
         // A changed account or edited availability invalidates both the cache
         // AND this result. It must not reach the earlier caller as valid data.
         if (epoch !== startEpoch || getFirebase().auth.currentUser?.uid !== uid) {

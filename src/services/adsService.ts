@@ -16,7 +16,7 @@ import { observeCaughtError } from '../utils/errorObservation';
 //      AdMob does NOT work in Expo Go.
 
 import React from 'react';
-import { Platform, Text, View } from 'react-native';
+import { AppState, Platform, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { doc, getDoc } from 'firebase/firestore';
 import { logError } from '@/services/errorLog';
@@ -301,14 +301,20 @@ async function refreshAdsMaster(): Promise<void> {
         notifyBannerMaster();
       }
     }
+    appOpenMasterLoaded = true;
   } catch (err) {
     observeCaughtError(err, {"source":"src/services/adsService.ts","handler":"refreshAdsMaster","site":"adsService:1201931385"});
     if (__DEV__) console.warn('[ads] refreshAdsMaster failed', err);
-  } finally {
-    // Mark loaded even on failure: a genuine read error falls back to the
-    // default (on) rather than blocking ads forever.
-    appOpenMasterLoaded = true;
   }
+}
+
+/** Share an attempt, but release a failed attempt so a later foreground can
+ * recover. A failed read is not an acknowledged Pulse master switch. */
+function ensureAdsMaster(): Promise<void> {
+  if (!appOpenMasterPromise) {
+    appOpenMasterPromise = refreshAdsMaster().finally(() => { appOpenMasterPromise = null; });
+  }
+  return appOpenMasterPromise;
 }
 
 /** Re-renders the BannerAd when the Pulse banner master switch resolves /
@@ -332,7 +338,12 @@ export const adsService = {
     initialized = true;
     // Pull the Pulse-controlled app-open master switch. Keep the promise so
     // the first app-open ad can await it (closes the show-before-loaded race).
-    appOpenMasterPromise = refreshAdsMaster();
+    void ensureAdsMaster();
+    // The service is initialized once per process. Retry failed configuration
+    // reads on resume without showing an ad or resetting its frequency gates.
+    AppState.addEventListener('change', state => {
+      if (state === 'active' && !appOpenMasterLoaded) void ensureAdsMaster();
+    });
     // Loud DEV warning if the iOS build was bundled against AdMob's
     // public TEST app ID. Real iOS revenue requires registering the
     // app in AdMob console and swapping `iosAppId` in app.json. Fires
@@ -428,14 +439,15 @@ export const adsService = {
     // (−1) Pulse master switch (Firestore) — overrides everything: off = no
     // app-open ad for anyone, regardless of the RC rules below. Wait for the
     // read to land (bounded) the first time so a disabled switch isn't raced
-    // by an early ad; on timeout we fall back to the default (on).
-    if (!appOpenMasterLoaded && appOpenMasterPromise) {
+    // by an early ad. A failed/unfinished read defers the ad; the next
+    // foreground opportunity retries rather than trusting an unknown switch.
+    if (!appOpenMasterLoaded) {
       await Promise.race([
-        appOpenMasterPromise,
+        ensureAdsMaster(),
         new Promise<void>((r) => setTimeout(r, 2500)),
       ]);
     }
-    if (!appOpenMasterEnabled) return;
+    if (!appOpenMasterLoaded || !appOpenMasterEnabled) return;
     // (0) Remote kill-switch for the whole format.
     if (!rcBool('app_open_ad_enabled')) return;
     // (3) Intentful-open suppression — opened via push/invite link.

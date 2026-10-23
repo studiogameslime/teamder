@@ -4,6 +4,7 @@ import { getFirebase } from '@/firebase/config';
 import { col } from '@/firebase/firestore';
 import { withAuthRaceRetry } from '@/firebase/authRace';
 import { StaleSessionError } from './staleSession';
+import { retryRead } from './readRetry';
 import type { User } from '@/types';
 
 /** Identity only. Never substitute this response for a private user record. */
@@ -22,7 +23,7 @@ export async function playerReadCall<T>(name: string, data: unknown, expectedOwn
   const check = () => {
     if (auth.currentUser?.uid !== owner) throw new StaleSessionError(owner, auth.currentUser?.uid ?? '');
   };
-  const result = await withAuthRaceRetry(() => { check(); return httpsCallable(functions, name)(data); });
+  const result = await withAuthRaceRetry(() => retryRead(() => { check(); return httpsCallable(functions, name)(data); }, check), { retryTransientReads: true });
   check();
   return result.data as T;
 }
@@ -32,7 +33,7 @@ export async function readPlayerIdentities(userIds: readonly string[]): Promise<
   if (!ids.length) return [];
   const owner = getFirebase().auth.currentUser?.uid;
   if (getFirebase().auth.currentUser?.isAnonymous) {
-    const snaps = await withAuthRaceRetry(() => { assertReadOwner(owner); return Promise.all(ids.map(id => getDoc(doc(col.usersPublic(), id)))); });
+    const snaps = await withAuthRaceRetry(() => { assertReadOwner(owner); return Promise.all(ids.map(id => getDoc(doc(col.usersPublic(), id)))); }, { retryTransientReads: true });
     assertReadOwner(owner);
     return snaps.filter(s => s.exists()).map(s => ({ ...s.data()!, createdAt: 0 }));
   }
@@ -48,7 +49,7 @@ export async function readPlayerIdentities(userIds: readonly string[]): Promise<
  * per table row. A missing legacy mirror falls back to the server allowlist. */
 export async function readPlayerIdentity(id: string): Promise<PlayerIdentity | null> {
   const owner = getFirebase().auth.currentUser?.uid;
-  const snap = await withAuthRaceRetry(() => { assertReadOwner(owner); return getDoc(doc(col.usersPublic(), id)); });
+  const snap = await withAuthRaceRetry(() => { assertReadOwner(owner); return getDoc(doc(col.usersPublic(), id)); }, { retryTransientReads: true });
   assertReadOwner(owner);
   if (snap.exists()) return { ...snap.data(), createdAt: 0 };
   if (getFirebase().auth.currentUser?.isAnonymous) return null;

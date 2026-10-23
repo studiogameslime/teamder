@@ -5,6 +5,7 @@ import { seasonScheduleBoundary } from '@/utils/seasonPolicy';
 import { httpsCallable } from 'firebase/functions';
 import { waitForJoinResult } from '@/utils/joinRequestResult';
 import { creationPayload } from '@/services/creationAttempt';
+import { assertCreationOwner } from '@/services/creationOwner';
 import { validateDraftRoster } from '@/utils/draftIntegrity';
 import { shootoutFingerprint, type ShootoutDecisionContext } from '@/utils/shootoutDecision';
 import { matchesRoundDecision, roundDecisionContext, type RoundDecisionContext } from '@/utils/roundDecision';
@@ -2378,7 +2379,7 @@ export const gameService = {
             where('participantIds', 'array-contains', userId),
             where('startsAt', '>=', floor),
           ),
-        ),
+        ), { retryTransientReads: true },
       ),
       withAuthRaceRetry(() =>
         getDocs(
@@ -2387,7 +2388,7 @@ export const gameService = {
             where('createdBy', '==', userId),
             where('startsAt', '>=', floor),
           ),
-        ),
+        ), { retryTransientReads: true },
       ),
     ]).then(results => observeSettledErrors(results, {"source":"src/services/gameService.ts","handler":"getMyGames","site":"gameService:8fcd755f8e"}));
     const seen = new Set<string>();
@@ -2503,7 +2504,7 @@ export const gameService = {
             where('participantIds', 'array-contains', userId),
             where('startsAt', '>=', floor),
           ),
-        ),
+        ), { retryTransientReads: true },
       ),
       withAuthRaceRetry(() =>
         getDocs(
@@ -2512,7 +2513,7 @@ export const gameService = {
             where('createdBy', '==', userId),
             where('startsAt', '>=', floor),
           ),
-        ),
+        ), { retryTransientReads: true },
       ),
     ]).then(results => observeSettledErrors(results, {"source":"src/services/gameService.ts","handler":"getMyRecentGamesRaw","site":"gameService:7d3082e6b7"}));
     const seen = new Set<string>();
@@ -2772,7 +2773,7 @@ export const gameService = {
           withAuthRaceRetry(() =>
             getDocs(
               query(col.games(), where('groupId', 'in', c), where('status', '==', 'open')),
-            ),
+            ), { retryTransientReads: true },
           ).catch(
             (err: { code?: string }) => {
     observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getCommunityGames","site":"gameService:bbcb704961"});
@@ -2859,7 +2860,7 @@ export const gameService = {
                 where('groupId', 'in', c),
                 where('status', '==', 'scheduled'),
               ),
-            ),
+            ), { retryTransientReads: true },
           ).catch((err: { code?: string }) => {
     observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getMyUpcomingScheduledGames","site":"gameService:c4d38138cd"});
             if (err?.code !== 'permission-denied') {
@@ -2947,7 +2948,7 @@ export const gameService = {
             where('groupId', '==', groupId),
             where('visibility', '==', 'public'),
           ),
-        ),
+        ), { retryTransientReads: true },
       );
     } catch (err) {
     observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getUpcomingPublicGamesForGroup","site":"gameService:770dcded23"});
@@ -3060,7 +3061,7 @@ export const gameService = {
             where('status', '==', 'open'),
             where('startsAt', '>', now),
           ),
-        ),
+        ), { retryTransientReads: true },
       );
     } catch (err) {
     observeCaughtError(err, {"source":"src/services/gameService.ts","handler":"getOpenGames","site":"gameService:fb4d06b946"});
@@ -3173,6 +3174,7 @@ export const gameService = {
      */
     isOrphanContext?: boolean;
   }): Promise<Game> {
+    assertCreationOwner(input.createdBy);
     clearMyGamesCache(); // a new game changes the creator's my-games list
     // Defensive: callers come from a TS-typed wizard but the field is
     // user-controlled, so reject anything that isn't one of the two
@@ -3461,10 +3463,12 @@ export const gameService = {
         });
       }
       try {
+        assertCreationOwner(input.createdBy);
         if (targetId) {
           const ref = docs.game(targetId);
           const existing = await runTransaction(getFirebase().db, async (tx) => {
             const snapshot = await tx.get(ref);
+            assertCreationOwner(input.createdBy);
             if (snapshot.exists()) return assertSameAttempt(snapshot.data() as Game);
             tx.set(ref, { id: targetId, ...base });
             return null;
@@ -3492,6 +3496,12 @@ export const gameService = {
           ].includes(code as string)
         ) {
           logError('createGame', e, {
+            stage: targetId ? 'game-transaction' : 'game-add',
+            gameId: targetId ?? null,
+            sessionUid: getFirebase().auth.currentUser?.uid ?? null,
+            createdBy: input.createdBy,
+            status: base.status,
+            visibility: base.visibility,
             groupId: input.groupId,
             title: input.title,
             startsAt: input.startsAt,

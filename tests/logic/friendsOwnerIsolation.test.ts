@@ -2,6 +2,7 @@ import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
 import { StaleSessionError } from '../../src/services/staleSession';
+import { clearCaughtErrorOrigins, installCaughtErrorSink } from '../../src/utils/errorObservation';
 
 function fixture() {
   const auth = { currentUser: { uid: 'owner', isAnonymous: false } };
@@ -10,8 +11,13 @@ function fixture() {
   const requests = jest.fn(async () => ({ docs: [{ data: () => ({ id: 'peer__owner', fromUserId: 'peer', toUserId: 'owner', status: 'pending' }) }] }));
   const identities = jest.fn(async () => [{ id: 'peer', name: 'Peer', createdAt: 0 }]);
   const user = jest.fn(async () => ({ id: 'owner', friends: [] }));
+  const readDoc = jest.fn(async () => ({ exists: () => false }));
+  const observeCaughtError = jest.fn();
+  clearCaughtErrorOrigins();
+  installCaughtErrorSink(observeCaughtError);
   const deps: Record<string, any> = {
-    'firebase/firestore': { getDocs: requests, getDoc: async () => ({ exists: () => false }), updateDoc: write, deleteDoc: write, query: (...a: any[]) => a, where: (...a: any[]) => a },
+    'firebase/firestore': { getDocs: requests, getDoc: readDoc, updateDoc: write, deleteDoc: write, query: (...a: any[]) => a, where: (...a: any[]) => a },
+    '../utils/errorObservation': { observeCaughtError },
     'firebase/functions': { httpsCallable: () => remote },
     '@/firebase/config': { USE_MOCK_DATA: false, getFirebase: () => ({ auth, functions: {} }) },
     '@/firebase/firestore': { col: { friendRequests: () => 'requests' }, docs: { friendRequest: (id: string) => id } },
@@ -24,8 +30,21 @@ function fixture() {
   const module = { exports: {} as any };
   const code = ts.transpileModule(fs.readFileSync('src/services/friendsService.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   vm.runInNewContext(code, { module, exports: module.exports, require: (name: string) => deps[name], __DEV__: false });
-  return { service: module.exports.friendsService, auth, remote, write, requests, identities, user };
+  return { service: module.exports.friendsService, auth, remote, write, requests, identities, user, readDoc, observeCaughtError };
 }
+
+test('absent friend requests do not report the expected denial, and both directions are checked', async () => {
+  const f = fixture(); f.readDoc.mockRejectedValue({ code: 'permission-denied' });
+  await expect(f.service.getRelationship('owner', 'peer')).resolves.toBe('none');
+  expect(f.readDoc).toHaveBeenCalledTimes(2);
+  expect(f.observeCaughtError).not.toHaveBeenCalled();
+});
+
+test('unexpected request failures still reject and report', async () => {
+  const f = fixture(); const error = new Error('offline'); f.readDoc.mockRejectedValue(error);
+  await expect(f.service.getRelationship('owner', 'peer')).rejects.toBe(error);
+  expect(f.observeCaughtError).toHaveBeenCalledWith(error, expect.objectContaining({ handler: 'readReq' }));
+});
 
 test.each(['sendRequest', 'acceptRequest', 'declineRequest', 'cancelRequest', 'removeFriend'])('stale %s cannot perform an action as the newly signed-in account', async method => {
   const f = fixture(); f.auth.currentUser.uid = 'new-owner';

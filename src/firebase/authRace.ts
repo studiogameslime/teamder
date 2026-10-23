@@ -10,10 +10,10 @@ import { observeCaughtError } from '../utils/errorObservation';
 // occurrence is reported as a crash-grade error, and the user sees an empty
 // screen until something re-reads.
 //
-// This wraps a read: on `permission-denied` WHILE a user session exists, it
-// forces the token (which propagates it to the Firestore channel), waits a
-// beat, and retries ONCE. A genuine "not signed in", or any non-permission
-// error, rethrows immediately — so we never paper over a real rules bug.
+// Auth failures get bounded backoff. Read-only callers may explicitly opt in
+// to one transient-network retry with ownership checks before/after the read.
+// The default is also used by mutations, so it never replays transient writes.
+// Exhausted failures remain errors; recovered attempts are not reported.
 //
 // It lived inside gameService, which is why only that file's reads were
 // protected: three reads on OTHER paths (hydrateUsers, hydratePlayers,
@@ -37,10 +37,12 @@ import { observeCaughtError } from '../utils/errorObservation';
 //     slow device can take longer. It now retries twice, backing off.
 import { getFirebase } from './config';
 import { onAuthStateChanged, type User } from 'firebase/auth';
+import { StaleSessionError } from '@/services/staleSession';
 
 /** The cold-start race, in both dialects: Firestore rules say permission-denied,
  *  a callable says unauthenticated. */
 const RACE_CODES = new Set(['permission-denied', 'functions/unauthenticated']);
+const READ_RETRY_CODES = new Set(['internal', 'functions/internal', 'unavailable', 'functions/unavailable', 'deadline-exceeded', 'functions/deadline-exceeded']);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -87,22 +89,43 @@ function awaitUser(timeoutMs: number): Promise<User | null> {
   });
 }
 
-export async function withAuthRaceRetry<T>(run: () => Promise<T>): Promise<T> {
+export async function withAuthRaceRetry<T>(run: () => Promise<T>, options?: { retryTransientReads?: boolean }): Promise<T> {
   let lastErr: unknown;
+  let readRetried = false;
+  let ownerUid = getFirebase().auth.currentUser?.uid;
+  const assertOwner = () => {
+    const currentUid = getFirebase().auth.currentUser?.uid;
+    if (ownerUid && currentUid !== ownerUid) throw new StaleSessionError(ownerUid, currentUid ?? '');
+  };
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     try {
-      return await run();
+      if (options?.retryTransientReads) assertOwner();
+      const result = await run();
+      if (options?.retryTransientReads) assertOwner();
+      return result;
     } catch (err) {
-    observeCaughtError(err, {"source":"src/firebase/authRace.ts","handler":"withAuthRaceRetry","site":"authRace:35595714d9"});
       lastErr = err;
       const code = (err as { code?: string })?.code;
-      if (!code || !RACE_CODES.has(code)) throw err;
+      if (options?.retryTransientReads) assertOwner();
+      // Opt-in reads only: availability/season mutations must never be replayed
+      // after an ambiguous timeout. Recover once, without reporting a recovered
+      // attempt as a new production failure.
+      if (options?.retryTransientReads && !readRetried && code && READ_RETRY_CODES.has(code) && attempt < RETRY_DELAYS_MS.length) {
+        readRetried = true;
+        await sleep(500);
+        continue;
+      }
+      if (!code || !RACE_CODES.has(code)) {
+        observeCaughtError(err, {"source":"src/firebase/authRace.ts","handler":"withAuthRaceRetry","site":"authRace:35595714d9"});
+        throw err;
+      }
       if (attempt === RETRY_DELAYS_MS.length) break;
 
       // Wait for the session if it has not landed yet, then force the token —
       // which is what actually attaches it to the Firestore channel.
       const user = await awaitUser(RETRY_DELAYS_MS[attempt]);
-      if (!user) throw err; // genuinely signed out
+      if (!user) break; // genuinely signed out
+      if (options?.retryTransientReads) { assertOwner(); ownerUid = user.uid; }
       try {
         await user.getIdToken();
       } catch (caughtErrorb50189ba0f) {
@@ -112,5 +135,6 @@ export async function withAuthRaceRetry<T>(run: () => Promise<T>): Promise<T> {
       await sleep(RETRY_DELAYS_MS[attempt]);
     }
   }
+  observeCaughtError(lastErr, {"source":"src/firebase/authRace.ts","handler":"withAuthRaceRetry","site":"authRace:35595714d9"});
   throw lastErr;
 }

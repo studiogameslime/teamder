@@ -14,6 +14,7 @@
 //     registered list (≤ maxPlayers) and per-night waitlist. Registration
 //     does NOT mutate community membership.
 
+import { readSeasonClosureStatus } from '@/utils/seasonClosureStatus';
 import {
   CollectionReference,
   DocumentData,
@@ -733,6 +734,9 @@ export function readGroupSeasons(v: unknown): GroupSeasons | undefined {
       : {}),
     // The correction window. Absent stays absent — a season NOT inside one has
     // no `pendingClose`, and that difference is the whole signal.
+    ...(readSeasonClosureStatus(d.closureStatus, currentId)
+      ? { closureStatus: readSeasonClosureStatus(d.closureStatus, currentId) }
+      : {}),
     ...(d.pendingClose &&
     typeof d.pendingClose === 'object' &&
     typeof (d.pendingClose as { closeAt?: unknown }).closeAt === 'number'

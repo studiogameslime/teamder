@@ -551,7 +551,7 @@ export function SeasonSummaryScreen() {
           </Pressable>
         ) : null}
 
-        <View style={styles.infoRow}><Text style={styles.footnote}>נתוני העונה שנבחרה בלבד</Text><InfoTip text={he.seasonSummaryFootnote} size={13} /></View>
+        <View style={styles.infoRow}><Text style={styles.footnote}>נתוני העונה שנבחרה בלבד</Text><InfoTip text={tab === 'club' ? 'כל המספרים כאן הם של המועדון בעונה הזאת בלבד. הסטטיסטיקה המצטברת נמצאת בסטטיסטיקות המועדון, בבחירה ״כל הזמנים״.' : he.seasonSummaryFootnote} size={13} /></View>
       </ScrollView>
 
       {/* Off-screen, at a fixed width, so the captured image is the same from

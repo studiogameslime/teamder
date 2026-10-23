@@ -56,7 +56,7 @@ test('the first-team preview reuses the pitch without participant controls or a 
  expect(nodes(tree).find(n=>n.props?.testID==='match-action-ball')).toBeUndefined();
  expect(nodes(tree).filter(n=>typeof n.type==='function'&&n.type.name==='Participant')).toHaveLength(0);
 });
-test.each([{height:140,width:250},{height:180,width:300},{height:248,width:340}])('the waiting penalty ball stays beside the kicker disc, away from keeper metadata at %j', ({height,width}) => {
+test.each([{height:140,width:250},{height:180,width:300},{height:248,width:340}])('the waiting penalty ball stays in front of the kicker without touching the disc at %j', ({height,width}) => {
  const input = {...props(), mode:'penalty',height,primary:{...person,label:'בועט'},secondary:{...person,label:'שוער'}};
  let tree=render(input);tree.props.onLayout({nativeEvent:{layout:{width}}});tree=render(input);
  const ball=nodes(tree).find(n=>n.props?.testID==='match-action-ball');
@@ -67,9 +67,10 @@ test.each([{height:140,width:250},{height:180,width:300},{height:248,width:340}]
  runtime.reset();runtime.begin();const participant=slot.type(slot.props);runtime.finish();
  const disc=nodes(participant).find(n=>n.type==='AnimatedView' && n.props.style?.[0]?.borderWidth===2);
  const radius=disc.props.style.at(-1).width/2;
- expect(Math.abs(centerX-width*slot.props.x)).toBeGreaterThanOrEqual(radius+12+6);
- expect(centerY-12).toBeGreaterThanOrEqual(height*slot.props.y-radius);
- expect(centerY+12).toBeLessThanOrEqual(height*slot.props.y+radius);
+ expect(centerX).toBeCloseTo(width*slot.props.x);
+ expect(height*slot.props.y-centerY).toBeGreaterThanOrEqual(radius+12+6);
+ const keeper=nodes(tree).find(n=>typeof n.type==='function' && n.type.name==='Participant' && n.props.person.label==='שוער');
+ expect(keeper.props.sideLabels).toBe(true);
 });
 
 test.each([140,180,248])('a penalty starts its acknowledged movement at the waiting ball without jumping at height %s',height=>{
@@ -92,7 +93,7 @@ test.each(['goal', 'save', 'miss'])('penalty %s reaches a distinct physical endp
  const tree = render(input);
  const ball = nodes(tree).find(n => n.type === 'AnimatedView' && n.props.style?.[0]?.width === 24);
  const x = ball.props.style[1].current.transform[0].translateX;
- expect(x).toBeCloseTo(outcome === 'goal' ? -158 : outcome === 'save' ? -178.4 : -1.6);
+ expect(x).toBeCloseTo(outcome === 'goal' ? -110.4 : outcome === 'save' ? -178.4 : -1.6);
  expect(nodes(tree).some(n => n.type === 'Text' && n.props.children === (outcome === 'goal' ? 'גול!' : outcome === 'save' ? 'עצירה!' : 'מחוץ למסגרת'))).toBe(true);
 });
 test.each(['hide', 'unmount', 'new-event'])('%s cancels a stale completion callback', action => {

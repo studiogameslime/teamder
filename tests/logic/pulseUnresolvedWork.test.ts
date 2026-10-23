@@ -9,9 +9,11 @@ import { groupWorkSections } from '../../pulse/src/services/unresolvedWork';
 
 test('unresolved reports, tasks and errors survive projections, remain open, and leave the section only after a verified handover or closure',async()=>{
  const fetch=listAll as jest.Mock;
- fetch.mockImplementation(async collection=>['tasks','feedback','errors'].includes(collection)?[{id:collection,title:'בדיקה',message:'בדיקה',unresolved:true,unresolvedAt:10,unresolvedReason:'לא שוחזר במכשיר',unresolvedNextStep:'בדיקה בגרסה עדכנית',status:'new'}]:[]);
+ fetch.mockImplementation(async collection=>['tasks','feedback','errors'].includes(collection)?[{id:collection,title:'בדיקה',message:'בדיקה',unresolved:true,unresolvedAt:10,unresolvedReason:'לא שוחזר במכשיר',unresolvedNextStep:'בדיקה בגרסה עדכנית',reviewReason:'נדרש שחזור במכשיר המדווח',status:'new'}]:[]);
  const rows=await listWork(true);expect(rows).toHaveLength(3);
  expect(rows.every(r=>r.state==='open'&&r.unresolved?.nextStep==='בדיקה בגרסה עדכנית')).toBe(true);
+ expect(rows.every(r=>r.reviewReason==='נדרש שחזור במכשיר המדווח')).toBe(true);
+ for(const [collection,,fields] of fetch.mock.calls)if(['tasks','feedback','errors'].includes(collection))expect(fields).toContain('reviewReason');
  for(const [, , fields] of fetch.mock.calls)expect(fields).toEqual(expect.arrayContaining(['unresolved','unresolvedAt','unresolvedReason','unresolvedNextStep']));
  expect(groupWorkSections(rows,KIND_ORDER)).toEqual([{kind:'unresolved',items:rows}]);
  const handedOver={...rows[0],state:'claude' as const};const closed={...rows[1],state:'done' as const};

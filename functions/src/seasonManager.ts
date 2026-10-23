@@ -13,6 +13,9 @@ import { CORRECTION_WINDOW_MS, MIN_SEASON_ROUNDS, SEASON_POLICY_VERSION,
   type SeasonTarget, type CorrectionWindow, type SeasonHistoryChoice } from './seasonPolicy';
 
 type Data = Record<string, any>;
+type BlockedRound = { id: string; startsAt?: number; reason: 'active' | 'unverified' | 'unsealed' };
+type BlockerScan = { active: number; unverified: number; unsealed: number;
+  rounds: BlockedRound[]; unfinished: admin.firestore.QueryDocumentSnapshot[] };
 const del = () => admin.firestore.FieldValue.delete();
 export interface SeasonManagerDependencies {
   db: admin.firestore.Firestore;
@@ -26,6 +29,7 @@ export interface SeasonManagerDependencies {
 export class SeasonManager {
   private closedThisSweep = 0;
   private maxCloses = Infinity;
+  private recoveryRequests = 0;
   private db: admin.firestore.Firestore;
   private now: () => number;
   constructor(private deps: SeasonManagerDependencies) { this.db = deps.db; this.now = deps.now ?? Date.now; }
@@ -58,23 +62,71 @@ export class SeasonManager {
   }
 
   async blockers(groupId: string, s: Data): Promise<{ active: number; unverified: number; unsealed: number }> {
+    const { active, unverified, unsealed } = await this.scanBlockers(groupId, s);
+    return { active, unverified, unsealed };
+  }
+
+  private async scanBlockers(groupId: string, s: Data): Promise<BlockerScan> {
     let active = 0, unverified = 0, unsealed = 0;
+    const rounds: BlockedRound[] = [], unfinished: admin.firestore.QueryDocumentSnapshot[] = [];
+    const add = (d: admin.firestore.QueryDocumentSnapshot, reason: BlockedRound['reason']) => {
+      const at = d.get('startsAt');
+      rounds.push({ id: d.id, reason, ...(typeof at === 'number' && Number.isFinite(at) && at > 0 ? { startsAt: at } : {}) });
+    };
     for (const d of await this.games(groupId)) {
       const g = d.data();
-      if (this.needsVerification(g, s)) { unverified++; continue; }
+      if (this.needsVerification(g, s)) { unverified++; add(d, 'unverified'); continue; }
       if (!this.belongs(g, s) || g.status === 'cancelled') continue;
-      if (g.status === 'active') { active++; continue; }
-      if (eveningPlayState(g) === 'unverified') { unverified++; continue; }
+      if (g.status === 'active') { active++; add(d, 'active'); continue; }
+      if (eveningPlayState(g) === 'unverified') { unverified++; add(d, 'unverified'); continue; }
       // Organising only is a genuine workflow. A past organised evening must
       // be resolved by the existing confirmation flow, never guessed away.
-      if (isOrganizedEveningAwaitingDecision(g, this.now())) { unverified++; continue; }
-      if (['open', 'locked'].includes(g.status) && g.startsAt <= this.now() && playEvidence(g)) { active++; continue; }
+      if (isOrganizedEveningAwaitingDecision(g, this.now())) { unverified++; add(d, 'unverified'); continue; }
+      if (['open', 'locked'].includes(g.status) && g.startsAt <= this.now() && playEvidence(g)) { active++; add(d, 'active'); continue; }
       if (didEveningHappen(g) && (g.endedBy === 'admin' || g.endedBy === 'auto')) {
         const summary = await this.db.collection('roundSummaries').doc(d.id).get();
-        if (!summary.exists) unsealed++;
+        if (!summary.exists) { unsealed++; add(d, 'unsealed'); unfinished.push(d); }
       }
     }
-    return { active, unverified, unsealed };
+    return { active, unverified, unsealed, rounds, unfinished };
+  }
+
+  /** Re-deliver the existing finish workflow. Never fabricate summaries or
+   * zero counters here. Transactions protect a concurrent close and competing
+   * sweeps; the finish workflow's own latches protect already credited stages. */
+  private async recoverFinishes(ref: admin.firestore.DocumentReference, s: Data, scan: BlockerScan) {
+    const now = this.now();
+    const stuck = scan.unfinished.filter(d => {
+      const retry = d.get('seasonFinishRecovery');
+      return retry?.seasonId === s.currentId && retry.attempts >= 2 && retry.requestedAt <= now - 30 * 60 * 1000;
+    });
+    if (stuck.length) await this.deps.report({ operation: 'seasonFinishRecovery',
+      err: new Error('Season round settlement is still incomplete after automatic retries'),
+      context: { groupId: ref.id, seasonId: s.currentId, gameIds: stuck.slice(0, 8).map(d => d.id), count: stuck.length } });
+    let queued = 0;
+    const ordered = [...scan.unfinished].sort((a, b) =>
+      (a.get('seasonFinishRecovery.requestedAt') ?? 0) - (b.get('seasonFinishRecovery.requestedAt') ?? 0) || a.id.localeCompare(b.id));
+    for (const d of ordered) {
+      if (queued >= 5 || this.recoveryRequests >= 20) break;
+      const requested = await this.db.runTransaction(async tx => {
+        const [club, game, summary] = await Promise.all([tx.get(ref), tx.get(d.ref),
+          tx.get(this.db.collection('roundSummaries').doc(d.id))]);
+        const fresh = club.get('seasons'), g = game.data();
+        if (!fresh?.enabled || fresh.currentId !== s.currentId || fresh.operation || !g ||
+          g.groupId !== ref.id || !this.belongs(g, fresh) || !didEveningHappen(g) ||
+          !['admin', 'auto'].includes(g.endedBy) || summary.exists) return false;
+        const retry = g.seasonFinishRecovery?.seasonId === fresh.currentId ? g.seasonFinishRecovery : undefined;
+        // The throttle is persisted, so overlapping cron invocations cannot
+        // continuously wake the trigger while an earlier delivery is running.
+        const delay = Math.min(6 * 60 * 60 * 1000, 30 * 60 * 1000 * 2 ** Math.min(4, Math.max(0, (Number(retry?.attempts) || 1) - 1)));
+        if (typeof retry?.requestedAt === 'number' && retry.requestedAt > now - delay) return false;
+        tx.update(d.ref, { updatedAt: now, seasonFinishRecovery: {
+          seasonId: fresh.currentId, requestedAt: now, attempts: (Number(retry?.attempts) || 0) + 1,
+        } });
+        return true;
+      });
+      if (requested) { queued++; this.recoveryRequests++; }
+    }
   }
 
   private checkRequest(data: Data, s: Data) {
@@ -202,7 +254,7 @@ export class SeasonManager {
         includedHistory: choice === 'continue' ? preview.played : 0, cadence: target,
         nextCadence: { ...target, ...(type === 'rounds' ? { targetRounds: Math.min(200, target.targetRounds!) } : {}) },
         hasArchivedPeriods: s.hasArchivedPeriods === true || choice === 'fresh', targetHistory: [],
-        pendingClose: del(), manualClose: del(), dueBlockedSince: del(), targetMovedToClose: del(), reopenedAt: del() } }, { merge: true });
+        pendingClose: del(), closureStatus: del(), manualClose: del(), dueBlockedSince: del(), targetMovedToClose: del(), reopenedAt: del() } }, { merge: true });
       ok = true;
       if (choice === 'sealNow') await publishSeason(this.db, ref.id, `s${oldNo}`);
       if (choice === 'sealNow') await this.deps.announce({ groupId: ref.id, groupName: g.name ?? '', seasonId: `s${oldNo}`, seasonNo: oldNo });
@@ -268,37 +320,53 @@ export class SeasonManager {
     return { ok: true, waiting: !!latest?.manualClose, closedNo: s.currentNo };
   }
 
-  async refresh(groupId: string): Promise<void> {
+  async refresh(groupId: string, recover = false): Promise<void> {
     const ref = this.db.collection('groups').doc(groupId), snap = await ref.get(), g = snap.data();
     const s = g?.seasons as Data | undefined;
     if (!s?.enabled || !s.currentId) return;
     if (typeof s.playedRounds !== 'number') {
       const played = (await this.games(groupId)).filter(d => this.belongs(d.data(), s) && didEveningHappen(d.data())).length;
       await this.patchIfFresh(ref, snap, { playedRounds: played });
-      return this.refresh(groupId);
+      return this.refresh(groupId, recover);
     }
     if (s.operation) {
       if (s.operation.until <= this.now() && this.operationApplied(s)) {
-        await this.releaseAppliedOperation(ref, s.operation.token); return this.refresh(groupId);
+        await this.releaseAppliedOperation(ref, s.operation.token); return this.refresh(groupId, recover);
       }
       if (s.operation.kind === 'finishSeason' && s.operation.until <= this.now()) await this.finish(groupId);
       return;
     }
     const now = this.now(), played = s.playedRounds ?? 0, manual = s.manualClose;
-    const blockers = await this.blockers(groupId, s);
+    const blockers = await this.scanBlockers(groupId, s);
     let p: CorrectionWindow | undefined = s.pendingClose?.seasonId === s.currentId ? s.pendingClose : undefined;
     const due = seasonTargetDue(s.cadence, played, now);
+    const showActive = !!manual || due || !!p;
+    const rounds = blockers.rounds.filter(r => r.reason !== 'active' || showActive);
+    const diagnosis = rounds.length ? { seasonId: s.currentId,
+      since: s.closureStatus?.seasonId === s.currentId ? s.closureStatus.since : now,
+      active: showActive ? blockers.active : 0, unverified: blockers.unverified, unsealed: blockers.unsealed,
+      rounds: rounds.slice(0, 8) } : undefined;
+    const patch: Data = {};
+    if (JSON.stringify(diagnosis) !== JSON.stringify(s.closureStatus)) patch.closureStatus = diagnosis ?? del();
     if (!manual && (!due || played < MIN_SEASON_ROUNDS)) {
-      if (s.pendingClose) await this.patchIfFresh(ref, snap, { pendingClose: del() });
+      if (s.pendingClose) patch.pendingClose = del();
+      if (Object.keys(patch).length && !await this.patchIfFresh(ref, snap, patch)) return;
+      // Recover even below the target: a missing summary also prevents its
+      // evening from advancing playedRounds and could otherwise hide the due date.
+      if (recover) await this.recoverFinishes(ref, s, blockers);
       return;
     }
     // Target changes while a round is active are evaluated after the round.
-    if (!p && blockers.active > 0 && !manual) return;
+    if (!p && blockers.active > 0 && !manual) {
+      if (Object.keys(patch).length && !await this.patchIfFresh(ref, snap, patch)) return;
+      if (recover) await this.recoverFinishes(ref, s, blockers);
+      return;
+    }
     p ??= { seasonId: s.currentId, dueAt: now, closeAt: now + CORRECTION_WINDOW_MS, reason: s.cadence.type };
     const next = updateCorrectionWindow(p, blockers.unverified, now);
-    if (JSON.stringify(next) !== JSON.stringify(s.pendingClose)) {
-      if (!await this.patchIfFresh(ref, snap, { pendingClose: next })) return;
-    }
+    if (JSON.stringify(next) !== JSON.stringify(s.pendingClose)) patch.pendingClose = next;
+    if (Object.keys(patch).length && !await this.patchIfFresh(ref, snap, patch)) return;
+    if (recover) await this.recoverFinishes(ref, s, blockers);
     if (blockers.active || blockers.unverified || blockers.unsealed || next.pausedAt != null || (!manual && next.closeAt > now)) return;
     await this.finish(groupId);
   }
@@ -347,7 +415,7 @@ export class SeasonManager {
           ...(disabled ? { disabledAt: cancelled ? cancelAt : now } : {}), policyVersion: SEASON_POLICY_VERSION,
           revision: (sea.revision ?? 0) + 1, currentNo: no, currentId: `s${no}`, count, startedAt: now,
           roundsAtStart: sealed, playedRounds: 0, includedHistory: 0, cadence: target, nextCadence: defaults,
-          hasArchivedPeriods: s.hasArchivedPeriods === true, pendingClose: del(), manualClose: del(),
+          hasArchivedPeriods: s.hasArchivedPeriods === true, pendingClose: del(), closureStatus: del(), manualClose: del(),
           targetHistory: [], targetMovedToClose: del(), dueBlockedSince: del(), reopenedAt: del() } }, { merge: true });
       });
       ok = true;
@@ -359,6 +427,8 @@ export class SeasonManager {
 
   async sweep() {
     this.maxCloses = 5;
+    this.closedThisSweep = 0;
+    this.recoveryRequests = 0;
     await this.recoverPublications();
     let cursor: admin.firestore.QueryDocumentSnapshot | undefined;
     for (;;) {
@@ -366,7 +436,7 @@ export class SeasonManager {
       if (cursor) q = q.startAfter(cursor);
       const page = await q.get();
       for (const d of page.docs) {
-        try { await this.refresh(d.id); }
+        try { await this.refresh(d.id, true); }
         catch (err) {
     observeCaughtError(err, {"source":"functions/src/seasonManager.ts","handler":"sweep","site":"seasonManager:2af601be64"}); await this.deps.report({ operation: 'seasonRollover', err, context: { groupId: d.id } }); }
       }

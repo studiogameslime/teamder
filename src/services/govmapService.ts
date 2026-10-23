@@ -168,9 +168,8 @@ export async function searchPlaces(
       const places=toPlaces(await fetchOnce(q,maxResults));
       if(places.length)return remember(places);
       try{return remember(await searchBackup(q,maxResults));}catch (caughtError7ef45b4de9){
-    observeCaughtError(caughtError7ef45b4de9, {"source":"src/services/govmapService.ts","handler":"searchPlaces","site":"govmapService:7ef45b4de9"});return remember([]);}
+    observeCaughtError(caughtError7ef45b4de9, {"source":"src/services/govmapService.ts","handler":"searchPlaces","site":"govmapService:7ef45b4de9"});return {places:[],unavailable:true};}
     } catch (err) {
-    observeCaughtError(err, {"source":"src/services/govmapService.ts","handler":"searchPlaces","site":"govmapService:f0ced6ce35"});
       if (isUpstreamDown(err)) {
         // One retry — a 504 from an overloaded public service is usually over
         // by the next request.
@@ -186,6 +185,7 @@ export async function searchPlaces(
       primaryUnavailableUntil=Date.now()+60000;
       try{return remember(await searchBackup(q,maxResults));}catch (caughtError9d49774938){
     observeCaughtError(caughtError9d49774938, {"source":"src/services/govmapService.ts","handler":"searchPlaces","site":"govmapService:9d49774938"});
+        observeCaughtError(err, {"source":"src/services/govmapService.ts","handler":"searchPlaces","site":"govmapService:f0ced6ce35"});
         if ((err as Error)?.message === 'govmap autocomplete 403') logError('govmapSearch',err,{query:q});
       }
       // Graceful either way: the field still works as free text.

@@ -29,12 +29,15 @@ export function RequestsBell({
   const [count, setCount] = useState(0);
 
   useEffect(() => {
+    let alive = true;
     const fetchCount = () => {
-      if (user) getInboxCount(user.id).then(setCount).catch((caughtError5bb30e388a: unknown) => {
+      if (!user || user.isGuest) { setCount(0); return; }
+      getInboxCount(user.id).then(value => { if (alive) setCount(value); }).catch((caughtError5bb30e388a: unknown) => {
     observeCaughtError(caughtError5bb30e388a, {"source":"src/components/RequestsBell.tsx","handler":"fetchCount","site":"RequestsBell:5bb30e388a"});});
     };
     fetchCount();
-    return nav.addListener('focus', fetchCount);
+    const unsubscribe = nav.addListener('focus', fetchCount);
+    return () => { alive = false; unsubscribe(); };
   }, [nav, user]);
 
   if (!user) return null;

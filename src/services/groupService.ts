@@ -129,13 +129,14 @@ export const groupService = {
   /**
    * Groups the user is an APPROVED community member of.
    */
-  async listForUser(userId: UserId): Promise<Group[]> {
+  async listForUser(userId: UserId, options?: { includeAdminRatings?: boolean }): Promise<Group[]> {
     if (USE_MOCK_DATA) {
-      return Object.values(groupsById).filter(
+      const groups = Object.values(groupsById).filter(
         (g) =>
           g.isPersonal !== true &&
           (g.adminIds.includes(userId) || g.playerIds.includes(userId)),
       );
+      return options?.includeAdminRatings === false ? groups.map(g => ({ ...g, adminRatings: undefined })) : groups;
     }
     if (!isCurrentSession(userId)) {
       throw new StaleSessionError(
@@ -156,7 +157,11 @@ export const groupService = {
     // Hide personal/orphan-host groups from the user's "my communities"
     // list — they're an implementation detail of the orphan-game flow,
     // never surfaced as real communities until the user promotes.
-    return Promise.all(snap.docs.map((d) => d.data()).filter((g) => g.isPersonal !== true).map(hydrateClubAdminRatings));
+    const groups = snap.docs.map((d) => d.data()).filter((g) => g.isPersonal !== true);
+    // Request counts only need membership + pending IDs. A ratings callable
+    // must not gate the inbox (or multiply its network requests per club).
+    if (options?.includeAdminRatings === false) return groups.map(g => ({ ...g, adminRatings: undefined }));
+    return Promise.all(groups.map(hydrateClubAdminRatings));
   },
 
   /**
@@ -735,7 +740,7 @@ export const groupService = {
       // one club (getPublicGroup, communityPublicReload,
       // getUpcomingPublicGamesForGroup), which is one person opening one
       // public page while the token was still in flight.
-      const snap = await withAuthRaceRetry(() => getDoc(docs.groupPublic(groupId)));
+      const snap = await withAuthRaceRetry(() => getDoc(docs.groupPublic(groupId)), { retryTransientReads: true });
       return snap.exists() ? snap.data() : null;
     } catch (err) {
     observeCaughtError(err, {"source":"src/services/groupService.ts","handler":"getPublic","site":"groupService:84a848cab6"});
@@ -2035,7 +2040,7 @@ export const groupService = {
     try {
       if (isAnon) {
         const snaps = await withAuthRaceRetry(() =>
-          Promise.all(ids.map((id) => getDoc(doc(col.usersPublic(), id)))),
+          Promise.all(ids.map((id) => getDoc(doc(col.usersPublic(), id)))), { retryTransientReads: true },
         );
         return snaps.filter((s) => s.exists()).map((s) => s.data());
       }
