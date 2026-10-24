@@ -1,0 +1,12 @@
+{
+  "applicationTypes": true,
+  "serverTypes": true,
+  "pulseTypes": true,
+  "testSuites": 494,
+  "tests": 5605,
+  "rulesSuites": 34,
+  "rulesTests": 352,
+  "wholeSuiteSeconds": 253.016,
+  "deviceInstallTested": false,
+  "nativeCrashEventTested": false
+}

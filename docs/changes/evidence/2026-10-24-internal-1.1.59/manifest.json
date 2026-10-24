@@ -1,0 +1,19 @@
+{
+  "version": "1.1.59",
+  "versionCode": 293,
+  "files": {
+    "apple-live.json": "a07bc17d52b75305d245146170804293fcfedf31d615fa121d22dc0bdda27637",
+    "authenticated-read.json": "67cc82d99fea9204fedcf8ef5f5300e2d091bdb12f800e40c0f04907f819e738",
+    "build-receipt.json": "83b1982c2e54cf9acf6bd1208cefa3c174901cb11fb35258be2afef92c695162",
+    "code-checks.json": "1251cb15d978919505383bd0c6aec3c9f1e6eaba467979552040824966a5b092",
+    "colors-prepared.json": "8ef1ced8e2c4f3c6f896d7a9ca465b56ae83e1834fb449dc5f2347db114335e5",
+    "colors-proof.json": "7b2583bd88b5601b27a3bcdf52456ceb1dff2f2b8de97e52ebd4c557b33f8662",
+    "feature-status-check.json": "a95079b5d2b2982934b7dc753b5f5910e64d6cb1c4514ce806a867ede608dea9",
+    "git-source-proof.json": "17e77360576c34b0207139a03b7834bf5399b0c010e9873c4372ee32c71c1aba",
+    "offline-binary.json": "a1f7a47d414b1bff56edb67578a343566100f478adeacab52d6add90b01ed6d5",
+    "release-log-receipt.json": "1dc1e4e4f3b3203569e150da9977201dee783b4cdd15f908795ba359d5c06988",
+    "server-proof.json": "bbedc94f46f90e8eb0baf6e685f5c3b625f457beabfcae562c43efc3b1bbf91c",
+    "tracks-before.json": "cfa15803af24dcc1bfad54b44f3b9dc985fa8ebc1a81e498380e411fb7688489",
+    "tracks-verified.json": "3574768a50a0c783b3cf802786b5485d3fc49ce06fd1263f070ac374c7187682"
+  }
+}

@@ -1,0 +1,28 @@
+[
+  {
+    "function": "scheduledGameMomentTask",
+    "changedFiles": [
+      "lib/index.js",
+      "src/index.ts"
+    ],
+    "addedFiles": [
+      "src/draftColors.ts",
+      "lib/draftColors.js"
+    ],
+    "unchangedFiles": 108,
+    "sourceSha256": "f865c147a053777ee6bd51e750a8baf5b7fce4e7329fdc62a4d1ccccf20c0ebe"
+  },
+  {
+    "function": "cronEvery5Min",
+    "changedFiles": [
+      "lib/index.js",
+      "src/index.ts"
+    ],
+    "addedFiles": [
+      "src/draftColors.ts",
+      "lib/draftColors.js"
+    ],
+    "unchangedFiles": 108,
+    "sourceSha256": "f865c147a053777ee6bd51e750a8baf5b7fce4e7329fdc62a4d1ccccf20c0ebe"
+  }
+]

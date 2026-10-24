@@ -1,0 +1,42 @@
+{
+  "functions": [
+    {
+      "name": "recordPlayerComparison",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-24T14:56:50.241291133Z",
+      "revision": "recordplayercomparison-00001-zed",
+      "sourceFilesVerified": [
+        "lib/appCheckPolicy.js",
+        "lib/comparisonActivity.js",
+        "lib/diagnosticRedaction.js",
+        "lib/errorIdentity.js",
+        "lib/index.js",
+        "lib/observedFunctions.js",
+        "lib/serverErrorLog.js"
+      ],
+      "sourceArchiveSha256": "4531bac7c5ecd7efdcabee2c2865b96ccc5a22e5a5e21fa561f299fe17a9397f",
+      "unauthenticatedRejected": true
+    },
+    {
+      "name": "getMyComparisonActivity",
+      "state": "ACTIVE",
+      "updateTime": "2026-10-24T14:56:55.702269998Z",
+      "revision": "getmycomparisonactivity-00001-bil",
+      "sourceFilesVerified": [
+        "lib/appCheckPolicy.js",
+        "lib/comparisonActivity.js",
+        "lib/diagnosticRedaction.js",
+        "lib/errorIdentity.js",
+        "lib/index.js",
+        "lib/observedFunctions.js",
+        "lib/serverErrorLog.js"
+      ],
+      "sourceArchiveSha256": "4531bac7c5ecd7efdcabee2c2865b96ccc5a22e5a5e21fa561f299fe17a9397f",
+      "unauthenticatedRejected": true
+    }
+  ],
+  "changed": [
+    "getMyComparisonActivity",
+    "recordPlayerComparison"
+  ]
+}
