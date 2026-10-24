@@ -39,6 +39,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { captureRef } from 'react-native-view-shot';
+import { randomUUID } from 'expo-crypto';
+import { comparisonActivityService } from '@/services/comparisonActivityService';
+import { isStaleSession } from '@/services/staleSession';
 
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -98,6 +101,7 @@ export function PlayerCompareScreen() {
   const nav = useNavigation<{ goBack: () => void }>();
   const viewerId = useUserStore((s) => s.currentUser?.id ?? '');
   const shareRef = useRef<View>(null);
+  const comparisonVisits = useRef(new Map<string, { id: string; pending: boolean; done: boolean }>());
 
   const [tab, setTab] = useState<Tab>('together');
   const [scope, setScope] = useState<StatsScope>({ k: 'current' });
@@ -159,6 +163,23 @@ export function PlayerCompareScreen() {
       }
       setModel(m);
       setLoading(false);
+      // One successful comparison per mounted visit and club/target, not one
+      // per tab/scope change. Retries reuse the server's idempotency receipt.
+      const account = useUserStore.getState().currentUser;
+      if (m && account?.id === viewerId && !account.isGuest && viewerId !== otherUid) {
+        const key = `${viewerId}:${groupId}:${otherUid}`;
+        let visit = comparisonVisits.current.get(key);
+        if (!visit) { visit = { id: randomUUID(), pending: false, done: false }; comparisonVisits.current.set(key, visit); }
+        if (!visit.pending && !visit.done) {
+          const currentVisit = visit;
+          currentVisit.pending = true;
+          void comparisonActivityService.record({ expectedUid: viewerId, targetId: otherUid, groupId, visitId: currentVisit.id, scope }).then(() => {
+            currentVisit.done = true;
+          }).catch(error => {
+            if (!isStaleSession(error)) observeCaughtError(error, { source: 'src/screens/players/PlayerCompareScreen.tsx', handler: 'recordComparison', site: 'PlayerCompareScreen:recordComparison' });
+          }).finally(() => { currentVisit.pending = false; });
+        }
+      }
     })();
     return () => {
       alive = false;

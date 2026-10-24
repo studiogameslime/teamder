@@ -1,0 +1,60 @@
+{
+  "readOnly": true,
+  "at": 1792850049957,
+  "checks": [
+    {
+      "collection": "users",
+      "querySucceeded": true,
+      "documents": 1,
+      "presentFields": [
+        "availability",
+        "createdAt",
+        "email",
+        "invitedBy",
+        "invitedByTargetId",
+        "invitedByType",
+        "lastSeenAt",
+        "name",
+        "onboardingCompleted"
+      ]
+    },
+    {
+      "collection": "groups",
+      "querySucceeded": true,
+      "documents": 1,
+      "presentFields": [
+        "adminIds",
+        "createdAt",
+        "creatorId",
+        "hidden",
+        "isOpen",
+        "isPersonal",
+        "name",
+        "pendingPlayerIds",
+        "playerIds"
+      ]
+    },
+    {
+      "collection": "games",
+      "querySucceeded": true,
+      "documents": 1,
+      "presentFields": [
+        "createdAt",
+        "createdBy",
+        "groupId",
+        "liveMatch",
+        "players",
+        "rotation",
+        "startsAt",
+        "status",
+        "title"
+      ]
+    },
+    {
+      "collection": "onboardingActivity",
+      "querySucceeded": true,
+      "documents": 2,
+      "identityBound": true
+    }
+  ]
+}

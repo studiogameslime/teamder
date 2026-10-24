@@ -102,7 +102,7 @@ export function CommunityEditScreen() {
 
   const submit = async (v: GroupFormValues) => {
     if (seasonsDirty) {
-      appAlert('השינויים בעונה עדיין לא נשמרו', 'שינית את הגדרות העונה. כדי לשמור אותן, לחץ קודם על ״שמור הגדרות עונה״. אחר כך תוכל לשמור את פרטי המועדון.');
+      appAlert('השינויים בעונה עדיין לא נשמרו', 'שינית את הגדרות העונה. כדי לשמור אותן, לחץ קודם על ״שמור הגדרות עונה״. אחר כך תוכל לשמור את פרטי המועדון.', undefined, { football: true, tone: 'warning' });
       return;
     }
     const toDays = (s: string): number | null => {

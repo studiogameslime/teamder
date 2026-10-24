@@ -17,14 +17,17 @@ import type { Game } from '@/types';
 import { activeDraftRosterIds } from '@/utils/draftIntegrity';
 import { playersPerTeam, teamName } from '@/utils/draft';
 import { teamColor } from '@/components/match/rotationView';
+import { draftColorTeams } from '@/utils/draftColors';
+import { TeamColorButton } from './TeamColorEditor';
 import { createManualDraft, moveManualPlayer, restoreManualTeams, hasManualDraft, manualDraftRevision, manualDragPosition } from '@/utils/manualAllocation';
 
 type Player = {id:string; name:string; avatarId?:string; photoUrl?:string};
-type Props = {game:Game; userId:string; players:Player[]; count:number; onBack:()=>void; onSaved:()=>void; preview?:boolean; preferSaved?:boolean};
+type Props = {game:Game; userId:string; players:Player[]; count:number; onBack:()=>void; onSaved:()=>void; preview?:boolean; preferSaved?:boolean; onEditColor?:(index:number)=>void};
 /** Incomplete working copies stay local: downstream rotation needs non-empty teams. */
-export function ManualAllocation({game,userId,players,count,onBack,onSaved,preview=false,preferSaved=false}:Props) {
+export function ManualAllocation({game,userId,players,count,onBack,onSaved,preview=false,preferSaved=false,onEditColor}:Props) {
   const nav = useNavigation();
   const capacity = Math.max(playersPerTeam(game.format), Math.ceil(players.length / count));
+  const colorTeams = draftColorTeams(game, count);
   const key = `manual-allocation:${preview?'preview:':''}${userId}:${game.id}`;
   const root=useRef<View>(null);
   const {width:windowWidth}=useWindowDimensions();
@@ -122,7 +125,7 @@ export function ManualAllocation({game,userId,players,count,onBack,onSaved,previ
       const freshIds=activeDraftRosterIds(fresh).sort();
       if(freshIds.join('|')!==rosterKey || fresh.numberOfTeams!==game.numberOfTeams || fresh.format!==game.format)throw Error('DRAFT_ROSTER_CHANGED');
       if(fresh.status==='finished'||fresh.status==='cancelled')throw Error('ROUND_CLOSED');
-      await gameService.saveDraftTeams(game.id,{...createManualDraft(teams,userId,Date.now(),fresh.draftTeams?.teams),...(fresh.draftTeams?.completionMode==='balanced'?{completionMode:'balanced' as const,fillMode:'temporary' as const}:{})},undefined,true,game);
+      await gameService.saveDraftTeams(game.id,{...createManualDraft(teams,userId,Date.now(),fresh.draftTeams?.teams,fresh.draftTeamColors),...(fresh.draftTeams?.completionMode==='balanced'?{completionMode:'balanced' as const,fillMode:'temporary' as const}:{})},undefined,true,game);
       // A cleanup failure must not turn a successful server save into an error.
       await AsyncStorage.removeItem(key).catch((caughtError1d1768f728: unknown) =>{ observeCaughtError(caughtError1d1768f728, {"source":"src/components/draft/ManualAllocation.tsx","handler":"save","site":"ManualAllocation:1d1768f728"}); return undefined; });
       setDirty(false);allowLeave.current=true;toast.success('הכוחות נשמרו כטיוטה');onSaved();
@@ -158,10 +161,10 @@ export function ManualAllocation({game,userId,players,count,onBack,onSaved,previ
           {filtered.length>6&&!search&&<Pressable onPress={()=>setExpanded(!expanded)} style={s.expand}><Text style={s.link}>{expanded?'הצג פחות':`הצג את כל ${pool.length} השחקנים`}</Text><Ionicons name={expanded?'chevron-up':'chevron-down'} size={18} color="#2D68FF"/></Pressable>}
         </View>
         <Text style={s.title}>הקבוצות שלך</Text>
-        <View style={s.teamGrid}>{teams.map((ids,index)=>{const color=teamColor(index,game.draftTeams?.teams);return <View key={index} ref={r=>{targets.current[index]=r;}} collapsable={false} style={[s.team,count===2&&s.halfTeam,{backgroundColor:color+'10',borderColor:color+'40'}]}>
-          <View style={s.row}><Ionicons name="shirt" size={count===2?22:29} color={color}/><Text numberOfLines={1} style={[s.title,s.flex,count===2&&{fontSize:16}]}>{teamName(index,game.draftTeams?.teams)}</Text>{count!==2&&<Text style={s.count}>{ids.length} מתוך {capacity}</Text>}</View>{count===2&&<Text style={s.count}>{ids.length} מתוך {capacity}</Text>}
+        <View style={s.teamGrid}>{teams.map((ids,index)=>{const color=teamColor(index,colorTeams);return <View key={index} ref={r=>{targets.current[index]=r;}} collapsable={false} style={[s.team,count===2&&s.halfTeam,{backgroundColor:color+'10',borderColor:color+'40'}]}>
+          <View style={s.row}><Ionicons name="shirt" size={count===2?22:29} color={color}/><Text numberOfLines={1} style={[s.title,s.flex,count===2&&{fontSize:16}]}>{teamName(index,colorTeams)}</Text>{count!==2&&onEditColor&&<TeamColorButton index={index} onPress={()=>onEditColor(index)} disabled={saving||!ready}/>}{count!==2&&<Text style={s.count}>{ids.length} מתוך {capacity}</Text>}</View>{count===2&&<View style={s.row}><Text style={[s.count,s.flex]}>{ids.length} מתוך {capacity}</Text>{onEditColor&&<TeamColorButton index={index} onPress={()=>onEditColor(index)} disabled={saving||!ready}/>}</View>}
           <View style={s.chips}>{ids.map(id=>chip(identity(id),count===2?'column':'wide'))}
-            {ids.length<capacity&&<Pressable disabled={saving||!ready||!pool.length} onPress={()=>{setBatchTarget(index);setBatch([]);setSearch('');}} style={[s.add,(ids.length===0||count===2)&&s.wide]} accessibilityLabel={`הוסף שחקנים אל ${teamName(index,game.draftTeams?.teams)}`}><Ionicons name="add-circle-outline" size={24} color="#2D68FF"/><Text style={s.link}>{ids.length?'הוסף':'הוסף שחקנים'}</Text>{!ids.length&&<Text style={s.hint}>בחרו כמה שחקנים יחד</Text>}</Pressable>}
+            {ids.length<capacity&&<Pressable disabled={saving||!ready||!pool.length} onPress={()=>{setBatchTarget(index);setBatch([]);setSearch('');}} style={[s.add,(ids.length===0||count===2)&&s.wide]} accessibilityLabel={`הוסף שחקנים אל ${teamName(index,colorTeams)}`}><Ionicons name="add-circle-outline" size={24} color="#2D68FF"/><Text style={s.link}>{ids.length?'הוסף':'הוסף שחקנים'}</Text>{!ids.length&&<Text style={s.hint}>בחרו כמה שחקנים יחד</Text>}</Pressable>}
           </View>
         </View>;})}</View>
         <View style={[s.row,s.actions]}><Pressable disabled={!history.length||saving} onPress={()=>{setTeams(history[history.length-1]);setHistory(h=>h.slice(0,-1));setDirty(true);}}><Text style={[s.link,!history.length&&s.muted]}>בטל שינוי אחרון</Text></Pressable>
@@ -175,11 +178,11 @@ export function ManualAllocation({game,userId,players,count,onBack,onSaved,previ
       <Text style={s.small}>{pool.length||teams.some(t=>!t.length)?'טיוטה חלקית נשמרת אך לא נחשבת כחלוקת כוחות':'אפשר להמשיך לערוך לפני הפרסום'}</Text></View>
     <SafeModal visible={picked!==null||batchTarget!==null} transparent animationType="slide" onRequestClose={close}>
       <View style={s.backdrop}><Pressable style={s.dismiss} onPress={close} accessibilityLabel="סגור"/><View style={s.sheet}>
-        <View style={s.row}><Text style={[s.title,s.flex]}>{batchTarget!==null?`שיבוץ אל ${teamName(batchTarget,game.draftTeams?.teams)}`:replaceTarget!==null?'בחרו שחקן להחלפה':`לאן להעביר את ${picked?identity(picked).name:''}?`}</Text><Pressable onPress={close} accessibilityLabel="סגור" hitSlop={12}><Ionicons name="close" size={24}/></Pressable></View>
+        <View style={s.row}><Text style={[s.title,s.flex]}>{batchTarget!==null?`שיבוץ אל ${teamName(batchTarget,colorTeams)}`:replaceTarget!==null?'בחרו שחקן להחלפה':`לאן להעביר את ${picked?identity(picked).name:''}?`}</Text><Pressable onPress={close} accessibilityLabel="סגור" hitSlop={12}><Ionicons name="close" size={24}/></Pressable></View>
         <ScrollView keyboardShouldPersistTaps="handled">
           {batchTarget!==null?<><Text style={s.hint}>אפשר לבחור עוד {capacity-teams[batchTarget].length-batch.length} שחקנים</Text><TextInput value={search} onChangeText={setSearch} placeholder="חיפוש שחקן" placeholderTextColor="#7284A5" accessibilityLabel="חיפוש שחקנים לשיבוץ" style={s.input}/>{batchLimitReached&&<Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={{color:'#92400E',backgroundColor:'#FFF3D6',borderRadius:12,padding:12,textAlign:RTL_LABEL_ALIGN,lineHeight:21}}>כל המקומות הפנויים נבחרו. כדי לבחור שחקן אחר, בטלו אחת מהבחירות.</Text>}{filtered.map(p=><Pressable key={p.id} style={s.option} disabled={batchLimitReached&&!batch.includes(p.id)} accessibilityRole="checkbox" accessibilityState={{checked:batch.includes(p.id),disabled:batchLimitReached&&!batch.includes(p.id)}} onPress={()=>toggleBatchPlayer(p.id)}><UserAvatar user={p} size={32}/><Text style={[s.name,s.flex]}>{p.name}</Text><Ionicons name={batch.includes(p.id)?'checkbox':'square-outline'} color={batchLimitReached&&!batch.includes(p.id)?'#CBD2DF':'#2D68FF'} size={24}/></Pressable>)}</>
           :replaceTarget!==null?teams[replaceTarget].map(id=><Pressable key={id} style={s.option} onPress={()=>{if(picked)apply(moveManualPlayer(current.current,picked,replaceTarget,capacity,id));close();}}><UserAvatar user={identity(id)} size={34}/><Text style={s.name}>{identity(id).name}</Text></Pressable>)
-          :<>{teams.map((ids,index)=><Pressable key={index} disabled={!!picked&&ids.includes(picked)} style={s.option} onPress={()=>{if(picked)move(picked,index);}}><Ionicons name="shirt" size={25} color={teamColor(index,game.draftTeams?.teams)}/><Text style={[s.name,s.flex]}>{teamName(index,game.draftTeams?.teams)}</Text><Text style={s.hint}>{ids.length>=capacity?'מלאה · החלפת שחקן':`${ids.length} מתוך ${capacity}`}</Text></Pressable>)}{picked&&assigned.has(picked)&&<Button title="החזרה לשחקנים שטרם שובצו" onPress={()=>{move(picked,-1);close();}}/>}</>}
+          :<>{teams.map((ids,index)=><Pressable key={index} disabled={!!picked&&ids.includes(picked)} style={s.option} onPress={()=>{if(picked)move(picked,index);}}><Ionicons name="shirt" size={25} color={teamColor(index,colorTeams)}/><Text style={[s.name,s.flex]}>{teamName(index,colorTeams)}</Text><Text style={s.hint}>{ids.length>=capacity?'מלאה · החלפת שחקן':`${ids.length} מתוך ${capacity}`}</Text></Pressable>)}{picked&&assigned.has(picked)&&<Button title="החזרה לשחקנים שטרם שובצו" onPress={()=>{move(picked,-1);close();}}/>}</>}
         </ScrollView>
         {batchTarget!==null&&<Button fullWidth title={`שיבוץ ${batch.length} שחקנים`} disabled={!batch.length} onPress={()=>{let next=current.current;for(const id of batch)next=moveManualPlayer(next,id,batchTarget,capacity);apply(next);close();}}/>}
       </View></View>

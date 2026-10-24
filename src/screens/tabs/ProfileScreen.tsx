@@ -54,7 +54,6 @@ import { HomeActionTiles } from '@/components/home/HomeDashboardParts';
 import { HomeAvailabilityPanel } from '@/components/home/HomeAvailabilityPanel';
 import { buildAvailabilityView } from '@/utils/homeAvailabilityView';
 import { HomeHero } from '@/components/home/HomeHero';
-import { CrashTestCard } from '@/components/home/CrashTestCard';
 import {
   UpcomingRoundCard,
   CompletedRoundCard,
@@ -1483,9 +1482,6 @@ export function ProfileScreen() {
         />
 
         <View style={styles.body}>
-
-          <CrashTestCard userId={user?.id ?? ''} />
-
           {/* §22 — "your season ended". The one in-app place this is ever said.
               `announceSeasonClosed` has been writing a notification per
               participant since the feature shipped, deduped on the season id,

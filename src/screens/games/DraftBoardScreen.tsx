@@ -43,6 +43,7 @@ import type { DraftTeamsResult, Game } from '@/types';
 import { toGuestRosterId, isGuestId } from '@/types';
 import { buildPickOrder, reconstructPicks, playersPerTeam } from '@/utils/draft';
 import { activeDraftRosterIds } from '@/utils/draftIntegrity';
+import { draftColorTeams } from '@/utils/draftColors';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
 type Nav = NativeStackNavigationProp<GameStackParamList>;
@@ -126,6 +127,7 @@ export function DraftBoardScreen() {
           }
         }
         setGame(g);
+        setTeamColors(Object.fromEntries(draftColorTeams(g, captainIds.length).map(t => [t.index, t.colorKey])));
         if (readOnly) {
           logEvent(AnalyticsEvent.TeamsViewed, {
             gameId,
@@ -146,11 +148,6 @@ export function DraftBoardScreen() {
           const live = new Set(activeDraftRosterIds(g));
           setPicks(reconstructPicks(g.draftTeams).filter((id) => live.has(id)));
           // Restore any colours chosen on the saved draft.
-          const restored: Record<number, string> = {};
-          for (const t of g.draftTeams.teams) {
-            if (t.colorKey) restored[t.index] = t.colorKey;
-          }
-          setTeamColors(restored);
         }
       } catch (err) {
     observeCaughtError(err, {"source":"src/screens/games/DraftBoardScreen.tsx","handler":"DraftBoardScreen","site":"DraftBoardScreen:97cca203ac"});

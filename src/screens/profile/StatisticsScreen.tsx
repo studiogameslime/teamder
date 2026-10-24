@@ -94,7 +94,7 @@ export function StatisticsScreen() {
     userService
       .getUserById(uid)
       .then((fresh) => {
-        if (!alive) throw new Error('statistics request superseded');
+        if (!alive) return null;
         // Penalty-shootout stats (server-maintained) — captured for the tiles.
         const st = fresh?.stats;
         setPen(
@@ -124,7 +124,7 @@ export function StatisticsScreen() {
         });
       })
       .then(async (s) => {
-        if (!alive) return;
+        if (!alive || !s) return;
         setStats(s);
         // Resolve the (few) distinct uids the named cards reference.
         const ids = Array.from(
@@ -152,6 +152,7 @@ export function StatisticsScreen() {
         setPeople(map);
       })
       .catch((err) => {
+        if (!alive) return;
     observeCaughtError(err, {"source":"src/screens/profile/StatisticsScreen.tsx","handler":"StatisticsScreen","site":"StatisticsScreen:e4da6c2a46"});
         if (alive) { setFailed(true); logError('loadStatistics', err, { userId: uid }); }
       })

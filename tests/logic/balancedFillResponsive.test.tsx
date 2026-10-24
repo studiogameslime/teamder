@@ -21,7 +21,7 @@ jest.mock('@/components/UserAvatar', () => ({ UserAvatar: 'Avatar' }));
 jest.mock('@/components/match/TeamShirt', () => ({ TeamShirtIllustration: 'Shirt' }));
 jest.mock('@/components/anim/ArrivalMotion', () => ({ ArrivalMotion: 'Arrival' }));
 jest.mock('@/theme', () => ({ RTL_LABEL_ALIGN: 'left' }));
-jest.mock('@/theme/overlays', () => ({ overlayTheme: { backdrop: '#0008' } }));
+jest.mock('@/theme/overlays', () => ({ overlayTheme: { backdrop: '#0008' }, overlaySurfaces: { sheet: {} } }));
 
 import { BalancedFillModal, type BalancedFillRequest } from '@/components/match/BalancedFillModal';
 

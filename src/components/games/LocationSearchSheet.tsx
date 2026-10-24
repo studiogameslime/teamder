@@ -213,7 +213,11 @@ export function LocationSearchSheet({
       setFly({ lat, lng, zoom: 16 });
       pickFromMap(lat, lng);
     } catch (caughtError57ff4fecdc) {
-    observeCaughtError(caughtError57ff4fecdc, {"source":"src/components/games/LocationSearchSheet.tsx","handler":"useCurrentLocation","site":"LocationSearchSheet:57ff4fecdc"});
+      // Our bounded GPS timeout is an expected retry/manual-map state, not a
+      // provider crash. Keep real sensor errors observable.
+      if ((caughtError57ff4fecdc as {message?:unknown})?.message !== 'LOCATION_TIMEOUT') {
+        observeCaughtError(caughtError57ff4fecdc, {"source":"src/components/games/LocationSearchSheet.tsx","handler":"useCurrentLocation","site":"LocationSearchSheet:57ff4fecdc"});
+      }
       if (revision === choiceRevision.current) setLocationError('לא הצלחנו לאתר את המיקום כרגע. נסו שוב או בחרו נקודה במפה.');
     } finally {
       if (timeout) clearTimeout(timeout);

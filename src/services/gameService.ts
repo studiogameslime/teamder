@@ -7,6 +7,9 @@ import { waitForJoinResult } from '@/utils/joinRequestResult';
 import { creationPayload } from '@/services/creationAttempt';
 import { assertCreationOwner } from '@/services/creationOwner';
 import { validateDraftRoster } from '@/utils/draftIntegrity';
+import { draftColorPatch } from '@/utils/draftColors';
+import { assertLiveTeamsEdit, liveTeamsChanged, liveTeamsEditContext, liveTeamsEditSkeleton, resetLiveForTeamChange, validateLiveTeamsFill,
+  type LiveTeamsPlan, type LiveTeamsEditContext, type LiveTeamsFilled } from '@/utils/liveTeamsEdit';
 import { shootoutFingerprint, type ShootoutDecisionContext } from '@/utils/shootoutDecision';
 import { matchesRoundDecision, roundDecisionContext, type RoundDecisionContext } from '@/utils/roundDecision';
 import { liveLineupFingerprint } from '@/utils/liveLineupFingerprint';
@@ -3970,6 +3973,25 @@ export const gameService = {
    * to clear it. No push or score/timer changes; an active rotation's roster
    * baseline is updated atomically so it cannot restore a superseded split.
    */
+  async saveDraftTeamColors(gameId: string, colors: Record<number, string>, expected: Record<number, string>): Promise<ReturnType<typeof draftColorPatch>> {
+    if (USE_MOCK_DATA) {
+      const current = mockGamesV2.find(game => game.id === gameId);
+      if (!current) throw new Error('GAME_NOT_FOUND');
+      const patch = draftColorPatch(current, colors, expected);
+      Object.assign(current, patch);
+      return patch;
+    }
+    const ref = docs.game(gameId);
+    return runTransaction(getFirebase().db, async tx => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error('GAME_NOT_FOUND');
+      const current = snap.data();
+      const patch = draftColorPatch(current, colors, expected);
+      tx.update(ref, patch);
+      return patch;
+    });
+  },
+
   async saveDraftTeams(
     gameId: string,
     draft: DraftTeamsResult | null,
@@ -3978,12 +4000,13 @@ export const gameService = {
      *  captain draft — there is no algorithm to measure there. */
     meta?: Game['teamBalanceMeta'],
     validateActiveRoster = false,
-    expectedSettings?: Pick<Game, 'numberOfTeams' | 'format'>,
+    expectedSettings?: Pick<Game, 'numberOfTeams' | 'format' | 'draftTeamColors'>,
   ): Promise<void> {
     if (!gameId) return;
-    const validateRoster = (game: Pick<Game, 'players' | 'guests' | 'status' | 'numberOfTeams' | 'format' | 'draftTeams'>) => {
+    const validateRoster = (game: Pick<Game, 'players' | 'guests' | 'status' | 'numberOfTeams' | 'format' | 'draftTeams' | 'draftTeamColors'>) => {
       if(game.status==='finished'||game.status==='cancelled')throw new Error('ROUND_CLOSED');
       if (!validateActiveRoster || !draft) return;
+      if (expectedSettings && JSON.stringify(game.draftTeamColors ?? {}) !== JSON.stringify(expectedSettings.draftTeamColors ?? {})) throw new Error('DRAFT_COLORS_CHANGED');
       validateDraftRoster(draft, game, expectedSettings);
     };
     // Freeze the split as first drawn so the post-game "הכוחות שחולקו" record
@@ -4000,13 +4023,14 @@ export const gameService = {
     // An explicit save replaces the allocation, including during live play.
     // Completed mini-games have their own participant snapshots; they are not
     // this mutable allocation. Never accept an old originalTeams from a caller.
-    const prepareDraft = (current: Pick<Game,'draftTeams'>): DraftTeamsResult | null => {
+    const prepareDraft = (current: Pick<Game,'draftTeams' | 'draftTeamColors'>): DraftTeamsResult | null => {
       if(!draft)return null;
       const leftHome=current.draftTeams?.leftHome??[];
       const departed=new Set(leftHome.map(entry=>entry.playerId));
       const teams=draft.teams.map(team=>{
         const playerIds=team.playerIds.filter(id=>!departed.has(id));
-        return {...team,playerIds,captainId:playerIds.includes(team.captainId)?team.captainId:playerIds[0]??''};
+        const colorKey = team.colorKey ?? current.draftTeamColors?.[team.index];
+        return {...team,...(colorKey ? {colorKey} : {}),playerIds,captainId:playerIds.includes(team.captainId)?team.captainId:playerIds[0]??''};
       });
       return {...draft,teams,leftHome:leftHome.map(entry=>({...entry})),
         originalTeams:teams.map(team=>({...team,playerIds:[...team.playerIds]}))};
@@ -4038,6 +4062,7 @@ export const gameService = {
         const withOriginal=prepareDraft(m);
         m.rotation = replacementRotation(m,withOriginal);
         m.draftTeams = withOriginal ?? undefined;
+        if (withOriginal) m.draftTeamColors = Object.fromEntries(withOriginal.teams.filter(t => t.colorKey).map(t => [t.index, t.colorKey!]));
         m.teamsEditedManually = !!draft;
         m.teamBalanceMeta = meta;
         m.updatedAt = Date.now();
@@ -4063,6 +4088,7 @@ export const gameService = {
       tx.update(ref, stripUndefined({
         ...patch,
         draftTeams:withOriginal,
+        ...(withOriginal ? {draftTeamColors: Object.fromEntries(withOriginal.teams.filter(t => t.colorKey).map(t => [t.index, t.colorKey!]))} : {}),
         ...(withOriginal && current.rotation ? { rotation: replacementRotation(current,withOriginal) } : {}),
       }));
     });
@@ -5412,12 +5438,16 @@ export const gameService = {
         };
       }),
     };
+    if (newDraft.originalTeams) newDraft.originalTeams = newDraft.originalTeams.map(t => ({...t,
+      ...(newDraft.teams.find(current => current.index === t.index)?.colorKey ? {colorKey: newDraft.teams.find(current => current.index === t.index)!.colorKey} : {}),
+    }));
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
       if (m) {
         if (rotationWriteSource(m) !== source) throw new Error('המשחק או ההרכב השתנו. יש לפתוח מחדש את בחירת ההרכב.');
         m.rotation = res.rotation;
         m.draftTeams = newDraft;
+        m.draftTeamColors = Object.fromEntries(newDraft.teams.filter(t => t.colorKey).map(t => [t.index, t.colorKey!]));
         if (resetTimerBy && m.liveMatch) {
           m.liveMatch = {
             ...m.liveMatch,
@@ -5441,6 +5471,7 @@ export const gameService = {
     const patch: Record<string, unknown> = {
       rotation: res.rotation,
       draftTeams: newDraft,
+      draftTeamColors: Object.fromEntries(newDraft.teams.filter(t => t.colorKey).map(t => [t.index, t.colorKey!])),
       updatedAt: Date.now(),
     };
     if (resetTimerBy) {
@@ -5541,32 +5572,61 @@ export const gameService = {
    *  a moment ago, and a round can have turned over in between — replaying a
    *  stale order would put a team that is now ON the pitch back in the queue.
    *  Same set or nothing. */
+  async prepareLiveTeamsEdit(gameId: string, plan: LiveTeamsPlan, expected: LiveTeamsEditContext): Promise<{ skeleton: RotationFillState; draft: DraftTeamsResult }> {
+    const game = await this.getGameById(gameId);
+    if (!game) throw new Error('המחזור לא נמצא');
+    assertLiveTeamsEdit(game, expected);
+    return { draft: game.draftTeams!, skeleton: liveTeamsEditSkeleton(game, plan, playersPerTeamFor(game.format), effFillMode(game, game.draftTeams!)) };
+  },
+
+  /** One transaction switches the pair, rebuilds the queue and discards ONLY the uncommitted game.
+   * A new internal identity rejects in-flight actions on its discarded scoreboard; the visible number stays. */
+  async saveLiveTeamsEdit(gameId: string, plan: LiveTeamsPlan, expected: LiveTeamsEditContext,
+    actor: { userId: string; userName: string }, filled?: LiveTeamsFilled): Promise<void> {
+    const instance = resolveRoundInstance({ round: 1 });
+    const changed = (game: Game): Record<string, unknown> => {
+      assertLiveTeamsEdit(game, expected);
+      if (game.id !== gameId) throw new Error('המחזור התחלף');
+      const draft = game.draftTeams!, current = game.rotation!;
+      const skeleton = liveTeamsEditSkeleton(game, plan, playersPerTeamFor(game.format), effFillMode(game, draft));
+      const now = USE_MOCK_DATA ? Date.now() : serverNow();
+      if (!liveTeamsChanged(current, plan)) {
+        // Legacy games key the round on updatedAt. Freeze that EXISTING key
+        // before changing the queue stamp; reordering must not create a game.
+        return { rotation: { ...current, waiting: [...plan.waiting], updatedAt: now,
+          roundInstanceId: roundCommitKey(current), roundInstanceRound: current.round ?? 1 }, updatedAt: now };
+      }
+      const result = validateLiveTeamsFill(skeleton, filled);
+      const rotation = { ...skeleton.rotation, loans: result.loans, updatedAt: now,
+        roundInstanceId: instance.roundInstanceId, roundInstanceRound: current.round ?? 1 };
+      const newDraft: DraftTeamsResult = { ...draft, teams: draft.teams.map(team => {
+        const playerIds = result.teams.find(t => t.index === team.index)!.playerIds;
+        return { ...team, playerIds, captainId: playerIds.includes(team.captainId) ? team.captainId : playerIds[0] ?? '' };
+      }) };
+      return { rotation, draftTeams: newDraft, liveMatch: resetLiveForTeamChange(game.liveMatch, actor.userId, actor.userName, now), updatedAt: now };
+    };
+    if (USE_MOCK_DATA) {
+      const game = mockGamesV2.find(g => g.id === gameId);
+      if (!game) throw new Error('המחזור לא נמצא');
+      Object.assign(game, changed(game));
+      return;
+    }
+    await runTransaction(getFirebase().db, async tx => {
+      const ref = docs.game(gameId), snapshot = await tx.get(ref);
+      if (!snapshot.exists()) throw new Error('המחזור לא נמצא');
+      tx.update(ref, stripUndefined(changed(snapshot.data() as Game)) as UpdateData<Game>);
+    });
+  },
+
   async reorderWaiting(gameId: string, waiting: number[]): Promise<void> {
     if (!gameId || !Array.isArray(waiting)) return;
     const g = await this.getGameById(gameId);
     const rot = g?.rotation;
     if (!rot) return;
     if (!acceptsReorder(rot.waiting, waiting)) return;
-    const next = { ...rot, waiting: [...waiting], updatedAt: Date.now() };
-    if (USE_MOCK_DATA) {
-      const m = mockGamesV2.find((x) => x.id === gameId);
-      if (m) {
-        m.rotation = next;
-        // The mock live subscription polls the GAME's updatedAt to decide
-        // whether to re-fire. Touching only the rotation left the screen
-        // showing the old order until something else happened to bump it —
-        // the write landed and nothing moved.
-        m.updatedAt = Date.now();
-      }
-      return;
-    }
-    // Field path, not the whole rotation: a concurrent fill or timer write must
-    // not be clobbered by an order change.
-    await updateGameDoc(gameId, {
-      'rotation.waiting': [...waiting],
-      'rotation.updatedAt': Date.now(),
-      updatedAt: Date.now(),
-    });
+    // The inline queue shares the editor's transaction. A delayed old queue
+    // must never put a newly-playing team back in the waiting list.
+    await this.saveLiveTeamsEdit(gameId, { playing: [...rot.playing], waiting }, liveTeamsEditContext(g!)!, { userId: '', userName: '' });
   },
 
   /**

@@ -6,6 +6,18 @@ export function normalizePlayerSearch(value: string): string {
 }
 const DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 const TIMES: Record<string, string> = { morning: 'בוקר', noon: 'צהריים', evening: 'ערב' };
+type Availability = Pick<UserAvailability, 'preferredDays' | 'preferredTimes' | 'availabilitySlots' | 'isAvailableForInvites'>;
+/** Legacy empty times means any window, exactly as in the availability editor. */
+export function playerAvailabilitySlots(a?: Availability): Record<number, string[]> {
+  if (!a || a.isAvailableForInvites === false) return {};
+  if (a.availabilitySlots) return Object.fromEntries(Object.entries(a.availabilitySlots)
+    .filter(([day]) => /^[0-6]$/.test(day))
+    .map(([day, times]) => [day, (times ?? []).filter(t => TIMES[t])]));
+  const days = (a.preferredDays ?? []).filter(d => DAYS[d]);
+  const times = (a.preferredTimes ?? []).filter(t => TIMES[t]);
+  if (!days.length && !times.length) return {};
+  return Object.fromEntries((days.length ? days : [0,1,2,3,4,5,6]).map(day => [day, times.length ? times : Object.keys(TIMES)]));
+}
 /** Discovery defaults to new connections; existing friends have an explicit filter. */
 export function playerDiscoveryMatches(player: SocialPlayer, opts: PlayerSearch): boolean {
   return (!player.friend || opts.friendsOnly === true) && playerSearchMatches(player, opts);

@@ -1841,6 +1841,8 @@ export interface Game {
 
   /** Captain-draft team split (חלוקת כוחות), set by the manager. */
   draftTeams?: DraftTeamsResult;
+  /** Round-specific colours by team index, available before players are allocated. */
+  draftTeamColors?: Record<number, string>;
 
   /** Members' reaction to the current team split: uid → 'like' | 'dislike'.
    *  Each member writes only their own key (rules-enforced). The admin sees

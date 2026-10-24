@@ -20,7 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { create } from 'zustand';
 import { Button } from '@/components/Button';
 import { SpringSheet } from '@/components/anim/SpringSheet';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 export type AppDialogTone = 'info' | 'warning' | 'danger';
@@ -33,6 +33,7 @@ export interface AppAlertButton {
 
 interface AppAlertOptions {
   football?: boolean;
+  icon?: keyof typeof Ionicons.glyphMap;
   /** Icon + accent. Defaults to danger when a destructive button exists,
    *  otherwise info. */
   tone?: AppDialogTone;
@@ -45,6 +46,7 @@ interface AppAlertOptions {
 
 interface DialogRequest {
   football?: boolean;
+  icon?: keyof typeof Ionicons.glyphMap;
   title: string;
   message?: string;
   buttons: AppAlertButton[];
@@ -89,6 +91,7 @@ export function appAlert(
     tone,
     onDismiss: options?.onDismiss,
     football: options?.football,
+    icon: options?.icon,
   });
 }
 
@@ -108,7 +111,7 @@ function buttonVariant(style?: AppAlertButton['style']): 'primary' | 'outline' |
 }
 
 export function AppDialogHost() {
-  const { height } = useWindowDimensions();
+  const { height, width, fontScale } = useWindowDimensions();
   const current = useDialogStore((s) => s.current);
   const close = useDialogStore((s) => s.close);
 
@@ -128,7 +131,7 @@ export function AppDialogHost() {
   const t = current ? TONE[current.tone] : TONE.info;
   // Two buttons sit in a row (cancel + action); one or 3+ stack so long
   // Hebrew labels never clip.
-  const stacked = !!current?.football || !current || current.buttons.length !== 2;
+  const stacked = !current || current.buttons.length !== 2 || width < 350 || fontScale > 1.2;
 
   return (
     <Modal
@@ -145,16 +148,14 @@ export function AppDialogHost() {
         panelStyle={{ paddingHorizontal: spacing.lg, alignSelf: 'stretch' }}
       >
         <Pressable style={[styles.card, current?.football && {padding:24,borderWidth:1,borderColor:'#DCE7F8',overflow:'hidden',maxHeight:Math.max(220,height-80)}]} onPress={(e) => e.stopPropagation()}>
-          {current?.football && <View pointerEvents="none" style={{position:'absolute',start:-25,top:0,width:150,height:110,borderWidth:1,borderColor:'#E6EDF8',borderRadius:60,transform:[{rotate:'-20deg'}]}}/>}
           {current?.football ? (
             <ScrollView style={{flexShrink:1}} contentContainerStyle={{gap:spacing.md}}>
-          <View style={[styles.iconWrap, { backgroundColor: t.bg },current?.football && {alignSelf:'center',width:68,height:68,borderRadius:24}]}>
-            <Ionicons name={current?.football ? 'football-outline' : t.icon} size={28} color={t.color} />
+          <View style={styles.compactHeading}>
+            <View style={[styles.compactIcon, { backgroundColor: t.bg }]}><Ionicons name={current.icon ?? t.icon} size={22} color={t.color}/></View>
+            <Text style={[styles.title,styles.compactTitle]}>{current.title}</Text>
           </View>
-
-          <Text style={[styles.title,current?.football && {textAlign:'center',fontSize:25}]}>{current?.title}</Text>
           {current?.message ? (
-            <Text style={[styles.body,current?.football && {textAlign:'center',lineHeight:25}]}>{current.message}</Text>
+            <Text style={[styles.body,{textAlign:RTL_LABEL_ALIGN,lineHeight:24}]}>{current.message}</Text>
           ) : null}
             </ScrollView>
           ) : <>
@@ -170,12 +171,13 @@ export function AppDialogHost() {
 
           <View style={[styles.footer, stacked && styles.footerStacked]}>
             {(current?.buttons ?? []).map((b, i) => (
-              <View key={`${b.text}-${i}`} style={stacked ? styles.fullBtn : undefined}>
+              <View key={`${b.text}-${i}`} style={stacked ? styles.fullBtn : current?.football ? styles.rowButton : undefined}>
                 <Button
                   title={b.text}
-                  variant={buttonVariant(b.style)}
-                  size={current?.football ? "lg" : "sm"}
-                  fullWidth={stacked}
+                  variant={current?.football ? b.style === 'cancel' ? 'secondary' : 'primary' : buttonVariant(b.style)}
+                  style={current?.football && b.style === 'destructive' ? {backgroundColor:colors.danger,borderColor:colors.danger} : undefined}
+                  size={current?.football ? "md" : "sm"}
+                  fullWidth={stacked || !!current?.football}
                   onPress={() => handlePress(b)}
                 />
               </View>
@@ -217,4 +219,8 @@ const styles = StyleSheet.create({
   },
   footerStacked: { flexDirection: 'column' },
   fullBtn: { alignSelf: 'stretch' },
+  rowButton: { flex:1,minWidth:0 },
+  compactHeading: {flexDirection:'row',alignItems:'center',gap:10},
+  compactIcon: {width:36,height:36,borderRadius:12,alignItems:'center',justifyContent:'center',flexShrink:0},
+  compactTitle: {flex:1,fontSize:20,textAlign:RTL_LABEL_ALIGN},
 });

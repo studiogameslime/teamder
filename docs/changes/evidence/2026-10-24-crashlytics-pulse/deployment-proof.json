@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-24",
+  "project": "soccer-app-52b6b",
+  "functions": [
+    {
+      "name": "syncCrashlyticsToPulse",
+      "state": "ACTIVE",
+      "revision": "synccrashlyticstopulse-00003-bov",
+      "sourceMatches": true,
+      "files": 14,
+      "mismatched": []
+    },
+    {
+      "name": "onErrorLogged",
+      "state": "ACTIVE",
+      "revision": "onerrorlogged-00027-hey",
+      "sourceMatches": true,
+      "files": 110,
+      "mismatched": []
+    }
+  ],
+  "scheduler": {
+    "name": "projects/soccer-app-52b6b/locations/us-central1/jobs/pulse-crashlytics-sync",
+    "state": "ENABLED",
+    "schedule": "*/5 * * * *",
+    "preexistingJobsChanged": []
+  },
+  "runtime": {
+    "lastSuccessUtc": "2026-10-23T21:34:09.467000+00:00",
+    "pages": 1,
+    "imported": 0,
+    "responseStatus": 200
+  },
+  "tests": {
+    "suites": 476,
+    "tests": 5299,
+    "appTypecheck": "passed",
+    "serverTypecheck": "passed"
+  },
+  "existingTriggerConfigurationPreserved": {
+    "existingServiceSettingsPreserved": true,
+    "eventTriggerPreserved": true,
+    "filterOrderOnlyChanged": true
+  },
+  "publicInvoker": false,
+  "exportStatus": "awaiting-explicit-user-approval-after-automatic-review-rejection",
+  "realCrashIngestionVerified": false,
+  "devicePushDisplayVerified": false,
+  "sourceHashes": {
+    "triggerChangedFiles": [
+      "lib/index.js",
+      "src/index.ts"
+    ],
+    "workerSha256": "e097468d3bde9185f24c827af66dcd3a4d39e884ac1345411bba7ca1a73e2d1e",
+    "triggerSha256": "4e080ac4e7a077300721f30fe3eb3eee4b0027fc02fd6de0b2af688270f3212d"
+  }
+}

@@ -18,6 +18,7 @@ export function DidYouKnowCard({ tips }: { tips: Tip[] }) {
   const [idx, setIdx] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [incoming, setIncoming] = useState<{ index: number; direction: number } | null>(null);
+  const [contentHeight, setContentHeight] = useState(80);
   const focused = useIsFocused();
   const progress = useRef(new Animated.Value(0)).current;
   const moving = useRef(false);
@@ -93,8 +94,11 @@ export function DidYouKnowCard({ tips }: { tips: Tip[] }) {
           accessibilityRole={tip.onPress ? 'button' : 'summary'}
           accessibilityLabel={`${tip.title}. ${tip.text}`}>
           <LinearGradient colors={['#15317B', '#294EC3']} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
-          <View style={styles.contentHost}>
-            <Animated.View style={[styles.content, { opacity: 1, transform: [{ translateX: 0 }] }, incoming && {
+          <View style={[styles.contentHost,{height:contentHeight}]}>
+            <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.measure}>
+              {tips.map(item=><View key={item.title} style={styles.content} onLayout={e=>{const measured=e.nativeEvent.layout.height;setContentHeight(height=>Math.max(height,measured));}}>{renderContent(item)}</View>)}
+            </View>
+            <Animated.View style={[styles.content, StyleSheet.absoluteFillObject, { opacity: 1, transform: [{ translateX: 0 }] }, incoming && {
               opacity: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
               transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, 18 * incoming.direction] }) }],
             }]}>{renderContent(tip)}</Animated.View>
@@ -122,6 +126,7 @@ const styles = StyleSheet.create({
   viewport: { overflow: 'hidden' },
   card: { minHeight: 112, borderRadius: 18, overflow: 'hidden', justifyContent: 'center', padding: spacing.md },
   contentHost: { minHeight: 80, justifyContent: 'center' },
+  measure: { position:'absolute',top:0,start:0,end:0,opacity:0 },
   content: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   iconDisc: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#FFFFFF22', alignItems: 'center', justifyContent: 'center' },
   textWrap: { flex: 1, minWidth: 0, gap: 5 },

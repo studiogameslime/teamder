@@ -927,9 +927,8 @@ export function MatchDetailsScreen() {
     }
   }, [gameId, hydratePlayers, nav]);
 
-  useEffect(() => {
-    reload();
-  }, [reload]);
+  // Focus includes the initial mount. A separate mount effect issued the
+  // same document read twice and let the older response overwrite the newer.
   useFocusEffect(
     React.useCallback(() => {
       reload();

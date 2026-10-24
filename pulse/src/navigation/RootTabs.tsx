@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colors } from '../theme';
 import { UsersStack } from './UsersStack';
+import { ClubsStack } from './ClubsStack';
 import { ReviewsScreen } from '../screens/ReviewsScreen';
 import { RevenueScreen } from '../screens/RevenueScreen';
 import { DevInboxStack } from './ErrorsStack';
@@ -25,8 +26,7 @@ import { AppMenu } from '../components/AppMenu';
 const Tab = createBottomTabNavigator();
 const Empty = () => null;
 
-// The four primary destinations on the bar (left → right):
-// לטיפול · משתמשים · גרסאות · תפריט.
+// Primary destinations: משימות · אנשים · מועדונים · גרסאות · עוד.
 //
 // Tasks sits FIRST because it's the launch screen: the dashboard used to hold
 // that slot and opened on four heavy network calls, so the app started on a
@@ -37,6 +37,7 @@ const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   Tasks: 'list-outline',
   Overview: 'stats-chart',
   Users: 'people',
+  Clubs: 'shield-outline',
   Versions: 'layers-outline',
   DevInbox: 'construct',
 };
@@ -110,7 +111,8 @@ export function RootTabs() {
             tabBarBadgeStyle: { backgroundColor: colors.red, color: '#fff', fontSize: 11 },
           }}
         />
-        <Tab.Screen name="Users" component={UsersStack} options={{ title: 'משתמשים' }} />
+        <Tab.Screen name="Users" component={UsersStack} options={{ title: 'אנשים' }} />
+        <Tab.Screen name="Clubs" component={ClubsStack} options={{ title: 'מועדונים' }} />
         <Tab.Screen name="Versions" component={VersionsScreen} options={{ title: 'גרסאות' }} />
         <Tab.Screen
           name="Menu"

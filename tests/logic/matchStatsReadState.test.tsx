@@ -53,6 +53,10 @@ import { MatchStatsTab } from '@/components/match/tabs/MatchStatsTab';
 import { he } from '@/i18n/he';
 import { isGuestId, GUEST_ID_PREFIX, toGuestRosterId } from '@/types';
 import { buildRoundSummary } from '@/utils/roundSummary';
+import { liveTeamsEndToEndWorld } from '../helpers/liveTeamsEndToEndWorld';
+import { liveTeamsEditContext } from '@/utils/liveTeamsEdit';
+import { roundCommitKey } from '@/services/rotationEngine';
+import * as teamIdentity from '@/utils/teamIdentity';
 const runtime = (React as any).__runtime;
 const read = jest.fn();
 const mockWatch = jest.fn();
@@ -68,7 +72,7 @@ function productFunction(file: string, name: string, context: Record<string, unk
   const parsed = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const fn = parsed.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name)!;
   return vm.runInNewContext(ts.transpileModule(`${fn.getText(parsed).replace(/^export /, '')}\n${name};`, {
-    compilerOptions: { target: ts.ScriptTarget.ES2022 },
+    fileName: 'isolated.tsx', compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React },
   }).outputText, context);
 }
 const rosterResolver = productFunction('src/services/gameService.ts', 'resolveRosterEntry', { isGuestId, GUEST_ID_PREFIX });
@@ -102,6 +106,25 @@ const expanded = (node: any): any => {
 };
 const nodes = (node: any): any[] => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node, ...nodes(node.props?.children)];
 const copy = (node: any): string => typeof node === 'string' || typeof node === 'number' ? String(node) : Array.isArray(node) ? node.map(copy).join(' ') : node && typeof node === 'object' ? copy(node.props?.children) : '';
+
+test('the real history card and statistics tab display the replacement result read back from the complete save/finish pipeline',async()=>{
+ const w=liveTeamsEndToEndWorld();
+ await w.service.saveLiveTeamsEdit('audit',{playing:[2,3],waiting:[0,1]},liveTeamsEditContext(w.read()),{userId:'owner',userName:'מנהל'});
+ await w.service.recordGoal('audit',{team:'B',scorerId:'t3-p0',assisterId:'t3-p1',minute:2,expectedRoundId:roundCommitKey(w.read().rotation!)});
+ await w.service.endEvening('audit');await w.finishStages();
+ const saved=await w.roundSummaryService.get('audit','club');const rendered=tree({summary:saved,status:'ready'});
+ const card=nodes(rendered).find(node=>typeof node.type==='function'&&node.type.name==='ClubStatsSummary');
+ expect(card.props).toMatchObject({games:1,goals:1,assists:1,shootouts:0});
+ const history=await w.service.getRoundHistory('audit');expect(history).toHaveLength(1);
+ const ctx:any={React,View:'View',Text:'Text',Pressable:'Pressable',Ionicons:'Icon',UserAvatar:'Avatar',he,colors:{text:'#111',textMuted:'#777'},styles:{},...teamIdentity,teamColor:teamIdentity.teamTextColor};
+ const file='src/screens/games/MatchRoundsScreen.tsx';
+ ctx.teamStyle=productFunction(file,'teamStyle',ctx);ctx.resolveTeamIndex=productFunction(file,'resolveTeamIndex',ctx);ctx.RosterRow=productFunction(file,'RosterRow',ctx);
+ const roundCard=productFunction(file,'RoundCard',ctx);
+ const text=copy(expanded(roundCard({round:history[0],index:0,resolve:(id:string)=>({id,name:id}),identityTeams:w.read().draftTeams!.teams,expanded:true,onToggle:jest.fn()})));
+ expect(text).toContain('משחק 1');expect(text).toContain(teamIdentity.teamName(2,w.read().draftTeams!.teams));expect(text).toContain(teamIdentity.teamName(3,w.read().draftTeams!.teams));
+ expect(text).toContain(he.matchRoundsWon(teamIdentity.teamName(3,w.read().draftTeams!.teams)));expect(text).toContain('t3-p0');expect(text).toContain(he.matchRoundsAssist('t3-p1'));
+ expect(text).not.toContain('t0-p0');expect(text).not.toContain('t1-p0');
+});
 
 beforeEach(() => { runtime.reset(); mockFocused = true; mockViewer = { id: 'manager' }; read.mockReset().mockResolvedValue(summary()); mockWatch.mockReset().mockReturnValue(()=>{}); hydrate.mockReset(); });
 afterEach(() => runtime.reset());

@@ -5,9 +5,11 @@ import { TeamShirtIllustration } from '@/components/match/TeamShirt';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import { gameFormatLabel } from '@/utils/format';
 import { TEAM_PALETTE } from '@/utils/teamIdentity';
+import { TeamColorButton } from './TeamColorEditor';
 
-export function DraftGenerationPreview({ mode, players, teams, format, children }: {
+export function DraftGenerationPreview({ mode, players, teams, format, children, colorKeys, onEditColor }: {
   mode: 'auto' | 'random'; players: number; teams: number; format?: string; children?: React.ReactNode;
+  colorKeys?: Record<number, string>; onEditColor?: (index: number) => void;
 }) {
   const base = Math.floor(players / teams);
   const upper = Math.ceil(players / teams);
@@ -45,9 +47,10 @@ export function DraftGenerationPreview({ mode, players, teams, format, children 
       <Text style={s.title}>הקבוצות שייווצרו</Text>
       <View style={s.teams}>
         {Array.from({length:teams},(_,index)=>{
-          const palette=TEAM_PALETTE[index];
+          const palette=TEAM_PALETTE.find(c => c.key === colorKeys?.[index]) ?? TEAM_PALETTE[index];
           return <View key={index} style={[s.team,{backgroundColor:palette.hex+'0D',borderColor:palette.hex+'12'}]}>
             <TeamShirtIllustration color={palette.hex}/><Text style={s.teamName}>{palette.plural}</Text><Text style={s.teamSize}>{size} שחקנים</Text>
+            {onEditColor && <TeamColorButton index={index} onPress={() => onEditColor(index)}/>}
           </View>;
         })}
       </View>

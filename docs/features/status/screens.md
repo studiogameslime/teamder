@@ -14,6 +14,8 @@
 | [pulse/src/screens/ChatMessagesScreen.tsx](../../../pulse/src/screens/ChatMessagesScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/ChatReportsScreen.tsx](../../../pulse/src/screens/ChatReportsScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/ChatsScreen.tsx](../../../pulse/src/screens/ChatsScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
+| [pulse/src/screens/ClubDetailScreen.tsx](../../../pulse/src/screens/ClubDetailScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
+| [pulse/src/screens/ClubsScreen.tsx](../../../pulse/src/screens/ClubsScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/DevInboxScreen.tsx](../../../pulse/src/screens/DevInboxScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/ErrorDetailScreen.tsx](../../../pulse/src/screens/ErrorDetailScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/ErrorsScreen.tsx](../../../pulse/src/screens/ErrorsScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
@@ -23,9 +25,11 @@
 | [pulse/src/screens/IdeasScreen.tsx](../../../pulse/src/screens/IdeasScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/MapScreen.tsx](../../../pulse/src/screens/MapScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/MessagesScreen.tsx](../../../pulse/src/screens/MessagesScreen.tsx) | [שיחות צוות עם משתמשים בפולס](shared.md#shared-pulse-support) · [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
+| [pulse/src/screens/NewPeopleScreen.tsx](../../../pulse/src/screens/NewPeopleScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/NotificationsLogScreen.tsx](../../../pulse/src/screens/NotificationsLogScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/OnboardingActivityScreen.tsx](../../../pulse/src/screens/OnboardingActivityScreen.tsx) | [מסלול ההצטרפות בפולס](shared.md#shared-onboarding-activity) · [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/OverviewScreen.tsx](../../../pulse/src/screens/OverviewScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
+| [pulse/src/screens/PersonJourneyScreen.tsx](../../../pulse/src/screens/PersonJourneyScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/PushScreen.tsx](../../../pulse/src/screens/PushScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/QaUserDetailScreen.tsx](../../../pulse/src/screens/QaUserDetailScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |
 | [pulse/src/screens/QaUsersScreen.tsx](../../../pulse/src/screens/QaUsersScreen.tsx) | [ארגון וניהול בפולס](shared.md#shared-pulse-management) | מתועד; לא הורץ מחדש |

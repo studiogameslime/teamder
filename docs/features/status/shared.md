@@ -28,11 +28,11 @@
 
 ## חוזי נתונים ומצבים משותפים
 
-מזהה: `shared/data-and-state-contracts` · קליטת תיעוד: 2026-10-23 · אימות חדש במשימת המפתח: לא בוצע.
+מזהה: `shared/data-and-state-contracts` · קליטת תיעוד: 2026-10-24 · אימות חדש במשימת המפתח: לא בוצע.
 
 **תמצית פתיחת ההסבר הפשוט:** המידע שמופיע במסכים מחבר בין הפעולות שלך לבין הנתונים שנשמרו באפליקציה. מחזור הוא ערב שלם, ובתוכו יכולים להיות כמה משחקים; חוסר מידע אינו אומר בהכרח שלא שיחקת.
 
-**סעיפים מתוארכים אחרונים:** תלות במידע על סגירת עונה — 23.10.2026 · התאוששות קריאות ומניעת כתיבה בזהות ישנה — 23.10.2026
+**סעיפים מתוארכים אחרונים:** תלות בשמירת צבעי המחזור — 24.10.2026
 
 **מקור:** [הסבר פשוט](../shared/data-and-state-contracts.simple.md) · [התנהגות, נתונים, ניווט, בדיקות ומגבלות](../shared/data-and-state-contracts.md)
 
@@ -68,11 +68,11 @@
 
 ## תפריטים, חלונות ותנועה משותפת
 
-מזהה: `shared/menus-and-motion` · קליטת תיעוד: 2026-10-23 · אימות חדש במשימת המפתח: לא בוצע.
+מזהה: `shared/menus-and-motion` · קליטת תיעוד: 2026-10-24 · אימות חדש במשימת המפתח: לא בוצע.
 
 **תמצית פתיחת ההסבר הפשוט:** תוקן סנכרון אזור הלחיצה בלשוניות שנצמדות לראש המסך: הכפתור צריך להגיב במקום שבו הוא מוצג, גם אחרי חזרה לראש. התיקון מקומי ונבדק באימולטור; עדיין אין אישור מהטלפון שבו דווחה התקלה.
 
-**סעיפים מתוארכים אחרונים:** אימות לחיצות באנדרואיד — 23.10.2026
+**סעיפים מתוארכים אחרונים:** סריקת לילה ואחידות ממשק — 24.10.2026 · טיפול בפולס — 24.10.2026
 
 **מקור:** [הסבר פשוט](../shared/menus-and-motion.simple.md) · [התנהגות, נתונים, ניווט, בדיקות ומגבלות](../shared/menus-and-motion.md)
 
@@ -148,11 +148,11 @@
 
 ## רצף פעולות מקומי לשחזור תקלות
 
-מזהה: `shared/diagnostic-journal` · קליטת תיעוד: 2026-10-23 · אימות חדש במשימת המפתח: לא בוצע.
+מזהה: `shared/diagnostic-journal` · קליטת תיעוד: 2026-10-24 · אימות חדש במשימת המפתח: לא בוצע.
 
 **תמצית פתיחת ההסבר הפשוט:** נוסף כפתור בדיקה זמני בבית לכל המשתמשים המחוברים. רק אישור מפורש גורם לקריסה בגרסה מקורית שאינה בפיתוח; דוח הבדיקה מקבל את מזהה החשבון המחובר. אין עדיין אימות קליטת דוח ממכשיר. פירוט האימות והמגבלות.
 
-**סעיפים מתוארכים אחרונים:** בדיקת קריסה יזומה מהבית — 23.10.2026 · בנייה והפצה פנימית — 23.10.2026
+**סעיפים מתוארכים אחרונים:** קריסות מקוריות באותו לוח — 24.10.2026 · המשך חיפוש מדורג ביומני הקריסות — 24.10.2026 · גבול זמן לחיפוש ביומן — 24.10.2026
 
 **מקור:** [הסבר פשוט](../shared/diagnostic-journal.simple.md) · [התנהגות, נתונים, ניווט, בדיקות ומגבלות](../shared/diagnostic-journal.md)
 
@@ -227,11 +227,11 @@
 
 ## שיחות צוות עם משתמשים בפולס
 
-מזהה: `shared/pulse-support` · קליטת תיעוד: 2026-10-21 · אימות חדש במשימת המפתח: לא בוצע.
+מזהה: `shared/pulse-support` · קליטת תיעוד: 2026-10-24 · אימות חדש במשימת המפתח: לא בוצע.
 
-**תמצית פתיחת ההסבר הפשוט:** נוסף תיעוד אוטומטי לנקודות כשל במסלול הזה, עם מקור התקלה. הפעולה המקורית שומרת על ערכי החזרה והודעות השגיאה שלה. השינוי מקומי, טרם הופץ, ואין אימות מסירה חיה לפולס.
+**תמצית פתיחת ההסבר הפשוט:** מסך האדם החדש בפולס מקשר לכרטיס המשתמש הקיים ולשיחת התמיכה שבו. שיחות התמיכה נשארו בתפריט הקיים; לא נוסף משלוח הודעות אוטומטי. הערות ההיכרות החדשות מקומיות למכשיר ואינן הודעות למשתמש. המסכים וגבולות האימות.
 
-**סעיפים מתוארכים אחרונים:** תיעוד כשלים — 20.10.2026
+**סעיפים מתוארכים אחרונים:** ניווט מהמעקב האישי — 24.10.2026
 
 **מקור:** [הסבר פשוט](../shared/pulse-support.simple.md) · [התנהגות, נתונים, ניווט, בדיקות ומגבלות](../shared/pulse-support.md)
 
@@ -239,9 +239,9 @@
 
 **קטעי ראיות ומגבלות מהתיעוד — לקרוא בהקשר המקור:**
 
+- RootTabs מוסיף לשונית מועדונים, ולשונית Users מכונה ״אנשים״ ומתחילה ב־NewPeople. מסלול Messages והחלונית הקיימת לא השתנו. PersonJourney פותח UserDetail באותה מחסנית, ומשם ניתן לפתוח את שיחת התמיכה; פירוט מועדון פותח משתמש דרך מחסנית האב Users. הערות ההיכרות…
 - נוספו תצפיות דיווח בנקודות הכשל של המקורות המשויכים לפיצ׳ר, במסגרת הרחבה רוחבית. נשמרו ערכי החזרה, הזריקות ותנאי הפעולה הקיימים; נוסף מקור קוד והקשר לדיווח. כיסוי תחבירי אינו הוכחת הרצה של כל מצב. השינוי מקומי וטרם הופץ; בדיקות המסירה, מגבלות מניעת הכפילויות…
 - שינוי מקומי, טרם בנייה והתקנה.
-- אימות: כל 384 חבילות / 4,553 בדיקות הפרויקט עברו; בדיקת הטיפוסים בטימדר ובפולס נקייה. pulseSupportResolution מריץ את שירות הקריאה והכתיבה עם מתאם מסד: סגירה בלי יצירת הודעה, הודעה חדשה באותו זמן, קריאת גיבוי, פתיחה מחדש, כשל ויעד לא תקין. pulseWorkStatusSave…
 
 <a id="shared-support-chat"></a>
 
@@ -267,11 +267,11 @@
 
 ## תיבת משימות ובאגים שלא נפתרו בפולס
 
-מזהה: `shared/pulse-work-inbox` · קליטת תיעוד: 2026-10-23 · אימות חדש במשימת המפתח: לא בוצע.
+מזהה: `shared/pulse-work-inbox` · קליטת תיעוד: 2026-10-24 · אימות חדש במשימת המפתח: לא בוצע.
 
 **תמצית פתיחת ההסבר הפשוט:** נוצר באישורך חשבון בדיקות נוסף, בלי למחוק חשבונות או לשנות את מועדון הבדיקות. עברו עשרה תרחישים של התחברות, ניתוק וחזרת רשת, קריאות מידע, שעון שרת והגדרות פרסומות. חלק מהכשלים נוצרו מקומית לצורך הבדיקה, ולכן אין להציג אותם כשחזור התקלה המקורית במכשיר.
 
-**סעיפים מתוארכים אחרונים:** ניסיונות שחזור עם חשבון ייצור — 23.10.2026 · באגים לא פתורים וסיבת אי־סגירה — 23.10.2026 · משימות קומפקטיות ומיון קבוע — 23.10.2026
+**סעיפים מתוארכים אחרונים:** קריסות מקוריות באותו לוח — 24.10.2026 · המשך חיפוש מדורג ביומני הקריסות — 24.10.2026 · גבול זמן לחיפוש ביומן — 24.10.2026
 
 **מקור:** [הסבר פשוט](../shared/pulse-work-inbox.simple.md) · [התנהגות, נתונים, ניווט, בדיקות ומגבלות](../shared/pulse-work-inbox.md)
 
@@ -287,18 +287,18 @@
 
 ## ארגון וניהול בפולס
 
-מזהה: `shared/pulse-management` · קליטת תיעוד: 2026-10-23 · אימות חדש במשימת המפתח: לא בוצע.
+מזהה: `shared/pulse-management` · קליטת תיעוד: 2026-10-24 · אימות חדש במשימת המפתח: לא בוצע.
 
-**תמצית פתיחת ההסבר הפשוט:** בסריקת השגיאות, הדיווחים והבאגים נשמר הסבר לכל 39 הפריטים שנותרו פתוחים: 32 ממתינים לאישורך ו־7 עדיין ללא פתרון מאומת. נוספה בקוד קטגוריית ״באגים לא פתורים״ עם סיבה וצעד בדיקה לכל פריט; היא טרם נבנתה להתקנה. פירוט ומגבלות.
+**תמצית פתיחת ההסבר הפשוט:** בלשונית ״אנשים״ נוספה תצוגה של חשבונות שהצטרפו בשבוע או בחודש האחרון, עם מקור הגעה כשידוע, שלב התקדמות וכיוון למעקב אישי. לחיצה על אדם פותחת את פעולות הכניסה שנשמרו, הערות אישיות וקישור לכרטיס המשתמש ולשיחת התמיכה. רשימת כל המשתמשים הקיימת נשארה נגישה. אין כאן הקלטה או היסטוריה מלאה של כל המסכים; רצף כניסה שמור יכול לכלול יותר מביקור אחד.
 
-**סעיפים מתוארכים אחרונים:** קטגוריית הלא־פתורים וסקירה חיה — 23.10.2026 · צפיפות ומיון המשימות — 23.10.2026 · קובץ התקנה 1.0.101 — 23.10.2026
+**סעיפים מתוארכים אחרונים:** אנשים חדשים ומועדונים — 24.10.2026 · קריסות מקוריות באותו לוח — 24.10.2026 · המשך חיפוש מדורג ביומני הקריסות — 24.10.2026
 
 **מקור:** [הסבר פשוט](../shared/pulse-management.simple.md) · [התנהגות, נתונים, ניווט, בדיקות ומגבלות](../shared/pulse-management.md)
 
-**קובצי מסך משויכים:** `pulse/src/screens/AdminLoginScreen.tsx`, `pulse/src/screens/AdsScreen.tsx`, `pulse/src/screens/AnalyticsScreen.tsx`, `pulse/src/screens/AvailabilityScreen.tsx`, `pulse/src/screens/CampaignsScreen.tsx`, `pulse/src/screens/ChatMessagesScreen.tsx`, `pulse/src/screens/ChatReportsScreen.tsx`, `pulse/src/screens/ChatsScreen.tsx`, `pulse/src/screens/DevInboxScreen.tsx`, `pulse/src/screens/ErrorDetailScreen.tsx`, `pulse/src/screens/ErrorsScreen.tsx`, `pulse/src/screens/FeaturesScreen.tsx`, `pulse/src/screens/GameDetailScreen.tsx`, `pulse/src/screens/GamesScreen.tsx`, `pulse/src/screens/IdeasScreen.tsx`, `pulse/src/screens/MapScreen.tsx`, `pulse/src/screens/MessagesScreen.tsx`, `pulse/src/screens/NotificationsLogScreen.tsx`, `pulse/src/screens/OnboardingActivityScreen.tsx`, `pulse/src/screens/OverviewScreen.tsx`, `pulse/src/screens/PushScreen.tsx`, `pulse/src/screens/QaUserDetailScreen.tsx`, `pulse/src/screens/QaUsersScreen.tsx`, `pulse/src/screens/QuotaScreen.tsx`, `pulse/src/screens/ReportsScreen.tsx`, `pulse/src/screens/RevenueScreen.tsx`, `pulse/src/screens/ReviewsScreen.tsx`, `pulse/src/screens/SegmentScreen.tsx`, `pulse/src/screens/SettingsScreen.tsx`, `pulse/src/screens/SourcesScreen.tsx`, `pulse/src/screens/StickersScreen.tsx`, `pulse/src/screens/TasksScreen.tsx`, `pulse/src/screens/TokenHealthScreen.tsx`, `pulse/src/screens/UserDetailScreen.tsx`, `pulse/src/screens/UsersScreen.tsx`, `pulse/src/screens/VersionsScreen.tsx`, `pulse/src/screens/WorkspacesScreen.tsx`
+**קובצי מסך משויכים:** `pulse/src/screens/AdminLoginScreen.tsx`, `pulse/src/screens/AdsScreen.tsx`, `pulse/src/screens/AnalyticsScreen.tsx`, `pulse/src/screens/AvailabilityScreen.tsx`, `pulse/src/screens/CampaignsScreen.tsx`, `pulse/src/screens/ChatMessagesScreen.tsx`, `pulse/src/screens/ChatReportsScreen.tsx`, `pulse/src/screens/ChatsScreen.tsx`, `pulse/src/screens/ClubDetailScreen.tsx`, `pulse/src/screens/ClubsScreen.tsx`, `pulse/src/screens/DevInboxScreen.tsx`, `pulse/src/screens/ErrorDetailScreen.tsx`, `pulse/src/screens/ErrorsScreen.tsx`, `pulse/src/screens/FeaturesScreen.tsx`, `pulse/src/screens/GameDetailScreen.tsx`, `pulse/src/screens/GamesScreen.tsx`, `pulse/src/screens/IdeasScreen.tsx`, `pulse/src/screens/MapScreen.tsx`, `pulse/src/screens/MessagesScreen.tsx`, `pulse/src/screens/NewPeopleScreen.tsx`, `pulse/src/screens/NotificationsLogScreen.tsx`, `pulse/src/screens/OnboardingActivityScreen.tsx`, `pulse/src/screens/OverviewScreen.tsx`, `pulse/src/screens/PersonJourneyScreen.tsx`, `pulse/src/screens/PushScreen.tsx`, `pulse/src/screens/QaUserDetailScreen.tsx`, `pulse/src/screens/QaUsersScreen.tsx`, `pulse/src/screens/QuotaScreen.tsx`, `pulse/src/screens/ReportsScreen.tsx`, `pulse/src/screens/RevenueScreen.tsx`, `pulse/src/screens/ReviewsScreen.tsx`, `pulse/src/screens/SegmentScreen.tsx`, `pulse/src/screens/SettingsScreen.tsx`, `pulse/src/screens/SourcesScreen.tsx`, `pulse/src/screens/StickersScreen.tsx`, `pulse/src/screens/TasksScreen.tsx`, `pulse/src/screens/TokenHealthScreen.tsx`, `pulse/src/screens/UserDetailScreen.tsx`, `pulse/src/screens/UsersScreen.tsx`, `pulse/src/screens/VersionsScreen.tsx`, `pulse/src/screens/WorkspacesScreen.tsx`
 
 **קטעי ראיות ומגבלות מהתיעוד — לקרוא בהקשר המקור:**
 
+- - tests/logic/pulseGrowthInsights.test.ts מכסה קיום מחזור, תחום זמן, תוצאה חלקית, שיוך הזמנה, רשום לעומת משתתף, כיוון מעקב והפרדת זהויות ורצפים. tests/logic/pulseGrowthData.test.ts מכסה גבולות והיטלים, טעינה עצלה של רצף וכשל מקור שאינו אפס. -…
 - בסקירה חיה של 39 פריטים נשמרה סיבת אי־סגירה לכל פריט, עם אימות קריאה חוזרת ושימור מצבים והערות קודמות. שבעה ללא פתרון מאומת סווגו בהתאם, ו־32 ממתינים לאישור הבעלים. כל 5,236 הבדיקות ושתי בדיקות הטיפוסים עברו. אין צילום חדש, בניית התקנה או פריסה. מסלול…
 - TasksScreen מציג שורות קומפקטיות עם תגית סוג בשורת הפרטים, ריווח אנכי 9 במקום 16 וסמל 28 במקום 32. boardSections ממיין רק לפי זמן יורד בתוך כל סוג; בורר הדחיפות הוסר. אין שינוי נתונים, הרשאות או ניווט. השינוי מאוחר מקובץ 1.0.101 / 108, טרם נבנה וטרם אומת…
-- נבנה ואומת קובץ התקנה חתום 1.0.101 / 108 הכולל את סדר הקטגוריות. כל 5,202 הבדיקות ובדיקות הטיפוסים של שני היישומים עברו לאחר התקנת תלויות הפולס. הוכחת המקור היא השוואת קוד השינוי למפת המקור וחבילת הקוד שבתוצר; אין אימות התקנה, כניסה או צילום חדש במכשיר. אין…

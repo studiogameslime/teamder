@@ -293,9 +293,8 @@ export function GamesListScreen() {
       reload();
     }, [reload]),
   );
-  useEffect(() => {
-    reload();
-  }, [reload]);
+  // Initial focus already loads the list. A mount effect here duplicated all
+  // four queries (and player hydration) on every arrival.
 
   // The "+" offers a quick (no-community) game as the primary path, with
   // the community game as the secondary choice. Quick is the headline:

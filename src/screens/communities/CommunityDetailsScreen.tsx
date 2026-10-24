@@ -241,9 +241,25 @@ export function CommunityDetailsScreen() {
     ballId?: string;
     jerseysId?: string;
   }>({});
+  const loadGeneration = useRef(0);
+  const loadScope = `${me?.id ?? ''}:${groupId}`;
+  const currentLoadScope = useRef(loadScope);
+  currentLoadScope.current = loadScope;
+  useEffect(() => {
+    setGroup(null);
+    setMembers([]);
+    setUpcoming([]);
+    setHistory([]);
+    setCommunityStats(null);
+    setLoading(true);
+  }, [loadScope]);
 
   const reload = useCallback(
     async (opts: { pullToRefresh?: boolean } = {}) => {
+      const generation = ++loadGeneration.current;
+      const isCurrent = () => generation === loadGeneration.current &&
+        currentLoadScope.current === loadScope &&
+        useUserStore.getState().currentUser?.id === me?.id;
       if (opts.pullToRefresh) {
         setRefreshing(true);
         setTotalsReloadTick(tick => tick + 1);
@@ -252,6 +268,7 @@ export function CommunityDetailsScreen() {
       }
       try {
         const g = await groupService.get(groupId);
+        if (!isCurrent()) return;
         setGroup(g);
         if (!g) {
           setMembers([]);
@@ -268,17 +285,24 @@ export function CommunityDetailsScreen() {
             ...(g.pendingPlayerIds ?? []),
           ]),
         );
-        const [users, games, hist, cStats] = await Promise.all([
-          groupService.hydrateUsers(memberIds),
-          gameService.getUpcomingGamesForGroup(g.id).catch((caughtError856a55f9be: unknown) => { observeCaughtError(caughtError856a55f9be, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:856a55f9be"}); return [] as Game[]; }),
-          gameService.getHistory(g.id).catch((caughtError1d0bb2e6aa: unknown) => { observeCaughtError(caughtError1d0bb2e6aa, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:1d0bb2e6aa"}); return [] as GameSummary[]; }),
-          gameService.getCommunityStats(g.id).catch((caughtError19e9cfb3de: unknown) => { observeCaughtError(caughtError19e9cfb3de, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:19e9cfb3de"}); return null; }),
+        // Publish each independent section as soon as it arrives. In
+        // particular, the next round must not wait for the full club history.
+        // A failed refresh keeps the last successful value, never a fake [].
+        await Promise.all([
+          groupService.hydrateUsers(memberIds).then(value => { if (isCurrent()) setMembers(value); }),
+          gameService.getUpcomingGamesForGroup(g.id).then(value => { if (isCurrent()) setUpcoming(value); }).catch((caughtError856a55f9be: unknown) => { observeCaughtError(caughtError856a55f9be, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:856a55f9be"}); }),
+          gameService.getHistory(g.id).then(value => { if (isCurrent()) setHistory(value); }).catch((caughtError1d0bb2e6aa: unknown) => { observeCaughtError(caughtError1d0bb2e6aa, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:1d0bb2e6aa"}); }),
+          gameService.getCommunityStats(g.id).then(value => { if (isCurrent()) setCommunityStats(value); }).catch((caughtError19e9cfb3de: unknown) => { observeCaughtError(caughtError19e9cfb3de, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:19e9cfb3de"}); }),
         ]);
-        setMembers(users);
-        setUpcoming(games);
-        setHistory(hist);
-        setCommunityStats(cStats);
       } catch (err) {
+        if (!isCurrent()) return;
+        if (isExpectedDenial(err)) {
+          setGroup(null);
+          setMembers([]);
+          setUpcoming([]);
+          setHistory([]);
+          setCommunityStats(null);
+        }
     observeCaughtError(err, {"source":"src/screens/communities/CommunityDetailsScreen.tsx","handler":"CommunityDetailsScreen","site":"CommunityDetailsScreen:0f6042652a"});
         // Not logged when the club is simply unreachable — deleted, or one the
         // viewer is not in. Both come back as `permission-denied` (see
@@ -293,11 +317,13 @@ export function CommunityDetailsScreen() {
         }
         if (__DEV__) console.warn('[community] reload failed', err);
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (isCurrent()) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
-    [groupId, me],
+    [groupId, me?.id, loadScope],
   );
 
   // Single load path — useFocusEffect covers the initial focus AND refresh on
@@ -315,6 +341,7 @@ export function CommunityDetailsScreen() {
     useCallback(() => {
       Keyboard.dismiss();
       reload();
+      return () => { loadGeneration.current += 1; };
     }, [reload]),
   );
 

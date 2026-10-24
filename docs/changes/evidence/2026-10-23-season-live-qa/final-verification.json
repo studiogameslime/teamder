@@ -1,0 +1,61 @@
+{
+  "at": "2026-10-24T11:25:39.854Z",
+  "status": "passed",
+  "checks": 98,
+  "closeAt": "2026-10-24T10:41:26.584Z",
+  "season": "s5",
+  "played": 0,
+  "historyPreserved": {
+    "games": 17,
+    "archives": 7
+  },
+  "schedulerEvidence": {
+    "at": "2026-10-24T11:13:00.668648Z",
+    "revision": "cronevery60min-00045-pez",
+    "status": 200,
+    "latency": "13.014922538s",
+    "archiveClosedAt": 1792840390046
+  },
+  "clientOpened": false,
+  "clientSyncCalled": false,
+  "manualJobRun": false,
+  "archive": {
+    "seasonId": "s4",
+    "completedRounds": 5,
+    "closedAt": 1792840390046,
+    "closedAtISO": "2026-10-24T11:13:10.046Z",
+    "publicationPending": false,
+    "notificationPending": false,
+    "closedBy": "",
+    "attendancesPerPlayer": [
+      {
+        "uid": "8HYLuzxlnOeZAAoCQwfd8tnPWCq1",
+        "games": 5
+      },
+      {
+        "uid": "wvGcHrkfuYcdCJRrR8FWFzBopgS2",
+        "games": 5
+      }
+    ]
+  },
+  "currentSeason": {
+    "id": "s5",
+    "playedRounds": 0,
+    "targetRounds": 24,
+    "enabled": true,
+    "hasPendingClose": false,
+    "hasBlockers": false,
+    "hasOperation": false
+  },
+  "realCorrectionWindowMs": 86400000,
+  "shoshiWrites": 0,
+  "automation": {
+    "id": "automation",
+    "deleted": true
+  },
+  "limitations": [
+    "Admin fixture setup rather than client login/creation",
+    "Regular evenings with attendance, no competitive mini-game results",
+    "No intentional live production failure injected"
+  ]
+}

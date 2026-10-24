@@ -1,0 +1,15 @@
+{
+  "sourceComponents": true,
+  "fixturesOnly": true,
+  "nativeRuntime": false,
+  "widths": [
+    320,
+    390
+  ],
+  "peopleAndClubNavigation": true,
+  "noteSurvivesScreenChange": true,
+  "unknownInsteadOfZero": true,
+  "emptyState": true,
+  "browserErrors": [],
+  "shots": 5
+}

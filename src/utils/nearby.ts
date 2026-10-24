@@ -128,7 +128,13 @@ export async function resolveNearbyLocation(
             (place?.city || place?.subregion || place?.region || '').trim() ||
             null;
         } catch (caughtError88fb261f2f) {
-    observeCaughtError(caughtError88fb261f2f, {"source":"src/utils/nearby.ts","handler":"resolveNearbyLocation","site":"nearby:88fb261f2f"});
+          // Android's optional geocoder can reject an otherwise valid GPS fix
+          // when it has no country code. Coordinates + the saved city remain
+          // usable, so this specific provider defect is an expected fallback.
+          const message = String((caughtError88fb261f2f as {message?:unknown})?.message ?? caughtError88fb261f2f);
+          if (!message.includes('getCountryCode(...) must not be null')) {
+            observeCaughtError(caughtError88fb261f2f, {"source":"src/utils/nearby.ts","handler":"resolveNearbyLocation","site":"nearby:88fb261f2f"});
+          }
           // ignore
         }
         return {

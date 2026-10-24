@@ -28,5 +28,5 @@ test('manual save allows active rounds while keeping terminal guards and origina
  const source=fs.readFileSync(path.join(process.cwd(),'src/components/draft/ManualAllocation.tsx'),'utf8');
  expect(source).toContain("if(fresh.status==='finished'||fresh.status==='cancelled')throw Error('ROUND_CLOSED')");
  expect(source).not.toContain('fresh.liveMatch?.startedAt||fresh.rotation?.baseTeams?.length');
- expect(source).toContain('createManualDraft(teams,userId,Date.now(),fresh.draftTeams?.teams)');
+ expect(source).toContain('createManualDraft(teams,userId,Date.now(),fresh.draftTeams?.teams,fresh.draftTeamColors)');
 });

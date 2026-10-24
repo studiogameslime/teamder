@@ -15,6 +15,7 @@
 //     does NOT mutate community membership.
 
 import { readSeasonClosureStatus } from '@/utils/seasonClosureStatus';
+import { readDraftColors } from '@/utils/draftColors';
 import {
   CollectionReference,
   DocumentData,
@@ -1442,6 +1443,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           : null,
       liveMatch: g.liveMatch ?? null,
       draftTeams: g.draftTeams ?? null,
+      draftTeamColors: g.draftTeamColors ?? null,
       draftTeamFeedback: g.draftTeamFeedback ?? null,
       rotation: g.rotation ?? null,
       reminderSent: g.reminderSent ?? false,
@@ -1708,6 +1710,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           : undefined,
       liveMatch: readLiveMatch(d.liveMatch),
       draftTeams: readDraftTeams(d.draftTeams),
+      draftTeamColors: d.draftTeamColors == null ? undefined : readDraftColors(d.draftTeamColors),
       draftTeamFeedback: readDraftTeamFeedback(d.draftTeamFeedback),
       rotation: readRotation(d.rotation),
       lastCommittedRoundId: typeof d.lastCommittedRoundId === 'string' ? d.lastCommittedRoundId : undefined,

@@ -150,6 +150,7 @@ export function UserDetailScreen() {
         {data?.failedSources?.length ? <Card><Text style={{...font.body,color:colors.amber}}>מידע חלקי — לא נטענו: {data.failedSources.join(' · ')}. אין להסיק שהרשימות האלה ריקות.</Text></Card> : null}
         {data?.limitedSources?.length ? <Text style={{...font.small,color:colors.amber}}>הגעת לתקרת הקריאה: {data.limitedSources.join(' · ')}. הספירות חלקיות.</Text> : null}
         {data ? <>
+          <Pressable accessibilityRole="button" onPress={()=> (nav as any).navigate('PersonJourney',{userId})} style={{padding:14,borderRadius:12,backgroundColor:colors.primarySoft}}><Text style={{...font.body,color:colors.primary}}>מסלול הכניסה והמעקב האישי ←</Text></Pressable>
           <Panel key={`overview:${userId}`} active={section==='overview'}><PlayerOverview data={data} onClubs={()=>{setSection('info');setFocusClubs(true)}} onInfo={()=>setSection('info')} onHistory={()=>setSection('history')} onReport={id=>(nav as any).getParent()?.navigate('DevInbox',{screen:'ErrorDetail',params:{id,collection:'feedback'}})}/></Panel>
           <Panel key={`info:${userId}`} active={section==='info'}>
             <SectionHeader>פרטי חשבון</SectionHeader>

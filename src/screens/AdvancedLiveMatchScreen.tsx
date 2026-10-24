@@ -7,6 +7,8 @@ import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OpeningTeamsPanel } from '@/components/match/OpeningTeamsPanel';
+import { LiveTeamsEditModal } from '@/components/match/LiveTeamsEditModal';
+import { liveTeamsEditContext, liveTeamsChanged, type LiveTeamsEditContext, type LiveTeamsPlan } from '@/utils/liveTeamsEdit';
 import { initialOpeningPlan, openingFingerprint, type OpeningPlan } from '@/utils/openingTeams';
 import {
   ActivityIndicator,
@@ -255,8 +257,11 @@ export function AdvancedLiveMatchScreen() {
     /** The score of the round that just ended, for the picker to report.
      *  Absent on a mid-evening substitution — nothing ended. */
     savedResult?: { a: number; b: number; winner: string | null };
+    teamsEdit?: { plan: LiveTeamsPlan; expected: LiveTeamsEditContext };
   } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [teamsEditor, setTeamsEditor] = useState<{ game: Game; expected: LiveTeamsEditContext } | null>(null);
+  const [teamsEditError, setTeamsEditError] = useState('');
   // 1s ticker so the still-ongoing stoppage duration counts up while paused
   // (the synced-timer hook only ticks while RUNNING).
   const [nowTick, setNowTick] = useState(() => serverNow());
@@ -438,10 +443,17 @@ export function AdvancedLiveMatchScreen() {
   const [openingPlan, setOpeningPlan] = useState<OpeningPlan | null>(null);
   const [openingLoading, setOpeningLoading] = useState(true);
   const [openingBusy, setOpeningBusy] = useState(false);
+  const pendingOpeningColors = useRef<OpeningPlan | null>(null);
   const openingSource = draftTeams ? openingFingerprint(draftTeams) : '';
   const openingStorageKey = `match-opening:${me?.id ?? 'viewer'}:${gameId ?? ''}`;
   useEffect(() => {
     if (rotation || !draftTeams) return;
+    // The live subscription can acknowledge the colour write before its
+    // promise resolves. Keep the pending opening order through that snapshot.
+    const pending = pendingOpeningColors.current;
+    if (pending && draftTeams.teams.every(t => pending.colors[t.index] === t.colorKey)) {
+      setOpeningPlan(initialOpeningPlan(draftTeams, pending)); setOpeningLoading(false); return;
+    }
     let alive = true;
     setOpeningLoading(true);
     void AsyncStorage.getItem(openingStorageKey).then(raw => {
@@ -453,10 +465,35 @@ export function AdvancedLiveMatchScreen() {
     observeCaughtError(caughtError5a630c571a, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"AdvancedLiveMatchScreen","site":"AdvancedLiveMatchScreen:5a630c571a"}); if (alive) { setOpeningPlan(initialOpeningPlan(draftTeams)); setOpeningLoading(false); } });
     return () => { alive = false; };
   }, [openingSource, openingStorageKey, !!rotation]);
-  const changeOpening = (plan: OpeningPlan) => {
-    setOpeningPlan(plan);
-    void AsyncStorage.setItem(openingStorageKey, JSON.stringify({ source: openingSource, plan })).catch((caughtError9d8d4ac04a: unknown) => {
+  const changeOpening = async (plan: OpeningPlan) => {
+    let source = openingSource;
+    let saved: Awaited<ReturnType<typeof gameService.saveDraftTeamColors>> | undefined;
+    if (openingPlan && JSON.stringify(plan.colors) !== JSON.stringify(openingPlan.colors)) {
+      pendingOpeningColors.current = plan;
+      setOpeningBusy(true);
+      try {
+        saved = await gameService.saveDraftTeamColors(gameId!, plan.colors, openingPlan.colors);
+        source = openingFingerprint(saved.draftTeams!);
+      } catch (error) {
+        observeCaughtError(error, {source:'src/screens/AdvancedLiveMatchScreen.tsx',handler:'changeOpening',site:'changeOpening:colors'});
+        toast.error('לא הצלחנו לשמור את הצבעים. ייתכן שהכוחות השתנו; חזרו למסך ונסו שוב.');
+        setOpeningBusy(false);
+        pendingOpeningColors.current = null;
+        return;
+      }
+    }
+    // Store the chosen order under the NEW colour fingerprint before the
+    // subscription/effect reloads preparation. A colour edit must not reset it.
+    // Ordinary team/order taps stay synchronous, as before colour persistence.
+    // Their storage acknowledgement must not reset a newer selection or unlock
+    // an unrelated colour write that started while storage was pending.
+    if (!saved) setOpeningPlan(plan);
+    await AsyncStorage.setItem(openingStorageKey, JSON.stringify({ source, plan })).catch((caughtError9d8d4ac04a: unknown) => {
     observeCaughtError(caughtError9d8d4ac04a, {"source":"src/screens/AdvancedLiveMatchScreen.tsx","handler":"changeOpening","site":"AdvancedLiveMatchScreen:9d8d4ac04a"});});
+    if (saved) {
+      const patch = saved; setGame(current => current?.id === gameId ? {...current, ...patch} : current);
+      setOpeningPlan(plan); pendingOpeningColors.current = null; setOpeningBusy(false);
+    }
   };
   const firstTwo = openingPlan?.selected ?? [];
 
@@ -581,9 +618,10 @@ export function AdvancedLiveMatchScreen() {
     // `prepareRoundResult` zeroes it — which is the whole reason the picker
     // needs to be told: by the time it opens, the board behind it says 0:0.
     savedResult?: { a: number; b: number; winner: string | null },
+    teamsEdit?: { plan: LiveTeamsPlan; expected: LiveTeamsEditContext },
   ) => {
     const captured=savedRoundViewRef.current;
-    if(!keepClock && !savedResult && captured?.gameId===gameId && captured.key===currentRoundKey){
+    if(!teamsEdit && !keepClock && !savedResult && captured?.gameId===gameId && captured.key===currentRoundKey){
       savedResult={a:captured.live.scoreA,b:captured.live.scoreB,winner:null};
     }
     setFillDeferred(false);
@@ -611,6 +649,7 @@ export function AdvancedLiveMatchScreen() {
       current: null,
       keepClock,
       savedResult,
+      teamsEdit,
     };
     if (draft.completionMode === 'balanced' && short.length) {
       setFillDeferred(false);
@@ -734,7 +773,15 @@ export function AdvancedLiveMatchScreen() {
       // clock+score in the same atomic write (a concurrent admin's timer-start
       // can't slip between two writes). For a mid-evening substitution
       // (keepClock) we DON'T reset — the current משחק keeps running.
-      await gameService.commitFilledRotation(
+      if (flow.teamsEdit && me) {
+        await gameService.saveLiveTeamsEdit(gameId, flow.teamsEdit.plan, flow.teamsEdit.expected,
+          { userId: me.id, userName: me.name ?? '' }, flow.working);
+        setGoalRequest(undefined); setShootoutDecision(null); setShootoutOpen(false); setDecisionOpen(false); setWinnerOpen(false);
+        setSavedRoundView(null); savedRoundViewRef.current = null;
+        successHaptic(); toast.success('הקבוצות עודכנו והמשחק אופס');
+        logEvent(AnalyticsEvent.RotationQueueReordered, { gameId, round: flow.rotationBase.round ?? 0,
+          teams: flow.teamsEdit.plan.waiting.length, replacedPlaying: true });
+      } else await gameService.commitFilledRotation(
         gameId,
         flow.draft,
         { rotation, teams: flow.working.teams },
@@ -981,15 +1028,17 @@ export function AdvancedLiveMatchScreen() {
   };
 
   // Tie chooser: admin picks how to break the draw.
-  const onReorderWaiting = (waiting: number[]) => {
+  const onReorderWaiting = async (waiting: number[]) => {
     if (!gameId) return;
     lightHaptic();
-    void gameService.reorderWaiting(gameId, waiting);
-    logEvent(AnalyticsEvent.RotationQueueReordered, {
-      gameId,
-      round: rotation?.round ?? 0,
-      teams: waiting.length,
-    });
+    try {
+      await gameService.reorderWaiting(gameId, waiting);
+      logEvent(AnalyticsEvent.RotationQueueReordered, { gameId, round: rotation?.round ?? 0, teams: waiting.length });
+    } catch (error) {
+      observeCaughtError(error, { source: 'src/screens/AdvancedLiveMatchScreen.tsx', handler: 'onReorderWaiting', site: 'onReorderWaiting:save' });
+      logError('reorderWaiting', error, { gameId });
+      toast.error('המשחק או התור השתנו. יש לבדוק את הסדר המעודכן ולנסות שוב.');
+    }
   };
 
   const onDecideManual = () => {
@@ -1193,6 +1242,39 @@ export function AdvancedLiveMatchScreen() {
     return !!grp && grp.adminIds.includes(me.id);
   }, [me, game, myCommunities]);
 
+  const canEditLiveTeams = isAdmin && !!rotation && !!draftTeams && !pendingSavedRound && !roundBusy && !ending &&
+    !finalizingRef.current && !committingRef.current && !fillFlowRef.current && !startingRef.current && !homeActionRef.current &&
+    !winnerOpen && !decisionOpen && !shootoutOpen && !swapOpen && !endRoundPrompt && !endOpen &&
+    game?.status !== 'finished' && game?.status !== 'cancelled';
+  const openLiveTeamsEditor = () => {
+    if (!canEditLiveTeams || !game || !gameId || !rotation || !draftTeams) return;
+    const board = { ...game, id: gameId, rotation, draftTeams, liveMatch: live ?? undefined, lastCommittedRoundId };
+    const expected = liveTeamsEditContext(board);
+    if (expected) { setTeamsEditError(''); setTeamsEditor({ game: board, expected }); }
+  };
+  const saveLiveTeamsEditor = async (plan: LiveTeamsPlan) => {
+    if (!teamsEditor || !canEditLiveTeams || !gameId || !me || startingRef.current) return;
+    startingRef.current = true; markBusy(1); setTeamsEditError('');
+    try {
+      const changed = liveTeamsChanged(teamsEditor.game.rotation!, plan);
+      if (changed) {
+        const prepared = await gameService.prepareLiveTeamsEdit(gameId, plan, teamsEditor.expected);
+        beginFillFlow(prepared.skeleton, prepared.draft, undefined, false, undefined, { plan, expected: teamsEditor.expected });
+      } else {
+        await gameService.saveLiveTeamsEdit(gameId, plan, teamsEditor.expected, { userId: me.id, userName: me.name ?? '' });
+        toast.success('סדר הממתינות עודכן');
+        logEvent(AnalyticsEvent.RotationQueueReordered, { gameId, round: rotation?.round ?? 0, teams: plan.waiting.length, replacedPlaying: false });
+      }
+      setTeamsEditor(null);
+    } catch (error) {
+      observeCaughtError(error, { source: 'src/screens/AdvancedLiveMatchScreen.tsx', handler: 'saveLiveTeamsEditor', site: 'saveLiveTeamsEditor:save' });
+      logError('saveLiveTeamsEditor', error, { gameId });
+      setTeamsEditError((error as Error)?.message || 'לא הצלחנו לשמור. יש לבדוק את החיבור ולנסות שוב.');
+    } finally { startingRef.current = false; markBusy(-1); }
+  };
+  const currentTeamsEditContext = game && rotation ? liveTeamsEditContext({ ...game, rotation, draftTeams: draftTeams ?? undefined, liveMatch: live ?? undefined, lastCommittedRoundId }) : null;
+  const teamsEditorStale = !!teamsEditor && JSON.stringify(currentTeamsEditContext) !== JSON.stringify(teamsEditor.expected);
+
   // ─── "advanced mode, but no teams" gate ────────────────────────────────
   // Turning advancedMode on and then walking into the live screen without
   // drafting teams left the admin on a bare timer that looks exactly like the
@@ -1346,6 +1428,7 @@ export function AdvancedLiveMatchScreen() {
           },
         },
       ],
+      { football: true, icon: 'refresh-outline' },
     );
   };
   const leaveLiveScreen = () => {
@@ -1730,7 +1813,7 @@ export function AdvancedLiveMatchScreen() {
           },
         },
       ],
-      { football: true },
+      { football: true, icon: 'exit-outline' },
     );
   };
   // "החזר למחזור" — bring a departed player back onto their team. Allowed
@@ -2341,10 +2424,16 @@ export function AdvancedLiveMatchScreen() {
           to be duplicated inline under the round controls, six pixels below
           "סיים משחק"; a coach reported that as a hazard and asked for it to live
           in the menu. The confirm dialog behind it is unchanged. */}
+      {teamsEditor && isAdmin && <LiveTeamsEditModal
+        original={teamsEditor.game.rotation!} draft={teamsEditor.game.draftTeams!} roundNumber={teamsEditor.game.rotation?.round ?? 1}
+        busy={roundBusy} stale={teamsEditorStale} error={teamsEditError} onSave={saveLiveTeamsEditor}
+        onClose={() => { if (!roundBusy) setTeamsEditor(null); }}
+      />}
       <HamburgerMenu
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         sections={[{ id: 'live', items: [
+          ...(canEditLiveTeams ? [{ id: 'liveEditTeams', label: 'עריכת הקבוצות והתור', icon: 'swap-horizontal' as const, onPress: openLiveTeamsEditor }] : []),
           { id: 'liveHelp', label: 'עזרה', icon: 'headset-outline', onPress: () => { setMenuOpen(false); if (me?.id) useSupportChat.getState().open(me.id); } },
           { id: 'liveMenuRounds', label: he.liveMenuRounds, icon: 'list', onPress: () => {
                 (nav as unknown as { navigate: (s: string, p?: unknown) => void }).navigate(

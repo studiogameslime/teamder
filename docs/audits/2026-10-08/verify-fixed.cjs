@@ -139,6 +139,7 @@ async function main() {
   note('B09',{onlyAssignedGuestIsWaitlisted:true,result:guestState.state});
   // 19.10.2026: verification listing moved to the unbounded server endpoint.
   const verify=load('src/services/eveningVerifyService.ts',{
+    '@/firebase/authRace':{withAuthRaceRetry:run=>run()},
     'firebase/functions':{httpsCallable:()=>fail},
     'firebase/firestore':{collection:()=>{},query:()=>{},where:()=>{},orderBy:()=>{},limit:()=>{},getDocs:fail},
     '@/firebase/config':{USE_MOCK_DATA:false,getFirebase:()=>({db:{}})},

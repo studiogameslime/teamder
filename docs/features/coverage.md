@@ -1,5 +1,13 @@
 # כיסוי מסכי המקור
 
+24.10.2026: `src/components/profile/ComparisonActivitySection.tsx` מוסיף סקשן היסטוריית השוואות וחלון רשימה מלאה בתוך כרטיס השחקן העצמי. אין מסלול חדש; הסקשן אינו מוצג בפרופיל ציבורי או בתמונת שיתוף. [נתונים, מצבים ומגבלות](profile/player-card.md#היסטוריית-השוואות-פרטית--24102026).
+
+24.10.2026: `src/components/match/LiveTeamsEditModal.tsx` מוסיף עריכת זוג משחקות, סדר ממתינות ואישור איפוס בתוך `AdvancedLiveMatchScreen`, ללא מסך או מסלול ניווט חדש. [מצבים, שירותים, בדיקות וצילומי אנדרואיד](rounds/live-advanced.md#עריכת-הקבוצות-והתור-בזמן-הלייב--24102026).
+
+24.10.2026: `src/components/draft/TeamColorEditor.tsx` מוסיף חלון צבעים ואריחי חולצות בתוך `DraftSetupScreen` הקיים, וכפתורים ב־`DraftGenerationPreview` וב־`ManualAllocation`. אין מסך או מסלול ניווט חדש. [התנהגות, נתונים, צילומים ומגבלות](rounds/draft-setup.md#צבעים-לפני-שיבוץ-ובכל-שיטת-חלוקה--24102026).
+
+24.10.2026: `src/components/profile/OwnPlayerCard.tsx` מחליף את ענף העצמי בתוך `PlayerCardScreen` ובארבע המחסניות הקיימות, ללא מסלול חדש. התצוגה הציבורית היא חלון בתוך אותו מסך. [נתונים, ניווט, צילומים ומגבלות](profile/player-card.md).
+
 23.10.2026: נוסף רכיב זמני `src/components/home/CrashTestCard.tsx` בתוך מסך `Profile` הקיים, ללא מסך או נתיב חדש. מופיע לכל המשתמשים המלאים; רק אישור מפורש מפעיל בדיקת קריסה בגרסה מקורית שאינה בפיתוח. [תנאים, בדיקות וצילום](home/dashboard.md).
 
 19.10.2026: [מלאי מצב ושיוך מלא](status/screens.md) כולל את כל קובצי המסך
@@ -316,6 +324,10 @@
 המסלול `Feedback` נשאר בכל ארבע המחסניות הקיימות. שני כפתורי התפריט פותחים לשונית מתאימה בטופס משותף, עם מעבר פנימי ושימור טיוטה. אין מסלול חדש. [מימוש וראיות](profile/feedback.md).
 
 ## פולס — ארגון וגרסאות, 18.10.2026
+
+### אנשים חדשים ומועדונים — 24.10.2026
+
+נוספו ארבעה קובצי מסך, כולם משויכים ל־[ניהול הפולס](shared/pulse-management.md#אנשים-חדשים-ומועדונים--24102026): `pulse/src/screens/NewPeopleScreen.tsx`, `pulse/src/screens/PersonJourneyScreen.tsx`, `pulse/src/screens/ClubsScreen.tsx`, `pulse/src/screens/ClubDetailScreen.tsx`. `UsersStack` מתחיל ב־`NewPeople` ומשמר את `UsersList` ו־`UserDetail`; `PersonJourney` נוסף לאותה מחסנית. `ClubsStack` החדש רשום בלשונית `Clubs`, עם `ClubsList` ו־`ClubDetail`. פירוט מועדון מקשר למחסניות המשתמשים והמחזורים הקיימות. לא הוסרו מסכים. הראיות הן בדפדפן עם מתאמים ונתוני בדיקה; לא אומת ניווט במכשיר מקורי.
 
 כל 35 קובצי המסכים נשארו; לא הוסרו נתיבים. `Users` קוּדם לסרגל ו־`Overview` נגיש בתפריט. `pulse/src/components/DeviceVersions.tsx` מוסיף שני רכיבים למסכי `UserDetailScreen` ו־`VersionsScreen`, ללא נתיב חדש. `ErrorDetail` מקבל אוסף ומזהה. [המיפוי](../audits/2026-10-18-pulse-screen-map.md) · [התנהגות ובדיקות](shared/pulse-management.md).
 

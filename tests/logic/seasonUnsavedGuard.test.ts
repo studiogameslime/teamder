@@ -18,6 +18,7 @@ test('dirty season settings block the real metadata submit before any write or n
   const f=submitFixture(true);await f.submit(form);
   expect(f.update).not.toHaveBeenCalled();expect(f.replace).not.toHaveBeenCalled();
   expect(f.alert.mock.calls[0][1]).toContain('שמור הגדרות עונה');
+  expect(f.alert.mock.calls[0][3]).toMatchObject({football:true,tone:'warning'});
 });
 test('unchanged or separately saved season settings allow the real metadata submit',async()=>{
   const f=submitFixture(false);await f.submit(form);

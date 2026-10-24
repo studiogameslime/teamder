@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-24",
+  "scope": "Local Pulse people and clubs implementation",
+  "typescriptTeamder": "passed",
+  "typescriptPulse": "passed",
+  "fullJest": {
+    "suitesPassed": 490,
+    "suitesTotal": 490,
+    "testsPassed": 5563,
+    "testsTotal": 5563,
+    "log": "artifacts/pulse-growth-tests-final.log"
+  },
+  "browser": "browser-results.json",
+  "liveReads": "live-read-results.json",
+  "releaseLog": "release-log-receipt.json",
+  "featureStatus": {
+    "features": 85,
+    "screens": 102,
+    "unmappedScreens": [],
+    "ownFeaturesCurrent": true,
+    "remainingUnrelatedDrift": "entry/landing-and-links: functions/src/invitePreviewFields.ts"
+  },
+  "generalDocumentationCheck": "Existing missing historical evidence links and source changes outside this task remain; see docs/changes/2026-10-24-pulse-growth.md",
+  "nativeDeviceTested": false,
+  "built": false,
+  "deployed": false,
+  "committed": false,
+  "inboxItemIdentified": false,
+  "inboxStatusWritten": false
+}

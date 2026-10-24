@@ -47,6 +47,7 @@ jest.mock('@/theme',()=>({colors:{primary:'#2463EB'},spacing:{},radius:{},typogr
 jest.mock('@/theme/overlays',()=>({overlaySurfaces:{},overlayTheme:{}}));
 
 import {DraftBoardScreen} from '@/screens/games/DraftBoardScreen';
+import {draftColorTeams} from '@/utils/draftColors';
 import {gameService} from '@/services';
 const runtime=(require('react') as any).__runtime;
 const read=gameService.getGameById as jest.Mock;
@@ -276,7 +277,7 @@ test('generation forwards the saved result revision only after saving is acknowl
   let callback='';function visit(node:ts.Node){if(ts.isVariableDeclaration(node)&&node.name.getText(file)==='runGenerate')callback=(node.initializer as ts.CallExpression).arguments[0].getText(file);ts.forEachChild(node,visit);}visit(file);
   const ack=deferred(),result=game(2).draftTeams,navigate=jest.fn();
   const context:any={module:{exports:{}},game:game(1),currentUser:{id:'manager'},generating:false,participants:game(1).players.map(id=>({id})),autoNumTeams:3,
-    myCommunities:[],splitMode:'auto',useCompletions:false,hasTeams:true,
+    myCommunities:[],splitMode:'auto',useCompletions:false,hasTeams:true,draftColorTeams,
     balanceTeams:()=>({result,unratedCount:0,gap:0,band:'A',repeat:0,fallback:false,teamAverages:[3,3,3]}),
     gameService:{getRecentSplits:jest.fn().mockResolvedValue([]),saveDraftTeams:jest.fn().mockReturnValue(ack.promise)},
     setGenerating:jest.fn(),setGame:jest.fn(),logEvent:jest.fn(),logError:jest.fn(),AnalyticsEvent:{},toast:{info:jest.fn(),error:jest.fn()},he:{},nav:{navigate},

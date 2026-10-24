@@ -33,11 +33,12 @@ interface Item {
 export const GROUPS: { title: string; items: Item[] }[] = [
   { title: 'תמיכה ועבודה', items: [
     { route: 'Tasks', label: 'משימות', icon: 'checkbox' },
-    { route: 'Users', label: 'משתמשים', icon: 'people', screen: 'UsersList' },
+    { route: 'Users', label: 'אנשים חדשים ומשתמשים', icon: 'people', screen: 'NewPeople' },
     { route: 'Messages', label: 'שיחות תמיכה', icon: 'chatbubble-ellipses' },
     { route: 'Chats', label: 'פיקוח על שיחות', icon: 'shield-checkmark' },
   ] },
   { title: 'פעילות ומדדים', items: [
+    { route: 'Clubs', label: 'מועדונים', icon: 'shield', screen: 'ClubsList' },
     { route: 'Overview', label: 'סקירה, מדדים ומפה', icon: 'home' },
     { route: 'Games', label: 'מחזורים', icon: 'football', screen: 'GamesList' },
     { route: 'Availability', label: 'זמינות שחקנים', icon: 'calendar' },

@@ -26,6 +26,8 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/Button';
 import { ManualAllocation } from '@/components/draft/ManualAllocation';
 import { DraftGenerationPreview } from '@/components/draft/DraftGenerationPreview';
+import { TeamColorPicker, TeamColorTiles } from '@/components/draft/TeamColorEditor';
+import { draftColorTeams } from '@/utils/draftColors';
 import { playersPerTeam } from '@/utils/draft';
 import { activeDraftRosterIds } from '@/utils/draftIntegrity';
 import { DraftOrderPath } from '@/components/draft/DraftOrderPath';
@@ -84,6 +86,7 @@ export function DraftSetupScreen() {
   // Team count for auto/random (the manual flow derives it from #captains).
   const [autoNumTeams, setAutoNumTeams] = useState(MIN_TEAMS);
   const [generating, setGenerating] = useState(false);
+  const [colorIndex, setColorIndex] = useState<number | null>(null);
   const [useCompletions, setUseCompletions] = useState(true);
   // DnD "edit existing teams" modal (only when teams already exist).
   const [editSavedTeams, setEditSavedTeams] = useState(params.editExisting === true);
@@ -243,6 +246,15 @@ export function DraftSetupScreen() {
   const captainsOk = numTeams === expectedCaptains && !noPlayersLeft
     && captainIds.every(id => participants.some(player => player.id === id));
   const canContinue = captainsOk && method !== null;
+  const colorCount = splitMode === 'auto' || splitMode === 'random' ? autoNumTeams : editSavedTeams ? game?.draftTeams?.teams.length || expectedCaptains : expectedCaptains;
+  const colorTeams = draftColorTeams(game, colorCount);
+  const colorKeys = Object.fromEntries(colorTeams.map(t => [t.index, t.colorKey]));
+  const canEditColors = !!game && !game.rotation && game.status !== 'finished' && game.status !== 'cancelled';
+  const colorEditor = <TeamColorPicker teamIndex={colorIndex} teams={colorTeams} onClose={() => setColorIndex(null)} onSave={async next => {
+    if (!game) throw new Error('GAME_NOT_FOUND');
+    const saved = await gameService.saveDraftTeamColors(game.id, next, colorKeys);
+    setGame(current => current?.id === game.id ? {...current, ...saved} : current);
+  }}/>;
 
   const hint = noPlayersLeft
     ? he.draftNotEnoughPlayers
@@ -326,7 +338,7 @@ export function DraftSetupScreen() {
       // weeks rather than from a feeling.
       await gameService.saveDraftTeams(
         game.id,
-        { ...result, published: false },
+        { ...result, teams: result.teams.map(t => ({...t, colorKey: draftColorTeams(game, autoNumTeams)[t.index].colorKey})), published: false },
         {
           generatedAt: Date.now(),
           algorithm: splitMode === 'random' ? 'random_even_v1' : 'rating_balanced_v2',
@@ -385,7 +397,7 @@ export function DraftSetupScreen() {
         gameId: game.id,
         method: splitMode ?? 'auto',
       });
-      if (err instanceof Error && err.message === 'DRAFT_ROSTER_CHANGED') {
+      if (err instanceof Error && (err.message === 'DRAFT_ROSTER_CHANGED' || err.message === 'DRAFT_COLORS_CHANGED')) {
         const latest = await gameService.getGameById(game.id).catch((caughtError6a6b76580f: unknown) => { observeCaughtError(caughtError6a6b76580f, {"source":"src/screens/games/DraftSetupScreen.tsx","handler":"DraftSetupScreen","site":"DraftSetupScreen:6a6b76580f"}); return null; });
         if (latest) setGame(latest);
         toast.info('סגל המחזור השתנה בזמן החלוקה. בדקו את הנתונים וצרו כוחות מחדש.');
@@ -417,7 +429,9 @@ export function DraftSetupScreen() {
   if (splitMode === 'free' && game && currentUser) return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ManualAllocation key={`${currentUser.id}:${gameId}:${game.draftTeams?.createdAt ?? 0}:${editSavedTeams}`} game={game} userId={currentUser.id} players={participants} preferSaved={editSavedTeams} count={editSavedTeams ? game.draftTeams?.teams.length || expectedCaptains : expectedCaptains}
+        onEditColor={canEditColors ? setColorIndex : undefined}
         onBack={() => {setEditSavedTeams(false);setSplitMode(null);}} onSaved={() => nav.navigate('MatchDetails', {gameId})}/>
+      {colorEditor}
     </SafeAreaView>
   );
 
@@ -547,6 +561,7 @@ export function DraftSetupScreen() {
               onPress={() => setMethod('regular')}
               order={previewPath(previewTeams, 'regular')}
             />
+            <View style={styles.colorCard}><Text style={styles.colorTitle}>צבעי הקבוצות</Text><TeamColorTiles teams={colorTeams} labels onEdit={canEditColors ? setColorIndex : undefined}/></View>
 
             </>}
             {/* Teams-to-create info */}
@@ -560,7 +575,7 @@ export function DraftSetupScreen() {
         ) : (
           /* The configured team count is shared; each mode explains its own algorithm. */
           <>
-            <DraftGenerationPreview mode={splitMode === 'auto' ? 'auto' : 'random'} players={participants.length} teams={autoNumTeams} format={game?.format}>
+            <DraftGenerationPreview mode={splitMode === 'auto' ? 'auto' : 'random'} players={participants.length} teams={autoNumTeams} format={game?.format} colorKeys={colorKeys} onEditColor={canEditColors ? setColorIndex : undefined}>
             {splitMode === 'auto' && autoNumTeams > 2 && participants.length < autoNumTeams * playersPerTeam(game?.format) ? (
               <PressableScale onPress={() => setUseCompletions(v => !v)} accessibilityRole="checkbox" accessibilityState={{checked: useCompletions}}
                 style={{padding:20, marginTop:16, borderRadius:20, backgroundColor:'#EAF2FF', borderWidth:1, borderColor:'#C8DCFF'}}>
@@ -576,6 +591,7 @@ export function DraftSetupScreen() {
           </>
         )}
       </ScrollView>
+      {colorEditor}
 
       {/* Sticky CTA — depends on the chosen method. The method picker itself
           has no footer (the cards are the action). */}
@@ -699,6 +715,8 @@ function OrderOption({
 }
 
 const styles = StyleSheet.create({
+  colorCard: {backgroundColor:'#FFF',borderRadius:24,padding:16,borderWidth:1,borderColor:'#E2EDFC',marginTop:16},
+  colorTitle: {fontSize:20,fontWeight:'800',color:'#12234D',textAlign:RTL_LABEL_ALIGN,marginBottom:16},
   root: { flex: 1, backgroundColor: '#F3F8FF' },
   body: { padding: spacing.lg, paddingBottom: spacing.lg },
   stepChip: {

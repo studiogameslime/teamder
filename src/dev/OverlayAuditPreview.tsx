@@ -37,6 +37,8 @@ import { CommunityStatsTable } from '@/components/community/CommunityStatsTable'
 import { RetroGoalsSheet } from '@/components/match/RetroGoalsSheet';
 import { gameService } from '@/services/gameService';
 import { DidYouKnowCard } from '@/components/home/DidYouKnowCard';
+import { PlayerAvailabilitySummary } from '@/components/social/PlayerAvailabilitySummary';
+import { Button } from '@/components/Button';
 import { HomePersonalStats } from '@/components/home/HomePersonalStats';
 import { useUserStore } from '@/store/userStore';
 import { he } from '@/i18n/he';
@@ -44,8 +46,11 @@ import type { ChampionshipRow } from '@/utils/championship';
 import { NewClubSeasons, NEW_CLUB_SEASONS_DEFAULT } from '@/components/community/NewClubSeasons';
 import { MatchStatsTab } from '@/components/match/tabs/MatchStatsTab';
 import { mockGamesV2, mockPlayers } from '@/data/mockData';
+import { RichRulesText } from '@/components/community/RichRulesText';
+import { SubstitutionModal } from '@/components/match/SubstitutionModal';
+import { SignInScreen } from '@/screens/auth/SignInScreen';
 
-const auditPlayers = Array.from({ length: 12 }, (_, i) => ({ id: `audit-player-${i}`, name: `שחקן לדוגמה ${i + 1}` }));
+const auditPlayers = Array.from({ length: 12 }, (_, i) => ({ id: `audit-player-${i}`, name: `שחקן לדוגמה ${i + 1}`, isFiller: false }));
 
 function AuditBalancedFill({ kind, onClose }: { kind: string; onClose: () => void }) {
   const [request] = useState<BalancedFillRequest>(() => {
@@ -167,6 +172,23 @@ export function OverlayAuditPreview({ kind, onClose }: { kind: string; onClose: 
       {text:'מחק',style:'destructive',onPress:onClose},
     ], {onDismiss:onClose});
   }, [kind, onClose]);
+  if (kind === 'night_signin') return <SafeModal visible onRequestClose={onClose}><SignInScreen/></SafeModal>;
+  if (kind === 'night_rules') return <SafeModal visible onRequestClose={onClose}><ScrollView contentContainerStyle={{padding:24,paddingTop:64,gap:20,backgroundColor:'#F4F7FB'}}>
+    <Text style={{fontSize:24,fontWeight:'800',textAlign:RTL_LABEL_ALIGN}}>חוקי המועדון — תצוגת בדיקה</Text>
+    <View style={{padding:20,borderRadius:24,backgroundColor:'#FFFFFF'}}><RichRulesText text={'- מגיעים בזמן למחזור\n- משחקים בכבוד ושומרים על **החברים במגרש** גם כשהמשחק צמוד והתוצאה חשובה לכולם\n\nכל השחקנים מוזמנים ליהנות מהכדורגל.'}/></View>
+    <Button title="סגירת בדיקה" onPress={onClose}/>
+  </ScrollView></SafeModal>;
+  if (kind === 'night_substitution') return <SubstitutionModal visible running={false} capacity={5} onClose={onClose} onSwap={onClose} onMove={onClose} teams={[
+    {index:0,label:'האדומים',color:'#EF4444',playing:true,roster:auditPlayers.slice(0,5)},
+    {index:1,label:'הכחולים',color:'#2563EB',playing:true,roster:auditPlayers.slice(5,10)},
+    {index:2,label:'הירוקים',color:'#16A34A',playing:false,position:0,roster:auditPlayers.slice(10)},
+  ]}/>;
+  if (kind === 'pulse_review') return <SafeModal visible onRequestClose={onClose} animationType="none"><ScrollView contentContainerStyle={{padding:20,paddingTop:52,gap:20,backgroundColor:'#F4F7FB'}}>
+    <PlayerAvailabilitySummary player={{id:'pulse-demo',name:'שחקן לדוגמה',city:'קריית עקרון',friend:false,commonClubCount:0,sharedRounds:0,availability:{preferredDays:[0,1,2,3,4,5,6],preferredTimes:[],isAvailableForInvites:true}}}/>
+    <DidYouKnowCard tips={[{title:'החבר׳ה במקום אחד',text:'אפשר להזמין חברים למועדון באמצעות קישור.',icon:'person-add-outline'},{title:'הכדורגל שלכם',text:'כל המחזורים, החברים והמועדונים נמצאים כאן. אפשר להכיר את השחקנים ולתאם יחד מתי נפגשים שוב על המגרש.',icon:'football-outline'}]}/>
+    <Button title="חלונית הגדרות עונה" onPress={()=>appAlert('השינויים בעונה עדיין לא נשמרו','שינית את הגדרות העונה. כדי לשמור אותן, לחץ קודם על ״שמור הגדרות עונה״. אחר כך תוכל לשמור את פרטי המועדון.',undefined,{football:true,tone:'warning'})}/>
+    <Button title="סגור תצוגת בדיקה" onPress={onClose}/>
+  </ScrollView></SafeModal>;
   if (kind === 'retro_list') return <AuditRetroGoals onClose={onClose}/>;
   if (kind === 'home_cards') return <AuditHomeCards onClose={onClose}/>;
   if (kind === 'new_seasons') return <AuditNewSeasons onClose={onClose}/>;

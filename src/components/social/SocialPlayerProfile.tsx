@@ -37,12 +37,14 @@ export function SocialPlayerProfile({ userId, groupId, preview }: { userId: stri
   const [invites,setInvites]=useState(false),[inviteLoading,setInviteLoading]=useState(false),[games,setGames]=useState<Game[]>([]),[inviteError,setInviteError]=useState(false),[sending,setSending]=useState<string|null>(null),[sent,setSent]=useState<string[]>([]);
   const [blocked,setBlocked]=useState(false),[playerOptions,setPlayerOptions]=useState(false);
   const sendingRef=useRef(false);
+  const inviteGamesLoadedAt=useRef(0);
   const currentTarget=useRef(userId);currentTarget.current=userId;
   useFocusEffect(useCallback(()=>{
     if(preview||!me)return;
     let alive=true;
+    inviteGamesLoadedAt.current=0;
     setInviteLoading(true);setInviteError(false);setGames([]);
-    gameService.getMyGames(me.id).then(mine=>{if(alive)setGames(mine.filter(g=>g.startsAt>Date.now()&&g.status==='open'&&(g.createdBy===me.id||groups.some(c=>c.id===g.groupId&&c.adminIds.includes(me.id)))));}).catch((caughtErrorbea7efa9cc: unknown) =>{
+    gameService.getMyGames(me.id).then(mine=>{if(alive){inviteGamesLoadedAt.current=Date.now();setGames(mine.filter(g=>g.startsAt>Date.now()&&g.status==='open'&&(g.createdBy===me.id||groups.some(c=>c.id===g.groupId&&c.adminIds.includes(me.id)))));}}).catch((caughtErrorbea7efa9cc: unknown) =>{
     observeCaughtError(caughtErrorbea7efa9cc, {"source":"src/components/social/SocialPlayerProfile.tsx","handler":"SocialPlayerProfile","site":"SocialPlayerProfile:bea7efa9cc"});if(alive)setInviteError(true);}).finally(()=>{if(alive)setInviteLoading(false);});
     return()=>{alive=false;};
   },[me?.id,userId,groups,preview]));
@@ -57,8 +59,11 @@ export function SocialPlayerProfile({ userId, groupId, preview }: { userId: stri
   const managers=groups.filter(g=>!!me&&g.adminIds.includes(me.id)&&!g.isPersonal);
   const openInvites=async()=>{
     if(preview)return;
-    setInvites(true);setInviteLoading(true);setInviteError(false);setGames([]);
-    if(preview){setInviteLoading(false);return;}
+    setInvites(true);
+    // Reuse this screen's ongoing preload or a recent successful answer.
+    // Empty success is cacheable too; a failure always remains retryable.
+    if(inviteLoading||(!inviteError&&inviteGamesLoadedAt.current>0&&Date.now()-inviteGamesLoadedAt.current<30000))return;
+    setInviteLoading(true);setInviteError(false);setGames([]);
     try{const mine=await gameService.getMyGames(me!.id);setGames(mine.filter(g=>g.startsAt>Date.now()&&g.status==='open'&&(g.createdBy===me!.id||managers.some(c=>c.id===g.groupId))));}
     catch (caughtError554725b05a){
     observeCaughtError(caughtError554725b05a, {"source":"src/components/social/SocialPlayerProfile.tsx","handler":"openInvites","site":"SocialPlayerProfile:554725b05a"});setInviteError(true);}

@@ -80,3 +80,21 @@ test('closing or changing the choice while GPS is pending invalidates its respon
   finish({ coords: { latitude: 32, longitude: 34.8 } }); await operation;
   expect(state.picked).toBeNull(); expect(context.reverseGeocode).not.toHaveBeenCalled();
 });
+
+test('GPS timeout preserves the prior choice, clears busy state and offers the manual map without reporting a crash', async () => {
+  jest.useFakeTimers();const observe=jest.fn();
+  try {
+    const {state,context,run}=harness();context.observeCaughtError=observe;
+    state.picked={label:'נקודה שמורה',lat:32,lng:34.8};
+    context.Location.requestForegroundPermissionsAsync.mockResolvedValue({status:'granted'});
+    context.Location.getCurrentPositionAsync.mockReturnValue(new Promise(()=>{}));
+    const pending=run('useCurrentLocation')();await jest.advanceTimersByTimeAsync(15000);await pending;
+    expect(state.picked.label).toBe('נקודה שמורה');expect(state.locating).toBe(false);expect(state.error).toContain('בחרו נקודה במפה');expect(observe).not.toHaveBeenCalled();
+  } finally {jest.clearAllTimers();jest.useRealTimers();}
+});
+
+test('real GPS errors remain observable and keep the retry state',async()=>{
+  const {state,context,run}=harness(),observe=jest.fn(),error=Error('sensor failed');context.observeCaughtError=observe;
+  context.Location.requestForegroundPermissionsAsync.mockResolvedValue({status:'granted'});context.Location.getCurrentPositionAsync.mockRejectedValue(error);
+  await run('useCurrentLocation')();expect(observe).toHaveBeenCalledWith(error,expect.anything());expect(state.locating).toBe(false);
+});

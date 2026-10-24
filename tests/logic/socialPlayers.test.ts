@@ -1,7 +1,18 @@
-import { normalizePlayerSearch, playerAvailabilityLines, playerSearchMatches } from '../../src/utils/socialPlayers';
+import { normalizePlayerSearch, playerAvailabilityLines, playerSearchMatches, playerAvailabilitySlots } from '../../src/utils/socialPlayers';
 import type { SocialPlayer } from '../../src/types/social';
 const player: SocialPlayer = {id:'p',name:'אִיתַי לוי',city:'אור יהודה',friend:false,commonClubCount:0,sharedRounds:0,
   availability:{isAvailableForInvites:true,preferredDays:[3,5],preferredTimes:['evening','morning'],availabilitySlots:{3:['evening'],5:['morning']}}};
+test('legacy selected days with empty times display every window, matching the editor',()=>{
+  const grid=playerAvailabilitySlots({preferredDays:[0,1,2,3,4,5,6],preferredTimes:[],isAvailableForInvites:true});
+  expect(Object.keys(grid)).toHaveLength(7);
+  for(const day of Object.values(grid))expect(day).toEqual(['morning','noon','evening']);
+  expect(playerAvailabilitySlots({preferredDays:[],preferredTimes:['evening'],isAvailableForInvites:true})).toEqual(Object.fromEntries([0,1,2,3,4,5,6].map(d=>[d,['evening']])));
+});
+test('explicit saved empty grid and opt-out override legacy preferences',()=>{
+  expect(playerAvailabilitySlots({...player.availability!,availabilitySlots:{}})).toEqual({});
+  expect(playerAvailabilitySlots({...player.availability!,isAvailableForInvites:false})).toEqual({});
+  expect(playerAvailabilitySlots(player.availability)).toEqual({3:['evening'],5:['morning']});
+});
 test('search accepts partial names with diacritics and bidi marks',()=>{
   expect(normalizePlayerSearch('  ⁦אִיתַי⁩  לוי ')).toBe('איתי לוי');
   expect(playerSearchMatches(player,{text:'איתי',city:'יהודה'})).toBe(true);

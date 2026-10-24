@@ -23,6 +23,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { SocialPlayerProfile } from '@/components/social/SocialPlayerProfile';
+import { OwnPlayerCard } from '@/components/profile/OwnPlayerCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { FriendActionButton } from '@/components/profile/FriendActionButton';
 import { goToDirectChat } from '@/navigation/navigationRef';
@@ -77,6 +78,20 @@ type RouteParams = {
 
 export function PlayerCardScreen() {
   const route = useRoute<RouteProp<RouteParams, 'PlayerCard'>>();
+  const me = useUserStore(s => s.currentUser);
+  useEffect(() => {
+    if (me && !me.isGuest && route.params?.userId === me.id) {
+      logEvent(AnalyticsEvent.PlayerCardOpened, { userId: me.id, guest: false });
+    }
+  }, [me?.id, me?.isGuest, route.params?.userId]);
+  if (me && !me.isGuest && route.params?.userId === me.id) {
+    return <OwnPlayerCard key={me.id} user={me} />;
+  }
+  return <LegacyPlayerCardScreen />;
+}
+
+function LegacyPlayerCardScreen() {
+  const route = useRoute<RouteProp<RouteParams, 'PlayerCard'>>();
   const nav = useNavigation();
   const { userId, groupId: routeGroupId } = route.params ?? {
     userId: '',
@@ -119,9 +134,9 @@ export function PlayerCardScreen() {
   // which carries exactly what this screen needs to name a person.
   const isGuestViewer = me?.isGuest === true;
 
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => !isGuestViewer && me?.id === userId ? me : null);
   const [publicUser, setPublicUser] = useState<PublicUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isGuestViewer || me?.id !== userId);
   const [busyInvite, setBusyInvite] = useState(false);
   const [nextGame, setNextGame] = useState<Game | null>(null);
   const [gamesLoading, setGamesLoading] = useState(true);
@@ -135,7 +150,13 @@ export function PlayerCardScreen() {
   useEffect(() => {
     if (userId) logEvent(AnalyticsEvent.PlayerCardOpened, { userId, guest: isGuestViewer });
     let alive = true;
-    setLoading(true);
+    // The current user's full profile is already in the account store.
+    // Render it immediately while refreshing; never borrow a roster identity
+    // as a replacement for a complete/private profile.
+    const ownProfile = !isGuestViewer && me?.id === userId ? me : null;
+    setUser(ownProfile);
+    setPublicUser(null);
+    setLoading(!ownProfile);
     // Two sources, never both. A guest reading /users would be answered
     // permission-denied by design, and firing that request just to catch it is
     // deliberate traffic we would then have to filter out of the error panel.
@@ -160,7 +181,7 @@ export function PlayerCardScreen() {
         })
         .catch((caughtErrorac8e4e577e: unknown) => {
     observeCaughtError(caughtErrorac8e4e577e, {"source":"src/screens/players/PlayerCardScreen.tsx","handler":"PlayerCardScreen","site":"PlayerCardScreen:ac8e4e577e"});
-          if (alive) setUser(null);
+          if (alive && !ownProfile) setUser(null);
         })
         .finally(() => {
           if (alive) setLoading(false);

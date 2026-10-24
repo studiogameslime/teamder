@@ -6,7 +6,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { TeamShirtIllustration } from './TeamShirt';
 import { ArrivalMotion } from '@/components/anim/ArrivalMotion';
 import { RTL_LABEL_ALIGN } from '@/theme';
-import { overlayTheme } from '@/theme/overlays';
+import { overlaySurfaces, overlayTheme } from '@/theme/overlays';
 import { fillComparisonText, type FillUsage } from '@/utils/balancedFill';
 import { chooseFillPlayer, initialFillSelection } from '@/utils/fillSelection';
 
@@ -155,7 +155,7 @@ export function BalancedFillModal({ request, onConfirm, onCancel, visible = true
 
 const s = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: overlayTheme.backdrop },
-  sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 16, paddingBottom: 10, flexShrink: 0, gap: 8 },
+  sheet: { ...overlaySurfaces.sheet, padding: 16, paddingBottom: 10, flexShrink: 0, gap: 8 },
   compactSheet: { padding: 10, paddingBottom: 8, gap: 6 },
   heading: { flexShrink: 0, gap: 6 },
   body: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 0, gap: 6 },

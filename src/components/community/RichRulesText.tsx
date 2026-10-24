@@ -96,14 +96,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   bulletRow: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'flex-start',
     width: '100%',
     gap: spacing.xs,
   },
   bulletDot: {
-    // Sits on the visual RIGHT (start of the RTL row) thanks to
-    // row-reverse; the dot leads each bullet.
+    // The first child leads on the visual right under forceRTL.
     fontWeight: '800',
   },
   bulletText: {

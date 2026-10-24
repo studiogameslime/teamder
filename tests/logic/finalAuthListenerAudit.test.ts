@@ -2,6 +2,8 @@ import fs from 'fs';
 import vm from 'vm';
 import ts from 'typescript';
 import { subscribeUserSession, suspendUserSessionListeners } from '@/services/userSessionListeners';
+import { retryRead } from '@/services/readRetry';
+import { StaleSessionError } from '@/services/staleSession';
 
 function actualMethod(file: string, name: string, context: object) {
   const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -142,7 +144,7 @@ test('club subscription discards in-flight hydration and queued permission error
   const observations: Observation[] = [], seen = jest.fn(), failed = jest.fn();
   let resolveHydration!: (value: object) => void;
   const subscribe = actualMethod('src/services/groupService.ts', 'subscribeForUser', {
-    USE_MOCK_DATA: false, isCurrentSession: (expected: string) => current === expected, subscribeUserSession,
+    USE_MOCK_DATA: false, isCurrentSession: (expected: string) => current === expected, subscribeUserSession, retryRead,
     query: (ref: unknown) => ref, where: () => ({}), col: { groups: () => 'groups' },
     hydrateClubAdminRatings: () => new Promise(resolve => { resolveHydration = resolve; }),
     onSnapshot: (_ref: unknown, next: Observation['next'], fail?: Observation['fail']) => {
@@ -157,6 +159,29 @@ test('club subscription discards in-flight hydration and queued permission error
     current = 'replacement'; release(); resolveHydration({ id: 'old-club' }); await new Promise(setImmediate);
     observations[0].fail!(Error('old')); expect(seen).not.toHaveBeenCalled(); expect(failed).toHaveBeenCalledTimes(1);
   } finally { stop(); }
+});
+
+test.each(['recover','persistent','stale'])('club hydration retries a transient failure and handles %s without empty data', async mode => {
+  jest.useFakeTimers(); let current='clubs-owner';
+  const seen=jest.fn(),failed=jest.fn(),observations:Observation[]=[];
+  const error=Object.assign(Error('deadline'),{code:'functions/deadline-exceeded'});
+  const hydrate=jest.fn().mockRejectedValueOnce(error);
+  if(mode==='persistent')hydrate.mockRejectedValue(error);else hydrate.mockResolvedValue({id:'club',adminRatings:{owner:4}});
+  const subscribe=actualMethod('src/services/groupService.ts','subscribeForUser',{
+    USE_MOCK_DATA:false,isCurrentSession:(uid:string)=>uid===current,subscribeUserSession,retryRead,StaleSessionError,
+    query:(q:unknown)=>q,where:()=>({}),col:{groups:()=> 'groups'},hydrateClubAdminRatings:hydrate,
+    onSnapshot:(_:unknown,next:Observation['next'],fail:Observation['fail'])=>{const value={next,fail,stop:jest.fn()};observations.push(value);return value.stop;},
+  });
+  const stop=subscribe(current,seen,failed);
+  try {
+    observations[0].next({docs:[{data:()=>({id:'club'})}]});
+    await jest.advanceTimersByTimeAsync(1);expect(seen).not.toHaveBeenCalled();
+    if(mode==='stale')current='replacement';
+    await jest.advanceTimersByTimeAsync(500);
+    if(mode==='recover'){expect(seen).toHaveBeenCalledWith([{id:'club',adminRatings:{owner:4}}]);expect(failed).not.toHaveBeenCalled();}
+    else {expect(seen).not.toHaveBeenCalled();expect(failed).toHaveBeenCalledTimes(mode==='persistent'?1:0);}
+    expect(hydrate).toHaveBeenCalledTimes(mode==='stale'?1:2);
+  } finally {stop();jest.useRealTimers();}
 });
 
 test('sign-out stops unread and both actual watch subscriptions before service auth teardown, after token removal', async () => {

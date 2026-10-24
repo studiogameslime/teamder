@@ -47,6 +47,7 @@ import { enforceRateLimit } from '@/services/rateLimitService';
 import { achievementsService } from './achievementsService';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { withAuthRaceRetry } from '@/firebase/authRace';
+import { retryRead } from './readRetry';
 import { col, docs, GroupJoinRequestDoc, type PublicUser } from '@/firebase/firestore';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
@@ -206,10 +207,11 @@ export const groupService = {
       const unsubscribe = onSnapshot(q, snap => {
         if (!active || !isActive()) return;
         const current = ++revision;
-        void Promise.all(snap.docs.map(d => d.data()).filter(g => g.isPersonal !== true).map(hydrateClubAdminRatings))
+        const check = () => { if (!active || !isActive() || current !== revision) throw new StaleSessionError(userId, ''); };
+        void retryRead(() => Promise.all(snap.docs.map(d => d.data()).filter(g => g.isPersonal !== true).map(hydrateClubAdminRatings)), check)
           .then(groups => { if (active && isActive() && current === revision) onChange(groups); })
           .catch(error => {
-    observeCaughtError(error, {"source":"src/services/groupService.ts","handler":"subscribeForUser","site":"groupService:3881468194"}); if (active && isActive() && current === revision) reportError(error); });
+            if (active && isActive() && current === revision) { observeCaughtError(error, {"source":"src/services/groupService.ts","handler":"subscribeForUser","site":"groupService:3881468194"}); reportError(error); } });
       }, observedListener(error => { if (active && isActive()) reportError(error); }, {"source":"src/services/groupService.ts","handler":"subscribeForUser","site":"groupService.ts:snapshot:200"}));
       return () => { active = false; ++revision; unsubscribe(); };
     }, reportError);

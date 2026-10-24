@@ -1,11 +1,14 @@
 import { observeCaughtError, observeSettledErrors, reportServerError } from './serverErrorLog';
 
 import { ENFORCE_APP_CHECK } from './appCheckPolicy';
+import { reconcileJoinAfterWindow } from './joinReconcileDispatch';
+import { applyScheduledColors } from './draftColors';
 import { creationReceiptId, fingerprintCreation } from './creationReceipt';
 import { guestJoinNotices, guestJoinMessage, joinNoticeRecipients } from './guestJoinNotice';
 import { clickDocumentId, clickSource } from './linkClickInput';
 import { readServerAdminRatings, prunePrivateClubRatings } from './clubAdminRatings';
 export { setClubAdminRating, getClubAdminRatings } from './clubAdminRatings';
+export { recordPlayerComparison, getMyComparisonActivity } from './comparisonActivity';
 import { roundJoinAccess, validManagerInvitation, roundAcceptsInvitations, INVITATION_TTL_MS } from './invitationPolicy';
 import { assertSocialContact, sendClubInvitation } from './socialPlayers';
 export { getReceivedInvitations, joinSocialClub } from './socialPlayers';
@@ -15,6 +18,7 @@ export { recordOnboardingActivity, onOnboardingActivity } from './onboardingActi
 export { sendSupportMessage } from './supportMessage';
 import { clubReminderEligibility } from './clubRegistrationReminder';
 export { recordClientError } from './clientDiagnostics';
+export { syncCrashlyticsToPulse } from './crashlyticsBridge';
 import { requireRecentAuth } from './recentAuth';
 // Cloud Functions consumer for the /notifications outbound queue + a
 // scheduled reminder job for upcoming games.
@@ -2871,32 +2875,21 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
   });
 }
 
-// A new join request schedules a reconcile ~SETTLE later. A deterministic,
-// time-bucketed task id dedupes the whole opening burst down to ONE reconcile
-// (all the simultaneous taps map to the same id → only the first task lands).
+// Reconcile in this event invocation after the SAME fair collection window.
+// The old extra task hop started a second cold worker and left a measured
+// request queued for 10.5 seconds. The transaction still selects queued
+// requests atomically; concurrent invocations and redeliveries are safe.
 export const onJoinRequestCreated = onDocumentCreated(
-  'games/{gameId}/joinRequests/{uid}',
+  { document: 'games/{gameId}/joinRequests/{uid}', retry: true },
   async (event) => {
     const gameId = event.params.gameId as string;
-    const windowBucket = Math.floor(Date.now() / JOIN_SETTLE_MS);
     try {
-      await getGcpFunctions()
-        .taskQueue('reconcileJoinsTask')
-        .enqueue(
-          { gameId },
-          {
-            scheduleTime: new Date(Date.now() + JOIN_SETTLE_MS),
-            id: `rj-${gameId}-${windowBucket}`,
-          },
-        );
+      await reconcileJoinAfterWindow(event.data?.createTime?.toMillis(), JOIN_SETTLE_MS,
+        () => reconcileGameJoins(gameId));
     } catch (err) {
     observeCaughtError(err, {"source":"functions/src/index.ts","handler":"module","site":"index:071cf77a4c"});
-      // ALREADY_EXISTS (gRPC code 6) → a reconcile for this window is already
-      // scheduled. That's the dedupe working as intended; swallow it.
-      const code = (err as { code?: number | string })?.code;
-      if (code !== 6 && !String(err).includes('ALREADY_EXISTS')) {
-        console.error('[onJoinRequestCreated] enqueue failed', gameId, err);
-      }
+      console.error('[onJoinRequestCreated] reconciliation failed', gameId, err);
+      throw err;
     }
   },
 );
@@ -8210,12 +8203,12 @@ async function generateDraftTeamsForGame(
         // 'random' is meant to be a genuine draw — no ratings, no history.
         g.autoTeamsMethod === 'random' ? undefined : history,
       );
-      const teams = buildDraftTeamsFromBalance(
+      const teams = applyScheduledColors(buildDraftTeamsFromBalance(
         result.assignments,
         combinedRatings,
         effTeams,
         g.createdBy ?? 'system',
-      ).filter((t) => t.playerIds.length > 0); // defensive: drop any empty zone
+      ).filter((t) => t.playerIds.length > 0), (data as BalanceGameDoc & {draftTeamColors?: unknown}).draftTeamColors);
       const draftTeams: DraftTeamsResultDoc = {
         method: 'snake',
         numTeams: teams.length,
@@ -13312,9 +13305,11 @@ export const onAvailabilityUpdated = onDocumentUpdated('users/{uid}', async (eve
 // only on a genuinely new kind of failure (not every repeat occurrence).
 export const onErrorLogged = onDocumentCreated('errors/{fp}', async (event) => {
   const e = event.data?.data() as
-    | { title?: string; category?: string; operation?: string; lastScreen?: string }
+    | { title?: string; category?: string; operation?: string; lastScreen?: string; source?: string }
     | undefined;
   if (!e) return;
+  // Native crashes have a durable, retriable delivery outbox in the importer.
+  if (e.source === 'crashlytics') return;
   const emoji =
     e.category === 'crash' ? '💥' : e.category === 'silent' ? '⚠️' : '❌';
   const title = e.title || e.operation || 'שגיאה';

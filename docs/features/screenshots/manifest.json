@@ -19077,5 +19077,930 @@
       "לא הופץ ולא אומת באייפון או במכשיר המדווח."
     ],
     "sha256": "d2dd55e973fa4c21ba934b9d4c4045e8f401c5178e54d520ba4b81dd8d5e2810"
+  },
+  {
+    "file": "loading-match-after-2026-10-23.png",
+    "source": "צילום adb של מסך אמיתי אחרי רענון הדמו המקומי",
+    "platform": "Android",
+    "environment": "אימולטור; דמו מנותק; קוד מקומי מעל הקומיט",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-23",
+    "notes": [
+      "נבדקה תצוגת מצב טעון וכיווניות בלבד; אין מדידת זמני שרת או הוכחת ייצור.",
+      "לא שונו סגנונות או מבנה התצוגה; אין צילום השוואה לפני השינוי.",
+      "כרטיס השחקן המצולם הוא של שחקן אחר; הכרטיס העצמי נבדק בבדיקת גופי הקוד ולא בצילום זה."
+    ],
+    "sha256": "4ebf40a969a758bee2ffec79df8810d62c8121424111e8b344e7c7794042edaa"
+  },
+  {
+    "file": "loading-club-after-2026-10-23.png",
+    "source": "צילום adb של מסך אמיתי אחרי רענון הדמו המקומי",
+    "platform": "Android",
+    "environment": "אימולטור; דמו מנותק; קוד מקומי מעל הקומיט",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-23",
+    "notes": [
+      "נבדקה תצוגת מצב טעון וכיווניות בלבד; אין מדידת זמני שרת או הוכחת ייצור.",
+      "לא שונו סגנונות או מבנה התצוגה; אין צילום השוואה לפני השינוי.",
+      "כרטיס השחקן המצולם הוא של שחקן אחר; הכרטיס העצמי נבדק בבדיקת גופי הקוד ולא בצילום זה."
+    ],
+    "sha256": "26f8080afea0f4b7a62d39152a11db16d91cfb01f4d7050417d4c54e554af21f"
+  },
+  {
+    "file": "loading-player-after-2026-10-23.png",
+    "source": "צילום adb של מסך אמיתי אחרי רענון הדמו המקומי",
+    "platform": "Android",
+    "environment": "אימולטור; דמו מנותק; קוד מקומי מעל הקומיט",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-23",
+    "notes": [
+      "נבדקה תצוגת מצב טעון וכיווניות בלבד; אין מדידת זמני שרת או הוכחת ייצור.",
+      "לא שונו סגנונות או מבנה התצוגה; אין צילום השוואה לפני השינוי.",
+      "כרטיס השחקן המצולם הוא של שחקן אחר; הכרטיס העצמי נבדק בבדיקת גופי הקוד ולא בצילום זה."
+    ],
+    "sha256": "45b892e6789992b44a3745c42188c92d74e772a8dd890eed421315629a44bef4"
+  },
+  {
+    "file": "pulse-resweep-before-2026-10-23.png",
+    "source": "Android emulator / footy://qa/_overlay_audit_pulse_review",
+    "platform": "Android",
+    "environment": "רכיבי מקור בתצוגת QA עם נתוני דמה וללא חיבור ייצור",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-23",
+    "notes": [
+      "עץ עבודה מקומי, ללא הפצה",
+      "זמינות ותוכן טיפים לדוגמה; חלונית מקורית עם הטקסט והאפשרויות מהמסך",
+      "צילום סטטי אינו הוכחת כל פריים באנימציה; גבולות הכרטיס נבדקו גם בארבע החלפות ידניות"
+    ],
+    "sha256": "71196e39654f60008264310b51121ece5891058cf4786819bf312616673cafb9"
+  },
+  {
+    "file": "pulse-resweep-after-2026-10-23.png",
+    "source": "Android emulator / footy://qa/_overlay_audit_pulse_review",
+    "platform": "Android",
+    "environment": "רכיבי מקור בתצוגת QA עם נתוני דמה וללא חיבור ייצור",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-23",
+    "notes": [
+      "עץ עבודה מקומי, ללא הפצה",
+      "זמינות ותוכן טיפים לדוגמה; חלונית מקורית עם הטקסט והאפשרויות מהמסך",
+      "צילום סטטי אינו הוכחת כל פריים באנימציה; גבולות הכרטיס נבדקו גם בארבע החלפות ידניות"
+    ],
+    "sha256": "1b42397afa1b8cccfdbc8158f177325bbdb2d569ee32c27c28519b0781b71bbe"
+  },
+  {
+    "file": "pulse-dialog-before-2026-10-23.png",
+    "source": "Android emulator / footy://qa/_overlay_audit_pulse_review",
+    "platform": "Android",
+    "environment": "רכיבי מקור בתצוגת QA עם נתוני דמה וללא חיבור ייצור",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-23",
+    "notes": [
+      "עץ עבודה מקומי, ללא הפצה",
+      "זמינות ותוכן טיפים לדוגמה; חלונית מקורית עם הטקסט והאפשרויות מהמסך",
+      "צילום סטטי אינו הוכחת כל פריים באנימציה; גבולות הכרטיס נבדקו גם בארבע החלפות ידניות"
+    ],
+    "sha256": "24bc5cc3f834bc2148a83b83d43eb3c75f7b00e8dcd8564fc9f30832bd2d594b"
+  },
+  {
+    "file": "pulse-dialog-after-2026-10-23.png",
+    "source": "Android emulator / footy://qa/_overlay_audit_pulse_review",
+    "platform": "Android",
+    "environment": "רכיבי מקור בתצוגת QA עם נתוני דמה וללא חיבור ייצור",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-23",
+    "notes": [
+      "עץ עבודה מקומי, ללא הפצה",
+      "זמינות ותוכן טיפים לדוגמה; חלונית מקורית עם הטקסט והאפשרויות מהמסך",
+      "צילום סטטי אינו הוכחת כל פריים באנימציה; גבולות הכרטיס נבדקו גם בארבע החלפות ידניות"
+    ],
+    "sha256": "a417c86bdd92a1c0ba6a6c0d4323cac1a1fc1e44e5f3e8a51053b6bd109faeca"
+  },
+  {
+    "file": "night-rules-before-2026-10-24.png",
+    "source": "artifacts\\night-scan-2026-10-24\\night_rules-before.png",
+    "platform": "Android API 35",
+    "environment": "רכיב מקור במציג מבודד בדמו בפיתוח",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "עם שינויים מקומיים; לא הופץ",
+      "רכיב אמיתי; אינו הוכחת כל המארחים, שמירה עסקית, אייפון או כל גדלי הגופן",
+      "אזהרות כלי פיתוח עשויות להופיע בתחתית; אינן חלק מממשק הייצור"
+    ],
+    "sha256": "2189e4e20a86c6c36fcb1e8208a17fec47aadc64f7bc073ba816cfb94053bea7"
+  },
+  {
+    "file": "night-rules-after-2026-10-24.png",
+    "source": "artifacts\\night-scan-2026-10-24\\night_rules-after.png",
+    "platform": "Android API 35",
+    "environment": "רכיב מקור במציג מבודד בדמו בפיתוח",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "עם שינויים מקומיים; לא הופץ",
+      "רכיב אמיתי; אינו הוכחת כל המארחים, שמירה עסקית, אייפון או כל גדלי הגופן",
+      "אזהרות כלי פיתוח עשויות להופיע בתחתית; אינן חלק מממשק הייצור"
+    ],
+    "sha256": "bd0428357d399da1f26438642be375c5a440bc3455000719323604a03f70a334"
+  },
+  {
+    "file": "night-chat-terms-before-2026-10-24.png",
+    "source": "artifacts\\night-scan-2026-10-24\\chat_terms-before.png",
+    "platform": "Android API 35",
+    "environment": "רכיב מקור במציג מבודד בדמו בפיתוח",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "עם שינויים מקומיים; לא הופץ",
+      "רכיב אמיתי; אינו הוכחת כל המארחים, שמירה עסקית, אייפון או כל גדלי הגופן",
+      "אזהרות כלי פיתוח עשויות להופיע בתחתית; אינן חלק מממשק הייצור"
+    ],
+    "sha256": "d5d173c53ef9fe978c4a74f5fa7c90fe29deaaf29bbfbbfdee5c195c47b0fbb6"
+  },
+  {
+    "file": "night-chat-terms-after-2026-10-24.png",
+    "source": "artifacts\\night-scan-2026-10-24\\chat_terms-after.png",
+    "platform": "Android API 35",
+    "environment": "רכיב מקור במציג מבודד בדמו בפיתוח",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "עם שינויים מקומיים; לא הופץ",
+      "רכיב אמיתי; אינו הוכחת כל המארחים, שמירה עסקית, אייפון או כל גדלי הגופן",
+      "אזהרות כלי פיתוח עשויות להופיע בתחתית; אינן חלק מממשק הייצור"
+    ],
+    "sha256": "dff077fcfd7be42846c1ba2d50d9b0be450d6ae9a658dadb056c800c111fdd02"
+  },
+  {
+    "file": "night-substitution-before-2026-10-24.png",
+    "source": "artifacts\\night-scan-2026-10-24\\night_substitution-before.png",
+    "platform": "Android API 35",
+    "environment": "רכיב מקור במציג מבודד בדמו בפיתוח",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "עם שינויים מקומיים; לא הופץ",
+      "רכיב אמיתי; אינו הוכחת כל המארחים, שמירה עסקית, אייפון או כל גדלי הגופן",
+      "אזהרות כלי פיתוח עשויות להופיע בתחתית; אינן חלק מממשק הייצור"
+    ],
+    "sha256": "12c20251c112561ed1f138bf41568cd75bf18217f2a5782c382b62dd77daf6f6"
+  },
+  {
+    "file": "night-substitution-after-2026-10-24.png",
+    "source": "artifacts\\night-scan-2026-10-24\\night_substitution-after.png",
+    "platform": "Android API 35",
+    "environment": "רכיב מקור במציג מבודד בדמו בפיתוח",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "עם שינויים מקומיים; לא הופץ",
+      "רכיב אמיתי; אינו הוכחת כל המארחים, שמירה עסקית, אייפון או כל גדלי הגופן",
+      "אזהרות כלי פיתוח עשויות להופיע בתחתית; אינן חלק מממשק הייצור"
+    ],
+    "sha256": "f87870c8986e6854f318167ee7093798fffdfe75bf9e8df148ae5ae36f1e7265"
+  },
+  {
+    "file": "night-balanced-fill-before-2026-10-24.png",
+    "source": "artifacts\\night-scan-2026-10-24\\balanced_fill-before.png",
+    "platform": "Android API 35",
+    "environment": "רכיב מקור במציג מבודד בדמו בפיתוח",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "עם שינויים מקומיים; לא הופץ",
+      "רכיב אמיתי; אינו הוכחת כל המארחים, שמירה עסקית, אייפון או כל גדלי הגופן",
+      "אזהרות כלי פיתוח עשויות להופיע בתחתית; אינן חלק מממשק הייצור"
+    ],
+    "sha256": "5d9029095c29e9612d3be2dd01df20d25f3216d2a68659ebdfbd009f99576b18"
+  },
+  {
+    "file": "night-balanced-fill-after-2026-10-24.png",
+    "source": "artifacts\\night-scan-2026-10-24\\balanced_fill-after.png",
+    "platform": "Android API 35",
+    "environment": "רכיב מקור במציג מבודד בדמו בפיתוח",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "עם שינויים מקומיים; לא הופץ",
+      "רכיב אמיתי; אינו הוכחת כל המארחים, שמירה עסקית, אייפון או כל גדלי הגופן",
+      "אזהרות כלי פיתוח עשויות להופיע בתחתית; אינן חלק מממשק הייצור"
+    ],
+    "sha256": "e0d0fbc6d49b4588e2a53567f9b1dc3f16db63de8af8fee0b4efd04cde1504ca"
+  },
+  {
+    "file": "night-signin-before-2026-10-24.png",
+    "source": "artifacts\\night-scan-2026-10-24\\night_signin-before.png",
+    "platform": "Android API 35",
+    "environment": "רכיב מקור במציג מבודד בדמו בפיתוח",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "עם שינויים מקומיים; לא הופץ",
+      "רכיב אמיתי; אינו הוכחת כל המארחים, שמירה עסקית, אייפון או כל גדלי הגופן",
+      "אזהרות כלי פיתוח עשויות להופיע בתחתית; אינן חלק מממשק הייצור"
+    ],
+    "sha256": "eb429415a97f9ade75a4e33e865b3f3194e90c9610da8c54d1295d766b11395f"
+  },
+  {
+    "file": "night-signin-after-2026-10-24.png",
+    "source": "artifacts\\night-scan-2026-10-24\\night_signin-after.png",
+    "platform": "Android API 35",
+    "environment": "רכיב מקור במציג מבודד בדמו בפיתוח",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "עם שינויים מקומיים; לא הופץ",
+      "רכיב אמיתי; אינו הוכחת כל המארחים, שמירה עסקית, אייפון או כל גדלי הגופן",
+      "אזהרות כלי פיתוח עשויות להופיע בתחתית; אינן חלק מממשק הייצור"
+    ],
+    "sha256": "76d0f0348cee728beed7a658bf2e9e6dc3dbb57f033d3075ad5052312a3858a5"
+  },
+  {
+    "file": "own-player-card-after-2026-10-24.png",
+    "source": "artifacts/own-player-card-2026-10-24/render.cjs",
+    "platform": "Chromium — מתאמי רכיבי מקור, לא מכשיר",
+    "environment": "רכיב המקור OwnPlayerCard עם נתוני המחשה מקומיים בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "שינויים מקומיים שטרם הופצו; אין שימוש בנתוני ייצור",
+      "אין הוכחת forceRTL במכשיר, אייפון, גופן מוגדל, רשת או שיתוף מערכת",
+      "הכותרת והמסך מרכיבי המקור; תצוגת הבסיס, האווטאר והכיווניות מותאמים למציג דפדפן",
+      "390 או 320 פיקסלים; אין ניווט לשוניות תחתון במציג"
+    ],
+    "sha256": "d0889d77e112a85f5170db30b6a7f39720bd5c68800f426e03b4118c136925cf"
+  },
+  {
+    "file": "own-player-card-public-2026-10-24.png",
+    "source": "artifacts/own-player-card-2026-10-24/render.cjs",
+    "platform": "Chromium — מתאמי רכיבי מקור, לא מכשיר",
+    "environment": "רכיב המקור OwnPlayerCard עם נתוני המחשה מקומיים בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "שינויים מקומיים שטרם הופצו; אין שימוש בנתוני ייצור",
+      "אין הוכחת forceRTL במכשיר, אייפון, גופן מוגדל, רשת או שיתוף מערכת",
+      "הכותרת והמסך מרכיבי המקור; תצוגת הבסיס, האווטאר והכיווניות מותאמים למציג דפדפן",
+      "390 או 320 פיקסלים; אין ניווט לשוניות תחתון במציג"
+    ],
+    "sha256": "621cb7ff63a482b0c2701417e3700eafbde0cf636b88c462be8726491d8b0242"
+  },
+  {
+    "file": "own-player-card-empty-320-2026-10-24.png",
+    "source": "artifacts/own-player-card-2026-10-24/render.cjs",
+    "platform": "Chromium — מתאמי רכיבי מקור, לא מכשיר",
+    "environment": "רכיב המקור OwnPlayerCard עם נתוני המחשה מקומיים בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "שינויים מקומיים שטרם הופצו; אין שימוש בנתוני ייצור",
+      "אין הוכחת forceRTL במכשיר, אייפון, גופן מוגדל, רשת או שיתוף מערכת",
+      "הכותרת והמסך מרכיבי המקור; תצוגת הבסיס, האווטאר והכיווניות מותאמים למציג דפדפן",
+      "390 או 320 פיקסלים; אין ניווט לשוניות תחתון במציג"
+    ],
+    "sha256": "8493e0c1fca3b29920135f7e2365877cba602891ce8230efc203963fe79b14ba"
+  },
+  {
+    "file": "own-player-card-native-top-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py; top",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, FORCE_MOCK=1, QA_ROUTES=1; נתוני הדגמה בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיב המסך המקורי באימולטור עם שינויים מקומיים; טרם הופץ",
+      "משתמש הדגמה דניאל; אין אלה הפרופיל והנתונים האמיתיים של הבעלים",
+      "נצפו כיווניות עברית, כותרות, נתוני כל הזמנים, מחזור קרוב, מחזור אחרון ואזור שיתוף",
+      "אין אימות אייפון, מסד ייצור, גופן מוגדל או פעולת שיתוף במערכת",
+      "צילום מסך אמיתי שהוקטן ל־720×1600; סימוני דמו וכלי פיתוח הם מהסביבה"
+    ],
+    "sha256": "3ed833a593d8bf7884c2a062620896749104d4b10cadb0ddd01ba9d16ff0cc71"
+  },
+  {
+    "file": "own-player-card-native-last-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py; last",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, FORCE_MOCK=1, QA_ROUTES=1; נתוני הדגמה בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיב המסך המקורי באימולטור עם שינויים מקומיים; טרם הופץ",
+      "משתמש הדגמה דניאל; אין אלה הפרופיל והנתונים האמיתיים של הבעלים",
+      "נצפו כיווניות עברית, כותרות, נתוני כל הזמנים, מחזור קרוב, מחזור אחרון ואזור שיתוף",
+      "אין אימות אייפון, מסד ייצור, גופן מוגדל או פעולת שיתוף במערכת",
+      "צילום מסך אמיתי שהוקטן ל־720×1600; סימוני דמו וכלי פיתוח הם מהסביבה"
+    ],
+    "sha256": "ded332f936c9e91b668df06be866f5b87573400f6c9b23071acebe3f92452b56"
+  },
+  {
+    "file": "own-player-card-native-share-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py; share",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, FORCE_MOCK=1, QA_ROUTES=1; נתוני הדגמה בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיב המסך המקורי באימולטור עם שינויים מקומיים; טרם הופץ",
+      "משתמש הדגמה דניאל; אין אלה הפרופיל והנתונים האמיתיים של הבעלים",
+      "נצפו כיווניות עברית, כותרות, נתוני כל הזמנים, מחזור קרוב, מחזור אחרון ואזור שיתוף",
+      "אין אימות אייפון, מסד ייצור, גופן מוגדל או פעולת שיתוף במערכת",
+      "צילום מסך אמיתי שהוקטן ל־720×1600; סימוני דמו וכלי פיתוח הם מהסביבה"
+    ],
+    "sha256": "7ee42082d9288a2cb4c82b79b33f368080ae6d396ec1803c843d356b85a773a0"
+  },
+  {
+    "file": "own-player-card-compact-before-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py; compact-before",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, נתוני הדגמה בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "לפני ואחרי הקטנת ההירו ושינוי כרטיס המחזור הקרוב",
+      "משתמש הדגמה דניאל; ללא נתוני הבעלים וללא כתיבת ייצור",
+      "כיווניות ורינדור מקורי באנדרואיד; אין אימות אייפון, גופן מוגדל או שמירה",
+      "צילום אמיתי שהוקטן ל־720×1600; סימוני דמו ופיתוח גלויים; מקומי וטרם הופץ"
+    ],
+    "sha256": "d31daefbe39e1619ce56580b18202eb21fab3652b35b44ebe2f6b566d5334f10"
+  },
+  {
+    "file": "own-player-card-compact-after-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py; compact-after",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, נתוני הדגמה בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "לפני ואחרי הקטנת ההירו ושינוי כרטיס המחזור הקרוב",
+      "משתמש הדגמה דניאל; ללא נתוני הבעלים וללא כתיבת ייצור",
+      "כיווניות ורינדור מקורי באנדרואיד; אין אימות אייפון, גופן מוגדל או שמירה",
+      "צילום אמיתי שהוקטן ל־720×1600; סימוני דמו ופיתוח גלויים; מקומי וטרם הופץ"
+    ],
+    "sha256": "34660cfc26921a9c70e6332ff5890ecc2e3adb96d9aa93013f0ba9f466a23b80"
+  },
+  {
+    "file": "draft-colors-auto-after-2026-10-24.png",
+    "source": "artifacts/draft-colors-2026-10-24/render.cjs; actual source components with DOM adapters",
+    "platform": "Chromium desktop, mobile viewport 390 or 320",
+    "environment": "נתוני הדגמה במציג מבודד; ללא Firebase",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיבי המקור מרונדרים בכיווניות עברית; צילום דפדפן ואינו צילום מכשיר או סקיצה",
+      "לפני: רכיבי HEAD; אחרי: המקור המקומי. מארחי המסכים והניווט הם מתאמים",
+      "קפטנים: אריחי מקור במארח המדמה את שלב סדר הבחירה, לא מסך מלא",
+      "אין אימות מסד חי, ניווט מלא, אייפון, גופן מוגדל או שני מנהלים; טרם הופץ"
+    ],
+    "sha256": "0349169adae5506c45f638bfe92f53e6e7b8b8df376501d4e068546e0bc6dd21"
+  },
+  {
+    "file": "draft-colors-auto-before-2026-10-24.png",
+    "source": "artifacts/draft-colors-2026-10-24/render.cjs; actual source components with DOM adapters",
+    "platform": "Chromium desktop, mobile viewport 390 or 320",
+    "environment": "נתוני הדגמה במציג מבודד; ללא Firebase",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיבי המקור מרונדרים בכיווניות עברית; צילום דפדפן ואינו צילום מכשיר או סקיצה",
+      "לפני: רכיבי HEAD; אחרי: המקור המקומי. מארחי המסכים והניווט הם מתאמים",
+      "קפטנים: אריחי מקור במארח המדמה את שלב סדר הבחירה, לא מסך מלא",
+      "אין אימות מסד חי, ניווט מלא, אייפון, גופן מוגדל או שני מנהלים; טרם הופץ"
+    ],
+    "sha256": "e20ac67ef5906f2769c50012984cf3d9593b54440ed59c45e303c5e3ff91936d"
+  },
+  {
+    "file": "draft-colors-captains-after-2026-10-24.png",
+    "source": "artifacts/draft-colors-2026-10-24/render.cjs; actual source components with DOM adapters",
+    "platform": "Chromium desktop, mobile viewport 390 or 320",
+    "environment": "נתוני הדגמה במציג מבודד; ללא Firebase",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיבי המקור מרונדרים בכיווניות עברית; צילום דפדפן ואינו צילום מכשיר או סקיצה",
+      "לפני: רכיבי HEAD; אחרי: המקור המקומי. מארחי המסכים והניווט הם מתאמים",
+      "קפטנים: אריחי מקור במארח המדמה את שלב סדר הבחירה, לא מסך מלא",
+      "אין אימות מסד חי, ניווט מלא, אייפון, גופן מוגדל או שני מנהלים; טרם הופץ"
+    ],
+    "sha256": "d29872f955783d7c17d32155ab9ca60791b4b632d8d7618719c902050a0e9d3e"
+  },
+  {
+    "file": "draft-colors-captains-before-2026-10-24.png",
+    "source": "artifacts/draft-colors-2026-10-24/render.cjs; actual source components with DOM adapters",
+    "platform": "Chromium desktop, mobile viewport 390 or 320",
+    "environment": "נתוני הדגמה במציג מבודד; ללא Firebase",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיבי המקור מרונדרים בכיווניות עברית; צילום דפדפן ואינו צילום מכשיר או סקיצה",
+      "לפני: רכיבי HEAD; אחרי: המקור המקומי. מארחי המסכים והניווט הם מתאמים",
+      "קפטנים: אריחי מקור במארח המדמה את שלב סדר הבחירה, לא מסך מלא",
+      "אין אימות מסד חי, ניווט מלא, אייפון, גופן מוגדל או שני מנהלים; טרם הופץ"
+    ],
+    "sha256": "8d925ce604b47d31dfaa50f67ff5a5df59aef0541d37ee6cb08c52e6324880ba"
+  },
+  {
+    "file": "draft-colors-exchange-2026-10-24.png",
+    "source": "artifacts/draft-colors-2026-10-24/render.cjs; actual source components with DOM adapters",
+    "platform": "Chromium desktop, mobile viewport 390 or 320",
+    "environment": "נתוני הדגמה במציג מבודד; ללא Firebase",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיבי המקור מרונדרים בכיווניות עברית; צילום דפדפן ואינו צילום מכשיר או סקיצה",
+      "לפני: רכיבי HEAD; אחרי: המקור המקומי. מארחי המסכים והניווט הם מתאמים",
+      "קפטנים: אריחי מקור במארח המדמה את שלב סדר הבחירה, לא מסך מלא",
+      "אין אימות מסד חי, ניווט מלא, אייפון, גופן מוגדל או שני מנהלים; טרם הופץ"
+    ],
+    "sha256": "0e3baca31d3dfbae0f37beee9ee40cd679c1b09fa33403265931dddc60a51d7e"
+  },
+  {
+    "file": "draft-colors-manual-after-2026-10-24.png",
+    "source": "artifacts/draft-colors-2026-10-24/render.cjs; actual source components with DOM adapters",
+    "platform": "Chromium desktop, mobile viewport 390 or 320",
+    "environment": "נתוני הדגמה במציג מבודד; ללא Firebase",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיבי המקור מרונדרים בכיווניות עברית; צילום דפדפן ואינו צילום מכשיר או סקיצה",
+      "לפני: רכיבי HEAD; אחרי: המקור המקומי. מארחי המסכים והניווט הם מתאמים",
+      "קפטנים: אריחי מקור במארח המדמה את שלב סדר הבחירה, לא מסך מלא",
+      "אין אימות מסד חי, ניווט מלא, אייפון, גופן מוגדל או שני מנהלים; טרם הופץ"
+    ],
+    "sha256": "bea3f82fadeda299a67a9c331ce1fef62f5956197108726aa824f8630f84cb7c"
+  },
+  {
+    "file": "draft-colors-manual-before-2026-10-24.png",
+    "source": "artifacts/draft-colors-2026-10-24/render.cjs; actual source components with DOM adapters",
+    "platform": "Chromium desktop, mobile viewport 390 or 320",
+    "environment": "נתוני הדגמה במציג מבודד; ללא Firebase",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיבי המקור מרונדרים בכיווניות עברית; צילום דפדפן ואינו צילום מכשיר או סקיצה",
+      "לפני: רכיבי HEAD; אחרי: המקור המקומי. מארחי המסכים והניווט הם מתאמים",
+      "קפטנים: אריחי מקור במארח המדמה את שלב סדר הבחירה, לא מסך מלא",
+      "אין אימות מסד חי, ניווט מלא, אייפון, גופן מוגדל או שני מנהלים; טרם הופץ"
+    ],
+    "sha256": "8eeedefd1ebb01c8b43882866e294faa729846dd9af56ad629ce02ca53f7b6fb"
+  },
+  {
+    "file": "draft-colors-picker-2026-10-24.png",
+    "source": "artifacts/draft-colors-2026-10-24/render.cjs; actual source components with DOM adapters",
+    "platform": "Chromium desktop, mobile viewport 390 or 320",
+    "environment": "נתוני הדגמה במציג מבודד; ללא Firebase",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיבי המקור מרונדרים בכיווניות עברית; צילום דפדפן ואינו צילום מכשיר או סקיצה",
+      "לפני: רכיבי HEAD; אחרי: המקור המקומי. מארחי המסכים והניווט הם מתאמים",
+      "קפטנים: אריחי מקור במארח המדמה את שלב סדר הבחירה, לא מסך מלא",
+      "אין אימות מסד חי, ניווט מלא, אייפון, גופן מוגדל או שני מנהלים; טרם הופץ"
+    ],
+    "sha256": "f51fcf3905776809264113001a0eb81828ac240f753bf0487f8f1a2b1d41c7e2"
+  },
+  {
+    "file": "draft-colors-picker-320-2026-10-24.png",
+    "source": "artifacts/draft-colors-2026-10-24/render.cjs; actual source components with DOM adapters",
+    "platform": "Chromium desktop, mobile viewport 390 or 320",
+    "environment": "נתוני הדגמה במציג מבודד; ללא Firebase",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיבי המקור מרונדרים בכיווניות עברית; צילום דפדפן ואינו צילום מכשיר או סקיצה",
+      "לפני: רכיבי HEAD; אחרי: המקור המקומי. מארחי המסכים והניווט הם מתאמים",
+      "קפטנים: אריחי מקור במארח המדמה את שלב סדר הבחירה, לא מסך מלא",
+      "אין אימות מסד חי, ניווט מלא, אייפון, גופן מוגדל או שני מנהלים; טרם הופץ"
+    ],
+    "sha256": "a00aaaeb4549b6f2e78f83173e3a44b6990debec1e75f3bf54691ffe0cce80eb"
+  },
+  {
+    "file": "draft-colors-random-after-2026-10-24.png",
+    "source": "artifacts/draft-colors-2026-10-24/render.cjs; actual source components with DOM adapters",
+    "platform": "Chromium desktop, mobile viewport 390 or 320",
+    "environment": "נתוני הדגמה במציג מבודד; ללא Firebase",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיבי המקור מרונדרים בכיווניות עברית; צילום דפדפן ואינו צילום מכשיר או סקיצה",
+      "לפני: רכיבי HEAD; אחרי: המקור המקומי. מארחי המסכים והניווט הם מתאמים",
+      "קפטנים: אריחי מקור במארח המדמה את שלב סדר הבחירה, לא מסך מלא",
+      "אין אימות מסד חי, ניווט מלא, אייפון, גופן מוגדל או שני מנהלים; טרם הופץ"
+    ],
+    "sha256": "9850a6c54e80a219b2b3e6f765ae8493414567bf4fc49803fa9754c7c99d2625"
+  },
+  {
+    "file": "draft-colors-random-before-2026-10-24.png",
+    "source": "artifacts/draft-colors-2026-10-24/render.cjs; actual source components with DOM adapters",
+    "platform": "Chromium desktop, mobile viewport 390 or 320",
+    "environment": "נתוני הדגמה במציג מבודד; ללא Firebase",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "רכיבי המקור מרונדרים בכיווניות עברית; צילום דפדפן ואינו צילום מכשיר או סקיצה",
+      "לפני: רכיבי HEAD; אחרי: המקור המקומי. מארחי המסכים והניווט הם מתאמים",
+      "קפטנים: אריחי מקור במארח המדמה את שלב סדר הבחירה, לא מסך מלא",
+      "אין אימות מסד חי, ניווט מלא, אייפון, גופן מוגדל או שני מנהלים; טרם הופץ"
+    ],
+    "sha256": "800dd8084ac344606da860a2bc584b0db8f57fd3a96728c474430c0a9380ce0c"
+  },
+  {
+    "file": "draft-colors-native-auto-2026-10-24.png",
+    "source": "adb emulator-5554 exec-out screencap -p; artifacts/draft-colors-2026-10-24/native-device.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "נתוני הדגמה בלבד, שרת מקומי 8084; אומתו DEV ו־USE_MOCK_DATA",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "צילום המסך המקורי; לא סקיצה ולא מתאם דפדפן; הוקטן ל־720×1600",
+      "תשעה שחקנים ושלוש קבוצות במחזור הדגמה קיים; התאמה בזיכרון בלבד ששוחזרה בסיום",
+      "נצפו מיקום הכפתורים, כיווניות, חולצות, בחירה מקדימה והצעת החלפה",
+      "לא נשמרו צבעים או הרכבים; אין אימות מסד, מעבר ללייב, אייפון או גופן מוגדל; טרם הופץ"
+    ],
+    "sha256": "d4987888a46690e83b498d899c4ce6e5d060f22f2c0d388e087ddde934e75a28"
+  },
+  {
+    "file": "draft-colors-native-random-2026-10-24.png",
+    "source": "adb emulator-5554 exec-out screencap -p; artifacts/draft-colors-2026-10-24/native-device.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "נתוני הדגמה בלבד, שרת מקומי 8084; אומתו DEV ו־USE_MOCK_DATA",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "צילום המסך המקורי; לא סקיצה ולא מתאם דפדפן; הוקטן ל־720×1600",
+      "תשעה שחקנים ושלוש קבוצות במחזור הדגמה קיים; התאמה בזיכרון בלבד ששוחזרה בסיום",
+      "נצפו מיקום הכפתורים, כיווניות, חולצות, בחירה מקדימה והצעת החלפה",
+      "לא נשמרו צבעים או הרכבים; אין אימות מסד, מעבר ללייב, אייפון או גופן מוגדל; טרם הופץ"
+    ],
+    "sha256": "6a89f246da1c87c738b83570390de06d61598052fc07b732a7caf881d06d7fdc"
+  },
+  {
+    "file": "draft-colors-native-manual-2026-10-24.png",
+    "source": "adb emulator-5554 exec-out screencap -p; artifacts/draft-colors-2026-10-24/native-device.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "נתוני הדגמה בלבד, שרת מקומי 8084; אומתו DEV ו־USE_MOCK_DATA",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "צילום המסך המקורי; לא סקיצה ולא מתאם דפדפן; הוקטן ל־720×1600",
+      "תשעה שחקנים ושלוש קבוצות במחזור הדגמה קיים; התאמה בזיכרון בלבד ששוחזרה בסיום",
+      "נצפו מיקום הכפתורים, כיווניות, חולצות, בחירה מקדימה והצעת החלפה",
+      "לא נשמרו צבעים או הרכבים; אין אימות מסד, מעבר ללייב, אייפון או גופן מוגדל; טרם הופץ"
+    ],
+    "sha256": "9c8f3442ab836c9ed51a8827e0c4e94e6e56b973bd1380e42a363cd1ea2be5cd"
+  },
+  {
+    "file": "draft-colors-native-captains-2026-10-24.png",
+    "source": "adb emulator-5554 exec-out screencap -p; artifacts/draft-colors-2026-10-24/native-device.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "נתוני הדגמה בלבד, שרת מקומי 8084; אומתו DEV ו־USE_MOCK_DATA",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "צילום המסך המקורי; לא סקיצה ולא מתאם דפדפן; הוקטן ל־720×1600",
+      "תשעה שחקנים ושלוש קבוצות במחזור הדגמה קיים; התאמה בזיכרון בלבד ששוחזרה בסיום",
+      "נצפו מיקום הכפתורים, כיווניות, חולצות, בחירה מקדימה והצעת החלפה",
+      "לא נשמרו צבעים או הרכבים; אין אימות מסד, מעבר ללייב, אייפון או גופן מוגדל; טרם הופץ"
+    ],
+    "sha256": "7e031156ffb7123a988d289602b6b502b54cf366e796984e4ff43b01ca292251"
+  },
+  {
+    "file": "draft-colors-native-picker-2026-10-24.png",
+    "source": "adb emulator-5554 exec-out screencap -p; artifacts/draft-colors-2026-10-24/native-device.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "נתוני הדגמה בלבד, שרת מקומי 8084; אומתו DEV ו־USE_MOCK_DATA",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "צילום המסך המקורי; לא סקיצה ולא מתאם דפדפן; הוקטן ל־720×1600",
+      "תשעה שחקנים ושלוש קבוצות במחזור הדגמה קיים; התאמה בזיכרון בלבד ששוחזרה בסיום",
+      "נצפו מיקום הכפתורים, כיווניות, חולצות, בחירה מקדימה והצעת החלפה",
+      "לא נשמרו צבעים או הרכבים; אין אימות מסד, מעבר ללייב, אייפון או גופן מוגדל; טרם הופץ"
+    ],
+    "sha256": "86722f6ee7219917ec08959f1f6655290dc3e2524a940c9d6ba63acd4315c528"
+  },
+  {
+    "file": "draft-colors-native-exchange-2026-10-24.png",
+    "source": "adb emulator-5554 exec-out screencap -p; artifacts/draft-colors-2026-10-24/native-device.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "נתוני הדגמה בלבד, שרת מקומי 8084; אומתו DEV ו־USE_MOCK_DATA",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "צילום המסך המקורי; לא סקיצה ולא מתאם דפדפן; הוקטן ל־720×1600",
+      "תשעה שחקנים ושלוש קבוצות במחזור הדגמה קיים; התאמה בזיכרון בלבד ששוחזרה בסיום",
+      "נצפו מיקום הכפתורים, כיווניות, חולצות, בחירה מקדימה והצעת החלפה",
+      "לא נשמרו צבעים או הרכבים; אין אימות מסד, מעבר ללייב, אייפון או גופן מוגדל; טרם הופץ"
+    ],
+    "sha256": "5ce9c2a2c1c202964aa651bb13878f13219349fddb1c67b707c55be5e070e60a"
+  },
+  {
+    "file": "draft-colors-native-crash-removal-before-2026-10-24.png",
+    "source": "adb emulator-5554 exec-out screencap -p; artifacts/draft-colors-2026-10-24/native-device.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת מקומי 8084; אומתו DEV ו־USE_MOCK_DATA",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "מסך בית מקורי עם נתוני הדגמה, לפני ואחרי הסרת כרטיס הקריסה",
+      "לא הופעלה קריסה ולא בוצעו כתיבות נתוני משתמש; אין אימות אייפון; טרם הופץ"
+    ],
+    "sha256": "a6f58f92653f21d90afb07c6537b0702ef7c7c66c885400419b103598221f289"
+  },
+  {
+    "file": "draft-colors-native-crash-removal-after-2026-10-24.png",
+    "source": "adb emulator-5554 exec-out screencap -p; artifacts/draft-colors-2026-10-24/native-device.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת מקומי 8084; אומתו DEV ו־USE_MOCK_DATA",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "מסך בית מקורי עם נתוני הדגמה, לפני ואחרי הסרת כרטיס הקריסה",
+      "לא הופעלה קריסה ולא בוצעו כתיבות נתוני משתמש; אין אימות אייפון; טרם הופץ"
+    ],
+    "sha256": "a4e9fe94a3277e98bb389972e07e0c852ff9cf3d1d0afe056db217ecc923cba8"
+  },
+  {
+    "file": "live-teams-confirm-after-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py; artifacts/live-teams-2026-10-24/native-prepare.js",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, מצב הדגמה מאומת ללא חיבור למסד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "מסך ורכיבי מקור באימולטור, בכיווניות כפויה; מקומי וטרם הופץ",
+      "מחזור הדגמה קיים בזיכרון בלבד; אין אלו נתוני הבעלים או חשבון ייצור",
+      "תפריט לפני ואחרי, חלון עריכה ואישור איפוס; צילום מצב מסוים אינו אימות כל התהליך",
+      "אין אימות אייפון, מסד חי, שני מכשירים או גופן מוגדל; הקטנה ל־630×1400"
+    ],
+    "sha256": "30d9f5922b8427c1e4460c4f733e8c2002e6762ec6fe0088966fff0de09410b3"
+  },
+  {
+    "file": "live-teams-edit-after-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py; artifacts/live-teams-2026-10-24/native-prepare.js",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, מצב הדגמה מאומת ללא חיבור למסד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "מסך ורכיבי מקור באימולטור, בכיווניות כפויה; מקומי וטרם הופץ",
+      "מחזור הדגמה קיים בזיכרון בלבד; אין אלו נתוני הבעלים או חשבון ייצור",
+      "תפריט לפני ואחרי, חלון עריכה ואישור איפוס; צילום מצב מסוים אינו אימות כל התהליך",
+      "אין אימות אייפון, מסד חי, שני מכשירים או גופן מוגדל; הקטנה ל־630×1400"
+    ],
+    "sha256": "412296c25b6ba811c685ebb1837a7c8738829afba8778d19483e04f4aad3ce52"
+  },
+  {
+    "file": "live-teams-menu-after-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py; artifacts/live-teams-2026-10-24/native-prepare.js",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, מצב הדגמה מאומת ללא חיבור למסד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "מסך ורכיבי מקור באימולטור, בכיווניות כפויה; מקומי וטרם הופץ",
+      "מחזור הדגמה קיים בזיכרון בלבד; אין אלו נתוני הבעלים או חשבון ייצור",
+      "תפריט לפני ואחרי, חלון עריכה ואישור איפוס; צילום מצב מסוים אינו אימות כל התהליך",
+      "אין אימות אייפון, מסד חי, שני מכשירים או גופן מוגדל; הקטנה ל־630×1400"
+    ],
+    "sha256": "a1ebb6638b0ae33174fecf24ac6a567be4f2d0c9db49addc333f11aa4308c1f9"
+  },
+  {
+    "file": "live-teams-menu-before-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py; artifacts/live-teams-2026-10-24/native-prepare.js",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, מצב הדגמה מאומת ללא חיבור למסד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "מסך ורכיבי מקור באימולטור, בכיווניות כפויה; מקומי וטרם הופץ",
+      "מחזור הדגמה קיים בזיכרון בלבד; אין אלו נתוני הבעלים או חשבון ייצור",
+      "תפריט לפני ואחרי, חלון עריכה ואישור איפוס; צילום מצב מסוים אינו אימות כל התהליך",
+      "אין אימות אייפון, מסד חי, שני מכשירים או גופן מוגדל; הקטנה ל־630×1400"
+    ],
+    "sha256": "9310fe64b2a9b20cbbcff3c449645d615c2ffb0f4d0c98bd7d8b624525dd31f9"
+  },
+  {
+    "file": "live-teams-reset-after-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py; artifacts/live-teams-2026-10-24/native-prepare.js",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, מצב הדגמה מאומת ללא חיבור למסד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "מסך ורכיבי מקור באימולטור, בכיווניות כפויה; מקומי וטרם הופץ",
+      "מחזור הדגמה קיים בזיכרון בלבד; אין אלו נתוני הבעלים או חשבון ייצור",
+      "תפריט לפני ואחרי, חלון עריכה ואישור איפוס; צילום מצב מסוים אינו אימות כל התהליך",
+      "אין אימות אייפון, מסד חי, שני מכשירים או גופן מוגדל; הקטנה ל־630×1400"
+    ],
+    "sha256": "a6972bfbc9b15722b83757a7b3ccbf864f6bfb4a1ecabe8e375142580521f3a0"
+  },
+  {
+    "file": "live-teams-audit-seven-small-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; artifacts/live-teams-audit-2026-10-24/native-control.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "נתוני הדגמה בזיכרון ללא חיבור למסד; רוחב 320, גובה 569 וגופן 140%",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "sha256": "4bce77658ef6567e7aaf52461e0c982ad577c25e0e53e71e847c50370fae482c",
+    "notes": [
+      "חלון המקור והאישור במנוע אנדרואיד, עם שינויים מקומיים שלא הופצו",
+      "שבע קבוצות; נבדקו גלילת הגוף והבורר, הגעה לקבוצה השביעית ושמירת איפוס בדמו באישור הבעלים",
+      "אין אימות אייפון, מכשיר פיזי, מסד ייצור או שני מכשירים; לא נוספו שינויים חזותיים בקוד במסגרת הבדיקה",
+      "צילומי סקיצה אינם משמשים ראיה; התצורה המקורית של האימולטור הוחזרה בסיום"
+    ]
+  },
+  {
+    "file": "live-teams-audit-confirm-small-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; artifacts/live-teams-audit-2026-10-24/native-control.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "נתוני הדגמה בזיכרון ללא חיבור למסד; רוחב 320, גובה 569 וגופן 140%",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "sha256": "436dc61d223a09509675c3f785281dc2ad023da9d10650a23e97aacbac9665bc",
+    "notes": [
+      "חלון המקור והאישור במנוע אנדרואיד, עם שינויים מקומיים שלא הופצו",
+      "שבע קבוצות; נבדקו גלילת הגוף והבורר, הגעה לקבוצה השביעית ושמירת איפוס בדמו באישור הבעלים",
+      "אין אימות אייפון, מכשיר פיזי, מסד ייצור או שני מכשירים; לא נוספו שינויים חזותיים בקוד במסגרת הבדיקה",
+      "צילומי סקיצה אינם משמשים ראיה; התצורה המקורית של האימולטור הוחזרה בסיום"
+    ]
+  },
+  {
+    "file": "pulse-current-home-before-2026-10-24.png",
+    "source": "artifacts/pulse-current-2026-10-24/home-before.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "sha256": "134dbae24de9eed3e5dac3a4a894970fc04ff91de9f880096b44413839252d7d",
+    "notes": [
+      "חלון 411×914, גופן רגיל; דמו מבודד ללא כתיבות למסד.",
+      "מארח החלון האמיתי עם תוכן ואפשרויות המקור; הפעולה העסקית לא הופעלה."
+    ]
+  },
+  {
+    "file": "pulse-current-home-after-2026-10-24.png",
+    "source": "artifacts/pulse-current-2026-10-24/home-after.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "sha256": "544a36a2bfb0a89531599e2710026b77a20428547aff7977dd8104957a9b0df1",
+    "notes": [
+      "חלון 411×914, גופן רגיל; דמו מבודד ללא כתיבות למסד.",
+      "מארח החלון האמיתי עם תוכן ואפשרויות המקור; הפעולה העסקית לא הופעלה."
+    ]
+  },
+  {
+    "file": "pulse-current-reset-before-2026-10-24.png",
+    "source": "artifacts/pulse-current-2026-10-24/reset-before.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "sha256": "f714fd5fd3ad0d0bc0180f13408c5dc67c35b382a0c9603586b94528b7e36886",
+    "notes": [
+      "חלון 411×914, גופן רגיל; דמו מבודד ללא כתיבות למסד.",
+      "מארח החלון האמיתי עם תוכן ואפשרויות המקור; הפעולה העסקית לא הופעלה."
+    ]
+  },
+  {
+    "file": "pulse-current-reset-after-2026-10-24.png",
+    "source": "artifacts/pulse-current-2026-10-24/reset-after.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "sha256": "79fa2006b9fd71b504101758c6aab3fe35a9ef1cb8598970183bf90f43f45522",
+    "notes": [
+      "חלון 411×914, גופן רגיל; דמו מבודד ללא כתיבות למסד.",
+      "מארח החלון האמיתי עם תוכן ואפשרויות המקור; הפעולה העסקית לא הופעלה."
+    ]
+  },
+  {
+    "file": "pulse-current-penalty-before-2026-10-24.png",
+    "source": "artifacts/pulse-current-2026-10-24/penalty-before.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "sha256": "7e92d8c80cf619f3ddf63b5a67957e9bd9c3a79811c9a3242cdf73863b595f0d",
+    "notes": [
+      "חלון 411×914, גופן רגיל; דמו מבודד ללא כתיבות למסד.",
+      "נפתח מתוך הלייב בדמו; מצב לפני בחירת שוער ובועט. מצב לאחר בחירה נבדק ברכיב בלבד."
+    ]
+  },
+  {
+    "file": "pulse-current-penalty-after-2026-10-24.png",
+    "source": "artifacts/pulse-current-2026-10-24/penalty-after.png",
+    "platform": "Android",
+    "environment": "אימולטור, דמו בפיתוח בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "sha256": "261de89f991384614b1c353e5057029b2d0d51ecb9d37307d82233e59c9172e4",
+    "notes": [
+      "חלון 411×914, גופן רגיל; דמו מבודד ללא כתיבות למסד.",
+      "נפתח מתוך הלייב בדמו; מצב לפני בחירת שוער ובועט. מצב לאחר בחירה נבדק ברכיב בלבד."
+    ]
+  },
+  {
+    "file": "pulse-people-before-2026-10-24.png",
+    "source": "artifacts/pulse-growth-preview/index.html",
+    "platform": "Chromium עם מתאמי רכיבי מקור",
+    "environment": "נתוני בדיקה בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "קוד מקומי שאינו כלול בהכרח בקומיט הבסיס",
+      "אין אימות מכשיר מקורי, חשבון אמיתי או מעטפת ניווט מקורית",
+      "כיווניות וגלישה נבדקו ברוחבי 320 ו־390"
+    ],
+    "sha256": "77b523884ccef96165a4e187a5e6df84aee5081df6acc3a8b25380e6d68bdf21"
+  },
+  {
+    "file": "pulse-new-people-after-2026-10-24.png",
+    "source": "artifacts/pulse-growth-preview/index.html",
+    "platform": "Chromium עם מתאמי רכיבי מקור",
+    "environment": "נתוני בדיקה בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "קוד מקומי שאינו כלול בהכרח בקומיט הבסיס",
+      "אין אימות מכשיר מקורי, חשבון אמיתי או מעטפת ניווט מקורית",
+      "כיווניות וגלישה נבדקו ברוחבי 320 ו־390"
+    ],
+    "sha256": "d3b53d8d6077625948a15f4358eb95302250ba4a403e5c54f299575c390bac06"
+  },
+  {
+    "file": "pulse-person-journey-after-2026-10-24.png",
+    "source": "artifacts/pulse-growth-preview/index.html",
+    "platform": "Chromium עם מתאמי רכיבי מקור",
+    "environment": "נתוני בדיקה בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "קוד מקומי שאינו כלול בהכרח בקומיט הבסיס",
+      "אין אימות מכשיר מקורי, חשבון אמיתי או מעטפת ניווט מקורית",
+      "כיווניות וגלישה נבדקו ברוחבי 320 ו־390"
+    ],
+    "sha256": "f9d69877aa4c258174f1a21d63bb2a2f03cc5aa93e7c7a6f1c3bdd41931bcfa1"
+  },
+  {
+    "file": "pulse-clubs-after-2026-10-24.png",
+    "source": "artifacts/pulse-growth-preview/index.html",
+    "platform": "Chromium עם מתאמי רכיבי מקור",
+    "environment": "נתוני בדיקה בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "קוד מקומי שאינו כלול בהכרח בקומיט הבסיס",
+      "אין אימות מכשיר מקורי, חשבון אמיתי או מעטפת ניווט מקורית",
+      "כיווניות וגלישה נבדקו ברוחבי 320 ו־390"
+    ],
+    "sha256": "b87a8d06b5907988c27e30920ecb0ebeb46a97b479300c6079c07c5ee065f43a"
+  },
+  {
+    "file": "pulse-club-detail-after-2026-10-24.png",
+    "source": "artifacts/pulse-growth-preview/index.html",
+    "platform": "Chromium עם מתאמי רכיבי מקור",
+    "environment": "נתוני בדיקה בלבד",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "קוד מקומי שאינו כלול בהכרח בקומיט הבסיס",
+      "אין אימות מכשיר מקורי, חשבון אמיתי או מעטפת ניווט מקורית",
+      "כיווניות וגלישה נבדקו ברוחבי 320 ו־390"
+    ],
+    "sha256": "94f0cd12a9236fde0f0b2efeb60dd519af08e5d28124dc9c1497e7686e0d8b00"
+  },
+  {
+    "file": "comparison-activity-card-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, FORCE_MOCK=1, QA_ROUTES=1",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "משתמש דניאל ושמות/אירועי השוואה לדוגמה בלבד; לא היסטוריה קיימת או נתוני בעלים",
+      "נפתחו הסקשן והרשימה המלאה ונבחרו שתי התקופות; 6/14 בחודש לעומת 7/19 בכל הזמנים",
+      "אין אימות כתיבה או קריאה בייצור, פריסה, אייפון, גופן מוגדל או דפדוף ברשת",
+      "צילום מקורי שהוקטן ל־720×1600, סימוני דמו ופיתוח גלויים; טרם הופץ"
+    ],
+    "sha256": "e6f315a19cd9fd677cc96acb18b42227b7edf64228849ef05e83fa34b7337b2e"
+  },
+  {
+    "file": "comparison-activity-all-2026-10-24.png",
+    "source": "adb emulator-5554 screencap; scripts/shot.py",
+    "platform": "Android Emulator Teamder_API_35",
+    "environment": "שרת פיתוח מקומי 8084, FORCE_MOCK=1, QA_ROUTES=1",
+    "sourceCommit": "2f93005a9716313a470285c4d77f0ccad3c19f44",
+    "captured": "2026-10-24",
+    "notes": [
+      "משתמש דניאל ושמות/אירועי השוואה לדוגמה בלבד; לא היסטוריה קיימת או נתוני בעלים",
+      "נפתחו הסקשן והרשימה המלאה ונבחרו שתי התקופות; 6/14 בחודש לעומת 7/19 בכל הזמנים",
+      "אין אימות כתיבה או קריאה בייצור, פריסה, אייפון, גופן מוגדל או דפדוף ברשת",
+      "צילום מקורי שהוקטן ל־720×1600, סימוני דמו ופיתוח גלויים; טרם הופץ"
+    ],
+    "sha256": "1a2ab8cc7993044f0aa5ba6c02aae3ce9a82df8e99cdaa46ca49523c7169e22c"
   }
 ]

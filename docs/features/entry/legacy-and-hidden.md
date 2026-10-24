@@ -83,3 +83,10 @@
 הכתובת `footy://qa/_entry_invite` זמינה רק עם שלושת השערים: `__DEV__`, `EXPO_PUBLIC_QA_ROUTES=1`, `EXPO_PUBLIC_FOOTY_FORCE_MOCK=1`. היא מרנדרת את `IntentScreen` בתוך חלון ללא אירועי לחיצה על פעולות, עם מזמין דמו `p1`; מצב ההזמנה בזיכרון מוחזר בסגירה. אין כתיבה לאחסון או פעולה מול החשבון. זהו תרחיש בכלי בדיקה קיים, לא מסך מוצר חדש ולא הוכחת התקנה או זהות אורח.
 
 מקור: `a348b9f` עם תיקונים מקומיים. ראיות ובדיקות: [דוח התיקון](../reviews/onboarding-fixes-2026-10-08.md).
+
+
+## סריקת לילה ואחידות ממשק — 24.10.2026
+
+`src/dev/OverlayAuditPreview.tsx` תומך כעת ב־`night_rules`, `night_substitution` ו־`night_signin`. מציג הכללים משתמש ב־`RichRulesText`; בחילופים פעולות `onSwap` ו־`onMove` סוגרות בלבד, והשחקנים המוזרקים מכילים `isFiller:false`; מציג הכניסה משתמש ב־`SignInScreen` בלי הפעלת כפתורי ספק. רכיבים אלה אינם זמינים בלי שני שערי `QARouteLauncher`. אין נתוני ייצור, שינוי ניווט עסקי או הוכחת התחברות.
+
+[צילום אחרי](../screenshots/night-rules-after-2026-10-24.png) · [דוח הסריקה והגבולות](../../audits/2026-10-24-night-scan.md).

@@ -51,7 +51,11 @@ Code reads `CLAUDE.md`, which points here). Keep one copy; edit this file.
 - **Don't tap destructive actions on the emulator** — it is signed into the
   owner's REAL production account. Read and screenshot freely; don't delete,
   don't cancel, don't leave a club.
-- **Don't create test clubs or accounts.** There is one QA account; ask for it.
+- **Don't create test clubs or accounts.** Existing QA accounts and a QA club
+  are documented in `docs/knowledge/production-qa.md`. Read that file and check
+  the saved credentials before asking the owner for details again. Missing
+  credentials on this Windows profile do not mean the accounts do not exist.
+  Use them only within the owner's authorization for the current task.
 
 ## 3. Firestore traps that have caused outages
 

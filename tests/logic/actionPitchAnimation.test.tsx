@@ -70,7 +70,21 @@ test.each([{height:140,width:250},{height:180,width:300},{height:248,width:340}]
  expect(centerX).toBeCloseTo(width*slot.props.x);
  expect(height*slot.props.y-centerY).toBeGreaterThanOrEqual(radius+12+6);
  const keeper=nodes(tree).find(n=>typeof n.type==='function' && n.type.name==='Participant' && n.props.person.label==='שוער');
- expect(keeper.props.sideLabels).toBe(true);
+ expect(keeper.props.selectionLabel).toBe(true);
+ expect(keeper.props.sideLabels).toBeUndefined();
+});
+
+test.each([140,180,248])('penalty role labels appear once beneath their disc before and after selection at height %s',height=>{
+ for(const selected of [false,true])for(const role of ['בועט','שוער']){
+  runtime.reset();
+  const input={...props(),mode:'penalty',height,primary:{...person,label:'בועט',teamLabel:'האדומים',player:selected?person.player:null},secondary:{...person,label:'שוער',teamLabel:'הכחולים',player:selected?person.player:null}};
+  const slot=nodes(render(input)).find(n=>typeof n.type==='function'&&n.type.name==='Participant'&&n.props.person.label===role);
+  runtime.reset();runtime.begin();const content=slot.type(slot.props);runtime.finish();
+  const texts=nodes(content).filter(n=>n.type==='Text').map(n=>n.props.children);
+  expect(texts.filter(x=>typeof x==='string'&&(x===role||x===`בחירת ${role}`||x.startsWith(role+' ·')))).toHaveLength(1);
+  if(selected)expect(texts.some(x=>typeof x==='string'&&x.includes('בחירת'))).toBe(false);else expect(texts).toContain(`בחירת ${role}`);
+  expect(nodes(content).some(n=>n.props?.style?.start===-76)).toBe(false);
+ }
 });
 
 test.each([140,180,248])('a penalty starts its acknowledged movement at the waiting ball without jumping at height %s',height=>{

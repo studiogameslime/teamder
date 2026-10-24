@@ -4,8 +4,10 @@ import ts from 'typescript';
 import * as policy from '../../functions/src/invitationPolicy';
 
 const source=fs.readFileSync('functions/src/index.ts','utf8');
-const start=source.indexOf('async function reconcileGameJoins(');
-const code=ts.transpileModule(source.slice(start,source.indexOf('// A new join request schedules',start))+'\nmodule.exports=reconcileGameJoins;', {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+const tree=ts.createSourceFile('index.ts',source,ts.ScriptTarget.Latest,true);
+const reconcileFunction=tree.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text==='reconcileGameJoins');
+if(!reconcileFunction)throw Error('Missing production reconcileGameJoins');
+const code=ts.transpileModule(reconcileFunction.getText(tree)+'\nmodule.exports=reconcileGameJoins;', {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
 async function reconcile(overrides:Record<string,any>, user:Record<string,any>|null={name:'שחקן'}) {
   const writes:any[]=[],now=Date.now();
   const game={status:'open',startsAt:now+3600000,visibility:'community',groupId:'club',createdBy:'manager',players:[],pending:[],waitlist:[],maxPlayers:2,...overrides};

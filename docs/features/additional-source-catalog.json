@@ -345,9 +345,9 @@
   {
     "path": "AGENTS.md",
     "hashMode": "text-lf",
-    "sha256": "b26915bb4bf92d8294141431413c89e10f39956877300225a1096423fac96ab7",
+    "sha256": "60952a0de291db00d211d9bcc265ef1fc9c659c77b1e0956fc64d129a5460601",
     "review": "reviews/additional-root-sources.md",
-    "auditDate": "2026-10-19"
+    "auditDate": "2026-10-24"
   },
   {
     "path": "CLAUDE.md",

@@ -1,0 +1,19 @@
+{
+  "readBackVerified": true,
+  "entries": [
+    {
+      "area": "פולס — אנשים ומעקב",
+      "shotId": "54472040d82c446d85d933ff1c9cc1e5",
+      "proofReadBack": true
+    },
+    {
+      "area": "פולס — מועדונים",
+      "shotId": "5d161779521644b9b33b6697af115c28",
+      "proofReadBack": true
+    }
+  ],
+  "added": 2,
+  "version": "next",
+  "built": false,
+  "deployed": false
+}

@@ -43,8 +43,8 @@ const rtl = I18nManager.isRTL;
 const logicalStart = (x: number, width: number, itemWidth: number) => rtl ? width - x - itemWidth / 2 : x - itemWidth / 2;
 const participantDiscSize = (height: number, concise: boolean) => concise ? (height < 145 ? 32 : 36) : height < 210 ? 42 : 52;
 
-function Participant({ person, x, y, width, height, active, visible, disabled, dive = 0, concise = false, sideLabels = false }: {
-  person: PitchParticipant; x: number; y: number; width: number; height: number; active: boolean; visible: boolean; disabled?: boolean; dive?: number; concise?: boolean; sideLabels?: boolean;
+function Participant({ person, x, y, width, height, active, visible, disabled, dive = 0, concise = false, selectionLabel = false }: {
+  person: PitchParticipant; x: number; y: number; width: number; height: number; active: boolean; visible: boolean; disabled?: boolean; dive?: number; concise?: boolean; selectionLabel?: boolean;
 }) {
   const reduced = useReducedMotion();
   const compact = height < 210;
@@ -71,8 +71,8 @@ function Participant({ person, x, y, width, height, active, visible, disabled, d
   const filled = !!person.player || !!person.fallback;
   const editable = !!person.player && !!person.onEdit && !disabled;
   const labels = <>
-    <Text allowFontScaling={!concise} maxFontSizeMultiplier={1.15} style={[s.role,compact && s.compactLabel]} numberOfLines={1}>{concise && person.player ? `${person.label} · ⁨${person.player.name}⁩` : person.label}</Text>
-    {!concise && <Text maxFontSizeMultiplier={1.15} style={[s.playerName,compact && s.compactLabel]} numberOfLines={1}>{person.player?.name ?? person.fallback ?? `בחירת ${person.label}`}</Text>}
+    <Text allowFontScaling={!concise} maxFontSizeMultiplier={1.15} style={[s.role,compact && s.compactLabel]} numberOfLines={1}>{concise && person.player ? `${person.label} · ⁨${person.player.name}⁩` : selectionLabel && !person.player && !person.fallback ? `בחירת ${person.label}` : person.label}</Text>
+    {!concise && (!selectionLabel || person.player || person.fallback) && <Text maxFontSizeMultiplier={1.15} style={[s.playerName,compact && s.compactLabel]} numberOfLines={1}>{person.player?.name ?? person.fallback ?? `בחירת ${person.label}`}</Text>}
     {person.teamLabel && <Text allowFontScaling={!concise} maxFontSizeMultiplier={1.15} style={[s.teamTag,compact && s.compactTeamTag, { backgroundColor: person.ink ?? '#14532D' }]} numberOfLines={1}>{person.teamLabel}</Text>}
   </>;
   const content = <>
@@ -81,7 +81,7 @@ function Participant({ person, x, y, width, height, active, visible, disabled, d
       {person.player ? <UserAvatar user={person.player} size={discSize - 6}/> : <Text maxFontSizeMultiplier={1.1} style={[s.plus, compact && {fontSize:27,lineHeight:34}, { color: active || filled ? (person.ink ?? '#166534') : '#FFFFFF' }]}>{person.fallback ? '—' : '+'}</Text>}
       {editable && <View style={s.editDot}><Text style={s.editIcon}>✎</Text></View>}
     </Animated.View>
-    {sideLabels ? <View style={{ position: 'absolute', start: -76, top: 0, width: 76, alignItems: 'center', gap: 1 }}>{labels}</View> : labels}
+    {labels}
   </>;
   const position = { width:slotWidth,start: logicalStart(x * width, width, slotWidth), top: y * height - discSize / 2 };
   return editable ? <Pressable onPress={person.onEdit} accessibilityRole="button" accessibilityLabel={`שינוי ${person.label}, ${person.player!.name}`} style={[s.participant, position]}>{content}</Pressable>
@@ -163,8 +163,8 @@ export function MatchActionPitch({ mode, primary, secondary, activeRole, status,
       </Svg>
     </Animated.View>
     {teamPreview ? <View pointerEvents="none" accessible={false} style={s.previewShirts}><TeamShirtIllustration color={primary.color} width={height < 180 ? 42 : 58}/><TeamShirtIllustration color={secondary.color} width={height < 180 ? 42 : 58}/></View> : <>
-    <Participant person={primary} {...positions.primary} width={width} height={height} active={activeRole === 'primary' && status === 'idle'} visible={visible} disabled={disabled} concise={mode === 'penalty' && height < 210}/>
-    <Participant person={secondary} {...positions.secondary} width={width} height={height} active={activeRole === 'secondary' && status === 'idle'} visible={visible} disabled={disabled} concise={mode === 'penalty' && height < 210} sideLabels={mode === 'penalty'} dive={mode === 'penalty' && saved ? -22 : 0}/>
+    <Participant person={primary} {...positions.primary} width={width} height={height} active={activeRole === 'primary' && status === 'idle'} visible={visible} disabled={disabled} concise={mode === 'penalty' && height < 210} selectionLabel={mode === 'penalty'}/>
+    <Participant person={secondary} {...positions.secondary} width={width} height={height} active={activeRole === 'secondary' && status === 'idle'} visible={visible} disabled={disabled} concise={mode === 'penalty' && height < 210} selectionLabel={mode === 'penalty'} dive={mode === 'penalty' && saved ? -22 : 0}/>
     </>}
     {!teamPreview && visible && (mode === 'penalty' || saved) && <Animated.View testID="match-action-ball" pointerEvents="none" accessible={false} style={[s.ball, ballStyle]}>
       <Image source={require('@/assets/images/match-football.png')} style={s.ballImage} resizeMode="contain" accessible={false}/>

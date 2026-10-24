@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   header: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.md,

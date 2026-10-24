@@ -1,6 +1,7 @@
 import fs from 'fs';
 import ts from 'typescript';
 import vm from 'vm';
+import {draftColorTeams} from '@/utils/draftColors';
 
 const file = ts.createSourceFile('DraftBoardScreen.tsx', fs.readFileSync('src/screens/games/DraftBoardScreen.tsx', 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 let loader = '';
@@ -18,7 +19,7 @@ function setup() {
     gameService: { getGameById: jest.fn() },
     setLoading: (v: boolean) => state.loading = v, setLoadFailed: (v: boolean) => state.failed = v,
     setGame: (v: any) => state.game = v, logError: jest.fn(), logEvent: jest.fn(), AnalyticsEvent: {},
-    hydratePlayers: jest.fn(), isGuestId: () => false,
+    hydratePlayers: jest.fn(), isGuestId: () => false, draftColorTeams, setTeamColors: jest.fn(),
   };
   vm.runInNewContext(ts.transpileModule(`module.exports=${loader}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
   return { state, context, focus: context.module.exports };
